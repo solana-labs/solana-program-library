@@ -14,7 +14,7 @@
     "flow": "flow",
     "flow:watch": "watch 'flow' . --wait=1 --ignoreDirectoryPattern=/doc/",
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",
-    "bpf-sdk:update": "solana-bpf-sdk-install node_modules/@solana/web3.js && npm run clean:progam",
+    "bpf-sdk:update": "solana-bpf-sdk-install node_modules/@solana/web3.js && npm run clean:program",
     "build:program": "./src/program/do.sh build",
     "clean:program": "./src/program/do.sh clean && cargo clean --manifest-path ./src/program-test/Cargo.toml",
     "test:program": "./src/program/do.sh test",

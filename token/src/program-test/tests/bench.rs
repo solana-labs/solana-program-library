@@ -49,7 +49,7 @@ fn run_program(
     instruction_data: &[u8],
 ) -> Result<(u64, u64), InstructionError> {
     let mut program_account = Account::default();
-    program_account.data = load_program("solana_bpf_token");
+    program_account.data = load_program("spl_token");
     let (mut vm, heap_region) = create_vm(&program_account.data).unwrap();
 
     let mut parameter_bytes =
