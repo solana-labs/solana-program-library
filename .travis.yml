@@ -1,0 +1,33 @@
+dist: bionic
+sudo: required
+language: rust
+services:
+- docker
+cache:
+  cargo: true
+  directories:
+  - "~/.npm"
+notifications:
+  email: false
+
+install:
+  - cargo --version
+  - docker --version
+  - wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+  - sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
+  - sudo apt-get update
+  - sudo apt-get install -y clang-7 --allow-unauthenticated
+  - sudo apt-get install -y openssl --allow-unauthenticated
+  - sudo apt-get install -y libssl-dev --allow-unauthenticated
+  - sudo apt-get install -y libssl1.1 --allow-unauthenticated
+  - clang-7 --version
+  - nvm install node
+  - node --version
+ 
+script:
+  - npm install --prefix token
+  - npm run build:program --prefix token
+  - cargo test --manifest-path=token/src/program-test/Cargo.toml
+  - npm run test --prefix token
+  - npm run cluster:devnet --prefix token
+  - npm run start --prefix token

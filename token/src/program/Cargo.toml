@@ -1,0 +1,22 @@
+
+# Note: This crate must be built using do.sh
+
+[package]
+name = "spl-token"
+version = "0.1.0"
+description = "Solana Program Library Token"
+authors = ["Solana Maintainers <maintainers@solana.com>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[dependencies]
+num-derive = "0.2"
+num-traits = "0.2"
+solana-sdk = { version = "=1.0.9", default-features = false, features=["program"] }
+solana-sdk-bpf-test = { path = "../../node_modules/@solana/web3.js/bpf-sdk/rust/test", default-features = false }
+thiserror = "1.0"
+
+[lib]
+name = "spl_token"
+crate-type = ["cdylib", "lib"]
