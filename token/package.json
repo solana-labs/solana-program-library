@@ -64,7 +64,7 @@
     "express": "^4.16.4",
     "flow-bin": "0.121.0",
     "flow-typed": "^3.0.0",
-    "http-server": "^0.12.0",
+    "http-server": "^0.12.3",
     "jayson": "^3.0.1",
     "json-to-pretty-yaml": "^1.2.2",
     "mkdirp-promise": "^5.0.1",
