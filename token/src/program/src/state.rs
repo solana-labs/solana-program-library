@@ -1,7 +1,7 @@
 use crate::error::TokenError;
 use solana_sdk::{
-    account_info::AccountInfo, entrypoint::ProgramResult, info, program_error::ProgramError,
-    program_utils::next_account_info, pubkey::Pubkey,
+    account_info::AccountInfo, entrypoint::ProgramResult, incinerator, info,
+    program_error::ProgramError, program_utils::next_account_info, pubkey::Pubkey,
 };
 use std::mem::size_of;
 
@@ -190,12 +190,32 @@ impl<'a> State {
         let source_account_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        let mut dest_data = dest_account_info.data.borrow_mut();
-        if let (State::Account(mut source_account), State::Account(mut dest_account)) = (
-            State::deserialize(&source_data)?,
-            State::deserialize(&dest_data)?,
-        ) {
+        let (mut source_account, mut source_data) = {
+            let source_data = source_account_info.data.borrow_mut();
+            match State::deserialize(&source_data)? {
+                State::Account(source_account) => (source_account, source_data),
+                _ => {
+                    info!("Error: source accounts is invalid");
+                    return Err(ProgramError::InvalidArgument);
+                }
+            }
+        };
+        let (mut dest_account, mut dest_data) = {
+            let dest_data = dest_account_info.data.borrow_mut();
+            if *dest_account_info.key == incinerator::id() {
+                (TokenAccount::default(), dest_data)
+            } else {
+                match State::deserialize(&dest_data)? {
+                    State::Account(dest_account) => (dest_account, dest_data),
+                    _ => {
+                        info!("Error: destination accounts is invalid");
+                        return Err(ProgramError::InvalidArgument);
+                    }
+                }
+            }
+        };
+
+        if *dest_account_info.key != incinerator::id() {
             if source_account.token != dest_account.token {
                 info!("Error: token mismatch");
                 return Err(TokenError::TokenMismatch.into());
@@ -204,49 +224,48 @@ impl<'a> State {
                 info!("Error: destination account is a delegate and cannot accept tokens");
                 return Err(ProgramError::InvalidArgument);
             }
-            if owner_account_info.key != &source_account.owner {
-                info!("Error: source account owner not present");
-                return Err(TokenError::NoOwner.into());
-            }
-            if !owner_account_info.is_signer {
-                info!("Error: owner account not a signer");
-                return Err(ProgramError::MissingRequiredSignature);
-            }
-            if source_account.amount < amount {
-                return Err(TokenError::InsufficientFunds.into());
-            }
+        }
+        if owner_account_info.key != &source_account.owner {
+            info!("Error: source account owner not present");
+            return Err(TokenError::NoOwner.into());
+        }
+        if !owner_account_info.is_signer {
+            info!("Error: owner account not a signer");
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+        if source_account.amount < amount {
+            return Err(TokenError::InsufficientFunds.into());
+        }
 
-            if let Some(ref delegate) = source_account.delegate {
-                let source_account_info = next_account_info(account_info_iter)?;
-                let mut actual_source_data = source_account_info.data.borrow_mut();
-                if let State::Account(mut actual_source_account) =
-                    State::deserialize(&actual_source_data)?
-                {
-                    if source_account_info.key != &delegate.source {
-                        info!("Error: Source account is not a delegate payee");
-                        return Err(TokenError::NotDelegate.into());
-                    }
-
-                    if actual_source_account.amount < amount {
-                        return Err(TokenError::InsufficientFunds.into());
-                    }
-
-                    actual_source_account.amount -= amount;
-                    State::Account(actual_source_account).serialize(&mut actual_source_data)?;
-                } else {
-                    info!("Error: payee is an invalid account");
-                    return Err(ProgramError::InvalidArgument);
+        if let Some(ref delegate) = source_account.delegate {
+            let source_account_info = next_account_info(account_info_iter)?;
+            let mut actual_source_data = source_account_info.data.borrow_mut();
+            if let State::Account(mut actual_source_account) =
+                State::deserialize(&actual_source_data)?
+            {
+                if source_account_info.key != &delegate.source {
+                    info!("Error: Source account is not a delegate payee");
+                    return Err(TokenError::NotDelegate.into());
                 }
+
+                if actual_source_account.amount < amount {
+                    return Err(TokenError::InsufficientFunds.into());
+                }
+
+                actual_source_account.amount -= amount;
+                State::Account(actual_source_account).serialize(&mut actual_source_data)?;
+            } else {
+                info!("Error: payee is an invalid account");
+                return Err(ProgramError::InvalidArgument);
             }
+        }
 
-            source_account.amount -= amount;
-            State::Account(source_account).serialize(&mut source_data)?;
+        source_account.amount -= amount;
+        State::Account(source_account).serialize(&mut source_data)?;
 
+        if *dest_account_info.key != incinerator::id() {
             dest_account.amount += amount;
             State::Account(dest_account).serialize(&mut dest_data)?;
-        } else {
-            info!("Error: destination and/or source accounts are invalid");
-            return Err(ProgramError::InvalidArgument);
         }
         Ok(())
     }
@@ -1061,8 +1080,21 @@ mod tests {
             State::process(&program_id, &mut account_infos, &instruction_data)
         );
 
+        // burn some
+        let incinerator_id = incinerator::id();
+        let mut incinerator_account = Account::default();
+        let instruction = Command::Transfer(100);
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&owner_key, true, &mut owner_account),
+            (&token_account_key, false, &mut token_account_account),
+            (&incinerator_id, false, &mut incinerator_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
         // transfer rest
-        let instruction = Command::Transfer(900);
+        let instruction = Command::Transfer(800);
         instruction.serialize(&mut instruction_data).unwrap();
         let mut accounts = vec![
             (&owner_key, true, &mut owner_account),

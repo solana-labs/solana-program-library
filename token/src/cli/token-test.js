@@ -124,8 +124,20 @@ export async function transfer(): Promise<void> {
   await testToken.transfer(initialOwner, initialOwnerTokenAccount, dest, 123);
   await sleep(500);
 
-  const destAccountInfo = await testToken.accountInfo(dest);
+  let destAccountInfo = await testToken.accountInfo(dest);
   assert(destAccountInfo.amount.toNumber() == 123);
+
+  // burn one
+  await testToken.transfer(
+    destOwner,
+    dest,
+    new PublicKey('1nc1nerator11111111111111111111111111111111'),
+    1,
+  );
+  await sleep(500);
+
+  destAccountInfo = await testToken.accountInfo(dest);
+  assert(destAccountInfo.amount.toNumber() == 122);
 }
 
 export async function approveRevoke(): Promise<void> {
