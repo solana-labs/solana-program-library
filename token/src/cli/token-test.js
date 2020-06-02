@@ -57,7 +57,7 @@ async function getConnection(): Promise<Connection> {
 export async function loadTokenProgram(): Promise<void> {
   const NUM_RETRIES = 500; /* allow some number of retries */
   const data = await fs.readFile(
-    'src/program/target/bpfel-unknown-unknown/release/solana_bpf_token.so',
+    'src/program/target/bpfel-unknown-unknown/release/spl_token.so',
   );
   const connection = await getConnection();
   const {feeCalculator} = await connection.getRecentBlockhash();
