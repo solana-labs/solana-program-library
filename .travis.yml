@@ -27,7 +27,6 @@ install:
 script:
   - npm install --prefix token
   - npm run build:program --prefix token
-  - cargo test --manifest-path=token/src/program-test/Cargo.toml -- --nocapture
   - npm run test --prefix token
   - npm run cluster:devnet --prefix token
   - npm run start --prefix token

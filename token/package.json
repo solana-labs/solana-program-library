@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/solana-labs/solana-program-library"
   },
-  "testnetDefaultChannel": "v1.1.8",
+  "testnetDefaultChannel": "v1.2.0",
   "scripts": {
     "start": "babel-node src/cli/main.js",
     "lint": "npm run pretty && eslint .",
@@ -16,9 +16,9 @@
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",
     "bpf-sdk:update": "solana-bpf-sdk-install node_modules/@solana/web3.js && npm run clean:program",
     "build:program": "./src/program/do.sh build",
-    "clean:program": "./src/program/do.sh clean && cargo clean --manifest-path ./src/program-test/Cargo.toml",
+    "clean:program": "./src/program/do.sh clean",
     "test:program": "./src/program/do.sh test",
-    "bench:program": "npm run build:program && cargo test --manifest-path ./src/program-test/Cargo.toml -- --nocapture",
+    "bench:program": "npm run build:program",
     "cluster:localnet": "rm -f .env",
     "cluster:devnet": "cp cluster-devnet.env .env",
     "cluster:testnet": "cp cluster-testnet.env .env",
@@ -28,7 +28,7 @@
     "localnet:down": "solana-localnet down",
     "localnet:logs": "solana-localnet logs -f",
     "pretty": "prettier --write '{,src/**/}*.js'",
-    "postinstall": "npm run bpf-sdk:update && cargo update --manifest-path=src/program/Cargo.toml && cargo update --manifest-path=src/program-test/Cargo.toml",
+    "postinstall": "npm run bpf-sdk:update && cargo update --manifest-path=src/program/Cargo.toml",
     "test": "npm run build:program && npm run flow"
   },
   "keywords": [],
