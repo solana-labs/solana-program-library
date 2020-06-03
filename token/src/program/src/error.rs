@@ -17,6 +17,8 @@ pub enum TokenError {
     NotDelegate,
     #[error("no owner")]
     NoOwner,
+    #[error("minting not allowed")]
+    MintingNotAllowed,
 }
 
 impl From<TokenError> for ProgramError {
@@ -41,6 +43,7 @@ impl PrintProgramError for TokenError {
             TokenError::TokenMismatch => info!("Error: token mismatch"),
             TokenError::NotDelegate => info!("Error: not a delegate"),
             TokenError::NoOwner => info!("Error: no owner"),
+            TokenError::MintingNotAllowed => info!("Error: this token does not allow new mintings"),
         }
     }
 }

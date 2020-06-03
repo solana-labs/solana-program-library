@@ -13,6 +13,7 @@ import {
   invalidApprove,
   failOnApproveOverspend,
   setOwner,
+  mintTo,
 } from './token-test';
 
 async function main() {
@@ -32,6 +33,8 @@ async function main() {
   await failOnApproveOverspend();
   console.log('Run test: setOwner');
   await setOwner();
+  console.log('Run test: mintTo');
+  await mintTo();
   console.log('Success\n');
 }
 
