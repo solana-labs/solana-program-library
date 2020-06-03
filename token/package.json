@@ -28,7 +28,7 @@
     "localnet:down": "solana-localnet down",
     "localnet:logs": "solana-localnet logs -f",
     "pretty": "prettier --write '{,src/**/}*.js'",
-    "postinstall": "npm run bpf-sdk:update && cargo update --manifest-path=src/program/Cargo.toml && cargo update --manifest-path=src/program-test/Cargo.toml",
+    "postinstall": "npm run bpf-sdk:update && cargo update --manifest-path=src/program/Cargo.toml",
     "test": "npm run build:program && npm run flow"
   },
   "keywords": [],
