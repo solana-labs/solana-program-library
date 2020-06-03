@@ -21,7 +21,7 @@ pub enum TokenError {
 
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
-        ProgramError::CustomError(e as u32)
+        ProgramError::Custom(e as u32)
     }
 }
 
@@ -60,7 +60,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "CustomError(1)")]
+    #[should_panic(expected = "Custom(1)")]
     fn test_error_unwrap() {
         Err::<(), ProgramError>(return_token_error_as_program_error()).unwrap();
     }

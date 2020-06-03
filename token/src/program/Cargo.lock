@@ -25,7 +25,7 @@ dependencies = [
  "block-padding",
  "byte-tools",
  "byteorder",
- "generic-array 0.12.3",
+ "generic-array",
 ]
 
 [[package]]
@@ -77,7 +77,7 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4434400df11d95d556bac068ddfedd482915eb18fe8bea89bc80b6e4b1c179e5"
 dependencies = [
- "generic-array 0.12.3",
+ "generic-array",
  "subtle",
 ]
 
@@ -87,7 +87,7 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
 dependencies = [
- "generic-array 0.12.3",
+ "generic-array",
 ]
 
 [[package]]
@@ -118,16 +118,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "generic-array"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ed1e761351b56f54eb9dcd0cfaca9fd0daecf93918e1cfc01c8a3d26ee7adcd"
-dependencies = [
- "serde",
- "typenum",
-]
-
-[[package]]
 name = "hex"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -145,9 +135,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.8.2"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
+checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
 dependencies = [
  "either",
 ]
@@ -287,14 +277,13 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk"
-version = "1.0.9"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33ff4aad064cf78a348293f2e03e5861a01784e860a2f2e1b7cc5673afb54fa6"
+checksum = "6b4ce21779c6854ad5719df2e173304728e24953343751aee91ae039d34a9fd6"
 dependencies = [
  "bincode",
  "bs58",
  "bv",
- "generic-array 0.13.2",
  "hex",
  "hmac",
  "itertools",
@@ -312,7 +301,7 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk-bpf-test"
-version = "1.1.8"
+version = "1.2.0"
 
 [[package]]
 name = "solana-sdk-macro"
