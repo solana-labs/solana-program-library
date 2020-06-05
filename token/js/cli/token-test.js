@@ -5,7 +5,7 @@ import {Connection, BpfLoader, PublicKey} from '@solana/web3.js';
 import semver from 'semver';
 
 import {Token, TokenAmount} from '../client/token';
-import {url} from '../../url';
+import {url} from '../url';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {sleep} from '../client/util/sleep';
 
@@ -57,7 +57,7 @@ async function getConnection(): Promise<Connection> {
 export async function loadTokenProgram(): Promise<void> {
   const NUM_RETRIES = 500; /* allow some number of retries */
   const data = await fs.readFile(
-    'src/program/target/bpfel-unknown-unknown/release/spl_token.so',
+    '../target/bpfel-unknown-unknown/release/spl_token.so',
   );
   const connection = await getConnection();
   const {feeCalculator} = await connection.getRecentBlockhash();
