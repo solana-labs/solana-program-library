@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 usage() {
     cat <<EOF
 
-Usage: do.sh action
+Usage: do.sh <action> <project>
 
 Supported actions:
     build
@@ -17,49 +17,64 @@ Supported actions:
 EOF
 }
 
-sdkDir=../../node_modules/@solana/web3.js/bpf-sdk
-targetDir="$PWD"/target
+sdkParentDir=bin
+sdkDir="$sdkParentDir"/bpf-sdk
+targetDir="$PWD"/"$2"/target
 profile=bpfel-unknown-unknown/release
 
 perform_action() {
     set -e
     case "$1" in
     build)
-        "$sdkDir"/rust/build.sh "$PWD"
-        
+        "$sdkDir"/rust/build.sh "$2"
+
         so_path="$targetDir/$profile"
-        so_name="spl_token"
+        so_name="spl_${3%/}"
         if [ -f "$so_path/${so_name}.so" ]; then
             cp "$so_path/${so_name}.so" "$so_path/${so_name}_debug.so"
             "$sdkDir"/dependencies/llvm-native/bin/llvm-objcopy --strip-all "$so_path/${so_name}.so" "$so_path/$so_name.so"
         fi
         ;;
     clean)
-        "$sdkDir"/rust/clean.sh "$PWD"
+        "$sdkDir"/rust/clean.sh "$2"
         ;;
     test)
-        echo "test"
-        shift
-        cargo +nightly test $@
+        (
+            cd "$2"
+            echo "test $2"
+            cargo +nightly test
+        )
         ;;
     clippy)
-        echo "clippy"
-        cargo +nightly clippy
+        (
+            cd "$2"
+            echo "clippy $2"
+            cargo +nightly clippy
+        )
         ;;
     fmt)
-        echo "formatting"
-        cargo fmt
+        (
+            cd "$2"
+            echo "formatting $2"
+            cargo fmt
+        )
+        ;;
+  update)
+        mkdir -p $sdkParentDir
+        ./bpf-sdk-install.sh $sdkParentDir
         ;;
     dump)
         # Dump depends on tools that are not installed by default and must be installed manually
         # - greadelf
         # - rustfilt
         (
+            download_bpf_sdk
             pwd
-            "$0" build
+            "$0" build "$3"
 
+            cd "$3"
             so_path="$targetDir/$profile"
-            so_name="solana_bpf_token"
+            so_name="solana_bpf_${3%/}"
             so="$so_path/${so_name}_debug.so"
             dump="$so_path/${so_name}-dump"
 
@@ -102,4 +117,19 @@ perform_action() {
 
 set -e
 
-perform_action "$@"
+if [[ "$#" -ne 2 ]]; then
+    if [[ $1 == "update" ]]; then
+        perform_action "$1"
+    else
+        # Build all projects
+        for project in */; do
+            if [[ ${project%/} == @($sdkParentDir|ci|target) ]]; then
+                continue;
+            fi
+            perform_action "$1" "$PWD/$project" "$project"
+        done
+    fi
+else
+    # Build requested project
+    perform_action "$1" "$PWD/$2" "$2"
+fi

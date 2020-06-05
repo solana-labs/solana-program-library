@@ -14,7 +14,7 @@ edition = "2018"
 num-derive = "0.2"
 num-traits = "0.2"
 solana-sdk = { version = "=1.2.0", default-features = false, features=["program"] }
-solana-sdk-bpf-test = { path = "../../node_modules/@solana/web3.js/bpf-sdk/rust/test", default-features = false }
+solana-sdk-bpf-test = { path = "../bin/bpf-sdk/rust/test", default-features = false }
 thiserror = "1.0"
 
 [lib]
