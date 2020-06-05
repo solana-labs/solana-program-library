@@ -10,9 +10,8 @@ fn process_instruction<'a>(
     _accounts: &'a [AccountInfo<'a>],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    from_utf8(instruction_data)
-        .map(|_| ())
-        .map_err(|_| ProgramError::InvalidInstructionData)
+    from_utf8(instruction_data).map_err(|_| ProgramError::InvalidInstructionData)?;
+    Ok(())
 }
 
 #[cfg(test)]
