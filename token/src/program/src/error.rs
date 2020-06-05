@@ -43,7 +43,7 @@ impl PrintProgramError for TokenError {
             TokenError::TokenMismatch => info!("Error: token mismatch"),
             TokenError::NotDelegate => info!("Error: not a delegate"),
             TokenError::NoOwner => info!("Error: no owner"),
-            TokenError::FixedSupply => info!("Error: the total supply of this token if fixed"),
+            TokenError::FixedSupply => info!("Error: the total supply of this token is fixed"),
         }
     }
 }
