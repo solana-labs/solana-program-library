@@ -26,7 +26,7 @@ mod tests {
         let string = b"letters and such";
         assert_eq!(
             Ok(()),
-            process_instruction(&program_id, &mut vec![], string)
+            process_instruction(&program_id, &[], string)
         );
 
         let emoji = "🐆".as_bytes();
@@ -34,14 +34,14 @@ mod tests {
         assert_eq!(emoji, bytes);
         assert_eq!(
             Ok(()),
-            process_instruction(&program_id, &mut vec![], &emoji)
+            process_instruction(&program_id, &[], &emoji)
         );
 
         let mut bad_utf8 = bytes;
         bad_utf8[3] = 0xFF; // Invalid UTF-8 byte
         assert_eq!(
             Err(ProgramError::InvalidInstructionData),
-            process_instruction(&program_id, &mut vec![], &bad_utf8)
+            process_instruction(&program_id, &[], &bad_utf8)
         );
     }
 }
