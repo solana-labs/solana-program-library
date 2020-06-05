@@ -124,7 +124,7 @@ export async function transfer(): Promise<void> {
   await testToken.transfer(initialOwner, initialOwnerTokenAccount, dest, 123);
   await sleep(500);
 
-  const destAccountInfo = await testToken.accountInfo(dest);
+  let destAccountInfo = await testToken.accountInfo(dest);
   assert(destAccountInfo.amount.toNumber() == 123);
 }
 
@@ -292,4 +292,19 @@ export async function mintTo(): Promise<void> {
     assert(accountInfo.source == null);
     assert(accountInfo.originalAmount.toNumber() == 0);
   }
+}
+
+export async function burn(): Promise<void> {
+  let tokenInfo = await testToken.tokenInfo();
+  const supply = tokenInfo.supply.toNumber();
+  let accountInfo = await testToken.accountInfo(initialOwnerTokenAccount);
+  const amount = accountInfo.amount.toNumber();
+
+  await testToken.burn(initialOwner, initialOwnerTokenAccount, 1);
+  await sleep(500);
+
+  tokenInfo = await testToken.tokenInfo();
+  assert(tokenInfo.supply.toNumber() == supply - 1);
+  accountInfo = await testToken.accountInfo(initialOwnerTokenAccount);
+  assert(accountInfo.amount.toNumber() == amount - 1);
 }

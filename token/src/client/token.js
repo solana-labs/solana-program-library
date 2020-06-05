@@ -539,6 +539,26 @@ export class Token {
   }
 
   /**
+   * Burn tokens
+   *
+   * @param owner Public key account owner
+   * @param account Account to burn tokens from
+   * @param amount ammount to burn
+   */
+  async burn(
+    owner: Account,
+    account: PublicKey,
+    amount: number,
+  ): Promise<void> {
+    await sendAndConfirmTransaction(
+      'burn',
+      this.connection,
+      new Transaction().add(await this.burnInstruction(owner, account, amount)),
+      owner,
+    );
+  }
+
+  /**
    * Construct a Transfer instruction
    *
    * @param owner Owner of the source token account
@@ -711,6 +731,54 @@ export class Token {
         {pubkey: token, isSigner: false, isWritable: true},
         {pubkey: dest, isSigner: false, isWritable: true},
       ],
+      programId: this.programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct a Burn instruction
+   *
+   * @param owner Public key account owner
+   * @param account Account to burn tokens from
+   * @param amount ammount to burn
+   */
+  async burnInstruction(
+    owner: Account,
+    account: PublicKey,
+    amount: number,
+  ): Promise<TransactionInstruction> {
+    const accountInfo = await this.accountInfo(account);
+
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      Layout.uint64('amount'),
+    ]);
+
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 6, // Burn instruction
+        amount: new TokenAmount(amount).toBuffer(),
+      },
+      data,
+    );
+
+    const keys = [
+      {pubkey: owner.publicKey, isSigner: true, isWritable: false},
+      {pubkey: account, isSigner: false, isWritable: true},
+      {pubkey: this.token, isSigner: false, isWritable: true},
+    ];
+    if (accountInfo.source) {
+      keys.push({
+        pubkey: accountInfo.source,
+        isSigner: false,
+        isWritable: true,
+      });
+    }
+
+    return new TransactionInstruction({
+      keys,
       programId: this.programId,
       data,
     });
