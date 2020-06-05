@@ -23,8 +23,12 @@ install:
   - clang-7 --version
   - nvm install node
   - node --version
- 
+
 script:
+  - ./do.sh update
+  - ./do.sh build
+  - ./do.sh test
+  - cd token
   - npm install --prefix token
   - npm run build:program --prefix token
   - npm run test --prefix token
