@@ -374,8 +374,8 @@ impl<'a> State {
                     }
                 }
                 None => {
-                    info!("Error: token not mintable");
-                    return Err(TokenError::MintingNotAllowed.into());
+                    info!("Error: this token has a fixed supply");
+                    return Err(TokenError::FixedSupply.into());
                 }
             }
 
