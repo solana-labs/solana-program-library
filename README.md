@@ -11,3 +11,46 @@ These programs are tested against [Solana](https://solana.com)'s implementation
 of Sealevel, solana-runtime, and deployed to its mainnet.  As others implement
 Sealevel, we will graciously accept patches to ensure the programs here are
 portable across all implementations.
+
+## Building
+
+These programs cannot be built directly via cargo and instead require the build scripts located in Solana's BPF-SDK.
+
+Download or update the BPF-SDK by running:
+```bash
+$ ./do.sh update
+```
+
+To build all programs, run:
+```bash
+$ ./do.sh build
+```
+
+Or choose a specific program:
+```bash
+$ ./do.sh build <program>
+```
+
+## Testing
+
+Unit tests contained within all projects can be built via:
+```bash
+$ ./do.sh test
+```
+
+Or:
+```bash
+$ ./do.sh test <program>
+```
+
+## Clippy
+
+Clippy is also supported via:
+```bash
+$ ./do.sh clippy
+```
+
+Or:
+```
+$ ./do.sh clippy <program>
+```
