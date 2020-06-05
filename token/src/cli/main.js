@@ -7,7 +7,7 @@
 import {
   loadTokenProgram,
   createNewToken,
-  createNewTokenAccount,
+  createNewAccount,
   transfer,
   approveRevoke,
   invalidApprove,
@@ -22,8 +22,8 @@ async function main() {
   await loadTokenProgram();
   console.log('Run test: createNewToken');
   await createNewToken();
-  console.log('Run test: createNewTokenAccount');
-  await createNewTokenAccount();
+  console.log('Run test: createNewAccount');
+  await createNewAccount();
   console.log('Run test: transfer');
   await transfer();
   console.log('Run test: approveRevoke');

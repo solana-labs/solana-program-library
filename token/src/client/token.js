@@ -90,9 +90,9 @@ const tokenLayout = BufferLayout.struct([
 ]);
 
 /**
- * Information about a token account
+ * Information about an account
  */
-type TokenAccountInfo = {|
+type AccountInfo = {|
   /**
    * The kind of token this account holds
    */
@@ -127,7 +127,7 @@ type TokenAccountInfo = {|
 /**
  * @private
  */
-const TokenAccountInfoLayout = BufferLayout.struct([
+const AccountInfoLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
   Layout.publicKey('token'),
   Layout.publicKey('owner'),
@@ -183,15 +183,15 @@ export class Token {
   }
 
   /**
-   * Get the minimum balance for the token account to be rent exempt
+   * Get the minimum balance for the account to be rent exempt
    *
    * @return Number of lamports required
    */
-  static async getMinBalanceRentForExemptTokenAccount(
+  static async getMinBalanceRentForExemptAccount(
     connection: Connection,
   ): Promise<number> {
     return await connection.getMinimumBalanceForRentExemption(
-      TokenAccountInfoLayout.span,
+      AccountInfoLayout.span,
     );
   }
 
@@ -199,11 +199,11 @@ export class Token {
    * Create a new Token
    *
    * @param connection The connection to use
-   * @param owner User account that will own the returned Token Account
+   * @param owner User account that will own the returned account
    * @param supply Total supply of the new token
    * @param decimals Location of the decimal place
    * @param programId Optional token programId, uses the system programId by default
-   * @return Token object for the newly minted token, Public key of the Token Account holding the total supply of new tokens
+   * @return Token object for the newly minted token, Public key of the account holding the total supply of new tokens
    */
   static async createNewToken(
     connection: Connection,
@@ -242,7 +242,7 @@ export class Token {
       connection,
     );
 
-    // Allocate memory for the tokenAccount account
+    // Allocate memory for the account
     transaction = SystemProgram.createAccount({
       fromPubkey: owner.publicKey,
       newAccountPubkey: tokenAccount.publicKey,
@@ -272,7 +272,7 @@ export class Token {
       data,
     });
     await sendAndConfirmTransaction(
-      'New tokenAccount',
+      'New Account',
       connection,
       transaction,
       owner,
@@ -283,14 +283,14 @@ export class Token {
   }
 
   /**
-   * Create a new and empty token account.
+   * Create a new and empty account.
    *
    * This account may then be used as a `transfer()` or `approve()` destination
    *
-   * @param owner User account that will own the new token account
+   * @param owner User account that will own the new account
    * @param source If not null, create a delegate account that when authorized
    *               may transfer tokens from this `source` account
-   * @return Public key of the new empty token account
+   * @return Public key of the new empty account
    */
   async newAccount(
     owner: Account,
@@ -304,12 +304,12 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 1, // NewTokenAccount instruction
+        instruction: 1, // NewAccount instruction
       },
       data,
     );
 
-    const balanceNeeded = await Token.getMinBalanceRentForExemptTokenAccount(
+    const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
       this.connection,
     );
 
@@ -318,7 +318,7 @@ export class Token {
       fromPubkey: owner.publicKey,
       newAccountPubkey: tokenAccount.publicKey,
       lamports: balanceNeeded,
-      space: TokenAccountInfoLayout.span,
+      space: AccountInfoLayout.span,
       programId: this.programId,
     });
     await sendAndConfirmTransaction(
@@ -329,7 +329,7 @@ export class Token {
       tokenAccount,
     );
 
-    // Initialize the token account
+    // Initialize the account
     const keys = [
       {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: true},
       {pubkey: owner.publicKey, isSigner: false, isWritable: false},
@@ -344,7 +344,7 @@ export class Token {
       data,
     });
     await sendAndConfirmTransaction(
-      'init tokenAccount',
+      'init account',
       this.connection,
       transaction,
       owner,
@@ -372,7 +372,7 @@ export class Token {
 
     const tokenInfo = tokenLayout.decode(data);
     if (tokenInfo.state !== 1) {
-      throw new Error(`Invalid token account data`);
+      throw new Error(`Invalid account data`);
     }
     tokenInfo.supply = TokenAmount.fromBuffer(tokenInfo.supply);
     if (tokenInfo.option === 0) {
@@ -386,22 +386,22 @@ export class Token {
   /**
    * Retrieve account information
    *
-   * @param account Public key of the token account
+   * @param account Public key of the account
    */
-  async accountInfo(account: PublicKey): Promise<TokenAccountInfo> {
+  async accountInfo(account: PublicKey): Promise<AccountInfo> {
     const accountInfo = await this.connection.getAccountInfo(account);
     if (accountInfo === null) {
-      throw new Error('Failed to find token account');
+      throw new Error('Failed to find account');
     }
     if (!accountInfo.owner.equals(this.programId)) {
-      throw new Error(`Invalid token account owner`);
+      throw new Error(`Invalid account owner`);
     }
 
     const data = Buffer.from(accountInfo.data);
-    const tokenAccountInfo = TokenAccountInfoLayout.decode(data);
+    const tokenAccountInfo = AccountInfoLayout.decode(data);
 
     if (tokenAccountInfo.state !== 2) {
-      throw new Error(`Invalid token account data`);
+      throw new Error(`Invalid account data`);
     }
     tokenAccountInfo.token = new PublicKey(tokenAccountInfo.token);
     tokenAccountInfo.owner = new PublicKey(tokenAccountInfo.owner);
@@ -418,7 +418,7 @@ export class Token {
 
     if (!tokenAccountInfo.token.equals(this.token)) {
       throw new Error(
-        `Invalid token account token: ${JSON.stringify(
+        `Invalid account token: ${JSON.stringify(
           tokenAccountInfo.token,
         )} !== ${JSON.stringify(this.token)}`,
       );
@@ -429,9 +429,9 @@ export class Token {
   /**
    * Transfer tokens to another account
    *
-   * @param owner Owner of the source token account
-   * @param source Source token account
-   * @param destination Destination token account
+   * @param owner Owner of the source account
+   * @param source Source account
+   * @param destination Destination account
    * @param amount Number of tokens to transfer
    */
   async transfer(
@@ -458,9 +458,9 @@ export class Token {
   /**
    * Grant a third-party permission to transfer up the specified number of tokens from an account
    *
-   * @param owner Owner of the source token account
-   * @param account Public key of the token account
-   * @param delegate Token account authorized to perform a transfer tokens from the source account
+   * @param owner Owner of the source account
+   * @param account Public key of the account
+   * @param delegate Account authorized to perform a transfer tokens from the source account
    * @param amount Maximum number of tokens the delegate may transfer
    */
   async approve(
@@ -482,9 +482,9 @@ export class Token {
   /**
    * Remove approval for the transfer of any remaining tokens
    *
-   * @param owner Owner of the source token account
-   * @param account Public key of the token account
-   * @param delegate Token account to revoke authorization from
+   * @param owner Owner of the source account
+   * @param account Public key of the account
+   * @param delegate Account to revoke authorization from
    */
   revoke(
     owner: Account,
@@ -497,9 +497,9 @@ export class Token {
   /**
    * Assign a new owner to the account
    *
-   * @param owner Owner of the token account
-   * @param account Public key of the token account
-   * @param newOwner New owner of the token account
+   * @param owner Owner of the account
+   * @param account Public key of the account
+   * @param newOwner New owner of the account
    */
   async setOwner(
     owner: Account,
@@ -561,9 +561,9 @@ export class Token {
   /**
    * Construct a Transfer instruction
    *
-   * @param owner Owner of the source token account
-   * @param source Source token account
-   * @param destination Destination token account
+   * @param owner Owner of the source account
+   * @param source Source account
+   * @param destination Destination account
    * @param amount Number of tokens to transfer
    */
   async transferInstruction(
@@ -613,9 +613,9 @@ export class Token {
   /**
    * Construct an Approve instruction
    *
-   * @param owner Owner of the source token account
-   * @param account Public key of the token account
-   * @param delegate Token account authorized to perform a transfer tokens from the source account
+   * @param owner Owner of the source account
+   * @param account Public key of the account
+   * @param delegate Account authorized to perform a transfer tokens from the source account
    * @param amount Maximum number of tokens the delegate may transfer
    */
   approveInstruction(
@@ -641,7 +641,7 @@ export class Token {
     return new TransactionInstruction({
       keys: [
         {pubkey: owner, isSigner: true, isWritable: false},
-        {pubkey: account, isSigner: false, isWritable: true},
+        {pubkey: account, isSigner: false, isWritable: false},
         {pubkey: delegate, isSigner: false, isWritable: true},
       ],
       programId: this.programId,
@@ -652,9 +652,9 @@ export class Token {
   /**
    * Construct an Revoke instruction
    *
-   * @param owner Owner of the source token account
-   * @param account Public key of the token account
-   * @param delegate Token account authorized to perform a transfer tokens from the source account
+   * @param owner Owner of the source account
+   * @param account Public key of the account
+   * @param delegate Account authorized to perform a transfer tokens from the source account
    */
   revokeInstruction(
     owner: PublicKey,
@@ -667,9 +667,9 @@ export class Token {
   /**
    * Construct a SetOwner instruction
    *
-   * @param owner Owner of the token account
-   * @param account Public key of the token account
-   * @param newOwner New owner of the token account
+   * @param owner Owner of the account
+   * @param account Public key of the account
+   * @param newOwner New owner of the account
    */
   setOwnerInstruction(
     owner: PublicKey,
@@ -690,7 +690,7 @@ export class Token {
       keys: [
         {pubkey: owner, isSigner: true, isWritable: false},
         {pubkey: owned, isSigner: false, isWritable: true},
-        {pubkey: newOwner, isSigner: false, isWritable: true},
+        {pubkey: newOwner, isSigner: false, isWritable: false},
       ],
       programId: this.programId,
       data,
