@@ -126,18 +126,6 @@ export async function transfer(): Promise<void> {
 
   let destAccountInfo = await testToken.accountInfo(dest);
   assert(destAccountInfo.amount.toNumber() == 123);
-
-  // burn one
-  await testToken.transfer(
-    destOwner,
-    dest,
-    new PublicKey('1nc1nerator11111111111111111111111111111111'),
-    1,
-  );
-  await sleep(500);
-
-  destAccountInfo = await testToken.accountInfo(dest);
-  assert(destAccountInfo.amount.toNumber() == 122);
 }
 
 export async function approveRevoke(): Promise<void> {
@@ -304,4 +292,19 @@ export async function mintTo(): Promise<void> {
     assert(accountInfo.source == null);
     assert(accountInfo.originalAmount.toNumber() == 0);
   }
+}
+
+export async function burn(): Promise<void> {
+  let tokenInfo = await testToken.tokenInfo();
+  const supply = tokenInfo.supply.toNumber();
+  let accountInfo = await testToken.accountInfo(initialOwnerTokenAccount);
+  const amount = accountInfo.amount.toNumber();
+
+  await testToken.burn(initialOwner, initialOwnerTokenAccount, 1);
+  await sleep(500);
+
+  tokenInfo = await testToken.tokenInfo();
+  assert(tokenInfo.supply.toNumber() == supply - 1);
+  accountInfo = await testToken.accountInfo(initialOwnerTokenAccount);
+  assert(accountInfo.amount.toNumber() == amount - 1);
 }
