@@ -11,11 +11,7 @@ license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
-num-derive = "0.2"
-num-traits = "0.2"
 solana-sdk = { version = "=1.2.0", default-features = false, features=["program"] }
-solana-sdk-bpf-test = { path = "../bin/bpf-sdk/rust/test", default-features = false }
-thiserror = "1.0"
 
 [lib]
 name = "spl_memo"
