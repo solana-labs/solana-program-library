@@ -4,5 +4,5 @@ cd "$(dirname "$0")/.."
 
 set -e
 
-./do.sh build
-./do.sh test
+./do.sh build memo
+./do.sh test memo
