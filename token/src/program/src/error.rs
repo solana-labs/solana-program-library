@@ -19,6 +19,10 @@ pub enum TokenError {
     NoOwner,
     #[error("fixed supply")]
     FixedSupply,
+    #[error("AlreadyInUse")]
+    AlreadyInUse,
+    #[error("Destination is a delegate")]
+    DestinationIsDelegate,
 }
 
 impl From<TokenError> for ProgramError {
@@ -44,6 +48,8 @@ impl PrintProgramError for TokenError {
             TokenError::NotDelegate => info!("Error: not a delegate"),
             TokenError::NoOwner => info!("Error: no owner"),
             TokenError::FixedSupply => info!("Error: the total supply of this token is fixed"),
+            TokenError::AlreadyInUse => info!("Error: account or token already in use"),
+            TokenError::DestinationIsDelegate => info!("Error: Delegate accounts hold tokens"),
         }
     }
 }

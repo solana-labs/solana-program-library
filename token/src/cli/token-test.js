@@ -75,7 +75,7 @@ export async function createNewToken(): Promise<void> {
   const connection = await getConnection();
   const balanceNeeded =
     (await Token.getMinBalanceRentForExemptToken(connection)) +
-    (await Token.getMinBalanceRentForExemptTokenAccount(connection));
+    (await Token.getMinBalanceRentForExemptAccount(connection));
   initialOwner = await newAccountWithLamports(connection, balanceNeeded);
   [testToken, initialOwnerTokenAccount] = await Token.createNewToken(
     connection,
@@ -99,9 +99,9 @@ export async function createNewToken(): Promise<void> {
   assert(accountInfo.originalAmount.toNumber() == 0);
 }
 
-export async function createNewTokenAccount(): Promise<void> {
+export async function createNewAccount(): Promise<void> {
   const connection = await getConnection();
-  const balanceNeeded = await Token.getMinBalanceRentForExemptTokenAccount(
+  const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
     connection,
   );
   const destOwner = await newAccountWithLamports(connection, balanceNeeded);
@@ -115,7 +115,7 @@ export async function createNewTokenAccount(): Promise<void> {
 
 export async function transfer(): Promise<void> {
   const connection = await getConnection();
-  const balanceNeeded = await Token.getMinBalanceRentForExemptTokenAccount(
+  const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
     connection,
   );
   const destOwner = await newAccountWithLamports(connection, balanceNeeded);
@@ -135,7 +135,7 @@ export async function approveRevoke(): Promise<void> {
   }
 
   const connection = await getConnection();
-  const balanceNeeded = await Token.getMinBalanceRentForExemptTokenAccount(
+  const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
     connection,
   );
   const delegateOwner = await newAccountWithLamports(connection, balanceNeeded);
@@ -174,7 +174,7 @@ export async function approveRevoke(): Promise<void> {
 export async function invalidApprove(): Promise<void> {
   const connection = await getConnection();
   const balanceNeeded =
-    (await Token.getMinBalanceRentForExemptTokenAccount(connection)) * 3;
+    (await Token.getMinBalanceRentForExemptAccount(connection)) * 3;
   const owner = await newAccountWithLamports(connection, balanceNeeded);
   const account1 = await testToken.newAccount(owner);
   const account1Delegate = await testToken.newAccount(owner, account1);
@@ -189,7 +189,7 @@ export async function invalidApprove(): Promise<void> {
 export async function failOnApproveOverspend(): Promise<void> {
   const connection = await getConnection();
   const balanceNeeded =
-    (await Token.getMinBalanceRentForExemptTokenAccount(connection)) * 3;
+    (await Token.getMinBalanceRentForExemptAccount(connection)) * 3;
   const owner = await newAccountWithLamports(connection, balanceNeeded);
   const account1 = await testToken.newAccount(owner);
   const account1Delegate = await testToken.newAccount(owner, account1);
@@ -225,7 +225,7 @@ export async function failOnApproveOverspend(): Promise<void> {
 
 export async function setOwner(): Promise<void> {
   const connection = await getConnection();
-  const balanceNeeded = await Token.getMinBalanceRentForExemptTokenAccount(
+  const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
     connection,
   );
   const owner = await newAccountWithLamports(connection, balanceNeeded);
@@ -241,7 +241,7 @@ export async function mintTo(): Promise<void> {
   const connection = await getConnection();
   const balanceNeeded =
     (await Token.getMinBalanceRentForExemptToken(connection)) +
-    (await Token.getMinBalanceRentForExemptTokenAccount(connection)) * 2;
+    (await Token.getMinBalanceRentForExemptAccount(connection)) * 2;
 
   const owner = await newAccountWithLamports(connection, balanceNeeded);
 
