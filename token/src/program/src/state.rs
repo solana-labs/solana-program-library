@@ -138,8 +138,7 @@ impl<'a> State {
         let dest_account_info = next_account_info(account_info_iter)?;
 
         if State::Unallocated != State::deserialize(&token_account_info.data.borrow())? {
-            info!("Error: token account is already allocated");
-            return Err(ProgramError::InvalidArgument);
+            return Err(TokenError::AlreadyInUse.into());
         }
 
         let mut dest_account_data = dest_account_info.data.borrow_mut();
@@ -151,7 +150,7 @@ impl<'a> State {
                 return Err(TokenError::TokenMismatch.into());
             }
             if dest_token_account.delegate.is_some() {
-                return Err(ProgramError::InvalidArgument);
+                return Err(TokenError::DestinationIsDelegate.into());
             }
 
             dest_token_account.amount = info.supply;
@@ -183,7 +182,7 @@ impl<'a> State {
         let mut new_account_data = new_account_info.data.borrow_mut();
 
         if State::Unallocated != State::deserialize(&new_account_data)? {
-            return Err(ProgramError::InvalidArgument);
+            return Err(TokenError::AlreadyInUse.into());
         }
 
         let mut token_account = Account {
@@ -220,7 +219,7 @@ impl<'a> State {
                 return Err(TokenError::TokenMismatch.into());
             }
             if dest_account.delegate.is_some() {
-                return Err(ProgramError::InvalidArgument);
+                return Err(TokenError::DestinationIsDelegate.into());
             }
             if owner_account_info.key != &source_account.owner {
                 return Err(TokenError::NoOwner.into());
@@ -325,11 +324,9 @@ impl<'a> State {
         match State::deserialize(&account_data)? {
             State::Account(mut account) => {
                 if owner_account_info.key != &account.owner {
-                    info!("Error: account owner is not present");
                     return Err(TokenError::NoOwner.into());
                 }
                 if !owner_account_info.is_signer {
-                    info!("Error: account owner not a signer");
                     return Err(ProgramError::MissingRequiredSignature);
                 }
 
@@ -338,11 +335,9 @@ impl<'a> State {
             }
             State::Token(mut token) => {
                 if Some(*owner_account_info.key) != token.owner {
-                    info!("Error: token owner is not present");
                     return Err(TokenError::NoOwner.into());
                 }
                 if !owner_account_info.is_signer {
-                    info!("Error: token owner not a signer");
                     return Err(ProgramError::MissingRequiredSignature);
                 }
 
@@ -350,7 +345,6 @@ impl<'a> State {
                 State::Token(token).serialize(&mut account_data)?;
             }
             _ => {
-                info!("Error: Not a token or account");
                 return Err(ProgramError::InvalidArgument);
             }
         }
@@ -366,7 +360,6 @@ impl<'a> State {
         let dest_account_info = next_account_info(account_info_iter)?;
 
         if !owner_account_info.is_signer {
-            info!("Error: owner is not signer");
             return Err(ProgramError::MissingRequiredSignature);
         }
 
@@ -375,12 +368,10 @@ impl<'a> State {
             match token.owner {
                 Some(owner) => {
                     if *owner_account_info.key != owner {
-                        info!("Error: not the owner of the token");
                         return Err(TokenError::NoOwner.into());
                     }
                 }
                 None => {
-                    info!("Error: this token has a fixed supply");
                     return Err(TokenError::FixedSupply.into());
                 }
             }
@@ -389,12 +380,10 @@ impl<'a> State {
             if let State::Account(mut dest_token_account) = State::deserialize(&dest_account_data)?
             {
                 if token_account_info.key != &dest_token_account.token {
-                    info!("Error: token mismatch");
                     return Err(TokenError::TokenMismatch.into());
                 }
                 if dest_token_account.delegate.is_some() {
-                    info!("Error: Destination account is a delegate and cannot accept tokens");
-                    return Err(ProgramError::InvalidArgument);
+                    return Err(TokenError::DestinationIsDelegate.into());
                 }
 
                 token.info.supply += amount;
@@ -403,11 +392,9 @@ impl<'a> State {
                 dest_token_account.amount = amount;
                 State::Account(dest_token_account).serialize(&mut dest_account_data)?;
             } else {
-                info!("Error: destination is not an account");
                 return Err(ProgramError::InvalidArgument);
             }
         } else {
-            info!("Error: token is not a token");
             return Err(ProgramError::InvalidArgument);
         }
         Ok(())
@@ -813,7 +800,7 @@ mod tests {
         ];
         let mut account_infos = create_is_signer_account_infos(&mut accounts);
         assert_eq!(
-            Err(ProgramError::InvalidArgument),
+            Err(TokenError::AlreadyInUse.into()),
             State::process(&program_id, &mut account_infos, &instruction_data)
         );
 
@@ -824,7 +811,7 @@ mod tests {
         ];
         let mut account_infos = create_is_signer_account_infos(&mut accounts);
         assert_eq!(
-            Err(ProgramError::InvalidArgument),
+            Err(TokenError::AlreadyInUse.into()),
             State::process(&program_id, &mut account_infos, &instruction_data)
         );
     }
@@ -871,7 +858,7 @@ mod tests {
         ];
         let mut account_infos = create_is_signer_account_infos(&mut accounts);
         assert_eq!(
-            Err(ProgramError::InvalidArgument),
+            Err(TokenError::AlreadyInUse.into()),
             State::process(&program_id, &mut account_infos, &instruction_data)
         );
     }
@@ -1011,7 +998,7 @@ mod tests {
         ];
         let mut account_infos = create_is_signer_account_infos(&mut accounts);
         assert_eq!(
-            Err(ProgramError::InvalidArgument),
+            Err(TokenError::DestinationIsDelegate.into()),
             State::process(&program_id, &mut account_infos, &instruction_data)
         );
 
@@ -1690,7 +1677,7 @@ mod tests {
         ];
         let mut account_infos = create_is_signer_account_infos(&mut accounts);
         assert_eq!(
-            Err(ProgramError::InvalidArgument),
+            Err(TokenError::DestinationIsDelegate.into()),
             State::process(&program_id, &mut account_infos, &instruction_data)
         );
 
