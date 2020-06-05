@@ -123,7 +123,7 @@ if [[ "$#" -ne 2 ]]; then
     else
         # Build all projects
         for project in */; do
-            if [[ ${project%/} == "$sdkParentDir" ]]; then
+            if [[ ${project%/} == @($sdkParentDir|ci|target) ]]; then
                 continue;
             fi
             perform_action "$1" "$PWD/$project" "$project"
