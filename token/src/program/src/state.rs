@@ -5,15 +5,25 @@ use solana_sdk::{
 };
 use std::mem::size_of;
 
+/// Token details
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct TokenInfo {
+    /// Total supply of tokens
+    pub supply: u64,
+    /// Number of base 10 digits to the right of the decimal place in the total supply
+    pub decimals: u64,
+}
+
 /// Represents a unique token type that all like token accounts must be
 /// associated with
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Token {
     /// Total supply of tokens
-    pub supply: u64,
-    /// Number of base 10 digits to the right of the decimal place in the total supply
-    pub decimals: u64,
+    pub info: TokenInfo,
+    /// Owner of this token
+    pub owner: Option<Pubkey>,
 }
 
 /// Delegation details
@@ -65,9 +75,10 @@ impl Default for State {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Command {
-    /// key 0 - New token
-    /// key 1 - Token account to hold tokens
-    NewToken(Token),
+    /// key 1 - New token
+    /// key 2 - Token account to mint to
+    /// key 3 - Owner of the token (optional)
+    NewToken(TokenInfo),
     /// key 0 - New token account
     /// key 1 - Owner of the account
     /// key 2 - Token this account is associated with
@@ -86,15 +97,24 @@ pub enum Command {
     /// key 1 - destination token account
     /// key 2 - Owner to assign to destination account
     SetOwner,
+    /// key 0 - Owner of the token
+    /// key 1 - Token to mint
+    /// key 2 - destination token account to mint to
+    MintTo(u64),
 }
 
 impl<'a> State {
     pub fn process_newtoken<I: Iterator<Item = &'a AccountInfo<'a>>>(
         account_info_iter: &mut I,
-        token: Token,
+        info: TokenInfo,
     ) -> ProgramResult {
         let token_account_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
+
+        if State::Unallocated != State::deserialize(&token_account_info.data.borrow())? {
+            info!("Error: token account is already allocated");
+            return Err(ProgramError::InvalidArgument);
+        }
 
         let mut dest_account_data = dest_account_info.data.borrow_mut();
         if let State::Account(mut dest_token_account) = State::deserialize(&dest_account_data)? {
@@ -111,19 +131,20 @@ impl<'a> State {
                 return Err(ProgramError::InvalidArgument);
             }
 
-            dest_token_account.amount = token.supply;
+            dest_token_account.amount = info.supply;
             State::Account(dest_token_account).serialize(&mut dest_account_data)?;
         } else {
             info!("Error: Destination account is not an Account");
             return Err(ProgramError::InvalidArgument);
         }
 
-        if State::Unallocated != State::deserialize(&token_account_info.data.borrow())? {
-            info!("Error: token account is already allocated");
-            return Err(ProgramError::InvalidArgument);
-        }
+        let owner = if let Ok(owner_account_into) = next_account_info(account_info_iter) {
+            Some(*owner_account_into.key)
+        } else {
+            None
+        };
 
-        State::Token(token).serialize(&mut token_account_info.data.borrow_mut())
+        State::Token(Token { info, owner }).serialize(&mut token_account_info.data.borrow_mut())
     }
 
     pub fn process_newaccount<I: Iterator<Item = &'a AccountInfo<'a>>>(
@@ -295,20 +316,92 @@ impl<'a> State {
         let new_owner_account_info = next_account_info(account_info_iter)?;
 
         let mut dest_account_data = dest_account_info.data.borrow_mut();
-        if let State::Account(mut dest_account) = State::deserialize(&dest_account_data)? {
-            if owner_account_info.key != &dest_account.owner {
-                info!("Error: destination account owner is not present");
-                return Err(TokenError::NoOwner.into());
+        match State::deserialize(&dest_account_data)? {
+            State::Account(mut dest_account) => {
+                if owner_account_info.key != &dest_account.owner {
+                    info!("Error: account owner is not present");
+                    return Err(TokenError::NoOwner.into());
+                }
+                if !owner_account_info.is_signer {
+                    info!("Error: account owner not a signer");
+                    return Err(ProgramError::MissingRequiredSignature);
+                }
+
+                dest_account.owner = *new_owner_account_info.key;
+                State::Account(dest_account).serialize(&mut dest_account_data)?;
             }
-            if !owner_account_info.is_signer {
-                info!("Error: owner account not a signer");
-                return Err(ProgramError::MissingRequiredSignature);
+            State::Token(mut token) => {
+                if Some(*owner_account_info.key) != token.owner {
+                    info!("Error: token owner is not present");
+                    return Err(TokenError::NoOwner.into());
+                }
+                if !owner_account_info.is_signer {
+                    info!("Error: token owner not a signer");
+                    return Err(ProgramError::MissingRequiredSignature);
+                }
+
+                token.owner = Some(*new_owner_account_info.key);
+                State::Token(token).serialize(&mut dest_account_data)?;
+            }
+            _ => {
+                info!("Error: Not a token or account");
+                return Err(ProgramError::InvalidArgument);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn process_mintto<I: Iterator<Item = &'a AccountInfo<'a>>>(
+        account_info_iter: &mut I,
+        amount: u64,
+    ) -> ProgramResult {
+        let owner_account_info = next_account_info(account_info_iter)?;
+        let token_account_info = next_account_info(account_info_iter)?;
+        let dest_account_info = next_account_info(account_info_iter)?;
+
+        if !owner_account_info.is_signer {
+            info!("Error: owner is not signer");
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        let mut token_account_data = token_account_info.data.borrow_mut();
+        if let State::Token(mut token) = State::deserialize(&token_account_data)? {
+            match token.owner {
+                Some(owner) => {
+                    if *owner_account_info.key != owner {
+                        info!("Error: not the owner of the token");
+                        return Err(TokenError::NoOwner.into());
+                    }
+                }
+                None => {
+                    info!("Error: this token has a fixed supply");
+                    return Err(TokenError::FixedSupply.into());
+                }
             }
 
-            dest_account.owner = *new_owner_account_info.key;
-            State::Account(dest_account).serialize(&mut dest_account_data)?;
+            let mut dest_account_data = dest_account_info.data.borrow_mut();
+            if let State::Account(mut dest_token_account) = State::deserialize(&dest_account_data)?
+            {
+                if token_account_info.key != &dest_token_account.token {
+                    info!("Error: token mismatch");
+                    return Err(TokenError::TokenMismatch.into());
+                }
+                if dest_token_account.delegate.is_some() {
+                    info!("Error: Destination account is a delegate and cannot accept tokens");
+                    return Err(ProgramError::InvalidArgument);
+                }
+
+                token.info.supply += amount;
+                State::Token(token).serialize(&mut token_account_data)?;
+
+                dest_token_account.amount = amount;
+                State::Account(dest_token_account).serialize(&mut dest_account_data)?;
+            } else {
+                info!("Error: destination is not an account");
+                return Err(ProgramError::InvalidArgument);
+            }
         } else {
-            info!("Error: destination account is invalid");
+            info!("Error: token is not a token");
             return Err(ProgramError::InvalidArgument);
         }
         Ok(())
@@ -323,9 +416,9 @@ impl<'a> State {
         let account_info_iter = &mut accounts.iter();
 
         match command {
-            Command::NewToken(token_info) => {
+            Command::NewToken(info) => {
                 info!("Command: NewToken");
-                Self::process_newtoken(account_info_iter, token_info)
+                Self::process_newtoken(account_info_iter, info)
             }
             Command::NewTokenAccount => {
                 info!("Command: NewTokenAccount");
@@ -342,6 +435,10 @@ impl<'a> State {
             Command::SetOwner => {
                 info!("Command: SetOwner");
                 Self::process_setowner(account_info_iter)
+            }
+            Command::MintTo(amount) => {
+                info!("Command: MintTo");
+                Self::process_mintto(account_info_iter, amount)
             }
         }
     }
@@ -411,12 +508,12 @@ impl Command {
         }
         Ok(match input[0] {
             0 => {
-                if input.len() < size_of::<u8>() + size_of::<Token>() {
+                if input.len() < size_of::<u8>() + size_of::<TokenInfo>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let token: &Token = unsafe { &*(&input[1] as *const u8 as *const Token) };
-                Self::NewToken(*token)
+                let info: &TokenInfo = unsafe { &*(&input[1] as *const u8 as *const TokenInfo) };
+                Self::NewToken(*info)
             }
             1 => Self::NewTokenAccount,
             2 => {
@@ -436,6 +533,14 @@ impl Command {
                 Self::Approve(*amount)
             }
             4 => Self::SetOwner,
+            5 => {
+                if input.len() < size_of::<u8>() + size_of::<u64>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
+                #[allow(clippy::cast_ptr_alignment)]
+                let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
+                Self::MintTo(*amount)
+            }
             _ => return Err(ProgramError::InvalidAccountData),
         })
     }
@@ -445,14 +550,14 @@ impl Command {
             return Err(ProgramError::InvalidAccountData);
         }
         match self {
-            Self::NewToken(token) => {
-                if output.len() < size_of::<u8>() + size_of::<Token>() {
+            Self::NewToken(info) => {
+                if output.len() < size_of::<u8>() + size_of::<TokenInfo>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 output[0] = 0;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Token) };
-                *value = *token;
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut TokenInfo) };
+                *value = *info;
             }
             Self::NewTokenAccount => output[0] = 1,
             Self::Transfer(amount) => {
@@ -474,6 +579,15 @@ impl Command {
                 *value = *amount;
             }
             Self::SetOwner => output[0] = 4,
+            Self::MintTo(amount) => {
+                if output.len() < size_of::<u8>() + size_of::<u64>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
+                output[0] = 5;
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                *value = *amount;
+            }
         }
         Ok(())
     }
@@ -513,7 +627,7 @@ mod tests {
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
 
         // token account not created
-        let instruction = Command::NewToken(Token {
+        let instruction = Command::NewToken(TokenInfo {
             supply: 1000,
             decimals: 2,
         });
@@ -540,7 +654,7 @@ mod tests {
         State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
 
         // create new token
-        let instruction = Command::NewToken(Token {
+        let instruction = Command::NewToken(TokenInfo {
             supply: 1000,
             decimals: 2,
         });
@@ -564,7 +678,7 @@ mod tests {
         State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
 
         // token mismatch
-        let instruction = Command::NewToken(Token {
+        let instruction = Command::NewToken(TokenInfo {
             supply: 1000,
             decimals: 2,
         });
@@ -592,7 +706,7 @@ mod tests {
         State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
 
         // account is a delegate token
-        let instruction = Command::NewToken(Token {
+        let instruction = Command::NewToken(TokenInfo {
             supply: 1000,
             decimals: 2,
         });
@@ -765,7 +879,7 @@ mod tests {
         State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
 
         // create new token
-        let instruction = Command::NewToken(Token {
+        let instruction = Command::NewToken(TokenInfo {
             supply: 1000,
             decimals: 2,
         });
@@ -1058,7 +1172,7 @@ mod tests {
         State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
 
         // create new token
-        let instruction = Command::NewToken(Token {
+        let instruction = Command::NewToken(TokenInfo {
             supply: 1000,
             decimals: 2,
         });
@@ -1176,14 +1290,18 @@ mod tests {
         let mut instruction_data = vec![0u8; size_of::<Command>()];
         let token_account_key = new_pubkey(2);
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
+        let token_account2_key = new_pubkey(2);
+        let mut token_account2_account = Account::new(0, size_of::<State>(), &program_id);
         let owner_key = new_pubkey(3);
         let mut owner_account = Account::default();
         let owner2_key = new_pubkey(4);
         let mut owner2_account = Account::default();
         let owner3_key = new_pubkey(5);
         let mut owner3_account = Account::default();
-        let token_key = new_pubkey(6);
+        let token_key = new_pubkey(8);
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
+        let token2_key = new_pubkey(9);
+        let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
 
         // invalid token account
         let instruction = Command::SetOwner;
@@ -1206,6 +1324,17 @@ mod tests {
             (&token_account_key, true, &mut token_account_account),
             (&owner_key, false, &mut owner_account),
             (&token_key, false, &mut token_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // create token account
+        let instruction = Command::NewTokenAccount;
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&token_account2_key, true, &mut token_account2_account),
+            (&owner_key, false, &mut owner_account),
+            (&token2_key, false, &mut token2_account),
         ];
         let mut account_infos = create_is_signer_account_infos(&mut accounts);
         State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
@@ -1244,5 +1373,271 @@ mod tests {
         ];
         let mut account_infos = create_is_signer_account_infos(&mut accounts);
         State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // create new token with owner
+        let instruction = Command::NewToken(TokenInfo {
+            supply: 1000,
+            decimals: 2,
+        });
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&token_key, true, &mut token_account),
+            (&token_account_key, false, &mut token_account_account),
+            (&owner_key, false, &mut owner_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // missing owner
+        let instruction = Command::SetOwner;
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&owner2_key, false, &mut owner2_account),
+            (&token_key, false, &mut token_account),
+            (&owner3_key, false, &mut owner3_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        assert_eq!(
+            Err(TokenError::NoOwner.into()),
+            State::process(&program_id, &mut account_infos, &instruction_data)
+        );
+
+        // owner did not sign
+        let mut accounts = vec![
+            (&owner_key, false, &mut owner_account),
+            (&token_key, true, &mut token_account),
+            (&owner2_key, false, &mut owner2_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        assert_eq!(
+            Err(ProgramError::MissingRequiredSignature),
+            State::process(&program_id, &mut account_infos, &instruction_data)
+        );
+
+        // set owner
+        let mut accounts = vec![
+            (&owner_key, true, &mut owner_account),
+            (&token_key, true, &mut token_account),
+            (&owner2_key, false, &mut owner2_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // create new token without owner
+        let instruction = Command::NewToken(TokenInfo {
+            supply: 1000,
+            decimals: 2,
+        });
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&token2_key, true, &mut token2_account),
+            (&token_account2_key, false, &mut token_account2_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // set owner for unownable token
+        let instruction = Command::SetOwner;
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&owner_key, true, &mut owner_account),
+            (&token2_key, true, &mut token2_account),
+            (&owner2_key, false, &mut owner2_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        assert_eq!(
+            Err(TokenError::NoOwner.into()),
+            State::process(&program_id, &mut account_infos, &instruction_data)
+        );
+    }
+
+    #[test]
+    fn test_mint_to() {
+        let program_id = new_pubkey(1);
+        let mut instruction_data = vec![0u8; size_of::<Command>()];
+        let token_account_key = new_pubkey(2);
+        let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
+        let token_account2_key = new_pubkey(3);
+        let mut token_account2_account = Account::new(0, size_of::<State>(), &program_id);
+        let token_account3_key = new_pubkey(3);
+        let mut token_account3_account = Account::new(0, size_of::<State>(), &program_id);
+        let delegate_account_key = new_pubkey(4);
+        let mut delegate_account_account = Account::new(0, size_of::<State>(), &program_id);
+        let mismatch_account_key = new_pubkey(5);
+        let mut mismatch_account_account = Account::new(0, size_of::<State>(), &program_id);
+        let owner_key = new_pubkey(6);
+        let mut owner_account = Account::default();
+        let owner2_key = new_pubkey(7);
+        let mut owner2_account = Account::default();
+        let token_key = new_pubkey(8);
+        let mut token_account = Account::new(0, size_of::<State>(), &program_id);
+        let token2_key = new_pubkey(9);
+        let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
+        let uninitialized_key = new_pubkey(9);
+        let mut uninitialized_account = Account::new(0, size_of::<State>(), &program_id);
+
+        // create token account
+        let instruction = Command::NewTokenAccount;
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&token_account_key, true, &mut token_account_account),
+            (&owner_key, false, &mut owner_account),
+            (&token_key, false, &mut token_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // create another token account
+        let instruction = Command::NewTokenAccount;
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&token_account2_key, true, &mut token_account2_account),
+            (&owner_key, false, &mut owner_account),
+            (&token_key, false, &mut token_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // create another token account
+        let instruction = Command::NewTokenAccount;
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&token_account3_key, true, &mut token_account3_account),
+            (&owner_key, false, &mut owner_account),
+            (&token_key, false, &mut token_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // create mismatch token account
+        let instruction = Command::NewTokenAccount;
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&mismatch_account_key, true, &mut mismatch_account_account),
+            (&owner_key, false, &mut owner_account),
+            (&token2_key, false, &mut token2_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // create delegate account
+        let instruction = Command::NewTokenAccount;
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&delegate_account_key, true, &mut delegate_account_account),
+            (&owner_key, false, &mut owner_account),
+            (&token_key, false, &mut token_account),
+            (&token_account_key, false, &mut token_account_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // create new token with owner
+        let instruction = Command::NewToken(TokenInfo {
+            supply: 1000,
+            decimals: 2,
+        });
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&token_key, true, &mut token_account),
+            (&token_account_key, false, &mut token_account_account),
+            (&owner_key, false, &mut owner_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // mint to
+        let instruction = Command::MintTo(42);
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&owner_key, true, &mut owner_account),
+            (&token_key, false, &mut token_account),
+            (&token_account2_key, false, &mut token_account2_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        if let State::Token(token) = State::deserialize(&token_account.data).unwrap() {
+            assert_eq!(token.info.supply, 1000 + 42);
+        } else {
+            panic!("not an account");
+        }
+        if let State::Account(dest_token_account) =
+            State::deserialize(&token_account2_account.data).unwrap()
+        {
+            assert_eq!(dest_token_account.amount, 42);
+        } else {
+            panic!("not an account");
+        }
+
+        // missing signer
+        let instruction = Command::MintTo(42);
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&owner_key, false, &mut owner_account),
+            (&token_key, false, &mut token_account),
+            (&token_account2_key, false, &mut token_account2_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        assert_eq!(
+            Err(ProgramError::MissingRequiredSignature),
+            State::process(&program_id, &mut account_infos, &instruction_data)
+        );
+
+        // destination is delegate
+        let instruction = Command::MintTo(42);
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&owner_key, true, &mut owner_account),
+            (&token_key, false, &mut token_account),
+            (&delegate_account_key, false, &mut delegate_account_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        assert_eq!(
+            Err(ProgramError::InvalidArgument),
+            State::process(&program_id, &mut account_infos, &instruction_data)
+        );
+
+        // mismatch token
+        let instruction = Command::MintTo(42);
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&owner_key, true, &mut owner_account),
+            (&token_key, false, &mut token_account),
+            (&mismatch_account_key, false, &mut mismatch_account_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        assert_eq!(
+            Err(TokenError::TokenMismatch.into()),
+            State::process(&program_id, &mut account_infos, &instruction_data)
+        );
+
+        // missing owner
+        let instruction = Command::MintTo(42);
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&owner2_key, true, &mut owner2_account),
+            (&token_key, false, &mut token_account),
+            (&token_account2_key, false, &mut token_account2_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        assert_eq!(
+            Err(TokenError::NoOwner.into()),
+            State::process(&program_id, &mut account_infos, &instruction_data)
+        );
+
+        // uninitialized destination account
+        let instruction = Command::MintTo(42);
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&owner_key, true, &mut owner_account),
+            (&token_key, false, &mut token_account),
+            (&uninitialized_key, false, &mut uninitialized_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        assert_eq!(
+            Err(ProgramError::InvalidArgument),
+            State::process(&program_id, &mut account_infos, &instruction_data)
+        );
     }
 }

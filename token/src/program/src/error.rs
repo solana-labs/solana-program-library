@@ -17,6 +17,8 @@ pub enum TokenError {
     NotDelegate,
     #[error("no owner")]
     NoOwner,
+    #[error("fixed supply")]
+    FixedSupply,
 }
 
 impl From<TokenError> for ProgramError {
@@ -41,6 +43,7 @@ impl PrintProgramError for TokenError {
             TokenError::TokenMismatch => info!("Error: token mismatch"),
             TokenError::NotDelegate => info!("Error: not a delegate"),
             TokenError::NoOwner => info!("Error: no owner"),
+            TokenError::FixedSupply => info!("Error: the total supply of this token if fixed"),
         }
     }
 }

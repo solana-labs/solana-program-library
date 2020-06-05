@@ -83,11 +83,13 @@ export async function createNewToken(): Promise<void> {
     new TokenAmount(10000),
     2,
     programId,
+    false,
   );
 
   const tokenInfo = await testToken.tokenInfo();
   assert(tokenInfo.supply.toNumber() == 10000);
   assert(tokenInfo.decimals == 2);
+  assert(tokenInfo.owner == null);
 
   const accountInfo = await testToken.accountInfo(initialOwnerTokenAccount);
   assert(accountInfo.token.equals(testToken.token));
@@ -228,9 +230,66 @@ export async function setOwner(): Promise<void> {
   );
   const owner = await newAccountWithLamports(connection, balanceNeeded);
   const newOwner = await newAccountWithLamports(connection, balanceNeeded);
-  const account = await testToken.newAccount(owner);
+  const owned = await testToken.newAccount(owner);
 
-  await testToken.setOwner(owner, account, newOwner.publicKey);
-  assert(didThrow(testToken.setOwner, [owner, account, newOwner.publicKey]));
-  await testToken.setOwner(newOwner, account, owner.publicKey);
+  await testToken.setOwner(owner, owned, newOwner.publicKey);
+  assert(didThrow(testToken.setOwner, [owner, owned, newOwner.publicKey]));
+  await testToken.setOwner(newOwner, owned, owner.publicKey);
+}
+
+export async function mintTo(): Promise<void> {
+  const connection = await getConnection();
+  const balanceNeeded =
+    (await Token.getMinBalanceRentForExemptToken(connection)) +
+    (await Token.getMinBalanceRentForExemptTokenAccount(connection)) * 2;
+
+  const owner = await newAccountWithLamports(connection, balanceNeeded);
+
+  const [mintableToken, initialAccount] = await Token.createNewToken(
+    connection,
+    owner,
+    new TokenAmount(10000),
+    2,
+    programId,
+    true,
+  );
+
+  {
+    const tokenInfo = await mintableToken.tokenInfo();
+    assert(tokenInfo.supply.toNumber() == 10000);
+    assert(tokenInfo.decimals == 2);
+    if (tokenInfo.owner === null) {
+      throw new Error('owner should not be null');
+    } else {
+      assert(tokenInfo.owner.equals(owner.publicKey));
+    }
+
+    const accountInfo = await mintableToken.accountInfo(initialAccount);
+    assert(accountInfo.token.equals(mintableToken.token));
+    assert(accountInfo.owner.equals(owner.publicKey));
+    assert(accountInfo.amount.toNumber() == 10000);
+    assert(accountInfo.source == null);
+    assert(accountInfo.originalAmount.toNumber() == 0);
+  }
+
+  const dest = await mintableToken.newAccount(owner);
+  await mintableToken.mintTo(owner, mintableToken.token, dest, 42);
+
+  {
+    const tokenInfo = await mintableToken.tokenInfo();
+    assert(tokenInfo.supply.toNumber() == 10042);
+    assert(tokenInfo.decimals == 2);
+    if (tokenInfo.owner === null) {
+      throw new Error('owner should not be null');
+    } else {
+      assert(tokenInfo.owner.equals(owner.publicKey));
+    }
+
+    const accountInfo = await mintableToken.accountInfo(dest);
+    assert(accountInfo.token.equals(mintableToken.token));
+    assert(accountInfo.owner.equals(owner.publicKey));
+    assert(accountInfo.amount.toNumber() == 42);
+    assert(accountInfo.source == null);
+    assert(accountInfo.originalAmount.toNumber() == 0);
+  }
 }

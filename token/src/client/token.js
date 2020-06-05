@@ -65,6 +65,10 @@ type TokenInfo = {|
    * Number of base 10 digits to the right of the decimal place
    */
   decimals: number,
+  /**
+   * Owner of the token, given authority to mint new tokens
+   */
+  owner: null | PublicKey,
 |};
 
 /**
@@ -74,6 +78,15 @@ const TokenInfoLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
   Layout.uint64('supply'),
   BufferLayout.u8('decimals'),
+]);
+
+const tokenLayout = BufferLayout.struct([
+  BufferLayout.u8('state'),
+  Layout.uint64('supply'),
+  BufferLayout.nu64('decimals'),
+  BufferLayout.u8('option'),
+  Layout.publicKey('owner'),
+  BufferLayout.nu64('padding'),
 ]);
 
 /**
@@ -119,7 +132,7 @@ const TokenAccountInfoLayout = BufferLayout.struct([
   Layout.publicKey('token'),
   Layout.publicKey('owner'),
   Layout.uint64('amount'),
-  BufferLayout.nu64('sourceOption'),
+  BufferLayout.nu64('option'),
   Layout.publicKey('source'),
   Layout.uint64('originalAmount'),
 ]);
@@ -198,6 +211,7 @@ export class Token {
     supply: TokenAmount,
     decimals: number,
     programId: PublicKey,
+    is_owned: boolean = false,
   ): Promise<TokenAndPublicKey> {
     const tokenAccount = new Account();
     const token = new Token(connection, tokenAccount.publicKey, programId);
@@ -205,7 +219,7 @@ export class Token {
 
     let transaction;
 
-    const dataLayout = BufferLayout.struct([
+    const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
       Layout.uint64('supply'),
       BufferLayout.nu64('decimals'),
@@ -213,7 +227,7 @@ export class Token {
 
     let data = Buffer.alloc(1024);
     {
-      const encodeLength = dataLayout.encode(
+      const encodeLength = commandDataLayout.encode(
         {
           instruction: 0, // NewToken instruction
           supply: supply.toBuffer(),
@@ -233,7 +247,7 @@ export class Token {
       fromPubkey: owner.publicKey,
       newAccountPubkey: tokenAccount.publicKey,
       lamports: balanceNeeded,
-      space: 1 + data.length,
+      space: tokenLayout.span,
       programId,
     });
     await sendAndConfirmTransaction(
@@ -244,11 +258,16 @@ export class Token {
       tokenAccount,
     );
 
+    let keys = [
+      {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: false},
+      {pubkey: initialAccountPublicKey, isSigner: false, isWritable: true},
+    ];
+    if (is_owned) {
+      keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
+    }
+
     transaction = new Transaction().add({
-      keys: [
-        {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: false},
-        {pubkey: initialAccountPublicKey, isSigner: false, isWritable: true},
-      ],
+      keys,
       programId,
       data,
     });
@@ -351,11 +370,16 @@ export class Token {
 
     const data = Buffer.from(accountInfo.data);
 
-    const tokenInfo = TokenInfoLayout.decode(data);
+    const tokenInfo = tokenLayout.decode(data);
     if (tokenInfo.state !== 1) {
       throw new Error(`Invalid token account data`);
     }
     tokenInfo.supply = TokenAmount.fromBuffer(tokenInfo.supply);
+    if (tokenInfo.option === 0) {
+      tokenInfo.owner = null;
+    } else {
+      tokenInfo.owner = new PublicKey(tokenInfo.owner);
+    }
     return tokenInfo;
   }
 
@@ -382,7 +406,7 @@ export class Token {
     tokenAccountInfo.token = new PublicKey(tokenAccountInfo.token);
     tokenAccountInfo.owner = new PublicKey(tokenAccountInfo.owner);
     tokenAccountInfo.amount = TokenAmount.fromBuffer(tokenAccountInfo.amount);
-    if (tokenAccountInfo.sourceOption === 0) {
+    if (tokenAccountInfo.option === 0) {
       tokenAccountInfo.source = null;
       tokenAccountInfo.originalAmount = new TokenAmount();
     } else {
@@ -479,15 +503,37 @@ export class Token {
    */
   async setOwner(
     owner: Account,
-    account: PublicKey,
+    owned: PublicKey,
     newOwner: PublicKey,
   ): Promise<void> {
     await sendAndConfirmTransaction(
       'setOwneer',
       this.connection,
       new Transaction().add(
-        this.setOwnerInstruction(owner.publicKey, account, newOwner),
+        this.setOwnerInstruction(owner.publicKey, owned, newOwner),
       ),
+      owner,
+    );
+  }
+
+  /**
+   * Mint new tokens
+   *
+   * @param token Public key of the token
+   * @param owner Owner of the token
+   * @param dest Public key of the account to mint to
+   * @param amount ammount to mint
+   */
+  async mintTo(
+    owner: Account,
+    token: PublicKey,
+    dest: PublicKey,
+    amount: number,
+  ): Promise<void> {
+    await sendAndConfirmTransaction(
+      'mintTo',
+      this.connection,
+      new Transaction().add(this.mintToInstruction(owner, token, dest, amount)),
       owner,
     );
   }
@@ -607,7 +653,7 @@ export class Token {
    */
   setOwnerInstruction(
     owner: PublicKey,
-    account: PublicKey,
+    owned: PublicKey,
     newOwner: PublicKey,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
@@ -623,8 +669,47 @@ export class Token {
     return new TransactionInstruction({
       keys: [
         {pubkey: owner, isSigner: true, isWritable: false},
-        {pubkey: account, isSigner: false, isWritable: true},
+        {pubkey: owned, isSigner: false, isWritable: true},
         {pubkey: newOwner, isSigner: false, isWritable: true},
+      ],
+      programId: this.programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct a MintTo instruction
+   *
+   * @param token Public key of the token
+   * @param owner Owner of the token
+   * @param dest Public key of the account to mint to
+   * @param amount ammount to mint
+   */
+  mintToInstruction(
+    owner: Account,
+    token: PublicKey,
+    dest: PublicKey,
+    amount: number,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      Layout.uint64('amount'),
+    ]);
+
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 5, // MintTo instruction
+        amount: new TokenAmount(amount).toBuffer(),
+      },
+      data,
+    );
+
+    return new TransactionInstruction({
+      keys: [
+        {pubkey: owner.publicKey, isSigner: true, isWritable: false},
+        {pubkey: token, isSigner: false, isWritable: true},
+        {pubkey: dest, isSigner: false, isWritable: true},
       ],
       programId: this.programId,
       data,
