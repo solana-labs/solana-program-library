@@ -59,6 +59,13 @@ perform_action() {
             cargo fmt
         )
         ;;
+    doc)
+        (
+            cd "$2"
+            echo "generating docs $2"
+            cargo doc
+        )
+        ;;
   update)
         mkdir -p $sdkParentDir
         ./bpf-sdk-install.sh $sdkParentDir
@@ -123,10 +130,11 @@ if [[ "$#" -ne 2 ]]; then
     else
         # Build all projects
         for project in */; do
-            if [[ ${project%/} == @($sdkParentDir|ci|target) ]]; then
+            if [[ -f "$project"Cargo.toml ]]; then
+                perform_action "$1" "$PWD/$project" "$project"
+            else
                 continue;
             fi
-            perform_action "$1" "$PWD/$project" "$project"
         done
     fi
 else
