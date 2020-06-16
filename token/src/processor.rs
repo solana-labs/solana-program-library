@@ -1,3 +1,5 @@
+//! Program entrypoint definitions
+
 use crate::{error::TokenError, state::State};
 use solana_sdk::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult,

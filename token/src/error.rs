@@ -1,3 +1,5 @@
+//! Error types
+
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use solana_sdk::{
@@ -7,20 +9,28 @@ use solana_sdk::{
 };
 use thiserror::Error;
 
+/// Errors that may be returned by the Token program
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum TokenError {
+    /// Insufficient funds for the operation requested.
     #[error("insufficient funds")]
     InsufficientFunds,
+    /// Token types of the provided accounts don't match.
     #[error("token mismatch")]
     TokenMismatch,
+    /// A delegate is needed but the account provided is not a delegate.
     #[error("not a delegate")]
     NotDelegate,
+    /// Owner was not a signing member of the instruction.
     #[error("no owner")]
     NoOwner,
+    /// This token's supply is fixed and new tokens cannot be minted.
     #[error("fixed supply")]
     FixedSupply,
+    /// The account cannot be initialized because it is already being used.
     #[error("AlreadyInUse")]
     AlreadyInUse,
+    /// Cannot transfer token directly to a delegate account.
     #[error("Destination is a delegate")]
     DestinationIsDelegate,
 }

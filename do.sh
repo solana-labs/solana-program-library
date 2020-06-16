@@ -69,6 +69,7 @@ perform_action() {
   update)
         mkdir -p $sdkParentDir
         ./bpf-sdk-install.sh $sdkParentDir
+        ./do.sh clean
         ;;
     dump)
         # Dump depends on tools that are not installed by default and must be installed manually
