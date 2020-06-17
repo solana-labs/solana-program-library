@@ -4,5 +4,4 @@
 
 pub mod processor;
 
-/// The spl-memo program's on-chain program id
-pub const PROGRAM_ID: &str = "Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo";
+solana_sdk::declare_id!("Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo");
