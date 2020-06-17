@@ -14,11 +14,6 @@
     "flow": "flow",
     "flow:watch": "watch 'flow' . --wait=1 --ignoreDirectoryPattern=/doc/",
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",
-    "bpf-sdk:update": "mkdir -p ../../bin && solana-bpf-sdk-install ../../bin && npm run clean:program",
-    "build:program": "../../do.sh build token",
-    "clean:program": "../../do.sh clean token",
-    "test:program": "../../do.sh test token",
-    "bench:program": "npm run build:program",
     "cluster:localnet": "rm -f .env",
     "cluster:devnet": "cp cluster-devnet.env .env",
     "cluster:testnet": "cp cluster-testnet.env .env",
@@ -27,9 +22,7 @@
     "localnet:up": "set -x; solana-localnet down; set -e; solana-localnet up",
     "localnet:down": "solana-localnet down",
     "localnet:logs": "solana-localnet logs -f",
-    "pretty": "prettier --write '{,src/**/}*.js'",
-    "postinstall": "npm run bpf-sdk:update && cd .. && cargo update --manifest-path=Cargo.toml",
-    "test": "npm run build:program && npm run flow"
+    "pretty": "prettier --write '{,src/**/}*.js'"
   },
   "keywords": [],
   "author": "",

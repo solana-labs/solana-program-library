@@ -15,7 +15,6 @@ set -e
     cd "$(dirname "$0")/../token/js"
 
     npm install
-    npm run build:program
     npm run cluster:devnet
     npm run start
 )
