@@ -10,9 +10,12 @@ Usage: do.sh <action> <project>
 Supported actions:
     build
     clean
-    test
     clippy
+    doc
+    dump
     fmt
+    test
+    update
 
 EOF
 }
