@@ -5,7 +5,7 @@
 name = "spl-memo"
 version = "0.1.0"
 description = "Solana Program Library Memo"
-authors = ["Solana Maintainers <maintainers@solana.com>"]
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2018"
