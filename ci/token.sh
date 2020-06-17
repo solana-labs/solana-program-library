@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
 
-cd "$(dirname "$0")/../token/js"
-
 set -e
 
-npm install
-npm run build:program
-npm run test
-npm run cluster:devnet
-npm run start
+(
+    cd "$(dirname "$0")/.."
+
+    ./do.sh update
+    ./do.sh build token
+    ./do.sh doc token
+    ./do.sh test token
+)
+
+(
+    cd "$(dirname "$0")/../token/js"
+
+    npm install
+    npm run build:program
+    npm run cluster:devnet
+    npm run start
+)

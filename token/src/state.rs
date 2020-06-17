@@ -1,69 +1,67 @@
-use crate::error::TokenError;
+//! State transition types
+
+use crate::{
+    error::TokenError,
+    instruction::{Instruction, TokenInfo},
+};
 use solana_sdk::{
     account_info::AccountInfo, entrypoint::ProgramResult, info, program_error::ProgramError,
     program_utils::next_account_info, pubkey::Pubkey,
 };
 use std::mem::size_of;
 
-/// Represents a unique token type that all like accounts must be
-/// associated with
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct TokenInfo {
-    /// Total supply of tokens
-    pub supply: u64,
-    /// Number of base 10 digits to the right of the decimal place in the total supply
-    pub decimals: u64,
-}
-
-/// Represents a unique token type that all like token accounts must be
-/// associated with
+/// Represents a token type identified and identified by its public key.  Accounts
+/// are associated with a specific token type and only accounts with
+/// matching types my inter-opt.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Token {
-    /// Total supply of tokens
+    /// The total supply of tokens.
     pub info: TokenInfo,
-    /// Owner of this token
+    /// Optional token owner, used to mint new tokens.  The owner may only
+    /// be provided during token creation.  If no owner is present then the token
+    /// has a fixed supply and no further tokens may be minted.
     pub owner: Option<Pubkey>,
 }
 
-/// Delegation details
+/// Delegation details.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct AccountDelegate {
-    /// The source account for the tokens
+    /// The source account for the tokens.
     pub source: Pubkey,
-    /// The original amount that this delegate account was authorized to spend up to
+    /// The original maximum amount that this delegate account was authorized to spend.
     pub original_amount: u64,
 }
 
-/// Account that holds or may delegate tokens
+/// Account that holds or may delegate tokens.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Account {
-    /// The kind of token this account holds
+    /// The type of token this account holds.
     pub token: Pubkey,
-    /// Owner of this account
+    /// Owner of this account.
     pub owner: Pubkey,
-    /// Amount of tokens this account holds
+    /// Amount of tokens this account holds.
     pub amount: u64,
-    /// If `delegate` None, `amount` belongs to this account.
+    /// If `delegate`  is None, `amount` belongs to this account.
     /// If `delegate` is Option<_>, `amount` represents the remaining allowance
-    /// of tokens that may be transferred from the `source` account.
+    /// of tokens this delegate is authorized to transfer from the `source` account.
     pub delegate: Option<AccountDelegate>,
 }
 
-/// Possible states to accounts owned by the token program
+/// Token program states.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum State {
-    /// Unallocated
+    /// Unallocated state, may be initialized into another state.
     Unallocated,
-    /// Specifies a type of token
+    /// A token type.
     Token(Token),
-    /// account
+    /// An account that holds an amount of tokens or was delegated the authority to transfer
+    /// tokens on behalf of another account.
     Account(Account),
-    /// Invalid state
+    /// Invalid state, cannot be modified by the token program.
     Invalid,
 }
 impl Default for State {
@@ -72,64 +70,8 @@ impl Default for State {
     }
 }
 
-/// Instructions supported by the token program
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
-pub enum Instruction {
-    /// Create a new token
-    ///
-    /// # Account references
-    ///   0. [WRITE, SIGNER] New token
-    ///   1. [WRITE] Account to hold the minted tokens
-    ///   2. Optional: [] Owner of the token
-    NewToken(TokenInfo),
-    /// Create a new account to hold tokens
-    ///
-    /// # Account references
-    ///   0. [WRITE, SIGNER]  New account
-    ///   1. [] Owner of the account
-    ///   2. [] Token this account is associated with
-    ///   3. Optional: [] Source account that this account is a delegate for
-    NewAccount,
-    /// Transfer tokens
-    ///
-    /// # Account references
-    ///   0. [SIGNER] Owner of the source account
-    ///   1. [WRITE] Source/Delegate account
-    ///   2. [WRITE] Destination account
-    ///   3. Optional: [WRITE] Source account if key 1 is a delegate
-    Transfer(u64),
-    /// Approve a delegate
-    ///
-    /// # Account references
-    ///   0. [SIGNER] Owner of the source account
-    ///   1. [] Source account
-    ///   2. [WRITE] Delegate account
-    Approve(u64),
-    /// Set a new owner of an account
-    ///
-    /// # Account references
-    ///   0. [SIGNER] Current owner of the account
-    ///   1. [WRITE] account
-    ///   2. [] New owner of the account
-    SetOwner,
-    /// Mint new tokens
-    ///
-    /// # Account references
-    ///   0. [SIGNER] Owner of the account
-    ///   1. [WRITE] Token to mint
-    ///   2. [WRITE] Account to mint to
-    MintTo(u64),
-    /// Set a new owner of an account
-    ///
-    /// # Account references
-    ///   0. [SIGNER] Owner of the account to burn from
-    ///   1. [WRITE] Account to burn from
-    ///   2. [WRITE] Token being burned
-    Burn(u64),
-}
-
 impl<'a> State {
+    /// Processes a [NewToken](enum.Instruction.html) instruction.
     pub fn process_new_token<I: Iterator<Item = &'a AccountInfo<'a>>>(
         account_info_iter: &mut I,
         info: TokenInfo,
@@ -168,6 +110,7 @@ impl<'a> State {
         State::Token(Token { info, owner }).serialize(&mut token_account_info.data.borrow_mut())
     }
 
+    /// Processes a [NewAccount](enum.Instruction.html) instruction.
     pub fn process_new_account<I: Iterator<Item = &'a AccountInfo<'a>>>(
         account_info_iter: &mut I,
     ) -> ProgramResult {
@@ -201,6 +144,7 @@ impl<'a> State {
         State::Account(token_account).serialize(&mut new_account_data)
     }
 
+    /// Processes a [Transfer](enum.Instruction.html) instruction.
     pub fn process_transfer<I: Iterator<Item = &'a AccountInfo<'a>>>(
         account_info_iter: &mut I,
         amount: u64,
@@ -263,6 +207,7 @@ impl<'a> State {
         Ok(())
     }
 
+    /// Processes an [Approve](enum.Instruction.html) instruction.
     pub fn process_approve<I: Iterator<Item = &'a AccountInfo<'a>>>(
         account_info_iter: &mut I,
         amount: u64,
@@ -313,6 +258,7 @@ impl<'a> State {
         Ok(())
     }
 
+    /// Processes a [SetOwner](enum.Instruction.html) instruction.
     pub fn process_set_owner<I: Iterator<Item = &'a AccountInfo<'a>>>(
         account_info_iter: &mut I,
     ) -> ProgramResult {
@@ -351,6 +297,7 @@ impl<'a> State {
         Ok(())
     }
 
+    /// Processes a [MintTo](enum.Instruction.html) instruction.
     pub fn process_mintto<I: Iterator<Item = &'a AccountInfo<'a>>>(
         account_info_iter: &mut I,
         amount: u64,
@@ -400,6 +347,7 @@ impl<'a> State {
         Ok(())
     }
 
+    /// Processes a [Burn](enum.Instruction.html) instruction.
     pub fn process_burn<I: Iterator<Item = &'a AccountInfo<'a>>>(
         account_info_iter: &mut I,
         amount: u64,
@@ -470,6 +418,7 @@ impl<'a> State {
         Ok(())
     }
 
+    /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(
         _program_id: &Pubkey,
         accounts: &'a [AccountInfo<'a>],
@@ -510,6 +459,7 @@ impl<'a> State {
         }
     }
 
+    /// Deserializes a byte buffer into a Token Program [State](struct.State.html)
     pub fn deserialize(input: &'a [u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -537,6 +487,7 @@ impl<'a> State {
         })
     }
 
+    /// Serializes Token Program [State](struct.State.html) into a byte buffer
     pub fn serialize(self: &Self, output: &mut [u8]) -> ProgramResult {
         if output.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -568,6 +519,7 @@ impl<'a> State {
 }
 
 impl Instruction {
+    /// Deserializes a byte buffer into an [Instruction](enum.Instruction.html)
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -619,6 +571,7 @@ impl Instruction {
         })
     }
 
+    /// Serializes an [Instruction](enum.Instruction.html) into a byte buffer
     pub fn serialize(self: &Self, output: &mut [u8]) -> ProgramResult {
         if output.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
