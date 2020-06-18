@@ -14,6 +14,7 @@ import {
 } from '@solana/web3.js';
 import type {Connection, TransactionSignature} from '@solana/web3.js';
 
+import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import * as Layout from './layout';
 import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 
@@ -159,14 +160,20 @@ export class Token {
   programId: PublicKey;
 
   /**
+   * Fee payer
+   */
+  payer: Account;
+
+  /**
    * Create a Token object attached to the specific token
    *
    * @param connection The connection to use
    * @param token Public key of the token
    * @param programId Optional token programId, uses the system programId by default
+   * @param payer Payer of fees
    */
-  constructor(connection: Connection, token: PublicKey, programId: PublicKey) {
-    Object.assign(this, {connection, token, programId});
+  constructor(connection: Connection, token: PublicKey, programId: PublicKey, payer: Account) {
+    Object.assign(this, {connection, token, programId, payer});
   }
 
   /**
@@ -214,7 +221,8 @@ export class Token {
     is_owned: boolean = false,
   ): Promise<TokenAndPublicKey> {
     const tokenAccount = new Account();
-    const token = new Token(connection, tokenAccount.publicKey, programId);
+    const payer = await newAccountWithLamports(connection, 10000000 /* wag */);
+    const token = new Token(connection, tokenAccount.publicKey, programId, payer);
     const initialAccountPublicKey = await token.newAccount(owner, null);
 
     let transaction;
@@ -254,6 +262,7 @@ export class Token {
       'createAccount',
       connection,
       transaction,
+      payer,
       owner,
       tokenAccount,
     );
@@ -275,6 +284,7 @@ export class Token {
       'New Account',
       connection,
       transaction,
+      payer,
       owner,
       tokenAccount,
     );
@@ -325,6 +335,7 @@ export class Token {
       'createAccount',
       this.connection,
       transaction,
+      this.payer,
       owner,
       tokenAccount,
     );
@@ -347,6 +358,7 @@ export class Token {
       'init account',
       this.connection,
       transaction,
+      this.payer,
       owner,
       tokenAccount,
     );
@@ -451,6 +463,7 @@ export class Token {
           amount,
         ),
       ),
+      this.payer,
       owner,
     );
   }
@@ -475,6 +488,7 @@ export class Token {
       new Transaction().add(
         this.approveInstruction(owner.publicKey, account, delegate, amount),
       ),
+      this.payer,
       owner,
     );
   }
@@ -512,6 +526,7 @@ export class Token {
       new Transaction().add(
         this.setOwnerInstruction(owner.publicKey, owned, newOwner),
       ),
+      this.payer,
       owner,
     );
   }
@@ -534,6 +549,7 @@ export class Token {
       'mintTo',
       this.connection,
       new Transaction().add(this.mintToInstruction(owner, token, dest, amount)),
+      this.payer,
       owner,
     );
   }
@@ -554,6 +570,7 @@ export class Token {
       'burn',
       this.connection,
       new Transaction().add(await this.burnInstruction(owner, account, amount)),
+      this.payer,
       owner,
     );
   }

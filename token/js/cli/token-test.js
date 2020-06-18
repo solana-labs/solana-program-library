@@ -1,7 +1,7 @@
 // @flow
 
 import fs from 'mz/fs';
-import {Connection, BpfLoader, PublicKey} from '@solana/web3.js';
+import {Account, Connection, BpfLoader, PublicKey} from '@solana/web3.js';
 import semver from 'semver';
 
 import {Token, TokenAmount} from '../client/token';
@@ -39,7 +39,7 @@ let connection;
 async function getConnection(): Promise<Connection> {
   if (connection) return connection;
 
-  let newConnection = new Connection(url);
+  let newConnection = new Connection(url, 'recent', );
   const version = await newConnection.getVersion();
 
   // commitment params are only supported >= 0.21.0
@@ -67,8 +67,10 @@ export async function loadTokenProgram(): Promise<void> {
     (await connection.getMinimumBalanceForRentExemption(data.length));
 
   const from = await newAccountWithLamports(connection, balanceNeeded);
+  const program_account = new Account();
   console.log('Loading Token program...');
-  programId = await BpfLoader.load(connection, from, data);
+  await BpfLoader.load(connection, from, program_account, data);
+  programId = program_account.publicKey;
 }
 
 export async function createNewToken(): Promise<void> {

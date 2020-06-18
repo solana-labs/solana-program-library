@@ -10,7 +10,7 @@ export async function newAccountWithLamports(
 ): Promise<Account> {
   const account = new Account();
 
-  let retries = 10;
+  let retries = 30;
   await connection.requestAirdrop(account.publicKey, lamports);
   for (;;) {
     await sleep(500);
@@ -20,7 +20,6 @@ export async function newAccountWithLamports(
     if (--retries <= 0) {
       break;
     }
-    console.log('Airdrop retry ' + retries);
   }
   throw new Error(`Airdrop of ${lamports} failed`);
 }
