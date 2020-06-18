@@ -77,34 +77,41 @@ impl<'a> State {
         info: TokenInfo,
     ) -> ProgramResult {
         let token_account_info = next_account_info(account_info_iter)?;
-        let dest_account_info = next_account_info(account_info_iter)?;
 
         if State::Unallocated != State::deserialize(&token_account_info.data.borrow())? {
             return Err(TokenError::AlreadyInUse.into());
         }
 
-        let mut dest_account_data = dest_account_info.data.borrow_mut();
-        if let State::Account(mut dest_token_account) = State::deserialize(&dest_account_data)? {
-            if !token_account_info.is_signer {
-                return Err(ProgramError::MissingRequiredSignature);
-            }
-            if token_account_info.key != &dest_token_account.token {
-                return Err(TokenError::TokenMismatch.into());
-            }
-            if dest_token_account.delegate.is_some() {
-                return Err(TokenError::DestinationIsDelegate.into());
+        let owner = if info.supply != 0 {
+            let dest_account_info = next_account_info(account_info_iter)?;
+            let mut dest_account_data = dest_account_info.data.borrow_mut();
+            if let State::Account(mut dest_token_account) = State::deserialize(&dest_account_data)?
+            {
+                if !token_account_info.is_signer {
+                    return Err(ProgramError::MissingRequiredSignature);
+                }
+                if token_account_info.key != &dest_token_account.token {
+                    return Err(TokenError::TokenMismatch.into());
+                }
+                if dest_token_account.delegate.is_some() {
+                    return Err(TokenError::DestinationIsDelegate.into());
+                }
+
+                dest_token_account.amount = info.supply;
+                State::Account(dest_token_account).serialize(&mut dest_account_data)?;
+            } else {
+                return Err(ProgramError::InvalidArgument);
             }
 
-            dest_token_account.amount = info.supply;
-            State::Account(dest_token_account).serialize(&mut dest_account_data)?;
-        } else {
-            return Err(ProgramError::InvalidArgument);
-        }
-
-        let owner = if let Ok(owner_account_into) = next_account_info(account_info_iter) {
+            if let Ok(owner_account_into) = next_account_info(account_info_iter) {
+                Some(*owner_account_into.key)
+            } else {
+                None
+            }
+        } else if let Ok(owner_account_into) = next_account_info(account_info_iter) {
             Some(*owner_account_into.key)
         } else {
-            None
+            return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
         };
 
         State::Token(Token { info, owner }).serialize(&mut token_account_info.data.borrow_mut())
@@ -1133,6 +1140,92 @@ mod tests {
             Err(TokenError::InsufficientFunds.into()),
             State::process(&program_id, &mut account_infos, &instruction_data)
         );
+    }
+
+    #[test]
+    fn test_mintable_token_with_zero_supply() {
+        let program_id = new_pubkey(1);
+        let mut instruction_data = vec![0u8; size_of::<Instruction>()];
+        let token_account_key = new_pubkey(2);
+        let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
+        let owner_key = new_pubkey(6);
+        let mut owner_account = Account::default();
+        let token_key = new_pubkey(8);
+        let mut token_account = Account::new(0, size_of::<State>(), &program_id);
+
+        // create account
+        let instruction = Instruction::NewAccount;
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&token_account_key, true, &mut token_account_account),
+            (&owner_key, false, &mut owner_account),
+            (&token_key, false, &mut token_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        // create mintable token without owner
+        let instruction = Instruction::NewToken(TokenInfo {
+            supply: 0,
+            decimals: 2,
+        });
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![(&token_key, true, &mut token_account)];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        assert_eq!(
+            Err(TokenError::OwnerRequiredIfNoInitialSupply.into()),
+            State::process(&program_id, &mut account_infos, &instruction_data)
+        );
+
+        // create mintable token with zero supply
+        let info = TokenInfo {
+            supply: 0,
+            decimals: 2,
+        };
+        let instruction = Instruction::NewToken(info);
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&token_key, true, &mut token_account),
+            (&owner_key, false, &mut owner_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        if let State::Token(token) = State::deserialize(&token_account.data).unwrap() {
+            assert_eq!(
+                token,
+                Token {
+                    info,
+                    owner: Some(owner_key)
+                }
+            );
+        } else {
+            panic!("not an account");
+        }
+
+        // mint to
+        let instruction = Instruction::MintTo(42);
+        instruction.serialize(&mut instruction_data).unwrap();
+        let mut accounts = vec![
+            (&owner_key, true, &mut owner_account),
+            (&token_key, false, &mut token_account),
+            (&token_account_key, false, &mut token_account_account),
+        ];
+        let mut account_infos = create_is_signer_account_infos(&mut accounts);
+        State::process(&program_id, &mut account_infos, &instruction_data).unwrap();
+
+        if let State::Token(token) = State::deserialize(&token_account.data).unwrap() {
+            assert_eq!(token.info.supply, 42);
+        } else {
+            panic!("not an account");
+        }
+        if let State::Account(dest_token_account) =
+            State::deserialize(&token_account_account.data).unwrap()
+        {
+            assert_eq!(dest_token_account.amount, 42);
+        } else {
+            panic!("not an account");
+        }
     }
 
     #[test]

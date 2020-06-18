@@ -33,6 +33,9 @@ pub enum TokenError {
     /// Cannot transfer token directly to a delegate account.
     #[error("Destination is a delegate")]
     DestinationIsDelegate,
+    /// An owner is required if supply is zero.
+    #[error("An owner is required if supply is zero")]
+    OwnerRequiredIfNoInitialSupply,
 }
 
 impl From<TokenError> for ProgramError {
@@ -60,6 +63,9 @@ impl PrintProgramError for TokenError {
             TokenError::FixedSupply => info!("Error: the total supply of this token is fixed"),
             TokenError::AlreadyInUse => info!("Error: account or token already in use"),
             TokenError::DestinationIsDelegate => info!("Error: Delegate accounts hold tokens"),
+            TokenError::OwnerRequiredIfNoInitialSupply => {
+                info!("Error: An owner is required if supply is zero")
+            }
         }
     }
 }
