@@ -8,3 +8,5 @@ pub mod native_mint;
 pub mod option;
 pub mod processor;
 pub mod state;
+
+solana_sdk::declare_id!("TokenSVp5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o");
