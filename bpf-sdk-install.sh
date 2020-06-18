@@ -2,7 +2,7 @@
 set -e
 
 installDir=$1
-channel=edge
+channel=v1.2.3
 
 if [[ -n $2 ]]; then
   channel=$2
