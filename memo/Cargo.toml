@@ -3,7 +3,7 @@
 
 [package]
 name = "spl-memo"
-version = "0.1.0"
+version = "1.0.0"
 description = "Solana Program Library Memo"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -11,7 +11,7 @@ license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
-solana-sdk = { version = "=1.2.0", default-features = false, features=["program"] }
+solana-sdk = { version = "1.2.4", default-features = false, features=["program"] }
 
 [lib]
 name = "spl_memo"
