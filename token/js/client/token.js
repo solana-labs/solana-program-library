@@ -72,20 +72,11 @@ type TokenInfo = {|
   owner: null | PublicKey,
 |};
 
-/**
- * @private
- */
-const TokenInfoLayout = BufferLayout.struct([
-  BufferLayout.u8('state'),
-  Layout.uint64('supply'),
-  BufferLayout.u8('decimals'),
-]);
-
-const tokenLayout = BufferLayout.struct([
+const TokenLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
   Layout.uint64('supply'),
   BufferLayout.nu64('decimals'),
-  BufferLayout.u8('option'),
+  BufferLayout.u32('option'),
   Layout.publicKey('owner'),
   BufferLayout.nu64('padding'),
 ]);
@@ -93,7 +84,7 @@ const tokenLayout = BufferLayout.struct([
 /**
  * Information about an account
  */
-type AccountInfo = {|
+type TokenAccountInfo = {|
   /**
    * The kind of token this account holds
    */
@@ -128,7 +119,7 @@ type AccountInfo = {|
 /**
  * @private
  */
-const AccountInfoLayout = BufferLayout.struct([
+const TokenAccountInfoLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
   Layout.publicKey('token'),
   Layout.publicKey('owner'),
@@ -186,7 +177,7 @@ export class Token {
     connection: Connection,
   ): Promise<number> {
     return await connection.getMinimumBalanceForRentExemption(
-      TokenInfoLayout.span,
+      TokenLayout.span,
     );
   }
 
@@ -199,7 +190,7 @@ export class Token {
     connection: Connection,
   ): Promise<number> {
     return await connection.getMinimumBalanceForRentExemption(
-      AccountInfoLayout.span,
+      TokenAccountInfoLayout.span,
     );
   }
 
@@ -256,7 +247,7 @@ export class Token {
       fromPubkey: owner.publicKey,
       newAccountPubkey: tokenAccount.publicKey,
       lamports: balanceNeeded,
-      space: tokenLayout.span,
+      space: TokenLayout.span,
       programId,
     });
     await sendAndConfirmTransaction(
@@ -329,7 +320,7 @@ export class Token {
       fromPubkey: owner.publicKey,
       newAccountPubkey: tokenAccount.publicKey,
       lamports: balanceNeeded,
-      space: AccountInfoLayout.span,
+      space: TokenAccountInfoLayout.span,
       programId: this.programId,
     });
     await sendAndConfirmTransaction(
@@ -370,30 +361,30 @@ export class Token {
   /**
    * Retrieve token information
    */
-  async tokenInfo(): Promise<TokenInfo> {
-    const accountInfo = await this.connection.getAccountInfo(this.token);
-    if (accountInfo === null) {
+  async TokenInfo(): Promise<TokenInfo> {
+    const TokenAccountInfo = await this.connection.getAccountInfo(this.token);
+    if (TokenAccountInfo === null) {
       throw new Error('Failed to find token info account');
     }
-    if (!accountInfo.owner.equals(this.programId)) {
+    if (!TokenAccountInfo.owner.equals(this.programId)) {
       throw new Error(
-        `Invalid token owner: ${JSON.stringify(accountInfo.owner)}`,
+        `Invalid token owner: ${JSON.stringify(TokenAccountInfo.owner)}`,
       );
     }
 
-    const data = Buffer.from(accountInfo.data);
+    const data = Buffer.from(TokenAccountInfo.data);
 
-    const tokenInfo = tokenLayout.decode(data);
-    if (tokenInfo.state !== 1) {
+    const TokenInfo = TokenLayout.decode(data);
+    if (TokenInfo.state !== 1) {
       throw new Error(`Invalid account data`);
     }
-    tokenInfo.supply = TokenAmount.fromBuffer(tokenInfo.supply);
-    if (tokenInfo.option === 0) {
-      tokenInfo.owner = null;
+    TokenInfo.supply = TokenAmount.fromBuffer(TokenInfo.supply);
+    if (TokenInfo.option === 0) {
+      TokenInfo.owner = null;
     } else {
-      tokenInfo.owner = new PublicKey(tokenInfo.owner);
+      TokenInfo.owner = new PublicKey(TokenInfo.owner);
     }
-    return tokenInfo;
+    return TokenInfo;
   }
 
   /**
@@ -401,42 +392,42 @@ export class Token {
    *
    * @param account Public key of the account
    */
-  async accountInfo(account: PublicKey): Promise<AccountInfo> {
-    const accountInfo = await this.connection.getAccountInfo(account);
-    if (accountInfo === null) {
+  async TokenAccountInfo(account: PublicKey): Promise<TokenAccountInfo> {
+    const TokenAccountInfo = await this.connection.getAccountInfo(account);
+    if (TokenAccountInfo === null) {
       throw new Error('Failed to find account');
     }
-    if (!accountInfo.owner.equals(this.programId)) {
+    if (!TokenAccountInfo.owner.equals(this.programId)) {
       throw new Error(`Invalid account owner`);
     }
 
-    const data = Buffer.from(accountInfo.data);
-    const tokenAccountInfo = AccountInfoLayout.decode(data);
+    const data = Buffer.from(TokenAccountInfo.data);
+    const tokenTokenAccountInfo = TokenAccountInfoLayout.decode(data);
 
-    if (tokenAccountInfo.state !== 2) {
+    if (tokenTokenAccountInfo.state !== 2) {
       throw new Error(`Invalid account data`);
     }
-    tokenAccountInfo.token = new PublicKey(tokenAccountInfo.token);
-    tokenAccountInfo.owner = new PublicKey(tokenAccountInfo.owner);
-    tokenAccountInfo.amount = TokenAmount.fromBuffer(tokenAccountInfo.amount);
-    if (tokenAccountInfo.option === 0) {
-      tokenAccountInfo.source = null;
-      tokenAccountInfo.originalAmount = new TokenAmount();
+    tokenTokenAccountInfo.token = new PublicKey(tokenTokenAccountInfo.token);
+    tokenTokenAccountInfo.owner = new PublicKey(tokenTokenAccountInfo.owner);
+    tokenTokenAccountInfo.amount = TokenAmount.fromBuffer(tokenTokenAccountInfo.amount);
+    if (tokenTokenAccountInfo.option === 0) {
+      tokenTokenAccountInfo.source = null;
+      tokenTokenAccountInfo.originalAmount = new TokenAmount();
     } else {
-      tokenAccountInfo.source = new PublicKey(tokenAccountInfo.source);
-      tokenAccountInfo.originalAmount = TokenAmount.fromBuffer(
-        tokenAccountInfo.originalAmount,
+      tokenTokenAccountInfo.source = new PublicKey(tokenTokenAccountInfo.source);
+      tokenTokenAccountInfo.originalAmount = TokenAmount.fromBuffer(
+        tokenTokenAccountInfo.originalAmount,
       );
     }
 
-    if (!tokenAccountInfo.token.equals(this.token)) {
+    if (!tokenTokenAccountInfo.token.equals(this.token)) {
       throw new Error(
         `Invalid account token: ${JSON.stringify(
-          tokenAccountInfo.token,
+          tokenTokenAccountInfo.token,
         )} !== ${JSON.stringify(this.token)}`,
       );
     }
-    return tokenAccountInfo;
+    return tokenTokenAccountInfo;
   }
 
   /**
@@ -590,8 +581,8 @@ export class Token {
     destination: PublicKey,
     amount: number | TokenAmount,
   ): Promise<TransactionInstruction> {
-    const accountInfo = await this.accountInfo(source);
-    if (!owner.equals(accountInfo.owner)) {
+    const TokenAccountInfo = await this.TokenAccountInfo(source);
+    if (!owner.equals(TokenAccountInfo.owner)) {
       throw new Error('Account owner mismatch');
     }
 
@@ -614,9 +605,9 @@ export class Token {
       {pubkey: source, isSigner: false, isWritable: true},
       {pubkey: destination, isSigner: false, isWritable: true},
     ];
-    if (accountInfo.source) {
+    if (TokenAccountInfo.source) {
       keys.push({
-        pubkey: accountInfo.source,
+        pubkey: TokenAccountInfo.source,
         isSigner: false,
         isWritable: true,
       });
@@ -766,7 +757,7 @@ export class Token {
     account: PublicKey,
     amount: number,
   ): Promise<TransactionInstruction> {
-    const accountInfo = await this.accountInfo(account);
+    const TokenAccountInfo = await this.TokenAccountInfo(account);
 
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
@@ -787,9 +778,9 @@ export class Token {
       {pubkey: account, isSigner: false, isWritable: true},
       {pubkey: this.token, isSigner: false, isWritable: true},
     ];
-    if (accountInfo.source) {
+    if (TokenAccountInfo.source) {
       keys.push({
-        pubkey: accountInfo.source,
+        pubkey: TokenAccountInfo.source,
         isSigner: false,
         isWritable: true,
       });
