@@ -11,29 +11,29 @@ pub enum State {
 }
 
 
+struct Invariant {
+    tokenA: u64,
+    tokenB: u64,
+}
 
-impl TokenSwap {
-    pub fn a_to_b(&mut self, tokenA: u64) -> Option<u64> {
+impl Invariant {
+    pub fn swap(&self, tokenA: u64) -> Option<u64> {
+        let invariant = self.tokenA.checked_mul(self.tokenB)?;
         let newA = self.tokenA.checked_add(tokenA)?;
-        let newB = self.invariant.checked_div(newA)?;
+        let newB = invariant.checked_div(newA)?;
         let remove = self.tokenB.checked_sub(newB)?;
         self,tokenA = newA;
         self,tokenB = newB;
         Some(remove)
     }
-    pub fn b_to_a(&mut self, tokenB: u64) -> Option<u64> {
-        let newB = self.tokenB.checked_add(tokenB)?;
-        let newA = self.invariant.checked_div(newB)?;
-        let remove = self.tokenA.checked_sub(newA)?;
-        self,tokenA = newA;
-        self,tokenB = newB;
-        Some(remove)
-
-    }
 }
+
 impl State {
-    pub fn create_token(
+
+    pub fn create_token_account(
         kind: &str,
+        instance_id: &Pubkey,
+        program_id: &Pubkey,
         token_account: &AccountInfo,
     ) -> ProgramResult {
         // create token A account
@@ -41,8 +41,8 @@ impl State {
         let instruction = token::Instruction::NewAccount;
         instruction.serialize(&mut instruction_data)?;
 
-        let account_addr = Pubkey::create_program_address(&[kind, "account"], program_id)?;
-        let authority = Pubkey::create_program_address(&[kind, "authority"], program_id)?;
+        let account_addr = Pubkey::create_program_address(&[instance_id, kind], program_id)?;
+        let authority = Pubkey::create_program_address(&[instance_id, "authority"], program_id)?;
         let invoked_instruction = create_instruction(
             token_account.owner,
             &[
@@ -75,17 +75,45 @@ impl State {
         let tokenA = next_account_info(account_info_iter)?;
 
         // create token A account
-        create_token("tokenA", tokenA)?;
+        create_token_account("tokenA", tokenA)?;
 
+        // create token B account
         let tokenB = next_account_info(account_info_iter)?;
-        create_token("tokenB", tokenA)?;
+        create_token_account("tokenB", tokenB)?;
 
         let obj = State;:Init(TokenSwap { authority });
         obj.serialize(&mut token_swap_info.data.borrow_mut())
     }
 
-    pub fn process_deposit<I: Iterator<Item = &'a AccountInfo<'a>>>(
-        kind: &str,
+    pub fn transfer_token(
+        instance_id: &Pubkey,
+        source: &Pubkey,
+        destination: &Pubkey,
+        amount: u64,
+        seeds: &[&[&str]],
+    ) -> ProgramResult {
+        let signers = &[&[instance_id, "authority"]],
+        let authority = Pubkey::create_program_address(&[instance_id, "authority"], program_id)?;
+        let source = Pubkey::create_program_address(&[instance_id, kind], program_id)?;
+        let instruction_data = vec![];
+        let instruction = token::Instruction::Transfer(amount);
+        instruction.serialize(&mut instruction_data)?;
+        let invoked_instruction = create_instruction(
+            token_account.owner,
+            &[
+                (authority, false, true),
+                (source, true, false),
+                (destination, true, false),
+            ],
+            instruction_data,
+        );
+        invoke_signed(
+            &invoked_instruction,
+            accounts,
+            signers,
+        )
+    }
+    pub fn process_swap<I: Iterator<Item = &'a AccountInfo<'a>>>(
         program_id: &Pubkey,
         account_info_iter: &mut I,
     ) -> ProgramResult {
@@ -100,10 +128,49 @@ impl State {
         if !authority.pubkey != swap.authority {
             return Err(ProgramError::InvalidAuthority);
         }
-        let token_auth = Pubkey::create_program_address(&[kind, "authority"], program_id)?;
-        let token_account = Pubkey::create_program_address(&[kind, "account"], program_id)?;
-    }
+        let token_authority = Pubkey::create_program_address(&[instance_id, "authority"], program_id)?;
 
+        let tokenA_account = Pubkey::create_program_address(&[instance_id, "tokenA"], program_id)?;
+
+        //tokenA
+        let tokenA_info = next_account_info(account_info_iter)?;
+        if tokenA_info.key != tokenA_account {
+            return Err(Error::InvalidTokenAAccount);
+        }
+        let tokenA_account = token::Account::deserialize(tokenA_info.data)?;
+
+        let tokenB_account = Pubkey::create_program_address(&[instance_id, "tokenB"], program_id)?;
+
+        //tokenB
+        let tokenB_info = next_account_info(account_info_iter)?;
+        let tokenB_account = token::Account::deserialize(tokenB_info.data)?;
+        if tokenB_info.key != tokenB_account {
+            return Err(Error::InvalidTokenBAccount);
+        }
+
+        //input token
+        let input_token_info = next_account_info(account_info_iter)?;
+        let input_account = token::Account::deserialize(input.data)?;
+
+        //incoming token should be delegated to the TokenSwap intance authority
+        if input_account.authority != token_authority {
+            return Err(Error::InvalidTokenAuthority);
+        }
+
+        let output_token_info = next_account_info(account_info_iter)?;
+        if input_account.token == tokenA_account.token {
+            let invariant = Invariant { tokenA: tokenA.amount, tokenB: tokenB.amount};
+            let exchange = invariant.swap(input_account.amount)?;
+            Self::transfer_token(instance_id, input_account, tokenA_account, input_account.amount, signers)?;
+            Self::transfer_token(instance_id, tokenB_account, output_token_info.key, exchange, signers)?;
+        } else {
+            let invariant = Invariant { tokenA: tokenB.amount, tokenB: tokenA.amount};
+            let exchange = invariant.swap(input_account.amount)?;
+            Self::transfer_token(instance_id, input_account, tokenB_account, input_account.amount, signers)?;
+            Self::transfer_token(instance_id, tokenA_account, output_token_info.key, exchange, signers)?;
+        }
+        Ok(())
+    } 
 
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(
@@ -118,9 +185,9 @@ impl State {
                 info!("Instruction: Init");
                 Self::process_init(account_info_iter)
             },
-            Instruction::DepositA => {
+            Instruction::Swap => {
                 info!("Instruction: Deposit");
-                Self::process_deposit("tokenA", program_id, account_info_iter)
+                Self::process_swap(program_id, account_info_iter)
             }
         }
     }
@@ -138,23 +205,17 @@ pub enum Instruction {
     ///   0. `[writable, signer]` New token-swap to create.
     ///   1. `[signer]` Authority
     Init,
-    /// Deposit tokens and update the invariant and fee.
-    ///
-    /// # Accounts expected by this instruction:
-    ///
     ///   0. `[writable]` Token-swap
-    ///   1. `[signer]` Authority
-    ///   2.  Token assigned to "tokenA/authority" program address
-    ///   3.  Token assigned to "tokenB/authority" program address
-    Deposit,
+    ///   1.  Token assigned to "token(A|B)/authority" program address
+    ///   2.  The token to deposit into
+    ///
+    ///   Amount swapped is always based on A*B = K
+    Swap,
     ///   Reassigns the authority on tokenA and tokenB to Authority.
-    ///   Transfers lamports to authority.
     ///   
     ///   0. `[writable]` Token-swap
     ///   1. `[signer]` Authority
-    Close,
-    ///   0. `[writable]` Token-swap
-    ///   1.  Token assigned to "token(A|B)/authority" program address
-    ///   2.  Token to deposit into
-    Swap,
+    ///   userdata: The amount
+    Withdraw(u64),
+
 }
