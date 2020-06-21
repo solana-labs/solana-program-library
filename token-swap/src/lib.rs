@@ -1,7 +1,33 @@
+/// Instructions supported by the token program.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-struct TokenSwap {
-    authority: Pubkey,
+#[derive(Clone, Debug, PartialEq)]
+pub enum Instruction {
+    /// Creates a new TokenSwap
+    ///
+    /// # Accounts expected by this instruction:
+    ///
+    ///   0. `[writable, signer]` New Token-swap to create.
+    ///   1. `[signer]` Authority
+    ///   2. `[readable]` $instance_id/authority
+    ///   3. `[readable]` $instance_id/tokenA
+    ///   4. `[readable]` $instance_id/tokenB
+    ///   5. `[readable]` tokenA account
+    ///   6. `[readable]` tokenB account
+    Init,
+    ///   0. `[writable]` Token-swap
+    ///   1.  Token assigned to "token(A|B)/authority" program address
+    ///   2.  The token to deposit into
+    ///
+    ///   Amount swapped is always based on existing curve: A*B = K
+    Swap,
+    ///   Reassigns the authority on tokenA and tokenB to Authority.
+    ///   
+    ///   0. `[writable]` Token-swap
+    ///   1. `[signer]` Authority
+    ///   2. `[writable]` Token source (must be owned by Swap)
+    ///   5. `[writable]` Token destination
+    ///   userdata: The amount of each token to withdraw
+    Withdraw(u64),
 }
 
 #[repr(C)]
@@ -10,9 +36,13 @@ pub enum State {
     /// Unallocated state, may be initialized into another state.
     Unallocated,
     Init(TokenSwap),
-    Invalid,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct TokenSwap {
+    authority: Pubkey,
+}
 
 struct Invariant {
     tokenA: u64,
@@ -32,6 +62,43 @@ impl Invariant {
 }
 
 impl State {
+    pub fn deserialize(input: &'a [u8]) -> Result<Self, ProgramError> {
+        if input.len() < size_of::<u8>() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        Ok(match input[0] {
+            0 => Self::Unallocated,
+            1 => {
+                if input.len() < size_of::<u8>() + size_of::<TokenSwap>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
+                #[allow(clippy::cast_ptr_alignment)]
+                let swap: &TokenSwap = unsafe { &*(&input[1] as *const u8 as *const TokenSwap) };
+                Self::Init(*swap)
+            }
+            _ => return Err(ProgramError::InvalidAccountData),
+        })
+    }
+
+    pub fn serialize(self: &Self, output: &mut [u8]) -> ProgramResult {
+        if output.len() < size_of::<u8>() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        match self {
+            Self::Unallocated => output[0] = 0,
+            Self::Init(swap) => {
+                if output.len() < size_of::<u8>() + size_of::<TokenSwap>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
+                output[0] = 1;
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut TokenSwap) };
+                *value = *token;
+            }
+        }
+        Ok(())
+    }
+
     pub fn create_token_account(
         kind: &str,
         instance_id: &Pubkey,
@@ -235,29 +302,4 @@ impl State {
     }
 }
 
-/// Instructions supported by the token program.
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
-pub enum Instruction {
-    /// Creates a new TokenSwap
-    ///
-    /// # Accounts expected by this instruction:
-    ///
-    ///   0. `[writable, signer]` New Token-swap to create.
-    ///   1. `[signer]` Authority
-    Init,
-    ///   0. `[writable]` Token-swap
-    ///   1.  Token assigned to "token(A|B)/authority" program address
-    ///   2.  The token to deposit into
-    ///
-    ///   Amount swapped is always based on existing curve: A*B = K
-    Swap,
-    ///   Reassigns the authority on tokenA and tokenB to Authority.
-    ///   
-    ///   0. `[writable]` Token-swap
-    ///   1. `[signer]` Authority
-    ///   2. `[writable]` Token source (must be owned by Swap)
-    ///   5. `[writable]` Token destination
-    ///   userdata: The amount of each token to withdraw
-    Withdraw(u64),
-}
+
