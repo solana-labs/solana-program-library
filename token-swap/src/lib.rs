@@ -25,11 +25,23 @@ pub enum Instruction {
     ///
     ///   0. `[writable, signer]` New Token-swap to create.
     ///   1. `[]` $instance
-    ///   2. `[]` base_token_a Account
-    ///   3. `[]` base_token_b Account
+    ///   2. `[]` token_a Account
+    ///   3. `[]` token_b Account
     ///   4. `[writable]` pool_mint Account.
     ///   5. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    Init,
+    ///   userdata: fee rate as a ratio
+    Init((u64,u64)),
+
+    ///   Swap the tokens in the pool.
+    ///
+    ///   0. `[]` Token-swap
+    ///   1. `[]` $instance
+    ///   2. `[writable]` token_(A|B) SOURCE Account assigned transfarable from $instance,
+    ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
+    ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
+    ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
+    ///   userdata: source amount to transfer
+    Swap(u64),
 
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
@@ -52,15 +64,6 @@ pub enum Instruction {
     ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
     Withdraw,
 
-    ///   Swap the tokens in the pool.
-    ///
-    ///   0. `[]` Token-swap
-    ///   1. `[]` $instance
-    ///   2. `[writable]` token_(A|B) SOURCE Account assigned to $instance as the owner.
-    ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
-    ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
-    ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
-    Swap,
 }
 
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
@@ -92,6 +95,22 @@ pub enum Error {
     /// The intiailized token has a delegate
     #[error("InvalidDelegate")]
     InvalidDelegate,
+
+    /// The token swap state is invalid
+    #[error("InvalidState")]
+    InvalidState,
+
+    /// The input token is invalid for swap
+    #[error("InvalidInput")]
+    InvalidInto,
+
+    /// The output token is invalid for swap
+    #[error("InvalidOutput")]
+    InvalidOutput,
+
+    /// The swap calculation failed
+    #[error("CalculationFailure")]
+    CalculationFailure,
 }
 
 impl From<Error> for ProgramError {
@@ -126,17 +145,20 @@ pub enum State {
 struct Invariant {
     token_a: u64,
     token_b: u64,
+    fee: (u64,u64)
 }
 
 impl Invariant {
     fn swap(&mut self, token_a: u64) -> Option<u64> {
         let invariant = self.token_a.checked_mul(self.token_b)?;
-        let new_a = self.token_a.checked_add(token_a)?;
+        let token_a_less_fee = token_a.checked_sub(fee)?;
+        let new_a = self.token_a.checked_add(token_a_less_fee)?;
         let new_b = invariant.checked_div(new_a)?;
         let remove = self.token_b.checked_sub(new_b)?;
+        let fee = remove.checked_mul(self.fee.1)?.checked_div(self.fee.0)?;
         self.token_a = new_a;
-        self.token_b = new_b;
-        Some(remove)
+        self.token_b = new_b.checked_add(fee)?;
+        remove.checked_sub(fee)
     }
 }
 
@@ -181,6 +203,15 @@ impl<'a> State {
         Ok(())
     }
 
+    fn token_swap(&self) -> Result<&TokenSwap, ProgramError> {
+        if let State::Init(ref swap) = &self {
+            Ok(swap)
+        } else {
+            Err(Error::InvalidState.into())
+        }
+    }
+
+
     pub fn token_instruction(
         owner: &Pubkey,
         accounts: &[(Pubkey, bool, bool)],
@@ -221,33 +252,34 @@ impl<'a> State {
 
     pub fn process_init<I: Iterator<Item = &'a AccountInfo<'a>>>(
         program_id: &Pubkey,
+        fee: (u64,u64),
         account_info_iter: &mut I,
     ) -> ProgramResult {
-        let token_swap_info = next_account_info(account_info_iter)?;
-        let instance_id_info = next_account_info(account_info_iter)?;
-        let base_token_a = next_account_info(account_info_iter)?;
-        let base_token_b = next_account_info(account_info_iter)?;
-        let pool_mint_info = next_account_info(account_info_iter)?;
-        let user_pool_output = next_account_info(account_info_iter)?;
+        let swap_info = next_account_info(account_info_iter)?;
+        let instance_info = next_account_info(account_info_iter)?;
+        let token_a_info = next_account_info(account_info_iter)?;
+        let token_b_info = next_account_info(account_info_iter)?;
+        let pool_info = next_account_info(account_info_iter)?;
+        let user_output_info = next_account_info(account_info_iter)?;
 
-        if State::Unallocated != State::deserialize(&token_swap_info.data.borrow())? {
+        if State::Unallocated != State::deserialize(&swap_info.data.borrow())? {
             return Err(Error::AlreadyInUse.into());
         }
 
-        if *instance_id_info.key != Self::instance_id(program_id, token_swap_info)?
+        if *instance_info.key != Self::instance_id(program_id, swap_info)?
         {
             return Err(Error::InvalidProgramAddress.into());
         }
-        let token_a = Self::token_account_deserialize(base_token_a)?;
-        let token_b = Self::token_account_deserialize(base_token_b)?;
-        let pool_mint = Self::token_deserialize(pool_mint_info)?;
-        if *instance_id_info.key != token_a.owner {
+        let token_a = Self::token_account_deserialize(token_a_info)?;
+        let token_b = Self::token_account_deserialize(token_b_info)?;
+        let pool_mint = Self::token_deserialize(pool_info)?;
+        if *instance_info.key != token_a.owner {
             return Err(Error::InvalidOwner.into());
         }
-        if *instance_id_info.key != token_b.owner {
+        if *instance_info.key != token_b.owner {
             return Err(Error::InvalidOwner.into());
         }
-        if Some(*instance_id_info.key) != pool_mint.owner {
+        if Some(*instance_info.key) != pool_mint.owner {
             return Err(Error::InvalidOwner.into());
         }
         if 0 != pool_mint.info.supply {
@@ -268,103 +300,54 @@ impl<'a> State {
         // liquidity token is 2x the A token amount
         // because the token_b amount has the same value at the current ratio
         let amount = token_a.amount * 2;
-        Self::token_issue(instance_id_info, pool_mint_info, user_pool_output, amount)?;
+        Self::token_issue(instance_info, pool_info, user_output_info, amount)?;
 
         let obj = State::Init(TokenSwap {
-            token_a: *base_token_a.key,
-            token_b: *base_token_b.key,
-            pool_mint: *pool_mint_info.key,
-            fee: (0, 0),
+            token_a: *token_a_info.key,
+            token_b: *token_b_info.key,
+            pool_mint: *pool_info.key,
+            fee,
         });
-        obj.serialize(&mut token_swap_info.data.borrow_mut())
+        obj.serialize(&mut swap_info.data.borrow_mut())
     }
 
-    //     pub fn transfer_token(
-    //         instance_id: &Pubkey,
-    //         source: &Pubkey,
-    //         destination: &Pubkey,
-    //         amount: u64,
-    //     ) -> ProgramResult {
-    //         let signers = &[&[instance_id, "authority"]],
-    //         let authority = Pubkey::create_program_address(&[instance_id, "authority"], program_id)?;
-    //         let source = Pubkey::create_program_address(&[instance_id, kind], program_id)?;
-    //         let instruction_data = vec![];
-    //         let instruction = token::Instruction::Transfer(amount);
-    //         instruction.serialize(&mut instruction_data)?;
-    //         let invoked_instruction = create_instruction(
-    //             token_account.owner,
-    //             &[
-    //                 (authority, false, true),
-    //                 (source, true, false),
-    //                 (destination, true, false),
-    //             ],
-    //             instruction_data,
-    //         );
-    //         invoke_signed(
-    //             &invoked_instruction,
-    //             accounts,
-    //             signers,
-    //         )
-    //     }
-    //     pub fn process_swap<I: Iterator<Item = &'a AccountInfo<'a>>>(
-    //         program_id: &Pubkey,
-    //         account_info_iter: &mut I,
-    //     ) -> ProgramResult {
-    //         let token_swap_account = next_account_info(account_info_iter)?;
-    //         let state = State::deserialize(&token_swap_account.data.borrow())?;
-    //         let swap = state.swap()?;
-    //
-    //         let authority = next_account_info(account_info_iter)?;
-    //         if !authority.is_signer {
-    //             return Err(ProgramError::MissingRequiredSignature);
-    //         }
-    //         if !authority.pubkey != swap.authority {
-    //             return Err(ProgramError::InvalidAuthority);
-    //         }
-    //         let instance_id = token_swap_account.key;
-    //         let token_authority = Pubkey::create_program_address(&[instance_id, "authority"], program_id)?;
-    //
-    //         let tokenA_account = Pubkey::create_program_address(&[instance_id, "tokenA"], program_id)?;
-    //
-    //         //tokenA
-    //         let tokenA_info = next_account_info(account_info_iter)?;
-    //         if tokenA_info.key != tokenA_account {
-    //             return Err(Error::InvalidTokenAAccount);
-    //         }
-    //         let tokenA_account = token::Account::deserialize(tokenA_info.data)?;
-    //
-    //         let tokenB_account = Pubkey::create_program_address(&[instance_id, "tokenB"], program_id)?;
-    //
-    //         //tokenB
-    //         let tokenB_info = next_account_info(account_info_iter)?;
-    //         let tokenB_account = token::Account::deserialize(tokenB_info.data)?;
-    //         if tokenB_info.key != tokenB_account {
-    //             return Err(Error::InvalidTokenBAccount);
-    //         }
-    //
-    //         //input token
-    //         let input_token_info = next_account_info(account_info_iter)?;
-    //         let input_account = token::Account::deserialize(input.data)?;
-    //
-    //         //incoming token should be delegated to the TokenSwap intance authority
-    //         if input_account.authority != token_authority {
-    //             return Err(Error::InvalidTokenAuthority);
-    //         }
-    //
-    //         let output_token_info = next_account_info(account_info_iter)?;
-    //         if input_account.token == tokenA_account.token {
-    //             let invariant = Invariant { tokenA: tokenA.amount, tokenB: tokenB.amount};
-    //             let exchange = invariant.swap(input_account.amount)?;
-    //             Self::transfer_token(instance_id, input_account, tokenA_account, input_account.amount)?;
-    //             Self::transfer_token(instance_id, tokenB_account, output_token_info.key, exchange)?;
-    //         } else {
-    //             let invariant = Invariant { tokenA: tokenB.amount, tokenB: tokenA.amount};
-    //             let exchange = invariant.swap(input_account.amount)?;
-    //             Self::transfer_token(instance_id, input_account, tokenB_account, input_account.amount)?;
-    //             Self::transfer_token(instance_id, tokenA_account, output_token_info.key, exchange)?;
-    //         }
-    //         Ok(())
-    //     }
+    pub fn process_swap<I: Iterator<Item = &'a AccountInfo<'a>>>(
+        program_id: &Pubkey,
+        amount: u64,
+        account_info_iter: &mut I,
+    ) -> ProgramResult {
+        let swap_info = next_account_info(account_info_iter)?;
+        let instance_info = next_account_info(account_info_iter)?;
+        let source_info = next_account_info(account_info_iter)?;
+        let into_info = next_account_info(account_info_iter)?;
+        let from_info = next_account_info(account_info_iter)?;
+        let dest_info = next_account_info(account_info_iter)?;
+
+        let token_swap = State::deserialize(&swap_info.data.borrow())?.token_swap()?;
+
+        if *instance_info.key != Self::instance_id(program_id, swap_info)?
+        {
+            return Err(Error::InvalidProgramAddress.into());
+        }
+        if !(*into_info.key == token_swap.token_a || *into_info.key == token_swap.token_b) {
+            return Err(Error::InvalidInput.into());
+        }
+        if !(*from_info.key == token_swap.token_a || *from_info.key == token_swap.token_b) {
+            return Err(Error::InvalidOutput.into());
+        }
+        if *into_info.key == *from_info.key {
+            return Err(Error::InvalidInput.into());
+        }
+        let invariant = Invariant { 
+            token_a: into_token.amount,
+            token_b: from_token.amount,
+            fee: token_swap.fee,
+        };
+        let output = invariant.swap(amount).or_else(Err(Error::CalculationFailure))?;
+        Self::token_transfer(instance_info, source_info, into_info, amount)?;
+        Self::token_transfer(instance_info, from_info, dest_info, output)?;
+        Ok(())
+    }
     //
     //     pub fn process_withdraw<I: Iterator<Item = &'a AccountInfo<'a>>>(
     //         program_id: &Pubkey,
