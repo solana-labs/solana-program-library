@@ -133,7 +133,8 @@ const AccountInfoLayout = BufferLayout.struct([
   Layout.publicKey('token'),
   Layout.publicKey('owner'),
   Layout.uint64('amount'),
-  BufferLayout.nu64('option'),
+  BufferLayout.u32('option'),
+  BufferLayout.u32('padding'),
   Layout.publicKey('source'),
   Layout.uint64('originalAmount'),
 ]);
