@@ -72,35 +72,36 @@ pub enum Instruction {
     Withdraw(u64),
 }
 
+pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
+    if input.len() < size_of::<u8>() + size_of::<T>() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    #[allow(clippy::cast_ptr_alignment)]
+    let val: &T = unsafe { &*(&input[1] as *const u8 as *const T) };
+    Ok(val)
+}
+
 impl Instruction {
     /// Deserializes a byte buffer into an [Instruction](enum.Instruction.html)
-    pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
-        if input.len() < size_of::<u8>() + size_of::<T>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        #[allow(clippy::cast_ptr_alignment)]
-        let val: &T = unsafe { &*(&input[1] as *const u8 as *const T) };
-        Ok(val)
-    }
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
         Ok(match input[0] {
             0 => {
-                let fee: &(u64,u64) = Self::unpack(input)?;
+                let fee: &(u64,u64) = unpack(input)?;
                 Self::Init(*fee)
             },
             1 => {
-                let fee: &u64 = Self::unpack(input)?;
+                let fee: &u64 = unpack(input)?;
                 Self::Swap(*fee)
             },
             2 => {
-                let fee: &u64 = Self::unpack(input)?;
+                let fee: &u64 = unpack(input)?;
                 Self::Deposit(*fee)
             },
             3 => {
-                let fee: &u64 = Self::unpack(input)?;
+                let fee: &u64 = unpack(input)?;
                 Self::Withdraw(*fee)
             },
             _ => return Err(ProgramError::InvalidAccountData),
@@ -226,11 +227,7 @@ impl<'a> State {
         Ok(match input[0] {
             0 => Self::Unallocated,
             1 => {
-                if input.len() < size_of::<u8>() + size_of::<TokenSwap>() {
-                    return Err(ProgramError::InvalidAccountData);
-                }
-                #[allow(clippy::cast_ptr_alignment)]
-                let swap: &TokenSwap = unsafe { &*(&input[1] as *const u8 as *const TokenSwap) };
+                let swap: &TokenSwap = unpack(input)?;
                 Self::Init(*swap)
             }
             _ => return Err(ProgramError::InvalidAccountData),
