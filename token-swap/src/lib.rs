@@ -10,7 +10,7 @@ use solana_sdk::{
 use std::mem::size_of;
 use thiserror::Error;
 
-/// Instructions supported by the token program.
+/// Instructions supported by the TokenSwap program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {
@@ -18,9 +18,9 @@ pub enum Instruction {
     ///
     ///   0. `[writable, signer]` New Token-swap to create.
     ///   1. `[]` $instance derived from `create_program_address(&[Token-swap acccount])`
-    ///   2. `[]` token_a Account. Must be non zero
-    ///   3. `[]` token_b Account. Must be non zero
-    ///   4. `[writable]` pool_mint Account. Must be empty.
+    ///   2. `[]` token_a Account. Must be non zero, owned by $instance.
+    ///   3. `[]` token_b Account. Must be non zero, owned by $instance.
+    ///   4. `[writable]` pool_mint Account. Must be empty, owned by $instance.
     ///   5. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
     ///   userdata: fee rate as a ratio
     Init((u64, u64)),
