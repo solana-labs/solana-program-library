@@ -30,7 +30,7 @@ pub enum Instruction {
     ///   4. `[writable]` pool_mint Account.
     ///   5. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
     ///   userdata: fee rate as a ratio
-    Init((u64,u64)),
+    Init((u64, u64)),
 
     ///   Swap the tokens in the pool.
     ///
@@ -40,7 +40,7 @@ pub enum Instruction {
     ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
     ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
     ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
-    ///   userdata: source amount to transfer
+    ///   userdata: source amount to transfer, output to DEST is based on the exchange rate and source amount
     Swap(u64),
 
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
@@ -63,7 +63,6 @@ pub enum Instruction {
     ///   4. `[writable]` token_(A|B) Base Account to withdraw FROM.
     ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
     Withdraw,
-
 }
 
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
@@ -109,8 +108,8 @@ pub enum Error {
     InvalidOutput,
 
     /// The swap calculation failed
-    #[error("CalculationFailure")]
-    CalculationFailure,
+    #[error("SwapCalculationFailure")]
+    SwapCalculationFailure,
 }
 
 impl From<Error> for ProgramError {
@@ -145,7 +144,7 @@ pub enum State {
 struct Invariant {
     token_a: u64,
     token_b: u64,
-    fee: (u64,u64)
+    fee: (u64, u64),
 }
 
 impl Invariant {
@@ -155,9 +154,11 @@ impl Invariant {
         let new_b = invariant.checked_div(new_a)?;
         let remove = self.token_b.checked_sub(new_b)?;
         let fee = remove.checked_mul(self.fee.1)?.checked_div(self.fee.0)?;
+        let new_b_with_fee = new_b.checked_add(fee)?;
+        let remove_less_fee = remove.checked_sub(fee)?;
         self.token_a = new_a;
         self.token_b = new_b.checked_add(fee)?;
-        remove.checked_sub(fee)
+        Some(remove_less_fee)
     }
 }
 
@@ -210,7 +211,6 @@ impl<'a> State {
         }
     }
 
-
     pub fn token_instruction(
         owner: &Pubkey,
         accounts: &[(Pubkey, bool, bool)],
@@ -242,19 +242,30 @@ impl<'a> State {
     }
 
     pub fn instance_id(program_id: &Pubkey, my_info: &AccountInfo) -> Result<Pubkey, Error> {
-        Pubkey::create_program_address(&[Self::to_str(my_info.key)], program_id).or(Err(Error::InvalidProgramAddress))
+        Pubkey::create_program_address(&[Self::to_str(my_info.key)], program_id)
+            .or(Err(Error::InvalidProgramAddress))
     }
 
-    pub fn token_issue(authority: &AccountInfo, token: &AccountInfo, destination: &AccountInfo, amount: u64) -> Result<Pubkey, Error> {
+    pub fn token_issue(
+        authority: &AccountInfo,
+        token: &AccountInfo,
+        destination: &AccountInfo,
+        amount: u64,
+    ) -> Result<Pubkey, Error> {
         unimplemented!();
     }
-    pub fn token_transfer(authority: &AccountInfo, token: &AccountInfo, destination: &AccountInfo, amount: u64) -> Result<Pubkey, Error> {
+    pub fn token_transfer(
+        authority: &AccountInfo,
+        token: &AccountInfo,
+        destination: &AccountInfo,
+        amount: u64,
+    ) -> Result<Pubkey, Error> {
         unimplemented!();
     }
 
     pub fn process_init<I: Iterator<Item = &'a AccountInfo<'a>>>(
         program_id: &Pubkey,
-        fee: (u64,u64),
+        fee: (u64, u64),
         account_info_iter: &mut I,
     ) -> ProgramResult {
         let swap_info = next_account_info(account_info_iter)?;
@@ -268,8 +279,7 @@ impl<'a> State {
             return Err(Error::AlreadyInUse.into());
         }
 
-        if *instance_info.key != Self::instance_id(program_id, swap_info)?
-        {
+        if *instance_info.key != Self::instance_id(program_id, swap_info)? {
             return Err(Error::InvalidProgramAddress.into());
         }
         let token_a = Self::token_account_deserialize(token_a_info)?;
@@ -327,8 +337,7 @@ impl<'a> State {
 
         let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
 
-        if *instance_info.key != Self::instance_id(program_id, swap_info)?
-        {
+        if *instance_info.key != Self::instance_id(program_id, swap_info)? {
             return Err(Error::InvalidProgramAddress.into());
         }
         if !(*into_info.key == token_swap.token_a || *into_info.key == token_swap.token_b) {
@@ -342,12 +351,14 @@ impl<'a> State {
         }
         let into_token = Self::token_account_deserialize(into_info)?;
         let from_token = Self::token_account_deserialize(from_info)?;
-        let mut invariant = Invariant { 
+        let mut invariant = Invariant {
             token_a: into_token.amount,
             token_b: from_token.amount,
             fee: token_swap.fee,
         };
-        let output = invariant.swap(amount).ok_or_else(|| Error::CalculationFailure)?;
+        let output = invariant
+            .swap(amount)
+            .ok_or_else(|| Error::SwapCalculationFailure)?;
         Self::token_transfer(instance_info, source_info, into_info, amount)?;
         Self::token_transfer(instance_info, from_info, dest_info, output)?;
         Ok(())
