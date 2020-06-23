@@ -18,10 +18,10 @@ pub enum Instruction {
     ///   Initalizes a new TokenSwap.
     ///
     ///   0. `[writable, signer]` New Token-swap to create.
-    ///   1. `[]` $instance derived from `create_program_address(&[Token-swap acccount])`
-    ///   2. `[]` token_a Account. Must be non zero, owned by $instance.
-    ///   3. `[]` token_b Account. Must be non zero, owned by $instance.
-    ///   4. `[writable]` pool_mint Account. Must be empty, owned by $instance.
+    ///   1. `[]` $authority derived from `create_program_address(&[Token-swap acccount])`
+    ///   2. `[]` token_a Account. Must be non zero, owned by $authority.
+    ///   3. `[]` token_b Account. Must be non zero, owned by $authority.
+    ///   4. `[writable]` pool_mint Account. Must be empty, owned by $authority.
     ///   5. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
     ///   userdata: fee rate as a ratio
     Init((u64, u64)),
@@ -29,8 +29,8 @@ pub enum Instruction {
     ///   Swap the tokens in the pool.
     ///
     ///   0. `[]` Token-swap
-    ///   1. `[]` $instance
-    ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transfarable by $instance,
+    ///   1. `[]` $authority
+    ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transfarable by $authority,
     ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
     ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
     ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
@@ -40,13 +40,13 @@ pub enum Instruction {
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
     ///
-    ///   0. `[]` Token-swap instance
-    ///   1. `[]` $instance
-    ///   2. `[writable]` token_a Account $instance can transfer amount,
-    ///   3. `[writable]` token_b Account $instance can transfer amount,
+    ///   0. `[]` Token-swap authority
+    ///   1. `[]` $authority
+    ///   2. `[writable]` token_a Account $authority can transfer amount,
+    ///   3. `[writable]` token_b Account $authority can transfer amount,
     ///   4. `[writable]` token_a Base Account to deposit into.
     ///   5. `[writable]` token_b Base Account to deposit into.
-    ///   6. `[writable]` Pool MINT account, $instance is the owner.
+    ///   6. `[writable]` Pool MINT account, $authority is the owner.
     ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
     ///   userdata: token_a amount to transfer.  token_b amount is set by the current exchange rate.
     Deposit(u64),
@@ -54,9 +54,9 @@ pub enum Instruction {
     ///   Withdraw the token from the pool at the current ratio.
     ///   
     ///   0. `[]` Token-swap
-    ///   1. `[]` $instance
-    ///   2. `[writable]` SOURCE Pool Account, amount is transfarable by $instance.
-    ///   3. `[writable]` Pool MINT account, $instance is the owner.
+    ///   1. `[]` $authority
+    ///   2. `[writable]` SOURCE Pool Account, amount is transfarable by $authority.
+    ///   3. `[writable]` Pool MINT account, $authority is the owner.
     ///   4. `[writable]` token_a Account to withdraw FROM.
     ///   5. `[writable]` token_b Account to withdraw FROM.
     ///   6. `[writable]` token_a user Account.
