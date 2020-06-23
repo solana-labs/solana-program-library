@@ -89,26 +89,26 @@ impl Instruction {
         }
         Ok(match input[0] {
             0 => {
-                let fee: &(u64,u64) = unpack(input)?;
+                let fee: &(u64, u64) = unpack(input)?;
                 Self::Init(*fee)
-            },
+            }
             1 => {
                 let fee: &u64 = unpack(input)?;
                 Self::Swap(*fee)
-            },
+            }
             2 => {
                 let fee: &u64 = unpack(input)?;
                 Self::Deposit(*fee)
-            },
+            }
             3 => {
                 let fee: &u64 = unpack(input)?;
                 Self::Withdraw(*fee)
-            },
+            }
             _ => return Err(ProgramError::InvalidAccountData),
         })
     }
 }
- 
+
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum Error {
     /// The account cannot be initialized because it is already being used.
@@ -209,11 +209,16 @@ impl Invariant {
         token_a.checked_mul(self.token_b)?.checked_div(self.token_a)
     }
     fn redeem(&self, user_pool: u64) -> Option<(u64, u64)> {
-        let token_a = self.token_a.checked_mul(user_pool)?.checked_div(self.pool?)?;
-        let token_b = self.token_b.checked_mul(user_pool)?.checked_div(self.pool?)?;
+        let token_a = self
+            .token_a
+            .checked_mul(user_pool)?
+            .checked_div(self.pool?)?;
+        let token_b = self
+            .token_b
+            .checked_mul(user_pool)?
+            .checked_div(self.pool?)?;
         Some((token_a, token_b))
     }
-
 }
 
 impl<'a> State {
@@ -524,11 +529,11 @@ impl<'a> State {
             Instruction::Init(fee) => {
                 info!("Instruction: Init");
                 Self::process_init(program_id, fee, account_info_iter)
-            },
+            }
             Instruction::Swap(amount) => {
                 info!("Instruction: Swap");
                 Self::process_swap(program_id, amount, account_info_iter)
-            },
+            }
             Instruction::Deposit(amount) => {
                 info!("Instruction: Deposit");
                 Self::process_deposit(program_id, amount, account_info_iter)
