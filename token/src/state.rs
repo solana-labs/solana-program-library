@@ -468,17 +468,23 @@ impl<'a> State {
 
     /// Deserializes a byte buffer into a Token Program [State](struct.State.html)
     pub fn deserialize(input: &'a [u8]) -> Result<Self, ProgramError> {
-        if input.len() < size_of::<State>() {
+        if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
         Ok(match input[0] {
             0 => Self::Unallocated,
             1 => {
+                if input.len() < size_of::<u8>() + size_of::<Token>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
                 #[allow(clippy::cast_ptr_alignment)]
                 let token: &Token = unsafe { &*(&input[1] as *const u8 as *const Token) };
                 Self::Token(*token)
             }
             2 => {
+                if input.len() < size_of::<u8>() + size_of::<Account>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
                 #[allow(clippy::cast_ptr_alignment)]
                 let account: &Account = unsafe { &*(&input[1] as *const u8 as *const Account) };
                 Self::Account(*account)
@@ -490,18 +496,24 @@ impl<'a> State {
 
     /// Serializes Token Program [State](struct.State.html) into a byte buffer
     pub fn serialize(self: &Self, output: &mut [u8]) -> ProgramResult {
-        if output.len() < size_of::<State>() {
+        if output.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
         match self {
             Self::Unallocated => output[0] = 0,
             Self::Token(token) => {
+                if output.len() < size_of::<u8>() + size_of::<Token>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
                 output[0] = 1;
                 #[allow(clippy::cast_ptr_alignment)]
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Token) };
                 *value = *token;
             }
             Self::Account(account) => {
+                if output.len() < size_of::<u8>() + size_of::<Account>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
                 output[0] = 2;
                 #[allow(clippy::cast_ptr_alignment)]
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Account) };

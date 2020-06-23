@@ -89,33 +89,48 @@ pub enum TokenInstruction {
 impl TokenInstruction {
     /// Deserializes a byte buffer into an [TokenInstruction](enum.TokenInstruction.html)
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < size_of::<TokenInstruction>() {
+        if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
         Ok(match input[0] {
             0 => {
+                if input.len() < size_of::<u8>() + size_of::<TokenInfo>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
                 #[allow(clippy::cast_ptr_alignment)]
                 let info: &TokenInfo = unsafe { &*(&input[1] as *const u8 as *const TokenInfo) };
                 Self::NewToken(*info)
             }
             1 => Self::NewAccount,
             2 => {
+                if input.len() < size_of::<u8>() + size_of::<u64>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
                 Self::Transfer(*amount)
             }
             3 => {
+                if input.len() < size_of::<u8>() + size_of::<u64>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
                 Self::Approve(*amount)
             }
             4 => Self::SetOwner,
             5 => {
+                if input.len() < size_of::<u8>() + size_of::<u64>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
                 Self::MintTo(*amount)
             }
             6 => {
+                if input.len() < size_of::<u8>() + size_of::<u64>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
                 Self::Burn(*amount)
