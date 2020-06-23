@@ -102,7 +102,7 @@ pub enum Error {
 
     /// The input token is invalid for swap
     #[error("InvalidInput")]
-    InvalidInto,
+    InvalidInput,
 
     /// The output token is invalid for swap
     #[error("InvalidOutput")]
@@ -151,8 +151,7 @@ struct Invariant {
 impl Invariant {
     fn swap(&mut self, token_a: u64) -> Option<u64> {
         let invariant = self.token_a.checked_mul(self.token_b)?;
-        let token_a_less_fee = token_a.checked_sub(fee)?;
-        let new_a = self.token_a.checked_add(token_a_less_fee)?;
+        let new_a = self.token_a.checked_add(token_a)?;
         let new_b = invariant.checked_div(new_a)?;
         let remove = self.token_b.checked_sub(new_b)?;
         let fee = remove.checked_mul(self.fee.1)?.checked_div(self.fee.0)?;
@@ -203,9 +202,9 @@ impl<'a> State {
         Ok(())
     }
 
-    fn token_swap(&self) -> Result<&TokenSwap, ProgramError> {
-        if let State::Init(ref swap) = &self {
-            Ok(swap)
+    fn token_swap(&self) -> Result<TokenSwap, ProgramError> {
+        if let State::Init(swap) = &self {
+            Ok(*swap)
         } else {
             Err(Error::InvalidState.into())
         }
@@ -247,6 +246,9 @@ impl<'a> State {
     }
 
     pub fn token_issue(authority: &AccountInfo, token: &AccountInfo, destination: &AccountInfo, amount: u64) -> Result<Pubkey, Error> {
+        unimplemented!();
+    }
+    pub fn token_transfer(authority: &AccountInfo, token: &AccountInfo, destination: &AccountInfo, amount: u64) -> Result<Pubkey, Error> {
         unimplemented!();
     }
 
@@ -323,7 +325,7 @@ impl<'a> State {
         let from_info = next_account_info(account_info_iter)?;
         let dest_info = next_account_info(account_info_iter)?;
 
-        let token_swap = State::deserialize(&swap_info.data.borrow())?.token_swap()?;
+        let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
 
         if *instance_info.key != Self::instance_id(program_id, swap_info)?
         {
@@ -338,12 +340,14 @@ impl<'a> State {
         if *into_info.key == *from_info.key {
             return Err(Error::InvalidInput.into());
         }
-        let invariant = Invariant { 
+        let into_token = Self::token_account_deserialize(into_info)?;
+        let from_token = Self::token_account_deserialize(from_info)?;
+        let mut invariant = Invariant { 
             token_a: into_token.amount,
             token_b: from_token.amount,
             fee: token_swap.fee,
         };
-        let output = invariant.swap(amount).or_else(Err(Error::CalculationFailure))?;
+        let output = invariant.swap(amount).ok_or_else(|| Error::CalculationFailure)?;
         Self::token_transfer(instance_info, source_info, into_info, amount)?;
         Self::token_transfer(instance_info, from_info, dest_info, output)?;
         Ok(())
