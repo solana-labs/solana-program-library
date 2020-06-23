@@ -88,6 +88,10 @@ pub enum Error {
     /// The intiailized pool had a non zero supply
     #[error("InvalidSupply")]
     InvalidSupply,
+
+    /// The intiailized token has a delegate
+    #[error("InvalidDelegate")]
+    InvalidDelegate,
 }
 
 impl From<Error> for ProgramError {
@@ -254,6 +258,12 @@ impl<'a> State {
         }
         if token_a.amount == 0 {
             return Err(Error::InvalidSupply.into());
+        }
+        if token_a.delegate.is_some() {
+            return Err(Error::InvalidDelegate.into());
+        }
+        if token_b.delegate.is_some() {
+            return Err(Error::InvalidDelegate.into());
         }
         // liquidity token is 2x the A token amount
         // because the token_b amount has the same value at the current ratio
