@@ -1,8 +1,8 @@
 extern crate spl_token;
 
 use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
-use solana_sdk::program::invoke_signed;
+//use num_traits::FromPrimitive;
+//use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     account_info::AccountInfo, entrypoint::ProgramResult, info, program_error::ProgramError,
     program_utils::next_account_info, pubkey::Pubkey,
@@ -72,6 +72,42 @@ pub enum Instruction {
     Withdraw(u64),
 }
 
+impl Instruction {
+    /// Deserializes a byte buffer into an [Instruction](enum.Instruction.html)
+    pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
+        if input.len() < size_of::<u8>() + size_of::<T>() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        #[allow(clippy::cast_ptr_alignment)]
+        let val: &T = unsafe { &*(&input[1] as *const u8 as *const T) };
+        Ok(val)
+    }
+    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
+        if input.len() < size_of::<u8>() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        Ok(match input[0] {
+            0 => {
+                let fee: &(u64,u64) = Self::unpack(input)?;
+                Self::Init(*fee)
+            },
+            1 => {
+                let fee: &u64 = Self::unpack(input)?;
+                Self::Swap(*fee)
+            },
+            2 => {
+                let fee: &u64 = Self::unpack(input)?;
+                Self::Deposit(*fee)
+            },
+            3 => {
+                let fee: &u64 = Self::unpack(input)?;
+                Self::Withdraw(*fee)
+            },
+            _ => return Err(ProgramError::InvalidAccountData),
+        })
+    }
+}
+ 
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum Error {
     /// The account cannot be initialized because it is already being used.
@@ -151,6 +187,7 @@ pub enum State {
 struct Invariant {
     token_a: u64,
     token_b: u64,
+    pool: Option<u64>,
     fee: (u64, u64),
 }
 
@@ -164,16 +201,22 @@ impl Invariant {
         let new_b_with_fee = new_b.checked_add(fee)?;
         let remove_less_fee = remove.checked_sub(fee)?;
         self.token_a = new_a;
-        self.token_b = new_b.checked_add(fee)?;
+        self.token_b = new_b_with_fee;
         Some(remove_less_fee)
     }
     fn exchange_rate(&self, token_a: u64) -> Option<u64> {
         token_a.checked_mul(self.token_b)?.checked_div(self.token_a)
     }
+    fn redeem(&self, user_pool: u64) -> Option<(u64, u64)> {
+        let token_a = self.token_a.checked_mul(user_pool)?.checked_div(self.pool?)?;
+        let token_b = self.token_b.checked_mul(user_pool)?.checked_div(self.pool?)?;
+        Some((token_a, token_b))
+    }
+
 }
 
 impl<'a> State {
-    pub fn to_str(key: &Pubkey) -> &str {
+    pub fn to_str(_key: &Pubkey) -> &str {
         unimplemented!();
     }
     pub fn deserialize(input: &'a [u8]) -> Result<Self, ProgramError> {
@@ -221,14 +264,6 @@ impl<'a> State {
         }
     }
 
-    pub fn token_instruction(
-        owner: &Pubkey,
-        accounts: &[(Pubkey, bool, bool)],
-        userdata: &[u8],
-    ) -> solana_sdk::instruction::Instruction {
-        unimplemented!();
-    }
-
     pub fn token_account_deserialize(
         info: &AccountInfo,
     ) -> Result<spl_token::state::Account, Error> {
@@ -255,20 +290,28 @@ impl<'a> State {
         Pubkey::create_program_address(&[Self::to_str(my_info.key)], program_id)
             .or(Err(Error::InvalidProgramAddress))
     }
+    pub fn token_burn(
+        _authority: &AccountInfo,
+        _token: &AccountInfo,
+        _burn_account: &AccountInfo,
+        _amount: u64,
+    ) -> Result<Pubkey, Error> {
+        unimplemented!();
+    }
 
     pub fn token_issue(
-        authority: &AccountInfo,
-        token: &AccountInfo,
-        destination: &AccountInfo,
-        amount: u64,
+        _authority: &AccountInfo,
+        _token: &AccountInfo,
+        _destination: &AccountInfo,
+        _amount: u64,
     ) -> Result<Pubkey, Error> {
         unimplemented!();
     }
     pub fn token_transfer(
-        authority: &AccountInfo,
-        token: &AccountInfo,
-        destination: &AccountInfo,
-        amount: u64,
+        _authority: &AccountInfo,
+        _token: &AccountInfo,
+        _destination: &AccountInfo,
+        _amount: u64,
     ) -> Result<Pubkey, Error> {
         unimplemented!();
     }
@@ -319,9 +362,10 @@ impl<'a> State {
         if token_b.delegate.is_some() {
             return Err(Error::InvalidDelegate.into());
         }
-        // liquidity token is 2x the A token amount
-        // because the token_b amount has the same value at the current ratio
-        let amount = token_a.amount * 2;
+
+        // liqudity is measured in terms of token_a's value
+        // since both sides of the pool are equal
+        let amount = token_a.amount;
         Self::token_issue(instance_info, pool_info, user_output_info, amount)?;
 
         let obj = State::Init(TokenSwap {
@@ -365,6 +409,7 @@ impl<'a> State {
             token_a: into_token.amount,
             token_b: from_token.amount,
             fee: token_swap.fee,
+            pool: None,
         };
         let output = invariant
             .swap(amount)
@@ -407,11 +452,15 @@ impl<'a> State {
             token_a: token_a.amount,
             token_b: token_b.amount,
             fee: token_swap.fee,
+            pool: None,
         };
         let b_amount = invariant
             .exchange_rate(a_amount)
             .ok_or_else(|| Error::CalculationFailure)?;
-        let output = a_amount * 2;
+
+        // liqudity is measured in terms of token_a's value
+        // since both sides of the pool are equal
+        let output = a_amount;
 
         Self::token_transfer(instance_info, source_a_info, token_a_info, a_amount)?;
         Self::token_transfer(instance_info, source_b_info, token_b_info, b_amount)?;
@@ -420,27 +469,77 @@ impl<'a> State {
         Ok(())
     }
 
-    //     /// Processes an [Instruction](enum.Instruction.html).
-    //     pub fn process(
-    //         program_id: &Pubkey,
-    //         accounts: &'a [AccountInfo<'a>],
-    //         input: &[u8],
-    //     ) -> ProgramResult {
-    //         let instruction = Instruction::deserialize(input)?;
-    //         let account_info_iter = &mut accounts.iter();
-    //         match instruction {
-    //             Instruction::Init => {
-    //                 info!("Instruction: Init");
-    //                 Self::process_init(account_info_iter)
-    //             },
-    //             Instruction::Swap => {
-    //                 info!("Instruction: Swap");
-    //                 Self::process_swap(program_id, account_info_iter)
-    //             },
-    //             Instruction::Withdraw => {
-    //                 info!("Instruction: Withdraw");
-    //                 Self::process_withdraw(program_id, account_info_iter)
-    //             }
-    //         }
-    //     }
+    pub fn process_withdraw<I: Iterator<Item = &'a AccountInfo<'a>>>(
+        program_id: &Pubkey,
+        amount: u64,
+        account_info_iter: &mut I,
+    ) -> ProgramResult {
+        let swap_info = next_account_info(account_info_iter)?;
+        let instance_info = next_account_info(account_info_iter)?;
+        let source_info = next_account_info(account_info_iter)?;
+        let pool_info = next_account_info(account_info_iter)?;
+        let token_a_info = next_account_info(account_info_iter)?;
+        let token_b_info = next_account_info(account_info_iter)?;
+        let dest_token_a_info = next_account_info(account_info_iter)?;
+        let dest_token_b_info = next_account_info(account_info_iter)?;
+
+        let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
+        if *instance_info.key != Self::instance_id(program_id, swap_info)? {
+            return Err(Error::InvalidProgramAddress.into());
+        }
+        if *token_a_info.key != token_swap.token_a {
+            return Err(Error::InvalidInput.into());
+        }
+        if *token_b_info.key != token_swap.token_b {
+            return Err(Error::InvalidInput.into());
+        }
+        if *pool_info.key != token_swap.pool_mint {
+            return Err(Error::InvalidInput.into());
+        }
+        let token_a = Self::token_account_deserialize(token_a_info)?;
+        let token_b = Self::token_account_deserialize(token_b_info)?;
+        let pool_token = Self::token_deserialize(pool_info)?;
+
+        let invariant = Invariant {
+            token_a: token_a.amount,
+            token_b: token_b.amount,
+            fee: token_swap.fee,
+            pool: Some(pool_token.info.supply),
+        };
+
+        let (a_amount, b_amount) = invariant
+            .redeem(amount)
+            .ok_or_else(|| Error::CalculationFailure)?;
+        Self::token_transfer(instance_info, token_a_info, dest_token_b_info, a_amount)?;
+        Self::token_transfer(instance_info, token_b_info, dest_token_a_info, b_amount)?;
+        Self::token_burn(instance_info, pool_info, source_info, amount)?;
+        Ok(())
+    }
+    /// Processes an [Instruction](enum.Instruction.html).
+    pub fn process(
+        program_id: &Pubkey,
+        accounts: &'a [AccountInfo<'a>],
+        input: &[u8],
+    ) -> ProgramResult {
+        let instruction = Instruction::deserialize(input)?;
+        let account_info_iter = &mut accounts.iter();
+        match instruction {
+            Instruction::Init(fee) => {
+                info!("Instruction: Init");
+                Self::process_init(program_id, fee, account_info_iter)
+            },
+            Instruction::Swap(amount) => {
+                info!("Instruction: Swap");
+                Self::process_swap(program_id, amount, account_info_iter)
+            },
+            Instruction::Deposit(amount) => {
+                info!("Instruction: Deposit");
+                Self::process_deposit(program_id, amount, account_info_iter)
+            }
+            Instruction::Withdraw(amount) => {
+                info!("Instruction: Withdraw");
+                Self::process_withdraw(program_id, amount, account_info_iter)
+            }
+        }
+    }
 }
