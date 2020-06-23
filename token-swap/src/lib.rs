@@ -40,7 +40,7 @@ pub enum Instruction {
     ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
     ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
     ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
-    ///   userdata: source amount to transfer, output to DEST is based on the exchange rate and source amount
+    ///   userdata: SOURCE amount to transfer, output to DEST is based on the exchange rate
     Swap(u64),
 
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
@@ -48,21 +48,28 @@ pub enum Instruction {
     ///
     ///   0. `[]` Token-swap instance
     ///   1. `[]` $instance
-    ///   2. `[writable]` token_(A|B) SOURCE Account assigned to $instance as the owner.
-    ///   3. `[writable]` token_(A|B) Base Account to deposit into.  Must be SOURCE token.
-    ///   4. `[writable]` Pool MINT account, $instance is the owner.
-    ///   4. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    Deposit,
+    ///   2. `[writable]` token_a Account $instance can transfer amount,
+    ///   3. `[writable]` token_b Account $instance can transfer amount,
+    ///   4. `[writable]` token_a Base Account to deposit into.
+    ///   5. `[writable]` token_b Base Account to deposit into.
+    ///   6. `[writable]` Pool MINT account, $instance is the owner.
+    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   userdata: token_a amount to transfer.  token_b amount is set by the current exchange rate.
+    Deposit(u64),
 
     ///   Withdraw the token from the pool at the current ratio.
     ///   
     ///   0. `[]` Token-swap
     ///   1. `[]` $instance
-    ///   2. `[writable]` SOURCE Pool Account, $instance is the owner, amount is total to burn.
+    ///   2. `[writable]` SOURCE Pool Account, $instance can transfer userdata amount.
     ///   3. `[writable]` Pool MINT account, $instance is the owner.
-    ///   4. `[writable]` token_(A|B) Base Account to withdraw FROM.
-    ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
-    Withdraw,
+    ///   4. `[writable]` token_a Account to withdraw FROM.
+    ///   5. `[writable]` token_b Account to withdraw FROM.
+    ///   6. `[writable]` token_a user Account.
+    ///   7. `[writable]` token_b user Account.
+    ///   userdata: SOURCE amount of pool tokens to transfer. User receives an output based on the
+    ///   percentage of the pool tokens that are returned.
+    Withdraw(u64),
 }
 
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
@@ -107,9 +114,9 @@ pub enum Error {
     #[error("InvalidOutput")]
     InvalidOutput,
 
-    /// The swap calculation failed
-    #[error("SwapCalculationFailure")]
-    SwapCalculationFailure,
+    /// The calculation failed
+    #[error("CalculationFailure")]
+    CalculationFailure,
 }
 
 impl From<Error> for ProgramError {
@@ -159,6 +166,9 @@ impl Invariant {
         self.token_a = new_a;
         self.token_b = new_b.checked_add(fee)?;
         Some(remove_less_fee)
+    }
+    fn exchange_rate(&self, token_a: u64) -> Option<u64> {
+        token_a.checked_mul(self.token_b)?.checked_div(self.token_a)
     }
 }
 
@@ -358,47 +368,58 @@ impl<'a> State {
         };
         let output = invariant
             .swap(amount)
-            .ok_or_else(|| Error::SwapCalculationFailure)?;
+            .ok_or_else(|| Error::CalculationFailure)?;
         Self::token_transfer(instance_info, source_info, into_info, amount)?;
         Self::token_transfer(instance_info, from_info, dest_info, output)?;
         Ok(())
     }
-    //
-    //     pub fn process_withdraw<I: Iterator<Item = &'a AccountInfo<'a>>>(
-    //         program_id: &Pubkey,
-    //         amount: u64,
-    //         account_info_iter: &mut I,
-    //     ) -> ProgramResult {
-    //         let token_swap_account = next_account_info(account_info_iter)?;
-    //         let state = State::deserialize(&token_swap_account.data.borrow())?;
-    //         let swap = state.swap()?;
-    //
-    //         let authority = next_account_info(account_info_iter)?;
-    //         if !authority.is_signer {
-    //             return Err(ProgramError::MissingRequiredSignature);
-    //         }
-    //         if !authority.pubkey != swap.authority {
-    //             return Err(ProgramError::InvalidAuthority);
-    //         }
-    //         let instance_id = token_swap_account.key;
-    //         let token_authority = Pubkey::create_program_address(&[instance_id, "authority"], program_id)?;
-    //
-    //         let token_info = next_account_info(account_info_iter)?;
-    //         let tokenA_account = Pubkey::create_program_address(&[instance_id, "tokenA"], program_id)?;
-    //         let tokenB_account = Pubkey::create_program_address(&[instance_id, "tokenB"], program_id)?;
-    //         let destination = next_account_info(account_info_iter)?;
-    //
-    //         if token_info.key == tokenA_account {
-    //             Self::transfer_token(instance_id, tokenA_account, destination, amount)?;
-    //         } else if token_info.key == tokenB_account {
-    //             Self::transfer_token(instance_id, tokenB_account, destination, amount)?;
-    //         } else {
-    //             return Err(Error::InvalidTokenAAccount);
-    //         }
-    //         Ok(())
-    //     }
-    //
-    //
+    pub fn process_deposit<I: Iterator<Item = &'a AccountInfo<'a>>>(
+        program_id: &Pubkey,
+        a_amount: u64,
+        account_info_iter: &mut I,
+    ) -> ProgramResult {
+        let swap_info = next_account_info(account_info_iter)?;
+        let instance_info = next_account_info(account_info_iter)?;
+        let source_a_info = next_account_info(account_info_iter)?;
+        let source_b_info = next_account_info(account_info_iter)?;
+        let token_a_info = next_account_info(account_info_iter)?;
+        let token_b_info = next_account_info(account_info_iter)?;
+        let pool_info = next_account_info(account_info_iter)?;
+        let dest_info = next_account_info(account_info_iter)?;
+
+        let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
+        if *instance_info.key != Self::instance_id(program_id, swap_info)? {
+            return Err(Error::InvalidProgramAddress.into());
+        }
+        if *token_a_info.key != token_swap.token_a {
+            return Err(Error::InvalidInput.into());
+        }
+        if *token_b_info.key != token_swap.token_b {
+            return Err(Error::InvalidInput.into());
+        }
+        if *pool_info.key != token_swap.pool_mint {
+            return Err(Error::InvalidInput.into());
+        }
+        let token_a = Self::token_account_deserialize(token_a_info)?;
+        let token_b = Self::token_account_deserialize(token_b_info)?;
+
+        let invariant = Invariant {
+            token_a: token_a.amount,
+            token_b: token_b.amount,
+            fee: token_swap.fee,
+        };
+        let b_amount = invariant
+            .exchange_rate(a_amount)
+            .ok_or_else(|| Error::CalculationFailure)?;
+        let output = a_amount * 2;
+
+        Self::token_transfer(instance_info, source_a_info, token_a_info, a_amount)?;
+        Self::token_transfer(instance_info, source_b_info, token_b_info, b_amount)?;
+        Self::token_issue(instance_info, pool_info, dest_info, output)?;
+
+        Ok(())
+    }
+
     //     /// Processes an [Instruction](enum.Instruction.html).
     //     pub fn process(
     //         program_id: &Pubkey,
