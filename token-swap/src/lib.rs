@@ -29,7 +29,7 @@ pub enum Instruction {
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $instance
-    ///   2. `[writable]` token_(A|B) SOURCE Account assigned transfarable from $instance,
+    ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transfarable by $instance,
     ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
     ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
     ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
@@ -54,7 +54,7 @@ pub enum Instruction {
     ///   
     ///   0. `[]` Token-swap
     ///   1. `[]` $instance
-    ///   2. `[writable]` SOURCE Pool Account, $instance can transfer userdata amount.
+    ///   2. `[writable]` SOURCE Pool Account, amount is transfarable by $instance.
     ///   3. `[writable]` Pool MINT account, $instance is the owner.
     ///   4. `[writable]` token_a Account to withdraw FROM.
     ///   5. `[writable]` token_b Account to withdraw FROM.
