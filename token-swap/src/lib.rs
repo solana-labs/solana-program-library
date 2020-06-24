@@ -40,7 +40,7 @@ pub enum Instruction {
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
     ///
-    ///   0. `[]` Token-swap authority
+    ///   0. `[]` Token-swap
     ///   1. `[]` $authority
     ///   2. `[writable]` token_a Account $authority can transfer amount,
     ///   3. `[writable]` token_b Account $authority can transfer amount,
