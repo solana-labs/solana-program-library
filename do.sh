@@ -106,8 +106,8 @@ perform_action() {
                     >>"${dump}-mangled.txt"
                 sed \
                     s/://g \
-                    < "${dump}-mangled.txt" \
-                    | rustfilt \
+                    <"${dump}-mangled.txt" |
+                    rustfilt \
                     > "${dump}.txt"
             else
                 echo "Warning: No dump created, cannot find: $so"
@@ -127,21 +127,24 @@ perform_action() {
 }
 
 set -e
-
-if [[ "$#" -ne 2 ]]; then
     if [[ $1 == "update" ]]; then
         perform_action "$1"
     else
-        # Build all projects
+    if [[ ! -d "$sdkDir" ]]; then
+        ./do.sh update
+    fi
+fi
+
+if [[ "$#" -ne 2 ]]; then
+    # Perform operation on all projects
         for project in */; do
             if [[ -f "$project"Cargo.toml ]]; then
                 perform_action "$1" "$PWD/$project" "$project"
             else
-                continue;
+            continue
             fi
         done
-    fi
 else
-    # Build requested project
+    # Perform operation on requested project
     perform_action "$1" "$PWD/$2" "$2"
 fi
