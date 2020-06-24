@@ -60,13 +60,13 @@ pub enum TokenInstruction {
     ///   1. `[]` Source account.
     ///   2. `[writable]` Delegate account.
     Approve(u64),
-    /// Sets a new owner of an account.
+    /// Sets a new owner of a token or account.
     ///
     /// # Accounts expected by this instruction:
     ///
-    ///   0. `[signer]` Current owner of the account.
-    ///   1. `[writable]` account to change the owner of.
-    ///   2. `[]` New owner of the account.
+    ///   0. `[signer]` Current owner of the token or account.
+    ///   1. `[writable]` token or account to change the owner of.
+    ///   2. `[]` New owner
     SetOwner,
     /// Mints new tokens to an account.
     ///

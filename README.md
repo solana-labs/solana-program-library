@@ -43,6 +43,8 @@ Or:
 $ ./do.sh test <program>
 ```
 
+End-to-end testing may be performed via the per-project .js bindings.  See the [token program's js project](token/js) for an example.
+
 ## Clippy
 
 Clippy is also supported via:
