@@ -1,11 +1,16 @@
 extern crate spl_token;
 
 use num_derive::FromPrimitive;
-//use num_traits::FromPrimitive;
-//use solana_sdk::program::invoke_signed;
+#[cfg(target_arch = "bpf")]
+use solana_sdk::program::invoke_signed;
 use solana_sdk::{
-    account_info::AccountInfo, entrypoint::ProgramResult, info, program::invoke_signed,
-    program_error::ProgramError, program_utils::next_account_info, pubkey::Pubkey,
+    account_info::AccountInfo,
+    entrypoint::ProgramResult,
+    info,
+    instruction::{AccountMeta, Instruction},
+    program_error::ProgramError,
+    program_utils::next_account_info,
+    pubkey::Pubkey,
 };
 
 use std::mem::size_of;
@@ -14,7 +19,7 @@ use thiserror::Error;
 /// Instructions supported by the TokenSwap program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
-pub enum Instruction {
+pub enum SwapInstruction {
     ///   Initalizes a new TokenSwap.
     ///
     ///   0. `[writable, signer]` New Token-swap to create.
@@ -66,6 +71,35 @@ pub enum Instruction {
     Withdraw(u64),
 }
 
+/// Creates an 'Init' instruction
+pub fn init(
+    program_id: &Pubkey,
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    token_a_pubkey: &Pubkey,
+    token_b_pubkey: &Pubkey,
+    pool_pubkey: &Pubkey,
+    user_output_pubkey: &Pubkey,
+    fees: (u64, u64),
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::Init(fees).serialize()?;
+
+    let accounts = vec![
+        AccountMeta::new(*swap_pubkey, true),
+        AccountMeta::new(*authority_pubkey, false),
+        AccountMeta::new(*token_a_pubkey, false),
+        AccountMeta::new(*token_b_pubkey, false),
+        AccountMeta::new(*pool_pubkey, false),
+        AccountMeta::new(*user_output_pubkey, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
 pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
     if input.len() < size_of::<u8>() + size_of::<T>() {
         return Err(ProgramError::InvalidAccountData);
@@ -75,8 +109,8 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
     Ok(val)
 }
 
-impl Instruction {
-    /// Deserializes a byte buffer into an [Instruction](enum.Instruction.html)
+impl SwapInstruction {
+    /// Deserializes a byte buffer into an [SwapInstruction](enum.SwapInstruction.html)
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -100,6 +134,38 @@ impl Instruction {
             }
             _ => return Err(ProgramError::InvalidAccountData),
         })
+    }
+
+    /// Serializes an [SwapInstruction](enum.SwapInstruction.html) into a byte buffer
+    pub fn serialize(self: &Self) -> Result<Vec<u8>, ProgramError> {
+        let mut output = vec![0u8; size_of::<SwapInstruction>()];
+        match self {
+            Self::Init(fees) => {
+                output[0] = 0;
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut (u64, u64)) };
+                *value = *fees;
+            }
+            Self::Swap(amount) => {
+                output[0] = 1;
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                *value = *amount;
+            }
+            Self::Deposit(amount) => {
+                output[0] = 2;
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                *value = *amount;
+            }
+            Self::Withdraw(amount) => {
+                output[0] = 3;
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                *value = *amount;
+            }
+        }
+        Ok(output)
     }
 }
 
@@ -215,11 +281,8 @@ impl Invariant {
     }
 }
 
-impl<'a> State {
-    pub fn to_str(_key: &Pubkey) -> &str {
-        unimplemented!();
-    }
-    pub fn deserialize(input: &'a [u8]) -> Result<Self, ProgramError> {
+impl State {
+    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
@@ -282,8 +345,8 @@ impl<'a> State {
         }
     }
 
-    pub fn authority_id(program_id: &Pubkey, my_info: &AccountInfo) -> Result<Pubkey, Error> {
-        Pubkey::create_program_address(&[Self::to_str(my_info.key)], program_id)
+    pub fn authority_id(program_id: &Pubkey, my_info: &Pubkey) -> Result<Pubkey, Error> {
+        Pubkey::create_program_address(&[&my_info.to_string()[..32]], program_id)
             .or(Err(Error::InvalidProgramAddress))
     }
     pub fn token_burn(
@@ -294,7 +357,8 @@ impl<'a> State {
         burn_account: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let signers = &[&[Self::to_str(swap)][..]];
+        let swap_string = swap.to_string();
+        let signers = &[&[&swap_string[..32]][..]];
         let ix = spl_token::instruction::burn(
             &Pubkey::default(),
             authority,
@@ -314,7 +378,8 @@ impl<'a> State {
         destination: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let signers = &[&[Self::to_str(swap)][..]];
+        let swap_string = swap.to_string();
+        let signers = &[&[&swap_string[..32]][..]];
         let ix = spl_token::instruction::mint_to(
             &Pubkey::default(),
             authority,
@@ -333,7 +398,8 @@ impl<'a> State {
         destination: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let signers = &[&[Self::to_str(swap)][..]];
+        let swap_string = swap.to_string();
+        let signers = &[&[&swap_string[..32]][..]];
         let ix = spl_token::instruction::transfer(
             &Pubkey::default(),
             authority,
@@ -362,7 +428,7 @@ impl<'a> State {
             return Err(Error::AlreadyInUse.into());
         }
 
-        if *authority_info.key != Self::authority_id(program_id, swap_info)? {
+        if *authority_info.key != Self::authority_id(program_id, swap_info.key)? {
             return Err(Error::InvalidProgramAddress.into());
         }
         let token_a = Self::token_account_deserialize(token_a_info)?;
@@ -429,7 +495,7 @@ impl<'a> State {
 
         let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
 
-        if *authority_info.key != Self::authority_id(program_id, swap_info)? {
+        if *authority_info.key != Self::authority_id(program_id, swap_info.key)? {
             return Err(Error::InvalidProgramAddress.into());
         }
         if !(*into_info.key == token_swap.token_a || *into_info.key == token_swap.token_b) {
@@ -486,7 +552,7 @@ impl<'a> State {
         let dest_info = next_account_info(account_info_iter)?;
 
         let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
-        if *authority_info.key != Self::authority_id(program_id, swap_info)? {
+        if *authority_info.key != Self::authority_id(program_id, swap_info.key)? {
             return Err(Error::InvalidProgramAddress.into());
         }
         if *token_a_info.key != token_swap.token_a {
@@ -559,7 +625,7 @@ impl<'a> State {
         let dest_token_b_info = next_account_info(account_info_iter)?;
 
         let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
-        if *authority_info.key != Self::authority_id(program_id, swap_info)? {
+        if *authority_info.key != Self::authority_id(program_id, swap_info.key)? {
             return Err(Error::InvalidProgramAddress.into());
         }
         if *token_a_info.key != token_swap.token_a {
@@ -611,30 +677,187 @@ impl<'a> State {
         )?;
         Ok(())
     }
-    /// Processes an [Instruction](enum.Instruction.html).
-    pub fn process(
-        program_id: &Pubkey,
-        accounts: &'a [AccountInfo<'a>],
-        input: &[u8],
-    ) -> ProgramResult {
-        let instruction = Instruction::deserialize(input)?;
+    /// Processes an [SwapInstruction](enum.SwapInstruction.html).
+    pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
+        let instruction = SwapInstruction::deserialize(input)?;
         match instruction {
-            Instruction::Init(fee) => {
+            SwapInstruction::Init(fee) => {
                 info!("Instruction: Init");
                 Self::process_init(program_id, fee, accounts)
             }
-            Instruction::Swap(amount) => {
+            SwapInstruction::Swap(amount) => {
                 info!("Instruction: Swap");
                 Self::process_swap(program_id, amount, accounts)
             }
-            Instruction::Deposit(amount) => {
+            SwapInstruction::Deposit(amount) => {
                 info!("Instruction: Deposit");
                 Self::process_deposit(program_id, amount, accounts)
             }
-            Instruction::Withdraw(amount) => {
+            SwapInstruction::Withdraw(amount) => {
                 info!("Instruction: Withdraw");
                 Self::process_withdraw(program_id, amount, accounts)
             }
         }
+    }
+}
+
+// Test program id for the swap program
+#[cfg(not(target_arch = "bpf"))]
+const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
+
+/// Routes invokes to the token program, used for testing
+#[cfg(not(target_arch = "bpf"))]
+pub fn invoke_signed<'a>(
+    instruction: &Instruction,
+    account_infos: &[AccountInfo<'a>],
+    signers_seeds: &[&[&str]],
+) -> ProgramResult {
+    let mut new_account_infos = vec![];
+    for meta in instruction.accounts.iter() {
+        for account_info in account_infos.iter() {
+            if meta.pubkey == *account_info.key {
+                let mut new_account_info = account_info.clone();
+                for seeds in signers_seeds.iter() {
+                    let signer = Pubkey::create_program_address(seeds, &SWAP_PROGRAM_ID).unwrap();
+                    if *account_info.key == signer {
+                        new_account_info.is_signer = true;
+                    }
+                }
+                new_account_infos.push(new_account_info);
+            }
+        }
+    }
+    spl_token::state::State::process(
+        &instruction.program_id,
+        &new_account_infos,
+        &instruction.data,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use solana_sdk::{
+        account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
+    };
+    use spl_token::{
+        instruction::{new_account, new_token, TokenInfo},
+        state::State as SplState,
+    };
+
+    const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
+
+    // Pulls in the stubs required for `info!()`
+    #[cfg(not(target_arch = "bpf"))]
+    solana_sdk_bpf_test::stubs!();
+
+    fn pubkey_rand() -> Pubkey {
+        Pubkey::new(&rand::random::<[u8; 32]>())
+    }
+
+    fn do_process_instruction(
+        instruction: Instruction,
+        accounts: Vec<&mut Account>,
+    ) -> ProgramResult {
+        let mut meta = instruction
+            .accounts
+            .iter()
+            .zip(accounts)
+            .map(|(account_meta, account)| (&account_meta.pubkey, account_meta.is_signer, account))
+            .collect::<Vec<_>>();
+
+        let account_infos = create_is_signer_account_infos(&mut meta);
+        if instruction.program_id == SWAP_PROGRAM_ID {
+            State::process(&instruction.program_id, &account_infos, &instruction.data)
+        } else {
+            SplState::process(&instruction.program_id, &account_infos, &instruction.data)
+        }
+    }
+
+    fn mint_token(
+        program_id: &Pubkey,
+        authority_key: &Pubkey,
+        supply: u64,
+    ) -> ((Pubkey, Account), (Pubkey, Account)) {
+        let token_key = pubkey_rand();
+        let mut token_account = Account::new(0, size_of::<SplState>(), &program_id);
+        let account_key = pubkey_rand();
+        let mut account_account = Account::new(0, size_of::<SplState>(), &program_id);
+
+        // create pool and pool account
+        do_process_instruction(
+            new_account(&program_id, &account_key, &authority_key, &token_key, None).unwrap(),
+            vec![
+                &mut account_account,
+                &mut Account::default(),
+                &mut token_account,
+            ],
+        )
+        .unwrap();
+        let mut authority_account = Account::default();
+        do_process_instruction(
+            new_token(
+                &program_id,
+                &token_key,
+                Some(&account_key),
+                Some(&authority_key),
+                TokenInfo {
+                    supply,
+                    decimals: 2,
+                },
+            )
+            .unwrap(),
+            if supply == 0 {
+                vec![&mut token_account, &mut authority_account]
+            } else {
+                vec![
+                    &mut token_account,
+                    &mut account_account,
+                    &mut authority_account,
+                ]
+            },
+        )
+        .unwrap();
+
+        return ((token_key, token_account), (account_key, account_account));
+    }
+
+    #[test]
+    fn test_init() {
+        let swap_key = pubkey_rand();
+        let mut swap_account = Account::new(0, size_of::<State>(), &SWAP_PROGRAM_ID);
+        let authority_key = State::authority_id(&SWAP_PROGRAM_ID, &swap_key).unwrap();
+        let mut authority_account = Account::default();
+
+        let ((pool_key, mut pool_account), (pool_token_key, mut pool_token_account)) =
+            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 0);
+        let ((_token_a_mint_key, mut _token_a_mint_account), (token_a_key, mut token_a_account)) =
+            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000);
+        let ((_token_b_mint_key, mut _token_b_mint_account), (token_b_key, mut token_b_account)) =
+            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000);
+
+        // Swap Init
+        do_process_instruction(
+            init(
+                &SWAP_PROGRAM_ID,
+                &swap_key,
+                &authority_key,
+                &token_a_key,
+                &token_b_key,
+                &pool_key,
+                &pool_token_key,
+                (1, 2),
+            )
+            .unwrap(),
+            vec![
+                &mut swap_account,
+                &mut authority_account,
+                &mut token_a_account,
+                &mut token_b_account,
+                &mut pool_account,
+                &mut pool_token_account,
+            ],
+        )
+        .unwrap();
     }
 }

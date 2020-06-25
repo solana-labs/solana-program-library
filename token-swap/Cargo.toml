@@ -18,6 +18,9 @@ solana-sdk-bpf-test = { path = "../bin/bpf-sdk/rust/test", default-features = fa
 spl-token = { path = "../token", default-features = false }
 thiserror = "1.0"
 
+[dev-dependencies]
+rand = { version = "0.7.0"}
+
 [lib]
 name = "spl_token_swap"
 crate-type = ["cdylib", "lib"]
