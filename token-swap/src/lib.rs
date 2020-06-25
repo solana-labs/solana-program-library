@@ -1,33 +1,36 @@
 extern crate spl_token;
 
 use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 #[cfg(target_arch = "bpf")]
 use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     account_info::AccountInfo,
+    entrypoint,
     entrypoint::ProgramResult,
     info,
     instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    program_utils::next_account_info,
+    program_error::{PrintProgramError, ProgramError},
+    program_utils::{next_account_info, DecodeError},
     pubkey::Pubkey,
 };
-
 use std::mem::size_of;
 use thiserror::Error;
 
+// TODO update instruction documentation
 /// Instructions supported by the TokenSwap program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum SwapInstruction {
-    ///   Initalizes a new TokenSwap.
+    ///   Initializes a new TokenSwap.
     ///
     ///   0. `[writable, signer]` New Token-swap to create.
-    ///   1. `[]` $authority derived from `create_program_address(&[Token-swap acccount])`
+    ///   1. `[]` $authority derived from `create_program_address(&[Token-swap account])`
     ///   2. `[]` token_a Account. Must be non zero, owned by $authority.
     ///   3. `[]` token_b Account. Must be non zero, owned by $authority.
-    ///   4. `[writable]` pool_mint Account. Must be empty, owned by $authority.
+    ///   4. `[writable]` pool Token. Must be empty, owned by $authority.
     ///   5. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   6. '[]` Token program id
     ///   userdata: fee rate as a ratio
     Init((u64, u64)),
 
@@ -35,10 +38,12 @@ pub enum SwapInstruction {
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
-    ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transfarable by $authority,
-    ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
-    ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
-    ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
+    ///   2. `[writable]` token_(A|B) SOURCE delegate Account, amount is transferable by $authority,
+    ///   3. `[writable]` token_(A|B) SOURCE Account associated with the delegate
+    ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
+    ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
+    ///   6. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
+    ///   7. '[]` Token program id
     ///   userdata: SOURCE amount to transfer, output to DEST is based on the exchange rate
     Swap(u64),
 
@@ -47,12 +52,15 @@ pub enum SwapInstruction {
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
-    ///   2. `[writable]` token_a Account $authority can transfer amount,
-    ///   3. `[writable]` token_b Account $authority can transfer amount,
-    ///   4. `[writable]` token_a Base Account to deposit into.
-    ///   5. `[writable]` token_b Base Account to deposit into.
-    ///   6. `[writable]` Pool MINT account, $authority is the owner.
-    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   2. `[writable]` token_a delegate $authority can transfer amount,
+    ///   3. `[writable]` token_a account associated with delegate
+    ///   4. `[writable]` token_b delegate $authority can transfer amount,
+    ///   5. `[writable]` token_b account associated with delegate
+    ///   6. `[writable]` token_a Base Account to deposit into.
+    ///   7. `[writable]` token_b Base Account to deposit into.
+    ///   8. `[writable]` Pool MINT account, $authority is the owner.
+    ///   9. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   10. '[]` Token program id
     ///   userdata: token_a amount to transfer.  token_b amount is set by the current exchange rate.
     Deposit(u64),
 
@@ -60,12 +68,14 @@ pub enum SwapInstruction {
     ///   
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
-    ///   2. `[writable]` SOURCE Pool Account, amount is transfarable by $authority.
-    ///   3. `[writable]` Pool MINT account, $authority is the owner.
-    ///   4. `[writable]` token_a Account to withdraw FROM.
-    ///   5. `[writable]` token_b Account to withdraw FROM.
-    ///   6. `[writable]` token_a user Account.
-    ///   7. `[writable]` token_b user Account.
+    ///   2. `[writable]` SOURCE Pool delegate, amount is transferable by $authority.
+    ///   3. `[writable]` SOURCE Pool account associated with the delegate
+    ///   4. `[writable]` Pool MINT account, $authority is the owner.
+    ///   5. `[writable]` token_a Account to withdraw FROM.
+    ///   6. `[writable]` token_b Account to withdraw FROM.
+    ///   7. `[writable]` token_a user Account.
+    ///   8. `[writable]` token_b user Account.
+    ///   9. '[]` Token program id
     ///   userdata: SOURCE amount of pool tokens to transfer. User receives an output based on the
     ///   percentage of the pool tokens that are returned.
     Withdraw(u64),
@@ -74,6 +84,7 @@ pub enum SwapInstruction {
 /// Creates an 'Init' instruction
 pub fn init(
     program_id: &Pubkey,
+    token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     token_a_pubkey: &Pubkey,
@@ -91,6 +102,7 @@ pub fn init(
         AccountMeta::new(*token_b_pubkey, false),
         AccountMeta::new(*pool_pubkey, false),
         AccountMeta::new(*user_output_pubkey, false),
+        AccountMeta::new(*token_program_id, false),
     ];
 
     Ok(Instruction {
@@ -174,51 +186,65 @@ pub enum Error {
     /// The account cannot be initialized because it is already being used.
     #[error("AlreadyInUse")]
     AlreadyInUse,
-
     /// The program address provided doesn't match the value generated by the program.
     #[error("InvalidProgramAddress")]
     InvalidProgramAddress,
-
     /// The owner of the input isn't set to the program address generated by the program.
     #[error("InvalidOwner")]
     InvalidOwner,
-
     /// The deserialization of the Token state returned something besides State::Token
     #[error("ExpectedToken")]
     ExpectedToken,
-
     /// The deserialization of the Token state returned something besides State::Account
     #[error("ExpectedAccount")]
     ExpectedAccount,
-
-    /// The intiailized pool had a non zero supply
+    /// The initialized pool had a non zero supply
     #[error("InvalidSupply")]
     InvalidSupply,
-
     /// The intiailized token has a delegate
     #[error("InvalidDelegate")]
     InvalidDelegate,
-
     /// The token swap state is invalid
     #[error("InvalidState")]
     InvalidState,
-
     /// The input token is invalid for swap
     #[error("InvalidInput")]
     InvalidInput,
-
     /// The output token is invalid for swap
     #[error("InvalidOutput")]
     InvalidOutput,
-
     /// The calculation failed
     #[error("CalculationFailure")]
     CalculationFailure,
 }
-
 impl From<Error> for ProgramError {
     fn from(e: Error) -> Self {
         ProgramError::Custom(e as u32)
+    }
+}
+impl<T> DecodeError<T> for Error {
+    fn type_of() -> &'static str {
+        "Swap Error"
+    }
+}
+impl PrintProgramError for Error {
+    fn print<E>(&self)
+    where
+        E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
+    {
+        match self {
+            Error::AlreadyInUse => info!("Error: AlreadyInUse"),
+            Error::InvalidProgramAddress => info!("Error: InvalidProgramAddress"),
+            Error::InvalidOwner => info!("Error: InvalidOwner"),
+            Error::ExpectedToken => info!("Error: ExpectedToken"),
+            Error::ExpectedAccount => info!("Error: ExpectedAccount"),
+            Error::InvalidSupply => info!("Error: InvalidSupply"),
+            Error::InvalidDelegate => info!("Error: InvalidDelegate"),
+            Error::InvalidState => info!("Error: InvalidState"),
+            Error::InvalidInput => info!("Error: InvalidInput"),
+            Error::InvalidOutput => info!("Error: InvalidOutput"),
+            Error::CalculationFailure => info!("Error: CalculationFailure"),
+        }
     }
 }
 
@@ -226,7 +252,7 @@ impl From<Error> for ProgramError {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct TokenSwap {
     /// token A
-    /// The Liqudity token is issued against this value.
+    /// The Liquidity token is issued against this value.
     token_a: Pubkey,
     /// token B
     token_b: Pubkey,
@@ -351,20 +377,22 @@ impl State {
     }
     pub fn token_burn(
         accounts: &[AccountInfo],
+        token_program_id: &Pubkey,
         swap: &Pubkey,
         authority: &Pubkey,
         token: &Pubkey,
+        source: Option<&Pubkey>,
         burn_account: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
         let ix = spl_token::instruction::burn(
-            &Pubkey::default(),
+            token_program_id,
             authority,
             burn_account,
             token,
-            None,
+            source,
             amount,
         )?;
         invoke_signed(&ix, accounts, signers)
@@ -372,6 +400,7 @@ impl State {
 
     pub fn token_mint_to(
         accounts: &[AccountInfo],
+        token_program_id: &Pubkey,
         swap: &Pubkey,
         authority: &Pubkey,
         token: &Pubkey,
@@ -381,7 +410,7 @@ impl State {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
         let ix = spl_token::instruction::mint_to(
-            &Pubkey::default(),
+            token_program_id,
             authority,
             token,
             destination,
@@ -392,20 +421,22 @@ impl State {
 
     pub fn token_transfer(
         accounts: &[AccountInfo],
+        token_program_id: &Pubkey,
         swap: &Pubkey,
         authority: &Pubkey,
         token: &Pubkey,
+        source: Option<&Pubkey>,
         destination: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
         let ix = spl_token::instruction::transfer(
-            &Pubkey::default(),
+            token_program_id,
             authority,
             token,
             destination,
-            None,
+            source,
             amount,
         )?;
         invoke_signed(&ix, accounts, signers)
@@ -423,6 +454,7 @@ impl State {
         let token_b_info = next_account_info(account_info_iter)?;
         let pool_info = next_account_info(account_info_iter)?;
         let user_output_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
         if State::Unallocated != State::deserialize(&swap_info.data.borrow())? {
             return Err(Error::AlreadyInUse.into());
@@ -464,6 +496,7 @@ impl State {
         let amount = token_a.amount;
         Self::token_mint_to(
             accounts,
+            token_program_info.key,
             swap_info.key,
             authority_info.key,
             pool_info.key,
@@ -488,10 +521,12 @@ impl State {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let source_delegate_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let into_info = next_account_info(account_info_iter)?;
         let from_info = next_account_info(account_info_iter)?;
         let dest_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
 
@@ -520,17 +555,21 @@ impl State {
             .ok_or_else(|| Error::CalculationFailure)?;
         Self::token_transfer(
             accounts,
+            token_program_info.key,
             swap_info.key,
             authority_info.key,
-            source_info.key,
+            source_delegate_info.key,
+            Some(source_info.key),
             into_info.key,
             amount,
         )?;
         Self::token_transfer(
             accounts,
+            token_program_info.key,
             swap_info.key,
             authority_info.key,
             from_info.key,
+            None,
             dest_info.key,
             output,
         )?;
@@ -544,12 +583,15 @@ impl State {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let delegate_a_info = next_account_info(account_info_iter)?;
         let source_a_info = next_account_info(account_info_iter)?;
+        let delegate_b_info = next_account_info(account_info_iter)?;
         let source_b_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
         let pool_info = next_account_info(account_info_iter)?;
         let dest_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
         if *authority_info.key != Self::authority_id(program_id, swap_info.key)? {
@@ -583,22 +625,27 @@ impl State {
 
         Self::token_transfer(
             accounts,
+            token_program_info.key,
             swap_info.key,
             authority_info.key,
-            source_a_info.key,
+            delegate_a_info.key,
+            Some(source_a_info.key),
             token_a_info.key,
             a_amount,
         )?;
         Self::token_transfer(
             accounts,
+            token_program_info.key,
             swap_info.key,
             authority_info.key,
-            source_b_info.key,
+            delegate_b_info.key,
+            Some(source_b_info.key),
             token_b_info.key,
             b_amount,
         )?;
         Self::token_mint_to(
             accounts,
+            token_program_info.key,
             swap_info.key,
             authority_info.key,
             pool_info.key,
@@ -617,12 +664,14 @@ impl State {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let delegate_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let pool_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
         let dest_token_a_info = next_account_info(account_info_iter)?;
         let dest_token_b_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
         if *authority_info.key != Self::authority_id(program_id, swap_info.key)? {
@@ -653,31 +702,37 @@ impl State {
             .ok_or_else(|| Error::CalculationFailure)?;
         Self::token_transfer(
             accounts,
+            token_program_info.key,
             swap_info.key,
             authority_info.key,
             token_a_info.key,
-            dest_token_b_info.key,
+            None,
+            dest_token_a_info.key,
             a_amount,
         )?;
         Self::token_transfer(
             accounts,
+            token_program_info.key,
             swap_info.key,
             authority_info.key,
             token_b_info.key,
-            dest_token_a_info.key,
+            None,
+            dest_token_b_info.key,
             b_amount,
         )?;
         Self::token_burn(
             accounts,
+            token_program_info.key,
             swap_info.key,
             authority_info.key,
             pool_info.key,
-            source_info.key,
+            Some(source_info.key),
+            delegate_info.key,
             amount,
         )?;
         Ok(())
     }
-    /// Processes an [SwapInstruction](enum.SwapInstruction.html).
+    /// Processes an [SwapInstruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = SwapInstruction::deserialize(input)?;
         match instruction {
@@ -699,6 +754,20 @@ impl State {
             }
         }
     }
+}
+
+entrypoint!(process_instruction);
+fn process_instruction<'a>(
+    program_id: &Pubkey,
+    accounts: &'a [AccountInfo<'a>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    if let Err(error) = State::process(program_id, accounts, instruction_data) {
+        // catch the error so we can print it
+        error.print::<Error>();
+        return Err(error);
+    }
+    Ok(())
 }
 
 // Test program id for the swap program
@@ -840,6 +909,7 @@ mod tests {
         do_process_instruction(
             init(
                 &SWAP_PROGRAM_ID,
+                &TOKEN_PROGRAM_ID,
                 &swap_key,
                 &authority_key,
                 &token_a_key,
@@ -856,6 +926,7 @@ mod tests {
                 &mut token_b_account,
                 &mut pool_account,
                 &mut pool_token_account,
+                &mut Account::default(),
             ],
         )
         .unwrap();
