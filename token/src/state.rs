@@ -70,12 +70,10 @@ impl Default for State {
     }
 }
 
-impl<'a> State {
+impl State {
     /// Processes a [NewToken](enum.TokenInstruction.html) instruction.
-    pub fn process_new_token<I: Iterator<Item = &'a AccountInfo<'a>>>(
-        account_info_iter: &mut I,
-        info: TokenInfo,
-    ) -> ProgramResult {
+    pub fn process_new_token(accounts: &[AccountInfo], info: TokenInfo) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
         let token_account_info = next_account_info(account_info_iter)?;
 
         if State::Unallocated != State::deserialize(&token_account_info.data.borrow())? {
@@ -118,9 +116,8 @@ impl<'a> State {
     }
 
     /// Processes a [NewAccount](enum.TokenInstruction.html) instruction.
-    pub fn process_new_account<I: Iterator<Item = &'a AccountInfo<'a>>>(
-        account_info_iter: &mut I,
-    ) -> ProgramResult {
+    pub fn process_new_account(accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
         let new_account_info = next_account_info(account_info_iter)?;
         let owner_account_info = next_account_info(account_info_iter)?;
         let token_account_info = next_account_info(account_info_iter)?;
@@ -152,10 +149,8 @@ impl<'a> State {
     }
 
     /// Processes a [Transfer](enum.TokenInstruction.html) instruction.
-    pub fn process_transfer<I: Iterator<Item = &'a AccountInfo<'a>>>(
-        account_info_iter: &mut I,
-        amount: u64,
-    ) -> ProgramResult {
+    pub fn process_transfer(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
         let owner_account_info = next_account_info(account_info_iter)?;
         let source_account_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
@@ -215,10 +210,8 @@ impl<'a> State {
     }
 
     /// Processes an [Approve](enum.TokenInstruction.html) instruction.
-    pub fn process_approve<I: Iterator<Item = &'a AccountInfo<'a>>>(
-        account_info_iter: &mut I,
-        amount: u64,
-    ) -> ProgramResult {
+    pub fn process_approve(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
         let owner_account_info = next_account_info(account_info_iter)?;
         let source_account_info = next_account_info(account_info_iter)?;
         let delegate_account_info = next_account_info(account_info_iter)?;
@@ -266,9 +259,8 @@ impl<'a> State {
     }
 
     /// Processes a [SetOwner](enum.TokenInstruction.html) instruction.
-    pub fn process_set_owner<I: Iterator<Item = &'a AccountInfo<'a>>>(
-        account_info_iter: &mut I,
-    ) -> ProgramResult {
+    pub fn process_set_owner(accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
         let owner_account_info = next_account_info(account_info_iter)?;
         let account_info = next_account_info(account_info_iter)?;
         let new_owner_account_info = next_account_info(account_info_iter)?;
@@ -305,10 +297,8 @@ impl<'a> State {
     }
 
     /// Processes a [MintTo](enum.TokenInstruction.html) instruction.
-    pub fn process_mintto<I: Iterator<Item = &'a AccountInfo<'a>>>(
-        account_info_iter: &mut I,
-        amount: u64,
-    ) -> ProgramResult {
+    pub fn process_mintto(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
         let owner_account_info = next_account_info(account_info_iter)?;
         let token_account_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
@@ -355,10 +345,8 @@ impl<'a> State {
     }
 
     /// Processes a [Burn](enum.TokenInstruction.html) instruction.
-    pub fn process_burn<I: Iterator<Item = &'a AccountInfo<'a>>>(
-        account_info_iter: &mut I,
-        amount: u64,
-    ) -> ProgramResult {
+    pub fn process_burn(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
         let owner_account_info = next_account_info(account_info_iter)?;
         let source_account_info = next_account_info(account_info_iter)?;
         let token_account_info = next_account_info(account_info_iter)?;
@@ -426,48 +414,43 @@ impl<'a> State {
     }
 
     /// Processes an [Instruction](enum.Instruction.html).
-    pub fn process(
-        _program_id: &Pubkey,
-        accounts: &'a [AccountInfo<'a>],
-        input: &[u8],
-    ) -> ProgramResult {
+    pub fn process(_program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::deserialize(input)?;
-        let account_info_iter = &mut accounts.iter();
 
         match instruction {
             TokenInstruction::NewToken(info) => {
                 info!("Instruction: NewToken");
-                Self::process_new_token(account_info_iter, info)
+                Self::process_new_token(accounts, info)
             }
             TokenInstruction::NewAccount => {
                 info!("Instruction: NewAccount");
-                Self::process_new_account(account_info_iter)
+                Self::process_new_account(accounts)
             }
             TokenInstruction::Transfer(amount) => {
                 info!("Instruction: Transfer");
-                Self::process_transfer(account_info_iter, amount)
+                Self::process_transfer(accounts, amount)
             }
             TokenInstruction::Approve(amount) => {
                 info!("Instruction: Approve");
-                Self::process_approve(account_info_iter, amount)
+                Self::process_approve(accounts, amount)
             }
             TokenInstruction::SetOwner => {
                 info!("Instruction: SetOwner");
-                Self::process_set_owner(account_info_iter)
+                Self::process_set_owner(accounts)
             }
             TokenInstruction::MintTo(amount) => {
                 info!("Instruction: MintTo");
-                Self::process_mintto(account_info_iter, amount)
+                Self::process_mintto(accounts, amount)
             }
             TokenInstruction::Burn(amount) => {
                 info!("Instruction: Burn");
-                Self::process_burn(account_info_iter, amount)
+                Self::process_burn(accounts, amount)
             }
         }
     }
 
     /// Deserializes a byte buffer into a Token Program [State](struct.State.html)
-    pub fn deserialize(input: &'a [u8]) -> Result<Self, ProgramError> {
+    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
@@ -537,11 +520,8 @@ mod tests {
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
     };
 
-    fn new_pubkey(id: u8) -> Pubkey {
-        Pubkey::new(&[
-            id, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1,
-        ])
+    fn pubkey_rand() -> Pubkey {
+        Pubkey::new(&rand::random::<[u8; 32]>())
     }
 
     fn do_process_instruction(
@@ -561,18 +541,18 @@ mod tests {
 
     #[test]
     fn test_new_token() {
-        let program_id = new_pubkey(1);
-        let token_account_key = new_pubkey(2);
+        let program_id = pubkey_rand();
+        let token_account_key = pubkey_rand();
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let token_account2_key = new_pubkey(3);
+        let token_account2_key = pubkey_rand();
         let mut token_account2_account = Account::new(0, size_of::<State>(), &program_id);
-        let delegate_account_key = new_pubkey(4);
+        let delegate_account_key = pubkey_rand();
         let mut delegate_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let owner_key = new_pubkey(5);
+        let owner_key = pubkey_rand();
         let mut owner_account = Account::default();
-        let token_key = new_pubkey(6);
+        let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
-        let token2_key = new_pubkey(7);
+        let token2_key = pubkey_rand();
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
 
         // account not created
@@ -726,12 +706,12 @@ mod tests {
 
     #[test]
     fn test_new_token_account() {
-        let program_id = new_pubkey(1);
-        let token_account_key = new_pubkey(2);
+        let program_id = pubkey_rand();
+        let token_account_key = pubkey_rand();
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let owner_key = new_pubkey(3);
+        let owner_key = pubkey_rand();
         let mut owner_account = Account::default();
-        let token_key = new_pubkey(4);
+        let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
 
         // missing signer
@@ -797,27 +777,27 @@ mod tests {
 
     #[test]
     fn test_transfer() {
-        let program_id = new_pubkey(1);
-        let token_account_key = new_pubkey(2);
+        let program_id = pubkey_rand();
+        let token_account_key = pubkey_rand();
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let token_account2_key = new_pubkey(3);
+        let token_account2_key = pubkey_rand();
         let mut token_account2_account = Account::new(0, size_of::<State>(), &program_id);
-        let token_account3_key = new_pubkey(3);
+        let token_account3_key = pubkey_rand();
         let mut token_account3_account = Account::new(0, size_of::<State>(), &program_id);
-        let delegate_account_key = new_pubkey(4);
+        let delegate_account_key = pubkey_rand();
         let mut delegate_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let mismatch_account_key = new_pubkey(5);
+        let mismatch_account_key = pubkey_rand();
         let mut mismatch_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let mismatch_delegate_account_key = new_pubkey(5);
+        let mismatch_delegate_account_key = pubkey_rand();
         let mut mismatch_delegate_account_account =
             Account::new(0, size_of::<State>(), &program_id);
-        let owner_key = new_pubkey(6);
+        let owner_key = pubkey_rand();
         let mut owner_account = Account::default();
-        let owner2_key = new_pubkey(7);
+        let owner2_key = pubkey_rand();
         let mut owner2_account = Account::default();
-        let token_key = new_pubkey(8);
+        let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
-        let token2_key = new_pubkey(9);
+        let token2_key = pubkey_rand();
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
 
         // create account
@@ -1276,12 +1256,12 @@ mod tests {
 
     #[test]
     fn test_mintable_token_with_zero_supply() {
-        let program_id = new_pubkey(1);
-        let token_account_key = new_pubkey(2);
+        let program_id = pubkey_rand();
+        let token_account_key = pubkey_rand();
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let owner_key = new_pubkey(6);
+        let owner_key = pubkey_rand();
         let mut owner_account = Account::default();
-        let token_key = new_pubkey(8);
+        let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
 
         // create account
@@ -1369,23 +1349,23 @@ mod tests {
 
     #[test]
     fn test_approve() {
-        let program_id = new_pubkey(1);
-        let token_account_key = new_pubkey(2);
+        let program_id = pubkey_rand();
+        let token_account_key = pubkey_rand();
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let token_account2_key = new_pubkey(3);
+        let token_account2_key = pubkey_rand();
         let mut token_account2_account = Account::new(0, size_of::<State>(), &program_id);
-        let delegate_account_key = new_pubkey(4);
+        let delegate_account_key = pubkey_rand();
         let mut delegate_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let mismatch_delegate_account_key = new_pubkey(5);
+        let mismatch_delegate_account_key = pubkey_rand();
         let mut mismatch_delegate_account_account =
             Account::new(0, size_of::<State>(), &program_id);
-        let owner_key = new_pubkey(6);
+        let owner_key = pubkey_rand();
         let mut owner_account = Account::default();
-        let owner2_key = new_pubkey(7);
+        let owner2_key = pubkey_rand();
         let mut owner2_account = Account::default();
-        let token_key = new_pubkey(8);
+        let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
-        let token2_key = new_pubkey(9);
+        let token2_key = pubkey_rand();
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
 
         // create account
@@ -1622,20 +1602,20 @@ mod tests {
 
     #[test]
     fn test_set_owner() {
-        let program_id = new_pubkey(1);
-        let token_account_key = new_pubkey(2);
+        let program_id = pubkey_rand();
+        let token_account_key = pubkey_rand();
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let token_account2_key = new_pubkey(2);
+        let token_account2_key = pubkey_rand();
         let mut token_account2_account = Account::new(0, size_of::<State>(), &program_id);
-        let owner_key = new_pubkey(3);
+        let owner_key = pubkey_rand();
         let mut owner_account = Account::default();
-        let owner2_key = new_pubkey(4);
+        let owner2_key = pubkey_rand();
         let mut owner2_account = Account::default();
-        let owner3_key = new_pubkey(5);
+        let owner3_key = pubkey_rand();
         let mut owner3_account = Account::default();
-        let token_key = new_pubkey(8);
+        let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
-        let token2_key = new_pubkey(9);
+        let token2_key = pubkey_rand();
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
 
         // invalid account
@@ -1804,26 +1784,26 @@ mod tests {
 
     #[test]
     fn test_mint_to() {
-        let program_id = new_pubkey(1);
-        let token_account_key = new_pubkey(2);
+        let program_id = pubkey_rand();
+        let token_account_key = pubkey_rand();
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let token_account2_key = new_pubkey(3);
+        let token_account2_key = pubkey_rand();
         let mut token_account2_account = Account::new(0, size_of::<State>(), &program_id);
-        let token_account3_key = new_pubkey(3);
+        let token_account3_key = pubkey_rand();
         let mut token_account3_account = Account::new(0, size_of::<State>(), &program_id);
-        let delegate_account_key = new_pubkey(4);
+        let delegate_account_key = pubkey_rand();
         let mut delegate_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let mismatch_account_key = new_pubkey(5);
+        let mismatch_account_key = pubkey_rand();
         let mut mismatch_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let owner_key = new_pubkey(6);
+        let owner_key = pubkey_rand();
         let mut owner_account = Account::default();
-        let owner2_key = new_pubkey(7);
+        let owner2_key = pubkey_rand();
         let mut owner2_account = Account::default();
-        let token_key = new_pubkey(8);
+        let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
-        let token2_key = new_pubkey(9);
+        let token2_key = pubkey_rand();
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
-        let uninitialized_key = new_pubkey(9);
+        let uninitialized_key = pubkey_rand();
         let mut uninitialized_account = Account::new(0, size_of::<State>(), &program_id);
 
         // create token account
@@ -2054,27 +2034,27 @@ mod tests {
 
     #[test]
     fn test_burn() {
-        let program_id = new_pubkey(1);
-        let token_account_key = new_pubkey(2);
+        let program_id = pubkey_rand();
+        let token_account_key = pubkey_rand();
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let token_account2_key = new_pubkey(3);
+        let token_account2_key = pubkey_rand();
         let mut token_account2_account = Account::new(0, size_of::<State>(), &program_id);
-        let token_account3_key = new_pubkey(3);
+        let token_account3_key = pubkey_rand();
         let mut token_account3_account = Account::new(0, size_of::<State>(), &program_id);
-        let delegate_account_key = new_pubkey(4);
+        let delegate_account_key = pubkey_rand();
         let mut delegate_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let mismatch_account_key = new_pubkey(5);
+        let mismatch_account_key = pubkey_rand();
         let mut mismatch_account_account = Account::new(0, size_of::<State>(), &program_id);
-        let mismatch_delegate_account_key = new_pubkey(5);
+        let mismatch_delegate_account_key = pubkey_rand();
         let mut mismatch_delegate_account_account =
             Account::new(0, size_of::<State>(), &program_id);
-        let owner_key = new_pubkey(6);
+        let owner_key = pubkey_rand();
         let mut owner_account = Account::default();
-        let owner2_key = new_pubkey(7);
+        let owner2_key = pubkey_rand();
         let mut owner2_account = Account::default();
-        let token_key = new_pubkey(8);
+        let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
-        let token2_key = new_pubkey(9);
+        let token2_key = pubkey_rand();
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
 
         // create token account

@@ -17,6 +17,9 @@ solana-sdk = { version = "=1.2.0", default-features = false, features=["program"
 solana-sdk-bpf-test = { path = "../bin/bpf-sdk/rust/test", default-features = false }
 thiserror = "1.0"
 
+[dev-dependencies]
+rand = { version = "0.7.0"}
+
 [lib]
 name = "spl_token"
 crate-type = ["cdylib", "lib"]
