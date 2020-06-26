@@ -28,7 +28,7 @@ typedef uint8_t TokenPubkey[32];
 /**
  * A C representation of Rust's `std::option::Option`
  */
-typedef enum TokenOptionReprC_Pubkey_Tag {
+typedef enum TokenCOption_Pubkey_Tag {
     /**
      * No value
      */
@@ -37,18 +37,18 @@ typedef enum TokenOptionReprC_Pubkey_Tag {
      * Some value `T`
      */
     Some_Pubkey,
-} TokenOptionReprC_Pubkey_Tag;
+} TokenCOption_Pubkey_Tag;
 
 typedef struct TokenSome_Body_Pubkey {
     TokenPubkey _0;
 } TokenSome_Body_Pubkey;
 
-typedef struct TokenOptionReprC_Pubkey {
-    TokenOptionReprC_Pubkey_Tag tag;
+typedef struct TokenCOption_Pubkey {
+    TokenCOption_Pubkey_Tag tag;
     union {
         TokenSome_Body_Pubkey some;
     };
-} TokenOptionReprC_Pubkey;
+} TokenCOption_Pubkey;
 
 /**
  * Represents a token type identified and identified by its public key.  Accounts
@@ -65,7 +65,7 @@ typedef struct TokenToken {
      * be provided during token creation.  If no owner is present then the token
      * has a fixed supply and no further tokens may be minted.
      */
-    TokenOptionReprC_Pubkey owner;
+    TokenCOption_Pubkey owner;
 } TokenToken;
 
 /**
@@ -85,7 +85,7 @@ typedef struct TokenAccountDelegate {
 /**
  * A C representation of Rust's `std::option::Option`
  */
-typedef enum TokenOptionReprC_AccountDelegate_Tag {
+typedef enum TokenCOption_AccountDelegate_Tag {
     /**
      * No value
      */
@@ -94,18 +94,18 @@ typedef enum TokenOptionReprC_AccountDelegate_Tag {
      * Some value `T`
      */
     Some_AccountDelegate,
-} TokenOptionReprC_AccountDelegate_Tag;
+} TokenCOption_AccountDelegate_Tag;
 
 typedef struct TokenSome_Body_AccountDelegate {
     TokenAccountDelegate _0;
 } TokenSome_Body_AccountDelegate;
 
-typedef struct TokenOptionReprC_AccountDelegate {
-    TokenOptionReprC_AccountDelegate_Tag tag;
+typedef struct TokenCOption_AccountDelegate {
+    TokenCOption_AccountDelegate_Tag tag;
     union {
         TokenSome_Body_AccountDelegate some;
     };
-} TokenOptionReprC_AccountDelegate;
+} TokenCOption_AccountDelegate;
 
 /**
  * Account that holds or may delegate tokens.
@@ -128,7 +128,7 @@ typedef struct TokenAccount {
      * If `delegate` is Option<_>, `amount` represents the remaining allowance
      * of tokens this delegate is authorized to transfer from the `source` account.
      */
-    TokenOptionReprC_AccountDelegate delegate;
+    TokenCOption_AccountDelegate delegate;
 } TokenAccount;
 
 /**
