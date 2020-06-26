@@ -3,7 +3,7 @@
 use crate::{
     error::TokenError,
     instruction::{TokenInfo, TokenInstruction},
-    option::OptionReprC,
+    option::COption,
 };
 use solana_sdk::{
     account_info::AccountInfo, entrypoint::ProgramResult, info, program_error::ProgramError,
@@ -22,7 +22,7 @@ pub struct Token {
     /// Optional token owner, used to mint new tokens.  The owner may only
     /// be provided during token creation.  If no owner is present then the token
     /// has a fixed supply and no further tokens may be minted.
-    pub owner: OptionReprC<Pubkey>,
+    pub owner: COption<Pubkey>,
 }
 
 /// Delegation details.
@@ -48,7 +48,7 @@ pub struct Account {
     /// If `delegate`  is None, `amount` belongs to this account.
     /// If `delegate` is Option<_>, `amount` represents the remaining allowance
     /// of tokens this delegate is authorized to transfer from the `source` account.
-    pub delegate: OptionReprC<AccountDelegate>,
+    pub delegate: COption<AccountDelegate>,
 }
 
 /// Token program states.
@@ -103,12 +103,12 @@ impl State {
             }
 
             if let Ok(owner_account_into) = next_account_info(account_info_iter) {
-                OptionReprC::Some(*owner_account_into.key)
+                COption::Some(*owner_account_into.key)
             } else {
-                OptionReprC::None
+                COption::None
             }
         } else if let Ok(owner_account_into) = next_account_info(account_info_iter) {
-            OptionReprC::Some(*owner_account_into.key)
+            COption::Some(*owner_account_into.key)
         } else {
             return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
         };
@@ -137,10 +137,10 @@ impl State {
             token: *token_account_info.key,
             owner: *owner_account_info.key,
             amount: 0,
-            delegate: OptionReprC::None,
+            delegate: COption::None,
         };
         if let Ok(delegate_account) = next_account_info(account_info_iter) {
-            token_account.delegate = OptionReprC::Some(AccountDelegate {
+            token_account.delegate = COption::Some(AccountDelegate {
                 source: *delegate_account.key,
                 original_amount: 0,
             });
@@ -178,7 +178,7 @@ impl State {
                 return Err(TokenError::InsufficientFunds.into());
             }
 
-            if let OptionReprC::Some(ref delegate) = source_account.delegate {
+            if let COption::Some(ref delegate) = source_account.delegate {
                 let source_account_info = next_account_info(account_info_iter)?;
                 let mut actual_source_data = source_account_info.data.borrow_mut();
                 if let State::Account(mut actual_source_account) =
@@ -237,16 +237,16 @@ impl State {
             }
 
             match &delegate_account.delegate {
-                OptionReprC::None => {
+                COption::None => {
                     return Err(TokenError::NotDelegate.into());
                 }
-                OptionReprC::Some(delegate) => {
+                COption::Some(delegate) => {
                     if source_account_info.key != &delegate.source {
                         return Err(TokenError::NotDelegate.into());
                     }
 
                     delegate_account.amount = amount;
-                    delegate_account.delegate = OptionReprC::Some(AccountDelegate {
+                    delegate_account.delegate = COption::Some(AccountDelegate {
                         source: delegate.source,
                         original_amount: amount,
                     });
@@ -280,14 +280,14 @@ impl State {
                 State::Account(account).serialize(&mut account_data)?;
             }
             State::Token(mut token) => {
-                if OptionReprC::Some(*owner_account_info.key) != token.owner {
+                if COption::Some(*owner_account_info.key) != token.owner {
                     return Err(TokenError::NoOwner.into());
                 }
                 if !owner_account_info.is_signer {
                     return Err(ProgramError::MissingRequiredSignature);
                 }
 
-                token.owner = OptionReprC::Some(*new_owner_account_info.key);
+                token.owner = COption::Some(*new_owner_account_info.key);
                 State::Token(token).serialize(&mut account_data)?;
             }
             _ => {
@@ -311,12 +311,12 @@ impl State {
         let mut token_account_data = token_account_info.data.borrow_mut();
         if let State::Token(mut token) = State::deserialize(&token_account_data)? {
             match token.owner {
-                OptionReprC::Some(owner) => {
+                COption::Some(owner) => {
                     if *owner_account_info.key != owner {
                         return Err(TokenError::NoOwner.into());
                     }
                 }
-                OptionReprC::None => {
+                COption::None => {
                     return Err(TokenError::FixedSupply.into());
                 }
             }
@@ -385,7 +385,7 @@ impl State {
             return Err(TokenError::InsufficientFunds.into());
         }
 
-        if let OptionReprC::Some(ref delegate) = source_account.delegate {
+        if let COption::Some(ref delegate) = source_account.delegate {
             let source_account_info = next_account_info(account_info_iter)?;
             let mut actual_source_data = source_account_info.data.borrow_mut();
             if let State::Account(mut actual_source_account) =
@@ -1316,7 +1316,7 @@ mod tests {
                 token,
                 Token {
                     info,
-                    owner: OptionReprC::Some(owner_key)
+                    owner: COption::Some(owner_key)
                 }
             );
         } else {
