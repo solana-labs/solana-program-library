@@ -69,7 +69,7 @@ perform_action() {
             cargo doc
         )
         ;;
-  update)
+    update)
         mkdir -p $sdkParentDir
         ./bpf-sdk-install.sh $sdkParentDir
         ./do.sh clean
@@ -108,7 +108,7 @@ perform_action() {
                     s/://g \
                     <"${dump}-mangled.txt" |
                     rustfilt \
-                    > "${dump}.txt"
+                        >"${dump}.txt"
             else
                 echo "Warning: No dump created, cannot find: $so"
             fi
@@ -127,9 +127,9 @@ perform_action() {
 }
 
 set -e
-    if [[ $1 == "update" ]]; then
-        perform_action "$1"
-    else
+if [[ $1 == "update" ]]; then
+    perform_action "$1"
+else
     if [[ ! -d "$sdkDir" ]]; then
         ./do.sh update
     fi
@@ -137,13 +137,13 @@ fi
 
 if [[ "$#" -ne 2 ]]; then
     # Perform operation on all projects
-        for project in */; do
-            if [[ -f "$project"Cargo.toml ]]; then
-                perform_action "$1" "$PWD/$project" "$project"
-            else
+    for project in */; do
+        if [[ -f "$project"Cargo.toml ]]; then
+            perform_action "$1" "$PWD/$project" "$project"
+        else
             continue
-            fi
-        done
+        fi
+    done
 else
     # Perform operation on requested project
     perform_action "$1" "$PWD/$2" "$2"
