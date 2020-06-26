@@ -4,5 +4,6 @@
 
 pub mod error;
 pub mod instruction;
+pub mod option;
 pub mod processor;
 pub mod state;
