@@ -76,12 +76,12 @@ export async function loadTokenProgram(path: string): Promise<PublicKey> {
   return programId;
 }
 
-export async function createNewToken(): Promise<void> {
+export async function createToken(): Promise<void> {
   const connection = await getConnection();
   const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
   tokenOwner = new Account();
   testAccountOwner = new Account();
-  [testToken, testAccount] = await Token.createNewToken(
+  [testToken, testAccount] = await Token.createToken(
     connection,
     payer,
     tokenOwner.publicKey,
@@ -92,7 +92,7 @@ export async function createNewToken(): Promise<void> {
     false,
   );
 
-  const tokenInfo = await testToken.getTokenInfo();
+  const tokenInfo = await testToken.getMintInfo();
   assert(tokenInfo.supply.toNumber() == 10000);
   assert(tokenInfo.decimals == 2);
   assert(tokenInfo.owner == null);
@@ -105,13 +105,13 @@ export async function createNewToken(): Promise<void> {
   assert(accountInfo.originalAmount.toNumber() == 0);
 }
 
-export async function createNewAccount(): Promise<void> {
+export async function createAccount(): Promise<void> {
   const connection = await getConnection();
   const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
     connection,
   );
   const destOwner = await newAccountWithLamports(connection, balanceNeeded);
-  const dest = await testToken.newAccount(destOwner.publicKey);
+  const dest = await testToken.createAccount(destOwner.publicKey);
   const accountInfo = await testToken.getAccountInfo(dest);
   assert(accountInfo.token.equals(testToken.publicKey));
   assert(accountInfo.owner.equals(destOwner.publicKey));
@@ -125,13 +125,13 @@ export async function transfer(): Promise<void> {
     connection,
   );
   const destOwner = await newAccountWithLamports(connection, balanceNeeded);
-  const dest = await testToken.newAccount(destOwner.publicKey);
+  const dest = await testToken.createAccount(destOwner.publicKey);
 
   await testToken.transfer(testAccountOwner, testAccount, dest, 123);
   await sleep(500);
 
-  let destTokenAccountInfo = await testToken.getAccountInfo(dest);
-  assert(destTokenAccountInfo.amount.toNumber() == 123);
+  let destAccountInfo = await testToken.getAccountInfo(dest);
+  assert(destAccountInfo.amount.toNumber() == 123);
 }
 
 export async function approveRevoke(): Promise<void> {
@@ -145,7 +145,7 @@ export async function approveRevoke(): Promise<void> {
     connection,
   );
   const delegateOwner = await newAccountWithLamports(connection, balanceNeeded);
-  const delegate = await testToken.newAccount(
+  const delegate = await testToken.createAccount(
     delegateOwner.publicKey,
     testAccount,
   );
@@ -182,9 +182,9 @@ export async function invalidApprove(): Promise<void> {
   const balanceNeeded =
     (await Token.getMinBalanceRentForExemptAccount(connection)) * 3;
   const owner = await newAccountWithLamports(connection, balanceNeeded);
-  const account1 = await testToken.newAccount(owner.publicKey);
-  const account1Delegate = await testToken.newAccount(owner.publicKey, account1);
-  const account2 = await testToken.newAccount(owner.publicKey);
+  const account1 = await testToken.createAccount(owner.publicKey);
+  const account1Delegate = await testToken.createAccount(owner.publicKey, account1);
+  const account2 = await testToken.createAccount(owner.publicKey);
 
   // account2 is not a delegate account of account1
   assert(didThrow(testToken.approve, [owner, account1, account2, 123]));
@@ -197,9 +197,9 @@ export async function failOnApproveOverspend(): Promise<void> {
   const balanceNeeded =
     (await Token.getMinBalanceRentForExemptAccount(connection)) * 3;
   const owner = await newAccountWithLamports(connection, balanceNeeded);
-  const account1 = await testToken.newAccount(owner.publicKey);
-  const account1Delegate = await testToken.newAccount(owner.publicKey, account1);
-  const account2 = await testToken.newAccount(owner.publicKey);
+  const account1 = await testToken.createAccount(owner.publicKey);
+  const account1Delegate = await testToken.createAccount(owner.publicKey, account1);
+  const account2 = await testToken.createAccount(owner.publicKey);
 
   await testToken.transfer(
     testAccountOwner,
@@ -236,7 +236,7 @@ export async function setOwner(): Promise<void> {
   );
   const owner = await newAccountWithLamports(connection, balanceNeeded);
   const newOwner = await newAccountWithLamports(connection, balanceNeeded);
-  const owned = await testToken.newAccount(owner.publicKey);
+  const owned = await testToken.createAccount(owner.publicKey);
 
   await testToken.setOwner(owner, owned, newOwner.publicKey);
   assert(didThrow(testToken.setOwner, [owner, owned, newOwner.publicKey]));
@@ -248,7 +248,7 @@ export async function mintTo(): Promise<void> {
   const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
   const tokenOwner = new Account();
   const testAccountOwner = new Account();
-  const [mintableToken, initialAccount] = await Token.createNewToken(
+  const [mintableToken, initialAccount] = await Token.createToken(
     connection,
     payer,
     tokenOwner.publicKey,
@@ -260,7 +260,7 @@ export async function mintTo(): Promise<void> {
   );
 
   {
-    const tokenInfo = await mintableToken.getTokenInfo();
+    const tokenInfo = await mintableToken.getMintInfo();
     assert(tokenInfo.supply.toNumber() == 10000);
     assert(tokenInfo.decimals == 2);
     if (tokenInfo.owner === null) {
@@ -277,11 +277,11 @@ export async function mintTo(): Promise<void> {
     assert(accountInfo.originalAmount.toNumber() == 0);
   }
 
-  const dest = await mintableToken.newAccount(testAccountOwner.publicKey);
+  const dest = await mintableToken.createAccount(testAccountOwner.publicKey);
   await mintableToken.mintTo(tokenOwner, dest, 42);
 
   {
-    const tokenInfo = await mintableToken.getTokenInfo();
+    const tokenInfo = await mintableToken.getMintInfo();
     assert(tokenInfo.supply.toNumber() == 10042);
     assert(tokenInfo.decimals == 2);
     if (tokenInfo.owner === null) {
@@ -300,7 +300,7 @@ export async function mintTo(): Promise<void> {
 }
 
 export async function burn(): Promise<void> {
-  let tokenInfo = await testToken.getTokenInfo();
+  let tokenInfo = await testToken.getMintInfo();
   const supply = tokenInfo.supply.toNumber();
   let accountInfo = await testToken.getAccountInfo(testAccount);
   const amount = accountInfo.amount.toNumber();
@@ -308,7 +308,7 @@ export async function burn(): Promise<void> {
   await testToken.burn(testAccountOwner, testAccount, 1);
   await sleep(500);
 
-  tokenInfo = await testToken.getTokenInfo();
+  tokenInfo = await testToken.getMintInfo();
   assert(tokenInfo.supply.toNumber() == supply - 1);
   accountInfo = await testToken.getAccountInfo(testAccount);
   assert(accountInfo.amount.toNumber() == amount - 1);

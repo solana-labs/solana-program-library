@@ -11,7 +11,7 @@ import { newAccountWithLamports } from '../client/util/new-account-with-lamports
 import { url } from '../url';
 import { sleep } from '../client/util/sleep';
 
-// The following globals are created by `createNewTokenSwap` and used by subsequent tests
+// The following globals are created by `createTokenSwap` and used by subsequent tests
 // Token swap
 let tokenSwap: TokenSwap;
 // authority of the token and accounts
@@ -116,7 +116,7 @@ export async function createTokenSwap(): Promise<void> {
   );
 
   // create pool
-  [tokenPool, tokenAccountPool] = await Token.createNewToken(
+  [tokenPool, tokenAccountPool] = await Token.createToken(
     connection,
     payer,
     authority,
@@ -128,7 +128,7 @@ export async function createTokenSwap(): Promise<void> {
   );
 
   // create token A
-  [tokenA, tokenAccountA] = await Token.createNewToken(
+  [tokenA, tokenAccountA] = await Token.createToken(
     connection,
     payer,
     owner.publicKey,
@@ -140,7 +140,7 @@ export async function createTokenSwap(): Promise<void> {
   );
 
   // create token B
-  [tokenB, tokenAccountB] = await Token.createNewToken(
+  [tokenB, tokenAccountB] = await Token.createToken(
     connection,
     payer,
     owner.publicKey,
@@ -177,25 +177,25 @@ export async function createTokenSwap(): Promise<void> {
 }
 
 export async function deposit(): Promise<void> {
-  let userAccountA = await tokenA.newAccount(owner.publicKey);
+  let userAccountA = await tokenA.createAccount(owner.publicKey);
   await tokenA.mintTo(owner, userAccountA, USER_AMOUNT);
-  let delegateAccountA = await tokenA.newAccount(authority, userAccountA);
+  let delegateAccountA = await tokenA.createAccount(authority, userAccountA);
   await tokenA.approve(
     owner,
     userAccountA,
     delegateAccountA,
     USER_AMOUNT,
   );
-  let userAccountB = await tokenB.newAccount(owner.publicKey);
+  let userAccountB = await tokenB.createAccount(owner.publicKey);
   await tokenB.mintTo(owner, userAccountB, USER_AMOUNT);
-  let delegateAccountB = await tokenB.newAccount(authority, userAccountB);
+  let delegateAccountB = await tokenB.createAccount(authority, userAccountB);
   await tokenB.approve(
     owner,
     userAccountB,
     delegateAccountB,
     USER_AMOUNT,
   );
-  let newAccountPool = await tokenPool.newAccount(owner.publicKey);
+  let newAccountPool = await tokenPool.createAccount(owner.publicKey);
   const [tokenProgramId,] = await GetPrograms(connection);
 
   await tokenSwap.deposit(
@@ -237,9 +237,9 @@ export async function deposit(): Promise<void> {
 }
 
 export async function withdraw(): Promise<void> {
-  let userAccountA = await tokenA.newAccount(owner.publicKey);
-  let userAccountB = await tokenB.newAccount(owner.publicKey);
-  let delegateAccountPool = await tokenPool.newAccount(authority, tokenAccountPool);
+  let userAccountA = await tokenA.createAccount(owner.publicKey);
+  let userAccountB = await tokenB.createAccount(owner.publicKey);
+  let delegateAccountPool = await tokenPool.createAccount(authority, tokenAccountPool);
   await tokenPool.approve(
     owner,
     tokenAccountPool,
@@ -283,16 +283,16 @@ export async function withdraw(): Promise<void> {
 }
 
 export async function swap(): Promise<void> {
-  let userAccountA = await tokenA.newAccount(owner.publicKey);
+  let userAccountA = await tokenA.createAccount(owner.publicKey);
   await tokenA.mintTo(owner, userAccountA, USER_AMOUNT);
-  let delegateAccountA = await tokenA.newAccount(authority, userAccountA);
+  let delegateAccountA = await tokenA.createAccount(authority, userAccountA);
   await tokenA.approve(
     owner,
     userAccountA,
     delegateAccountA,
     USER_AMOUNT,
   );
-  let userAccountB = await tokenB.newAccount(owner.publicKey);
+  let userAccountB = await tokenB.createAccount(owner.publicKey);
   const [tokenProgramId,] = await GetPrograms(connection);
 
   await tokenSwap.swap(

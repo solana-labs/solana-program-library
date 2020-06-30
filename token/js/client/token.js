@@ -56,7 +56,7 @@ export class TokenAmount extends BN {
 /**
  * Information about a token
  */
-type TokenInfo = {|
+type MintInfo = {|
   /**
    * Total supply of tokens
    */
@@ -72,7 +72,7 @@ type TokenInfo = {|
   owner: null | PublicKey,
 |};
 
-const TokenInfoLayout = BufferLayout.struct([
+const MintLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
   Layout.uint64('supply'),
   BufferLayout.nu64('decimals'),
@@ -119,7 +119,7 @@ type AccountInfo = {|
 /**
  * @private
  */
-const AccountInfoLayout = BufferLayout.struct([
+const AccountLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
   Layout.publicKey('token'),
   Layout.publicKey('owner'),
@@ -177,7 +177,7 @@ export class Token {
     connection: Connection,
   ): Promise<number> {
     return await connection.getMinimumBalanceForRentExemption(
-      TokenInfoLayout.span,
+      MintLayout.span,
     );
   }
 
@@ -190,12 +190,12 @@ export class Token {
     connection: Connection,
   ): Promise<number> {
     return await connection.getMinimumBalanceForRentExemption(
-      AccountInfoLayout.span,
+      AccountLayout.span,
     );
   }
 
   /**
-   * Create a new Token
+   * Creates and initializes a token.
    *
    * @param connection The connection to use
    * @param owner User account that will own the returned account
@@ -204,7 +204,7 @@ export class Token {
    * @param programId Optional token programId, uses the system programId by default
    * @return Token object for the newly minted token, Public key of the account holding the total supply of new tokens
    */
-  static async createNewToken(
+  static async createToken(
     connection: Connection,
     payer: Account,
     tokenOwner: PublicKey,
@@ -217,7 +217,7 @@ export class Token {
     let transaction;
     const tokenAccount = new Account();
     const token = new Token(connection, tokenAccount.publicKey, programId, payer);
-    const initialAccountPublicKey = await token.newAccount(accountOwner, null);
+    const initialAccountPublicKey = await token.createAccount(accountOwner, null);
 
     // Allocate memory for the account
     const balanceNeeded = await Token.getMinBalanceRentForExemptToken(
@@ -227,7 +227,7 @@ export class Token {
       fromPubkey: payer.publicKey,
       newAccountPubkey: tokenAccount.publicKey,
       lamports: balanceNeeded,
-      space: TokenInfoLayout.span,
+      space: MintLayout.span,
       programId,
     });
     await sendAndConfirmTransaction(
@@ -257,7 +257,7 @@ export class Token {
     {
       const encodeLength = commandDataLayout.encode(
         {
-          instruction: 0, // NewToken instruction
+          instruction: 0, // InitializeToken instruction
           supply: supply.toBuffer(),
           decimals,
         },
@@ -272,7 +272,7 @@ export class Token {
       data,
     });
     await sendAndConfirmTransaction(
-      'New Account',
+      'InitializeToken',
       connection,
       transaction,
       payer,
@@ -288,7 +288,7 @@ export class Token {
   }
 
   /**
-   * Create a new and empty account.
+   * Create and initializes a new account.
    *
    * This account may then be used as a `transfer()` or `approve()` destination
    *
@@ -297,7 +297,7 @@ export class Token {
    *               may transfer tokens from this `source` account
    * @return Public key of the new empty account
    */
-  async newAccount(
+  async createAccount(
     owner: PublicKey,
     source: null | PublicKey = null,
   ): Promise<PublicKey> {
@@ -308,12 +308,11 @@ export class Token {
     const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
       this.connection,
     );
-
     transaction = SystemProgram.createAccount({
       fromPubkey: this.payer.publicKey,
       newAccountPubkey: tokenAccount.publicKey,
       lamports: balanceNeeded,
-      space: AccountInfoLayout.span,
+      space: AccountLayout.span,
       programId: this.programId,
     });
     await sendAndConfirmTransaction(
@@ -337,7 +336,7 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 1, // NewAccount instruction
+        instruction: 1, // InitializeAccount instruction
       },
       data,
     );
@@ -347,7 +346,7 @@ export class Token {
       data,
     });
     await sendAndConfirmTransaction(
-      'new account',
+      'InitializeAccount',
       this.connection,
       transaction,
       this.payer,
@@ -360,30 +359,30 @@ export class Token {
   /**
    * Retrieve token information
    */
-  async getTokenInfo(): Promise<TokenInfo> {
-    const accountInfo = await this.connection.getAccountInfo(this.publicKey);
-    if (accountInfo === null) {
+  async getMintInfo(): Promise<MintInfo> {
+    const info = await this.connection.getAccountInfo(this.publicKey);
+    if (info === null) {
       throw new Error('Failed to find token info account');
     }
-    if (!accountInfo.owner.equals(this.programId)) {
+    if (!info.owner.equals(this.programId)) {
       throw new Error(
-        `Invalid token owner: ${JSON.stringify(accountInfo.owner)}`,
+        `Invalid token owner: ${JSON.stringify(info.owner)}`,
       );
     }
 
-    const data = Buffer.from(accountInfo.data);
+    const data = Buffer.from(info.data);
 
-    const tokenInfo = TokenInfoLayout.decode(data);
-    if (tokenInfo.state !== 1) {
+    const mintInfo = MintLayout.decode(data);
+    if (mintInfo.state !== 1) {
       throw new Error(`Invalid account data`);
     }
-    tokenInfo.supply = TokenAmount.fromBuffer(tokenInfo.supply);
-    if (tokenInfo.option === 0) {
-      tokenInfo.owner = null;
+    mintInfo.supply = TokenAmount.fromBuffer(mintInfo.supply);
+    if (mintInfo.option === 0) {
+      mintInfo.owner = null;
     } else {
-      tokenInfo.owner = new PublicKey(tokenInfo.owner);
+      mintInfo.owner = new PublicKey(mintInfo.owner);
     }
-    return tokenInfo;
+    return mintInfo;
   }
 
   /**
@@ -392,41 +391,41 @@ export class Token {
    * @param account Public key of the account
    */
   async getAccountInfo(account: PublicKey): Promise<AccountInfo> {
-    const accountInfo = await this.connection.getAccountInfo(account);
-    if (accountInfo === null) {
+    const info = await this.connection.getAccountInfo(account);
+    if (info === null) {
       throw new Error('Failed to find account');
     }
-    if (!accountInfo.owner.equals(this.programId)) {
+    if (!info.owner.equals(this.programId)) {
       throw new Error(`Invalid account owner`);
     }
 
-    const data = Buffer.from(accountInfo.data);
-    const tokenAccountInfo = AccountInfoLayout.decode(data);
+    const data = Buffer.from(info.data);
+    const accountInfo = AccountLayout.decode(data);
 
-    if (tokenAccountInfo.state !== 2) {
+    if (accountInfo.state !== 2) {
       throw new Error(`Invalid account data`);
     }
-    tokenAccountInfo.token = new PublicKey(tokenAccountInfo.token);
-    tokenAccountInfo.owner = new PublicKey(tokenAccountInfo.owner);
-    tokenAccountInfo.amount = TokenAmount.fromBuffer(tokenAccountInfo.amount);
-    if (tokenAccountInfo.option === 0) {
-      tokenAccountInfo.source = null;
-      tokenAccountInfo.originalAmount = new TokenAmount();
+    accountInfo.token = new PublicKey(accountInfo.token);
+    accountInfo.owner = new PublicKey(accountInfo.owner);
+    accountInfo.amount = TokenAmount.fromBuffer(accountInfo.amount);
+    if (accountInfo.option === 0) {
+      accountInfo.source = null;
+      accountInfo.originalAmount = new TokenAmount();
     } else {
-      tokenAccountInfo.source = new PublicKey(tokenAccountInfo.source);
-      tokenAccountInfo.originalAmount = TokenAmount.fromBuffer(
-        tokenAccountInfo.originalAmount,
+      accountInfo.source = new PublicKey(accountInfo.source);
+      accountInfo.originalAmount = TokenAmount.fromBuffer(
+        accountInfo.originalAmount,
       );
     }
 
-    if (!tokenAccountInfo.token.equals(this.publicKey)) {
+    if (!accountInfo.token.equals(this.publicKey)) {
       throw new Error(
         `Invalid account token: ${JSON.stringify(
-          tokenAccountInfo.token,
+          accountInfo.token,
         )} !== ${JSON.stringify(this.publicKey)}`,
       );
     }
-    return tokenAccountInfo;
+    return accountInfo;
   }
 
   /**
