@@ -72,7 +72,7 @@ type TokenInfo = {|
   owner: null | PublicKey,
 |};
 
-const TokenLayout = BufferLayout.struct([
+const TokenInfoLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
   Layout.uint64('supply'),
   BufferLayout.nu64('decimals'),
@@ -84,7 +84,7 @@ const TokenLayout = BufferLayout.struct([
 /**
  * Information about an account
  */
-type TokenAccountInfo = {|
+type AccountInfo = {|
   /**
    * The kind of token this account holds
    */
@@ -119,7 +119,7 @@ type TokenAccountInfo = {|
 /**
  * @private
  */
-const TokenAccountInfoLayout = BufferLayout.struct([
+const AccountInfoLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
   Layout.publicKey('token'),
   Layout.publicKey('owner'),
@@ -144,7 +144,7 @@ export class Token {
   /**
    * The public key identifying this token
    */
-  token: PublicKey;
+  publicKey: PublicKey;
 
   /**
    * Program Identifier for the Token program
@@ -164,8 +164,8 @@ export class Token {
    * @param programId Optional token programId, uses the system programId by default
    * @param payer Payer of fees
    */
-  constructor(connection: Connection, token: PublicKey, programId: PublicKey, payer: Account) {
-    Object.assign(this, {connection, token, programId, payer});
+  constructor(connection: Connection, publicKey: PublicKey, programId: PublicKey, payer: Account) {
+    Object.assign(this, {connection, publicKey, programId, payer});
   }
 
   /**
@@ -177,7 +177,7 @@ export class Token {
     connection: Connection,
   ): Promise<number> {
     return await connection.getMinimumBalanceForRentExemption(
-      TokenLayout.span,
+      TokenInfoLayout.span,
     );
   }
 
@@ -190,7 +190,7 @@ export class Token {
     connection: Connection,
   ): Promise<number> {
     return await connection.getMinimumBalanceForRentExemption(
-      TokenAccountInfoLayout.span,
+      AccountInfoLayout.span,
     );
   }
 
@@ -206,25 +206,53 @@ export class Token {
    */
   static async createNewToken(
     connection: Connection,
-    owner: Account,
+    payer: Account,
+    tokenOwner: PublicKey,
+    accountOwner: PublicKey,
     supply: TokenAmount,
     decimals: number,
     programId: PublicKey,
     is_owned: boolean = false,
   ): Promise<TokenAndPublicKey> {
-    const tokenAccount = new Account();
-    const payer = await newAccountWithLamports(connection, 10000000 /* wag */);
-    const token = new Token(connection, tokenAccount.publicKey, programId, payer);
-    const initialAccountPublicKey = await token.newAccount(owner, null);
-
     let transaction;
+    const tokenAccount = new Account();
+    const token = new Token(connection, tokenAccount.publicKey, programId, payer);
+    const initialAccountPublicKey = await token.newAccount(accountOwner, null);
 
+    // Allocate memory for the account
+    const balanceNeeded = await Token.getMinBalanceRentForExemptToken(
+      connection,
+    );
+    transaction = SystemProgram.createAccount({
+      fromPubkey: payer.publicKey,
+      newAccountPubkey: tokenAccount.publicKey,
+      lamports: balanceNeeded,
+      space: TokenInfoLayout.span,
+      programId,
+    });
+    await sendAndConfirmTransaction(
+      'createAccount',
+      connection,
+      transaction,
+      payer,
+      tokenAccount,
+    );
+
+    // Create the token
+    let keys = [
+      {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: false},
+    ];
+    if (supply.toNumber() != 0) {
+      keys.push({pubkey: initialAccountPublicKey, isSigner: false, isWritable: true});
+    }
+    if (is_owned) {
+      keys.push({pubkey: tokenOwner, isSigner: false, isWritable: false});
+    }
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
       Layout.uint64('supply'),
       BufferLayout.nu64('decimals'),
     ]);
-
     let data = Buffer.alloc(1024);
     {
       const encodeLength = commandDataLayout.encode(
@@ -238,35 +266,6 @@ export class Token {
       data = data.slice(0, encodeLength);
     }
 
-    const balanceNeeded = await Token.getMinBalanceRentForExemptToken(
-      connection,
-    );
-
-    // Allocate memory for the account
-    transaction = SystemProgram.createAccount({
-      fromPubkey: owner.publicKey,
-      newAccountPubkey: tokenAccount.publicKey,
-      lamports: balanceNeeded,
-      space: TokenLayout.span,
-      programId,
-    });
-    await sendAndConfirmTransaction(
-      'createAccount',
-      connection,
-      transaction,
-      payer,
-      owner,
-      tokenAccount,
-    );
-
-    let keys = [
-      {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: false},
-      {pubkey: initialAccountPublicKey, isSigner: false, isWritable: true},
-    ];
-    if (is_owned) {
-      keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
-    }
-
     transaction = new Transaction().add({
       keys,
       programId,
@@ -277,11 +276,15 @@ export class Token {
       connection,
       transaction,
       payer,
-      owner,
       tokenAccount,
     );
 
     return [token, initialAccountPublicKey];
+  }
+
+  // Create payer here to avoid cross-node_modules issues with `instanceof`
+  static async getAccount(connection: Connection): Promise<Account> {
+    return await newAccountWithLamports(connection, 100000000000 /* wag */);
   }
 
   /**
@@ -295,32 +298,22 @@ export class Token {
    * @return Public key of the new empty account
    */
   async newAccount(
-    owner: Account,
+    owner: PublicKey,
     source: null | PublicKey = null,
   ): Promise<PublicKey> {
     const tokenAccount = new Account();
     let transaction;
 
-    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
-
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
-      {
-        instruction: 1, // NewAccount instruction
-      },
-      data,
-    );
-
+    // Allocate memory for the token
     const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
       this.connection,
     );
 
-    // Allocate memory for the token
     transaction = SystemProgram.createAccount({
-      fromPubkey: owner.publicKey,
+      fromPubkey: this.payer.publicKey,
       newAccountPubkey: tokenAccount.publicKey,
       lamports: balanceNeeded,
-      space: TokenAccountInfoLayout.span,
+      space: AccountInfoLayout.span,
       programId: this.programId,
     });
     await sendAndConfirmTransaction(
@@ -328,30 +321,36 @@ export class Token {
       this.connection,
       transaction,
       this.payer,
-      owner,
       tokenAccount,
     );
 
-    // Initialize the account
+    // create the new account
     const keys = [
       {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: true},
-      {pubkey: owner.publicKey, isSigner: false, isWritable: false},
-      {pubkey: this.token, isSigner: false, isWritable: false},
+      {pubkey: owner, isSigner: false, isWritable: false},
+      {pubkey: this.publicKey, isSigner: false, isWritable: false},
     ];
     if (source) {
       keys.push({pubkey: source, isSigner: false, isWritable: false});
     }
+    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 1, // NewAccount instruction
+      },
+      data,
+    );
     transaction = new Transaction().add({
       keys,
       programId: this.programId,
       data,
     });
     await sendAndConfirmTransaction(
-      'init account',
+      'new account',
       this.connection,
       transaction,
       this.payer,
-      owner,
       tokenAccount,
     );
 
@@ -361,30 +360,30 @@ export class Token {
   /**
    * Retrieve token information
    */
-  async TokenInfo(): Promise<TokenInfo> {
-    const TokenAccountInfo = await this.connection.getAccountInfo(this.token);
-    if (TokenAccountInfo === null) {
+  async getTokenInfo(): Promise<TokenInfo> {
+    const accountInfo = await this.connection.getAccountInfo(this.publicKey);
+    if (accountInfo === null) {
       throw new Error('Failed to find token info account');
     }
-    if (!TokenAccountInfo.owner.equals(this.programId)) {
+    if (!accountInfo.owner.equals(this.programId)) {
       throw new Error(
-        `Invalid token owner: ${JSON.stringify(TokenAccountInfo.owner)}`,
+        `Invalid token owner: ${JSON.stringify(accountInfo.owner)}`,
       );
     }
 
-    const data = Buffer.from(TokenAccountInfo.data);
+    const data = Buffer.from(accountInfo.data);
 
-    const TokenInfo = TokenLayout.decode(data);
-    if (TokenInfo.state !== 1) {
+    const tokenInfo = TokenInfoLayout.decode(data);
+    if (tokenInfo.state !== 1) {
       throw new Error(`Invalid account data`);
     }
-    TokenInfo.supply = TokenAmount.fromBuffer(TokenInfo.supply);
-    if (TokenInfo.option === 0) {
-      TokenInfo.owner = null;
+    tokenInfo.supply = TokenAmount.fromBuffer(tokenInfo.supply);
+    if (tokenInfo.option === 0) {
+      tokenInfo.owner = null;
     } else {
-      TokenInfo.owner = new PublicKey(TokenInfo.owner);
+      tokenInfo.owner = new PublicKey(tokenInfo.owner);
     }
-    return TokenInfo;
+    return tokenInfo;
   }
 
   /**
@@ -392,42 +391,42 @@ export class Token {
    *
    * @param account Public key of the account
    */
-  async TokenAccountInfo(account: PublicKey): Promise<TokenAccountInfo> {
-    const TokenAccountInfo = await this.connection.getAccountInfo(account);
-    if (TokenAccountInfo === null) {
+  async getAccountInfo(account: PublicKey): Promise<AccountInfo> {
+    const accountInfo = await this.connection.getAccountInfo(account);
+    if (accountInfo === null) {
       throw new Error('Failed to find account');
     }
-    if (!TokenAccountInfo.owner.equals(this.programId)) {
+    if (!accountInfo.owner.equals(this.programId)) {
       throw new Error(`Invalid account owner`);
     }
 
-    const data = Buffer.from(TokenAccountInfo.data);
-    const tokenTokenAccountInfo = TokenAccountInfoLayout.decode(data);
+    const data = Buffer.from(accountInfo.data);
+    const tokenAccountInfo = AccountInfoLayout.decode(data);
 
-    if (tokenTokenAccountInfo.state !== 2) {
+    if (tokenAccountInfo.state !== 2) {
       throw new Error(`Invalid account data`);
     }
-    tokenTokenAccountInfo.token = new PublicKey(tokenTokenAccountInfo.token);
-    tokenTokenAccountInfo.owner = new PublicKey(tokenTokenAccountInfo.owner);
-    tokenTokenAccountInfo.amount = TokenAmount.fromBuffer(tokenTokenAccountInfo.amount);
-    if (tokenTokenAccountInfo.option === 0) {
-      tokenTokenAccountInfo.source = null;
-      tokenTokenAccountInfo.originalAmount = new TokenAmount();
+    tokenAccountInfo.token = new PublicKey(tokenAccountInfo.token);
+    tokenAccountInfo.owner = new PublicKey(tokenAccountInfo.owner);
+    tokenAccountInfo.amount = TokenAmount.fromBuffer(tokenAccountInfo.amount);
+    if (tokenAccountInfo.option === 0) {
+      tokenAccountInfo.source = null;
+      tokenAccountInfo.originalAmount = new TokenAmount();
     } else {
-      tokenTokenAccountInfo.source = new PublicKey(tokenTokenAccountInfo.source);
-      tokenTokenAccountInfo.originalAmount = TokenAmount.fromBuffer(
-        tokenTokenAccountInfo.originalAmount,
+      tokenAccountInfo.source = new PublicKey(tokenAccountInfo.source);
+      tokenAccountInfo.originalAmount = TokenAmount.fromBuffer(
+        tokenAccountInfo.originalAmount,
       );
     }
 
-    if (!tokenTokenAccountInfo.token.equals(this.token)) {
+    if (!tokenAccountInfo.token.equals(this.publicKey)) {
       throw new Error(
         `Invalid account token: ${JSON.stringify(
-          tokenTokenAccountInfo.token,
-        )} !== ${JSON.stringify(this.token)}`,
+          tokenAccountInfo.token,
+        )} !== ${JSON.stringify(this.publicKey)}`,
       );
     }
-    return tokenTokenAccountInfo;
+    return tokenAccountInfo;
   }
 
   /**
@@ -533,14 +532,13 @@ export class Token {
    */
   async mintTo(
     owner: Account,
-    token: PublicKey,
     dest: PublicKey,
     amount: number,
   ): Promise<void> {
     await sendAndConfirmTransaction(
       'mintTo',
       this.connection,
-      new Transaction().add(this.mintToInstruction(owner, token, dest, amount)),
+      new Transaction().add(this.mintToInstruction(owner.publicKey, dest, amount)),
       this.payer,
       owner,
     );
@@ -561,7 +559,7 @@ export class Token {
     await sendAndConfirmTransaction(
       'burn',
       this.connection,
-      new Transaction().add(await this.burnInstruction(owner, account, amount)),
+      new Transaction().add(await this.burnInstruction(owner.publicKey, account, amount)),
       this.payer,
       owner,
     );
@@ -581,8 +579,8 @@ export class Token {
     destination: PublicKey,
     amount: number | TokenAmount,
   ): Promise<TransactionInstruction> {
-    const TokenAccountInfo = await this.TokenAccountInfo(source);
-    if (!owner.equals(TokenAccountInfo.owner)) {
+    const accountInfo = await this.getAccountInfo(source);
+    if (!owner.equals(accountInfo.owner)) {
       throw new Error('Account owner mismatch');
     }
 
@@ -605,9 +603,9 @@ export class Token {
       {pubkey: source, isSigner: false, isWritable: true},
       {pubkey: destination, isSigner: false, isWritable: true},
     ];
-    if (TokenAccountInfo.source) {
+    if (accountInfo.source) {
       keys.push({
-        pubkey: TokenAccountInfo.source,
+        pubkey: accountInfo.source,
         isSigner: false,
         isWritable: true,
       });
@@ -712,11 +710,10 @@ export class Token {
    * @param token Public key of the token
    * @param owner Owner of the token
    * @param dest Public key of the account to mint to
-   * @param amount ammount to mint
+   * @param amount amount to mint
    */
   mintToInstruction(
-    owner: Account,
-    token: PublicKey,
+    owner: PublicKey,
     dest: PublicKey,
     amount: number,
   ): TransactionInstruction {
@@ -736,8 +733,8 @@ export class Token {
 
     return new TransactionInstruction({
       keys: [
-        {pubkey: owner.publicKey, isSigner: true, isWritable: false},
-        {pubkey: token, isSigner: false, isWritable: true},
+        {pubkey: owner, isSigner: true, isWritable: false},
+        {pubkey: this.publicKey, isSigner: false, isWritable: true},
         {pubkey: dest, isSigner: false, isWritable: true},
       ],
       programId: this.programId,
@@ -753,11 +750,11 @@ export class Token {
    * @param amount ammount to burn
    */
   async burnInstruction(
-    owner: Account,
+    owner: PublicKey,
     account: PublicKey,
     amount: number,
   ): Promise<TransactionInstruction> {
-    const TokenAccountInfo = await this.TokenAccountInfo(account);
+    const accountInfo = await this.getAccountInfo(account);
 
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
@@ -774,13 +771,13 @@ export class Token {
     );
 
     const keys = [
-      {pubkey: owner.publicKey, isSigner: true, isWritable: false},
+      {pubkey: owner, isSigner: true, isWritable: false},
       {pubkey: account, isSigner: false, isWritable: true},
-      {pubkey: this.token, isSigner: false, isWritable: true},
+      {pubkey: this.publicKey, isSigner: false, isWritable: true},
     ];
-    if (TokenAccountInfo.source) {
+    if (accountInfo.source) {
       keys.push({
-        pubkey: TokenAccountInfo.source,
+        pubkey: accountInfo.source,
         isSigner: false,
         isWritable: true,
       });
