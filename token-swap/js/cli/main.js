@@ -6,7 +6,7 @@
 
 import {
   loadPrograms,
-  createNewTokenSwap,
+  createTokenSwap,
   swap,
   deposit,
   withdraw,
@@ -14,10 +14,10 @@ import {
 
 async function main() {
   // These test cases are designed to run sequentially and in the following order
-  console.log('Run test: createNewToken');
+  console.log('Run test: loadPrograms');
   await loadPrograms();
-  console.log('Run test: createNewToken');
-  await createNewTokenSwap();
+  console.log('Run test: createTokenSwap');
+  await createTokenSwap();
   console.log('Run test: deposit');
   await deposit();
   console.log('Run test: withdraw');

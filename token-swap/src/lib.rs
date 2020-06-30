@@ -1,3 +1,8 @@
+#![deny(missing_docs)]
+#![allow(clippy::too_many_arguments)]
+
+//! An Uniswap-like program for the Solana blockchain.
+
 extern crate spl_token;
 
 use num_derive::FromPrimitive;
@@ -17,12 +22,18 @@ use solana_sdk::{
 use std::mem::size_of;
 use thiserror::Error;
 
-// TODO update instruction documentation
-/// Instructions supported by the TokenSwap program.
+/// fee rate as a ratio
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Fee {
+    denominator: u64, numerator: u64,
+}
+
+/// Instructions supported by the SwapInfo program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum SwapInstruction {
-    ///   Initializes a new TokenSwap.
+    ///   Initializes a new SwapInfo.
     ///
     ///   0. `[writable, signer]` New Token-swap to create.
     ///   1. `[]` $authority derived from `create_program_address(&[Token-swap account])`
@@ -32,7 +43,7 @@ pub enum SwapInstruction {
     ///   5. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
     ///   6. '[]` Token program id
     ///   userdata: fee rate as a ratio
-    Init((u64, u64)),
+    Initialize(Fee),
 
     ///   Swap the tokens in the pool.
     ///
@@ -80,57 +91,16 @@ pub enum SwapInstruction {
     ///   percentage of the pool tokens that are returned.
     Withdraw(u64),
 }
-
-/// Creates an 'Init' instruction
-pub fn init(
-    program_id: &Pubkey,
-    token_program_id: &Pubkey,
-    swap_pubkey: &Pubkey,
-    authority_pubkey: &Pubkey,
-    token_a_pubkey: &Pubkey,
-    token_b_pubkey: &Pubkey,
-    pool_pubkey: &Pubkey,
-    user_output_pubkey: &Pubkey,
-    fees: (u64, u64),
-) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Init(fees).serialize()?;
-
-    let accounts = vec![
-        AccountMeta::new(*swap_pubkey, true),
-        AccountMeta::new(*authority_pubkey, false),
-        AccountMeta::new(*token_a_pubkey, false),
-        AccountMeta::new(*token_b_pubkey, false),
-        AccountMeta::new(*pool_pubkey, false),
-        AccountMeta::new(*user_output_pubkey, false),
-        AccountMeta::new(*token_program_id, false),
-    ];
-
-    Ok(Instruction {
-        program_id: *program_id,
-        accounts,
-        data,
-    })
-}
-
-pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
-    if input.len() < size_of::<u8>() + size_of::<T>() {
-        return Err(ProgramError::InvalidAccountData);
-    }
-    #[allow(clippy::cast_ptr_alignment)]
-    let val: &T = unsafe { &*(&input[1] as *const u8 as *const T) };
-    Ok(val)
-}
-
 impl SwapInstruction {
-    /// Deserializes a byte buffer into an [SwapInstruction](enum.SwapInstruction.html)
+    /// Deserializes a byte buffer into an [SwapInstruction](enum.SwapInstruction.html).
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
         Ok(match input[0] {
             0 => {
-                let fee: &(u64, u64) = unpack(input)?;
-                Self::Init(*fee)
+                let fee: &Fee = unpack(input)?;
+                Self::Initialize(*fee)
             }
             1 => {
                 let fee: &u64 = unpack(input)?;
@@ -148,14 +118,14 @@ impl SwapInstruction {
         })
     }
 
-    /// Serializes an [SwapInstruction](enum.SwapInstruction.html) into a byte buffer
+    /// Serializes an [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
     pub fn serialize(self: &Self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<SwapInstruction>()];
         match self {
-            Self::Init(fees) => {
+            Self::Initialize(fees) => {
                 output[0] = 0;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut (u64, u64)) };
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Fee) };
                 *value = *fees;
             }
             Self::Swap(amount) => {
@@ -181,6 +151,48 @@ impl SwapInstruction {
     }
 }
 
+/// Creates an 'initialize' instruction.
+pub fn initialize(
+    program_id: &Pubkey,
+    token_program_id: &Pubkey,
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    token_a_pubkey: &Pubkey,
+    token_b_pubkey: &Pubkey,
+    pool_pubkey: &Pubkey,
+    user_output_pubkey: &Pubkey,
+    fee: Fee,
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::Initialize(fee).serialize()?;
+
+    let accounts = vec![
+        AccountMeta::new(*swap_pubkey, true),
+        AccountMeta::new(*authority_pubkey, false),
+        AccountMeta::new(*token_a_pubkey, false),
+        AccountMeta::new(*token_b_pubkey, false),
+        AccountMeta::new(*pool_pubkey, false),
+        AccountMeta::new(*user_output_pubkey, false),
+        AccountMeta::new(*token_program_id, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Unpacks a reference from a bytes buffer.
+pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
+    if input.len() < size_of::<u8>() + size_of::<T>() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    #[allow(clippy::cast_ptr_alignment)]
+    let val: &T = unsafe { &*(&input[1] as *const u8 as *const T) };
+    Ok(val)
+}
+
+/// Errors that may be returned by the TokenSwap program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum Error {
     /// The account cannot be initialized because it is already being used.
@@ -192,28 +204,28 @@ pub enum Error {
     /// The owner of the input isn't set to the program address generated by the program.
     #[error("InvalidOwner")]
     InvalidOwner,
-    /// The deserialization of the Token state returned something besides State::Token
+    /// The deserialization of the Token state returned something besides State::Token.
     #[error("ExpectedToken")]
     ExpectedToken,
-    /// The deserialization of the Token state returned something besides State::Account
+    /// The deserialization of the Token state returned something besides State::Account.
     #[error("ExpectedAccount")]
     ExpectedAccount,
-    /// The initialized pool had a non zero supply
+    /// The initialized pool had a non zero supply.
     #[error("InvalidSupply")]
     InvalidSupply,
-    /// The intiailized token has a delegate
+    /// The initialized token has a delegate.
     #[error("InvalidDelegate")]
     InvalidDelegate,
-    /// The token swap state is invalid
+    /// The token swap state is invalid.
     #[error("InvalidState")]
     InvalidState,
-    /// The input token is invalid for swap
+    /// The input token is invalid for swap.
     #[error("InvalidInput")]
     InvalidInput,
-    /// The output token is invalid for swap
+    /// The output token is invalid for swap.
     #[error("InvalidOutput")]
     InvalidOutput,
-    /// The calculation failed
+    /// The calculation failed.
     #[error("CalculationFailure")]
     CalculationFailure,
 }
@@ -248,43 +260,46 @@ impl PrintProgramError for Error {
     }
 }
 
+/// Initialized program details.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct TokenSwap {
+pub struct SwapInfo {
     /// token A
     /// The Liquidity token is issued against this value.
     token_a: Pubkey,
     /// token B
     token_b: Pubkey,
-    /// pool tokens are issued when A or B tokens are deposited
-    /// pool tokens can be withdrawn back to the original A or B token
+    /// pool tokens are issued when A or B tokens are deposited.
+    /// pool tokens can be withdrawn back to the original A or B token.
     pool_mint: Pubkey,
-    /// fee applied to the input token amount prior to output calculation
-    fee: (u64, u64),
+    /// fee applied to the input token amount prior to output calculation.
+    fee: Fee,
 }
 
+/// Program states.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum State {
     /// Unallocated state, may be initialized into another state.
     Unallocated,
-    Init(TokenSwap),
+    /// Initialized state.
+    Init(SwapInfo),
 }
 
+/// The Uniswap invariant calculator.
 struct Invariant {
     token_a: u64,
     token_b: u64,
     pool: Option<u64>,
-    fee: (u64, u64),
+    fee: Fee,
 }
-
 impl Invariant {
     fn swap(&mut self, token_a: u64) -> Option<u64> {
         let invariant = self.token_a.checked_mul(self.token_b)?;
         let new_a = self.token_a.checked_add(token_a)?;
         let new_b = invariant.checked_div(new_a)?;
         let remove = self.token_b.checked_sub(new_b)?;
-        let fee = remove.checked_mul(self.fee.1)?.checked_div(self.fee.0)?;
+        let fee = remove.checked_mul(self.fee.numerator)?.checked_div(self.fee.denominator)?;
         let new_b_with_fee = new_b.checked_add(fee)?;
         let remove_less_fee = remove.checked_sub(fee)?;
         self.token_a = new_a;
@@ -308,6 +323,7 @@ impl Invariant {
 }
 
 impl State {
+    /// Deserializes a byte buffer into a [State](struct.State.html).
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -315,13 +331,14 @@ impl State {
         Ok(match input[0] {
             0 => Self::Unallocated,
             1 => {
-                let swap: &TokenSwap = unpack(input)?;
+                let swap: &SwapInfo = unpack(input)?;
                 Self::Init(*swap)
             }
             _ => return Err(ProgramError::InvalidAccountData),
         })
     }
 
+    /// Serializes [State](struct.State.html) into a byte buffer.
     pub fn serialize(self: &Self, output: &mut [u8]) -> ProgramResult {
         if output.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -329,19 +346,20 @@ impl State {
         match self {
             Self::Unallocated => output[0] = 0,
             Self::Init(swap) => {
-                if output.len() < size_of::<u8>() + size_of::<TokenSwap>() {
+                if output.len() < size_of::<u8>() + size_of::<SwapInfo>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 output[0] = 1;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut TokenSwap) };
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut SwapInfo) };
                 *value = *swap;
             }
         }
         Ok(())
     }
 
-    fn token_swap(&self) -> Result<TokenSwap, ProgramError> {
+    /// Gets the `SwapInfo` from `State`
+    fn token_swap(&self) -> Result<SwapInfo, ProgramError> {
         if let State::Init(swap) = &self {
             Ok(*swap)
         } else {
@@ -349,11 +367,12 @@ impl State {
         }
     }
 
+    /// Deserializes a spl_token `Account`.
     pub fn token_account_deserialize(
         info: &AccountInfo,
     ) -> Result<spl_token::state::Account, Error> {
-        if let Some(spl_token::state::State::Account(account)) =
-            spl_token::state::State::deserialize(&info.data.borrow()).ok()
+        if let Ok(spl_token::state::State::Account(account)) =
+            spl_token::state::State::deserialize(&info.data.borrow())
         {
             Ok(account)
         } else {
@@ -361,9 +380,10 @@ impl State {
         }
     }
 
+    /// Deserializes a spl_token `State`.
     pub fn token_deserialize(info: &AccountInfo) -> Result<spl_token::state::Token, Error> {
-        if let Some(spl_token::state::State::Token(token)) =
-            spl_token::state::State::deserialize(&info.data.borrow()).ok()
+        if let Ok(spl_token::state::State::Token(token)) =
+            spl_token::state::State::deserialize(&info.data.borrow())
         {
             Ok(token)
         } else {
@@ -371,10 +391,12 @@ impl State {
         }
     }
 
+    /// Calculates the authority id by generating a program address.
     pub fn authority_id(program_id: &Pubkey, my_info: &Pubkey) -> Result<Pubkey, Error> {
         Pubkey::create_program_address(&[&my_info.to_string()[..32]], program_id)
             .or(Err(Error::InvalidProgramAddress))
     }
+    /// Issue a spl_token `Burn` instruction.
     pub fn token_burn(
         accounts: &[AccountInfo],
         token_program_id: &Pubkey,
@@ -398,6 +420,7 @@ impl State {
         invoke_signed(&ix, accounts, signers)
     }
 
+    /// Issue a spl_token `MintTo` instruction.
     pub fn token_mint_to(
         accounts: &[AccountInfo],
         token_program_id: &Pubkey,
@@ -419,6 +442,7 @@ impl State {
         invoke_signed(&ix, accounts, signers)
     }
 
+    /// Issue a spl_token `Transfer` instruction.
     pub fn token_transfer(
         accounts: &[AccountInfo],
         token_program_id: &Pubkey,
@@ -442,9 +466,10 @@ impl State {
         invoke_signed(&ix, accounts, signers)
     }
 
-    pub fn process_init(
+    /// Processes an [Initialize](enum.Instruction.html).
+    pub fn process_initialize(
         program_id: &Pubkey,
-        fee: (u64, u64),
+        fee: Fee,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -472,7 +497,7 @@ impl State {
         if *authority_info.key != token_b.owner {
             return Err(Error::InvalidOwner.into());
         }
-        if Some(*authority_info.key) != pool_mint.owner {
+        if spl_token::option::COption::Some(*authority_info.key) != pool_mint.owner {
             return Err(Error::InvalidOwner.into());
         }
         if 0 != pool_mint.info.supply {
@@ -491,8 +516,8 @@ impl State {
             return Err(Error::InvalidDelegate.into());
         }
 
-        // liqudity is measured in terms of token_a's value
-        // since both sides of the pool are equal
+        // liquidity is measured in terms of token_a's value since both sides of
+        // the pool are equal
         let amount = token_a.amount;
         Self::token_mint_to(
             accounts,
@@ -504,7 +529,7 @@ impl State {
             amount,
         )?;
 
-        let obj = State::Init(TokenSwap {
+        let obj = State::Init(SwapInfo {
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
             pool_mint: *pool_info.key,
@@ -513,6 +538,7 @@ impl State {
         obj.serialize(&mut swap_info.data.borrow_mut())
     }
 
+    /// Processes an [Swap](enum.Instruction.html).
     pub fn process_swap(
         program_id: &Pubkey,
         amount: u64,
@@ -575,6 +601,7 @@ impl State {
         )?;
         Ok(())
     }
+    /// Processes an [Deposit](enum.Instruction.html).
     pub fn process_deposit(
         program_id: &Pubkey,
         a_amount: u64,
@@ -619,7 +646,7 @@ impl State {
             .exchange_rate(a_amount)
             .ok_or_else(|| Error::CalculationFailure)?;
 
-        // liqudity is measured in terms of token_a's value
+        // liquidity is measured in terms of token_a's value
         // since both sides of the pool are equal
         let output = a_amount;
 
@@ -656,6 +683,7 @@ impl State {
         Ok(())
     }
 
+    /// Processes an [Withdraw](enum.Instruction.html).
     pub fn process_withdraw(
         program_id: &Pubkey,
         amount: u64,
@@ -732,13 +760,13 @@ impl State {
         )?;
         Ok(())
     }
-    /// Processes an [SwapInstruction](enum.Instruction.html).
+    /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = SwapInstruction::deserialize(input)?;
         match instruction {
-            SwapInstruction::Init(fee) => {
+            SwapInstruction::Initialize(fee) => {
                 info!("Instruction: Init");
-                Self::process_init(program_id, fee, accounts)
+                Self::process_initialize(program_id, fee, accounts)
             }
             SwapInstruction::Swap(amount) => {
                 info!("Instruction: Swap");
@@ -770,11 +798,11 @@ fn process_instruction<'a>(
     Ok(())
 }
 
-// Test program id for the swap program
+// Test program id for the swap program.
 #[cfg(not(target_arch = "bpf"))]
 const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
 
-/// Routes invokes to the token program, used for testing
+/// Routes invokes to the token program, used for testing.
 #[cfg(not(target_arch = "bpf"))]
 pub fn invoke_signed<'a>(
     instruction: &Instruction,
@@ -892,7 +920,7 @@ mod tests {
     }
 
     #[test]
-    fn test_init() {
+    fn test_initialize() {
         let swap_key = pubkey_rand();
         let mut swap_account = Account::new(0, size_of::<State>(), &SWAP_PROGRAM_ID);
         let authority_key = State::authority_id(&SWAP_PROGRAM_ID, &swap_key).unwrap();
@@ -907,7 +935,7 @@ mod tests {
 
         // Swap Init
         do_process_instruction(
-            init(
+            initialize(
                 &SWAP_PROGRAM_ID,
                 &TOKEN_PROGRAM_ID,
                 &swap_key,
@@ -916,7 +944,7 @@ mod tests {
                 &token_b_key,
                 &pool_key,
                 &pool_token_key,
-                (1, 2),
+                Fee{denominator: 1, numerator: 2},
             )
             .unwrap(),
             vec![
