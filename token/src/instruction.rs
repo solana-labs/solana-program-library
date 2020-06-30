@@ -85,19 +85,6 @@ pub enum TokenInstruction {
     ///   2. `[writable]` Token being burned.
     ///   3. Optional: `[writable]` Source account if key 1 is a delegate account.
     Burn(u64),
-
-    /// Wrap native SOL in the `S011111111111111111` token account owned by the
-    ///   0. `[signer]` Owner of the token.
-    ///   1. `[]` Rent sysvar
-    ///   3. `[writable]` Account to wrap the native SOL with.  Any lamports in this account above
-    ///      the rent-exempt minimum will be reflected in the new token balance
-    NewNative,
-
-    /// Deallocate a `S011111111111111111` token account and reclaim the native SOL
-    ///   0. `[signer]` Owner of the token.
-    ///   2. `[writable]` Destination account to assign the SOL to
-    ReclaimNative,
-
 }
 impl TokenInstruction {
     /// Deserializes a byte buffer into an [TokenInstruction](enum.TokenInstruction.html)
