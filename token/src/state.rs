@@ -7,7 +7,7 @@ use crate::{
 };
 use solana_sdk::{
     account_info::AccountInfo, entrypoint::ProgramResult, info, program_error::ProgramError,
-    program_utils::next_account_info, pubkey::Pubkey,
+    program_utils::next_account_info, pubkey::Pubkey, rent::Rent, sysvar::Sysvar,
 };
 use std::mem::size_of;
 
@@ -71,15 +71,31 @@ impl Default for State {
     }
 }
 
+/// Check if an AccountInfo is rent exempt
+///
+/// TODO: add this to solana_sdk::sysvar::rent and deal with the conflicting
+/// solana_sdk::sysvar::rent::verify_rent_exemption() definition for KeyedAccounts
+pub fn verify_rent_exemption(
+    account_info: &AccountInfo,
+    rent_sysvar_account: &AccountInfo,
+) -> ProgramResult {
+    let rent = Rent::from_account_info(rent_sysvar_account)?;
+    if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
+        Err(ProgramError::InsufficientFunds)
+    } else {
+        Ok(())
+    }
+}
+
 impl State {
     /// Processes a [NewToken](enum.TokenInstruction.html) instruction.
     pub fn process_new_token(accounts: &[AccountInfo], info: TokenInfo) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let token_account_info = next_account_info(account_info_iter)?;
-
         if State::Unallocated != State::deserialize(&token_account_info.data.borrow())? {
             return Err(TokenError::AlreadyInUse.into());
         }
+        verify_rent_exemption(token_account_info, next_account_info(account_info_iter)?)?;
 
         let owner = if info.supply != 0 {
             let dest_account_info = next_account_info(account_info_iter)?;
@@ -120,6 +136,7 @@ impl State {
     pub fn process_new_account(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let new_account_info = next_account_info(account_info_iter)?;
+        verify_rent_exemption(new_account_info, next_account_info(account_info_iter)?)?;
         let owner_account_info = next_account_info(account_info_iter)?;
         let token_account_info = next_account_info(account_info_iter)?;
 
@@ -303,6 +320,7 @@ impl State {
         let owner_account_info = next_account_info(account_info_iter)?;
         let token_account_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
+        verify_rent_exemption(dest_account_info, next_account_info(account_info_iter)?)?;
 
         if !owner_account_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
@@ -519,6 +537,7 @@ mod tests {
     use crate::instruction::{approve, burn, mint_to, new_account, new_token, set_owner, transfer};
     use solana_sdk::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
+        sysvar,
     };
 
     fn pubkey_rand() -> Pubkey {
@@ -555,6 +574,7 @@ mod tests {
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
         let token2_key = pubkey_rand();
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut rent = sysvar::rent::create_account(1, &Rent::free());
 
         // account not created
         assert_eq!(
@@ -571,7 +591,7 @@ mod tests {
                     }
                 )
                 .unwrap(),
-                vec![&mut token_account, &mut token_account_account]
+                vec![&mut token_account, &mut rent, &mut token_account_account]
             )
         );
 
@@ -587,6 +607,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -606,7 +627,7 @@ mod tests {
                 },
             )
             .unwrap(),
-            vec![&mut token_account, &mut token_account_account],
+            vec![&mut token_account, &mut rent, &mut token_account_account],
         )
         .unwrap();
 
@@ -622,6 +643,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account2_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -643,7 +665,7 @@ mod tests {
                     },
                 )
                 .unwrap(),
-                vec![&mut token2_account, &mut token_account2_account]
+                vec![&mut token2_account, &mut rent, &mut token_account2_account]
             )
         );
 
@@ -714,6 +736,7 @@ mod tests {
         let mut owner_account = Account::default();
         let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut rent = sysvar::rent::create_account(1, &Rent::free());
 
         // missing signer
         let mut instruction = new_account(
@@ -731,6 +754,7 @@ mod tests {
                 instruction,
                 vec![
                     &mut token_account_account,
+                    &mut rent,
                     &mut owner_account,
                     &mut token_account,
                 ],
@@ -749,6 +773,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -769,6 +794,7 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut token_account_account,
+                    &mut rent,
                     &mut owner_account,
                     &mut token_account,
                 ],
@@ -800,6 +826,7 @@ mod tests {
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
         let token2_key = pubkey_rand();
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut rent = sysvar::rent::create_account(1, &Rent::free());
 
         // create account
         do_process_instruction(
@@ -813,6 +840,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -831,6 +859,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account2_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -849,6 +878,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account3_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -867,6 +897,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut mismatch_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token2_account,
             ],
@@ -885,6 +916,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut delegate_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
                 &mut token_account_account,
@@ -904,6 +936,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut mismatch_delegate_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token2_account,
                 &mut token_account_account,
@@ -924,7 +957,7 @@ mod tests {
                 },
             )
             .unwrap(),
-            vec![&mut token_account, &mut token_account_account],
+            vec![&mut token_account, &mut rent, &mut token_account_account],
         )
         .unwrap();
 
@@ -1264,6 +1297,7 @@ mod tests {
         let mut owner_account = Account::default();
         let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut rent = sysvar::rent::create_account(1, &Rent::free());
 
         // create account
         do_process_instruction(
@@ -1277,6 +1311,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -1298,7 +1333,7 @@ mod tests {
         instruction.accounts.pop();
         assert_eq!(
             Err(TokenError::OwnerRequiredIfNoInitialSupply.into()),
-            do_process_instruction(instruction, vec![&mut token_account])
+            do_process_instruction(instruction, vec![&mut token_account, &mut rent])
         );
 
         // create mintable token with zero supply
@@ -1308,7 +1343,7 @@ mod tests {
         };
         do_process_instruction(
             new_token(&program_id, &token_key, None, Some(&owner_key), info).unwrap(),
-            vec![&mut token_account, &mut token_account_account],
+            vec![&mut token_account, &mut rent, &mut token_account_account],
         )
         .unwrap();
         if let State::Token(token) = State::deserialize(&token_account.data).unwrap() {
@@ -1330,6 +1365,7 @@ mod tests {
                 &mut owner_account,
                 &mut token_account,
                 &mut token_account_account,
+                &mut rent,
             ],
         )
         .unwrap();
@@ -1368,6 +1404,7 @@ mod tests {
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
         let token2_key = pubkey_rand();
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut rent = sysvar::rent::create_account(1, &Rent::free());
 
         // create account
         do_process_instruction(
@@ -1381,6 +1418,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -1399,6 +1437,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account2_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -1417,6 +1456,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut delegate_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
                 &mut token_account_account,
@@ -1436,6 +1476,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut mismatch_delegate_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token2_account,
                 &mut token_account_account,
@@ -1456,7 +1497,7 @@ mod tests {
                 },
             )
             .unwrap(),
-            vec![&mut token_account, &mut token_account_account],
+            vec![&mut token_account, &mut rent, &mut token_account_account],
         )
         .unwrap();
 
@@ -1618,6 +1659,7 @@ mod tests {
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
         let token2_key = pubkey_rand();
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut rent = sysvar::rent::create_account(1, &Rent::free());
 
         // invalid account
         assert_eq!(
@@ -1644,6 +1686,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -1662,6 +1705,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account2_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token2_account,
             ],
@@ -1723,6 +1767,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account,
+                &mut rent,
                 &mut token_account_account,
                 &mut owner_account,
             ],
@@ -1806,6 +1851,7 @@ mod tests {
         let mut token2_account = Account::new(0, size_of::<State>(), &program_id);
         let uninitialized_key = pubkey_rand();
         let mut uninitialized_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut rent = sysvar::rent::create_account(1, &Rent::free());
 
         // create token account
         do_process_instruction(
@@ -1819,6 +1865,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -1837,6 +1884,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account2_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -1855,6 +1903,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account3_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token_account,
             ],
@@ -1873,6 +1922,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut mismatch_account_account,
+                &mut rent,
                 &mut owner_account,
                 &mut token2_account,
             ],
@@ -1913,6 +1963,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut token_account,
+                &mut rent,
                 &mut token_account_account,
                 &mut owner_account,
             ],
@@ -1926,6 +1977,7 @@ mod tests {
                 &mut owner_account,
                 &mut token_account,
                 &mut token_account2_account,
+                &mut rent,
             ],
         )
         .unwrap();
@@ -1975,6 +2027,7 @@ mod tests {
                     &mut owner_account,
                     &mut token_account,
                     &mut delegate_account_account,
+                    &mut rent,
                 ],
             )
         );
@@ -1995,6 +2048,7 @@ mod tests {
                     &mut owner_account,
                     &mut token_account,
                     &mut mismatch_account_account,
+                    &mut rent,
                 ],
             )
         );
@@ -2015,6 +2069,7 @@ mod tests {
                     &mut owner2_account,
                     &mut token_account,
                     &mut token_account2_account,
+                    &mut rent,
                 ],
             )
         );
@@ -2028,6 +2083,7 @@ mod tests {
                     &mut owner_account,
                     &mut token_account,
                     &mut uninitialized_account,
+                    &mut rent,
                 ],
             )
         );

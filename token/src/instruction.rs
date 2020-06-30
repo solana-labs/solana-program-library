@@ -5,6 +5,7 @@ use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     pubkey::Pubkey,
+    sysvar,
 };
 use std::mem::size_of;
 
@@ -27,10 +28,11 @@ pub enum TokenInstruction {
     /// # Accounts expected by this instruction:
     ///
     ///   0. `[writable, signer]` New token to create.
-    ///   1.
+    ///   1. `[]` Rent sysvar
+    ///   2.
     ///      * If supply is non-zero: `[writable]` Account to hold all the newly minted tokens.
     ///      * If supply is zero: `[]` Owner of the token.
-    ///   2. Optional: `[]` Owner of the token if supply is non-zero, if present then the token allows further minting of tokens.
+    ///   3. Optional: `[]` Owner of the token if supply is non-zero, if present then the token allows further minting of tokens.
     NewToken(TokenInfo),
     /// Creates a new account.  The new account can either hold tokens or be a delegate
     /// for another account.
@@ -38,9 +40,10 @@ pub enum TokenInstruction {
     /// # Accounts expected by this instruction:
     ///
     ///   0. `[writable, signer]`  New account being created.
-    ///   1. `[]` Owner of the new account.
-    ///   2. `[]` Token this account will be associated with.
-    ///   3. Optional: `[]` Source account that this account will be a delegate for.
+    ///   1. `[]` Rent sysvar
+    ///   2. `[]` Owner of the new account.
+    ///   3. `[]` Token this account will be associated with.
+    ///   4. Optional: `[]` Source account that this account will be a delegate for.
     NewAccount,
     /// Transfers tokens from one account to another either directly or via a delegate.
     ///
@@ -75,6 +78,7 @@ pub enum TokenInstruction {
     ///   0. `[signer]` Owner of the token.
     ///   1. `[writable]` Token to mint.
     ///   2. `[writable]` Account to mint tokens to.
+    ///   3. `[]` Rent sysvar
     MintTo(u64),
     /// Burns tokens by removing them from an account and the total supply.
     ///
@@ -190,7 +194,10 @@ pub fn new_token(
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::NewToken(token_info).serialize()?;
 
-    let mut accounts = vec![AccountMeta::new(*token_pubkey, true)];
+    let mut accounts = vec![
+        AccountMeta::new(*token_pubkey, true),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
     if token_info.supply != 0 {
         match account_pubkey {
             Some(pubkey) => accounts.push(AccountMeta::new(*pubkey, false)),
@@ -227,6 +234,7 @@ pub fn new_account(
 
     let mut accounts = vec![
         AccountMeta::new(*account_pubkey, true),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*owner_pubkey, false),
         AccountMeta::new_readonly(*token_pubkey, false),
     ];
@@ -329,6 +337,7 @@ pub fn mint_to(
 
     let accounts = vec![
         AccountMeta::new_readonly(*owner_pubkey, true),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new(*token_pubkey, false),
         AccountMeta::new(*account_pubkey, false),
     ];
