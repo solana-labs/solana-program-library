@@ -1,5 +1,5 @@
 {
-  "name": "spl-token",
+  "name": "spl-token-swap",
   "version": "0.0.1",
   "description": "",
   "repository": {
@@ -19,7 +19,7 @@
     "cluster:testnet": "cp cluster-testnet.env .env",
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env",
     "localnet:update": "solana-localnet update",
-    "localnet:up": "set -x; solana-localnet down; set -e; solana-localnet up",
+    "localnet:up": "rm client/util/store/config.json; set -x; solana-localnet down; set -e; solana-localnet up",
     "localnet:down": "solana-localnet down",
     "localnet:logs": "solana-localnet logs -f",
     "pretty": "prettier --write '{,src/**/}*.js'"

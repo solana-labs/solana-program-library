@@ -19,7 +19,7 @@ import {
 
 async function main() {
   console.log('Run test: loadTokenProgram');
-  await loadTokenProgram();
+  await loadTokenProgram('../target/bpfel-unknown-unknown/release/spl_token.so');
   console.log('Run test: createNewToken');
   await createNewToken();
   console.log('Run test: createNewAccount');

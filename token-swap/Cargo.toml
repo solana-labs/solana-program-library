@@ -1,0 +1,26 @@
+
+# Note: This crate must be built using do.sh
+
+[package]
+name = "spl-token-swap"
+version = "0.1.0"
+description = "Solana Program Library Token Swap"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[dependencies]
+num-derive = "0.2"
+num-traits = "0.2"
+solana-sdk = { version = "=1.2.0", default-features = false, features=["program"] }
+solana-sdk-bpf-test = { path = "../bin/bpf-sdk/rust/test", default-features = false }
+spl-token = { path = "../token", default-features = false }
+thiserror = "1.0"
+
+[dev-dependencies]
+rand = { version = "0.7.0"}
+
+[lib]
+name = "spl_token_swap"
+crate-type = ["cdylib", "lib"]
