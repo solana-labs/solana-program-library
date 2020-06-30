@@ -7,3 +7,4 @@ pub mod instruction;
 pub mod option;
 pub mod processor;
 pub mod state;
+pub mod native_token;

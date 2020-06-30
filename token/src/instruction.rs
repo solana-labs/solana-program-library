@@ -85,6 +85,24 @@ pub enum TokenInstruction {
     ///   2. `[writable]` Token being burned.
     ///   3. Optional: `[writable]` Source account if key 1 is a delegate account.
     Burn(u64),
+
+    /// Initialize a wrapped SOL token account.  The full SOL balance in the uninitialized account
+    /// will be wrapped.
+    ///
+    /// The `InitializeWrappedAccount` instruction requires no signers and MUST be included within
+    /// the Transaction that creates the uninitialized account with the system program.  Otherwise
+    /// another party can acquire ownership of the uninitialized token account.
+    ///
+    ///   0. `[writable]` An uninitialized token account
+    ///   1. `[]` Initial owner for the token account.
+    ///
+    InitializeWrappedAccount,
+
+    /// Deallocate and release all native SOL held by a token account
+    ///   0. `[signer]` Owner of the token account.
+    ///   1. `[writable]` Token account to release.
+    ///   2. `[writable]` Destination account to receive the full SOL balance of the account.
+    ReleaseAccount,
 }
 impl TokenInstruction {
     /// Deserializes a byte buffer into an [TokenInstruction](enum.TokenInstruction.html)
