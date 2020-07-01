@@ -12,6 +12,7 @@ edition = "2018"
 
 [dependencies]
 solana-sdk = { version = "1.2.4", default-features = false, features=["program"] }
+solana-sdk-bpf-test = { path = "../bin/bpf-sdk/rust/test", default-features = false }
 
 [lib]
 name = "spl_memo"

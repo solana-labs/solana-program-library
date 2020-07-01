@@ -241,6 +241,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-sdk-bpf-test"
+version = "1.2.3"
+
+[[package]]
 name = "solana-sdk-macro"
 version = "1.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -256,6 +260,7 @@ name = "spl-memo"
 version = "1.0.0"
 dependencies = [
  "solana-sdk 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "solana-sdk-bpf-test 1.2.3",
 ]
 
 [[package]]
