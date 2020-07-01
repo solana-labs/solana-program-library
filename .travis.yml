@@ -29,5 +29,5 @@ jobs:
   include:
     - stage: "Test Programs"
       script: ./ci/memo.sh
-      script: ./ci/token.sh
-      script: ./ci/token.sh
+    - script: ./ci/token-swap.sh
+    - script: ./ci/token.sh
