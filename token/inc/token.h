@@ -26,19 +26,20 @@ typedef struct Token_TokenInfo {
  */
 typedef enum Token_TokenInstruction_Tag {
     /**
-     * Creates a new token and deposit all the newly minted tokens in an account.
+     * Initializes a new mint and deposits all the newly minted tokens in an account.
      *
      * # Accounts expected by this instruction:
      *
-     *   0. `[writable, signer]` New token to create.
+     *   0. `[writable, signer]` New mint to create.
      *   1.
      *      * If supply is non-zero: `[writable]` Account to hold all the newly minted tokens.
-     *      * If supply is zero: `[]` Owner of the token.
-     *   2. Optional: `[]` Owner of the token if supply is non-zero, if present then the token allows further minting of tokens.
+     *      * If supply is zero: `[]` Owner of the mint.
+     *   2. Optional: `[]` Owner of the mint if supply is non-zero, if present then the
+     *      token allows further minting of tokens.
      */
-    NewToken,
+    InitializeMint,
     /**
-     * Creates a new account.  The new account can either hold tokens or be a delegate
+     * Initializes a new account.  The new account can either hold tokens or be a delegate
      * for another account.
      *
      * # Accounts expected by this instruction:
@@ -48,7 +49,7 @@ typedef enum Token_TokenInstruction_Tag {
      *   2. `[]` Token this account will be associated with.
      *   3. Optional: `[]` Source account that this account will be a delegate for.
      */
-    NewAccount,
+    InitializeAccount,
     /**
      * Transfers tokens from one account to another either directly or via a delegate.
      *
@@ -104,9 +105,9 @@ typedef enum Token_TokenInstruction_Tag {
     Burn,
 } Token_TokenInstruction_Tag;
 
-typedef struct Token_NewToken_Body {
+typedef struct Token_InitializeMint_Body {
     Token_TokenInfo _0;
-} Token_NewToken_Body;
+} Token_InitializeMint_Body;
 
 typedef struct Token_Transfer_Body {
     uint64_t _0;
@@ -127,7 +128,7 @@ typedef struct Token_Burn_Body {
 typedef struct Token_TokenInstruction {
     Token_TokenInstruction_Tag tag;
     union {
-        Token_NewToken_Body new_token;
+        Token_InitializeMint_Body initialize_mint;
         Token_Transfer_Body transfer;
         Token_Approve_Body approve;
         Token_MintTo_Body mint_to;
@@ -163,7 +164,7 @@ typedef struct Token_COption_Pubkey {
 } Token_COption_Pubkey;
 
 /**
- * Represents a token type identified and identified by its public key.  Accounts
+ * Represents a token type identified by its public key.  Accounts
  * are associated with a specific token type and only accounts with
  * matching types my inter-opt.
  */
@@ -173,8 +174,8 @@ typedef struct Token_Token {
      */
     Token_TokenInfo info;
     /**
-     * Optional token owner, used to mint new tokens.  The owner may only
-     * be provided during token creation.  If no owner is present then the token
+     * Optional owner, used to mint new tokens.  The owner may only
+     * be provided during mint creation.  If no owner is present then the mint
      * has a fixed supply and no further tokens may be minted.
      */
     Token_COption_Pubkey owner;
@@ -220,7 +221,7 @@ typedef struct Token_COption_AccountDelegate {
 } Token_COption_AccountDelegate;
 
 /**
- * Account that holds or may delegate tokens.
+ * Account that holds tokens or may delegate tokens.
  */
 typedef struct Token_Account {
     /**
@@ -244,7 +245,7 @@ typedef struct Token_Account {
 } Token_Account;
 
 /**
- * Token program states.
+ * Program states.
  */
 typedef enum Token_State_Tag {
     /**
@@ -252,9 +253,9 @@ typedef enum Token_State_Tag {
      */
     Unallocated,
     /**
-     * A token type.
+     * A token mint.
      */
-    Token,
+    Mint,
     /**
      * An account that holds an amount of tokens or was delegated the authority to transfer
      * tokens on behalf of another account.
@@ -266,9 +267,9 @@ typedef enum Token_State_Tag {
     Invalid,
 } Token_State_Tag;
 
-typedef struct Token_Token_Body {
+typedef struct Token_Mint_Body {
     Token_Token _0;
-} Token_Token_Body;
+} Token_Mint_Body;
 
 typedef struct Token_Account_Body {
     Token_Account _0;
@@ -277,7 +278,7 @@ typedef struct Token_Account_Body {
 typedef struct Token_State {
     Token_State_Tag tag;
     union {
-        Token_Token_Body token;
+        Token_Mint_Body mint;
         Token_Account_Body account;
     };
 } Token_State;

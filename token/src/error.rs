@@ -9,7 +9,7 @@ use solana_sdk::{
 };
 use thiserror::Error;
 
-/// Errors that may be returned by the Token program
+/// Errors that may be returned by the Token program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum TokenError {
     /// Insufficient funds for the operation requested.
@@ -37,19 +37,16 @@ pub enum TokenError {
     #[error("An owner is required if supply is zero")]
     OwnerRequiredIfNoInitialSupply,
 }
-
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
         ProgramError::Custom(e as u32)
     }
 }
-
 impl<T> DecodeError<T> for TokenError {
     fn type_of() -> &'static str {
         "TokenError"
     }
 }
-
 impl PrintProgramError for TokenError {
     fn print<E>(&self)
     where

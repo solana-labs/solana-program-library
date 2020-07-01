@@ -11,7 +11,7 @@ use solana_sdk::{
 };
 use std::mem::size_of;
 
-/// Represents a token type identified and identified by its public key.  Accounts
+/// Represents a token type identified by its public key.  Accounts
 /// are associated with a specific token type and only accounts with
 /// matching types my inter-opt.
 #[repr(C)]
@@ -19,8 +19,8 @@ use std::mem::size_of;
 pub struct Token {
     /// The total supply of tokens.
     pub info: TokenInfo,
-    /// Optional token owner, used to mint new tokens.  The owner may only
-    /// be provided during token creation.  If no owner is present then the token
+    /// Optional owner, used to mint new tokens.  The owner may only
+    /// be provided during mint creation.  If no owner is present then the mint
     /// has a fixed supply and no further tokens may be minted.
     pub owner: COption<Pubkey>,
 }
@@ -35,7 +35,7 @@ pub struct AccountDelegate {
     pub original_amount: u64,
 }
 
-/// Account that holds or may delegate tokens.
+/// Account that holds tokens or may delegate tokens.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Account {
@@ -51,14 +51,14 @@ pub struct Account {
     pub delegate: COption<AccountDelegate>,
 }
 
-/// Token program states.
+/// Program states.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum State {
     /// Unallocated state, may be initialized into another state.
     Unallocated,
-    /// A token type.
-    Token(Token),
+    /// A token mint.
+    Mint(Token),
     /// An account that holds an amount of tokens or was delegated the authority to transfer
     /// tokens on behalf of another account.
     Account(Account),
@@ -70,10 +70,9 @@ impl Default for State {
         Self::Unallocated
     }
 }
-
 impl State {
-    /// Processes a [NewToken](enum.TokenInstruction.html) instruction.
-    pub fn process_new_token(accounts: &[AccountInfo], info: TokenInfo) -> ProgramResult {
+    /// Processes a [InitializeMint](enum.TokenInstruction.html) instruction.
+    pub fn process_initialize_mint(accounts: &[AccountInfo], info: TokenInfo) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let token_account_info = next_account_info(account_info_iter)?;
 
@@ -113,23 +112,23 @@ impl State {
             return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
         };
 
-        State::Token(Token { info, owner }).serialize(&mut token_account_info.data.borrow_mut())
+        State::Mint(Token { info, owner }).serialize(&mut token_account_info.data.borrow_mut())
     }
 
-    /// Processes a [NewAccount](enum.TokenInstruction.html) instruction.
-    pub fn process_new_account(accounts: &[AccountInfo]) -> ProgramResult {
+    /// Processes a [InitializeAccount](enum.TokenInstruction.html) instruction.
+    pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let new_account_info = next_account_info(account_info_iter)?;
+        let initialize_account_info = next_account_info(account_info_iter)?;
         let owner_account_info = next_account_info(account_info_iter)?;
         let token_account_info = next_account_info(account_info_iter)?;
 
-        if !new_account_info.is_signer {
+        if !initialize_account_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
 
-        let mut new_account_data = new_account_info.data.borrow_mut();
+        let mut initialize_account_data = initialize_account_info.data.borrow_mut();
 
-        if State::Unallocated != State::deserialize(&new_account_data)? {
+        if State::Unallocated != State::deserialize(&initialize_account_data)? {
             return Err(TokenError::AlreadyInUse.into());
         }
 
@@ -146,7 +145,7 @@ impl State {
             });
         }
 
-        State::Account(token_account).serialize(&mut new_account_data)
+        State::Account(token_account).serialize(&mut initialize_account_data)
     }
 
     /// Processes a [Transfer](enum.TokenInstruction.html) instruction.
@@ -279,7 +278,7 @@ impl State {
                 account.owner = *new_owner_account_info.key;
                 State::Account(account).serialize(&mut account_data)?;
             }
-            State::Token(mut token) => {
+            State::Mint(mut token) => {
                 if COption::Some(*owner_account_info.key) != token.owner {
                     return Err(TokenError::NoOwner.into());
                 }
@@ -288,7 +287,7 @@ impl State {
                 }
 
                 token.owner = COption::Some(*new_owner_account_info.key);
-                State::Token(token).serialize(&mut account_data)?;
+                State::Mint(token).serialize(&mut account_data)?;
             }
             _ => {
                 return Err(ProgramError::InvalidArgument);
@@ -298,7 +297,7 @@ impl State {
     }
 
     /// Processes a [MintTo](enum.TokenInstruction.html) instruction.
-    pub fn process_mintto(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
+    pub fn process_mint_to(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let owner_account_info = next_account_info(account_info_iter)?;
         let token_account_info = next_account_info(account_info_iter)?;
@@ -309,7 +308,7 @@ impl State {
         }
 
         let mut token_account_data = token_account_info.data.borrow_mut();
-        if let State::Token(mut token) = State::deserialize(&token_account_data)? {
+        if let State::Mint(mut token) = State::deserialize(&token_account_data)? {
             match token.owner {
                 COption::Some(owner) => {
                     if *owner_account_info.key != owner {
@@ -332,7 +331,7 @@ impl State {
                 }
 
                 token.info.supply += amount;
-                State::Token(token).serialize(&mut token_account_data)?;
+                State::Mint(token).serialize(&mut token_account_data)?;
 
                 dest_token_account.amount = amount;
                 State::Account(dest_token_account).serialize(&mut dest_account_data)?;
@@ -362,10 +361,10 @@ impl State {
             }
         };
 
-        let (mut token_account, mut token_data) = {
+        let (mut token, mut token_data) = {
             let token_data = token_account_info.data.borrow_mut();
             match State::deserialize(&token_data)? {
-                State::Token(token_account) => (token_account, token_data),
+                State::Mint(token) => (token, token_data),
                 _ => {
                     return Err(ProgramError::InvalidArgument);
                 }
@@ -409,8 +408,8 @@ impl State {
         source_account.amount -= amount;
         State::Account(source_account).serialize(&mut source_data)?;
 
-        token_account.info.supply -= amount;
-        State::Token(token_account).serialize(&mut token_data)?;
+        token.info.supply -= amount;
+        State::Mint(token).serialize(&mut token_data)?;
         Ok(())
     }
 
@@ -419,13 +418,13 @@ impl State {
         let instruction = TokenInstruction::deserialize(input)?;
 
         match instruction {
-            TokenInstruction::NewToken(info) => {
-                info!("Instruction: NewToken");
-                Self::process_new_token(accounts, info)
+            TokenInstruction::InitializeMint(info) => {
+                info!("Instruction: InitializeMint");
+                Self::process_initialize_mint(accounts, info)
             }
-            TokenInstruction::NewAccount => {
-                info!("Instruction: NewAccount");
-                Self::process_new_account(accounts)
+            TokenInstruction::InitializeAccount => {
+                info!("Instruction: InitializeAccount");
+                Self::process_initialize_account(accounts)
             }
             TokenInstruction::Transfer(amount) => {
                 info!("Instruction: Transfer");
@@ -441,7 +440,7 @@ impl State {
             }
             TokenInstruction::MintTo(amount) => {
                 info!("Instruction: MintTo");
-                Self::process_mintto(accounts, amount)
+                Self::process_mint_to(accounts, amount)
             }
             TokenInstruction::Burn(amount) => {
                 info!("Instruction: Burn");
@@ -450,7 +449,7 @@ impl State {
         }
     }
 
-    /// Deserializes a byte buffer into a Token Program [State](struct.State.html)
+    /// Deserializes a byte buffer into a Token Program [State](struct.State.html).
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -463,7 +462,7 @@ impl State {
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let token: &Token = unsafe { &*(&input[1] as *const u8 as *const Token) };
-                Self::Token(*token)
+                Self::Mint(*token)
             }
             2 => {
                 if input.len() < size_of::<u8>() + size_of::<Account>() {
@@ -478,14 +477,14 @@ impl State {
         })
     }
 
-    /// Serializes Token Program [State](struct.State.html) into a byte buffer
+    /// Serializes Token Program [State](struct.State.html) into a byte buffer.
     pub fn serialize(self: &Self, output: &mut [u8]) -> ProgramResult {
         if output.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
         match self {
             Self::Unallocated => output[0] = 0,
-            Self::Token(token) => {
+            Self::Mint(token) => {
                 if output.len() < size_of::<u8>() + size_of::<Token>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
@@ -509,14 +508,16 @@ impl State {
     }
 }
 
-// Pulls in the stubs required for `info!()`
+// Pulls in the stubs required for `info!()`.
 #[cfg(not(target_arch = "bpf"))]
 solana_sdk_bpf_test::stubs!();
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instruction::{approve, burn, mint_to, new_account, new_token, set_owner, transfer};
+    use crate::instruction::{
+        approve, burn, initialize_account, initialize_mint, mint_to, set_owner, transfer,
+    };
     use solana_sdk::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
     };
@@ -541,7 +542,7 @@ mod tests {
     }
 
     #[test]
-    fn test_new_token() {
+    fn test_initialize_mint() {
         let program_id = pubkey_rand();
         let token_account_key = pubkey_rand();
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
@@ -560,7 +561,7 @@ mod tests {
         assert_eq!(
             Err(ProgramError::InvalidArgument),
             do_process_instruction(
-                new_token(
+                initialize_mint(
                     &program_id,
                     &token_key,
                     Some(&token_account_key),
@@ -577,7 +578,7 @@ mod tests {
 
         // create account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account_key,
                 &owner_key,
@@ -595,7 +596,7 @@ mod tests {
 
         // create new token
         do_process_instruction(
-            new_token(
+            initialize_mint(
                 &program_id,
                 &token_key,
                 Some(&token_account_key),
@@ -612,7 +613,7 @@ mod tests {
 
         // create another account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account2_key,
                 &owner_key,
@@ -632,7 +633,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::TokenMismatch.into()),
             do_process_instruction(
-                new_token(
+                initialize_mint(
                     &program_id,
                     &token2_key,
                     Some(&token_account2_key),
@@ -649,7 +650,7 @@ mod tests {
 
         // create delegate account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &delegate_account_key,
                 &owner_key,
@@ -670,7 +671,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::AlreadyInUse.into()),
             do_process_instruction(
-                new_token(
+                initialize_mint(
                     &program_id,
                     &token_key,
                     Some(&delegate_account_key),
@@ -689,7 +690,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::AlreadyInUse.into()),
             do_process_instruction(
-                new_token(
+                initialize_mint(
                     &program_id,
                     &token_key,
                     Some(&token_account_key),
@@ -706,7 +707,7 @@ mod tests {
     }
 
     #[test]
-    fn test_new_token_account() {
+    fn test_initialize_mint_account() {
         let program_id = pubkey_rand();
         let token_account_key = pubkey_rand();
         let mut token_account_account = Account::new(0, size_of::<State>(), &program_id);
@@ -716,7 +717,7 @@ mod tests {
         let mut token_account = Account::new(0, size_of::<State>(), &program_id);
 
         // missing signer
-        let mut instruction = new_account(
+        let mut instruction = initialize_account(
             &program_id,
             &token_account_key,
             &owner_key,
@@ -739,7 +740,7 @@ mod tests {
 
         // create account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account_key,
                 &owner_key,
@@ -759,7 +760,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::AlreadyInUse.into()),
             do_process_instruction(
-                new_account(
+                initialize_account(
                     &program_id,
                     &token_account_key,
                     &owner_key,
@@ -803,7 +804,7 @@ mod tests {
 
         // create account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account_key,
                 &owner_key,
@@ -821,7 +822,7 @@ mod tests {
 
         // create another account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account2_key,
                 &owner_key,
@@ -839,7 +840,7 @@ mod tests {
 
         // create another account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account3_key,
                 &owner_key,
@@ -857,7 +858,7 @@ mod tests {
 
         // create mismatch account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &mismatch_account_key,
                 &owner_key,
@@ -875,7 +876,7 @@ mod tests {
 
         // create delegate account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &delegate_account_key,
                 &owner_key,
@@ -894,7 +895,7 @@ mod tests {
 
         // create mismatch delegate account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &mismatch_delegate_account_key,
                 &owner_key,
@@ -913,7 +914,7 @@ mod tests {
 
         // create new token
         do_process_instruction(
-            new_token(
+            initialize_mint(
                 &program_id,
                 &token_key,
                 Some(&token_account_key),
@@ -1267,7 +1268,7 @@ mod tests {
 
         // create account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account_key,
                 &owner_key,
@@ -1283,8 +1284,8 @@ mod tests {
         )
         .unwrap();
 
-        // create mintable token without owner
-        let mut instruction = new_token(
+        // create mint-able token without owner
+        let mut instruction = initialize_mint(
             &program_id,
             &token_key,
             None,
@@ -1301,17 +1302,17 @@ mod tests {
             do_process_instruction(instruction, vec![&mut token_account])
         );
 
-        // create mintable token with zero supply
+        // create mint-able token with zero supply
         let info = TokenInfo {
             supply: 0,
             decimals: 2,
         };
         do_process_instruction(
-            new_token(&program_id, &token_key, None, Some(&owner_key), info).unwrap(),
+            initialize_mint(&program_id, &token_key, None, Some(&owner_key), info).unwrap(),
             vec![&mut token_account, &mut token_account_account],
         )
         .unwrap();
-        if let State::Token(token) = State::deserialize(&token_account.data).unwrap() {
+        if let State::Mint(token) = State::deserialize(&token_account.data).unwrap() {
             assert_eq!(
                 token,
                 Token {
@@ -1334,7 +1335,7 @@ mod tests {
         )
         .unwrap();
 
-        if let State::Token(token) = State::deserialize(&token_account.data).unwrap() {
+        if let State::Mint(token) = State::deserialize(&token_account.data).unwrap() {
             assert_eq!(token.info.supply, 42);
         } else {
             panic!("not an account");
@@ -1371,7 +1372,7 @@ mod tests {
 
         // create account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account_key,
                 &owner_key,
@@ -1389,7 +1390,7 @@ mod tests {
 
         // create another account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account2_key,
                 &owner_key,
@@ -1407,7 +1408,7 @@ mod tests {
 
         // create delegate account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &delegate_account_key,
                 &owner_key,
@@ -1426,7 +1427,7 @@ mod tests {
 
         // create mismatch delegate account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &mismatch_delegate_account_key,
                 &owner_key,
@@ -1445,7 +1446,7 @@ mod tests {
 
         // create new token
         do_process_instruction(
-            new_token(
+            initialize_mint(
                 &program_id,
                 &token_key,
                 Some(&token_account_key),
@@ -1634,7 +1635,7 @@ mod tests {
 
         // create account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account_key,
                 &owner_key,
@@ -1652,7 +1653,7 @@ mod tests {
 
         // create token account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account2_key,
                 &owner_key,
@@ -1710,7 +1711,7 @@ mod tests {
 
         // create new token with owner
         do_process_instruction(
-            new_token(
+            initialize_mint(
                 &program_id,
                 &token_key,
                 Some(&token_account_key),
@@ -1758,7 +1759,7 @@ mod tests {
 
         // create new token without owner
         do_process_instruction(
-            new_token(
+            initialize_mint(
                 &program_id,
                 &token2_key,
                 Some(&token_account2_key),
@@ -1773,7 +1774,7 @@ mod tests {
         )
         .unwrap();
 
-        // set owner for unownable token
+        // set owner for non-mint-able token
         assert_eq!(
             Err(TokenError::NoOwner.into()),
             do_process_instruction(
@@ -1809,7 +1810,7 @@ mod tests {
 
         // create token account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account_key,
                 &owner_key,
@@ -1827,7 +1828,7 @@ mod tests {
 
         // create another token account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account2_key,
                 &owner_key,
@@ -1845,7 +1846,7 @@ mod tests {
 
         // create another token account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account3_key,
                 &owner_key,
@@ -1863,7 +1864,7 @@ mod tests {
 
         // create mismatch token account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &mismatch_account_key,
                 &owner_key,
@@ -1881,7 +1882,7 @@ mod tests {
 
         // create delegate account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &delegate_account_key,
                 &owner_key,
@@ -1900,7 +1901,7 @@ mod tests {
 
         // create new token with owner
         do_process_instruction(
-            new_token(
+            initialize_mint(
                 &program_id,
                 &token_key,
                 Some(&token_account_key),
@@ -1930,7 +1931,7 @@ mod tests {
         )
         .unwrap();
 
-        if let State::Token(token) = State::deserialize(&token_account.data).unwrap() {
+        if let State::Mint(token) = State::deserialize(&token_account.data).unwrap() {
             assert_eq!(token.info.supply, 1000 + 42);
         } else {
             panic!("not an account");
@@ -2060,7 +2061,7 @@ mod tests {
 
         // create token account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account_key,
                 &owner_key,
@@ -2078,7 +2079,7 @@ mod tests {
 
         // create another token account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account2_key,
                 &owner_key,
@@ -2096,7 +2097,7 @@ mod tests {
 
         // create another token account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &token_account3_key,
                 &owner_key,
@@ -2114,7 +2115,7 @@ mod tests {
 
         // create mismatch token account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &mismatch_account_key,
                 &owner_key,
@@ -2132,7 +2133,7 @@ mod tests {
 
         // create delegate account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &delegate_account_key,
                 &owner_key,
@@ -2150,7 +2151,7 @@ mod tests {
         .unwrap();
         // create mismatch delegate account
         do_process_instruction(
-            new_account(
+            initialize_account(
                 &program_id,
                 &mismatch_delegate_account_key,
                 &owner_key,
@@ -2169,7 +2170,7 @@ mod tests {
 
         // create new token
         do_process_instruction(
-            new_token(
+            initialize_mint(
                 &program_id,
                 &token_key,
                 Some(&token_account_key),
@@ -2268,7 +2269,7 @@ mod tests {
         )
         .unwrap();
 
-        if let State::Token(token) = State::deserialize(&token_account.data).unwrap() {
+        if let State::Mint(token) = State::deserialize(&token_account.data).unwrap() {
             assert_eq!(token.info.supply, 1000 - 42);
         } else {
             panic!("not a token account");
@@ -2359,7 +2360,7 @@ mod tests {
         )
         .unwrap();
 
-        if let State::Token(token) = State::deserialize(&token_account.data).unwrap() {
+        if let State::Mint(token) = State::deserialize(&token_account.data).unwrap() {
             assert_eq!(token.info.supply, 1000 - 42 - 84);
         } else {
             panic!("not a token account");

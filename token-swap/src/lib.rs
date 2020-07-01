@@ -382,7 +382,7 @@ impl State {
 
     /// Deserializes a spl_token `State`.
     pub fn token_deserialize(info: &AccountInfo) -> Result<spl_token::state::Token, Error> {
-        if let Ok(spl_token::state::State::Token(token)) =
+        if let Ok(spl_token::state::State::Mint(token)) =
             spl_token::state::State::deserialize(&info.data.borrow())
         {
             Ok(token)
@@ -838,7 +838,7 @@ mod tests {
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
     };
     use spl_token::{
-        instruction::{new_account, new_token, TokenInfo},
+        instruction::{initialize_account, initialize_mint, TokenInfo},
         state::State as SplState,
     };
 
@@ -883,7 +883,8 @@ mod tests {
 
         // create pool and pool account
         do_process_instruction(
-            new_account(&program_id, &account_key, &authority_key, &token_key, None).unwrap(),
+            initialize_account(&program_id, &account_key, &authority_key, &token_key, None)
+                .unwrap(),
             vec![
                 &mut account_account,
                 &mut Account::default(),
@@ -893,7 +894,7 @@ mod tests {
         .unwrap();
         let mut authority_account = Account::default();
         do_process_instruction(
-            new_token(
+            initialize_mint(
                 &program_id,
                 &token_key,
                 Some(&account_key),

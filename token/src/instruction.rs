@@ -22,17 +22,18 @@ pub struct TokenInfo {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenInstruction {
-    /// Creates a new token and deposit all the newly minted tokens in an account.
+    /// Initializes a new mint and deposits all the newly minted tokens in an account.
     ///
     /// # Accounts expected by this instruction:
     ///
-    ///   0. `[writable, signer]` New token to create.
+    ///   0. `[writable, signer]` New mint to create.
     ///   1.
     ///      * If supply is non-zero: `[writable]` Account to hold all the newly minted tokens.
-    ///      * If supply is zero: `[]` Owner of the token.
-    ///   2. Optional: `[]` Owner of the token if supply is non-zero, if present then the token allows further minting of tokens.
-    NewToken(TokenInfo),
-    /// Creates a new account.  The new account can either hold tokens or be a delegate
+    ///      * If supply is zero: `[]` Owner of the mint.
+    ///   2. Optional: `[]` Owner of the mint if supply is non-zero, if present then the 
+    ///      token allows further minting of tokens.
+    InitializeMint(TokenInfo),
+    /// Initializes a new account.  The new account can either hold tokens or be a delegate
     /// for another account.
     ///
     /// # Accounts expected by this instruction:
@@ -41,7 +42,7 @@ pub enum TokenInstruction {
     ///   1. `[]` Owner of the new account.
     ///   2. `[]` Token this account will be associated with.
     ///   3. Optional: `[]` Source account that this account will be a delegate for.
-    NewAccount,
+    InitializeAccount,
     /// Transfers tokens from one account to another either directly or via a delegate.
     ///
     /// # Accounts expected by this instruction:
@@ -87,7 +88,7 @@ pub enum TokenInstruction {
     Burn(u64),
 }
 impl TokenInstruction {
-    /// Deserializes a byte buffer into an [TokenInstruction](enum.TokenInstruction.html)
+    /// Deserializes a byte buffer into an [TokenInstruction](enum.TokenInstruction.html).
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -99,9 +100,9 @@ impl TokenInstruction {
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let info: &TokenInfo = unsafe { &*(&input[1] as *const u8 as *const TokenInfo) };
-                Self::NewToken(*info)
+                Self::InitializeMint(*info)
             }
-            1 => Self::NewAccount,
+            1 => Self::InitializeAccount,
             2 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
                     return Err(ProgramError::InvalidAccountData);
@@ -139,17 +140,17 @@ impl TokenInstruction {
         })
     }
 
-    /// Serializes an [TokenInstruction](enum.TokenInstruction.html) into a byte buffer
+    /// Serializes an [TokenInstruction](enum.TokenInstruction.html) into a byte buffer.
     pub fn serialize(self: &Self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<TokenInstruction>()];
         match self {
-            Self::NewToken(info) => {
+            Self::InitializeMint(info) => {
                 output[0] = 0;
                 #[allow(clippy::cast_ptr_alignment)]
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut TokenInfo) };
                 *value = *info;
             }
-            Self::NewAccount => output[0] = 1,
+            Self::InitializeAccount => output[0] = 1,
             Self::Transfer(amount) => {
                 output[0] = 2;
                 #[allow(clippy::cast_ptr_alignment)]
@@ -180,15 +181,15 @@ impl TokenInstruction {
     }
 }
 
-/// Creates a 'NewToken' instruction
-pub fn new_token(
+/// Creates a 'InitializeMint' instruction.
+pub fn initialize_mint(
     token_program_id: &Pubkey,
     token_pubkey: &Pubkey,
     account_pubkey: Option<&Pubkey>,
     owner_pubkey: Option<&Pubkey>,
     token_info: TokenInfo,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::NewToken(token_info).serialize()?;
+    let data = TokenInstruction::InitializeMint(token_info).serialize()?;
 
     let mut accounts = vec![AccountMeta::new(*token_pubkey, true)];
     if token_info.supply != 0 {
@@ -215,15 +216,15 @@ pub fn new_token(
     })
 }
 
-/// Creates a `NewAccount` instruction
-pub fn new_account(
+/// Creates a `InitializeAccount` instruction.
+pub fn initialize_account(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
     token_pubkey: &Pubkey,
     source_pubkey: Option<&Pubkey>,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::NewAccount.serialize()?;
+    let data = TokenInstruction::InitializeAccount.serialize()?;
 
     let mut accounts = vec![
         AccountMeta::new(*account_pubkey, true),
@@ -241,7 +242,7 @@ pub fn new_account(
     })
 }
 
-/// Creates a `Transfer` instruction
+/// Creates a `Transfer` instruction.
 pub fn transfer(
     token_program_id: &Pubkey,
     owner_pubkey: &Pubkey,
@@ -268,7 +269,7 @@ pub fn transfer(
     })
 }
 
-/// Creates an `Approve` instruction
+/// Creates an `Approve` instruction.
 pub fn approve(
     token_program_id: &Pubkey,
     owner_pubkey: &Pubkey,
@@ -291,11 +292,7 @@ pub fn approve(
     })
 }
 
-///   0. `[signer]` Current owner of the account.
-///   1. `[writable]` account to change the owner of.
-///   2. `[]` New owner of the account.
-
-/// Creates an `SetOwner` instruction
+/// Creates an `SetOwner` instruction.
 pub fn set_owner(
     token_program_id: &Pubkey,
     owner_pubkey: &Pubkey,
@@ -317,7 +314,7 @@ pub fn set_owner(
     })
 }
 
-/// Creates an `MintTo` instruction
+/// Creates an `MintTo` instruction.
 pub fn mint_to(
     token_program_id: &Pubkey,
     owner_pubkey: &Pubkey,
@@ -340,7 +337,7 @@ pub fn mint_to(
     })
 }
 
-/// Creates an `Burn` instruction
+/// Creates an `Burn` instruction.
 pub fn burn(
     token_program_id: &Pubkey,
     owner_pubkey: &Pubkey,
