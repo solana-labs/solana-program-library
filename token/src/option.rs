@@ -527,7 +527,7 @@ impl<T> COption<T> {
     /// let x: COption<u32> = COption::None;
     /// let y = COption::None;
     /// assert_eq!(x.or(y), COption::None);
-    /// ```ignore
+    /// ```
     #[inline]
     pub fn or(self, optb: COption<T>) -> COption<T> {
         match self {
