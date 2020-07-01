@@ -13,13 +13,17 @@ edition = "2018"
 [dependencies]
 num-derive = "0.2"
 num-traits = "0.2"
+remove_dir_all = "=0.5.0"
 solana-sdk = { version = "=1.2.0", default-features = false, features=["program"] }
 solana-sdk-bpf-test = { path = "../bin/bpf-sdk/rust/test", default-features = false }
-spl-token = { path = "../token", default-features = false }
+spl-token = { path = "../token" }
 thiserror = "1.0"
 
 [dev-dependencies]
 rand = { version = "0.7.0"}
+
+[build-dependencies]
+cbindgen = "=0.14.2"
 
 [lib]
 name = "spl_token_swap"

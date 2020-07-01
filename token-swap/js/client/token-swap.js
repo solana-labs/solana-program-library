@@ -166,7 +166,7 @@ export class TokenSwap {
    * @param programId Program ID of the token-swap program
    * @return Token object for the newly minted token, Public key of the account holding the total supply of new tokens
    */
-  static async createNewTokenSwap(
+  static async createTokenSwap(
     connection: Connection,
     payer: Account,
     tokenSwapAccount: Account,
@@ -220,7 +220,7 @@ export class TokenSwap {
     {
       const encodeLength = commandDataLayout.encode(
         {
-          instruction: 0, // Init instruction
+          instruction: 0, // InitializeSwap instruction
           feeNumerator,
           feeDenominator,
         },
@@ -234,7 +234,7 @@ export class TokenSwap {
       data,
     });
     await sendAndConfirmTransaction(
-      'Init',
+      'InitializeSwap',
       connection,
       transaction,
       payer,

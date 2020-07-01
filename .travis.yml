@@ -28,5 +28,6 @@ install:
 jobs:
   include:
     - stage: "Test Programs"
+      script: ./ci/memo.sh
       script: ./ci/token.sh
-    - script: ./ci/memo.sh
+      script: ./ci/token.sh

@@ -7,12 +7,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef struct TokenInstruction TokenInstruction;
-
 /**
  * Specifies the financial specifics of a token.
  */
-typedef struct TokenTokenInfo {
+typedef struct Token_TokenInfo {
     /**
      * Total supply of tokens.
      */
@@ -21,14 +19,128 @@ typedef struct TokenTokenInfo {
      * Number of base 10 digits to the right of the decimal place in the total supply.
      */
     uint64_t decimals;
-} TokenTokenInfo;
+} Token_TokenInfo;
 
-typedef uint8_t TokenPubkey[32];
+/**
+ * Instructions supported by the token program.
+ */
+typedef enum Token_TokenInstruction_Tag {
+    /**
+     * Creates a new token and deposit all the newly minted tokens in an account.
+     *
+     * # Accounts expected by this instruction:
+     *
+     *   0. `[writable, signer]` New token to create.
+     *   1.
+     *      * If supply is non-zero: `[writable]` Account to hold all the newly minted tokens.
+     *      * If supply is zero: `[]` Owner of the token.
+     *   2. Optional: `[]` Owner of the token if supply is non-zero, if present then the token allows further minting of tokens.
+     */
+    NewToken,
+    /**
+     * Creates a new account.  The new account can either hold tokens or be a delegate
+     * for another account.
+     *
+     * # Accounts expected by this instruction:
+     *
+     *   0. `[writable, signer]`  New account being created.
+     *   1. `[]` Owner of the new account.
+     *   2. `[]` Token this account will be associated with.
+     *   3. Optional: `[]` Source account that this account will be a delegate for.
+     */
+    NewAccount,
+    /**
+     * Transfers tokens from one account to another either directly or via a delegate.
+     *
+     * # Accounts expected by this instruction:
+     *
+     *   0. `[signer]` Owner of the source account.
+     *   1. `[writable]` Source/Delegate account.
+     *   2. `[writable]` Destination account.
+     *   3. Optional: `[writable]` Source account if key 1 is a delegate account.
+     */
+    Transfer,
+    /**
+     * Approves a delegate.  A delegate account is given the authority to transfer
+     * another accounts tokens without the other account's owner signing the transfer.
+     *
+     * # Accounts expected by this instruction:
+     *
+     *   0. `[signer]` Owner of the source account.
+     *   1. `[]` Source account.
+     *   2. `[writable]` Delegate account.
+     */
+    Approve,
+    /**
+     * Sets a new owner of a token or account.
+     *
+     * # Accounts expected by this instruction:
+     *
+     *   0. `[signer]` Current owner of the token or account.
+     *   1. `[writable]` token or account to change the owner of.
+     *   2. `[]` New owner
+     */
+    SetOwner,
+    /**
+     * Mints new tokens to an account.
+     *
+     * # Accounts expected by this instruction:
+     *
+     *   0. `[signer]` Owner of the token.
+     *   1. `[writable]` Token to mint.
+     *   2. `[writable]` Account to mint tokens to.
+     */
+    MintTo,
+    /**
+     * Burns tokens by removing them from an account and the total supply.
+     *
+     * # Accounts expected by this instruction:
+     *
+     *   0. `[signer]` Owner of the account to burn from.
+     *   1. `[writable]` Account to burn from.
+     *   2. `[writable]` Token being burned.
+     *   3. Optional: `[writable]` Source account if key 1 is a delegate account.
+     */
+    Burn,
+} Token_TokenInstruction_Tag;
+
+typedef struct Token_NewToken_Body {
+    Token_TokenInfo _0;
+} Token_NewToken_Body;
+
+typedef struct Token_Transfer_Body {
+    uint64_t _0;
+} Token_Transfer_Body;
+
+typedef struct Token_Approve_Body {
+    uint64_t _0;
+} Token_Approve_Body;
+
+typedef struct Token_MintTo_Body {
+    uint64_t _0;
+} Token_MintTo_Body;
+
+typedef struct Token_Burn_Body {
+    uint64_t _0;
+} Token_Burn_Body;
+
+typedef struct Token_TokenInstruction {
+    Token_TokenInstruction_Tag tag;
+    union {
+        Token_NewToken_Body new_token;
+        Token_Transfer_Body transfer;
+        Token_Approve_Body approve;
+        Token_MintTo_Body mint_to;
+        Token_Burn_Body burn;
+    };
+} Token_TokenInstruction;
+
+typedef uint8_t Token_Pubkey[32];
 
 /**
  * A C representation of Rust's `std::option::Option`
  */
-typedef enum TokenCOption_Pubkey_Tag {
+typedef enum Token_COption_Pubkey_Tag {
     /**
      * No value
      */
@@ -37,55 +149,55 @@ typedef enum TokenCOption_Pubkey_Tag {
      * Some value `T`
      */
     Some_Pubkey,
-} TokenCOption_Pubkey_Tag;
+} Token_COption_Pubkey_Tag;
 
-typedef struct TokenSome_Body_Pubkey {
-    TokenPubkey _0;
-} TokenSome_Body_Pubkey;
+typedef struct Token_Some_Body_Pubkey {
+    Token_Pubkey _0;
+} Token_Some_Body_Pubkey;
 
-typedef struct TokenCOption_Pubkey {
-    TokenCOption_Pubkey_Tag tag;
+typedef struct Token_COption_Pubkey {
+    Token_COption_Pubkey_Tag tag;
     union {
-        TokenSome_Body_Pubkey some;
+        Token_Some_Body_Pubkey some;
     };
-} TokenCOption_Pubkey;
+} Token_COption_Pubkey;
 
 /**
  * Represents a token type identified and identified by its public key.  Accounts
  * are associated with a specific token type and only accounts with
  * matching types my inter-opt.
  */
-typedef struct TokenToken {
+typedef struct Token_Token {
     /**
      * The total supply of tokens.
      */
-    TokenTokenInfo info;
+    Token_TokenInfo info;
     /**
      * Optional token owner, used to mint new tokens.  The owner may only
      * be provided during token creation.  If no owner is present then the token
      * has a fixed supply and no further tokens may be minted.
      */
-    TokenCOption_Pubkey owner;
-} TokenToken;
+    Token_COption_Pubkey owner;
+} Token_Token;
 
 /**
  * Delegation details.
  */
-typedef struct TokenAccountDelegate {
+typedef struct Token_AccountDelegate {
     /**
      * The source account for the tokens.
      */
-    TokenPubkey source;
+    Token_Pubkey source;
     /**
      * The original maximum amount that this delegate account was authorized to spend.
      */
     uint64_t original_amount;
-} TokenAccountDelegate;
+} Token_AccountDelegate;
 
 /**
  * A C representation of Rust's `std::option::Option`
  */
-typedef enum TokenCOption_AccountDelegate_Tag {
+typedef enum Token_COption_AccountDelegate_Tag {
     /**
      * No value
      */
@@ -94,31 +206,31 @@ typedef enum TokenCOption_AccountDelegate_Tag {
      * Some value `T`
      */
     Some_AccountDelegate,
-} TokenCOption_AccountDelegate_Tag;
+} Token_COption_AccountDelegate_Tag;
 
-typedef struct TokenSome_Body_AccountDelegate {
-    TokenAccountDelegate _0;
-} TokenSome_Body_AccountDelegate;
+typedef struct Token_Some_Body_AccountDelegate {
+    Token_AccountDelegate _0;
+} Token_Some_Body_AccountDelegate;
 
-typedef struct TokenCOption_AccountDelegate {
-    TokenCOption_AccountDelegate_Tag tag;
+typedef struct Token_COption_AccountDelegate {
+    Token_COption_AccountDelegate_Tag tag;
     union {
-        TokenSome_Body_AccountDelegate some;
+        Token_Some_Body_AccountDelegate some;
     };
-} TokenCOption_AccountDelegate;
+} Token_COption_AccountDelegate;
 
 /**
  * Account that holds or may delegate tokens.
  */
-typedef struct TokenAccount {
+typedef struct Token_Account {
     /**
      * The type of token this account holds.
      */
-    TokenPubkey token;
+    Token_Pubkey token;
     /**
      * Owner of this account.
      */
-    TokenPubkey owner;
+    Token_Pubkey owner;
     /**
      * Amount of tokens this account holds.
      */
@@ -128,13 +240,13 @@ typedef struct TokenAccount {
      * If `delegate` is Option<_>, `amount` represents the remaining allowance
      * of tokens this delegate is authorized to transfer from the `source` account.
      */
-    TokenCOption_AccountDelegate delegate;
-} TokenAccount;
+    Token_COption_AccountDelegate delegate;
+} Token_Account;
 
 /**
  * Token program states.
  */
-typedef enum TokenState_Tag {
+typedef enum Token_State_Tag {
     /**
      * Unallocated state, may be initialized into another state.
      */
@@ -152,20 +264,20 @@ typedef enum TokenState_Tag {
      * Invalid state, cannot be modified by the token program.
      */
     Invalid,
-} TokenState_Tag;
+} Token_State_Tag;
 
-typedef struct TokenToken_Body {
-    TokenToken _0;
-} TokenToken_Body;
+typedef struct Token_Token_Body {
+    Token_Token _0;
+} Token_Token_Body;
 
-typedef struct TokenAccount_Body {
-    TokenAccount _0;
-} TokenAccount_Body;
+typedef struct Token_Account_Body {
+    Token_Account _0;
+} Token_Account_Body;
 
-typedef struct TokenState {
-    TokenState_Tag tag;
+typedef struct Token_State {
+    Token_State_Tag tag;
     union {
-        TokenToken_Body token;
-        TokenAccount_Body account;
+        Token_Token_Body token;
+        Token_Account_Body account;
     };
-} TokenState;
+} Token_State;

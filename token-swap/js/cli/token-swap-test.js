@@ -104,7 +104,7 @@ export async function loadPrograms(): Promise<void> {
   console.log('Token-swap Program ID', tokenSwapProgramId.toString());
 }
 
-export async function createNewTokenSwap(): Promise<void> {
+export async function createTokenSwap(): Promise<void> {
   const connection = await getConnection();
   const [tokenProgramId, tokenSwapProgramId] = await GetPrograms(connection);
   const payer = await Token.getAccount(connection);
@@ -153,7 +153,7 @@ export async function createNewTokenSwap(): Promise<void> {
 
   // create token swap
   const swapPayer = await newAccountWithLamports(connection, 100000000000 /* wag */);
-  tokenSwap = await TokenSwap.createNewTokenSwap(
+  tokenSwap = await TokenSwap.createTokenSwap(
     connection,
     swapPayer,
     tokenSwapAccount,
