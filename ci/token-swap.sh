@@ -9,7 +9,7 @@ set -e
     ./do.sh build token-swap
     ./do.sh doc token-swap
     ./do.sh test token-swap
-    cc token/inc/token-swap.h -o token-swap/target/token-swap.gch
+    cc token-swap/inc/token-swap.h -o token-swap/target/token-swap.gch
 )
 
 (
