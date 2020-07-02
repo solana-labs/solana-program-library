@@ -6,7 +6,7 @@
 
 import {
   loadTokenProgram,
-  createToken,
+  createMint,
   createAccount,
   transfer,
   approveRevoke,
@@ -19,9 +19,9 @@ import {
 
 async function main() {
   console.log('Run test: loadTokenProgram');
-  await loadTokenProgram('../target/bpfel-unknown-unknown/release/spl_token.so');
-  console.log('Run test: createToken');
-  await createToken();
+  await loadTokenProgram();
+  console.log('Run test: createMint');
+  await createMint();
   console.log('Run test: createAccount');
   await createAccount();
   console.log('Run test: transfer');

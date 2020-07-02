@@ -8,6 +8,7 @@ import {Token, TokenAmount} from '../client/token';
 import {url} from '../url';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {sleep} from '../client/util/sleep';
+import {Store} from '../client/util/store';
 
 // Loaded token program's program id
 let programId: PublicKey;
@@ -15,8 +16,8 @@ let programId: PublicKey;
 // A token created by the next test and used by all subsequent tests
 let testToken: Token;
 
-// Initial owner of the token supply
-let tokenOwner: Account;
+// Initial owner of the mint
+let mintOwner: Account;
 
 // Initial token account
 let testAccountOwner: Account;
@@ -57,34 +58,56 @@ async function getConnection(): Promise<Connection> {
   return connection;
 }
 
-export async function loadTokenProgram(path: string): Promise<PublicKey> {
+async function loadProgram(connection: Connection, path: string): Promise<PublicKey> {
   const NUM_RETRIES = 500; /* allow some number of retries */
   const data = await fs.readFile(path
   );
-  const connection = await getConnection();
-  const {feeCalculator} = await connection.getRecentBlockhash();
+  const { feeCalculator } = await connection.getRecentBlockhash();
   const balanceNeeded =
     feeCalculator.lamportsPerSignature *
-      (BpfLoader.getMinNumSignatures(data.length) + NUM_RETRIES) +
+    (BpfLoader.getMinNumSignatures(data.length) + NUM_RETRIES) +
     (await connection.getMinimumBalanceForRentExemption(data.length));
 
   const from = await newAccountWithLamports(connection, balanceNeeded);
   const program_account = new Account();
-  console.log('Loading Token program...');
+  console.log('Loading program:', path);
   await BpfLoader.load(connection, from, program_account, data);
-  programId = program_account.publicKey;
-  return programId;
+  return program_account.publicKey;
 }
 
-export async function createToken(): Promise<void> {
+async function GetPrograms(connection: Connection): Promise<PublicKey> {
+  const store = new Store();
+  let tokenProgramId = null;
+  try {
+    const config = await store.load('config.json');
+    console.log('Using pre-loaded Token program');
+    console.log('  Note: To reload program remove client/util/sore/config.json');
+    tokenProgramId = new PublicKey(config.tokenProgramId);
+  } catch (err) {
+    tokenProgramId = await loadProgram(connection, '../target/bpfel-unknown-unknown/release/spl_token.so');
+    await store.save('config.json', {
+      tokenProgramId: tokenProgramId.toString(),
+    });
+  }
+  return tokenProgramId;
+}
+
+export async function loadTokenProgram(): Promise<void> {
+  const connection = await getConnection();
+  programId = await GetPrograms(connection);
+
+  console.log('Token Program ID', programId.toString());
+}
+
+export async function createMint(): Promise<void> {
   const connection = await getConnection();
   const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
-  tokenOwner = new Account();
+  mintOwner = new Account();
   testAccountOwner = new Account();
-  [testToken, testAccount] = await Token.createToken(
+  [testToken, testAccount] = await Token.createMint(
     connection,
     payer,
-    tokenOwner.publicKey,
+    mintOwner.publicKey,
     testAccountOwner.publicKey,
     new TokenAmount(10000),
     2,
@@ -92,17 +115,17 @@ export async function createToken(): Promise<void> {
     false,
   );
 
-  const tokenInfo = await testToken.getMintInfo();
-  assert(tokenInfo.supply.toNumber() == 10000);
-  assert(tokenInfo.decimals == 2);
-  assert(tokenInfo.owner == null);
+  const mintInfo = await testToken.getMintInfo();
+  assert(mintInfo.supply.toNumber() == 10000);
+  assert(mintInfo.decimals == 2);
+  assert(mintInfo.owner == null);
 
   const accountInfo = await testToken.getAccountInfo(testAccount);
-  assert(accountInfo.token.equals(testToken.publicKey));
+  assert(accountInfo.mint.equals(testToken.publicKey));
   assert(accountInfo.owner.equals(testAccountOwner.publicKey));
   assert(accountInfo.amount.toNumber() == 10000);
-  assert(accountInfo.source == null);
-  assert(accountInfo.originalAmount.toNumber() == 0);
+  assert(accountInfo.delegate == null);
+  assert(accountInfo.delegatedAmount.toNumber() == 0);
 }
 
 export async function createAccount(): Promise<void> {
@@ -113,10 +136,10 @@ export async function createAccount(): Promise<void> {
   const destOwner = await newAccountWithLamports(connection, balanceNeeded);
   const dest = await testToken.createAccount(destOwner.publicKey);
   const accountInfo = await testToken.getAccountInfo(dest);
-  assert(accountInfo.token.equals(testToken.publicKey));
+  assert(accountInfo.mint.equals(testToken.publicKey));
   assert(accountInfo.owner.equals(destOwner.publicKey));
   assert(accountInfo.amount.toNumber() == 0);
-  assert(accountInfo.source == null);
+  assert(accountInfo.delegate == null);
 }
 
 export async function transfer(): Promise<void> {
@@ -127,7 +150,7 @@ export async function transfer(): Promise<void> {
   const destOwner = await newAccountWithLamports(connection, balanceNeeded);
   const dest = await testToken.createAccount(destOwner.publicKey);
 
-  await testToken.transfer(testAccountOwner, testAccount, dest, 123);
+  await testToken.transfer(testAccount, dest,testAccountOwner, 123);
   await sleep(500);
 
   let destAccountInfo = await testToken.getAccountInfo(dest);
@@ -140,40 +163,26 @@ export async function approveRevoke(): Promise<void> {
     return;
   }
 
-  const connection = await getConnection();
-  const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
-    connection,
-  );
-  const delegateOwner = await newAccountWithLamports(connection, balanceNeeded);
-  const delegate = await testToken.createAccount(
-    delegateOwner.publicKey,
-    testAccount,
-  );
-
+  const delegate = new PublicKey();
   await testToken.approve(
-    testAccountOwner,
     testAccount,
     delegate,
+    testAccountOwner,
     456,
   );
-
-  let delegateAccountInfo = await testToken.getAccountInfo(delegate);
-  assert(delegateAccountInfo.amount.toNumber() == 456);
-  assert(delegateAccountInfo.originalAmount.toNumber() == 456);
-  if (delegateAccountInfo.source === null) {
-    throw new Error('source should not be null');
+  let testAccountInfo = await testToken.getAccountInfo(testAccount);
+  assert(testAccountInfo.delegatedAmount.toNumber() == 456);
+  if (testAccountInfo.delegate === null) {
+    throw new Error('deleage should not be null');
   } else {
-    assert(delegateAccountInfo.source.equals(testAccount));
+    assert(testAccountInfo.delegate.equals(delegate));
   }
 
-  await testToken.revoke(testAccountOwner, testAccount, delegate);
-  delegateAccountInfo = await testToken.getAccountInfo(delegate);
-  assert(delegateAccountInfo.amount.toNumber() == 0);
-  assert(delegateAccountInfo.originalAmount.toNumber() == 0);
-  if (delegateAccountInfo.source === null) {
-    throw new Error('source should not be null');
-  } else {
-    assert(delegateAccountInfo.source.equals(testAccount));
+  await testToken.revoke(testAccount, delegate, testAccountOwner);
+  testAccountInfo = await testToken.getAccountInfo(testAccount);
+  assert(testAccountInfo.delegatedAmount.toNumber() == 0);
+  if (testAccountInfo.delegate != null) {
+    throw new Error('delegate should be null');
   }
 }
 
@@ -183,13 +192,13 @@ export async function invalidApprove(): Promise<void> {
     (await Token.getMinBalanceRentForExemptAccount(connection)) * 3;
   const owner = await newAccountWithLamports(connection, balanceNeeded);
   const account1 = await testToken.createAccount(owner.publicKey);
-  const account1Delegate = await testToken.createAccount(owner.publicKey, account1);
   const account2 = await testToken.createAccount(owner.publicKey);
+  const delegate = new Account();
 
   // account2 is not a delegate account of account1
-  assert(didThrow(testToken.approve, [owner, account1, account2, 123]));
+  assert(didThrow(testToken.approve, [account1, account2, owner, 123]));
   // account1Delegate is not a delegate account of account2
-  assert(didThrow(testToken.approve, [owner, account2, account1Delegate, 123]));
+  assert(didThrow(testToken.approve, [account2, delegate, owner, 123]));
 }
 
 export async function failOnApproveOverspend(): Promise<void> {
@@ -198,35 +207,41 @@ export async function failOnApproveOverspend(): Promise<void> {
     (await Token.getMinBalanceRentForExemptAccount(connection)) * 3;
   const owner = await newAccountWithLamports(connection, balanceNeeded);
   const account1 = await testToken.createAccount(owner.publicKey);
-  const account1Delegate = await testToken.createAccount(owner.publicKey, account1);
   const account2 = await testToken.createAccount(owner.publicKey);
+  const delegate = new Account();
 
   await testToken.transfer(
-    testAccountOwner,
     testAccount,
     account1,
+    testAccountOwner,
     10,
   );
 
-  await testToken.approve(owner, account1, account1Delegate, 2);
+  await testToken.approve(account1, delegate.publicKey, owner, 2);
 
-  let delegateAccountInfo = await testToken.getAccountInfo(account1Delegate);
-  assert(delegateAccountInfo.amount.toNumber() == 2);
-  assert(delegateAccountInfo.originalAmount.toNumber() == 2);
+  let account1Info = await testToken.getAccountInfo(account1);
+  assert(account1Info.amount.toNumber() == 10);
+  assert(account1Info.delegatedAmount.toNumber() == 2);
+  if (account1Info.delegate === null) {
+    throw new Error('deleage should not be null');
+  } else {
+    assert(account1Info.delegate.equals(delegate.publicKey));
+  }
 
-  await testToken.transfer(owner, account1Delegate, account2, 1);
+  await testToken.transfer(account1, account2, delegate, 1);
 
-  delegateAccountInfo = await testToken.getAccountInfo(account1Delegate);
-  assert(delegateAccountInfo.amount.toNumber() == 1);
-  assert(delegateAccountInfo.originalAmount.toNumber() == 2);
+  account1Info = await testToken.getAccountInfo(account1);
+  assert(account1Info.amount.toNumber() == 9);
+  assert(account1Info.delegatedAmount.toNumber() == 1);
 
-  await testToken.transfer(owner, account1Delegate, account2, 1);
+  await testToken.transfer(account1, account2, delegate, 1);
 
-  delegateAccountInfo = await testToken.getAccountInfo(account1Delegate);
-  assert(delegateAccountInfo.amount.toNumber() == 0);
-  assert(delegateAccountInfo.originalAmount.toNumber() == 2);
+  account1Info = await testToken.getAccountInfo(account1);
+  assert(account1Info.amount.toNumber() == 8);
+  assert(account1Info.delegate === null);
+  assert(account1Info.delegatedAmount.toNumber() == 0);
 
-  assert(didThrow(testToken.transfer, [owner, account1Delegate, account2, 1]));
+  assert(didThrow(testToken.transfer, [account1, account2, delegate, 1]));
 }
 
 export async function setOwner(): Promise<void> {
@@ -238,20 +253,20 @@ export async function setOwner(): Promise<void> {
   const newOwner = await newAccountWithLamports(connection, balanceNeeded);
   const owned = await testToken.createAccount(owner.publicKey);
 
-  await testToken.setOwner(owner, owned, newOwner.publicKey);
-  assert(didThrow(testToken.setOwner, [owner, owned, newOwner.publicKey]));
-  await testToken.setOwner(newOwner, owned, owner.publicKey);
+  await testToken.setOwner(owned, newOwner.publicKey, owner);
+  assert(didThrow(testToken.setOwner, [owned, newOwner.publicKey, owner]));
+  await testToken.setOwner(owned, owner.publicKey,newOwner);
 }
 
 export async function mintTo(): Promise<void> {
   const connection = await getConnection();
   const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
-  const tokenOwner = new Account();
+  const mintOwner = new Account();
   const testAccountOwner = new Account();
-  const [mintableToken, initialAccount] = await Token.createToken(
+  const [mintableToken, initialAccount] = await Token.createMint(
     connection,
     payer,
-    tokenOwner.publicKey,
+    mintOwner.publicKey,
     testAccountOwner.publicKey,
     new TokenAmount(10000),
     2,
@@ -260,56 +275,56 @@ export async function mintTo(): Promise<void> {
   );
 
   {
-    const tokenInfo = await mintableToken.getMintInfo();
-    assert(tokenInfo.supply.toNumber() == 10000);
-    assert(tokenInfo.decimals == 2);
-    if (tokenInfo.owner === null) {
+    const mintInfo = await mintableToken.getMintInfo();
+    assert(mintInfo.supply.toNumber() == 10000);
+    assert(mintInfo.decimals == 2);
+    if (mintInfo.owner === null) {
       throw new Error('owner should not be null');
     } else {
-      assert(tokenInfo.owner.equals(tokenOwner.publicKey));
+      assert(mintInfo.owner.equals(mintOwner.publicKey));
     }
 
     const accountInfo = await mintableToken.getAccountInfo(initialAccount);
-    assert(accountInfo.token.equals(mintableToken.publicKey));
+    assert(accountInfo.mint.equals(mintableToken.publicKey));
     assert(accountInfo.owner.equals(testAccountOwner.publicKey));
     assert(accountInfo.amount.toNumber() == 10000);
-    assert(accountInfo.source == null);
-    assert(accountInfo.originalAmount.toNumber() == 0);
+    assert(accountInfo.delegate == null);
+    assert(accountInfo.delegatedAmount.toNumber() == 0);
   }
 
   const dest = await mintableToken.createAccount(testAccountOwner.publicKey);
-  await mintableToken.mintTo(tokenOwner, dest, 42);
+  await mintableToken.mintTo(dest, mintOwner,42);
 
   {
-    const tokenInfo = await mintableToken.getMintInfo();
-    assert(tokenInfo.supply.toNumber() == 10042);
-    assert(tokenInfo.decimals == 2);
-    if (tokenInfo.owner === null) {
+    const mintInfo = await mintableToken.getMintInfo();
+    assert(mintInfo.supply.toNumber() == 10042);
+    assert(mintInfo.decimals == 2);
+    if (mintInfo.owner === null) {
       throw new Error('owner should not be null');
     } else {
-      assert(tokenInfo.owner.equals(tokenOwner.publicKey));
+      assert(mintInfo.owner.equals(mintOwner.publicKey));
     }
 
     const accountInfo = await mintableToken.getAccountInfo(dest);
-    assert(accountInfo.token.equals(mintableToken.publicKey));
+    assert(accountInfo.mint.equals(mintableToken.publicKey));
     assert(accountInfo.owner.equals(testAccountOwner.publicKey));
     assert(accountInfo.amount.toNumber() == 42);
-    assert(accountInfo.source == null);
-    assert(accountInfo.originalAmount.toNumber() == 0);
+    assert(accountInfo.delegate == null);
+    assert(accountInfo.delegatedAmount.toNumber() == 0);
   }
 }
 
 export async function burn(): Promise<void> {
-  let tokenInfo = await testToken.getMintInfo();
-  const supply = tokenInfo.supply.toNumber();
+  let mintInfo = await testToken.getMintInfo();
+  const supply = mintInfo.supply.toNumber();
   let accountInfo = await testToken.getAccountInfo(testAccount);
   const amount = accountInfo.amount.toNumber();
 
-  await testToken.burn(testAccountOwner, testAccount, 1);
+  await testToken.burn(testAccount, testAccountOwner, 1);
   await sleep(500);
 
-  tokenInfo = await testToken.getMintInfo();
-  assert(tokenInfo.supply.toNumber() == supply - 1);
+  mintInfo = await testToken.getMintInfo();
+  assert(mintInfo.supply.toNumber() == supply - 1);
   accountInfo = await testToken.getAccountInfo(testAccount);
   assert(accountInfo.amount.toNumber() == amount - 1);
 }

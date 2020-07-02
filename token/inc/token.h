@@ -26,7 +26,7 @@ typedef struct Token_TokenInfo {
  */
 typedef enum Token_TokenInstruction_Tag {
     /**
-     * Initializes a new mint and deposits all the newly minted tokens in an account.
+     * Initializes a new mint and optionally deposits all the newly minted tokens in an account.
      *
      * # Accounts expected by this instruction:
      *
@@ -34,20 +34,18 @@ typedef enum Token_TokenInstruction_Tag {
      *   1.
      *      * If supply is non-zero: `[writable]` Account to hold all the newly minted tokens.
      *      * If supply is zero: `[]` Owner of the mint.
-     *   2. Optional: `[]` Owner of the mint if supply is non-zero, if present then the
-     *      token allows further minting of tokens.
+     *   2. Optional: `[]` Owner of the mint if supply is non-zero, if present then further
+     *      minting is supported.
      */
     InitializeMint,
     /**
-     * Initializes a new account.  The new account can either hold tokens or be a delegate
-     * for another account.
+     * Initializes a new account.
      *
      * # Accounts expected by this instruction:
      *
-     *   0. `[writable, signer]`  New account being created.
-     *   1. `[]` Owner of the new account.
-     *   2. `[]` Token this account will be associated with.
-     *   3. Optional: `[]` Source account that this account will be a delegate for.
+     *   0. `[writable, signer]`  New account being initialized.
+     *   1. `[]` The mint this account will be associated with.
+     *   2. `[]` Owner of the new account.
      */
     InitializeAccount,
     /**
@@ -55,31 +53,31 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * # Accounts expected by this instruction:
      *
-     *   0. `[signer]` Owner of the source account.
-     *   1. `[writable]` Source/Delegate account.
-     *   2. `[writable]` Destination account.
-     *   3. Optional: `[writable]` Source account if key 1 is a delegate account.
+     *   0. `[writable]` The source account.
+     *   1. `[writable]` The destination account.
+     *   2. '[signer]' The source's owner or delegate
      */
     Transfer,
     /**
-     * Approves a delegate.  A delegate account is given the authority to transfer
-     * another accounts tokens without the other account's owner signing the transfer.
+     * Approves a delegate.  A delegate is given the authority over
+     * tokens on behalf of the source account's owner.  If the amount to
+     * delegate is zero then delegation is rescinded
      *
      * # Accounts expected by this instruction:
      *
-     *   0. `[signer]` Owner of the source account.
-     *   1. `[]` Source account.
-     *   2. `[writable]` Delegate account.
+     *   0. `[writable]` The source account.
+     *   1. Optional: `[writable]` The delegate if amount is non-zero.
+     *   2. `[signer]`The source account owner address
      */
     Approve,
     /**
-     * Sets a new owner of a token or account.
+     * Sets a new owner of a mint or account.
      *
      * # Accounts expected by this instruction:
      *
-     *   0. `[signer]` Current owner of the token or account.
-     *   1. `[writable]` token or account to change the owner of.
-     *   2. `[]` New owner
+     *   0. `[writable]` The mint or account to change the owner of.
+     *   1. `[]` The new owner
+     *   2. `[signer]` The owner of the mint or account.
      */
     SetOwner,
     /**
@@ -87,9 +85,9 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * # Accounts expected by this instruction:
      *
-     *   0. `[signer]` Owner of the token.
-     *   1. `[writable]` Token to mint.
-     *   2. `[writable]` Account to mint tokens to.
+     *   1. `[writable]` The mint.
+     *   2. `[writable]` The account to mint tokens to.
+     *   0. `[signer]` The owner of the mint.
      */
     MintTo,
     /**
@@ -97,10 +95,9 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * # Accounts expected by this instruction:
      *
-     *   0. `[signer]` Owner of the account to burn from.
-     *   1. `[writable]` Account to burn from.
-     *   2. `[writable]` Token being burned.
-     *   3. Optional: `[writable]` Source account if key 1 is a delegate account.
+     *   0. `[writable]` The account to burn from.
+     *   1. `[writable]` The mint being burned.
+     *   2. `[signer]` The owner or delegate address of the account to burn from.
      */
     Burn,
 } Token_TokenInstruction_Tag;
@@ -170,7 +167,7 @@ typedef struct Token_COption_Pubkey {
  */
 typedef struct Token_Token {
     /**
-     * The total supply of tokens.
+     * Token details.
      */
     Token_TokenInfo info;
     /**
@@ -182,66 +179,30 @@ typedef struct Token_Token {
 } Token_Token;
 
 /**
- * Delegation details.
- */
-typedef struct Token_AccountDelegate {
-    /**
-     * The source account for the tokens.
-     */
-    Token_Pubkey source;
-    /**
-     * The original maximum amount that this delegate account was authorized to spend.
-     */
-    uint64_t original_amount;
-} Token_AccountDelegate;
-
-/**
- * A C representation of Rust's `std::option::Option`
- */
-typedef enum Token_COption_AccountDelegate_Tag {
-    /**
-     * No value
-     */
-    None_AccountDelegate,
-    /**
-     * Some value `T`
-     */
-    Some_AccountDelegate,
-} Token_COption_AccountDelegate_Tag;
-
-typedef struct Token_Some_Body_AccountDelegate {
-    Token_AccountDelegate _0;
-} Token_Some_Body_AccountDelegate;
-
-typedef struct Token_COption_AccountDelegate {
-    Token_COption_AccountDelegate_Tag tag;
-    union {
-        Token_Some_Body_AccountDelegate some;
-    };
-} Token_COption_AccountDelegate;
-
-/**
  * Account that holds tokens or may delegate tokens.
  */
 typedef struct Token_Account {
     /**
-     * The type of token this account holds.
+     * The mint associated with this account
      */
-    Token_Pubkey token;
+    Token_Pubkey mint;
     /**
-     * Owner of this account.
+     * The owner of this account.
      */
     Token_Pubkey owner;
     /**
-     * Amount of tokens this account holds.
+     * The amount of tokens this account holds.
      */
     uint64_t amount;
     /**
-     * If `delegate`  is None, `amount` belongs to this account.
-     * If `delegate` is Option<_>, `amount` represents the remaining allowance
-     * of tokens this delegate is authorized to transfer from the `source` account.
+     * If `delegate` is `Some` then `delegated_amount` represents
+     * the amount authorized by the delegate
      */
-    Token_COption_AccountDelegate delegate;
+    Token_COption_Pubkey delegate;
+    /**
+     * The amount delegated
+     */
+    uint64_t delegated_amount;
 } Token_Account;
 
 /**
@@ -253,18 +214,13 @@ typedef enum Token_State_Tag {
      */
     Unallocated,
     /**
-     * A token mint.
+     * A mint.
      */
     Mint,
     /**
-     * An account that holds an amount of tokens or was delegated the authority to transfer
-     * tokens on behalf of another account.
+     * An account that holds tokens
      */
     Account,
-    /**
-     * Invalid state, cannot be modified by the token program.
-     */
-    Invalid,
 } Token_State_Tag;
 
 typedef struct Token_Mint_Body {

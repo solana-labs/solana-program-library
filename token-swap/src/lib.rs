@@ -26,7 +26,8 @@ use thiserror::Error;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Fee {
-    denominator: u64, numerator: u64,
+    denominator: u64,
+    numerator: u64,
 }
 
 /// Instructions supported by the SwapInfo program.
@@ -49,8 +50,7 @@ pub enum SwapInstruction {
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
-    ///   2. `[writable]` token_(A|B) SOURCE delegate Account, amount is transferable by $authority,
-    ///   3. `[writable]` token_(A|B) SOURCE Account associated with the delegate
+    ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transferable by $authority,
     ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
     ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
     ///   6. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
@@ -63,10 +63,8 @@ pub enum SwapInstruction {
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
-    ///   2. `[writable]` token_a delegate $authority can transfer amount,
-    ///   3. `[writable]` token_a account associated with delegate
-    ///   4. `[writable]` token_b delegate $authority can transfer amount,
-    ///   5. `[writable]` token_b account associated with delegate
+    ///   2. `[writable]` token_a $authority can transfer amount,
+    ///   4. `[writable]` token_b $authority can transfer amount,
     ///   6. `[writable]` token_a Base Account to deposit into.
     ///   7. `[writable]` token_b Base Account to deposit into.
     ///   8. `[writable]` Pool MINT account, $authority is the owner.
@@ -79,8 +77,7 @@ pub enum SwapInstruction {
     ///   
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
-    ///   2. `[writable]` SOURCE Pool delegate, amount is transferable by $authority.
-    ///   3. `[writable]` SOURCE Pool account associated with the delegate
+    ///   2. `[writable]` SOURCE Pool account, amount is transferable by $authority.
     ///   4. `[writable]` Pool MINT account, $authority is the owner.
     ///   5. `[writable]` token_a Account to withdraw FROM.
     ///   6. `[writable]` token_b Account to withdraw FROM.
@@ -299,7 +296,9 @@ impl Invariant {
         let new_a = self.token_a.checked_add(token_a)?;
         let new_b = invariant.checked_div(new_a)?;
         let remove = self.token_b.checked_sub(new_b)?;
-        let fee = remove.checked_mul(self.fee.numerator)?.checked_div(self.fee.denominator)?;
+        let fee = remove
+            .checked_mul(self.fee.numerator)?
+            .checked_div(self.fee.denominator)?;
         let new_b_with_fee = new_b.checked_add(fee)?;
         let remove_less_fee = remove.checked_sub(fee)?;
         self.token_a = new_a;
@@ -401,22 +400,15 @@ impl State {
         accounts: &[AccountInfo],
         token_program_id: &Pubkey,
         swap: &Pubkey,
-        authority: &Pubkey,
-        token: &Pubkey,
-        source: Option<&Pubkey>,
         burn_account: &Pubkey,
+        mint: &Pubkey,
+        authority: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
-        let ix = spl_token::instruction::burn(
-            token_program_id,
-            authority,
-            burn_account,
-            token,
-            source,
-            amount,
-        )?;
+        let ix =
+            spl_token::instruction::burn(token_program_id, burn_account, mint, authority, amount)?;
         invoke_signed(&ix, accounts, signers)
     }
 
@@ -425,18 +417,18 @@ impl State {
         accounts: &[AccountInfo],
         token_program_id: &Pubkey,
         swap: &Pubkey,
-        authority: &Pubkey,
-        token: &Pubkey,
+        mint: &Pubkey,
         destination: &Pubkey,
+        authority: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
         let ix = spl_token::instruction::mint_to(
             token_program_id,
-            authority,
-            token,
+            mint,
             destination,
+            authority,
             amount,
         )?;
         invoke_signed(&ix, accounts, signers)
@@ -447,20 +439,18 @@ impl State {
         accounts: &[AccountInfo],
         token_program_id: &Pubkey,
         swap: &Pubkey,
-        authority: &Pubkey,
-        token: &Pubkey,
-        source: Option<&Pubkey>,
+        source: &Pubkey,
         destination: &Pubkey,
+        authority: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
         let ix = spl_token::instruction::transfer(
             token_program_id,
-            authority,
-            token,
-            destination,
             source,
+            destination,
+            authority,
             amount,
         )?;
         invoke_signed(&ix, accounts, signers)
@@ -523,9 +513,9 @@ impl State {
             accounts,
             token_program_info.key,
             swap_info.key,
-            authority_info.key,
             pool_info.key,
             user_output_info.key,
+            authority_info.key,
             amount,
         )?;
 
@@ -547,7 +537,6 @@ impl State {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
-        let source_delegate_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let into_info = next_account_info(account_info_iter)?;
         let from_info = next_account_info(account_info_iter)?;
@@ -583,20 +572,18 @@ impl State {
             accounts,
             token_program_info.key,
             swap_info.key,
-            authority_info.key,
-            source_delegate_info.key,
-            Some(source_info.key),
+            source_info.key,
             into_info.key,
+            authority_info.key,
             amount,
         )?;
         Self::token_transfer(
             accounts,
             token_program_info.key,
             swap_info.key,
-            authority_info.key,
             from_info.key,
-            None,
             dest_info.key,
+            authority_info.key,
             output,
         )?;
         Ok(())
@@ -610,9 +597,7 @@ impl State {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
-        let delegate_a_info = next_account_info(account_info_iter)?;
         let source_a_info = next_account_info(account_info_iter)?;
-        let delegate_b_info = next_account_info(account_info_iter)?;
         let source_b_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
@@ -654,29 +639,27 @@ impl State {
             accounts,
             token_program_info.key,
             swap_info.key,
-            authority_info.key,
-            delegate_a_info.key,
-            Some(source_a_info.key),
+            source_a_info.key,
             token_a_info.key,
+            authority_info.key,
             a_amount,
         )?;
         Self::token_transfer(
             accounts,
             token_program_info.key,
             swap_info.key,
-            authority_info.key,
-            delegate_b_info.key,
-            Some(source_b_info.key),
+            source_b_info.key,
             token_b_info.key,
+            authority_info.key,
             b_amount,
         )?;
         Self::token_mint_to(
             accounts,
             token_program_info.key,
             swap_info.key,
-            authority_info.key,
             pool_info.key,
             dest_info.key,
+            authority_info.key,
             output,
         )?;
 
@@ -692,7 +675,6 @@ impl State {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
-        let delegate_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let pool_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
@@ -732,30 +714,27 @@ impl State {
             accounts,
             token_program_info.key,
             swap_info.key,
-            authority_info.key,
             token_a_info.key,
-            None,
             dest_token_a_info.key,
+            authority_info.key,
             a_amount,
         )?;
         Self::token_transfer(
             accounts,
             token_program_info.key,
             swap_info.key,
-            authority_info.key,
             token_b_info.key,
-            None,
             dest_token_b_info.key,
+            authority_info.key,
             b_amount,
         )?;
         Self::token_burn(
             accounts,
             token_program_info.key,
             swap_info.key,
-            authority_info.key,
+            source_info.key,
             pool_info.key,
-            Some(source_info.key),
-            delegate_info.key,
+            authority_info.key,
             amount,
         )?;
         Ok(())
@@ -883,8 +862,7 @@ mod tests {
 
         // create pool and pool account
         do_process_instruction(
-            initialize_account(&program_id, &account_key, &authority_key, &token_key, None)
-                .unwrap(),
+            initialize_account(&program_id, &account_key, &token_key, &authority_key).unwrap(),
             vec![
                 &mut account_account,
                 &mut Account::default(),
@@ -945,7 +923,10 @@ mod tests {
                 &token_b_key,
                 &pool_key,
                 &pool_token_key,
-                Fee{denominator: 1, numerator: 2},
+                Fee {
+                    denominator: 1,
+                    numerator: 2,
+                },
             )
             .unwrap(),
             vec![
