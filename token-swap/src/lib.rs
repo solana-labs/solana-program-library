@@ -26,7 +26,8 @@ use thiserror::Error;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Fee {
-    denominator: u64, numerator: u64,
+    denominator: u64,
+    numerator: u64,
 }
 
 /// Instructions supported by the SwapInfo program.
@@ -299,7 +300,9 @@ impl Invariant {
         let new_a = self.token_a.checked_add(token_a)?;
         let new_b = invariant.checked_div(new_a)?;
         let remove = self.token_b.checked_sub(new_b)?;
-        let fee = remove.checked_mul(self.fee.numerator)?.checked_div(self.fee.denominator)?;
+        let fee = remove
+            .checked_mul(self.fee.numerator)?
+            .checked_div(self.fee.denominator)?;
         let new_b_with_fee = new_b.checked_add(fee)?;
         let remove_less_fee = remove.checked_sub(fee)?;
         self.token_a = new_a;
@@ -415,6 +418,7 @@ impl State {
             burn_account,
             token,
             source,
+            &[],
             amount,
         )?;
         invoke_signed(&ix, accounts, signers)
@@ -437,6 +441,7 @@ impl State {
             authority,
             token,
             destination,
+            &[],
             amount,
         )?;
         invoke_signed(&ix, accounts, signers)
@@ -461,6 +466,7 @@ impl State {
             token,
             destination,
             source,
+            &[],
             amount,
         )?;
         invoke_signed(&ix, accounts, signers)
@@ -945,7 +951,10 @@ mod tests {
                 &token_b_key,
                 &pool_key,
                 &pool_token_key,
-                Fee{denominator: 1, numerator: 2},
+                Fee {
+                    denominator: 1,
+                    numerator: 2,
+                },
             )
             .unwrap(),
             vec![

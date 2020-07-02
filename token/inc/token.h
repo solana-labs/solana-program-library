@@ -8,6 +8,16 @@
 #include <stdlib.h>
 
 /**
+ * Maximum number of multisignature signers (max N)
+ */
+#define Token_MAX_SIGNERS 11
+
+/**
+ * Minimum number of multisignature signers (max N)
+ */
+#define Token_MIN_SIGNERS 1
+
+/**
  * Specifies the financial specifics of a token.
  */
 typedef struct Token_TokenInfo {
@@ -30,7 +40,7 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * # Accounts expected by this instruction:
      *
-     *   0. `[writable, signer]` New mint to create.
+     *   0. `[writable, signer]` Mint account to initialize
      *   1.
      *      * If supply is non-zero: `[writable]` Account to hold all the newly minted tokens.
      *      * If supply is zero: `[]` Owner of the mint.
@@ -44,12 +54,24 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * # Accounts expected by this instruction:
      *
-     *   0. `[writable, signer]`  New account being created.
+     *   0. `[writable, signer]`  Account to initialize
      *   1. `[]` Owner of the new account.
      *   2. `[]` Token this account will be associated with.
      *   3. Optional: `[]` Source account that this account will be a delegate for.
      */
     InitializeAccount,
+    /**
+     * Initializes a multisignature account with N provided signers.
+     * Multisignature accounts can take the place of an "Owner" account in any token instructions that
+     * require an owner to be a signer.  The variant field represents the number of required
+     * signers (M).
+     *
+     * # Accounts expected by this instruction:
+     *
+     *   0. `[signer]` Multisignature account to initialize
+     *   1-11. `[]` Signer accounts, must equal to N where 1 <= N <= 11
+     */
+    InitializeMultisig,
     /**
      * Transfers tokens from one account to another either directly or via a delegate.
      *
@@ -59,6 +81,7 @@ typedef enum Token_TokenInstruction_Tag {
      *   1. `[writable]` Source/Delegate account.
      *   2. `[writable]` Destination account.
      *   3. Optional: `[writable]` Source account if key 1 is a delegate account.
+     *   4-14. Optional: `[Signer]` M multisignature Signer accounts
      */
     Transfer,
     /**
@@ -70,6 +93,7 @@ typedef enum Token_TokenInstruction_Tag {
      *   0. `[signer]` Owner of the source account.
      *   1. `[]` Source account.
      *   2. `[writable]` Delegate account.
+     *   3-13. Optional: `[Signer]` M multisignature Signer accounts
      */
     Approve,
     /**
@@ -80,6 +104,7 @@ typedef enum Token_TokenInstruction_Tag {
      *   0. `[signer]` Current owner of the token or account.
      *   1. `[writable]` token or account to change the owner of.
      *   2. `[]` New owner
+     *   2-12. Optional: `[Signer]` M multisignature Signer accounts
      */
     SetOwner,
     /**
@@ -90,6 +115,7 @@ typedef enum Token_TokenInstruction_Tag {
      *   0. `[signer]` Owner of the token.
      *   1. `[writable]` Token to mint.
      *   2. `[writable]` Account to mint tokens to.
+     *   3-13. Optional: `[Signer]` M multisignature Signer accounts
      */
     MintTo,
     /**
@@ -97,10 +123,11 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * # Accounts expected by this instruction:
      *
-     *   0. `[signer]` Owner of the account to burn from.
+     *   0. `[signer]` Owner of the account to burn.
      *   1. `[writable]` Account to burn from.
      *   2. `[writable]` Token being burned.
      *   3. Optional: `[writable]` Source account if key 1 is a delegate account.
+     *   4-14. Optional: `[Signer]` M multisignature Signer accounts
      */
     Burn,
 } Token_TokenInstruction_Tag;
@@ -108,6 +135,10 @@ typedef enum Token_TokenInstruction_Tag {
 typedef struct Token_InitializeMint_Body {
     Token_TokenInfo _0;
 } Token_InitializeMint_Body;
+
+typedef struct Token_InitializeMultisig_Body {
+    uint8_t _0;
+} Token_InitializeMultisig_Body;
 
 typedef struct Token_Transfer_Body {
     uint64_t _0;
@@ -129,6 +160,7 @@ typedef struct Token_TokenInstruction {
     Token_TokenInstruction_Tag tag;
     union {
         Token_InitializeMint_Body initialize_mint;
+        Token_InitializeMultisig_Body initialize_multisig;
         Token_Transfer_Body transfer;
         Token_Approve_Body approve;
         Token_MintTo_Body mint_to;
