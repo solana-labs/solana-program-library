@@ -554,10 +554,10 @@ impl State {
             let multisig = Multisig::deserialize(&mut owner_data).unwrap();
             let mut num_signers = 0;
             for signer in signers.iter() {
-                if !signer.is_signer {
-                    return Err(ProgramError::MissingRequiredSignature);
-                }
                 if multisig.signers[0..multisig.n as usize].contains(signer.key) {
+                    if !signer.is_signer {
+                        return Err(ProgramError::MissingRequiredSignature);
+                    }
                     num_signers += 1;
                 }
             }
