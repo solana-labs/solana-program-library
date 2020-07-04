@@ -12,10 +12,10 @@ set -e
     cc token/inc/token.h -o token/target/token.gch
 )
 
-(
-    cd "$(dirname "$0")/../token/js"
+# (
+#     cd "$(dirname "$0")/../token/js"
 
-    npm install
-    npm run cluster:devnet
-    npm run start
-)
+#     npm install
+#     npm run cluster:devnet
+#     npm run start
+# )
