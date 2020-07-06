@@ -26,8 +26,8 @@ use thiserror::Error;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Fee {
-    denominator: u64,
-    numerator: u64,
+    pub denominator: u64,
+    pub numerator: u64,
 }
 
 /// Instructions supported by the SwapInfo program.
