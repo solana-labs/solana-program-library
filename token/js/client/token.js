@@ -125,6 +125,57 @@ const AccountLayout = BufferLayout.struct([
   Layout.uint64('delegatedAmount'),
 ]);
 
+/**
+ * Information about an multisig
+ */
+type MultisigInfo = {|
+  /**
+   * The number of signers required
+   */
+  m: number,
+
+  /**
+   * Number of possible signers, corresponds to the
+   * number of `signers` that are valid.
+   */
+  n: number,
+
+  /**
+   * The signers
+   */
+  signer1: PublicKey,
+  signer2: PublicKey,
+  signer3: PublicKey,
+  signer4: PublicKey,
+  signer4: PublicKey,
+  signer5: PublicKey,
+  signer6: PublicKey,
+  signer7: PublicKey,
+  signer8: PublicKey,
+  signer9: PublicKey,
+  signer10: PublicKey,
+  signer11: PublicKey,
+|};
+
+/**
+ * @private
+ */
+const MultisigLayout = BufferLayout.struct([
+  BufferLayout.u8('m'),
+  BufferLayout.u8('n'),
+  Layout.publicKey('signer1'),
+  Layout.publicKey('signer2'),
+  Layout.publicKey('signer3'),
+  Layout.publicKey('signer4'),
+  Layout.publicKey('signer5'),
+  Layout.publicKey('signer6'),
+  Layout.publicKey('signer7'),
+  Layout.publicKey('signer8'),
+  Layout.publicKey('signer9'),
+  Layout.publicKey('signer10'),
+  Layout.publicKey('signer11'),
+]);
+
 type TokenAndPublicKey = [Token, PublicKey]; // This type exists to workaround an esdoc parse error
 
 /**
@@ -186,6 +237,19 @@ export class Token {
   ): Promise<number> {
     return await connection.getMinimumBalanceForRentExemption(
       AccountLayout.span,
+    );
+  }
+
+  /**
+   * Get the minimum balance for the multsig to be rent exempt
+   *
+   * @return Number of lamports required
+   */
+  static async getMinBalanceRentForExemptMultisig(
+    connection: Connection,
+  ): Promise<number> {
+    return await connection.getMinimumBalanceForRentExemption(
+      MultisigLayout.span,
     );
   }
 
@@ -347,6 +411,76 @@ export class Token {
   }
 
   /**
+   * Create and initializes a new multisig.
+   *
+   * This account may then be used for multisignature verification
+   *
+   * @param owner User account that will own the multsig account
+   * @return Public key of the new multisig account
+   */
+  async createMultisig(
+    m: number,
+    signers: Array<PublicKey>,
+  ): Promise<PublicKey> {
+    const multisigAccount = new Account();
+    let transaction;
+
+    // Allocate memory for the account
+    const balanceNeeded = await Token.getMinBalanceRentForExemptMultisig(
+      this.connection,
+    );
+    transaction = SystemProgram.createAccount({
+      fromPubkey: this.payer.publicKey,
+      newAccountPubkey: multisigAccount.publicKey,
+      lamports: balanceNeeded,
+      space: MultisigLayout.span,
+      programId: this.programId,
+    });
+    await sendAndConfirmTransaction(
+      'createAccount',
+      this.connection,
+      transaction,
+      this.payer,
+      multisigAccount,
+    );
+
+    // create the new account
+    let keys = [
+      {pubkey: multisigAccount.publicKey, isSigner: true, isWritable: true},
+    ];
+    signers.forEach(signer => keys.push({pubkey: signer, isSigner: false, isWritable: false}));
+
+    const dataLayout = BufferLayout.struct(
+      [
+        BufferLayout.u8('instruction'),
+        BufferLayout.u8('m')
+      ]
+    );
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 2, // InitializeM<ultisig instruction
+        m,
+      },
+      data,
+    );
+    transaction = new Transaction().add({
+      keys,
+      programId: this.programId,
+      data,
+    });
+    await sendAndConfirmTransaction(
+      'InitializeMultisig',
+      this.connection,
+      transaction,
+      this.payer,
+      multisigAccount,
+    );
+
+    return multisigAccount.publicKey;
+  }
+
+  /**
    * Retrieve mint information
    */
   async getMintInfo(): Promise<MintInfo> {
@@ -419,19 +553,61 @@ export class Token {
   }
 
   /**
+   * Retrieve Multisig information
+   *
+   * @param multisig Public key of the account
+   */
+  async getMultisigInfo(multisig: PublicKey): Promise<MultisigInfo> {
+    const info = await this.connection.getAccountInfo(multisig);
+    if (info === null) {
+      throw new Error('Failed to find multisig');
+    }
+    if (!info.owner.equals(this.programId)) {
+      throw new Error(`Invalid multisig owner`);
+    }
+
+    const data = Buffer.from(info.data);
+    const multisigInfo = MultisigLayout.decode(data);
+    multisigInfo.signer1 = new PublicKey(multisigInfo.signer1);
+    multisigInfo.signer2 = new PublicKey(multisigInfo.signer2);
+    multisigInfo.signer3 = new PublicKey(multisigInfo.signer3);
+    multisigInfo.signer4 = new PublicKey(multisigInfo.signer4);
+    multisigInfo.signer5 = new PublicKey(multisigInfo.signer5);
+    multisigInfo.signer6 = new PublicKey(multisigInfo.signer6);
+    multisigInfo.signer7 = new PublicKey(multisigInfo.signer7);
+    multisigInfo.signer8 = new PublicKey(multisigInfo.signer8);
+    multisigInfo.signer9 = new PublicKey(multisigInfo.signer9);
+    multisigInfo.signer10 = new PublicKey(multisigInfo.signer10);
+    multisigInfo.signer11 = new PublicKey(multisigInfo.signer11);
+
+    return multisigInfo;
+  }
+
+  /**
    * Transfer tokens to another account
    *
    * @param source Source account
    * @param destination Destination account
    * @param authority Owner of the source account
+   * @param multiSigners Signing accounts if `authority` is a multiSig
    * @param amount Number of tokens to transfer
    */
   async transfer(
     source: PublicKey,
     destination: PublicKey,
-    authority: Account,
+    authority: Account | PublicKey,
+    multiSigners: Array<Account>,
     amount: number | TokenAmount,
   ): Promise<?TransactionSignature> {
+    let ownerPublicKey;
+    let signers;
+    if (authority instanceof Account) {
+      ownerPublicKey = authority.publicKey;
+      signers = [authority];
+    } else {
+      ownerPublicKey = authority;
+      signers = multiSigners;
+    }
     return await sendAndConfirmTransaction(
       'transfer',
       this.connection,
@@ -439,12 +615,13 @@ export class Token {
         this.transferInstruction(
           source,
           destination,
-          authority.publicKey,
+          ownerPublicKey,
+          multiSigners,
           amount,
         ),
       ),
       this.payer,
-      authority,
+      ...signers
     );
   }
 
@@ -454,22 +631,33 @@ export class Token {
    * @param account Public key of the account
    * @param delegate Account authorized to perform a transfer tokens from the source account
    * @param owner Owner of the source account
+   * @param multiSigners Signing accounts if `owner` is a multiSig
    * @param amount Maximum number of tokens the delegate may transfer
    */
   async approve(
     account: PublicKey,
     delegate: PublicKey,
-    owner: Account,
+    owner: Account | PublicKey,
+    multiSigners: Array<Account>,
     amount: number | TokenAmount,
   ): Promise<void> {
+    let ownerPublicKey;
+    let signers;
+    if (owner instanceof Account) {
+      ownerPublicKey = owner.publicKey;
+      signers = [owner];
+    } else {
+      ownerPublicKey = owner;
+      signers = multiSigners;
+    }
     await sendAndConfirmTransaction(
       'approve',
       this.connection,
       new Transaction().add(
-        this.approveInstruction(account, delegate, owner.publicKey, amount),
+        this.approveInstruction(account, delegate, ownerPublicKey, multiSigners, amount),
       ),
       this.payer,
-      owner,
+      ...signers
     );
   }
 
@@ -479,13 +667,15 @@ export class Token {
    * @param account Public key of the account
    * @param delegate Account to revoke authorization from
    * @param owner Owner of the source account
+   * @param multiSigners Signing accounts if `owner` is a multiSig
    */
   revoke(
     account: PublicKey,
     delegate: PublicKey,
-    owner: Account,
+    owner: Account | PublicKey,
+    multiSigners: Array<Account>,
   ): Promise<void> {
-    return this.approve(account, delegate, owner, 0);
+    return this.approve(account, delegate, owner, multiSigners, 0);
   }
 
   /**
@@ -494,20 +684,31 @@ export class Token {
    * @param account Public key of the account
    * @param newOwner New owner of the account
    * @param owner Owner of the account
+   * @param multiSigners Signing accounts if `owner` is a multiSig
    */
   async setOwner(
     owned: PublicKey,
     newOwner: PublicKey,
-    owner: Account,
+    owner: Account | PublicKey,
+    multiSigners: Array<Account>,
   ): Promise<void> {
+    let ownerPublicKey;
+    let signers;
+    if (owner instanceof Account) {
+      ownerPublicKey = owner.publicKey;
+      signers = [owner];
+    } else {
+      ownerPublicKey = owner;
+      signers = multiSigners;
+    }
     await sendAndConfirmTransaction(
       'setOwneer',
       this.connection,
       new Transaction().add(
-        this.setOwnerInstruction(owned, newOwner,owner.publicKey),
+        this.setOwnerInstruction(owned, newOwner, ownerPublicKey, multiSigners),
       ),
       this.payer,
-      owner,
+      ...signers,
     );
   }
 
@@ -517,19 +718,30 @@ export class Token {
    * @param mint Public key of the mint
    * @param dest Public key of the account to mint to
    * @param authority Owner of the mint
+   * @param multiSigners Signing accounts if `authority` is a multiSig
    * @param amount ammount to mint
    */
   async mintTo(
     dest: PublicKey,
-    authority: Account,
+    authority: Account | PublicKey,
+    multiSigners: Array<Account>,
     amount: number,
   ): Promise<void> {
+    let ownerPublicKey;
+    let signers;
+    if (authority instanceof Account) {
+      ownerPublicKey = authority.publicKey;
+      signers = [authority];
+    } else {
+      ownerPublicKey = authority;
+      signers = multiSigners;
+    }
     await sendAndConfirmTransaction(
       'mintTo',
       this.connection,
-      new Transaction().add(this.mintToInstruction(dest, authority.publicKey,amount)),
+      new Transaction().add(this.mintToInstruction(dest, ownerPublicKey, multiSigners, amount)),
       this.payer,
-      authority,
+      ...signers,
     );
   }
 
@@ -538,19 +750,30 @@ export class Token {
    *
    * @param account Account to burn tokens from
    * @param authority Public key account owner
+   * @param multiSigners Signing accounts if `authority` is a multiSig
    * @param amount ammount to burn
    */
   async burn(
     account: PublicKey,
-    authority: Account,
+    authority: Account | PublicKey,
+    multiSigners: Array<Account>,
     amount: number,
   ): Promise<void> {
+    let ownerPublicKey;
+    let signers;
+    if (authority instanceof Account) {
+      ownerPublicKey = authority.publicKey;
+      signers = [authority];
+    } else {
+      ownerPublicKey = authority;
+      signers = multiSigners;
+    }
     await sendAndConfirmTransaction(
       'burn',
       this.connection,
-      new Transaction().add(this.burnInstruction(account, authority.publicKey, amount)),
+      new Transaction().add(this.burnInstruction(account, ownerPublicKey, multiSigners, amount)),
       this.payer,
-      authority,
+      ...signers,
     );
   }
 
@@ -560,12 +783,14 @@ export class Token {
    * @param source Source account
    * @param destination Destination account
    * @param authority Owner of the source account
+   * @param multiSigners Signing accounts if `authority` is a multiSig
    * @param amount Number of tokens to transfer
    */
   transferInstruction(
     source: PublicKey,
     destination: PublicKey,
-    authority: PublicKey,
+    authority: Account | PublicKey,
+    multiSigners: Array<Account>,
     amount: number | TokenAmount,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -576,17 +801,22 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 2, // Transfer instruction
+        instruction: 3, // Transfer instruction
         amount: new TokenAmount(amount).toBuffer(),
       },
       data,
     );
 
-    const keys = [
+    let keys = [
       {pubkey: source, isSigner: false, isWritable: true},
       {pubkey: destination, isSigner: false, isWritable: true},
-      {pubkey: authority, isSigner: true, isWritable: false},
     ];
+    if (authority instanceof Account) {
+      keys.push({pubkey: authority.publicKey, isSigner: true, isWritable: false});
+    } else {
+      keys.push({pubkey: authority, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+    }
     return new TransactionInstruction({
       keys,
       programId: this.programId,
@@ -597,15 +827,17 @@ export class Token {
   /**
    * Construct an Approve instruction
    *
-   * @param owner Owner of the source account
    * @param account Public key of the account
    * @param delegate Account authorized to perform a transfer of tokens from the source account
+   * @param owner Owner of the source account
+   * @param multiSigners Signing accounts if `owner` is a multiSig
    * @param amount Maximum number of tokens the delegate may transfer
    */
   approveInstruction(
     account: PublicKey,
     delegate: PublicKey,
-    owner: PublicKey,
+    owner: Account | PublicKey,
+    multiSigners: Array<Account>,
     amount: number | TokenAmount,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -616,17 +848,22 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 3, // Approve instruction
+        instruction: 4, // Approve instruction
         amount: new TokenAmount(amount).toBuffer(),
       },
       data,
     );
 
-    const keys = [{pubkey: account, isSigner: false, isWritable: true}];
+    let keys = [{pubkey: account, isSigner: false, isWritable: true}];
     if (new TokenAmount(amount).toNumber() > 0) {
       keys.push({pubkey: delegate, isSigner: false, isWritable: false});
     }
-    keys.push({pubkey: owner, isSigner: true, isWritable: false});
+    if (owner instanceof Account) {
+      keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
+    } else {
+      keys.push({pubkey: owner, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+    }
 
     return new TransactionInstruction({
       keys,
@@ -641,28 +878,37 @@ export class Token {
    * @param account Public key of the account
    * @param newOwner New owner of the account
    * @param owner Owner of the account
+   * @param multiSigners Signing accounts if `owner` is a multiSig
    */
   setOwnerInstruction(
     owned: PublicKey,
     newOwner: PublicKey,
-    owner: PublicKey,
+    owner: Account | PublicKey,
+    multiSigners: Array<Account>,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 4, // SetOwner instruction
+        instruction: 5, // SetOwner instruction
       },
       data,
     );
 
+    let keys = [
+      {pubkey: owned, isSigner: false, isWritable: true},
+      {pubkey: newOwner, isSigner: false, isWritable: false},
+    ];
+    if (owner instanceof Account) {
+      keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
+    } else {
+      keys.push({pubkey: owner, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+    }
+
     return new TransactionInstruction({
-      keys: [
-        {pubkey: owned, isSigner: false, isWritable: true},
-        {pubkey: newOwner, isSigner: false, isWritable: false},
-        {pubkey: owner, isSigner: true, isWritable: false},
-      ],
+      keys,
       programId: this.programId,
       data,
     });
@@ -673,11 +919,14 @@ export class Token {
    *
    * @param dest Public key of the account to mint to
    * @param authority Owner of the mint
+   * @param multiSigners Signing accounts if `authority` is a multiSig
+
    * @param amount amount to mint
    */
   mintToInstruction(
     dest: PublicKey,
-    authority: PublicKey,
+    authority: Account | PublicKey,
+    multiSigners: Array<Account>,
     amount: number,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -688,18 +937,25 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 5, // MintTo instruction
+        instruction: 6, // MintTo instruction
         amount: new TokenAmount(amount).toBuffer(),
       },
       data,
     );
 
+    let keys = [
+      {pubkey: this.publicKey, isSigner: false, isWritable: true},
+      {pubkey: dest, isSigner: false, isWritable: true},
+    ];
+    if (authority instanceof Account) {
+      keys.push({pubkey: authority.publicKey, isSigner: true, isWritable: false});
+    } else {
+      keys.push({pubkey: authority, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+    }
+
     return new TransactionInstruction({
-      keys: [
-        {pubkey: this.publicKey, isSigner: false, isWritable: true},
-        {pubkey: dest, isSigner: false, isWritable: true},
-        {pubkey: authority, isSigner: true, isWritable: false},
-      ],
+      keys,
       programId: this.programId,
       data,
     });
@@ -709,12 +965,14 @@ export class Token {
    * Construct a Burn instruction
    *
    * @param account Account to burn tokens from
-   * @param amount ammount to burn
    * @param authority Public key account owner
+   * @param multiSigners Signing accounts if `authority` is a multiSig
+   * @param amount ammount to burn
    */
   burnInstruction(
     account: PublicKey,
-    authority: PublicKey,
+    authority: Account | PublicKey,
+    multiSigners: Array<Account>,
     amount: number,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -725,17 +983,22 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 6, // Burn instruction
+        instruction: 7, // Burn instruction
         amount: new TokenAmount(amount).toBuffer(),
       },
       data,
     );
 
-    const keys = [
+    let keys = [
       {pubkey: account, isSigner: false, isWritable: true},
       {pubkey: this.publicKey, isSigner: false, isWritable: true},
-      {pubkey: authority, isSigner: true, isWritable: false},
     ];
+    if (authority instanceof Account) {
+      keys.push({pubkey: authority.publicKey, isSigner: true, isWritable: false});
+    } else {
+      keys.push({pubkey: authority, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+    }
 
     return new TransactionInstruction({
       keys,

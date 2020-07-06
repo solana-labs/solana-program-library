@@ -8,6 +8,16 @@
 #include <stdlib.h>
 
 /**
+ * Maximum number of multisignature signers (max N)
+ */
+#define Token_MAX_SIGNERS 11
+
+/**
+ * Minimum number of multisignature signers (min N)
+ */
+#define Token_MIN_SIGNERS 1
+
+/**
  * Specifies the financial specifics of a token.
  */
 typedef struct Token_TokenInfo {
@@ -28,34 +38,55 @@ typedef enum Token_TokenInstruction_Tag {
     /**
      * Initializes a new mint and optionally deposits all the newly minted tokens in an account.
      *
-     * # Accounts expected by this instruction:
+     * Accounts expected by this instruction:
      *
-     *   0. `[writable, signer]` New mint to create.
+     *   0. `[writable, signer]` The mint to initialize.
      *   1.
-     *      * If supply is non-zero: `[writable]` Account to hold all the newly minted tokens.
-     *      * If supply is zero: `[]` Owner of the mint.
-     *   2. Optional: `[]` Owner of the mint if supply is non-zero, if present then further
-     *      minting is supported.
+     *      * If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
+     *      * If supply is zero: `[]` The owner/multisignature of the mint.
+     *   2. `[]` (optional) The owner/multisignature of the mint if supply is non-zero, if
+     *                      present then further minting is supported.
+     *
      */
     InitializeMint,
     /**
-     * Initializes a new account.
+     * Initializes a new account to hold tokens.
      *
-     * # Accounts expected by this instruction:
+     * Accounts expected by this instruction:
      *
-     *   0. `[writable, signer]`  New account being initialized.
+     *   0. `[writable, signer]`  The account to initialize.
      *   1. `[]` The mint this account will be associated with.
-     *   2. `[]` Owner of the new account.
+     *   2. `[]` The new account's owner/multisignature.
      */
     InitializeAccount,
     /**
+     * Initializes a multisignature account with N provided signers.
+     *
+     * Multisignature accounts can used in place of any single owner/delegate accounts in any
+     * token instruction that require an owner/delegate to be present.  The variant field represents the
+     * number of signers (M) required to validate this multisignature account.
+     *
+     * Accounts expected by this instruction:
+     *
+     *   0. `[signer, writable]` The multisignature account to initialize.
+     *   1. ..1+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
+     */
+    InitializeMultisig,
+    /**
      * Transfers tokens from one account to another either directly or via a delegate.
      *
-     * # Accounts expected by this instruction:
+     * Accounts expected by this instruction:
      *
+     *   * Single owner/delegate
      *   0. `[writable]` The source account.
      *   1. `[writable]` The destination account.
-     *   2. '[signer]' The source's owner or delegate
+     *   2. '[signer]' The source account's owner/delegate.
+     *
+     *   * Multisignature owner/delegate
+     *   0. `[writable]` The source account.
+     *   1. `[writable]` The destination account.
+     *   2. '[]' The source account's multisignature owner/delegate.
+     *   3. ..3+M '[signer]' M signer accounts.
      */
     Transfer,
     /**
@@ -63,41 +94,69 @@ typedef enum Token_TokenInstruction_Tag {
      * tokens on behalf of the source account's owner.  If the amount to
      * delegate is zero then delegation is rescinded
      *
-     * # Accounts expected by this instruction:
+     * Accounts expected by this instruction:
      *
+     *   * Single owner/delegate
      *   0. `[writable]` The source account.
-     *   1. Optional: `[writable]` The delegate if amount is non-zero.
-     *   2. `[signer]`The source account owner address
+     *   1. `[]` (optional) The delegate if amount is non-zero.
+     *   2. `[signer]` The source account owner/delegate.
+     *
+     *   * Multisignature owner/delegate
+     *   0. `[writable]` The source account.
+     *   1. `[]` (optional) The delegate if amount is non-zero.
+     *   2. '[]' The source account's multisignature owner/delegate.
+     *   3. ..3+M '[signer]' M signer accounts
      */
     Approve,
     /**
      * Sets a new owner of a mint or account.
      *
-     * # Accounts expected by this instruction:
+     * Accounts expected by this instruction:
      *
+     *   * Single owner
      *   0. `[writable]` The mint or account to change the owner of.
-     *   1. `[]` The new owner
+     *   1. `[]` The new owner/delegate/multisignature.
      *   2. `[signer]` The owner of the mint or account.
+     *
+     *   * Multisignature owner
+     *   0. `[writable]` The mint or account to change the owner of.
+     *   1. `[]` The new owner/delegate/multisignature.
+     *   2. `[]` The mint's or account's multisignature owner.
+     *   3. ..3+M '[signer]' M signer accounts
      */
     SetOwner,
     /**
      * Mints new tokens to an account.
      *
-     * # Accounts expected by this instruction:
+     * Accounts expected by this instruction:
      *
-     *   1. `[writable]` The mint.
-     *   2. `[writable]` The account to mint tokens to.
-     *   0. `[signer]` The owner of the mint.
+     *   * Single owner
+     *   0. `[writable]` The mint.
+     *   1. `[writable]` The account to mint tokens to.
+     *   2. `[signer]` The mint's owner.
+     *
+     *   * Multisignature owner
+     *   0. `[writable]` The mint.
+     *   1. `[writable]` The account to mint tokens to.
+     *   2. `[]` The mint's multisignature owner.
+     *   3. ..3+M '[signer]' M signer accounts.
      */
     MintTo,
     /**
-     * Burns tokens by removing them from an account and the total supply.
+     * Burns tokens by removing them from an account and the mint's total supply.
      *
-     * # Accounts expected by this instruction:
+     * Accounts expected by this instruction:
      *
+     *   * Single owner/delegate
      *   0. `[writable]` The account to burn from.
      *   1. `[writable]` The mint being burned.
-     *   2. `[signer]` The owner or delegate address of the account to burn from.
+     *   2. `[signer]` The account's owner/delegate.
+     *
+     *   * Multisignature owner/delegate
+     *   0. `[writable]` The account to burn from.
+     *   1. `[writable]` The mint being burned.
+     *   2. `[]` The account's multisignature owner/delegate
+     *   3. ..3+M '[signer]' M signer accounts.
      */
     Burn,
 } Token_TokenInstruction_Tag;
@@ -105,6 +164,10 @@ typedef enum Token_TokenInstruction_Tag {
 typedef struct Token_InitializeMint_Body {
     Token_TokenInfo _0;
 } Token_InitializeMint_Body;
+
+typedef struct Token_InitializeMultisig_Body {
+    uint8_t _0;
+} Token_InitializeMultisig_Body;
 
 typedef struct Token_Transfer_Body {
     uint64_t _0;
@@ -126,6 +189,7 @@ typedef struct Token_TokenInstruction {
     Token_TokenInstruction_Tag tag;
     union {
         Token_InitializeMint_Body initialize_mint;
+        Token_InitializeMultisig_Body initialize_multisig;
         Token_Transfer_Body transfer;
         Token_Approve_Body approve;
         Token_MintTo_Body mint_to;

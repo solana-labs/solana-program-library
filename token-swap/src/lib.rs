@@ -409,8 +409,14 @@ impl State {
     ) -> Result<(), ProgramError> {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
-        let ix =
-            spl_token::instruction::burn(token_program_id, burn_account, mint, authority, amount)?;
+        let ix = spl_token::instruction::burn(
+            token_program_id,
+            burn_account,
+            mint,
+            authority,
+            &[],
+            amount,
+        )?;
         invoke_signed(&ix, accounts, signers)
     }
 
@@ -431,6 +437,7 @@ impl State {
             mint,
             destination,
             authority,
+            &[],
             amount,
         )?;
         invoke_signed(&ix, accounts, signers)
@@ -453,6 +460,7 @@ impl State {
             source,
             destination,
             authority,
+            &[],
             amount,
         )?;
         invoke_signed(&ix, accounts, signers)

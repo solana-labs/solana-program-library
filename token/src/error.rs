@@ -13,23 +13,29 @@ use thiserror::Error;
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum TokenError {
     /// Insufficient funds for the operation requested.
-    #[error("insufficient funds")]
+    #[error("Insufficient funds")]
     InsufficientFunds,
-    /// Token types of the provided accounts don't match.
-    #[error("token mismatch")]
-    TokenMismatch,
-    /// Owner was not a signing member of the instruction.
-    #[error("no owner")]
-    NoOwner,
+    /// Account not associated with this Mint.
+    #[error("Account not associated with this Mint")]
+    MintMismatch,
+    /// Owner does not match.
+    #[error("Owner does not match")]
+    OwnerMismatch,
     /// This token's supply is fixed and new tokens cannot be minted.
-    #[error("fixed supply")]
+    #[error("Fixed supply")]
     FixedSupply,
     /// The account cannot be initialized because it is already being used.
     #[error("AlreadyInUse")]
     AlreadyInUse,
-    /// An owner is required if supply is zero.
+    /// An owner is required if initial supply is zero.
     #[error("An owner is required if supply is zero")]
     OwnerRequiredIfNoInitialSupply,
+    /// Invalid number of provided signers.
+    #[error("Invalid number of provided signers")]
+    InvalidNumberOfProvidedSigners,
+    /// Invalid number of required signers.
+    #[error("Invalid number of required signers")]
+    InvalidNumberOfRequiredSigners,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -48,12 +54,18 @@ impl PrintProgramError for TokenError {
     {
         match self {
             TokenError::InsufficientFunds => info!("Error: insufficient funds"),
-            TokenError::TokenMismatch => info!("Error: token mismatch"),
-            TokenError::NoOwner => info!("Error: no owner"),
+            TokenError::MintMismatch => info!("Error: Account not associated with this Mint"),
+            TokenError::OwnerMismatch => info!("Error: owner does not match"),
             TokenError::FixedSupply => info!("Error: the total supply of this token is fixed"),
             TokenError::AlreadyInUse => info!("Error: account or token already in use"),
             TokenError::OwnerRequiredIfNoInitialSupply => {
                 info!("Error: An owner is required if supply is zero")
+            }
+            TokenError::InvalidNumberOfProvidedSigners => {
+                info!("Error: Invalid number of provided signers")
+            }
+            TokenError::InvalidNumberOfRequiredSigners => {
+                info!("Error: Invalid number of required signers")
             }
         }
     }
@@ -64,7 +76,7 @@ mod test {
     use super::*;
 
     fn return_token_error_as_program_error() -> ProgramError {
-        TokenError::TokenMismatch.into()
+        TokenError::MintMismatch.into()
     }
 
     #[test]
