@@ -11,7 +11,13 @@
  * fee rate as a ratio
  */
 typedef struct TokenSwap_Fee {
+    /**
+     * denominator of the fee ratio
+     */
     uint64_t denominator;
+    /**
+     * numerator of the fee ratio
+     */
     uint64_t numerator;
 } TokenSwap_Fee;
 
