@@ -12,10 +12,10 @@ set -e
     cc token-swap/inc/token-swap.h -o token-swap/target/token-swap.gch
 )
 
-# (
-#     cd "$(dirname "$0")/../token/js"
+(
+    cd "$(dirname "$0")/../token/js"
 
-#     npm install
-#     npm run cluster:devnet
-#     npm run start
-# )
+    npm install
+    npm run cluster:devnet
+    npm run start
+)
