@@ -18,9 +18,6 @@ pub enum TokenError {
     /// Token types of the provided accounts don't match.
     #[error("token mismatch")]
     TokenMismatch,
-    /// A delegate is needed but the account provided is not a delegate.
-    #[error("not a delegate")]
-    NotDelegate,
     /// Owner was not a signing member of the instruction.
     #[error("no owner")]
     NoOwner,
@@ -30,9 +27,6 @@ pub enum TokenError {
     /// The account cannot be initialized because it is already being used.
     #[error("AlreadyInUse")]
     AlreadyInUse,
-    /// Cannot transfer token directly to a delegate account.
-    #[error("Destination is a delegate")]
-    DestinationIsDelegate,
     /// An owner is required if supply is zero.
     #[error("An owner is required if supply is zero")]
     OwnerRequiredIfNoInitialSupply,
@@ -55,11 +49,9 @@ impl PrintProgramError for TokenError {
         match self {
             TokenError::InsufficientFunds => info!("Error: insufficient funds"),
             TokenError::TokenMismatch => info!("Error: token mismatch"),
-            TokenError::NotDelegate => info!("Error: not a delegate"),
             TokenError::NoOwner => info!("Error: no owner"),
             TokenError::FixedSupply => info!("Error: the total supply of this token is fixed"),
             TokenError::AlreadyInUse => info!("Error: account or token already in use"),
-            TokenError::DestinationIsDelegate => info!("Error: Delegate accounts hold tokens"),
             TokenError::OwnerRequiredIfNoInitialSupply => {
                 info!("Error: An owner is required if supply is zero")
             }

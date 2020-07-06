@@ -277,8 +277,7 @@ export class TokenSwap {
    * Swap the tokens in the pool
    *
    * @param authority Authority
-   * @param delegate Delegate account to transfer from
-   * @param source Source account associated with delegate
+   * @param source Source account
    * @param into Base account to swap into, must be a source token
    * @param from Base account to swap from, must be a destination token
    * @param dest Destination token
@@ -287,7 +286,6 @@ export class TokenSwap {
    */
   async swap(
     authority: PublicKey,
-    delegate: PublicKey,
     source: PublicKey,
     into: PublicKey,
     from: PublicKey,
@@ -301,7 +299,6 @@ export class TokenSwap {
       new Transaction().add(
         this.swapInstruction(
           authority,
-          delegate,
           source,
           into,
           from,
@@ -315,7 +312,6 @@ export class TokenSwap {
   }
   swapInstruction(
     authority: PublicKey,
-    delegate: PublicKey,
     source: PublicKey,
     into: PublicKey,
     from: PublicKey,
@@ -340,7 +336,6 @@ export class TokenSwap {
     const keys = [
       {pubkey: this.tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
-      {pubkey: delegate, isSigner: false, isWritable: true},
       {pubkey: source, isSigner: false, isWritable: true},
       {pubkey: into, isSigner: false, isWritable: true},
       {pubkey: from, isSigner: false, isWritable: true},
@@ -359,10 +354,8 @@ export class TokenSwap {
    * Deposit some tokens into the pool
    *
    * @param authority Authority
-   * @param delegateA Delegate account to transfer token A from
-   * @param sourceA Source account associated with delegate account A
-   * @param delegateB Delegate account to transfer token B from
-   * @param sourceB Source account associated with delegate account A
+   * @param sourceA Source account A
+   * @param sourceB Source account B
    * @param intoA Base account A to deposit into
    * @param intoB Base account B to deposit into
    * @param poolToken Pool token
@@ -372,9 +365,7 @@ export class TokenSwap {
    */
   async deposit(
     authority: PublicKey,
-    delegateA: PublicKey,
     sourceA: PublicKey,
-    delegateB: PublicKey,
     sourceB: PublicKey,
     intoA: PublicKey,
     intoB: PublicKey,
@@ -389,9 +380,7 @@ export class TokenSwap {
       new Transaction().add(
         this.depositInstruction(
           authority,
-          delegateA,
           sourceA,
-          delegateB,
           sourceB,
           intoA,
           intoB,
@@ -406,9 +395,7 @@ export class TokenSwap {
   }
   depositInstruction(
     authority: PublicKey,
-    delegateA: PublicKey,
     sourceA: PublicKey,
-    delegateB: PublicKey,
     sourceB: PublicKey,
     intoA: PublicKey,
     intoB: PublicKey,
@@ -434,9 +421,7 @@ export class TokenSwap {
     const keys = [
       {pubkey: this.tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
-      {pubkey: delegateA, isSigner: false, isWritable: true},
       {pubkey: sourceA, isSigner: false, isWritable: true},
-      {pubkey: delegateB, isSigner: false, isWritable: true},
       {pubkey: sourceB, isSigner: false, isWritable: true},
       {pubkey: intoA, isSigner: false, isWritable: true},
       {pubkey: intoB, isSigner: false, isWritable: true},
@@ -456,8 +441,7 @@ export class TokenSwap {
    * Withdraw the token from the pool at the current ratio
    *
    * @param authority Authority
-   * @param delegatePoolAccount Delegate pool account
-   * @param sourcePoolAccount Source account associated with delegate
+   * @param sourcePoolAccount Source pool account
    * @param poolToken Pool token
    * @param fromA Base account A to withdraw from
    * @param fromB Base account B to withdraw from
@@ -468,7 +452,6 @@ export class TokenSwap {
    */
   async withdraw(
     authority: PublicKey,
-    delegatePoolAccount: PublicKey,
     sourcePoolAccount: PublicKey,
     poolToken: PublicKey,
     fromA: PublicKey,
@@ -484,7 +467,6 @@ export class TokenSwap {
       new Transaction().add(
         this.withdrawInstruction(
           authority,
-          delegatePoolAccount,
           sourcePoolAccount,
           poolToken,
           fromA,
@@ -500,7 +482,6 @@ export class TokenSwap {
   }
   withdrawInstruction(
     authority: PublicKey,
-    delegatePoolAccount: PublicKey,
     sourcePoolAccount: PublicKey,
     poolToken: PublicKey,
     fromA: PublicKey,
@@ -527,7 +508,6 @@ export class TokenSwap {
     const keys = [
       {pubkey: this.tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
-      {pubkey: delegatePoolAccount, isSigner: false, isWritable: true},
       {pubkey: sourcePoolAccount, isSigner: false, isWritable: true},
       {pubkey: poolToken, isSigner: false, isWritable: true},
       {pubkey: fromA, isSigner: false, isWritable: true},

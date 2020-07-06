@@ -54,7 +54,7 @@ export class TokenAmount extends BN {
 }
 
 /**
- * Information about a token
+ * Information about the mint
  */
 type MintInfo = {|
   /**
@@ -67,7 +67,7 @@ type MintInfo = {|
    */
   decimals: number,
   /**
-   * Owner of the token, given authority to mint new tokens
+   * Owner of the mint, given authority to mint new tokens
    */
   owner: null | PublicKey,
 |};
@@ -86,9 +86,9 @@ const MintLayout = BufferLayout.struct([
  */
 type AccountInfo = {|
   /**
-   * The kind of token this account holds
+   * The mint associated with this account
    */
-  token: PublicKey,
+  mint: PublicKey,
 
   /**
    * Owner of this account
@@ -101,19 +101,14 @@ type AccountInfo = {|
   amount: TokenAmount,
 
   /**
-   * The source account for the tokens.
-   *
-   * If `source` is null, the source is this account.
-   * If `source` is not null, the `amount` of tokens in this account represent
-   * an allowance of tokens that may be transferred from the source account
+   * The delegate for this account
    */
-  source: null | PublicKey,
+  delegate: null | PublicKey,
 
   /**
-   * Original amount of tokens this delegate account was authorized to spend
-   * If `source` is null, originalAmount is zero
+   * The amount of tokens the delegate authorized to the delegate
    */
-  originalAmount: TokenAmount,
+  delegatedAmount: TokenAmount,
 |};
 
 /**
@@ -121,13 +116,13 @@ type AccountInfo = {|
  */
 const AccountLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
-  Layout.publicKey('token'),
+  Layout.publicKey('mint'),
   Layout.publicKey('owner'),
   Layout.uint64('amount'),
   BufferLayout.u32('option'),
+  Layout.publicKey('delegate'),
   BufferLayout.u32('padding'),
-  Layout.publicKey('source'),
-  Layout.uint64('originalAmount'),
+  Layout.uint64('delegatedAmount'),
 ]);
 
 type TokenAndPublicKey = [Token, PublicKey]; // This type exists to workaround an esdoc parse error
@@ -142,7 +137,7 @@ export class Token {
   connection: Connection;
 
   /**
-   * The public key identifying this token
+   * The public key identifying this mint
    */
   publicKey: PublicKey;
 
@@ -157,11 +152,11 @@ export class Token {
   payer: Account;
 
   /**
-   * Create a Token object attached to the specific token
+   * Create a Token object attached to the specific mint
    *
    * @param connection The connection to use
-   * @param token Public key of the token
-   * @param programId Optional token programId, uses the system programId by default
+   * @param token Public key of the mint
+   * @param programId token programId
    * @param payer Payer of fees
    */
   constructor(connection: Connection, publicKey: PublicKey, programId: PublicKey, payer: Account) {
@@ -169,11 +164,11 @@ export class Token {
   }
 
   /**
-   * Get the minimum balance for the token to be rent exempt
+   * Get the minimum balance for the mint to be rent exempt
    *
    * @return Number of lamports required
    */
-  static async getMinBalanceRentForExemptToken(
+  static async getMinBalanceRentForExemptMint(
     connection: Connection,
   ): Promise<number> {
     return await connection.getMinimumBalanceForRentExemption(
@@ -199,15 +194,15 @@ export class Token {
    *
    * @param connection The connection to use
    * @param owner User account that will own the returned account
-   * @param supply Total supply of the new token
+   * @param supply Total supply of the new mint
    * @param decimals Location of the decimal place
    * @param programId Optional token programId, uses the system programId by default
    * @return Token object for the newly minted token, Public key of the account holding the total supply of new tokens
    */
-  static async createToken(
+  static async createMint(
     connection: Connection,
     payer: Account,
-    tokenOwner: PublicKey,
+    mintOwner: PublicKey,
     accountOwner: PublicKey,
     supply: TokenAmount,
     decimals: number,
@@ -215,17 +210,17 @@ export class Token {
     is_owned: boolean = false,
   ): Promise<TokenAndPublicKey> {
     let transaction;
-    const tokenAccount = new Account();
-    const token = new Token(connection, tokenAccount.publicKey, programId, payer);
-    const initialAccountPublicKey = await token.createAccount(accountOwner, null);
+    const mintAccount = new Account();
+    const token = new Token(connection, mintAccount.publicKey, programId, payer);
+    const initialAccountPublicKey = await token.createAccount(accountOwner);
 
     // Allocate memory for the account
-    const balanceNeeded = await Token.getMinBalanceRentForExemptToken(
+    const balanceNeeded = await Token.getMinBalanceRentForExemptMint(
       connection,
     );
     transaction = SystemProgram.createAccount({
       fromPubkey: payer.publicKey,
-      newAccountPubkey: tokenAccount.publicKey,
+      newAccountPubkey: mintAccount.publicKey,
       lamports: balanceNeeded,
       space: MintLayout.span,
       programId,
@@ -235,18 +230,18 @@ export class Token {
       connection,
       transaction,
       payer,
-      tokenAccount,
+      mintAccount,
     );
 
-    // Create the token
+    // Create the mint
     let keys = [
-      {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: false},
+      {pubkey: mintAccount.publicKey, isSigner: true, isWritable: false},
     ];
     if (supply.toNumber() != 0) {
       keys.push({pubkey: initialAccountPublicKey, isSigner: false, isWritable: true});
     }
     if (is_owned) {
-      keys.push({pubkey: tokenOwner, isSigner: false, isWritable: false});
+      keys.push({pubkey: mintOwner, isSigner: false, isWritable: false});
     }
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
@@ -257,7 +252,7 @@ export class Token {
     {
       const encodeLength = commandDataLayout.encode(
         {
-          instruction: 0, // InitializeToken instruction
+          instruction: 0, // InitializeMint instruction
           supply: supply.toBuffer(),
           decimals,
         },
@@ -272,11 +267,11 @@ export class Token {
       data,
     });
     await sendAndConfirmTransaction(
-      'InitializeToken',
+      'InitializeMint',
       connection,
       transaction,
       payer,
-      tokenAccount,
+      mintAccount,
     );
 
     return [token, initialAccountPublicKey];
@@ -293,24 +288,21 @@ export class Token {
    * This account may then be used as a `transfer()` or `approve()` destination
    *
    * @param owner User account that will own the new account
-   * @param source If not null, create a delegate account that when authorized
-   *               may transfer tokens from this `source` account
    * @return Public key of the new empty account
    */
   async createAccount(
     owner: PublicKey,
-    source: null | PublicKey = null,
   ): Promise<PublicKey> {
-    const tokenAccount = new Account();
+    const mintAccount = new Account();
     let transaction;
 
-    // Allocate memory for the token
+    // Allocate memory for the account
     const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
       this.connection,
     );
     transaction = SystemProgram.createAccount({
       fromPubkey: this.payer.publicKey,
-      newAccountPubkey: tokenAccount.publicKey,
+      newAccountPubkey: mintAccount.publicKey,
       lamports: balanceNeeded,
       space: AccountLayout.span,
       programId: this.programId,
@@ -320,18 +312,16 @@ export class Token {
       this.connection,
       transaction,
       this.payer,
-      tokenAccount,
+      mintAccount,
     );
 
     // create the new account
     const keys = [
-      {pubkey: tokenAccount.publicKey, isSigner: true, isWritable: true},
-      {pubkey: owner, isSigner: false, isWritable: false},
+      {pubkey: mintAccount.publicKey, isSigner: true, isWritable: true},
       {pubkey: this.publicKey, isSigner: false, isWritable: false},
+      {pubkey: owner, isSigner: false, isWritable: false},
     ];
-    if (source) {
-      keys.push({pubkey: source, isSigner: false, isWritable: false});
-    }
+
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
@@ -350,23 +340,23 @@ export class Token {
       this.connection,
       transaction,
       this.payer,
-      tokenAccount,
+      mintAccount,
     );
 
-    return tokenAccount.publicKey;
+    return mintAccount.publicKey;
   }
 
   /**
-   * Retrieve token information
+   * Retrieve mint information
    */
   async getMintInfo(): Promise<MintInfo> {
     const info = await this.connection.getAccountInfo(this.publicKey);
     if (info === null) {
-      throw new Error('Failed to find token info account');
+      throw new Error('Failed to find mint account');
     }
     if (!info.owner.equals(this.programId)) {
       throw new Error(
-        `Invalid token owner: ${JSON.stringify(info.owner)}`,
+        `Invalid mint owner: ${JSON.stringify(info.owner)}`,
       );
     }
 
@@ -405,23 +395,23 @@ export class Token {
     if (accountInfo.state !== 2) {
       throw new Error(`Invalid account data`);
     }
-    accountInfo.token = new PublicKey(accountInfo.token);
+    accountInfo.mint = new PublicKey(accountInfo.mint);
     accountInfo.owner = new PublicKey(accountInfo.owner);
     accountInfo.amount = TokenAmount.fromBuffer(accountInfo.amount);
     if (accountInfo.option === 0) {
-      accountInfo.source = null;
-      accountInfo.originalAmount = new TokenAmount();
+      accountInfo.delegate = null;
+      accountInfo.delegatedAmount = new TokenAmount();
     } else {
-      accountInfo.source = new PublicKey(accountInfo.source);
-      accountInfo.originalAmount = TokenAmount.fromBuffer(
-        accountInfo.originalAmount,
+      accountInfo.delegate = new PublicKey(accountInfo.delegate);
+      accountInfo.delegatedAmount = TokenAmount.fromBuffer(
+        accountInfo.delegatedAmount,
       );
     }
 
-    if (!accountInfo.token.equals(this.publicKey)) {
+    if (!accountInfo.mint.equals(this.publicKey)) {
       throw new Error(
-        `Invalid account token: ${JSON.stringify(
-          accountInfo.token,
+        `Invalid account mint: ${JSON.stringify(
+          accountInfo.mint,
         )} !== ${JSON.stringify(this.publicKey)}`,
       );
     }
@@ -431,52 +421,52 @@ export class Token {
   /**
    * Transfer tokens to another account
    *
-   * @param owner Owner of the source account
    * @param source Source account
    * @param destination Destination account
+   * @param authority Owner of the source account
    * @param amount Number of tokens to transfer
    */
   async transfer(
-    owner: Account,
     source: PublicKey,
     destination: PublicKey,
+    authority: Account,
     amount: number | TokenAmount,
   ): Promise<?TransactionSignature> {
     return await sendAndConfirmTransaction(
       'transfer',
       this.connection,
       new Transaction().add(
-        await this.transferInstruction(
-          owner.publicKey,
+        this.transferInstruction(
           source,
           destination,
+          authority.publicKey,
           amount,
         ),
       ),
       this.payer,
-      owner,
+      authority,
     );
   }
 
   /**
    * Grant a third-party permission to transfer up the specified number of tokens from an account
    *
-   * @param owner Owner of the source account
    * @param account Public key of the account
    * @param delegate Account authorized to perform a transfer tokens from the source account
+   * @param owner Owner of the source account
    * @param amount Maximum number of tokens the delegate may transfer
    */
   async approve(
-    owner: Account,
     account: PublicKey,
     delegate: PublicKey,
+    owner: Account,
     amount: number | TokenAmount,
   ): Promise<void> {
     await sendAndConfirmTransaction(
       'approve',
       this.connection,
       new Transaction().add(
-        this.approveInstruction(owner.publicKey, account, delegate, amount),
+        this.approveInstruction(account, delegate, owner.publicKey, amount),
       ),
       this.payer,
       owner,
@@ -486,35 +476,35 @@ export class Token {
   /**
    * Remove approval for the transfer of any remaining tokens
    *
-   * @param owner Owner of the source account
    * @param account Public key of the account
    * @param delegate Account to revoke authorization from
+   * @param owner Owner of the source account
    */
   revoke(
-    owner: Account,
     account: PublicKey,
     delegate: PublicKey,
+    owner: Account,
   ): Promise<void> {
-    return this.approve(owner, account, delegate, 0);
+    return this.approve(account, delegate, owner, 0);
   }
 
   /**
    * Assign a new owner to the account
    *
-   * @param owner Owner of the account
    * @param account Public key of the account
    * @param newOwner New owner of the account
+   * @param owner Owner of the account
    */
   async setOwner(
-    owner: Account,
     owned: PublicKey,
     newOwner: PublicKey,
+    owner: Account,
   ): Promise<void> {
     await sendAndConfirmTransaction(
       'setOwneer',
       this.connection,
       new Transaction().add(
-        this.setOwnerInstruction(owner.publicKey, owned, newOwner),
+        this.setOwnerInstruction(owned, newOwner,owner.publicKey),
       ),
       this.payer,
       owner,
@@ -524,65 +514,60 @@ export class Token {
   /**
    * Mint new tokens
    *
-   * @param token Public key of the token
-   * @param owner Owner of the token
+   * @param mint Public key of the mint
    * @param dest Public key of the account to mint to
+   * @param authority Owner of the mint
    * @param amount ammount to mint
    */
   async mintTo(
-    owner: Account,
     dest: PublicKey,
+    authority: Account,
     amount: number,
   ): Promise<void> {
     await sendAndConfirmTransaction(
       'mintTo',
       this.connection,
-      new Transaction().add(this.mintToInstruction(owner.publicKey, dest, amount)),
+      new Transaction().add(this.mintToInstruction(dest, authority.publicKey,amount)),
       this.payer,
-      owner,
+      authority,
     );
   }
 
   /**
    * Burn tokens
    *
-   * @param owner Public key account owner
    * @param account Account to burn tokens from
+   * @param authority Public key account owner
    * @param amount ammount to burn
    */
   async burn(
-    owner: Account,
     account: PublicKey,
+    authority: Account,
     amount: number,
   ): Promise<void> {
     await sendAndConfirmTransaction(
       'burn',
       this.connection,
-      new Transaction().add(await this.burnInstruction(owner.publicKey, account, amount)),
+      new Transaction().add(this.burnInstruction(account, authority.publicKey, amount)),
       this.payer,
-      owner,
+      authority,
     );
   }
 
   /**
    * Construct a Transfer instruction
    *
-   * @param owner Owner of the source account
    * @param source Source account
    * @param destination Destination account
+   * @param authority Owner of the source account
    * @param amount Number of tokens to transfer
    */
-  async transferInstruction(
-    owner: PublicKey,
+  transferInstruction(
     source: PublicKey,
     destination: PublicKey,
+    authority: PublicKey,
     amount: number | TokenAmount,
-  ): Promise<TransactionInstruction> {
-    const accountInfo = await this.getAccountInfo(source);
-    if (!owner.equals(accountInfo.owner)) {
-      throw new Error('Account owner mismatch');
-    }
-
+  ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
       Layout.uint64('amount'),
@@ -598,17 +583,10 @@ export class Token {
     );
 
     const keys = [
-      {pubkey: owner, isSigner: true, isWritable: false},
       {pubkey: source, isSigner: false, isWritable: true},
       {pubkey: destination, isSigner: false, isWritable: true},
+      {pubkey: authority, isSigner: true, isWritable: false},
     ];
-    if (accountInfo.source) {
-      keys.push({
-        pubkey: accountInfo.source,
-        isSigner: false,
-        isWritable: true,
-      });
-    }
     return new TransactionInstruction({
       keys,
       programId: this.programId,
@@ -621,13 +599,13 @@ export class Token {
    *
    * @param owner Owner of the source account
    * @param account Public key of the account
-   * @param delegate Account authorized to perform a transfer tokens from the source account
+   * @param delegate Account authorized to perform a transfer of tokens from the source account
    * @param amount Maximum number of tokens the delegate may transfer
    */
   approveInstruction(
-    owner: PublicKey,
     account: PublicKey,
     delegate: PublicKey,
+    owner: PublicKey,
     amount: number | TokenAmount,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -644,43 +622,30 @@ export class Token {
       data,
     );
 
+    const keys = [{pubkey: account, isSigner: false, isWritable: true}];
+    if (new TokenAmount(amount).toNumber() > 0) {
+      keys.push({pubkey: delegate, isSigner: false, isWritable: false});
+    }
+    keys.push({pubkey: owner, isSigner: true, isWritable: false});
+
     return new TransactionInstruction({
-      keys: [
-        {pubkey: owner, isSigner: true, isWritable: false},
-        {pubkey: account, isSigner: false, isWritable: false},
-        {pubkey: delegate, isSigner: false, isWritable: true},
-      ],
+      keys,
       programId: this.programId,
       data,
     });
   }
 
   /**
-   * Construct an Revoke instruction
-   *
-   * @param owner Owner of the source account
-   * @param account Public key of the account
-   * @param delegate Account authorized to perform a transfer tokens from the source account
-   */
-  revokeInstruction(
-    owner: PublicKey,
-    account: PublicKey,
-    delegate: PublicKey,
-  ): TransactionInstruction {
-    return this.approveInstruction(owner, account, delegate, 0);
-  }
-
-  /**
    * Construct a SetOwner instruction
    *
-   * @param owner Owner of the account
    * @param account Public key of the account
    * @param newOwner New owner of the account
+   * @param owner Owner of the account
    */
   setOwnerInstruction(
-    owner: PublicKey,
     owned: PublicKey,
     newOwner: PublicKey,
+    owner: PublicKey,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
 
@@ -694,9 +659,9 @@ export class Token {
 
     return new TransactionInstruction({
       keys: [
-        {pubkey: owner, isSigner: true, isWritable: false},
         {pubkey: owned, isSigner: false, isWritable: true},
         {pubkey: newOwner, isSigner: false, isWritable: false},
+        {pubkey: owner, isSigner: true, isWritable: false},
       ],
       programId: this.programId,
       data,
@@ -706,14 +671,13 @@ export class Token {
   /**
    * Construct a MintTo instruction
    *
-   * @param token Public key of the token
-   * @param owner Owner of the token
    * @param dest Public key of the account to mint to
+   * @param authority Owner of the mint
    * @param amount amount to mint
    */
   mintToInstruction(
-    owner: PublicKey,
     dest: PublicKey,
+    authority: PublicKey,
     amount: number,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -732,9 +696,9 @@ export class Token {
 
     return new TransactionInstruction({
       keys: [
-        {pubkey: owner, isSigner: true, isWritable: false},
         {pubkey: this.publicKey, isSigner: false, isWritable: true},
         {pubkey: dest, isSigner: false, isWritable: true},
+        {pubkey: authority, isSigner: true, isWritable: false},
       ],
       programId: this.programId,
       data,
@@ -744,17 +708,15 @@ export class Token {
   /**
    * Construct a Burn instruction
    *
-   * @param owner Public key account owner
    * @param account Account to burn tokens from
    * @param amount ammount to burn
+   * @param authority Public key account owner
    */
-  async burnInstruction(
-    owner: PublicKey,
+  burnInstruction(
     account: PublicKey,
+    authority: PublicKey,
     amount: number,
-  ): Promise<TransactionInstruction> {
-    const accountInfo = await this.getAccountInfo(account);
-
+  ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
       Layout.uint64('amount'),
@@ -770,17 +732,10 @@ export class Token {
     );
 
     const keys = [
-      {pubkey: owner, isSigner: true, isWritable: false},
       {pubkey: account, isSigner: false, isWritable: true},
       {pubkey: this.publicKey, isSigner: false, isWritable: true},
+      {pubkey: authority, isSigner: true, isWritable: false},
     ];
-    if (accountInfo.source) {
-      keys.push({
-        pubkey: accountInfo.source,
-        isSigner: false,
-        isWritable: true,
-      });
-    }
 
     return new TransactionInstruction({
       keys,

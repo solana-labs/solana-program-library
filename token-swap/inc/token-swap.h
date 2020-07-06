@@ -37,8 +37,7 @@ typedef enum TokenSwap_SwapInstruction_Tag {
      *
      *   0. `[]` Token-swap
      *   1. `[]` $authority
-     *   2. `[writable]` token_(A|B) SOURCE delegate Account, amount is transferable by $authority,
-     *   3. `[writable]` token_(A|B) SOURCE Account associated with the delegate
+     *   2. `[writable]` token_(A|B) SOURCE Account, amount is transferable by $authority,
      *   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
      *   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
      *   6. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
@@ -52,10 +51,8 @@ typedef enum TokenSwap_SwapInstruction_Tag {
      *
      *   0. `[]` Token-swap
      *   1. `[]` $authority
-     *   2. `[writable]` token_a delegate $authority can transfer amount,
-     *   3. `[writable]` token_a account associated with delegate
-     *   4. `[writable]` token_b delegate $authority can transfer amount,
-     *   5. `[writable]` token_b account associated with delegate
+     *   2. `[writable]` token_a $authority can transfer amount,
+     *   4. `[writable]` token_b $authority can transfer amount,
      *   6. `[writable]` token_a Base Account to deposit into.
      *   7. `[writable]` token_b Base Account to deposit into.
      *   8. `[writable]` Pool MINT account, $authority is the owner.
@@ -69,8 +66,7 @@ typedef enum TokenSwap_SwapInstruction_Tag {
      *
      *   0. `[]` Token-swap
      *   1. `[]` $authority
-     *   2. `[writable]` SOURCE Pool delegate, amount is transferable by $authority.
-     *   3. `[writable]` SOURCE Pool account associated with the delegate
+     *   2. `[writable]` SOURCE Pool account, amount is transferable by $authority.
      *   4. `[writable]` Pool MINT account, $authority is the owner.
      *   5. `[writable]` token_a Account to withdraw FROM.
      *   6. `[writable]` token_b Account to withdraw FROM.
