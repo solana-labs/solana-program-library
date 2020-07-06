@@ -2,7 +2,7 @@
 
 use crate::{
     error::TokenError,
-    instruction::{TokenInfo, TokenInstruction, MAX_SIGNERS},
+    instruction::{is_valid_signer_index, TokenInfo, TokenInstruction, MAX_SIGNERS},
     option::COption,
 };
 use solana_sdk::{
@@ -110,7 +110,7 @@ impl State {
             let mut dest_account_data = dest_account_info.data.borrow_mut();
             if let State::Account(mut dest_account) = State::deserialize(&dest_account_data)? {
                 if mint_info.key != &dest_account.mint {
-                    return Err(TokenError::TokenMismatch.into());
+                    return Err(TokenError::MintMismatch.into());
                 }
 
                 dest_account.amount = info.supply;
@@ -170,8 +170,11 @@ impl State {
 
         multisig.m = m;
         multisig.n = signer_infos.len() as u8;
-        if multisig.m > multisig.n {
-            return Err(ProgramError::MissingRequiredSignature); // TODO new error
+        if !is_valid_signer_index(multisig.n as usize) {
+            return Err(TokenError::InvalidNumberOfProvidedSigners.into());
+        }
+        if !is_valid_signer_index(multisig.m as usize) {
+            return Err(TokenError::InvalidNumberOfRequiredSigners.into());
         }
         for (i, signer_info) in signer_infos.iter().enumerate() {
             multisig.signers[i] = *signer_info.key;
@@ -204,7 +207,7 @@ impl State {
                 return Err(TokenError::InsufficientFunds.into());
             }
             if source_account.mint != dest_account.mint {
-                return Err(TokenError::TokenMismatch.into());
+                return Err(TokenError::MintMismatch.into());
             }
 
             match source_account.delegate {
@@ -304,7 +307,7 @@ impl State {
                             account_info_iter.as_slice(),
                         )?;
                     }
-                    COption::None => return Err(TokenError::NoOwner.into()),
+                    COption::None => return Err(TokenError::FixedSupply.into()),
                 }
                 token.owner = COption::Some(*new_owner_info.key);
                 State::Mint(token).serialize(&mut account_data)
@@ -343,7 +346,7 @@ impl State {
             let mut dest_account_data = dest_account_info.data.borrow_mut();
             if let State::Account(mut dest_account) = State::deserialize(&dest_account_data)? {
                 if mint_info.key != &dest_account.mint {
-                    return Err(TokenError::TokenMismatch.into());
+                    return Err(TokenError::MintMismatch.into());
                 }
 
                 token.info.supply += amount;
@@ -391,7 +394,7 @@ impl State {
         };
 
         if mint_info.key != &source_account.mint {
-            return Err(TokenError::TokenMismatch.into());
+            return Err(TokenError::MintMismatch.into());
         }
         if source_account.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
@@ -469,7 +472,7 @@ impl State {
         }
     }
 
-    /// Validates valid owner(s) are present
+    /// Validates owner(s) are present
     pub fn validate_owner(
         program_id: &Pubkey,
         expected_owner: &Pubkey,
@@ -477,7 +480,7 @@ impl State {
         signers: &[AccountInfo],
     ) -> ProgramResult {
         if expected_owner != owner_account_info.key {
-            return Err(TokenError::NoOwner.into());
+            return Err(TokenError::OwnerMismatch.into());
         }
         if program_id == owner_account_info.owner
             && owner_account_info.data_len() == std::mem::size_of::<Multisig>()
@@ -667,7 +670,7 @@ mod tests {
 
         // token mismatch
         assert_eq!(
-            Err(TokenError::TokenMismatch.into()),
+            Err(TokenError::MintMismatch.into()),
             do_process_instruction(
                 initialize_mint(
                     &program_id,
@@ -839,7 +842,7 @@ mod tests {
 
         // mismatch token
         assert_eq!(
-            Err(TokenError::TokenMismatch.into()),
+            Err(TokenError::MintMismatch.into()),
             do_process_instruction(
                 transfer(
                     &program_id,
@@ -860,7 +863,7 @@ mod tests {
 
         // missing owner
         assert_eq!(
-            Err(TokenError::NoOwner.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 transfer(
                     &program_id,
@@ -1002,7 +1005,7 @@ mod tests {
 
         // insufficient funds approved via delegate
         assert_eq!(
-            Err(TokenError::NoOwner.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 transfer(
                     &program_id,
@@ -1229,7 +1232,7 @@ mod tests {
 
         // no owner
         assert_eq!(
-            Err(TokenError::NoOwner.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 approve(
                     &program_id,
@@ -1319,7 +1322,7 @@ mod tests {
 
         // missing owner
         assert_eq!(
-            Err(TokenError::NoOwner.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 set_owner(&program_id, &account_key, &owner_key, &owner2_key, &[]).unwrap(),
                 vec![
@@ -1376,7 +1379,7 @@ mod tests {
 
         // wrong account
         assert_eq!(
-            Err(TokenError::NoOwner.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 set_owner(&program_id, &mint_key, &owner3_key, &owner2_key, &[]).unwrap(),
                 vec![&mut mint_account, &mut owner3_account, &mut owner2_account],
@@ -1421,7 +1424,7 @@ mod tests {
 
         // set owner for non-mint-able token
         assert_eq!(
-            Err(TokenError::NoOwner.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 set_owner(&program_id, &mint2_key, &owner2_key, &owner_key, &[]).unwrap(),
                 vec![&mut mint_account, &mut owner2_account, &mut owner_account],
@@ -1532,7 +1535,7 @@ mod tests {
 
         // mismatch token
         assert_eq!(
-            Err(TokenError::TokenMismatch.into()),
+            Err(TokenError::MintMismatch.into()),
             do_process_instruction(
                 mint_to(&program_id, &mint_key, &mismatch_key, &owner_key, &[], 42).unwrap(),
                 vec![&mut mint_account, &mut mismatch_account, &mut owner_account,],
@@ -1541,7 +1544,7 @@ mod tests {
 
         // missing owner
         assert_eq!(
-            Err(TokenError::NoOwner.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 mint_to(&program_id, &mint_key, &account2_key, &owner2_key, &[], 42).unwrap(),
                 vec![
@@ -1650,7 +1653,7 @@ mod tests {
             burn(&program_id, &account_key, &mint_key, &delegate_key, &[], 42).unwrap();
         instruction.accounts[2].is_signer = false;
         assert_eq!(
-            Err(TokenError::NoOwner.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 instruction,
                 vec![
@@ -1663,7 +1666,7 @@ mod tests {
 
         // mismatch token
         assert_eq!(
-            Err(TokenError::TokenMismatch.into()),
+            Err(TokenError::MintMismatch.into()),
             do_process_instruction(
                 burn(&program_id, &mismatch_key, &mint_key, &owner_key, &[], 42).unwrap(),
                 vec![&mut mismatch_account, &mut mint_account, &mut owner_account,],
@@ -1672,7 +1675,7 @@ mod tests {
 
         // missing owner
         assert_eq!(
-            Err(TokenError::NoOwner.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 burn(&program_id, &account_key, &mint_key, &owner2_key, &[], 42).unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner2_account],
@@ -1774,7 +1777,7 @@ mod tests {
 
         // insufficient funds approved via delegate
         assert_eq!(
-            Err(TokenError::NoOwner.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 burn(
                     &program_id,
