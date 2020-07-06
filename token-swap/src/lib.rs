@@ -26,7 +26,9 @@ use thiserror::Error;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Fee {
+    /// denominator of the fee ratio
     pub denominator: u64,
+    /// numerator of the fee ratio
     pub numerator: u64,
 }
 
