@@ -15,6 +15,7 @@ import {
   setOwner,
   mintTo,
   burn,
+  multisig,
 } from './token-test';
 
 async function main() {
@@ -38,6 +39,8 @@ async function main() {
   await mintTo();
   console.log('Run test: burn');
   await burn();
+  console.log('Run test: multisig');
+  await multisig();
   console.log('Success\n');
 }
 

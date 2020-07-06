@@ -178,19 +178,21 @@ export async function createTokenSwap(): Promise<void> {
 
 export async function deposit(): Promise<void> {
   let userAccountA = await mintA.createAccount(owner.publicKey);
-  await mintA.mintTo(userAccountA, owner, USER_AMOUNT);
+  await mintA.mintTo(userAccountA, owner, [], USER_AMOUNT);
   await mintA.approve(
     userAccountA,
     authority,
     owner,
+    [],
     USER_AMOUNT,
   );
   let userAccountB = await mintB.createAccount(owner.publicKey);
-  await mintB.mintTo(userAccountB, owner, USER_AMOUNT);
+  await mintB.mintTo(userAccountB, owner, [], USER_AMOUNT);
   await mintB.approve(
     userAccountB,
     authority,
     owner,
+    [],
     USER_AMOUNT,
   );
   let newAccountPool = await tokenPool.createAccount(owner.publicKey);
@@ -234,6 +236,7 @@ export async function withdraw(): Promise<void> {
     tokenAccountPool,
     authority,
     owner,
+    [],
     USER_AMOUNT,
   );
   const [tokenProgramId,] = await GetPrograms(connection);
@@ -270,11 +273,12 @@ export async function withdraw(): Promise<void> {
 
 export async function swap(): Promise<void> {
   let userAccountA = await mintA.createAccount(owner.publicKey);
-  await mintA.mintTo(userAccountA, owner, USER_AMOUNT);
+  await mintA.mintTo(userAccountA, owner, [], USER_AMOUNT);
   await mintA.approve(
     userAccountA,
     authority,
     owner,
+    [],
     USER_AMOUNT,
   );
   let userAccountB = await mintB.createAccount(owner.publicKey);

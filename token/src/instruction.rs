@@ -343,7 +343,10 @@ pub fn transfer(
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*source_pubkey, false));
     accounts.push(AccountMeta::new(*destination_pubkey, false));
-    accounts.push(AccountMeta::new_readonly(*authority_pubkey, true));
+    accounts.push(AccountMeta::new_readonly(
+        *authority_pubkey,
+        signer_pubkeys.len() == 0,
+    ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
     }
@@ -371,7 +374,10 @@ pub fn approve(
     if amount > 0 {
         accounts.push(AccountMeta::new(*delegate_pubkey, false));
     }
-    accounts.push(AccountMeta::new_readonly(*owner_pubkey, true));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.len() == 0,
+    ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
     }
@@ -396,7 +402,10 @@ pub fn set_owner(
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*owned_pubkey, false));
     accounts.push(AccountMeta::new_readonly(*new_owner_pubkey, false));
-    accounts.push(AccountMeta::new_readonly(*owner_pubkey, true));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.len() == 0,
+    ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
     }
@@ -422,7 +431,10 @@ pub fn mint_to(
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*mint_pubkey, false));
     accounts.push(AccountMeta::new(*account_pubkey, false));
-    accounts.push(AccountMeta::new_readonly(*owner_pubkey, true));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.len() == 0,
+    ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
     }
@@ -448,7 +460,10 @@ pub fn burn(
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
     accounts.push(AccountMeta::new(*mint_pubkey, false));
-    accounts.push(AccountMeta::new_readonly(*authority_pubkey, true));
+    accounts.push(AccountMeta::new_readonly(
+        *authority_pubkey,
+        signer_pubkeys.len() == 0,
+    ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
     }

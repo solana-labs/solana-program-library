@@ -193,10 +193,6 @@ impl State {
         let dest_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        if !authority_info.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
         let mut source_data = source_account_info.data.borrow_mut();
         let mut dest_data = dest_account_info.data.borrow_mut();
         if let (State::Account(mut source_account), State::Account(mut dest_account)) = (
