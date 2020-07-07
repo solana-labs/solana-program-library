@@ -58,11 +58,6 @@ export class TokenAmount extends BN {
  */
 type MintInfo = {|
   /**
-   * Total supply of tokens
-   */
-  supply: TokenAmount,
-
-  /**
    * Number of base 10 digits to the right of the decimal place
    */
   decimals: number,
@@ -74,11 +69,11 @@ type MintInfo = {|
 
 const MintLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
-  Layout.uint64('supply'),
-  BufferLayout.nu64('decimals'),
   BufferLayout.u32('option'),
   Layout.publicKey('owner'),
-  BufferLayout.nu64('padding'),
+  BufferLayout.u8('decimals'),
+  BufferLayout.u16('padding1'),
+  BufferLayout.nu64('padding2'),
 ]);
 
 /**
@@ -258,10 +253,11 @@ export class Token {
    *
    * @param connection The connection to use
    * @param owner User account that will own the returned account
-   * @param supply Total supply of the new mint
+   * @param supply Initial supply to mint
    * @param decimals Location of the decimal place
    * @param programId Optional token programId, uses the system programId by default
-   * @return Token object for the newly minted token, Public key of the account holding the total supply of new tokens
+   * @return Token object for the newly minted token, Public key of the account
+   *         holding the total amount of new tokens
    */
   static async createMint(
     connection: Connection,
@@ -303,7 +299,7 @@ export class Token {
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
       Layout.uint64('supply'),
-      BufferLayout.nu64('decimals'),
+      BufferLayout.u8('decimals'),
     ]);
     let data = Buffer.alloc(1024);
     {
@@ -482,7 +478,6 @@ export class Token {
     if (mintInfo.state !== 1) {
       throw new Error(`Invalid account data`);
     }
-    mintInfo.supply = TokenAmount.fromBuffer(mintInfo.supply);
     if (mintInfo.option === 0) {
       mintInfo.owner = null;
     } else {
@@ -1029,7 +1024,6 @@ export class Token {
 
     let keys = [
       {pubkey: account, isSigner: false, isWritable: true},
-      {pubkey: this.publicKey, isSigner: false, isWritable: true},
     ];
     if (authority instanceof Account) {
       keys.push({pubkey: authority.publicKey, isSigner: true, isWritable: false});

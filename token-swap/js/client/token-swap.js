@@ -453,7 +453,6 @@ export class TokenSwap {
   async withdraw(
     authority: PublicKey,
     sourcePoolAccount: PublicKey,
-    poolToken: PublicKey,
     fromA: PublicKey,
     fromB: PublicKey,
     userAccountA: PublicKey,
@@ -468,7 +467,6 @@ export class TokenSwap {
         this.withdrawInstruction(
           authority,
           sourcePoolAccount,
-          poolToken,
           fromA,
           fromB,
           userAccountA,
@@ -483,7 +481,6 @@ export class TokenSwap {
   withdrawInstruction(
     authority: PublicKey,
     sourcePoolAccount: PublicKey,
-    poolToken: PublicKey,
     fromA: PublicKey,
     fromB: PublicKey,
     userAccountA: PublicKey,
@@ -509,7 +506,6 @@ export class TokenSwap {
       {pubkey: this.tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
       {pubkey: sourcePoolAccount, isSigner: false, isWritable: true},
-      {pubkey: poolToken, isSigner: false, isWritable: true},
       {pubkey: fromA, isSigner: false, isWritable: true},
       {pubkey: fromB, isSigner: false, isWritable: true},
       {pubkey: userAccountA, isSigner: false, isWritable: true},

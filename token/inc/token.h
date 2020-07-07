@@ -18,20 +18,6 @@
 #define Token_MIN_SIGNERS 1
 
 /**
- * Specifies the financial specifics of a token.
- */
-typedef struct Token_TokenInfo {
-    /**
-     * Total supply of tokens.
-     */
-    uint64_t supply;
-    /**
-     * Number of base 10 digits to the right of the decimal place in the total supply.
-     */
-    uint64_t decimals;
-} Token_TokenInfo;
-
-/**
  * Instructions supported by the token program.
  */
 typedef enum Token_TokenInstruction_Tag {
@@ -186,9 +172,13 @@ typedef enum Token_TokenInstruction_Tag {
 
 typedef struct Token_InitializeMint_Body {
     /**
-     * The financial specifics of the token.
+     * Initial amount of tokens to mint.
      */
-    Token_TokenInfo info;
+    uint64_t amount;
+    /**
+     * Number of base 10 digits to the right of the decimal place.
+     */
+    uint8_t decimals;
 } Token_InitializeMint_Body;
 
 typedef struct Token_InitializeMultisig_Body {
@@ -272,15 +262,15 @@ typedef struct Token_COption_Pubkey {
  */
 typedef struct Token_Token {
     /**
-     * Token details.
-     */
-    Token_TokenInfo info;
-    /**
      * Optional owner, used to mint new tokens.  The owner may only
      * be provided during mint creation.  If no owner is present then the mint
      * has a fixed supply and no further tokens may be minted.
      */
     Token_COption_Pubkey owner;
+    /**
+     * Number of base 10 digits to the right of the decimal place.
+     */
+    uint8_t decimals;
 } Token_Token;
 
 /**

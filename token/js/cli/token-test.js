@@ -120,7 +120,6 @@ export async function createMint(): Promise<void> {
   );
 
   const mintInfo = await testToken.getMintInfo();
-  assert(mintInfo.supply.toNumber() == 10000);
   assert(mintInfo.decimals == 2);
   assert(mintInfo.owner == null);
 
@@ -264,7 +263,6 @@ export async function mintTo(): Promise<void> {
 
   {
     const mintInfo = await testMintableToken.getMintInfo();
-    assert(mintInfo.supply.toNumber() == 10000);
     assert(mintInfo.decimals == 2);
     if (mintInfo.owner === null) {
       throw new Error('owner should not be null');
@@ -285,7 +283,6 @@ export async function mintTo(): Promise<void> {
 
   {
     const mintInfo = await testMintableToken.getMintInfo();
-    assert(mintInfo.supply.toNumber() == 10042);
     assert(mintInfo.decimals == 2);
     if (mintInfo.owner === null) {
       throw new Error('owner should not be null');
@@ -303,16 +300,12 @@ export async function mintTo(): Promise<void> {
 }
 
 export async function burn(): Promise<void> {
-  let mintInfo = await testToken.getMintInfo();
-  const supply = mintInfo.supply.toNumber();
   let accountInfo = await testToken.getAccountInfo(testAccount);
   const amount = accountInfo.amount.toNumber();
 
   await testToken.burn(testAccount, testAccountOwner, [], 1);
   await sleep(500);
 
-  mintInfo = await testToken.getMintInfo();
-  assert(mintInfo.supply.toNumber() == supply - 1);
   accountInfo = await testToken.getAccountInfo(testAccount);
   assert(accountInfo.amount.toNumber() == amount - 1);
 }

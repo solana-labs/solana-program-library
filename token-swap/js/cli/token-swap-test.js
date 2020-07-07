@@ -244,7 +244,6 @@ export async function withdraw(): Promise<void> {
   await tokenSwap.withdraw(
     authority,
     tokenAccountPool,
-    tokenPool.publicKey,
     tokenAccountA,
     tokenAccountB,
     userAccountA,
