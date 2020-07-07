@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 
 ./do.sh update
 ./do.sh build token
+./do.sh clippy token
 ./do.sh doc token
 ./do.sh test token
 cc token/inc/token.h -o token/target/token.gch
