@@ -86,23 +86,22 @@ pub enum TokenInstruction {
     ///   3. ..3+M '[signer]' M signer accounts.
     Transfer(u64),
     /// Approves a delegate.  A delegate is given the authority over
-    /// tokens on behalf of the source account's owner.  If the amount to
-    /// delegate is zero then delegation is rescinded
-    ///
+    /// tokens on behalf of the source account's owner.
+
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner
     ///   0. `[writable]` The source account.
-    ///   1. `[]` The delegate if amount is non-zero.
+    ///   1. `[]` The delegate.
     ///   2. `[signer]` The source account owner.
     ///
     ///   * Multisignature owner
     ///   0. `[writable]` The source account.
-    ///   1. `[]` The delegate if amount is non-zero.
+    ///   1. `[]` The delegate.
     ///   2. '[]' The source account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts
     Approve(u64),
-    /// Revokes a delegate.
+    /// Revokes the delegate's authority.
     ///
     /// Accounts expected by this instruction:
     ///
