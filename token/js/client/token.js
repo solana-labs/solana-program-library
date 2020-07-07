@@ -299,7 +299,7 @@ export class Token {
 
     // Create the mint
     let keys = [
-      {pubkey: mintAccount.publicKey, isSigner: true, isWritable: false},
+      {pubkey: mintAccount.publicKey, isSigner: false, isWritable: true},
     ];
     if (supply.toNumber() != 0) {
       keys.push({pubkey: initialAccountPublicKey, isSigner: false, isWritable: true});
@@ -335,7 +335,6 @@ export class Token {
       connection,
       transaction,
       payer,
-      mintAccount,
     );
 
     return [token, initialAccountPublicKey];
@@ -381,7 +380,7 @@ export class Token {
 
     // create the new account
     const keys = [
-      {pubkey: mintAccount.publicKey, isSigner: true, isWritable: true},
+      {pubkey: mintAccount.publicKey, isSigner: false, isWritable: true},
       {pubkey: this.publicKey, isSigner: false, isWritable: false},
       {pubkey: owner, isSigner: false, isWritable: false},
     ];
@@ -404,7 +403,6 @@ export class Token {
       this.connection,
       transaction,
       this.payer,
-      mintAccount,
     );
 
     return mintAccount.publicKey;
@@ -446,7 +444,7 @@ export class Token {
 
     // create the new account
     let keys = [
-      {pubkey: multisigAccount.publicKey, isSigner: true, isWritable: true},
+      {pubkey: multisigAccount.publicKey, isSigner: false, isWritable: true},
     ];
     signers.forEach(signer => keys.push({pubkey: signer, isSigner: false, isWritable: false}));
 
@@ -474,7 +472,6 @@ export class Token {
       this.connection,
       transaction,
       this.payer,
-      multisigAccount,
     );
 
     return multisigAccount.publicKey;
