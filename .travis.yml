@@ -13,6 +13,7 @@ notifications:
 install:
   - cargo --version
   - rustup install nightly
+  - rustup component add clippy --toolchain nightly
   - docker --version
   - wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
   - sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
