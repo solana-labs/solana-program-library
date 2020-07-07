@@ -29,9 +29,9 @@ pub struct TokenInfo {
 pub enum TokenInstruction {
     /// Initializes a new mint and optionally deposits all the newly minted tokens in an account.
     ///
-    /// The `InitializeWrappedAccount` instruction requires no signers and MUST be included within
-    /// the Transaction that creates the uninitialized account with the system program.  Otherwise
-    /// another party can acquire ownership of the uninitialized token account.
+    /// The `InitializeMint` instruction requires no signers and MUST be included within
+    /// the same Transaction as the system program's `CreateInstruction` that creates the account
+    /// being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -45,9 +45,9 @@ pub enum TokenInstruction {
     InitializeMint(TokenInfo),
     /// Initializes a new account to hold tokens.
     ///
-    /// The `InitializeWrappedAccount` instruction requires no signers and MUST be included within
-    /// the Transaction that creates the uninitialized account with the system program.  Otherwise
-    /// another party can acquire ownership of the uninitialized token account.
+    /// The `InitializeAccount` instruction requires no signers and MUST be included within
+    /// the same Transaction as the system program's `CreateInstruction` that creates the account
+    /// being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -61,9 +61,9 @@ pub enum TokenInstruction {
     /// token instruction that require an owner/delegate to be present.  The variant field represents the
     /// number of signers (M) required to validate this multisignature account.
     ///
-    /// The `InitializeWrappedAccount` instruction requires no signers and MUST be included within
-    /// the Transaction that creates the uninitialized account with the system program.  Otherwise
-    /// another party can acquire ownership of the uninitialized token account.
+    /// The `InitializeMultisig` instruction requires no signers and MUST be included within
+    /// the same Transaction as the system program's `CreateInstruction` that creates the account
+    /// being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
     ///
     /// Accounts expected by this instruction:
     ///
