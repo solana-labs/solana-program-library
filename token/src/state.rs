@@ -97,10 +97,6 @@ impl State {
         let account_info_iter = &mut accounts.iter();
         let mint_info = next_account_info(account_info_iter)?;
 
-        if !mint_info.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
         if State::Unallocated != State::deserialize(&mint_info.data.borrow())? {
             return Err(TokenError::AlreadyInUse.into());
         }
@@ -139,10 +135,6 @@ impl State {
         let new_account_info = next_account_info(account_info_iter)?;
         let mint_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
-
-        if !new_account_info.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
 
         let mut new_account_data = new_account_info.data.borrow_mut();
         if State::Unallocated != State::deserialize(&new_account_data)? {
@@ -712,18 +704,6 @@ mod tests {
         let mut owner_account = Account::default();
         let mint_key = pubkey_rand();
         let mut mint_account = Account::new(0, size_of::<State>(), &program_id);
-
-        // missing signer
-        let mut instruction =
-            initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap();
-        instruction.accounts[0].is_signer = false;
-        assert_eq!(
-            Err(ProgramError::MissingRequiredSignature),
-            do_process_instruction(
-                instruction,
-                vec![&mut account_account, &mut mint_account, &mut owner_account],
-            )
-        );
 
         // create account
         do_process_instruction(

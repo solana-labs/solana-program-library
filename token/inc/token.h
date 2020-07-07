@@ -38,9 +38,13 @@ typedef enum Token_TokenInstruction_Tag {
     /**
      * Initializes a new mint and optionally deposits all the newly minted tokens in an account.
      *
+     * The `InitializeWrappedAccount` instruction requires no signers and MUST be included within
+     * the Transaction that creates the uninitialized account with the system program.  Otherwise
+     * another party can acquire ownership of the uninitialized token account.
+     *
      * Accounts expected by this instruction:
      *
-     *   0. `[writable, signer]` The mint to initialize.
+     *   0. `[writable]` The mint to initialize.
      *   1.
      *      * If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
      *      * If supply is zero: `[]` The owner/multisignature of the mint.
@@ -52,9 +56,13 @@ typedef enum Token_TokenInstruction_Tag {
     /**
      * Initializes a new account to hold tokens.
      *
+     * The `InitializeWrappedAccount` instruction requires no signers and MUST be included within
+     * the Transaction that creates the uninitialized account with the system program.  Otherwise
+     * another party can acquire ownership of the uninitialized token account.
+     *
      * Accounts expected by this instruction:
      *
-     *   0. `[writable, signer]`  The account to initialize.
+     *   0. `[writable]`  The account to initialize.
      *   1. `[]` The mint this account will be associated with.
      *   2. `[]` The new account's owner/multisignature.
      */
@@ -66,9 +74,13 @@ typedef enum Token_TokenInstruction_Tag {
      * token instruction that require an owner/delegate to be present.  The variant field represents the
      * number of signers (M) required to validate this multisignature account.
      *
+     * The `InitializeWrappedAccount` instruction requires no signers and MUST be included within
+     * the Transaction that creates the uninitialized account with the system program.  Otherwise
+     * another party can acquire ownership of the uninitialized token account.
+     *
      * Accounts expected by this instruction:
      *
-     *   0. `[signer, writable]` The multisignature account to initialize.
+     *   0. `[writable]` The multisignature account to initialize.
      *   1. ..1+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
      */
     InitializeMultisig,

@@ -196,9 +196,6 @@ export async function invalidApprove(): Promise<void> {
 }
 
 export async function failOnApproveOverspend(): Promise<void> {
-  const connection = await getConnection();
-  const balanceNeeded =
-    (await Token.getMinBalanceRentForExemptAccount(connection)) * 3;
   const owner = new Account();
   const account1 = await testToken.createAccount(owner.publicKey);
   const account2 = await testToken.createAccount(owner.publicKey);
@@ -324,10 +321,6 @@ export async function multisig(): Promise<void> {
   const m = 2;
   const n = 5;
 
-  const connection = await getConnection();
-  const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
-    connection,
-  );
   let signerAccounts = [];
   for (var i = 0; i < n; i++) {
     signerAccounts.push(new Account());
