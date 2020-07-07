@@ -73,7 +73,6 @@ typedef enum TokenSwap_SwapInstruction_Tag {
      *   0. `[]` Token-swap
      *   1. `[]` $authority
      *   2. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-     *   4. `[writable]` Pool MINT account, $authority is the owner.
      *   5. `[writable]` token_a Account to withdraw FROM.
      *   6. `[writable]` token_b Account to withdraw FROM.
      *   7. `[writable]` token_a user Account.

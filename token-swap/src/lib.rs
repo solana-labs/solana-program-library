@@ -80,7 +80,6 @@ pub enum SwapInstruction {
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
     ///   2. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   4. `[writable]` Pool MINT account, $authority is the owner.
     ///   5. `[writable]` token_a Account to withdraw FROM.
     ///   6. `[writable]` token_b Account to withdraw FROM.
     ///   7. `[writable]` token_a user Account.
@@ -289,7 +288,6 @@ pub enum State {
 struct Invariant {
     token_a: u64,
     token_b: u64,
-    pool: Option<u64>,
     fee: Fee,
 }
 impl Invariant {
@@ -309,17 +307,6 @@ impl Invariant {
     }
     fn exchange_rate(&self, token_a: u64) -> Option<u64> {
         token_a.checked_mul(self.token_b)?.checked_div(self.token_a)
-    }
-    fn redeem(&self, user_pool: u64) -> Option<(u64, u64)> {
-        let token_a = self
-            .token_a
-            .checked_mul(user_pool)?
-            .checked_div(self.pool?)?;
-        let token_b = self
-            .token_b
-            .checked_mul(user_pool)?
-            .checked_div(self.pool?)?;
-        Some((token_a, token_b))
     }
 }
 
@@ -403,20 +390,13 @@ impl State {
         token_program_id: &Pubkey,
         swap: &Pubkey,
         burn_account: &Pubkey,
-        mint: &Pubkey,
         authority: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
-        let ix = spl_token::instruction::burn(
-            token_program_id,
-            burn_account,
-            mint,
-            authority,
-            &[],
-            amount,
-        )?;
+        let ix =
+            spl_token::instruction::burn(token_program_id, burn_account, authority, &[], amount)?;
         invoke_signed(&ix, accounts, signers)
     }
 
@@ -500,9 +480,6 @@ impl State {
         if spl_token::option::COption::Some(*authority_info.key) != pool_mint.owner {
             return Err(Error::InvalidOwner.into());
         }
-        if 0 != pool_mint.info.supply {
-            return Err(Error::InvalidSupply.into());
-        }
         if token_b.amount == 0 {
             return Err(Error::InvalidSupply.into());
         }
@@ -573,7 +550,6 @@ impl State {
             token_a: into_token.amount,
             token_b: from_token.amount,
             fee: token_swap.fee,
-            pool: None,
         };
         let output = invariant
             .swap(amount)
@@ -635,7 +611,6 @@ impl State {
             token_a: token_a.amount,
             token_b: token_b.amount,
             fee: token_swap.fee,
-            pool: None,
         };
         let b_amount = invariant
             .exchange_rate(a_amount)
@@ -686,7 +661,6 @@ impl State {
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
-        let pool_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
         let dest_token_a_info = next_account_info(account_info_iter)?;
@@ -703,23 +677,21 @@ impl State {
         if *token_b_info.key != token_swap.token_b {
             return Err(Error::InvalidInput.into());
         }
-        if *pool_info.key != token_swap.pool_mint {
-            return Err(Error::InvalidInput.into());
-        }
+
         let token_a = Self::token_account_deserialize(token_a_info)?;
         let token_b = Self::token_account_deserialize(token_b_info)?;
-        let pool_token = Self::token_deserialize(pool_info)?;
 
         let invariant = Invariant {
             token_a: token_a.amount,
             token_b: token_b.amount,
             fee: token_swap.fee,
-            pool: Some(pool_token.info.supply),
         };
 
-        let (a_amount, b_amount) = invariant
-            .redeem(amount)
+        let a_amount = amount;
+        let b_amount = invariant
+            .exchange_rate(a_amount)
             .ok_or_else(|| Error::CalculationFailure)?;
+
         Self::token_transfer(
             accounts,
             token_program_info.key,
@@ -743,7 +715,6 @@ impl State {
             token_program_info.key,
             swap_info.key,
             source_info.key,
-            pool_info.key,
             authority_info.key,
             amount,
         )?;
@@ -827,7 +798,7 @@ mod tests {
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
     };
     use spl_token::{
-        instruction::{initialize_account, initialize_mint, TokenInfo},
+        instruction::{initialize_account, initialize_mint},
         state::State as SplState,
     };
 
@@ -863,7 +834,7 @@ mod tests {
     fn mint_token(
         program_id: &Pubkey,
         authority_key: &Pubkey,
-        supply: u64,
+        amount: u64,
     ) -> ((Pubkey, Account), (Pubkey, Account)) {
         let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<SplState>(), &program_id);
@@ -887,13 +858,11 @@ mod tests {
                 &token_key,
                 Some(&account_key),
                 Some(&authority_key),
-                TokenInfo {
-                    supply,
-                    decimals: 2,
-                },
+                amount,
+                2,
             )
             .unwrap(),
-            if supply == 0 {
+            if amount == 0 {
                 vec![&mut token_account, &mut authority_account]
             } else {
                 vec![

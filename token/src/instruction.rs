@@ -13,16 +13,6 @@ pub const MIN_SIGNERS: usize = 1;
 /// Maximum number of multisignature signers (max N)
 pub const MAX_SIGNERS: usize = 11;
 
-/// Specifies the financial specifics of a token.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct TokenInfo {
-    /// Total supply of tokens.
-    pub supply: u64,
-    /// Number of base 10 digits to the right of the decimal place in the total supply.
-    pub decimals: u64,
-}
-
 /// Instructions supported by the token program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
@@ -43,8 +33,10 @@ pub enum TokenInstruction {
     ///                      present then further minting is supported.
     ///
     InitializeMint {
-        /// The financial specifics of the token.
-        info: TokenInfo,
+        /// Initial amount of tokens to mint.
+        amount: u64,
+        /// Number of base 10 digits to the right of the decimal place.
+        decimals: u8,
     },
     /// Initializes a new account to hold tokens.
     ///
@@ -188,8 +180,10 @@ impl TokenInstruction {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let info = unsafe { *(&input[1] as *const u8 as *const TokenInfo) };
-                Self::InitializeMint { info }
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let decimals =
+                    unsafe { *(&input[size_of::<u8>() + size_of::<u64>()] as *const u8) };
+                Self::InitializeMint { amount, decimals }
             }
             1 => Self::InitializeAccount,
             2 => {
@@ -242,11 +236,14 @@ impl TokenInstruction {
     pub fn serialize(self: &Self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<TokenInstruction>()];
         match self {
-            Self::InitializeMint { info } => {
+            Self::InitializeMint { amount, decimals } => {
                 output[0] = 0;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut TokenInfo) };
-                *value = *info;
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                *value = *amount;
+                let value =
+                    unsafe { &mut *(&mut output[size_of::<u8>() + size_of::<u64>()] as *mut u8) };
+                *value = *decimals;
             }
             Self::InitializeAccount => output[0] = 1,
             Self::InitializeMultisig { m } => {
@@ -292,12 +289,13 @@ pub fn initialize_mint(
     mint_pubkey: &Pubkey,
     account_pubkey: Option<&Pubkey>,
     owner_pubkey: Option<&Pubkey>,
-    info: TokenInfo,
+    amount: u64,
+    decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::InitializeMint { info }.serialize()?;
+    let data = TokenInstruction::InitializeMint { amount, decimals }.serialize()?;
 
     let mut accounts = vec![AccountMeta::new(*mint_pubkey, false)];
-    if info.supply != 0 {
+    if amount != 0 {
         match account_pubkey {
             Some(pubkey) => accounts.push(AccountMeta::new(*pubkey, false)),
             None => {
@@ -308,7 +306,7 @@ pub fn initialize_mint(
     match owner_pubkey {
         Some(pubkey) => accounts.push(AccountMeta::new_readonly(*pubkey, false)),
         None => {
-            if info.supply == 0 {
+            if amount == 0 {
                 return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
             }
         }
@@ -516,7 +514,6 @@ pub fn mint_to(
 pub fn burn(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
-    mint_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
     amount: u64,
@@ -525,7 +522,6 @@ pub fn burn(
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
-    accounts.push(AccountMeta::new(*mint_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *authority_pubkey,
         signer_pubkeys.is_empty(),
