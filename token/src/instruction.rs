@@ -400,7 +400,7 @@ pub fn approve(
     accounts.push(AccountMeta::new(*delegate_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
-        signer_pubkeys.len() == 0,
+        signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
