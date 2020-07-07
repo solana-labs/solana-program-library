@@ -357,7 +357,7 @@ pub fn transfer(
     accounts.push(AccountMeta::new(*destination_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *authority_pubkey,
-        signer_pubkeys.len() == 0,
+        signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
@@ -388,7 +388,7 @@ pub fn approve(
     }
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
-        signer_pubkeys.len() == 0,
+        signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
@@ -416,7 +416,7 @@ pub fn set_owner(
     accounts.push(AccountMeta::new_readonly(*new_owner_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
-        signer_pubkeys.len() == 0,
+        signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
@@ -445,7 +445,7 @@ pub fn mint_to(
     accounts.push(AccountMeta::new(*account_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
-        signer_pubkeys.len() == 0,
+        signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
@@ -474,7 +474,7 @@ pub fn burn(
     accounts.push(AccountMeta::new(*mint_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *authority_pubkey,
-        signer_pubkeys.len() == 0,
+        signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new(**signer_pubkey, true));
@@ -489,9 +489,5 @@ pub fn burn(
 
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
-    if index < MIN_SIGNERS || index > MAX_SIGNERS {
-        false
-    } else {
-        true
-    }
+    !(index < MIN_SIGNERS || index > MAX_SIGNERS)
 }
