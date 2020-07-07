@@ -175,7 +175,7 @@ export async function approveRevoke(): Promise<void> {
     assert(testAccountInfo.delegate.equals(delegate));
   }
 
-  await testToken.revoke(testAccount, delegate, testAccountOwner, []);
+  await testToken.revoke(testAccount, testAccountOwner, []);
   testAccountInfo = await testToken.getAccountInfo(testAccount);
   assert(testAccountInfo.delegatedAmount.toNumber() == 0);
   if (testAccountInfo.delegate != null) {

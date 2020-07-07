@@ -647,17 +647,32 @@ export class Token {
    * Remove approval for the transfer of any remaining tokens
    *
    * @param account Public key of the account
-   * @param delegate Account to revoke authorization from
    * @param owner Owner of the source account
    * @param multiSigners Signing accounts if `owner` is a multiSig
    */
-  revoke(
+  async revoke(
     account: PublicKey,
-    delegate: PublicKey,
     owner: Account | PublicKey,
     multiSigners: Array<Account>,
   ): Promise<void> {
-    return this.approve(account, delegate, owner, multiSigners, 0);
+    let ownerPublicKey;
+    let signers;
+    if (owner instanceof Account) {
+      ownerPublicKey = owner.publicKey;
+      signers = [owner];
+    } else {
+      ownerPublicKey = owner;
+      signers = multiSigners;
+    }
+    await sendAndConfirmTransaction(
+      'revoke',
+      this.connection,
+      new Transaction().add(
+        this.revokeInstruction(account, ownerPublicKey, multiSigners),
+      ),
+      this.payer,
+      ...signers
+    );
   }
 
   /**
@@ -836,10 +851,51 @@ export class Token {
       data,
     );
 
-    let keys = [{pubkey: account, isSigner: false, isWritable: true}];
-    if (new TokenAmount(amount).toNumber() > 0) {
-      keys.push({pubkey: delegate, isSigner: false, isWritable: false});
+    let keys = [
+      {pubkey: account, isSigner: false, isWritable: true},
+      {pubkey: delegate, isSigner: false, isWritable: false}
+    ];
+    if (owner instanceof Account) {
+      keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
+    } else {
+      keys.push({pubkey: owner, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
     }
+
+    return new TransactionInstruction({
+      keys,
+      programId: this.programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct an Approve instruction
+   *
+   * @param account Public key of the account
+   * @param delegate Account authorized to perform a transfer of tokens from the source account
+   * @param owner Owner of the source account
+   * @param multiSigners Signing accounts if `owner` is a multiSig
+   * @param amount Maximum number of tokens the delegate may transfer
+   */
+  revokeInstruction(
+    account: PublicKey,
+    owner: Account | PublicKey,
+    multiSigners: Array<Account>,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+    ]);
+
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 5, // Approve instruction
+      },
+      data,
+    );
+
+    let keys = [{pubkey: account, isSigner: false, isWritable: true}];
     if (owner instanceof Account) {
       keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
     } else {
@@ -873,7 +929,7 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 5, // SetOwner instruction
+        instruction: 6, // SetOwner instruction
       },
       data,
     );
@@ -919,7 +975,7 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 6, // MintTo instruction
+        instruction: 7, // MintTo instruction
         amount: new TokenAmount(amount).toBuffer(),
       },
       data,
@@ -965,7 +1021,7 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 7, // Burn instruction
+        instruction: 8, // Burn instruction
         amount: new TokenAmount(amount).toBuffer(),
       },
       data,
