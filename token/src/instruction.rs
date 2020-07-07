@@ -91,28 +91,28 @@ pub enum TokenInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   * Single owner/delegate
+    ///   * Single owner
     ///   0. `[writable]` The source account.
     ///   1. `[]` The delegate if amount is non-zero.
-    ///   2. `[signer]` The source account owner/delegate.
+    ///   2. `[signer]` The source account owner.
     ///
-    ///   * Multisignature owner/delegate
+    ///   * Multisignature owner
     ///   0. `[writable]` The source account.
     ///   1. `[]` The delegate if amount is non-zero.
-    ///   2. '[]' The source account's multisignature owner/delegate.
+    ///   2. '[]' The source account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts
     Approve(u64),
     /// Revokes a delegate.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   * Single owner/delegate
+    ///   * Single owner
     ///   0. `[writable]` The source account.
-    ///   2. `[signer]` The source account owner/delegate.
+    ///   2. `[signer]` The source account owner.
     ///
-    ///   * Multisignature owner/delegate
+    ///   * Multisignature owner
     ///   0. `[writable]` The source account.
-    ///   2. '[]' The source account's multisignature owner/delegate.
+    ///   2. '[]' The source account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts
     Revoke,
     /// Sets a new owner of a mint or account.

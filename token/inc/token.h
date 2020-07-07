@@ -108,15 +108,15 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * Accounts expected by this instruction:
      *
-     *   * Single owner/delegate
+     *   * Single owner
      *   0. `[writable]` The source account.
      *   1. `[]` The delegate if amount is non-zero.
-     *   2. `[signer]` The source account owner/delegate.
+     *   2. `[signer]` The source account owner.
      *
-     *   * Multisignature owner/delegate
+     *   * Multisignature owner
      *   0. `[writable]` The source account.
      *   1. `[]` The delegate if amount is non-zero.
-     *   2. '[]' The source account's multisignature owner/delegate.
+     *   2. '[]' The source account's multisignature owner.
      *   3. ..3+M '[signer]' M signer accounts
      */
     Approve,
@@ -125,13 +125,13 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * Accounts expected by this instruction:
      *
-     *   * Single owner/delegate
+     *   * Single owner
      *   0. `[writable]` The source account.
-     *   2. `[signer]` The source account owner/delegate.
+     *   2. `[signer]` The source account owner.
      *
-     *   * Multisignature owner/delegate
+     *   * Multisignature owner
      *   0. `[writable]` The source account.
-     *   2. '[]' The source account's multisignature owner/delegate.
+     *   2. '[]' The source account's multisignature owner.
      *   3. ..3+M '[signer]' M signer accounts
      */
     Revoke,
