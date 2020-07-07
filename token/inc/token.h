@@ -38,9 +38,9 @@ typedef enum Token_TokenInstruction_Tag {
     /**
      * Initializes a new mint and optionally deposits all the newly minted tokens in an account.
      *
-     * The `InitializeWrappedAccount` instruction requires no signers and MUST be included within
-     * the Transaction that creates the uninitialized account with the system program.  Otherwise
-     * another party can acquire ownership of the uninitialized token account.
+     * The `InitializeMint` instruction requires no signers and MUST be included within
+     * the same Transaction as the system program's `CreateInstruction` that creates the account
+     * being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
      *
      * Accounts expected by this instruction:
      *
@@ -56,9 +56,9 @@ typedef enum Token_TokenInstruction_Tag {
     /**
      * Initializes a new account to hold tokens.
      *
-     * The `InitializeWrappedAccount` instruction requires no signers and MUST be included within
-     * the Transaction that creates the uninitialized account with the system program.  Otherwise
-     * another party can acquire ownership of the uninitialized token account.
+     * The `InitializeAccount` instruction requires no signers and MUST be included within
+     * the same Transaction as the system program's `CreateInstruction` that creates the account
+     * being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
      *
      * Accounts expected by this instruction:
      *
@@ -74,9 +74,9 @@ typedef enum Token_TokenInstruction_Tag {
      * token instruction that require an owner/delegate to be present.  The variant field represents the
      * number of signers (M) required to validate this multisignature account.
      *
-     * The `InitializeWrappedAccount` instruction requires no signers and MUST be included within
-     * the Transaction that creates the uninitialized account with the system program.  Otherwise
-     * another party can acquire ownership of the uninitialized token account.
+     * The `InitializeMultisig` instruction requires no signers and MUST be included within
+     * the same Transaction as the system program's `CreateInstruction` that creates the account
+     * being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
      *
      * Accounts expected by this instruction:
      *
@@ -168,18 +168,16 @@ typedef enum Token_TokenInstruction_Tag {
      */
     MintTo,
     /**
-     * Burns tokens by removing them from an account and the mint's total supply.
+     * Burns tokens by removing them from an account and thus circulation.
      *
      * Accounts expected by this instruction:
      *
      *   * Single owner/delegate
      *   0. `[writable]` The account to burn from.
-     *   1. `[writable]` The mint being burned.
      *   2. `[signer]` The account's owner/delegate.
      *
      *   * Multisignature owner/delegate
      *   0. `[writable]` The account to burn from.
-     *   1. `[writable]` The mint being burned.
      *   2. `[]` The account's multisignature owner/delegate
      *   3. ..3+M '[signer]' M signer accounts.
      */
@@ -187,27 +185,45 @@ typedef enum Token_TokenInstruction_Tag {
 } Token_TokenInstruction_Tag;
 
 typedef struct Token_InitializeMint_Body {
-    Token_TokenInfo _0;
+    /**
+     * The financial specifics of the token.
+     */
+    Token_TokenInfo info;
 } Token_InitializeMint_Body;
 
 typedef struct Token_InitializeMultisig_Body {
-    uint8_t _0;
+    /**
+     * The number of signers (M) required to validate this multisignature account.
+     */
+    uint8_t m;
 } Token_InitializeMultisig_Body;
 
 typedef struct Token_Transfer_Body {
-    uint64_t _0;
+    /**
+     * The amount of tokens to transfer.
+     */
+    uint64_t amount;
 } Token_Transfer_Body;
 
 typedef struct Token_Approve_Body {
-    uint64_t _0;
+    /**
+     * The amount of tokens the delegate is approved for.
+     */
+    uint64_t amount;
 } Token_Approve_Body;
 
 typedef struct Token_MintTo_Body {
-    uint64_t _0;
+    /**
+     * The amount of new tokens to mint.
+     */
+    uint64_t amount;
 } Token_MintTo_Body;
 
 typedef struct Token_Burn_Body {
-    uint64_t _0;
+    /**
+     * The amount of tokens to burn.
+     */
+    uint64_t amount;
 } Token_Burn_Body;
 
 typedef struct Token_TokenInstruction {

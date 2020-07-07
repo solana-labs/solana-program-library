@@ -42,7 +42,10 @@ pub enum TokenInstruction {
     ///   2. `[]` (optional) The owner/multisignature of the mint if supply is non-zero, if
     ///                      present then further minting is supported.
     ///
-    InitializeMint(TokenInfo),
+    InitializeMint {
+        /// The financial specifics of the token.
+        info: TokenInfo,
+    },
     /// Initializes a new account to hold tokens.
     ///
     /// The `InitializeAccount` instruction requires no signers and MUST be included within
@@ -69,7 +72,10 @@ pub enum TokenInstruction {
     ///
     ///   0. `[writable]` The multisignature account to initialize.
     ///   1. ..1+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
-    InitializeMultisig(u8),
+    InitializeMultisig {
+        /// The number of signers (M) required to validate this multisignature account.
+        m: u8,
+    },
     /// Transfers tokens from one account to another either directly or via a delegate.
     ///
     /// Accounts expected by this instruction:
@@ -84,7 +90,10 @@ pub enum TokenInstruction {
     ///   1. `[writable]` The destination account.
     ///   2. '[]' The source account's multisignature owner/delegate.
     ///   3. ..3+M '[signer]' M signer accounts.
-    Transfer(u64),
+    Transfer {
+        /// The amount of tokens to transfer.
+        amount: u64,
+    },
     /// Approves a delegate.  A delegate is given the authority over
     /// tokens on behalf of the source account's owner.
 
@@ -100,7 +109,10 @@ pub enum TokenInstruction {
     ///   1. `[]` The delegate.
     ///   2. '[]' The source account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts
-    Approve(u64),
+    Approve {
+        /// The amount of tokens the delegate is approved for.
+        amount: u64,
+    },
     /// Revokes the delegate's authority.
     ///
     /// Accounts expected by this instruction:
@@ -143,22 +155,26 @@ pub enum TokenInstruction {
     ///   1. `[writable]` The account to mint tokens to.
     ///   2. `[]` The mint's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts.
-    MintTo(u64),
-    /// Burns tokens by removing them from an account and the mint's total supply.
+    MintTo {
+        /// The amount of new tokens to mint.
+        amount: u64,
+    },
+    /// Burns tokens by removing them from an account and thus circulation.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The account to burn from.
-    ///   1. `[writable]` The mint being burned.
     ///   2. `[signer]` The account's owner/delegate.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The account to burn from.
-    ///   1. `[writable]` The mint being burned.
     ///   2. `[]` The account's multisignature owner/delegate
     ///   3. ..3+M '[signer]' M signer accounts.
-    Burn(u64),
+    Burn {
+        /// The amount of tokens to burn.
+        amount: u64,
+    },
 }
 impl TokenInstruction {
     /// Deserializes a byte buffer into an [TokenInstruction](enum.TokenInstruction.html).
@@ -168,12 +184,12 @@ impl TokenInstruction {
         }
         Ok(match input[0] {
             0 => {
-                if input.len() < size_of::<u8>() + size_of::<TokenInfo>() {
+                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let info: &TokenInfo = unsafe { &*(&input[1] as *const u8 as *const TokenInfo) };
-                Self::InitializeMint(*info)
+                let info = unsafe { *(&input[1] as *const u8 as *const TokenInfo) };
+                Self::InitializeMint { info }
             }
             1 => Self::InitializeAccount,
             2 => {
@@ -181,24 +197,24 @@ impl TokenInstruction {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let m: &u8 = unsafe { &*(&input[1] as *const u8 as *const u8) };
-                Self::InitializeMultisig(*m)
+                let m = unsafe { *(&input[1] as *const u8) };
+                Self::InitializeMultisig { m }
             }
             3 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
-                Self::Transfer(*amount)
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                Self::Transfer { amount }
             }
             4 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
-                Self::Approve(*amount)
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                Self::Approve { amount }
             }
             5 => Self::Revoke,
             6 => Self::SetOwner,
@@ -207,16 +223,16 @@ impl TokenInstruction {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
-                Self::MintTo(*amount)
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                Self::MintTo { amount }
             }
             8 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
-                Self::Burn(*amount)
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                Self::Burn { amount }
             }
             _ => return Err(ProgramError::InvalidAccountData),
         })
@@ -226,43 +242,43 @@ impl TokenInstruction {
     pub fn serialize(self: &Self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<TokenInstruction>()];
         match self {
-            Self::InitializeMint(info) => {
+            Self::InitializeMint { info } => {
                 output[0] = 0;
                 #[allow(clippy::cast_ptr_alignment)]
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut TokenInfo) };
                 *value = *info;
             }
             Self::InitializeAccount => output[0] = 1,
-            Self::InitializeMultisig(m) => {
+            Self::InitializeMultisig { m } => {
                 output[0] = 2;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u8) };
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u8) };
                 *value = *m;
             }
-            Self::Transfer(amount) => {
+            Self::Transfer { amount } => {
                 output[0] = 3;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
                 *value = *amount;
             }
-            Self::Approve(amount) => {
+            Self::Approve { amount } => {
                 output[0] = 4;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
                 *value = *amount;
             }
             Self::Revoke => output[0] = 5,
             Self::SetOwner => output[0] = 6,
-            Self::MintTo(amount) => {
+            Self::MintTo { amount } => {
                 output[0] = 7;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
                 *value = *amount;
             }
-            Self::Burn(amount) => {
+            Self::Burn { amount } => {
                 output[0] = 8;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
                 *value = *amount;
             }
         }
@@ -276,12 +292,12 @@ pub fn initialize_mint(
     mint_pubkey: &Pubkey,
     account_pubkey: Option<&Pubkey>,
     owner_pubkey: Option<&Pubkey>,
-    token_info: TokenInfo,
+    info: TokenInfo,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::InitializeMint(token_info).serialize()?;
+    let data = TokenInstruction::InitializeMint { info }.serialize()?;
 
     let mut accounts = vec![AccountMeta::new(*mint_pubkey, false)];
-    if token_info.supply != 0 {
+    if info.supply != 0 {
         match account_pubkey {
             Some(pubkey) => accounts.push(AccountMeta::new(*pubkey, false)),
             None => {
@@ -292,7 +308,7 @@ pub fn initialize_mint(
     match owner_pubkey {
         Some(pubkey) => accounts.push(AccountMeta::new_readonly(*pubkey, false)),
         None => {
-            if token_info.supply == 0 {
+            if info.supply == 0 {
                 return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
             }
         }
@@ -340,7 +356,7 @@ pub fn initialize_multisig(
     {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    let data = TokenInstruction::InitializeMultisig(m).serialize()?;
+    let data = TokenInstruction::InitializeMultisig { m }.serialize()?;
 
     let mut accounts = Vec::with_capacity(1 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*multisig_pubkey, false));
@@ -364,7 +380,7 @@ pub fn transfer(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Transfer(amount).serialize()?;
+    let data = TokenInstruction::Transfer { amount }.serialize()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*source_pubkey, false));
@@ -393,7 +409,7 @@ pub fn approve(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Approve(amount).serialize()?;
+    let data = TokenInstruction::Approve { amount }.serialize()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new_readonly(*source_pubkey, false));
@@ -476,7 +492,7 @@ pub fn mint_to(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::MintTo(amount).serialize()?;
+    let data = TokenInstruction::MintTo { amount }.serialize()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*mint_pubkey, false));
@@ -505,7 +521,7 @@ pub fn burn(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Burn(amount).serialize()?;
+    let data = TokenInstruction::Burn { amount }.serialize()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));

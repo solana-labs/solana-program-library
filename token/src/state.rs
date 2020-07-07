@@ -445,7 +445,7 @@ impl State {
         let instruction = TokenInstruction::deserialize(input)?;
 
         match instruction {
-            TokenInstruction::InitializeMint(info) => {
+            TokenInstruction::InitializeMint { info } => {
                 info!("Instruction: InitializeMint");
                 Self::process_initialize_mint(accounts, info)
             }
@@ -453,15 +453,15 @@ impl State {
                 info!("Instruction: InitializeAccount");
                 Self::process_initialize_account(accounts)
             }
-            TokenInstruction::InitializeMultisig(m) => {
+            TokenInstruction::InitializeMultisig { m } => {
                 info!("Instruction: InitializeM<ultisig");
                 Self::process_initialize_multisig(accounts, m)
             }
-            TokenInstruction::Transfer(amount) => {
+            TokenInstruction::Transfer { amount } => {
                 info!("Instruction: Transfer");
                 Self::process_transfer(program_id, accounts, amount)
             }
-            TokenInstruction::Approve(amount) => {
+            TokenInstruction::Approve { amount } => {
                 info!("Instruction: Approve");
                 Self::process_approve(program_id, accounts, amount)
             }
@@ -473,11 +473,11 @@ impl State {
                 info!("Instruction: SetOwner");
                 Self::process_set_owner(program_id, accounts)
             }
-            TokenInstruction::MintTo(amount) => {
+            TokenInstruction::MintTo { amount } => {
                 info!("Instruction: MintTo");
                 Self::process_mint_to(program_id, accounts, amount)
             }
-            TokenInstruction::Burn(amount) => {
+            TokenInstruction::Burn { amount } => {
                 info!("Instruction: Burn");
                 Self::process_burn(program_id, accounts, amount)
             }

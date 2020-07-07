@@ -30,6 +30,6 @@ async function main() {
 main()
   .catch(err => {
     console.error(err);
-    process.exit(-1)
+    process.exit(-1);
   })
   .then(() => process.exit());
