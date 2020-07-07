@@ -103,23 +103,36 @@ typedef enum Token_TokenInstruction_Tag {
     Transfer,
     /**
      * Approves a delegate.  A delegate is given the authority over
-     * tokens on behalf of the source account's owner.  If the amount to
-     * delegate is zero then delegation is rescinded
-     *
+     * tokens on behalf of the source account's owner.
      * Accounts expected by this instruction:
      *
-     *   * Single owner/delegate
+     *   * Single owner
      *   0. `[writable]` The source account.
-     *   1. `[]` (optional) The delegate if amount is non-zero.
-     *   2. `[signer]` The source account owner/delegate.
+     *   1. `[]` The delegate.
+     *   2. `[signer]` The source account owner.
      *
-     *   * Multisignature owner/delegate
+     *   * Multisignature owner
      *   0. `[writable]` The source account.
-     *   1. `[]` (optional) The delegate if amount is non-zero.
-     *   2. '[]' The source account's multisignature owner/delegate.
+     *   1. `[]` The delegate.
+     *   2. '[]' The source account's multisignature owner.
      *   3. ..3+M '[signer]' M signer accounts
      */
     Approve,
+    /**
+     * Revokes the delegate's authority.
+     *
+     * Accounts expected by this instruction:
+     *
+     *   * Single owner
+     *   0. `[writable]` The source account.
+     *   2. `[signer]` The source account owner.
+     *
+     *   * Multisignature owner
+     *   0. `[writable]` The source account.
+     *   2. '[]' The source account's multisignature owner.
+     *   3. ..3+M '[signer]' M signer accounts
+     */
+    Revoke,
     /**
      * Sets a new owner of a mint or account.
      *

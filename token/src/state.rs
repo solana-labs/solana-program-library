@@ -243,14 +243,7 @@ impl State {
 
         let mut source_data = source_account_info.data.borrow_mut();
         if let State::Account(mut source_account) = State::deserialize(&source_data)? {
-            source_account.delegate = if amount > 0 {
-                let delegate_info = next_account_info(account_info_iter)?;
-                COption::Some(*delegate_info.key)
-            } else {
-                COption::None
-            };
-            source_account.delegated_amount = amount;
-
+            let delegate_info = next_account_info(account_info_iter)?;
             let owner_info = next_account_info(account_info_iter)?;
             Self::validate_owner(
                 program_id,
@@ -258,6 +251,33 @@ impl State {
                 owner_info,
                 account_info_iter.as_slice(),
             )?;
+
+            source_account.delegate = COption::Some(*delegate_info.key);
+            source_account.delegated_amount = amount;
+
+            State::Account(source_account).serialize(&mut source_data)
+        } else {
+            Err(ProgramError::InvalidArgument)
+        }
+    }
+
+    /// Processes an [Revoke](enum.TokenInstruction.html) instruction.
+    pub fn process_revoke(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let source_account_info = next_account_info(account_info_iter)?;
+
+        let mut source_data = source_account_info.data.borrow_mut();
+        if let State::Account(mut source_account) = State::deserialize(&source_data)? {
+            let owner_info = next_account_info(account_info_iter)?;
+            Self::validate_owner(
+                program_id,
+                &source_account.owner,
+                owner_info,
+                account_info_iter.as_slice(),
+            )?;
+
+            source_account.delegate = COption::None;
+            source_account.delegated_amount = 0;
 
             State::Account(source_account).serialize(&mut source_data)
         } else {
@@ -445,6 +465,10 @@ impl State {
                 info!("Instruction: Approve");
                 Self::process_approve(program_id, accounts, amount)
             }
+            TokenInstruction::Revoke => {
+                info!("Instruction: Revoke");
+                Self::process_revoke(program_id, accounts)
+            }
             TokenInstruction::SetOwner => {
                 info!("Instruction: SetOwner");
                 Self::process_set_owner(program_id, accounts)
@@ -558,7 +582,7 @@ solana_sdk_bpf_test::stubs!();
 mod tests {
     use super::*;
     use crate::instruction::{
-        approve, burn, initialize_account, initialize_mint, initialize_multisig, mint_to,
+        approve, burn, initialize_account, initialize_mint, initialize_multisig, mint_to, revoke,
         set_owner, transfer,
     };
     use solana_sdk::{
@@ -1243,6 +1267,13 @@ mod tests {
                 &mut delegate_account,
                 &mut owner_account,
             ],
+        )
+        .unwrap();
+
+        // revoke delegate
+        do_process_instruction(
+            revoke(&program_id, &account_key, &owner_key, &[]).unwrap(),
+            vec![&mut account_account, &mut owner_account],
         )
         .unwrap();
     }

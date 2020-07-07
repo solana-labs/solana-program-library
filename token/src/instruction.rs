@@ -86,22 +86,34 @@ pub enum TokenInstruction {
     ///   3. ..3+M '[signer]' M signer accounts.
     Transfer(u64),
     /// Approves a delegate.  A delegate is given the authority over
-    /// tokens on behalf of the source account's owner.  If the amount to
-    /// delegate is zero then delegation is rescinded
+    /// tokens on behalf of the source account's owner.
+
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner
+    ///   0. `[writable]` The source account.
+    ///   1. `[]` The delegate.
+    ///   2. `[signer]` The source account owner.
+    ///
+    ///   * Multisignature owner
+    ///   0. `[writable]` The source account.
+    ///   1. `[]` The delegate.
+    ///   2. '[]' The source account's multisignature owner.
+    ///   3. ..3+M '[signer]' M signer accounts
+    Approve(u64),
+    /// Revokes the delegate's authority.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   * Single owner/delegate
+    ///   * Single owner
     ///   0. `[writable]` The source account.
-    ///   1. `[]` (optional) The delegate if amount is non-zero.
-    ///   2. `[signer]` The source account owner/delegate.
+    ///   2. `[signer]` The source account owner.
     ///
-    ///   * Multisignature owner/delegate
+    ///   * Multisignature owner
     ///   0. `[writable]` The source account.
-    ///   1. `[]` (optional) The delegate if amount is non-zero.
-    ///   2. '[]' The source account's multisignature owner/delegate.
+    ///   2. '[]' The source account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts
-    Approve(u64),
+    Revoke,
     /// Sets a new owner of a mint or account.
     ///
     /// Accounts expected by this instruction:
@@ -188,8 +200,9 @@ impl TokenInstruction {
                 let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
                 Self::Approve(*amount)
             }
-            5 => Self::SetOwner,
-            6 => {
+            5 => Self::Revoke,
+            6 => Self::SetOwner,
+            7 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
@@ -197,7 +210,7 @@ impl TokenInstruction {
                 let amount: &u64 = unsafe { &*(&input[1] as *const u8 as *const u64) };
                 Self::MintTo(*amount)
             }
-            7 => {
+            8 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
@@ -238,15 +251,16 @@ impl TokenInstruction {
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
                 *value = *amount;
             }
-            Self::SetOwner => output[0] = 5,
+            Self::Revoke => output[0] = 5,
+            Self::SetOwner => output[0] = 6,
             Self::MintTo(amount) => {
-                output[0] = 6;
+                output[0] = 7;
                 #[allow(clippy::cast_ptr_alignment)]
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
                 *value = *amount;
             }
             Self::Burn(amount) => {
-                output[0] = 7;
+                output[0] = 8;
                 #[allow(clippy::cast_ptr_alignment)]
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
                 *value = *amount;
@@ -383,9 +397,33 @@ pub fn approve(
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new_readonly(*source_pubkey, false));
-    if amount > 0 {
-        accounts.push(AccountMeta::new(*delegate_pubkey, false));
+    accounts.push(AccountMeta::new(*delegate_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
     }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates an `Approve` instruction.
+pub fn revoke(
+    token_program_id: &Pubkey,
+    source_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::Revoke.serialize()?;
+
+    let mut accounts = Vec::with_capacity(2 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new_readonly(*source_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
         signer_pubkeys.is_empty(),
