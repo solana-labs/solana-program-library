@@ -289,13 +289,6 @@ export class Token {
       space: MintLayout.span,
       programId,
     });
-    await sendAndConfirmTransaction(
-      'createAccount',
-      connection,
-      transaction,
-      payer,
-      mintAccount,
-    );
 
     // Create the mint
     let keys = [
@@ -324,17 +317,19 @@ export class Token {
       );
       data = data.slice(0, encodeLength);
     }
-
-    transaction = new Transaction().add({
+    transaction.add({
       keys,
       programId,
       data,
     });
+
+    // Send the two instructions
     await sendAndConfirmTransaction(
-      'InitializeMint',
+      'createAccount and InitializeMint',
       connection,
       transaction,
       payer,
+      mintAccount
     );
 
     return [token, initialAccountPublicKey];
@@ -370,13 +365,6 @@ export class Token {
       space: AccountLayout.span,
       programId: this.programId,
     });
-    await sendAndConfirmTransaction(
-      'createAccount',
-      this.connection,
-      transaction,
-      this.payer,
-      mintAccount,
-    );
 
     // create the new account
     const keys = [
@@ -384,7 +372,6 @@ export class Token {
       {pubkey: this.publicKey, isSigner: false, isWritable: false},
       {pubkey: owner, isSigner: false, isWritable: false},
     ];
-
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
@@ -393,16 +380,19 @@ export class Token {
       },
       data,
     );
-    transaction = new Transaction().add({
+    transaction.add({
       keys,
       programId: this.programId,
       data,
     });
+
+    // Send the two instructions
     await sendAndConfirmTransaction(
-      'InitializeAccount',
+      'createAccount and InitializeAccount',
       this.connection,
       transaction,
       this.payer,
+      mintAccount
     );
 
     return mintAccount.publicKey;
@@ -434,20 +424,12 @@ export class Token {
       space: MultisigLayout.span,
       programId: this.programId,
     });
-    await sendAndConfirmTransaction(
-      'createAccount',
-      this.connection,
-      transaction,
-      this.payer,
-      multisigAccount,
-    );
 
     // create the new account
     let keys = [
       {pubkey: multisigAccount.publicKey, isSigner: false, isWritable: true},
     ];
     signers.forEach(signer => keys.push({pubkey: signer, isSigner: false, isWritable: false}));
-
     const dataLayout = BufferLayout.struct(
       [
         BufferLayout.u8('instruction'),
@@ -462,16 +444,19 @@ export class Token {
       },
       data,
     );
-    transaction = new Transaction().add({
+    transaction.add({
       keys,
       programId: this.programId,
       data,
     });
+
+    // Send the two instructions
     await sendAndConfirmTransaction(
-      'InitializeMultisig',
+      'createAccount and InitializeMultisig',
       this.connection,
       transaction,
       this.payer,
+      multisigAccount
     );
 
     return multisigAccount.publicKey;
