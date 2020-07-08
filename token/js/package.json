@@ -61,7 +61,7 @@
     "jayson": "^3.0.1",
     "json-to-pretty-yaml": "^1.2.2",
     "mkdirp-promise": "^5.0.1",
-    "moment": "^2.22.2",
+    "moment": "^2.27.0",
     "mz": "^2.7.0",
     "node-fetch": "^2.2.0",
     "react": "^16.5.2",
