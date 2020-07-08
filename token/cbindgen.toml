@@ -8,7 +8,7 @@ style = "both"
 
 [export]
 prefix = "Token_"
-include = ["TokenInstruction", "State"]
+include = ["TokenInstruction", "Mint", "Account", "Multisig"]
 
 [parse]
 parse_deps = true

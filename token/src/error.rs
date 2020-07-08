@@ -36,6 +36,9 @@ pub enum TokenError {
     /// Invalid number of required signers.
     #[error("Invalid number of required signers")]
     InvalidNumberOfRequiredSigners,
+    /// State is uninitialized.
+    #[error("State is unititialized")]
+    UninitializedState,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -67,6 +70,7 @@ impl PrintProgramError for TokenError {
             TokenError::InvalidNumberOfRequiredSigners => {
                 info!("Error: Invalid number of required signers")
             }
+            TokenError::UninitializedState => info!("Error: State is uninitialized"),
         }
     }
 }

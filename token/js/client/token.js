@@ -58,22 +58,25 @@ export class TokenAmount extends BN {
  */
 type MintInfo = {|
   /**
+   * Owner of the mint, given authority to mint new tokens
+   */
+  owner: null | PublicKey,
+  /**
    * Number of base 10 digits to the right of the decimal place
    */
   decimals: number,
   /**
-   * Owner of the mint, given authority to mint new tokens
+   * Is this mint initialized
    */
-  owner: null | PublicKey,
+  initialized: Boolean,
 |};
 
 const MintLayout = BufferLayout.struct([
-  BufferLayout.u8('state'),
   BufferLayout.u32('option'),
   Layout.publicKey('owner'),
   BufferLayout.u8('decimals'),
-  BufferLayout.u16('padding1'),
-  BufferLayout.nu64('padding2'),
+  BufferLayout.u8('is_initialized'),
+  BufferLayout.u16('padding'),
 ]);
 
 /**
@@ -110,13 +113,14 @@ type AccountInfo = {|
  * @private
  */
 const AccountLayout = BufferLayout.struct([
-  BufferLayout.u8('state'),
   Layout.publicKey('mint'),
   Layout.publicKey('owner'),
   Layout.uint64('amount'),
   BufferLayout.u32('option'),
   Layout.publicKey('delegate'),
-  BufferLayout.u32('padding'),
+  BufferLayout.u8('is_initialized'),
+  BufferLayout.u8('padding'),
+  BufferLayout.u16('padding'),
   Layout.uint64('delegatedAmount'),
 ]);
 
@@ -158,6 +162,7 @@ type MultisigInfo = {|
 const MultisigLayout = BufferLayout.struct([
   BufferLayout.u8('m'),
   BufferLayout.u8('n'),
+  BufferLayout.u8('is_initialized'),
   Layout.publicKey('signer1'),
   Layout.publicKey('signer2'),
   Layout.publicKey('signer3'),
@@ -471,13 +476,12 @@ export class Token {
         `Invalid mint owner: ${JSON.stringify(info.owner)}`,
       );
     }
+    if (info.data.length != MintLayout.span) {
+      throw new Error(`Invalid mint size`);
+    }
 
     const data = Buffer.from(info.data);
-
     const mintInfo = MintLayout.decode(data);
-    if (mintInfo.state !== 1) {
-      throw new Error(`Invalid account data`);
-    }
     if (mintInfo.option === 0) {
       mintInfo.owner = null;
     } else {
@@ -499,13 +503,12 @@ export class Token {
     if (!info.owner.equals(this.programId)) {
       throw new Error(`Invalid account owner`);
     }
+    if (info.data.length != AccountLayout.span) {
+      throw new Error(`Invalid account size`);
+    }
 
     const data = Buffer.from(info.data);
     const accountInfo = AccountLayout.decode(data);
-
-    if (accountInfo.state !== 2) {
-      throw new Error(`Invalid account data`);
-    }
     accountInfo.mint = new PublicKey(accountInfo.mint);
     accountInfo.owner = new PublicKey(accountInfo.owner);
     accountInfo.amount = TokenAmount.fromBuffer(accountInfo.amount);
@@ -541,6 +544,9 @@ export class Token {
     }
     if (!info.owner.equals(this.programId)) {
       throw new Error(`Invalid multisig owner`);
+    }
+    if (info.data.length != MultisigLayout.span) {
+      throw new Error(`Invalid multisig size`);
     }
 
     const data = Buffer.from(info.data);
