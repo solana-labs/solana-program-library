@@ -14,5 +14,8 @@ cc token/inc/token.h -o token/target/token.gch
 cd "$(dirname "$0")/../token/js"
 
 npm install
-npm run cluster:devnet
+npm run cluster:localnet
+npm run localnet:update
+npm run localnet:up
 npm run start
+npm run localnet:down
