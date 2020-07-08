@@ -51,7 +51,7 @@
     "dotenv": "8.2.0",
     "eslint": "^6.1.0",
     "eslint-loader": "^3.0.0",
-    "eslint-plugin-import": "^2.13.0",
+    "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-react": "^7.11.1",
     "event-emitter": "^0.3.5",
     "express": "^4.16.4",
