@@ -270,7 +270,7 @@ typedef struct Token_Mint {
      */
     uint8_t decimals;
     /**
-     * Is `true` if this mint has been initialized
+     * Is `true` if this structure has been initialized
      */
     bool is_initialized;
 } Token_Mint;
@@ -297,7 +297,7 @@ typedef struct Token_Account {
      */
     Token_COption_Pubkey delegate;
     /**
-     * Is `true` if this mint has been initialized
+     * Is `true` if this structure has been initialized
      */
     bool is_initialized;
     /**
@@ -319,7 +319,7 @@ typedef struct Token_Multisig {
      */
     uint8_t n;
     /**
-     * Is `true` if this mint has been initialized
+     * Is `true` if this structure has been initialized
      */
     bool is_initialized;
     /**
