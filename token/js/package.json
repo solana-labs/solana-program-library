@@ -52,7 +52,7 @@
     "eslint": "^6.1.0",
     "eslint-loader": "^3.0.0",
     "eslint-plugin-import": "^2.22.0",
-    "eslint-plugin-react": "^7.11.1",
+    "eslint-plugin-react": "^7.20.3",
     "event-emitter": "^0.3.5",
     "express": "^4.16.4",
     "flow-bin": "0.128.0",
