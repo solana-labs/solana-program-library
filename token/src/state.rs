@@ -21,7 +21,7 @@ pub struct Mint {
     pub owner: COption<Pubkey>,
     /// Number of base 10 digits to the right of the decimal place.
     pub decimals: u8,
-    /// Is `true` if this mint has been initialized
+    /// Is `true` if this structure has been initialized
     pub is_initialized: bool,
 }
 impl IsInitialized for Mint {
@@ -43,7 +43,7 @@ pub struct Account {
     /// If `delegate` is `Some` then `delegated_amount` represents
     /// the amount authorized by the delegate
     pub delegate: COption<Pubkey>,
-    /// Is `true` if this mint has been initialized
+    /// Is `true` if this structure has been initialized
     pub is_initialized: bool,
     /// The amount delegated
     pub delegated_amount: u64,
@@ -62,7 +62,7 @@ pub struct Multisig {
     pub m: u8,
     /// Number of valid signers
     pub n: u8,
-    /// Is `true` if this mint has been initialized
+    /// Is `true` if this structure has been initialized
     pub is_initialized: bool,
     /// Signer public keys
     pub signers: [Pubkey; MAX_SIGNERS],
