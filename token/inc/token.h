@@ -256,11 +256,9 @@ typedef struct Token_COption_Pubkey {
 } Token_COption_Pubkey;
 
 /**
- * Represents a token type identified by its public key.  Accounts
- * are associated with a specific token type and only accounts with
- * matching types my inter-opt.
+ * Mint data.
  */
-typedef struct Token_Token {
+typedef struct Token_Mint {
     /**
      * Optional owner, used to mint new tokens.  The owner may only
      * be provided during mint creation.  If no owner is present then the mint
@@ -271,10 +269,14 @@ typedef struct Token_Token {
      * Number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
-} Token_Token;
+    /**
+     * Is `true` if this structure has been initialized
+     */
+    bool is_initialized;
+} Token_Mint;
 
 /**
- * Account that holds tokens or may delegate tokens.
+ * Account data.
  */
 typedef struct Token_Account {
     /**
@@ -295,41 +297,33 @@ typedef struct Token_Account {
      */
     Token_COption_Pubkey delegate;
     /**
+     * Is `true` if this structure has been initialized
+     */
+    bool is_initialized;
+    /**
      * The amount delegated
      */
     uint64_t delegated_amount;
 } Token_Account;
 
 /**
- * Program states.
+ * Multisignature data.
  */
-typedef enum Token_State_Tag {
+typedef struct Token_Multisig {
     /**
-     * Unallocated state, may be initialized into another state.
+     * Number of signers required
      */
-    Unallocated,
+    uint8_t m;
     /**
-     * A mint.
+     * Number of valid signers
      */
-    Mint,
+    uint8_t n;
     /**
-     * An account that holds tokens
+     * Is `true` if this structure has been initialized
      */
-    Account,
-} Token_State_Tag;
-
-typedef struct Token_Mint_Body {
-    Token_Token _0;
-} Token_Mint_Body;
-
-typedef struct Token_Account_Body {
-    Token_Account _0;
-} Token_Account_Body;
-
-typedef struct Token_State {
-    Token_State_Tag tag;
-    union {
-        Token_Mint_Body mint;
-        Token_Account_Body account;
-    };
-} Token_State;
+    bool is_initialized;
+    /**
+     * Signer public keys
+     */
+    Token_Pubkey signers[Token_MAX_SIGNERS];
+} Token_Multisig;

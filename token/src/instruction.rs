@@ -169,8 +169,8 @@ pub enum TokenInstruction {
     },
 }
 impl TokenInstruction {
-    /// Deserializes a byte buffer into an [TokenInstruction](enum.TokenInstruction.html).
-    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
+    /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
@@ -232,8 +232,8 @@ impl TokenInstruction {
         })
     }
 
-    /// Serializes an [TokenInstruction](enum.TokenInstruction.html) into a byte buffer.
-    pub fn serialize(self: &Self) -> Result<Vec<u8>, ProgramError> {
+    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte buffer.
+    pub fn pack(self: &Self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<TokenInstruction>()];
         match self {
             Self::InitializeMint { amount, decimals } => {
@@ -292,7 +292,7 @@ pub fn initialize_mint(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::InitializeMint { amount, decimals }.serialize()?;
+    let data = TokenInstruction::InitializeMint { amount, decimals }.pack()?;
 
     let mut accounts = vec![AccountMeta::new(*mint_pubkey, false)];
     if amount != 0 {
@@ -326,7 +326,7 @@ pub fn initialize_account(
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::InitializeAccount.serialize()?;
+    let data = TokenInstruction::InitializeAccount.pack()?;
 
     let accounts = vec![
         AccountMeta::new(*account_pubkey, false),
@@ -354,7 +354,7 @@ pub fn initialize_multisig(
     {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    let data = TokenInstruction::InitializeMultisig { m }.serialize()?;
+    let data = TokenInstruction::InitializeMultisig { m }.pack()?;
 
     let mut accounts = Vec::with_capacity(1 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*multisig_pubkey, false));
@@ -378,7 +378,7 @@ pub fn transfer(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Transfer { amount }.serialize()?;
+    let data = TokenInstruction::Transfer { amount }.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*source_pubkey, false));
@@ -407,7 +407,7 @@ pub fn approve(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Approve { amount }.serialize()?;
+    let data = TokenInstruction::Approve { amount }.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new_readonly(*source_pubkey, false));
@@ -434,7 +434,7 @@ pub fn revoke(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Revoke.serialize()?;
+    let data = TokenInstruction::Revoke.pack()?;
 
     let mut accounts = Vec::with_capacity(2 + signer_pubkeys.len());
     accounts.push(AccountMeta::new_readonly(*source_pubkey, false));
@@ -461,7 +461,7 @@ pub fn set_owner(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::SetOwner.serialize()?;
+    let data = TokenInstruction::SetOwner.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*owned_pubkey, false));
@@ -490,7 +490,7 @@ pub fn mint_to(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::MintTo { amount }.serialize()?;
+    let data = TokenInstruction::MintTo { amount }.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*mint_pubkey, false));
@@ -518,7 +518,7 @@ pub fn burn(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Burn { amount }.serialize()?;
+    let data = TokenInstruction::Burn { amount }.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));

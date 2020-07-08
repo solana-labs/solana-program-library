@@ -359,24 +359,18 @@ impl State {
     pub fn token_account_deserialize(
         info: &AccountInfo,
     ) -> Result<spl_token::state::Account, Error> {
-        if let Ok(spl_token::state::State::Account(account)) =
-            spl_token::state::State::deserialize(&info.data.borrow())
-        {
-            Ok(account)
-        } else {
-            Err(Error::ExpectedAccount)
-        }
+        Ok(
+            *spl_token::state::State::unpack(&mut info.data.borrow_mut())
+                .map_err(|_| Error::ExpectedAccount)?,
+        )
     }
 
-    /// Deserializes a spl_token `State`.
-    pub fn token_deserialize(info: &AccountInfo) -> Result<spl_token::state::Token, Error> {
-        if let Ok(spl_token::state::State::Mint(token)) =
-            spl_token::state::State::deserialize(&info.data.borrow())
-        {
-            Ok(token)
-        } else {
-            Err(Error::ExpectedToken)
-        }
+    /// Deserializes a spl_token `Mint`.
+    pub fn mint_deserialize(info: &AccountInfo) -> Result<spl_token::state::Mint, Error> {
+        Ok(
+            *spl_token::state::State::unpack(&mut info.data.borrow_mut())
+                .map_err(|_| Error::ExpectedToken)?,
+        )
     }
 
     /// Calculates the authority id by generating a program address.
@@ -470,7 +464,7 @@ impl State {
         }
         let token_a = Self::token_account_deserialize(token_a_info)?;
         let token_b = Self::token_account_deserialize(token_b_info)?;
-        let pool_mint = Self::token_deserialize(pool_info)?;
+        let pool_mint = Self::mint_deserialize(pool_info)?;
         if *authority_info.key != token_a.owner {
             return Err(Error::InvalidOwner.into());
         }
@@ -799,7 +793,7 @@ mod tests {
     };
     use spl_token::{
         instruction::{initialize_account, initialize_mint},
-        state::State as SplState,
+        state::{Account as SplAccount, Mint as SplMint, State as SplState},
     };
 
     const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
@@ -837,9 +831,9 @@ mod tests {
         amount: u64,
     ) -> ((Pubkey, Account), (Pubkey, Account)) {
         let token_key = pubkey_rand();
-        let mut token_account = Account::new(0, size_of::<SplState>(), &program_id);
+        let mut token_account = Account::new(0, size_of::<SplMint>(), &program_id);
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<SplState>(), &program_id);
+        let mut account_account = Account::new(0, size_of::<SplAccount>(), &program_id);
 
         // create pool and pool account
         do_process_instruction(

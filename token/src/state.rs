@@ -11,21 +11,26 @@ use solana_sdk::{
 };
 use std::mem::size_of;
 
-/// Represents a token type identified by its public key.  Accounts
-/// are associated with a specific token type and only accounts with
-/// matching types my inter-opt.
+/// Mint data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Token {
+pub struct Mint {
     /// Optional owner, used to mint new tokens.  The owner may only
     /// be provided during mint creation.  If no owner is present then the mint
     /// has a fixed supply and no further tokens may be minted.
     pub owner: COption<Pubkey>,
     /// Number of base 10 digits to the right of the decimal place.
     pub decimals: u8,
+    /// Is `true` if this structure has been initialized
+    pub is_initialized: bool,
+}
+impl IsInitialized for Mint {
+    fn is_initialized(&self) -> bool {
+        self.is_initialized
+    }
 }
 
-/// Account that holds tokens or may delegate tokens.
+/// Account data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Account {
@@ -38,11 +43,18 @@ pub struct Account {
     /// If `delegate` is `Some` then `delegated_amount` represents
     /// the amount authorized by the delegate
     pub delegate: COption<Pubkey>,
+    /// Is `true` if this structure has been initialized
+    pub is_initialized: bool,
     /// The amount delegated
     pub delegated_amount: u64,
 }
+impl IsInitialized for Account {
+    fn is_initialized(&self) -> bool {
+        self.is_initialized
+    }
+}
 
-/// Multisignature account data.
+/// Multisignature data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Multisig {
@@ -50,47 +62,19 @@ pub struct Multisig {
     pub m: u8,
     /// Number of valid signers
     pub n: u8,
+    /// Is `true` if this structure has been initialized
+    pub is_initialized: bool,
     /// Signer public keys
     pub signers: [Pubkey; MAX_SIGNERS],
 }
-impl Multisig {
-    /// Deserializes a byte buffer into a [Multisig](struct.State.html).
-    pub fn deserialize(input: &mut [u8]) -> Result<&mut Self, ProgramError> {
-        if input.len() < size_of::<Multisig>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        #[allow(clippy::cast_ptr_alignment)]
-        Ok(unsafe { &mut *(&mut input[0] as *mut u8 as *mut Multisig) })
-    }
-
-    /// Serializes [Multisig](struct.State.html) into a byte buffer.
-    pub fn serialize(self: &Self, output: &mut [u8]) -> ProgramResult {
-        if output.len() < size_of::<Multisig>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        #[allow(clippy::cast_ptr_alignment)]
-        let value = unsafe { &mut *(&mut output[0] as *mut u8 as *mut Multisig) };
-        *value = *self;
-        Ok(())
+impl IsInitialized for Multisig {
+    fn is_initialized(&self) -> bool {
+        self.is_initialized
     }
 }
 
-/// Program states.
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
-pub enum State {
-    /// Unallocated state, may be initialized into another state.
-    Unallocated,
-    /// A mint.
-    Mint(Token),
-    /// An account that holds tokens
-    Account(Account),
-}
-impl Default for State {
-    fn default() -> Self {
-        Self::Unallocated
-    }
-}
+/// Program state handler.
+pub enum State {}
 impl State {
     /// Processes an [InitializeMint](enum.TokenInstruction.html) instruction.
     pub fn process_initialize_mint(
@@ -101,23 +85,22 @@ impl State {
         let account_info_iter = &mut accounts.iter();
         let mint_info = next_account_info(account_info_iter)?;
 
-        if State::Unallocated != State::deserialize(&mint_info.data.borrow())? {
+        let mut mint_info_data = mint_info.data.borrow_mut();
+        let mut mint: &mut Mint = Self::unpack_unchecked(&mut mint_info_data)?;
+        if mint.is_initialized {
             return Err(TokenError::AlreadyInUse.into());
         }
 
         let owner = if amount != 0 {
             let dest_account_info = next_account_info(account_info_iter)?;
             let mut dest_account_data = dest_account_info.data.borrow_mut();
-            if let State::Account(mut dest_account) = State::deserialize(&dest_account_data)? {
-                if mint_info.key != &dest_account.mint {
-                    return Err(TokenError::MintMismatch.into());
-                }
+            let mut dest_account: &mut Account = Self::unpack(&mut dest_account_data)?;
 
-                dest_account.amount = amount;
-                State::Account(dest_account).serialize(&mut dest_account_data)?;
-            } else {
-                return Err(ProgramError::InvalidArgument);
+            if mint_info.key != &dest_account.mint {
+                return Err(TokenError::MintMismatch.into());
             }
+
+            dest_account.amount = amount;
 
             if let Ok(owner_info) = next_account_info(account_info_iter) {
                 COption::Some(*owner_info.key)
@@ -130,7 +113,11 @@ impl State {
             return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
         };
 
-        State::Mint(Token { decimals, owner }).serialize(&mut mint_info.data.borrow_mut())
+        mint.owner = owner;
+        mint.decimals = decimals;
+        mint.is_initialized = true;
+
+        Ok(())
     }
 
     /// Processes an [InitializeAccount](enum.TokenInstruction.html) instruction.
@@ -141,19 +128,19 @@ impl State {
         let owner_info = next_account_info(account_info_iter)?;
 
         let mut new_account_data = new_account_info.data.borrow_mut();
-        if State::Unallocated != State::deserialize(&new_account_data)? {
+        let mut account: &mut Account = Self::unpack_unchecked(&mut new_account_data)?;
+        if account.is_initialized {
             return Err(TokenError::AlreadyInUse.into());
         }
 
-        let account = Account {
-            mint: *mint_info.key,
-            owner: *owner_info.key,
-            amount: 0,
-            delegate: COption::None,
-            delegated_amount: 0,
-        };
+        account.mint = *mint_info.key;
+        account.owner = *owner_info.key;
+        account.amount = 0;
+        account.delegate = COption::None;
+        account.delegated_amount = 0;
+        account.is_initialized = true;
 
-        State::Account(account).serialize(&mut new_account_data)
+        Ok(())
     }
 
     /// Processes a [InitializeMultisig](enum.TokenInstruction.html) instruction.
@@ -161,9 +148,12 @@ impl State {
         let account_info_iter = &mut accounts.iter();
         let multisig_info = next_account_info(account_info_iter)?;
         let mut multisig_account_data = multisig_info.data.borrow_mut();
-        let mut multisig = Multisig::deserialize(&mut multisig_account_data)?;
-        let signer_infos = account_info_iter.as_slice();
+        let mut multisig: &mut Multisig = Self::unpack_unchecked(&mut multisig_account_data)?;
+        if multisig.is_initialized {
+            return Err(TokenError::AlreadyInUse.into());
+        }
 
+        let signer_infos = account_info_iter.as_slice();
         multisig.m = m;
         multisig.n = signer_infos.len() as u8;
         if !is_valid_signer_index(multisig.n as usize) {
@@ -175,6 +165,8 @@ impl State {
         for (i, signer_info) in signer_infos.iter().enumerate() {
             multisig.signers[i] = *signer_info.key;
         }
+        multisig.is_initialized = true;
+
         Ok(())
     }
 
@@ -190,50 +182,45 @@ impl State {
         let authority_info = next_account_info(account_info_iter)?;
 
         let mut source_data = source_account_info.data.borrow_mut();
+        let mut source_account: &mut Account = Self::unpack(&mut source_data)?;
         let mut dest_data = dest_account_info.data.borrow_mut();
-        if let (State::Account(mut source_account), State::Account(mut dest_account)) = (
-            State::deserialize(&source_data)?,
-            State::deserialize(&dest_data)?,
-        ) {
-            if source_account.amount < amount {
-                return Err(TokenError::InsufficientFunds.into());
-            }
-            if source_account.mint != dest_account.mint {
-                return Err(TokenError::MintMismatch.into());
-            }
+        let mut dest_account: &mut Account = Self::unpack(&mut dest_data)?;
 
-            match source_account.delegate {
-                COption::Some(ref delegate) if authority_info.key == delegate => {
-                    Self::validate_owner(
-                        program_id,
-                        delegate,
-                        authority_info,
-                        account_info_iter.as_slice(),
-                    )?;
-                    if source_account.delegated_amount < amount {
-                        return Err(TokenError::InsufficientFunds.into());
-                    }
-                    source_account.delegated_amount -= amount;
-                    if source_account.delegated_amount == 0 {
-                        source_account.delegate = COption::None;
-                    }
-                }
-                _ => Self::validate_owner(
+        if source_account.amount < amount {
+            return Err(TokenError::InsufficientFunds.into());
+        }
+        if source_account.mint != dest_account.mint {
+            return Err(TokenError::MintMismatch.into());
+        }
+
+        match source_account.delegate {
+            COption::Some(ref delegate) if authority_info.key == delegate => {
+                Self::validate_owner(
                     program_id,
-                    &source_account.owner,
+                    delegate,
                     authority_info,
                     account_info_iter.as_slice(),
-                )?,
-            };
+                )?;
+                if source_account.delegated_amount < amount {
+                    return Err(TokenError::InsufficientFunds.into());
+                }
+                source_account.delegated_amount -= amount;
+                if source_account.delegated_amount == 0 {
+                    source_account.delegate = COption::None;
+                }
+            }
+            _ => Self::validate_owner(
+                program_id,
+                &source_account.owner,
+                authority_info,
+                account_info_iter.as_slice(),
+            )?,
+        };
 
-            source_account.amount -= amount;
-            dest_account.amount += amount;
+        source_account.amount -= amount;
+        dest_account.amount += amount;
 
-            State::Account(source_account).serialize(&mut source_data)?;
-            State::Account(dest_account).serialize(&mut dest_data)
-        } else {
-            Err(ProgramError::InvalidArgument)
-        }
+        Ok(())
     }
 
     /// Processes an [Approve](enum.TokenInstruction.html) instruction.
@@ -246,23 +233,21 @@ impl State {
         let source_account_info = next_account_info(account_info_iter)?;
 
         let mut source_data = source_account_info.data.borrow_mut();
-        if let State::Account(mut source_account) = State::deserialize(&source_data)? {
-            let delegate_info = next_account_info(account_info_iter)?;
-            let owner_info = next_account_info(account_info_iter)?;
-            Self::validate_owner(
-                program_id,
-                &source_account.owner,
-                owner_info,
-                account_info_iter.as_slice(),
-            )?;
+        let mut source_account: &mut Account = Self::unpack(&mut source_data)?;
+        let delegate_info = next_account_info(account_info_iter)?;
+        let owner_info = next_account_info(account_info_iter)?;
 
-            source_account.delegate = COption::Some(*delegate_info.key);
-            source_account.delegated_amount = amount;
+        Self::validate_owner(
+            program_id,
+            &source_account.owner,
+            owner_info,
+            account_info_iter.as_slice(),
+        )?;
 
-            State::Account(source_account).serialize(&mut source_data)
-        } else {
-            Err(ProgramError::InvalidArgument)
-        }
+        source_account.delegate = COption::Some(*delegate_info.key);
+        source_account.delegated_amount = amount;
+
+        Ok(())
     }
 
     /// Processes an [Revoke](enum.TokenInstruction.html) instruction.
@@ -271,22 +256,20 @@ impl State {
         let source_account_info = next_account_info(account_info_iter)?;
 
         let mut source_data = source_account_info.data.borrow_mut();
-        if let State::Account(mut source_account) = State::deserialize(&source_data)? {
-            let owner_info = next_account_info(account_info_iter)?;
-            Self::validate_owner(
-                program_id,
-                &source_account.owner,
-                owner_info,
-                account_info_iter.as_slice(),
-            )?;
+        let mut source_account: &mut Account = Self::unpack(&mut source_data)?;
+        let owner_info = next_account_info(account_info_iter)?;
 
-            source_account.delegate = COption::None;
-            source_account.delegated_amount = 0;
+        Self::validate_owner(
+            program_id,
+            &source_account.owner,
+            owner_info,
+            account_info_iter.as_slice(),
+        )?;
 
-            State::Account(source_account).serialize(&mut source_data)
-        } else {
-            Err(ProgramError::InvalidArgument)
-        }
+        source_account.delegate = COption::None;
+        source_account.delegated_amount = 0;
+
+        Ok(())
     }
 
     /// Processes a [SetOwner](enum.TokenInstruction.html) instruction.
@@ -296,36 +279,39 @@ impl State {
         let new_owner_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        let mut account_data = account_info.data.borrow_mut();
-        match State::deserialize(&account_data)? {
-            State::Account(mut account) => {
-                Self::validate_owner(
-                    program_id,
-                    &account.owner,
-                    authority_info,
-                    account_info_iter.as_slice(),
-                )?;
+        if account_info.data_len() == size_of::<Account>() {
+            let mut account_data = account_info.data.borrow_mut();
+            let mut account: &mut Account = Self::unpack(&mut account_data)?;
 
-                account.owner = *new_owner_info.key;
-                State::Account(account).serialize(&mut account_data)
-            }
-            State::Mint(mut token) => {
-                match token.owner {
-                    COption::Some(ref owner) => {
-                        Self::validate_owner(
-                            program_id,
-                            owner,
-                            authority_info,
-                            account_info_iter.as_slice(),
-                        )?;
-                    }
-                    COption::None => return Err(TokenError::FixedSupply.into()),
+            Self::validate_owner(
+                program_id,
+                &account.owner,
+                authority_info,
+                account_info_iter.as_slice(),
+            )?;
+
+            account.owner = *new_owner_info.key;
+        } else if account_info.data_len() == size_of::<Mint>() {
+            let mut account_data = account_info.data.borrow_mut();
+            let mut mint: &mut Mint = Self::unpack(&mut account_data)?;
+
+            match mint.owner {
+                COption::Some(ref owner) => {
+                    Self::validate_owner(
+                        program_id,
+                        owner,
+                        authority_info,
+                        account_info_iter.as_slice(),
+                    )?;
                 }
-                token.owner = COption::Some(*new_owner_info.key);
-                State::Mint(token).serialize(&mut account_data)
+                COption::None => return Err(TokenError::FixedSupply.into()),
             }
-            _ => Err(ProgramError::InvalidArgument),
+            mint.owner = COption::Some(*new_owner_info.key);
+        } else {
+            return Err(ProgramError::InvalidArgument);
         }
+
+        Ok(())
     }
 
     /// Processes a [MintTo](enum.TokenInstruction.html) instruction.
@@ -339,35 +325,28 @@ impl State {
         let dest_account_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
 
-        if let State::Mint(token) = State::deserialize(&mint_info.data.borrow())? {
-            match token.owner {
-                COption::Some(owner) => {
-                    Self::validate_owner(
-                        program_id,
-                        &owner,
-                        owner_info,
-                        account_info_iter.as_slice(),
-                    )?;
-                }
-                COption::None => {
-                    return Err(TokenError::FixedSupply.into());
-                }
-            }
+        let mut mint_info_data = mint_info.data.borrow_mut();
+        let mint: &mut Mint = Self::unpack(&mut mint_info_data)?;
 
-            let mut dest_account_data = dest_account_info.data.borrow_mut();
-            if let State::Account(mut dest_account) = State::deserialize(&dest_account_data)? {
-                if mint_info.key != &dest_account.mint {
-                    return Err(TokenError::MintMismatch.into());
-                }
-
-                dest_account.amount += amount;
-                State::Account(dest_account).serialize(&mut dest_account_data)
-            } else {
-                Err(ProgramError::InvalidArgument)
+        match mint.owner {
+            COption::Some(owner) => {
+                Self::validate_owner(program_id, &owner, owner_info, account_info_iter.as_slice())?;
             }
-        } else {
-            Err(ProgramError::InvalidArgument)
+            COption::None => {
+                return Err(TokenError::FixedSupply.into());
+            }
         }
+
+        let mut dest_account_data = dest_account_info.data.borrow_mut();
+        let mut dest_account: &mut Account = Self::unpack(&mut dest_account_data)?;
+
+        if mint_info.key != &dest_account.mint {
+            return Err(TokenError::MintMismatch.into());
+        }
+
+        dest_account.amount += amount;
+
+        Ok(())
     }
 
     /// Processes a [Burn](enum.TokenInstruction.html) instruction.
@@ -380,15 +359,8 @@ impl State {
         let source_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        let (mut source_account, mut source_data) = {
-            let source_data = source_account_info.data.borrow_mut();
-            match State::deserialize(&source_data)? {
-                State::Account(source_account) => (source_account, source_data),
-                _ => {
-                    return Err(ProgramError::InvalidArgument);
-                }
-            }
-        };
+        let mut source_data = source_account_info.data.borrow_mut();
+        let source_account: &mut Account = Self::unpack(&mut source_data)?;
 
         if source_account.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
@@ -421,12 +393,12 @@ impl State {
 
         source_account.amount -= amount;
 
-        State::Account(source_account).serialize(&mut source_data)
+        Ok(())
     }
 
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
-        let instruction = TokenInstruction::deserialize(input)?;
+        let instruction = TokenInstruction::unpack(input)?;
 
         match instruction {
             TokenInstruction::InitializeMint { amount, decimals } => {
@@ -482,7 +454,7 @@ impl State {
             && owner_account_info.data_len() == std::mem::size_of::<Multisig>()
         {
             let mut owner_data = owner_account_info.data.borrow_mut();
-            let multisig = Multisig::deserialize(&mut owner_data).unwrap();
+            let multisig: &mut Multisig = Self::unpack(&mut owner_data)?;
             let mut num_signers = 0;
             for signer in signers.iter() {
                 if multisig.signers[0..multisig.n as usize].contains(signer.key) {
@@ -501,61 +473,28 @@ impl State {
         Ok(())
     }
 
-    /// Deserializes a byte buffer into a Token Program [State](struct.State.html).
-    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < size_of::<u8>() {
+    /// Unpacks a token state from a bytes buffer while assuring that the state is initialized.
+    pub fn unpack<T: IsInitialized>(input: &mut [u8]) -> Result<&mut T, ProgramError> {
+        let mut_ref: &mut T = Self::unpack_unchecked(input)?;
+        if !mut_ref.is_initialized() {
+            return Err(TokenError::UninitializedState.into());
+        }
+        Ok(mut_ref)
+    }
+    /// Unpacks a token state from a bytes buffer without checking that the state is initialized.
+    pub fn unpack_unchecked<T: IsInitialized>(input: &mut [u8]) -> Result<&mut T, ProgramError> {
+        if input.len() != size_of::<T>() {
             return Err(ProgramError::InvalidAccountData);
         }
-        Ok(match input[0] {
-            0 => Self::Unallocated,
-            1 => {
-                if input.len() < size_of::<u8>() + size_of::<Token>() {
-                    return Err(ProgramError::InvalidAccountData);
-                }
-                #[allow(clippy::cast_ptr_alignment)]
-                let token: &Token = unsafe { &*(&input[1] as *const u8 as *const Token) };
-                Self::Mint(*token)
-            }
-            2 => {
-                if input.len() < size_of::<u8>() + size_of::<Account>() {
-                    return Err(ProgramError::InvalidAccountData);
-                }
-                #[allow(clippy::cast_ptr_alignment)]
-                let account: &Account = unsafe { &*(&input[1] as *const u8 as *const Account) };
-                Self::Account(*account)
-            }
-            _ => return Err(ProgramError::InvalidAccountData),
-        })
+        #[allow(clippy::cast_ptr_alignment)]
+        Ok(unsafe { &mut *(&mut input[0] as *mut u8 as *mut T) })
     }
+}
 
-    /// Serializes Token Program [State](struct.State.html) into a byte buffer.
-    pub fn serialize(self: &Self, output: &mut [u8]) -> ProgramResult {
-        if output.len() < size_of::<u8>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        match self {
-            Self::Unallocated => output[0] = 0,
-            Self::Mint(token) => {
-                if output.len() < size_of::<u8>() + size_of::<Token>() {
-                    return Err(ProgramError::InvalidAccountData);
-                }
-                output[0] = 1;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Token) };
-                *value = *token;
-            }
-            Self::Account(account) => {
-                if output.len() < size_of::<u8>() + size_of::<Account>() {
-                    return Err(ProgramError::InvalidAccountData);
-                }
-                output[0] = 2;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Account) };
-                *value = *account;
-            }
-        }
-        Ok(())
-    }
+/// Check is a token state is initialized
+pub trait IsInitialized {
+    /// Is initialized
+    fn is_initialized(&self) -> bool;
 }
 
 // Pulls in the stubs required for `info!()`.
@@ -570,8 +509,8 @@ mod tests {
         set_owner, transfer,
     };
     use solana_sdk::{
-        account::Account, account_info::create_is_signer_account_infos, clock::Epoch,
-        instruction::Instruction,
+        account::Account as SolanaAccount, account_info::create_is_signer_account_infos,
+        clock::Epoch, instruction::Instruction,
     };
 
     fn pubkey_rand() -> Pubkey {
@@ -580,7 +519,7 @@ mod tests {
 
     fn do_process_instruction(
         instruction: Instruction,
-        accounts: Vec<&mut Account>,
+        accounts: Vec<&mut SolanaAccount>,
     ) -> ProgramResult {
         let mut meta = instruction
             .accounts
@@ -595,31 +534,33 @@ mod tests {
 
     #[test]
     fn test_unique_account_sizes() {
-        assert_ne!(size_of::<State>(), 0);
+        assert_ne!(size_of::<Mint>(), 0);
+        assert_ne!(size_of::<Mint>(), size_of::<Account>());
+        assert_ne!(size_of::<Mint>(), size_of::<Multisig>());
+        assert_ne!(size_of::<Account>(), 0);
+        assert_ne!(size_of::<Account>(), size_of::<Multisig>());
         assert_ne!(size_of::<Multisig>(), 0);
-        assert_ne!(size_of::<State>(), size_of::<Multisig>());
     }
 
     #[test]
     fn test_initialize_mint() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let account2_key = pubkey_rand();
-        let mut account2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account2_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let owner_key = pubkey_rand();
-        let mut owner_account = Account::default();
+        let mut owner_account = SolanaAccount::default();
         let mint_key = pubkey_rand();
-        let mut mint_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let mint2_key = pubkey_rand();
-        let mut mint2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint2_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
 
         // account not created
         assert_eq!(
-            Err(ProgramError::InvalidArgument),
+            Err(TokenError::UninitializedState.into()),
             do_process_instruction(
-                initialize_mint(&program_id, &mint_key, Some(&account_key), None, 1000, 2,)
-                    .unwrap(),
+                initialize_mint(&program_id, &mint_key, Some(&account_key), None, 1000, 2).unwrap(),
                 vec![&mut mint_account, &mut account_account]
             )
         );
@@ -631,7 +572,7 @@ mod tests {
         )
         .unwrap();
 
-        // create new token
+        // create new mint
         do_process_instruction(
             initialize_mint(&program_id, &mint_key, Some(&account_key), None, 1000, 2).unwrap(),
             vec![&mut mint_account, &mut account_account],
@@ -645,11 +586,11 @@ mod tests {
         )
         .unwrap();
 
-        // token mismatch
+        // mismatch account
         assert_eq!(
             Err(TokenError::MintMismatch.into()),
             do_process_instruction(
-                initialize_mint(&program_id, &mint2_key, Some(&account2_key), None, 1000, 2,)
+                initialize_mint(&program_id, &mint2_key, Some(&account2_key), None, 1000, 2)
                     .unwrap(),
                 vec![&mut mint2_account, &mut account2_account]
             )
@@ -659,8 +600,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::AlreadyInUse.into()),
             do_process_instruction(
-                initialize_mint(&program_id, &mint_key, Some(&account_key), None, 1000, 2,)
-                    .unwrap(),
+                initialize_mint(&program_id, &mint_key, Some(&account_key), None, 1000, 2).unwrap(),
                 vec![&mut mint_account, &mut account_account]
             )
         );
@@ -670,11 +610,11 @@ mod tests {
     fn test_initialize_mint_account() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let owner_key = pubkey_rand();
-        let mut owner_account = Account::default();
+        let mut owner_account = SolanaAccount::default();
         let mint_key = pubkey_rand();
-        let mut mint_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
 
         // create account
         do_process_instruction(
@@ -697,23 +637,23 @@ mod tests {
     fn test_transfer() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let account2_key = pubkey_rand();
-        let mut account2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account2_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let account3_key = pubkey_rand();
-        let mut account3_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account3_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let delegate_key = pubkey_rand();
-        let mut delegate_account = Account::default();
+        let mut delegate_account = SolanaAccount::default();
         let mismatch_key = pubkey_rand();
-        let mut mismatch_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mismatch_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let owner_key = pubkey_rand();
-        let mut owner_account = Account::default();
+        let mut owner_account = SolanaAccount::default();
         let owner2_key = pubkey_rand();
-        let mut owner2_account = Account::default();
+        let mut owner2_account = SolanaAccount::default();
         let mint_key = pubkey_rand();
-        let mut mint_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let mint2_key = pubkey_rand();
-        let mut mint2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint2_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
 
         // create account
         do_process_instruction(
@@ -747,7 +687,7 @@ mod tests {
         )
         .unwrap();
 
-        // create new token
+        // create new mint
         do_process_instruction(
             initialize_mint(&program_id, &mint_key, Some(&account_key), None, 1000, 2).unwrap(),
             vec![&mut mint_account, &mut account_account],
@@ -777,7 +717,7 @@ mod tests {
             )
         );
 
-        // mismatch token
+        // mismatch mint
         assert_eq!(
             Err(TokenError::MintMismatch.into()),
             do_process_instruction(
@@ -1025,11 +965,11 @@ mod tests {
     fn test_mintable_token_with_zero_supply() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let owner_key = pubkey_rand();
-        let mut owner_account = Account::default();
+        let mut owner_account = SolanaAccount::default();
         let mint_key = pubkey_rand();
-        let mut mint_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
 
         // create account
         do_process_instruction(
@@ -1063,17 +1003,15 @@ mod tests {
             vec![&mut mint_account, &mut account_account],
         )
         .unwrap();
-        if let State::Mint(token) = State::deserialize(&mint_account.data).unwrap() {
-            assert_eq!(
-                token,
-                Token {
-                    decimals,
-                    owner: COption::Some(owner_key)
-                }
-            );
-        } else {
-            panic!("not an account");
-        }
+        let mint: &mut Mint = State::unpack(&mut mint_account.data).unwrap();
+        assert_eq!(
+            *mint,
+            Mint {
+                owner: COption::Some(owner_key),
+                decimals,
+                is_initialized: true,
+            }
+        );
 
         // mint to
         do_process_instruction(
@@ -1082,32 +1020,26 @@ mod tests {
         )
         .unwrap();
 
-        match State::deserialize(&mint_account.data).unwrap() {
-            State::Mint(_) => (),
-            _ => panic!("not a mint"),
-        }
-        if let State::Account(dest_account) = State::deserialize(&account_account.data).unwrap() {
-            assert_eq!(dest_account.amount, 42);
-        } else {
-            panic!("not an account");
-        }
+        let _: &mut Mint = State::unpack(&mut mint_account.data).unwrap();
+        let dest_account: &mut Account = State::unpack(&mut account_account.data).unwrap();
+        assert_eq!(dest_account.amount, 42);
     }
 
     #[test]
     fn test_approve() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let account2_key = pubkey_rand();
-        let mut account2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account2_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let delegate_key = pubkey_rand();
-        let mut delegate_account = Account::default();
+        let mut delegate_account = SolanaAccount::default();
         let owner_key = pubkey_rand();
-        let mut owner_account = Account::default();
+        let mut owner_account = SolanaAccount::default();
         let owner2_key = pubkey_rand();
-        let mut owner2_account = Account::default();
+        let mut owner2_account = SolanaAccount::default();
         let mint_key = pubkey_rand();
-        let mut mint_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
 
         // create account
         do_process_instruction(
@@ -1123,7 +1055,7 @@ mod tests {
         )
         .unwrap();
 
-        // create new token
+        // create new mint
         do_process_instruction(
             initialize_mint(&program_id, &mint_key, Some(&account_key), None, 1000, 2).unwrap(),
             vec![&mut mint_account, &mut account_account],
@@ -1205,23 +1137,23 @@ mod tests {
     fn test_set_owner() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let account2_key = pubkey_rand();
-        let mut account2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account2_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let owner_key = pubkey_rand();
-        let mut owner_account = Account::default();
+        let mut owner_account = SolanaAccount::default();
         let owner2_key = pubkey_rand();
-        let mut owner2_account = Account::default();
+        let mut owner2_account = SolanaAccount::default();
         let owner3_key = pubkey_rand();
-        let mut owner3_account = Account::default();
+        let mut owner3_account = SolanaAccount::default();
         let mint_key = pubkey_rand();
-        let mut mint_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let mint2_key = pubkey_rand();
-        let mut mint2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint2_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
 
         // invalid account
         assert_eq!(
-            Err(ProgramError::InvalidArgument),
+            Err(TokenError::UninitializedState.into()),
             do_process_instruction(
                 set_owner(&program_id, &account_key, &owner2_key, &owner_key, &[]).unwrap(),
                 vec![
@@ -1239,7 +1171,7 @@ mod tests {
         )
         .unwrap();
 
-        // create token account
+        // create another account
         do_process_instruction(
             initialize_account(&program_id, &account2_key, &mint2_key, &owner_key).unwrap(),
             vec![
@@ -1290,7 +1222,7 @@ mod tests {
         )
         .unwrap();
 
-        // create new token with owner
+        // create new mint with owner
         do_process_instruction(
             initialize_mint(
                 &program_id,
@@ -1333,7 +1265,7 @@ mod tests {
         )
         .unwrap();
 
-        // create new token without owner
+        // create new mint without owner
         do_process_instruction(
             initialize_mint(&program_id, &mint2_key, Some(&account2_key), None, 1000, 2).unwrap(),
             vec![&mut mint2_account, &mut account2_account],
@@ -1354,46 +1286,46 @@ mod tests {
     fn test_mint_to() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let account2_key = pubkey_rand();
-        let mut account2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account2_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let account3_key = pubkey_rand();
-        let mut account3_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account3_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let mismatch_key = pubkey_rand();
-        let mut mismatch_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mismatch_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let owner_key = pubkey_rand();
-        let mut owner_account = Account::default();
+        let mut owner_account = SolanaAccount::default();
         let owner2_key = pubkey_rand();
-        let mut owner2_account = Account::default();
+        let mut owner2_account = SolanaAccount::default();
         let mint_key = pubkey_rand();
-        let mut mint_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let mint2_key = pubkey_rand();
-        let mut mint2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint2_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let uninitialized_key = pubkey_rand();
-        let mut uninitialized_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut uninitialized_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
 
-        // create token account
+        // create account
         do_process_instruction(
             initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
 
-        // create another token account
+        // create another account
         do_process_instruction(
             initialize_account(&program_id, &account2_key, &mint_key, &owner_key).unwrap(),
             vec![&mut account2_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
 
-        // create another token account
+        // create another account
         do_process_instruction(
             initialize_account(&program_id, &account3_key, &mint_key, &owner_key).unwrap(),
             vec![&mut account3_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
 
-        // create mismatch token account
+        // create mismatch account
         do_process_instruction(
             initialize_account(&program_id, &mismatch_key, &mint2_key, &owner_key).unwrap(),
             vec![
@@ -1404,7 +1336,7 @@ mod tests {
         )
         .unwrap();
 
-        // create new token with owner
+        // create new mint with owner
         do_process_instruction(
             initialize_mint(
                 &program_id,
@@ -1426,15 +1358,9 @@ mod tests {
         )
         .unwrap();
 
-        match State::deserialize(&mint_account.data).unwrap() {
-            State::Mint(_) => (),
-            _ => panic!("not a mint"),
-        }
-        if let State::Account(dest_account) = State::deserialize(&account2_account.data).unwrap() {
-            assert_eq!(dest_account.amount, 42);
-        } else {
-            panic!("not an account");
-        }
+        let _: &mut Mint = State::unpack(&mut mint_account.data).unwrap();
+        let dest_account: &mut Account = State::unpack(&mut account2_account.data).unwrap();
+        assert_eq!(dest_account.amount, 42);
 
         // missing signer
         let mut instruction =
@@ -1448,12 +1374,12 @@ mod tests {
             )
         );
 
-        // mismatch token
+        // mismatch account
         assert_eq!(
             Err(TokenError::MintMismatch.into()),
             do_process_instruction(
                 mint_to(&program_id, &mint_key, &mismatch_key, &owner_key, &[], 42).unwrap(),
-                vec![&mut mint_account, &mut mismatch_account, &mut owner_account,],
+                vec![&mut mint_account, &mut mismatch_account, &mut owner_account],
             )
         );
 
@@ -1472,7 +1398,7 @@ mod tests {
 
         // uninitialized destination account
         assert_eq!(
-            Err(ProgramError::InvalidArgument),
+            Err(TokenError::UninitializedState.into()),
             do_process_instruction(
                 mint_to(
                     &program_id,
@@ -1496,46 +1422,46 @@ mod tests {
     fn test_burn() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let account2_key = pubkey_rand();
-        let mut account2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account2_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let account3_key = pubkey_rand();
-        let mut account3_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account3_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let delegate_key = pubkey_rand();
-        let mut delegate_account = Account::default();
+        let mut delegate_account = SolanaAccount::default();
         let mismatch_key = pubkey_rand();
-        let mut mismatch_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mismatch_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let owner_key = pubkey_rand();
-        let mut owner_account = Account::default();
+        let mut owner_account = SolanaAccount::default();
         let owner2_key = pubkey_rand();
-        let mut owner2_account = Account::default();
+        let mut owner2_account = SolanaAccount::default();
         let mint_key = pubkey_rand();
-        let mut mint_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let mint2_key = pubkey_rand();
-        let mut mint2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint2_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
 
-        // create token account
+        // create account
         do_process_instruction(
             initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
 
-        // create another token account
+        // create another account
         do_process_instruction(
             initialize_account(&program_id, &account2_key, &mint_key, &owner_key).unwrap(),
             vec![&mut account2_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
 
-        // create another token account
+        // create another account
         do_process_instruction(
             initialize_account(&program_id, &account3_key, &mint_key, &owner_key).unwrap(),
             vec![&mut account3_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
 
-        // create mismatch token account
+        // create mismatch account
         do_process_instruction(
             initialize_account(&program_id, &mismatch_key, &mint2_key, &owner_key).unwrap(),
             vec![
@@ -1546,7 +1472,7 @@ mod tests {
         )
         .unwrap();
 
-        // create new token
+        // create new mint
         do_process_instruction(
             initialize_mint(&program_id, &mint_key, Some(&account_key), None, 1000, 2).unwrap(),
             vec![&mut mint_account, &mut account_account],
@@ -1580,15 +1506,9 @@ mod tests {
         )
         .unwrap();
 
-        match State::deserialize(&mint_account.data).unwrap() {
-            State::Mint(_) => (),
-            _ => panic!("not a mint"),
-        }
-        if let State::Account(account) = State::deserialize(&account_account.data).unwrap() {
-            assert_eq!(account.amount, 1000 - 42);
-        } else {
-            panic!("not an account");
-        }
+        let _: &mut Mint = State::unpack(&mut mint_account.data).unwrap();
+        let account: &mut Account = State::unpack(&mut account_account.data).unwrap();
+        assert_eq!(account.amount, 1000 - 42);
 
         // insufficient funds
         assert_eq!(
@@ -1634,22 +1554,17 @@ mod tests {
         )
         .unwrap();
 
-        match State::deserialize(&mint_account.data).unwrap() {
-            State::Mint(_) => (),
-            _ => panic!("not a mint"),
-        }
-        if let State::Account(account) = State::deserialize(&account_account.data).unwrap() {
-            assert_eq!(account.amount, 1000 - 42 - 84);
-        } else {
-            panic!("not an account");
-        }
+        // match
+        let _: &mut Mint = State::unpack(&mut mint_account.data).unwrap();
+        let account: &mut Account = State::unpack(&mut account_account.data).unwrap();
+        assert_eq!(account.amount, 1000 - 42 - 84);
 
         // insufficient funds approved via delegate
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 burn(&program_id, &account_key, &delegate_key, &[], 100).unwrap(),
-                vec![&mut account_account, &mut delegate_account,],
+                vec![&mut account_account, &mut delegate_account],
             )
         );
     }
@@ -1658,20 +1573,21 @@ mod tests {
     fn test_multisig() {
         let program_id = pubkey_rand();
         let mint_key = pubkey_rand();
-        let mut mint_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let account_key = pubkey_rand();
-        let mut account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let account2_key = pubkey_rand();
-        let mut account2_account = Account::new(0, size_of::<State>(), &program_id);
+        let mut account2_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         let owner_key = pubkey_rand();
-        let mut owner_account = Account::default();
+        let mut owner_account = SolanaAccount::default();
         let multisig_key = pubkey_rand();
-        let mut multisig_account = Account::new(0, size_of::<Multisig>(), &program_id);
+        let mut multisig_account = SolanaAccount::new(0, size_of::<Multisig>(), &program_id);
         let multisig_delegate_key = pubkey_rand();
-        let mut multisig_delegate_account = Account::new(0, size_of::<Multisig>(), &program_id);
+        let mut multisig_delegate_account =
+            SolanaAccount::new(0, size_of::<Multisig>(), &program_id);
         let signer_keys = vec![pubkey_rand(); MAX_SIGNERS];
         let signer_key_refs: Vec<&Pubkey> = signer_keys.iter().map(|key| key).collect();
-        let mut signer_accounts = vec![Account::new(0, 0, &program_id); MAX_SIGNERS];
+        let mut signer_accounts = vec![SolanaAccount::new(0, 0, &program_id); MAX_SIGNERS];
 
         // single signer
         let account_info_iter = &mut signer_accounts.iter_mut();
@@ -1711,14 +1627,14 @@ mod tests {
         )
         .unwrap();
 
-        // create token account with multisig owner
+        // create account with multisig owner
         do_process_instruction(
             initialize_account(&program_id, &account_key, &mint_key, &multisig_key).unwrap(),
             vec![&mut account, &mut mint_account, &mut multisig_account],
         )
         .unwrap();
 
-        // create another token account with multisig owner
+        // create another account with multisig owner
         do_process_instruction(
             initialize_account(
                 &program_id,
@@ -1735,7 +1651,7 @@ mod tests {
         )
         .unwrap();
 
-        // create new token with multisig owner
+        // create new m int with multisig owner
         do_process_instruction(
             initialize_mint(
                 &program_id,
@@ -1961,10 +1877,11 @@ mod tests {
         }
         let mut lamports = 0;
         let mut data = vec![0; size_of::<Multisig>()];
-        let mut multisig = Multisig::deserialize(&mut data).unwrap();
+        let mut multisig: &mut Multisig = State::unpack_unchecked(&mut data).unwrap();
         multisig.m = MAX_SIGNERS as u8;
         multisig.n = MAX_SIGNERS as u8;
         multisig.signers = signer_keys.clone();
+        multisig.is_initialized = true;
         let owner_account_info = AccountInfo::new(
             &owner_key,
             false,
@@ -1982,7 +1899,7 @@ mod tests {
         // 1 of 11
         {
             let mut data_ref_mut = owner_account_info.data.borrow_mut();
-            let mut multisig = Multisig::deserialize(&mut data_ref_mut).unwrap();
+            let mut multisig: &mut Multisig = State::unpack(&mut data_ref_mut).unwrap();
             multisig.m = 1;
         }
         State::validate_owner(&program_id, &owner_key, &owner_account_info, &signers).unwrap();
@@ -1990,7 +1907,7 @@ mod tests {
         // 2:1
         {
             let mut data_ref_mut = owner_account_info.data.borrow_mut();
-            let mut multisig = Multisig::deserialize(&mut data_ref_mut).unwrap();
+            let mut multisig: &mut Multisig = State::unpack(&mut data_ref_mut).unwrap();
             multisig.m = 2;
             multisig.n = 1;
         }
@@ -2002,7 +1919,7 @@ mod tests {
         // 0:11
         {
             let mut data_ref_mut = owner_account_info.data.borrow_mut();
-            let mut multisig = Multisig::deserialize(&mut data_ref_mut).unwrap();
+            let mut multisig: &mut Multisig = State::unpack(&mut data_ref_mut).unwrap();
             multisig.m = 0;
             multisig.n = 11;
         }
@@ -2011,7 +1928,7 @@ mod tests {
         // 2:11 but 0 provided
         {
             let mut data_ref_mut = owner_account_info.data.borrow_mut();
-            let mut multisig = Multisig::deserialize(&mut data_ref_mut).unwrap();
+            let mut multisig: &mut Multisig = State::unpack(&mut data_ref_mut).unwrap();
             multisig.m = 2;
             multisig.n = 11;
         }
@@ -2022,7 +1939,7 @@ mod tests {
         // 2:11 but 1 provided
         {
             let mut data_ref_mut = owner_account_info.data.borrow_mut();
-            let mut multisig = Multisig::deserialize(&mut data_ref_mut).unwrap();
+            let mut multisig: &mut Multisig = State::unpack(&mut data_ref_mut).unwrap();
             multisig.m = 2;
             multisig.n = 11;
         }
@@ -2034,7 +1951,7 @@ mod tests {
         // 2:11, 2 from middle provided
         {
             let mut data_ref_mut = owner_account_info.data.borrow_mut();
-            let mut multisig = Multisig::deserialize(&mut data_ref_mut).unwrap();
+            let mut multisig: &mut Multisig = State::unpack(&mut data_ref_mut).unwrap();
             multisig.m = 2;
             multisig.n = 11;
         }
@@ -2044,7 +1961,7 @@ mod tests {
         // 11:11, one is not a signer
         {
             let mut data_ref_mut = owner_account_info.data.borrow_mut();
-            let mut multisig = Multisig::deserialize(&mut data_ref_mut).unwrap();
+            let mut multisig: &mut Multisig = State::unpack(&mut data_ref_mut).unwrap();
             multisig.m = 2;
             multisig.n = 11;
         }
