@@ -111,12 +111,12 @@ typedef enum Token_TokenInstruction_Tag {
      *
      *   * Single owner
      *   0. `[writable]` The source account.
-     *   2. `[signer]` The source account owner.
+     *   1. `[signer]` The source account owner.
      *
      *   * Multisignature owner
      *   0. `[writable]` The source account.
-     *   2. '[]' The source account's multisignature owner.
-     *   3. ..3+M '[signer]' M signer accounts
+     *   1. '[]' The source account's multisignature owner.
+     *   2. ..2+M '[signer]' M signer accounts
      */
     Revoke,
     /**
@@ -160,12 +160,12 @@ typedef enum Token_TokenInstruction_Tag {
      *
      *   * Single owner/delegate
      *   0. `[writable]` The account to burn from.
-     *   2. `[signer]` The account's owner/delegate.
+     *   1. `[signer]` The account's owner/delegate.
      *
      *   * Multisignature owner/delegate
      *   0. `[writable]` The account to burn from.
-     *   2. `[]` The account's multisignature owner/delegate
-     *   3. ..3+M '[signer]' M signer accounts.
+     *   1. `[]` The account's multisignature owner/delegate
+     *   2. ..2+M '[signer]' M signer accounts.
      */
     Burn,
 } Token_TokenInstruction_Tag;
