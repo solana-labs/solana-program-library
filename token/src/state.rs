@@ -337,11 +337,9 @@ impl State {
         let mint_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
-        println!("{}:{}", line!(), file!());
 
         let mut dest_account_data = dest_account_info.data.borrow_mut();
-        let mut dest_account: &mut Account = Self::unpack_unchecked(&mut dest_account_data)?;
-        println!("{}:{}", line!(), file!());
+        let mut dest_account: &mut Account = Self::unpack(&mut dest_account_data)?;
 
         if dest_account.is_native {
             return Err(TokenError::NativeNotSupported.into());
@@ -349,11 +347,9 @@ impl State {
         if mint_info.key != &dest_account.mint {
             return Err(TokenError::MintMismatch.into());
         }
-        println!("{}:{}", line!(), file!());
 
         let mut mint_info_data = mint_info.data.borrow_mut();
         let mint: &mut Mint = Self::unpack(&mut mint_info_data)?;
-        println!("{}:{}", line!(), file!());
 
         match mint.owner {
             COption::Some(owner) => {
@@ -2247,7 +2243,5 @@ mod tests {
         assert_eq!(account_account.lamports, 0);
         assert_eq!(account.amount, 0);
         assert_eq!(account3_account.lamports, 4);
-
-        println!("pubkey {:?}", crate::native_mint::id());
     }
 }
