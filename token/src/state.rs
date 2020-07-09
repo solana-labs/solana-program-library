@@ -415,8 +415,8 @@ impl State {
         Ok(())
     }
 
-    /// Processes a [BurnAccount](enum.TokenInstruction.html) instruction.
-    pub fn process_burn_account(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    /// Processes a [CloseAccount](enum.TokenInstruction.html) instruction.
+    pub fn process_close_account(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
@@ -424,6 +424,10 @@ impl State {
 
         let mut source_data = source_account_info.data.borrow_mut();
         let source_account: &mut Account = Self::unpack(&mut source_data)?;
+
+        if !source_account.is_native && source_account.amount != 0 {
+            return Err(TokenError::NonNativeHasBalance.into());
+        }
 
         Self::validate_owner(
             program_id,
@@ -435,7 +439,6 @@ impl State {
         **dest_account_info.lamports.borrow_mut() += source_account_info.lamports();
         **source_account_info.lamports.borrow_mut() = 0;
         source_account.amount = 0;
-        source_account.is_initialized = false;
 
         Ok(())
     }
@@ -481,9 +484,9 @@ impl State {
                 info!("Instruction: Burn");
                 Self::process_burn(program_id, accounts, amount)
             }
-            TokenInstruction::BurnAccount => {
-                info!("Instruction: BurnAccount");
-                Self::process_burn_account(program_id, accounts)
+            TokenInstruction::CloseAccount => {
+                info!("Instruction: CloseAccount");
+                Self::process_close_account(program_id, accounts)
             }
         }
     }
@@ -553,7 +556,7 @@ solana_sdk_bpf_test::stubs!();
 mod tests {
     use super::*;
     use crate::instruction::{
-        approve, burn, burn_account, initialize_account, initialize_mint, initialize_multisig,
+        approve, burn, close_account, initialize_account, initialize_mint, initialize_multisig,
         mint_to, revoke, set_owner, transfer,
     };
     use solana_sdk::{
@@ -2022,7 +2025,7 @@ mod tests {
     }
 
     #[test]
-    fn test_burn_account() {
+    fn test_close_account() {
         let program_id = pubkey_rand();
         let mint_key = pubkey_rand();
         let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
@@ -2041,7 +2044,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::UninitializedState.into()),
             do_process_instruction(
-                burn_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
+                close_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
                 vec![
                     &mut account_account,
                     &mut account3_account,
@@ -2061,7 +2064,6 @@ mod tests {
             vec![&mut mint_account, &mut account_account, &mut owner_account],
         )
         .unwrap();
-
         let account: &mut Account = State::unpack(&mut account_account.data).unwrap();
         assert_eq!(account.amount, 42);
 
@@ -2081,11 +2083,31 @@ mod tests {
         assert!(account.is_native);
         assert_eq!(account.amount, 2);
 
+        // close account with balance
+        assert_eq!(
+            Err(TokenError::NonNativeHasBalance.into()),
+            do_process_instruction(
+                close_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account3_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // empty account
+        do_process_instruction(
+            burn(&program_id, &account_key, &owner_key, &[], 42).unwrap(),
+            vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
         // wrong owner
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
-                burn_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
+                close_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
                 vec![
                     &mut account_account,
                     &mut account3_account,
@@ -2094,9 +2116,9 @@ mod tests {
             )
         );
 
-        // burn account
+        // close account
         do_process_instruction(
-            burn_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
+            close_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
             vec![
                 &mut account_account,
                 &mut account3_account,
@@ -2105,14 +2127,13 @@ mod tests {
         )
         .unwrap();
         let account: &mut Account = State::unpack_unchecked(&mut account_account.data).unwrap();
-        assert!(!account.is_initialized);
         assert_eq!(account_account.lamports, 0);
         assert_eq!(account.amount, 0);
         assert_eq!(account3_account.lamports, 44);
 
-        // burn native account
+        // close native account
         do_process_instruction(
-            burn_account(&program_id, &account2_key, &account3_key, &owner_key, &[]).unwrap(),
+            close_account(&program_id, &account2_key, &account3_key, &owner_key, &[]).unwrap(),
             vec![
                 &mut account2_account,
                 &mut account3_account,
@@ -2122,7 +2143,6 @@ mod tests {
         .unwrap();
         let account: &mut Account = State::unpack_unchecked(&mut account2_account.data).unwrap();
         assert!(account.is_native);
-        assert!(!account.is_initialized);
         assert_eq!(account_account.lamports, 0);
         assert_eq!(account.amount, 0);
         assert_eq!(account3_account.lamports, 46);
@@ -2227,9 +2247,9 @@ mod tests {
         assert_eq!(account2_account.lamports, 42);
         assert_eq!(account.amount, 42);
 
-        // burn native account
+        // close native account
         do_process_instruction(
-            burn_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
+            close_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
             vec![
                 &mut account_account,
                 &mut account3_account,
@@ -2239,7 +2259,6 @@ mod tests {
         .unwrap();
         let account: &mut Account = State::unpack_unchecked(&mut account_account.data).unwrap();
         assert!(account.is_native);
-        assert!(!account.is_initialized);
         assert_eq!(account_account.lamports, 0);
         assert_eq!(account.amount, 0);
         assert_eq!(account3_account.lamports, 4);

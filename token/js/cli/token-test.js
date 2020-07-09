@@ -388,24 +388,18 @@ export async function multisig(): Promise<void> {
   }
 }
 
-export async function burnAccount(): Promise<void> {
+export async function closeAccount(): Promise<void> {
   const connection = await getConnection();
   const owner = new Account();
-  const burn = await testToken.createAccount(owner.publicKey);
+  const close = await testToken.createAccount(owner.publicKey);
 
-  let burn_balance;
-  let info = await connection.getAccountInfo(burn);
+  let close_balance;
+  let info = await connection.getAccountInfo(close);
   if (info != null) {
-    burn_balance = info.lamports;
+    close_balance = info.lamports;
   } else {
     throw new Error('Account not found');
   }
-
-  await testToken.transfer(testAccount, burn, testAccountOwner, [], 1);
-  await sleep(500);
-
-  let accountInfo = await testToken.getAccountInfo(burn);
-  assert(accountInfo.amount.toNumber() == 1);
 
   const balanceNeeded =
     await connection.getMinimumBalanceForRentExemption(0);
@@ -418,14 +412,14 @@ export async function burnAccount(): Promise<void> {
     throw new Error('Account not found');
   }
 
-  await testToken.burnAccount(burn, dest.publicKey, owner, []);
-  info = await connection.getAccountInfo(burn);
+  await testToken.closeAccount(close, dest.publicKey, owner, []);
+  info = await connection.getAccountInfo(close);
   if (info != null) {
-    throw new Error('Account not burned');
+    throw new Error('Account not closed');
   }
   info = await connection.getAccountInfo(dest.publicKey);
   if (info != null) {
-    assert(info.lamports == balanceNeeded + burn_balance);
+    assert(info.lamports == balanceNeeded + close_balance);
   } else {
     throw new Error('Account not found');
   }
@@ -452,7 +446,7 @@ export async function nativeToken(): Promise<void> {
   const balanceNeeded =
   await connection.getMinimumBalanceForRentExemption(0);
   const dest = await newAccountWithLamports(connection, balanceNeeded);
-  await token.burnAccount(native, dest.publicKey, owner, []);
+  await token.closeAccount(native, dest.publicKey, owner, []);
   info = await connection.getAccountInfo(native);
   if (info != null) {
     throw new Error('Account not burned');

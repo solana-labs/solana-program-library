@@ -801,7 +801,7 @@ export class Token {
    * @param authority account owner
    * @param multiSigners Signing accounts if `owner` is a multiSig
    */
-  async burnAccount(
+  async closeAccount(
     account: PublicKey,
     dest: PublicKey,
     owner: Account | PublicKey,
@@ -817,9 +817,9 @@ export class Token {
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
-      'BurnAccount',
+      'CloseAccount',
       this.connection,
-      new Transaction().add(this.burnAccountInstruction(account, dest, ownerPublicKey, multiSigners)),
+      new Transaction().add(this.closeAccountInstruction(account, dest, ownerPublicKey, multiSigners)),
       this.payer,
       ...signers,
     );
@@ -1102,7 +1102,7 @@ export class Token {
    * @param owner account owner
    * @param multiSigners Signing accounts if `owner` is a multiSig
    */
-  burnAccountInstruction(
+  closeAccountInstruction(
     account: PublicKey,
     dest: PublicKey,
     owner: Account | PublicKey,
@@ -1112,7 +1112,7 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 9, // BurnAccount instruction
+        instruction: 9, // CloseAccount instruction
       },
       data,
     );

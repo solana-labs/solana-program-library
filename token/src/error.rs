@@ -45,6 +45,9 @@ pub enum TokenError {
     /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
+    /// Non-native account can only be closed if its balance is zero
+    #[error("Non-native account can only be closed if its balance is zero")]
+    NonNativeHasBalance,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -81,6 +84,9 @@ impl PrintProgramError for TokenError {
                 info!("Error: Instruction does not support native tokens")
             }
             TokenError::InvalidInstruction => info!("Error: Invalid instruction"),
+            TokenError::NonNativeHasBalance => {
+                info!("Non-native account can only be closed if its balance is zero")
+            }
         }
     }
 }

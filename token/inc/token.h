@@ -158,7 +158,7 @@ typedef enum Token_TokenInstruction_Tag {
     MintTo,
     /**
      * Burns tokens by removing them from an account.  `Burn` does not support accounts
-     * associated with the native mint, use `BurnAccount` instead.
+     * associated with the native mint, use `CloseAccount` instead.
      *
      * Accounts expected by this instruction:
      *
@@ -173,22 +173,23 @@ typedef enum Token_TokenInstruction_Tag {
      */
     Burn,
     /**
-     * Burns all the tokens in the account and transfers all its SOL to the destination account.
+     * Close an account by transferring all its SOL to the destination account.
+     * Non-native accounts may only be closed if its token amount is zero.
      *
      * Accounts expected by this instruction:
      *
      *   * Single owner/delegate
-     *   0. `[writable]` The account to burn.
+     *   0. `[writable]` The account to close.
      *   1. '[writable]' The destination account.
      *   2. `[signer]` The account's owner.
      *
      *   * Multisignature owner/delegate
-     *   0. `[writable]` The account to burn.
+     *   0. `[writable]` The account to close.
      *   1. '[writable]' The destination account.
      *   2. `[]` The account's multisignature owner.
      *   3. ..3+M '[signer]' M signer accounts.
      */
-    BurnAccount,
+    CloseAccount,
 } Token_TokenInstruction_Tag;
 
 typedef struct Token_InitializeMint_Body {

@@ -155,7 +155,7 @@ pub enum TokenInstruction {
         amount: u64,
     },
     /// Burns tokens by removing them from an account.  `Burn` does not support accounts
-    /// associated with the native mint, use `BurnAccount` instead.
+    /// associated with the native mint, use `CloseAccount` instead.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -171,21 +171,22 @@ pub enum TokenInstruction {
         /// The amount of tokens to burn.
         amount: u64,
     },
-    /// Burns all the tokens in the account and transfers all its SOL to the destination account.
+    /// Close an account by transferring all its SOL to the destination account.
+    /// Non-native accounts may only be closed if its token amount is zero.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The account to burn.
+    ///   0. `[writable]` The account to close.
     ///   1. '[writable]' The destination account.
     ///   2. `[signer]` The account's owner.
     ///
     ///   * Multisignature owner/delegate
-    ///   0. `[writable]` The account to burn.
+    ///   0. `[writable]` The account to close.
     ///   1. '[writable]' The destination account.
     ///   2. `[]` The account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts.
-    BurnAccount,
+    CloseAccount,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -247,7 +248,7 @@ impl TokenInstruction {
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
                 Self::Burn { amount }
             }
-            9 => Self::BurnAccount,
+            9 => Self::CloseAccount,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -298,7 +299,7 @@ impl TokenInstruction {
                 let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
                 *value = *amount;
             }
-            Self::BurnAccount => output[0] = 9,
+            Self::CloseAccount => output[0] = 9,
         }
         Ok(output)
     }
@@ -558,15 +559,15 @@ pub fn burn(
     })
 }
 
-/// Creates an `BurnAccount` instruction.
-pub fn burn_account(
+/// Creates an `CloseAccount` instruction.
+pub fn close_account(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
     dest_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::BurnAccount.pack()?;
+    let data = TokenInstruction::CloseAccount.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
