@@ -39,6 +39,12 @@ pub enum TokenError {
     /// State is uninitialized.
     #[error("State is unititialized")]
     UninitializedState,
+    /// Instruction does not support native tokens
+    #[error("Instruction does not support native tokens")]
+    NativeNotSupported,
+    /// Invalid instruction
+    #[error("Invalid instruction")]
+    InvalidInstruction,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -71,6 +77,10 @@ impl PrintProgramError for TokenError {
                 info!("Error: Invalid number of required signers")
             }
             TokenError::UninitializedState => info!("Error: State is uninitialized"),
+            TokenError::NativeNotSupported => {
+                info!("Error: Instruction does not support native tokens")
+            }
+            TokenError::InvalidInstruction => info!("Error: Invalid instruction"),
         }
     }
 }

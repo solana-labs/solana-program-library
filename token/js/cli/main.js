@@ -14,8 +14,10 @@ import {
   failOnApproveOverspend,
   setOwner,
   mintTo,
-  burn,
   multisig,
+  burn,
+  burnAccount,
+  nativeToken,
 } from './token-test';
 
 async function main() {
@@ -37,10 +39,14 @@ async function main() {
   await setOwner();
   console.log('Run test: mintTo');
   await mintTo();
-  console.log('Run test: burn');
-  await burn();
   console.log('Run test: multisig');
   await multisig();
+  console.log('Run test: burn');
+  await burn();
+  console.log('Run test: burnAccount');
+  await burnAccount();
+  console.log('Run test: nativeToken');
+  await nativeToken();
   console.log('Success\n');
 }
 

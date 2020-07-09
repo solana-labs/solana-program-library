@@ -45,6 +45,8 @@ pub struct Account {
     pub delegate: COption<Pubkey>,
     /// Is `true` if this structure has been initialized
     pub is_initialized: bool,
+    /// Is this a native token
+    pub is_native: bool,
     /// The amount delegated
     pub delegated_amount: u64,
 }
@@ -135,10 +137,16 @@ impl State {
 
         account.mint = *mint_info.key;
         account.owner = *owner_info.key;
-        account.amount = 0;
         account.delegate = COption::None;
         account.delegated_amount = 0;
         account.is_initialized = true;
+        if *mint_info.key == crate::native_mint::id() {
+            account.is_native = true;
+            account.amount = new_account_info.lamports();
+        } else {
+            account.is_native = false;
+            account.amount = 0;
+        };
 
         Ok(())
     }
@@ -219,6 +227,11 @@ impl State {
 
         source_account.amount -= amount;
         dest_account.amount += amount;
+
+        if source_account.is_native {
+            **source_account_info.lamports.borrow_mut() -= amount;
+            **dest_account_info.lamports.borrow_mut() += amount;
+        }
 
         Ok(())
     }
@@ -324,9 +337,23 @@ impl State {
         let mint_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
+        println!("{}:{}", line!(), file!());
+
+        let mut dest_account_data = dest_account_info.data.borrow_mut();
+        let mut dest_account: &mut Account = Self::unpack_unchecked(&mut dest_account_data)?;
+        println!("{}:{}", line!(), file!());
+
+        if dest_account.is_native {
+            return Err(TokenError::NativeNotSupported.into());
+        }
+        if mint_info.key != &dest_account.mint {
+            return Err(TokenError::MintMismatch.into());
+        }
+        println!("{}:{}", line!(), file!());
 
         let mut mint_info_data = mint_info.data.borrow_mut();
         let mint: &mut Mint = Self::unpack(&mut mint_info_data)?;
+        println!("{}:{}", line!(), file!());
 
         match mint.owner {
             COption::Some(owner) => {
@@ -335,13 +362,6 @@ impl State {
             COption::None => {
                 return Err(TokenError::FixedSupply.into());
             }
-        }
-
-        let mut dest_account_data = dest_account_info.data.borrow_mut();
-        let mut dest_account: &mut Account = Self::unpack(&mut dest_account_data)?;
-
-        if mint_info.key != &dest_account.mint {
-            return Err(TokenError::MintMismatch.into());
         }
 
         dest_account.amount += amount;
@@ -362,6 +382,9 @@ impl State {
         let mut source_data = source_account_info.data.borrow_mut();
         let source_account: &mut Account = Self::unpack(&mut source_data)?;
 
+        if source_account.is_native {
+            return Err(TokenError::NativeNotSupported.into());
+        }
         if source_account.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
@@ -392,6 +415,31 @@ impl State {
         }
 
         source_account.amount -= amount;
+
+        Ok(())
+    }
+
+    /// Processes a [BurnAccount](enum.TokenInstruction.html) instruction.
+    pub fn process_burn_account(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let source_account_info = next_account_info(account_info_iter)?;
+        let dest_account_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+
+        let mut source_data = source_account_info.data.borrow_mut();
+        let source_account: &mut Account = Self::unpack(&mut source_data)?;
+
+        Self::validate_owner(
+            program_id,
+            &source_account.owner,
+            authority_info,
+            account_info_iter.as_slice(),
+        )?;
+
+        **dest_account_info.lamports.borrow_mut() += source_account_info.lamports();
+        **source_account_info.lamports.borrow_mut() = 0;
+        source_account.amount = 0;
+        source_account.is_initialized = false;
 
         Ok(())
     }
@@ -436,6 +484,10 @@ impl State {
             TokenInstruction::Burn { amount } => {
                 info!("Instruction: Burn");
                 Self::process_burn(program_id, accounts, amount)
+            }
+            TokenInstruction::BurnAccount => {
+                info!("Instruction: BurnAccount");
+                Self::process_burn_account(program_id, accounts)
             }
         }
     }
@@ -505,8 +557,8 @@ solana_sdk_bpf_test::stubs!();
 mod tests {
     use super::*;
     use crate::instruction::{
-        approve, burn, initialize_account, initialize_mint, initialize_multisig, mint_to, revoke,
-        set_owner, transfer,
+        approve, burn, burn_account, initialize_account, initialize_mint, initialize_multisig,
+        mint_to, revoke, set_owner, transfer,
     };
     use solana_sdk::{
         account::Account as SolanaAccount, account_info::create_is_signer_account_infos,
@@ -1971,5 +2023,231 @@ mod tests {
             State::validate_owner(&program_id, &owner_key, &owner_account_info, &signers)
         );
         signers[5].is_signer = true;
+    }
+
+    #[test]
+    fn test_burn_account() {
+        let program_id = pubkey_rand();
+        let mint_key = pubkey_rand();
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
+        let account_key = pubkey_rand();
+        let mut account_account = SolanaAccount::new(42, size_of::<Account>(), &program_id);
+        let account2_key = pubkey_rand();
+        let mut account2_account = SolanaAccount::new(2, size_of::<Account>(), &program_id);
+        let account3_key = pubkey_rand();
+        let mut account3_account = SolanaAccount::new(2, size_of::<Account>(), &program_id);
+        let owner_key = pubkey_rand();
+        let mut owner_account = SolanaAccount::default();
+        let owner2_key = pubkey_rand();
+        let mut owner2_account = SolanaAccount::default();
+
+        // uninitialized
+        assert_eq!(
+            Err(TokenError::UninitializedState.into()),
+            do_process_instruction(
+                burn_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account3_account,
+                    &mut owner2_account,
+                ],
+            )
+        );
+
+        // initialize and mint to account
+        do_process_instruction(
+            initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
+            vec![&mut account_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, Some(&account_key), None, 42, 2).unwrap(),
+            vec![&mut mint_account, &mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        let account: &mut Account = State::unpack(&mut account_account.data).unwrap();
+        assert_eq!(account.amount, 42);
+
+        // initialize native account
+        do_process_instruction(
+            initialize_account(
+                &program_id,
+                &account2_key,
+                &crate::native_mint::id(),
+                &owner_key,
+            )
+            .unwrap(),
+            vec![&mut account2_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+        let account: &mut Account = State::unpack(&mut account2_account.data).unwrap();
+        assert!(account.is_native);
+        assert_eq!(account.amount, 2);
+
+        // wrong owner
+        assert_eq!(
+            Err(TokenError::OwnerMismatch.into()),
+            do_process_instruction(
+                burn_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account3_account,
+                    &mut owner2_account,
+                ],
+            )
+        );
+
+        // burn account
+        do_process_instruction(
+            burn_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
+            vec![
+                &mut account_account,
+                &mut account3_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account: &mut Account = State::unpack_unchecked(&mut account_account.data).unwrap();
+        assert!(!account.is_initialized);
+        assert_eq!(account_account.lamports, 0);
+        assert_eq!(account.amount, 0);
+        assert_eq!(account3_account.lamports, 44);
+
+        // burn native account
+        do_process_instruction(
+            burn_account(&program_id, &account2_key, &account3_key, &owner_key, &[]).unwrap(),
+            vec![
+                &mut account2_account,
+                &mut account3_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account: &mut Account = State::unpack_unchecked(&mut account2_account.data).unwrap();
+        assert!(account.is_native);
+        assert!(!account.is_initialized);
+        assert_eq!(account_account.lamports, 0);
+        assert_eq!(account.amount, 0);
+        assert_eq!(account3_account.lamports, 46);
+    }
+
+    #[test]
+    fn test_native_token() {
+        let program_id = pubkey_rand();
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
+        let account_key = pubkey_rand();
+        let mut account_account = SolanaAccount::new(42, size_of::<Account>(), &program_id);
+        let account2_key = pubkey_rand();
+        let mut account2_account = SolanaAccount::new(2, size_of::<Account>(), &program_id);
+        let account3_key = pubkey_rand();
+        let mut account3_account = SolanaAccount::new(2, 0, &program_id);
+        let owner_key = pubkey_rand();
+        let mut owner_account = SolanaAccount::default();
+
+        // initialize native account
+        do_process_instruction(
+            initialize_account(
+                &program_id,
+                &account_key,
+                &crate::native_mint::id(),
+                &owner_key,
+            )
+            .unwrap(),
+            vec![&mut account_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+        let account: &mut Account = State::unpack(&mut account_account.data).unwrap();
+        assert!(account.is_native);
+        assert_eq!(account.amount, 42);
+
+        // initialize native account
+        do_process_instruction(
+            initialize_account(
+                &program_id,
+                &account2_key,
+                &crate::native_mint::id(),
+                &owner_key,
+            )
+            .unwrap(),
+            vec![&mut account2_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+        let account: &mut Account = State::unpack(&mut account2_account.data).unwrap();
+        assert!(account.is_native);
+        assert_eq!(account.amount, 2);
+
+        // mint_to unsupported
+        assert_eq!(
+            Err(TokenError::NativeNotSupported.into()),
+            do_process_instruction(
+                mint_to(
+                    &program_id,
+                    &crate::native_mint::id(),
+                    &account_key,
+                    &owner_key,
+                    &[],
+                    42
+                )
+                .unwrap(),
+                vec![&mut mint_account, &mut account_account, &mut owner_account],
+            )
+        );
+
+        // burn unsupported
+        assert_eq!(
+            Err(TokenError::NativeNotSupported.into()),
+            do_process_instruction(
+                burn(&program_id, &account_key, &owner_key, &[], 42).unwrap(),
+                vec![&mut account_account, &mut owner_account],
+            )
+        );
+
+        // initialize native account
+        do_process_instruction(
+            transfer(
+                &program_id,
+                &account_key,
+                &account2_key,
+                &owner_key,
+                &[],
+                40,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut account2_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+
+        let account: &mut Account = State::unpack(&mut account_account.data).unwrap();
+        assert!(account.is_native);
+        assert_eq!(account_account.lamports, 2);
+        assert_eq!(account.amount, 2);
+        let account: &mut Account = State::unpack(&mut account2_account.data).unwrap();
+        assert!(account.is_native);
+        assert_eq!(account2_account.lamports, 42);
+        assert_eq!(account.amount, 42);
+
+        // burn native account
+        do_process_instruction(
+            burn_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
+            vec![
+                &mut account_account,
+                &mut account3_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account: &mut Account = State::unpack_unchecked(&mut account_account.data).unwrap();
+        assert!(account.is_native);
+        assert!(!account.is_initialized);
+        assert_eq!(account_account.lamports, 0);
+        assert_eq!(account.amount, 0);
+        assert_eq!(account3_account.lamports, 4);
+
+        println!("pubkey {:?}", crate::native_mint::id());
     }
 }

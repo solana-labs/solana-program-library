@@ -165,25 +165,25 @@ pub enum TokenInstruction {
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The account to burn from.
-    ///   1. `[]` The account's multisignature owner/delegate
+    ///   1. `[]` The account's multisignature owner/delegate.
     ///   2. ..2+M '[signer]' M signer accounts.
     Burn {
         /// The amount of tokens to burn.
         amount: u64,
     },
-    /// Burns all the tokens in the account and transfers all SOL to the destination account.
+    /// Burns all the tokens in the account and transfers all its SOL to the destination account.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The account to burn.
-    ///   1. '[writable]' The destination account
-    ///   2. `[signer]` The account's owner/delegate.
+    ///   1. '[writable]' The destination account.
+    ///   2. `[signer]` The account's owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The account to burn.
-    ///   1. '[writable]' The destination account
-    ///   2. `[]` The account's multisignature owner/delegate
+    ///   1. '[writable]' The destination account.
+    ///   2. `[]` The account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts.
     BurnAccount,
 }
@@ -191,12 +191,12 @@ impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(TokenError::InvalidInstruction.into());
         }
         Ok(match input[0] {
             0 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
@@ -207,7 +207,7 @@ impl TokenInstruction {
             1 => Self::InitializeAccount,
             2 => {
                 if input.len() < size_of::<u8>() + size_of::<u8>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let m = unsafe { *(&input[1] as *const u8) };
@@ -215,7 +215,7 @@ impl TokenInstruction {
             }
             3 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
@@ -223,7 +223,7 @@ impl TokenInstruction {
             }
             4 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
@@ -233,7 +233,7 @@ impl TokenInstruction {
             6 => Self::SetOwner,
             7 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
@@ -241,13 +241,14 @@ impl TokenInstruction {
             }
             8 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
                 Self::Burn { amount }
             }
-            _ => return Err(ProgramError::InvalidAccountData),
+            9 => Self::BurnAccount,
+            _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
 
@@ -297,6 +298,7 @@ impl TokenInstruction {
                 let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
                 *value = *amount;
             }
+            Self::BurnAccount => output[0] = 9,
         }
         Ok(output)
     }
@@ -539,8 +541,36 @@ pub fn burn(
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::Burn { amount }.pack()?;
 
+    let mut accounts = Vec::with_capacity(2 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *authority_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates an `BurnAccount` instruction.
+pub fn burn_account(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    dest_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::BurnAccount.pack()?;
+
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new(*dest_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *authority_pubkey,
         signer_pubkeys.is_empty(),
