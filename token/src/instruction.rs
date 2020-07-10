@@ -38,7 +38,8 @@ pub enum TokenInstruction {
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
     },
-    /// Initializes a new account to hold tokens.
+    /// Initializes a new account to hold tokens.  If this account is associated with the native mint
+    /// then the token balance of the initialized account will be equal to the amount of SOL in the account.
     ///
     /// The `InitializeAccount` instruction requires no signers and MUST be included within
     /// the same Transaction as the system program's `CreateInstruction` that creates the account
@@ -68,7 +69,9 @@ pub enum TokenInstruction {
         /// The number of signers (M) required to validate this multisignature account.
         m: u8,
     },
-    /// Transfers tokens from one account to another either directly or via a delegate.
+    /// Transfers tokens from one account to another either directly or via a delegate.  If this
+    /// account is associated with the native mint then equal amounts of SOL and Tokens will be
+    /// transferred to the destination account.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -133,7 +136,7 @@ pub enum TokenInstruction {
     ///   2. `[]` The mint's or account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts
     SetOwner,
-    /// Mints new tokens to an account.
+    /// Mints new tokens to an account.  The native mint does not support minting.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -151,7 +154,8 @@ pub enum TokenInstruction {
         /// The amount of new tokens to mint.
         amount: u64,
     },
-    /// Burns tokens by removing them from an account and thus circulation.
+    /// Burns tokens by removing them from an account.  `Burn` does not support accounts
+    /// associated with the native mint, use `CloseAccount` instead.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -161,23 +165,39 @@ pub enum TokenInstruction {
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The account to burn from.
-    ///   1. `[]` The account's multisignature owner/delegate
+    ///   1. `[]` The account's multisignature owner/delegate.
     ///   2. ..2+M '[signer]' M signer accounts.
     Burn {
         /// The amount of tokens to burn.
         amount: u64,
     },
+    /// Close an account by transferring all its SOL to the destination account.
+    /// Non-native accounts may only be closed if its token amount is zero.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The account to close.
+    ///   1. '[writable]' The destination account.
+    ///   2. `[signer]` The account's owner.
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[writable]` The account to close.
+    ///   1. '[writable]' The destination account.
+    ///   2. `[]` The account's multisignature owner.
+    ///   3. ..3+M '[signer]' M signer accounts.
+    CloseAccount,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(TokenError::InvalidInstruction.into());
         }
         Ok(match input[0] {
             0 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
@@ -188,7 +208,7 @@ impl TokenInstruction {
             1 => Self::InitializeAccount,
             2 => {
                 if input.len() < size_of::<u8>() + size_of::<u8>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let m = unsafe { *(&input[1] as *const u8) };
@@ -196,7 +216,7 @@ impl TokenInstruction {
             }
             3 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
@@ -204,7 +224,7 @@ impl TokenInstruction {
             }
             4 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
@@ -214,7 +234,7 @@ impl TokenInstruction {
             6 => Self::SetOwner,
             7 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
@@ -222,13 +242,14 @@ impl TokenInstruction {
             }
             8 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
                 Self::Burn { amount }
             }
-            _ => return Err(ProgramError::InvalidAccountData),
+            9 => Self::CloseAccount,
+            _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
 
@@ -278,6 +299,7 @@ impl TokenInstruction {
                 let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
                 *value = *amount;
             }
+            Self::CloseAccount => output[0] = 9,
         }
         Ok(output)
     }
@@ -520,8 +542,36 @@ pub fn burn(
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::Burn { amount }.pack()?;
 
+    let mut accounts = Vec::with_capacity(2 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *authority_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates an `CloseAccount` instruction.
+pub fn close_account(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    dest_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::CloseAccount.pack()?;
+
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new(*dest_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *authority_pubkey,
         signer_pubkeys.is_empty(),

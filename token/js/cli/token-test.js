@@ -387,3 +387,75 @@ export async function multisig(): Promise<void> {
     assert(accountInfo.owner.equals(newOwner));
   }
 }
+
+export async function closeAccount(): Promise<void> {
+  const connection = await getConnection();
+  const owner = new Account();
+  const close = await testToken.createAccount(owner.publicKey);
+
+  let close_balance;
+  let info = await connection.getAccountInfo(close);
+  if (info != null) {
+    close_balance = info.lamports;
+  } else {
+    throw new Error('Account not found');
+  }
+
+  const balanceNeeded =
+    await connection.getMinimumBalanceForRentExemption(0);
+  const dest = await newAccountWithLamports(connection, balanceNeeded);
+
+  info = await connection.getAccountInfo(dest.publicKey);
+  if (info != null) {
+    assert(info.lamports == balanceNeeded);
+  } else {
+    throw new Error('Account not found');
+  }
+
+  await testToken.closeAccount(close, dest.publicKey, owner, []);
+  info = await connection.getAccountInfo(close);
+  if (info != null) {
+    throw new Error('Account not closed');
+  }
+  info = await connection.getAccountInfo(dest.publicKey);
+  if (info != null) {
+    assert(info.lamports == balanceNeeded + close_balance);
+  } else {
+    throw new Error('Account not found');
+  }
+}
+
+export async function nativeToken(): Promise<void> {
+  const connection = await getConnection();
+
+  const mintPublicKey = new PublicKey('So11111111111111111111111111111111111111111');
+  const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
+  const token = new Token(connection, mintPublicKey, programId, payer);
+  const owner = new Account();
+  const native = await token.createAccount(owner.publicKey);
+  let accountInfo = await token.getAccountInfo(native);
+  assert(accountInfo.isNative);
+  let balance;
+  let info = await connection.getAccountInfo(native);
+  if (info != null) {
+    balance = info.lamports;
+  } else {
+    throw new Error('Account not found');
+  }
+
+  const balanceNeeded =
+  await connection.getMinimumBalanceForRentExemption(0);
+  const dest = await newAccountWithLamports(connection, balanceNeeded);
+  await token.closeAccount(native, dest.publicKey, owner, []);
+  info = await connection.getAccountInfo(native);
+  if (info != null) {
+    throw new Error('Account not burned');
+  }
+  info = await connection.getAccountInfo(dest.publicKey);
+  if (info != null) {
+    assert(info.lamports == balanceNeeded + balance);
+  } else {
+    throw new Error('Account not found');
+  }
+
+}

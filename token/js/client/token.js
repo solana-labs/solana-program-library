@@ -61,14 +61,16 @@ type MintInfo = {|
    * Owner of the mint, given authority to mint new tokens
    */
   owner: null | PublicKey,
+
   /**
    * Number of base 10 digits to the right of the decimal place
    */
   decimals: number,
+
   /**
    * Is this mint initialized
    */
-  initialized: Boolean,
+  initialized: boolean,
 |};
 
 const MintLayout = BufferLayout.struct([
@@ -107,6 +109,16 @@ type AccountInfo = {|
    * The amount of tokens the delegate authorized to the delegate
    */
   delegatedAmount: TokenAmount,
+
+  /**
+   * Is this account initialized
+   */
+  isInitialized: boolean,
+
+  /**
+   * Is this a native token account
+   */
+  isNative: boolean,
 |};
 
 /**
@@ -119,7 +131,7 @@ const AccountLayout = BufferLayout.struct([
   BufferLayout.u32('option'),
   Layout.publicKey('delegate'),
   BufferLayout.u8('is_initialized'),
-  BufferLayout.u8('padding'),
+  BufferLayout.u8('is_native'),
   BufferLayout.u16('padding'),
   Layout.uint64('delegatedAmount'),
 ]);
@@ -138,6 +150,11 @@ type MultisigInfo = {|
    * number of `signers` that are valid.
    */
   n: number,
+
+  /**
+   * Is this mint initialized
+   */
+  initialized: boolean,
 
   /**
    * The signers
@@ -512,6 +529,8 @@ export class Token {
     accountInfo.mint = new PublicKey(accountInfo.mint);
     accountInfo.owner = new PublicKey(accountInfo.owner);
     accountInfo.amount = TokenAmount.fromBuffer(accountInfo.amount);
+    accountInfo.isInitialized = accountInfo.isInitialized != 0;
+    accountInfo.isNative = accountInfo.isNative != 0;
     if (accountInfo.option === 0) {
       accountInfo.delegate = null;
       accountInfo.delegatedAmount = new TokenAmount();
@@ -592,7 +611,7 @@ export class Token {
       signers = multiSigners;
     }
     return await sendAndConfirmTransaction(
-      'transfer',
+      'Transfer',
       this.connection,
       new Transaction().add(
         this.transferInstruction(
@@ -634,7 +653,7 @@ export class Token {
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
-      'approve',
+      'Approve',
       this.connection,
       new Transaction().add(
         this.approveInstruction(account, delegate, ownerPublicKey, multiSigners, amount),
@@ -666,7 +685,7 @@ export class Token {
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
-      'revoke',
+      'Revoke',
       this.connection,
       new Transaction().add(
         this.revokeInstruction(account, ownerPublicKey, multiSigners),
@@ -700,7 +719,7 @@ export class Token {
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
-      'setOwneer',
+      'SetOwner',
       this.connection,
       new Transaction().add(
         this.setOwnerInstruction(owned, newOwner, ownerPublicKey, multiSigners),
@@ -735,7 +754,7 @@ export class Token {
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
-      'mintTo',
+      'MintTo',
       this.connection,
       new Transaction().add(this.mintToInstruction(dest, ownerPublicKey, multiSigners, amount)),
       this.payer,
@@ -767,9 +786,40 @@ export class Token {
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
-      'burn',
+      'Burn',
       this.connection,
       new Transaction().add(this.burnInstruction(account, ownerPublicKey, multiSigners, amount)),
+      this.payer,
+      ...signers,
+    );
+  }
+
+  /**
+   * Burn account
+   *
+   * @param account Account to burn
+   * @param authority account owner
+   * @param multiSigners Signing accounts if `owner` is a multiSig
+   */
+  async closeAccount(
+    account: PublicKey,
+    dest: PublicKey,
+    owner: Account | PublicKey,
+    multiSigners: Array<Account>,
+  ): Promise<void> {
+    let ownerPublicKey;
+    let signers;
+    if (owner instanceof Account) {
+      ownerPublicKey = owner.publicKey;
+      signers = [owner];
+    } else {
+      ownerPublicKey = owner;
+      signers = multiSigners;
+    }
+    await sendAndConfirmTransaction(
+      'CloseAccount',
+      this.connection,
+      new Transaction().add(this.closeAccountInstruction(account, dest, ownerPublicKey, multiSigners)),
       this.payer,
       ...signers,
     );
@@ -1035,6 +1085,46 @@ export class Token {
       keys.push({pubkey: authority.publicKey, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: authority, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+    }
+
+    return new TransactionInstruction({
+      keys,
+      programId: this.programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct a Burn instruction
+   *
+   * @param account Account to burn tokens from
+   * @param owner account owner
+   * @param multiSigners Signing accounts if `owner` is a multiSig
+   */
+  closeAccountInstruction(
+    account: PublicKey,
+    dest: PublicKey,
+    owner: Account | PublicKey,
+    multiSigners: Array<Account>,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 9, // CloseAccount instruction
+      },
+      data,
+    );
+
+    let keys = [
+      {pubkey: account, isSigner: false, isWritable: true},
+      {pubkey: dest, isSigner: false, isWritable: true},
+    ];
+    if (owner instanceof Account) {
+      keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
+    } else {
+      keys.push({pubkey: owner, isSigner: false, isWritable: false});
       multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
     }
 

@@ -44,7 +44,8 @@ typedef enum Token_TokenInstruction_Tag {
      */
     InitializeMint,
     /**
-     * Initializes a new account to hold tokens.
+     * Initializes a new account to hold tokens.  If this account is associated with the native mint
+     * then the token balance of the initialized account will be equal to the amount of SOL in the account.
      *
      * The `InitializeAccount` instruction requires no signers and MUST be included within
      * the same Transaction as the system program's `CreateInstruction` that creates the account
@@ -75,7 +76,9 @@ typedef enum Token_TokenInstruction_Tag {
      */
     InitializeMultisig,
     /**
-     * Transfers tokens from one account to another either directly or via a delegate.
+     * Transfers tokens from one account to another either directly or via a delegate.  If this
+     * account is associated with the native mint then equal amounts of SOL and Tokens will be
+     * transferred to the destination account.
      *
      * Accounts expected by this instruction:
      *
@@ -141,7 +144,7 @@ typedef enum Token_TokenInstruction_Tag {
      */
     SetOwner,
     /**
-     * Mints new tokens to an account.
+     * Mints new tokens to an account.  The native mint does not support minting.
      *
      * Accounts expected by this instruction:
      *
@@ -158,7 +161,8 @@ typedef enum Token_TokenInstruction_Tag {
      */
     MintTo,
     /**
-     * Burns tokens by removing them from an account and thus circulation.
+     * Burns tokens by removing them from an account.  `Burn` does not support accounts
+     * associated with the native mint, use `CloseAccount` instead.
      *
      * Accounts expected by this instruction:
      *
@@ -168,10 +172,28 @@ typedef enum Token_TokenInstruction_Tag {
      *
      *   * Multisignature owner/delegate
      *   0. `[writable]` The account to burn from.
-     *   1. `[]` The account's multisignature owner/delegate
+     *   1. `[]` The account's multisignature owner/delegate.
      *   2. ..2+M '[signer]' M signer accounts.
      */
     Burn,
+    /**
+     * Close an account by transferring all its SOL to the destination account.
+     * Non-native accounts may only be closed if its token amount is zero.
+     *
+     * Accounts expected by this instruction:
+     *
+     *   * Single owner/delegate
+     *   0. `[writable]` The account to close.
+     *   1. '[writable]' The destination account.
+     *   2. `[signer]` The account's owner.
+     *
+     *   * Multisignature owner/delegate
+     *   0. `[writable]` The account to close.
+     *   1. '[writable]' The destination account.
+     *   2. `[]` The account's multisignature owner.
+     *   3. ..3+M '[signer]' M signer accounts.
+     */
+    CloseAccount,
 } Token_TokenInstruction_Tag;
 
 typedef struct Token_InitializeMint_Body {
@@ -304,6 +326,10 @@ typedef struct Token_Account {
      * Is `true` if this structure has been initialized
      */
     bool is_initialized;
+    /**
+     * Is this a native token
+     */
+    bool is_native;
     /**
      * The amount delegated
      */
