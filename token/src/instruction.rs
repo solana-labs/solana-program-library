@@ -176,12 +176,12 @@ pub enum TokenInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   * Single owner/delegate
+    ///   * Single owner
     ///   0. `[writable]` The account to close.
     ///   1. '[writable]' The destination account.
     ///   2. `[signer]` The account's owner.
     ///
-    ///   * Multisignature owner/delegate
+    ///   * Multisignature owner
     ///   0. `[writable]` The account to close.
     ///   1. '[writable]' The destination account.
     ///   2. `[]` The account's multisignature owner.
