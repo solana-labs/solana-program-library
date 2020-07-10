@@ -187,6 +187,15 @@ pub enum TokenInstruction {
     ///   2. `[]` The account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts.
     CloseAccount,
+
+    /// Initializes a subscription to the account.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The account to configure
+    SetSubscription {
+        subscription: COption<state::Subscription>,
+    },
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -249,6 +258,16 @@ impl TokenInstruction {
                 Self::Burn { amount }
             }
             9 => Self::CloseAccount,
+            10 => {
+                if input.len() < size_of::<u8>() + size_of::<COption<Subscription>>() {
+                    return Err(TokenError::InvalidInstruction.into());
+                }
+                #[allow(clippy::cast_ptr_alignment)]
+                let val = unsafe {
+                    *(&input[size_of::<u8>()] as *const u8 as *const COption<state::Subscription>)
+                };
+                Self::SetSubscription { val }
+            }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -300,6 +319,15 @@ impl TokenInstruction {
                 *value = *amount;
             }
             Self::CloseAccount => output[0] = 9,
+            Self::SetSubscription { val } => {
+                output[0] = 10;
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe {
+                    &mut *(&mut output[size_of::<u8>()] as *mut u8
+                        as *mut COption<state::Subscription>)
+                };
+                *value = *val;
+            }
         }
         Ok(output)
     }
