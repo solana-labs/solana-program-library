@@ -267,6 +267,32 @@ impl State {
     }
 
     /// Processes an [Approve](enum.TokenInstruction.html) instruction.
+    pub fn process_set_subscription(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        subscription: &COption<Subscription>,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let source_account_info = next_account_info(account_info_iter)?;
+
+        let mut source_data = source_account_info.data.borrow_mut();
+        let mut source_account: &mut Account = Self::unpack(&mut source_data)?;
+        let delegate_info = next_account_info(account_info_iter)?;
+        let owner_info = next_account_info(account_info_iter)?;
+
+        Self::validate_owner(
+            program_id,
+            &source_account.owner,
+            owner_info,
+            account_info_iter.as_slice(),
+        )?;
+
+        source_account.subscription = *subscription;
+
+        Ok(())
+    }
+
+    /// Processes an [Approve](enum.TokenInstruction.html) instruction.
     pub fn process_approve(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -521,6 +547,10 @@ impl State {
             TokenInstruction::CloseAccount => {
                 info!("Instruction: CloseAccount");
                 Self::process_close_account(program_id, accounts)
+            }
+            TokenInstruction::SetSubscription(ref sub) => {
+                info!("Instruction: SetSubscription");
+                Self::process_set_subscription(program_id, accounts, subscription)
             }
         }
     }
