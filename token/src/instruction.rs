@@ -107,6 +107,9 @@ pub enum TokenInstruction {
     Approve {
         /// The amount of tokens the delegate is approved for.
         amount: u64,
+        /// If non-zero then subscribe the delegate to be re-approved the same `amount`
+        /// every `slots_until_renewal`
+        slots_until_renewal: u64,
     },
     /// Revokes the delegate's authority.
     ///
