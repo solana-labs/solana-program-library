@@ -30,6 +30,18 @@ impl IsInitialized for Mint {
     }
 }
 
+/// Subscription information
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Subscription {
+    /// The amount to refresh
+    pub amount: u64,
+    /// The refresh period for the delegation subscription
+    pub period: u64,
+    /// Last refresh
+    pub last_refresh: Slot,
+}
+
 /// Account data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -49,6 +61,8 @@ pub struct Account {
     pub is_native: bool,
     /// The amount delegated
     pub delegated_amount: u64,
+    /// Subscription
+    pub subscription: COption<Subscription>,
 }
 impl IsInitialized for Account {
     fn is_initialized(&self) -> bool {
