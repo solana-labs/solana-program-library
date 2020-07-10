@@ -78,13 +78,15 @@ pub enum TokenInstruction {
     ///   * Single owner/delegate
     ///   0. `[writable]` The source account.
     ///   1. `[writable]` The destination account.
-    ///   2. '[signer]' The source account's owner/delegate.
+    ///   2. '[]` The clock sysvar
+    ///   3. '[signer]' The source account's owner/delegate.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The source account.
     ///   1. `[writable]` The destination account.
-    ///   2. '[]' The source account's multisignature owner/delegate.
-    ///   3. ..3+M '[signer]' M signer accounts.
+    ///   2. '[]` The clock sysvar
+    ///   3. '[]' The source account's multisignature owner/delegate.
+    ///   4. ..4+M '[signer]' M signer accounts.
     Transfer {
         /// The amount of tokens to transfer.
         amount: u64,
@@ -97,16 +99,21 @@ pub enum TokenInstruction {
     ///   * Single owner
     ///   0. `[writable]` The source account.
     ///   1. `[]` The delegate.
-    ///   2. `[signer]` The source account owner.
+    ///   2. '[]` The clock sysvar
+    ///   3. `[signer]` The source account owner.
     ///
     ///   * Multisignature owner
     ///   0. `[writable]` The source account.
     ///   1. `[]` The delegate.
-    ///   2. '[]' The source account's multisignature owner.
-    ///   3. ..3+M '[signer]' M signer accounts
+    ///   3. '[]` The clock sysvar
+    ///   3. '[]' The source account's multisignature owner.
+    ///   4. ..4+M '[signer]' M signer accounts
     Approve {
         /// The amount of tokens the delegate is approved for.
         amount: u64,
+        /// If non-zero then subscribe the delegate to be re-approved the same `amount`
+        /// every `period` slots
+        period: u64,
     },
     /// Revokes the delegate's authority.
     ///
@@ -223,12 +230,15 @@ impl TokenInstruction {
                 Self::Transfer { amount }
             }
             4 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() {
+                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u64>() {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
                 let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
-                Self::Approve { amount }
+                let period = unsafe {
+                    *(&input[size_of::<u8>() + size_of::<u64>()] as *const u8 as *const u64)
+                };
+                Self::Approve { amount, period }
             }
             5 => Self::Revoke,
             6 => Self::SetOwner,
@@ -279,11 +289,15 @@ impl TokenInstruction {
                 let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
                 *value = *amount;
             }
-            Self::Approve { amount } => {
+            Self::Approve { amount, period } => {
                 output[0] = 4;
                 #[allow(clippy::cast_ptr_alignment)]
                 let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
                 *value = *amount;
+                let value = unsafe {
+                    &mut *(&mut output[size_of::<u8>() + size_of::<u64>()] as *mut u8 as *mut u64)
+                };
+                *value = *period;
             }
             Self::Revoke => output[0] = 5,
             Self::SetOwner => output[0] = 6,
@@ -396,6 +410,7 @@ pub fn transfer(
     token_program_id: &Pubkey,
     source_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
+    clock_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
     amount: u64,
@@ -405,6 +420,7 @@ pub fn transfer(
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*source_pubkey, false));
     accounts.push(AccountMeta::new(*destination_pubkey, false));
+    accounts.push(AccountMeta::new(*clock_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *authority_pubkey,
         signer_pubkeys.is_empty(),
@@ -425,15 +441,18 @@ pub fn approve(
     token_program_id: &Pubkey,
     source_pubkey: &Pubkey,
     delegate_pubkey: &Pubkey,
+    clock_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
     amount: u64,
+    period: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Approve { amount }.pack()?;
+    let data = TokenInstruction::Approve { amount, period }.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new_readonly(*source_pubkey, false));
     accounts.push(AccountMeta::new(*delegate_pubkey, false));
+    accounts.push(AccountMeta::new(*clock_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
         signer_pubkeys.is_empty(),

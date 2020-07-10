@@ -22,11 +22,6 @@
 #define Token_MIN_SIGNERS 1
 
 /**
- * Program state handler.
- */
-typedef struct Token_State Token_State;
-
-/**
  * Instructions supported by the token program.
  */
 typedef enum Token_TokenInstruction_Tag {
@@ -90,13 +85,15 @@ typedef enum Token_TokenInstruction_Tag {
      *   * Single owner/delegate
      *   0. `[writable]` The source account.
      *   1. `[writable]` The destination account.
-     *   2. '[signer]' The source account's owner/delegate.
+     *   2. '[]` The clock sysvar
+     *   3. '[signer]' The source account's owner/delegate.
      *
      *   * Multisignature owner/delegate
      *   0. `[writable]` The source account.
      *   1. `[writable]` The destination account.
-     *   2. '[]' The source account's multisignature owner/delegate.
-     *   3. ..3+M '[signer]' M signer accounts.
+     *   2. '[]` The clock sysvar
+     *   3. '[]' The source account's multisignature owner/delegate.
+     *   4. ..4+M '[signer]' M signer accounts.
      */
     Transfer,
     /**
@@ -107,13 +104,15 @@ typedef enum Token_TokenInstruction_Tag {
      *   * Single owner
      *   0. `[writable]` The source account.
      *   1. `[]` The delegate.
-     *   2. `[signer]` The source account owner.
+     *   2. '[]` The clock sysvar
+     *   3. `[signer]` The source account owner.
      *
      *   * Multisignature owner
      *   0. `[writable]` The source account.
      *   1. `[]` The delegate.
-     *   2. '[]' The source account's multisignature owner.
-     *   3. ..3+M '[signer]' M signer accounts
+     *   3. '[]` The clock sysvar
+     *   3. '[]' The source account's multisignature owner.
+     *   4. ..4+M '[signer]' M signer accounts
      */
     Approve,
     /**
@@ -231,6 +230,11 @@ typedef struct Token_Approve_Body {
      * The amount of tokens the delegate is approved for.
      */
     uint64_t amount;
+    /**
+     * If non-zero then subscribe the delegate to be re-approved the same `amount`
+     * every `period` slots
+     */
+    uint64_t period;
 } Token_Approve_Body;
 
 typedef struct Token_MintTo_Body {
@@ -258,3 +262,135 @@ typedef struct Token_TokenInstruction {
         Token_Burn_Body burn;
     };
 } Token_TokenInstruction;
+
+typedef uint8_t Token_Pubkey[32];
+
+/**
+ * A C representation of Rust's `std::option::Option`
+ */
+typedef enum Token_COption_Pubkey_Tag {
+    /**
+     * No value
+     */
+    None_Pubkey,
+    /**
+     * Some value `T`
+     */
+    Some_Pubkey,
+} Token_COption_Pubkey_Tag;
+
+typedef struct Token_Some_Body_Pubkey {
+    Token_Pubkey _0;
+} Token_Some_Body_Pubkey;
+
+typedef struct Token_COption_Pubkey {
+    Token_COption_Pubkey_Tag tag;
+    union {
+        Token_Some_Body_Pubkey some;
+    };
+} Token_COption_Pubkey;
+
+/**
+ * Mint data.
+ */
+typedef struct Token_Mint {
+    /**
+     * Optional owner, used to mint new tokens.  The owner may only
+     * be provided during mint creation.  If no owner is present then the mint
+     * has a fixed supply and no further tokens may be minted.
+     */
+    Token_COption_Pubkey owner;
+    /**
+     * Number of base 10 digits to the right of the decimal place.
+     */
+    uint8_t decimals;
+    /**
+     * Is `true` if this structure has been initialized
+     */
+    bool is_initialized;
+} Token_Mint;
+
+/**
+ * Slot is a unit of time given to a leader for encoding,
+ *  is some some number of Ticks long.
+ */
+typedef uint64_t Token_Slot;
+
+/**
+ * Subscription information
+ */
+typedef struct Token_Subscription {
+    /**
+     * The amount to refresh.
+     */
+    uint64_t amount;
+    /**
+     * The refresh period for the delegation subscription.
+     */
+    uint64_t period;
+    /**
+     * Slot that the subscription will be renewed.
+     */
+    Token_Slot next_renewal;
+} Token_Subscription;
+
+/**
+ * Account data.
+ */
+typedef struct Token_Account {
+    /**
+     * The mint associated with this account
+     */
+    Token_Pubkey mint;
+    /**
+     * The owner of this account.
+     */
+    Token_Pubkey owner;
+    /**
+     * The amount of tokens this account holds.
+     */
+    uint64_t amount;
+    /**
+     * If `delegate` is `Some` then `delegated_amount` represents
+     * the amount authorized by the delegate
+     */
+    Token_COption_Pubkey delegate;
+    /**
+     * Is `true` if this structure has been initialized
+     */
+    bool is_initialized;
+    /**
+     * Is this a native token
+     */
+    bool is_native;
+    /**
+     * The amount delegated
+     */
+    uint64_t delegated_amount;
+    /**
+     * Subscription info
+     */
+    Token_Subscription subscription;
+} Token_Account;
+
+/**
+ * Multisignature data.
+ */
+typedef struct Token_Multisig {
+    /**
+     * Number of signers required
+     */
+    uint8_t m;
+    /**
+     * Number of valid signers
+     */
+    uint8_t n;
+    /**
+     * Is `true` if this structure has been initialized
+     */
+    bool is_initialized;
+    /**
+     * Signer public keys
+     */
+    Token_Pubkey signers[Token_MAX_SIGNERS];
+} Token_Multisig;
