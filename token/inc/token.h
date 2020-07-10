@@ -85,13 +85,15 @@ typedef enum Token_TokenInstruction_Tag {
      *   * Single owner/delegate
      *   0. `[writable]` The source account.
      *   1. `[writable]` The destination account.
-     *   2. '[signer]' The source account's owner/delegate.
+     *   2. '[]` The clock sysvar
+     *   3. '[signer]' The source account's owner/delegate.
      *
      *   * Multisignature owner/delegate
      *   0. `[writable]` The source account.
      *   1. `[writable]` The destination account.
-     *   2. '[]' The source account's multisignature owner/delegate.
-     *   3. ..3+M '[signer]' M signer accounts.
+     *   2. '[]` The clock sysvar
+     *   3. '[]' The source account's multisignature owner/delegate.
+     *   4. ..4+M '[signer]' M signer accounts.
      */
     Transfer,
     /**
@@ -102,13 +104,15 @@ typedef enum Token_TokenInstruction_Tag {
      *   * Single owner
      *   0. `[writable]` The source account.
      *   1. `[]` The delegate.
-     *   2. `[signer]` The source account owner.
+     *   2. '[]` The clock sysvar
+     *   3. `[signer]` The source account owner.
      *
      *   * Multisignature owner
      *   0. `[writable]` The source account.
      *   1. `[]` The delegate.
-     *   2. '[]' The source account's multisignature owner.
-     *   3. ..3+M '[signer]' M signer accounts
+     *   3. '[]` The clock sysvar
+     *   3. '[]' The source account's multisignature owner.
+     *   4. ..4+M '[signer]' M signer accounts
      */
     Approve,
     /**
@@ -226,6 +230,11 @@ typedef struct Token_Approve_Body {
      * The amount of tokens the delegate is approved for.
      */
     uint64_t amount;
+    /**
+     * If non-zero then subscribe the delegate to be re-approved the same `amount`
+     * every `period` slots
+     */
+    uint64_t period;
 } Token_Approve_Body;
 
 typedef struct Token_MintTo_Body {
@@ -302,6 +311,30 @@ typedef struct Token_Mint {
 } Token_Mint;
 
 /**
+ * Slot is a unit of time given to a leader for encoding,
+ *  is some some number of Ticks long.
+ */
+typedef uint64_t Token_Slot;
+
+/**
+ * Subscription information
+ */
+typedef struct Token_Subscription {
+    /**
+     * The amount to refresh.
+     */
+    uint64_t amount;
+    /**
+     * The refresh period for the delegation subscription.
+     */
+    uint64_t period;
+    /**
+     * Slot that the subscription will be renewed.
+     */
+    Token_Slot next_renewal;
+} Token_Subscription;
+
+/**
  * Account data.
  */
 typedef struct Token_Account {
@@ -334,6 +367,10 @@ typedef struct Token_Account {
      * The amount delegated
      */
     uint64_t delegated_amount;
+    /**
+     * Subscription info
+     */
+    Token_Subscription subscription;
 } Token_Account;
 
 /**

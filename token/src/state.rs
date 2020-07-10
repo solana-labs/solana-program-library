@@ -6,8 +6,14 @@ use crate::{
     option::COption,
 };
 use solana_sdk::{
-    account_info::next_account_info, account_info::AccountInfo, entrypoint::ProgramResult, info,
-    program_error::ProgramError, pubkey::Pubkey,
+    account_info::next_account_info,
+    account_info::AccountInfo,
+    clock::{Clock, Slot},
+    entrypoint::ProgramResult,
+    info,
+    program_error::ProgramError,
+    pubkey::Pubkey,
+    sysvar::Sysvar,
 };
 use std::mem::size_of;
 
@@ -30,6 +36,18 @@ impl IsInitialized for Mint {
     }
 }
 
+/// Subscription information
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Subscription {
+    /// The amount to refresh.
+    pub amount: u64,
+    /// The refresh period for the delegation subscription.
+    pub period: u64,
+    /// Slot that the subscription will be renewed.
+    pub next_renewal: Slot,
+}
+
 /// Account data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -49,6 +67,8 @@ pub struct Account {
     pub is_native: bool,
     /// The amount delegated
     pub delegated_amount: u64,
+    /// Subscription info
+    pub subscription: Subscription,
 }
 impl IsInitialized for Account {
     fn is_initialized(&self) -> bool {
@@ -187,6 +207,7 @@ impl State {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
         let mut source_data = source_account_info.data.borrow_mut();
@@ -209,13 +230,23 @@ impl State {
                     authority_info,
                     account_info_iter.as_slice(),
                 )?;
+
+                let clock = Clock::from_account_info(&clock_info).expect("clock");
+
+                if clock.slot >= source_account.subscription.next_renewal {
+                    source_account.delegated_amount = source_account.subscription.amount;
+                    source_account.subscription.next_renewal =
+                        source_account.subscription.next_renewal
+                            + (((clock.slot - source_account.subscription.next_renewal)
+                                / source_account.subscription.period)
+                                * source_account.subscription.period)
+                            + source_account.subscription.period;
+                }
+
                 if source_account.delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
                 }
                 source_account.delegated_amount -= amount;
-                if source_account.delegated_amount == 0 {
-                    source_account.delegate = COption::None;
-                }
             }
             _ => Self::validate_owner(
                 program_id,
@@ -241,6 +272,7 @@ impl State {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         amount: u64,
+        period: u64,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
@@ -248,6 +280,7 @@ impl State {
         let mut source_data = source_account_info.data.borrow_mut();
         let mut source_account: &mut Account = Self::unpack(&mut source_data)?;
         let delegate_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
 
         Self::validate_owner(
@@ -257,8 +290,19 @@ impl State {
             account_info_iter.as_slice(),
         )?;
 
+        let clock = Clock::from_account_info(&clock_info).expect("clock");
+
         source_account.delegate = COption::Some(*delegate_info.key);
         source_account.delegated_amount = amount;
+        source_account.subscription = Subscription {
+            amount,
+            period,
+            next_renewal: if period == 0 {
+                std::u64::MAX
+            } else {
+                clock.slot + period
+            },
+        };
 
         Ok(())
     }
@@ -464,9 +508,9 @@ impl State {
                 info!("Instruction: Transfer");
                 Self::process_transfer(program_id, accounts, amount)
             }
-            TokenInstruction::Approve { amount } => {
+            TokenInstruction::Approve { amount, period } => {
                 info!("Instruction: Approve");
-                Self::process_approve(program_id, accounts, amount)
+                Self::process_approve(program_id, accounts, amount, period)
             }
             TokenInstruction::Revoke => {
                 info!("Instruction: Revoke");
@@ -705,6 +749,9 @@ mod tests {
         let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let mint2_key = pubkey_rand();
         let mut mint2_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
+        let clock_key = pubkey_rand();
+        let mut clock_account = SolanaAccount::new(0, size_of::<Clock>(), &program_id);
+        Clock::default().to_account(&mut clock_account);
 
         // create account
         do_process_instruction(
@@ -750,12 +797,13 @@ mod tests {
             &program_id,
             &account_key,
             &account2_key,
+            &clock_key,
             &owner_key,
             &[],
             1000,
         )
         .unwrap();
-        instruction.accounts[2].is_signer = false;
+        instruction.accounts[3].is_signer = false;
         assert_eq!(
             Err(ProgramError::MissingRequiredSignature),
             do_process_instruction(
@@ -763,6 +811,7 @@ mod tests {
                 vec![
                     &mut account_account,
                     &mut account2_account,
+                    &mut clock_account,
                     &mut owner_account,
                 ],
             )
@@ -776,6 +825,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     &mismatch_key,
+                    &clock_key,
                     &owner_key,
                     &[],
                     1000
@@ -784,6 +834,7 @@ mod tests {
                 vec![
                     &mut account_account,
                     &mut mismatch_account,
+                    &mut clock_account,
                     &mut owner_account,
                 ],
             )
@@ -797,6 +848,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     &account2_key,
+                    &clock_key,
                     &owner2_key,
                     &[],
                     1000
@@ -805,6 +857,7 @@ mod tests {
                 vec![
                     &mut account_account,
                     &mut account2_account,
+                    &mut clock_account,
                     &mut owner2_account,
                 ],
             )
@@ -816,6 +869,7 @@ mod tests {
                 &program_id,
                 &account_key,
                 &account2_key,
+                &clock_key,
                 &owner_key,
                 &[],
                 1000,
@@ -824,6 +878,7 @@ mod tests {
             vec![
                 &mut account_account,
                 &mut account2_account,
+                &mut clock_account,
                 &mut owner_account,
             ],
         )
@@ -833,10 +888,20 @@ mod tests {
         assert_eq!(
             Err(TokenError::InsufficientFunds.into()),
             do_process_instruction(
-                transfer(&program_id, &account_key, &account2_key, &owner_key, &[], 1).unwrap(),
+                transfer(
+                    &program_id,
+                    &account_key,
+                    &account2_key,
+                    &clock_key,
+                    &owner_key,
+                    &[],
+                    1
+                )
+                .unwrap(),
                 vec![
                     &mut account_account,
                     &mut account2_account,
+                    &mut clock_account,
                     &mut owner_account,
                 ],
             )
@@ -848,6 +913,7 @@ mod tests {
                 &program_id,
                 &account2_key,
                 &account_key,
+                &clock_key,
                 &owner_key,
                 &[],
                 500,
@@ -856,6 +922,7 @@ mod tests {
             vec![
                 &mut account2_account,
                 &mut account_account,
+                &mut clock_account,
                 &mut owner_account,
             ],
         )
@@ -867,6 +934,7 @@ mod tests {
                 &program_id,
                 &account2_key,
                 &account_key,
+                &clock_key,
                 &owner_key,
                 &[],
                 500,
@@ -875,6 +943,7 @@ mod tests {
             vec![
                 &mut account2_account,
                 &mut account_account,
+                &mut clock_account,
                 &mut owner_account,
             ],
         )
@@ -884,10 +953,20 @@ mod tests {
         assert_eq!(
             Err(TokenError::InsufficientFunds.into()),
             do_process_instruction(
-                transfer(&program_id, &account2_key, &account_key, &owner_key, &[], 1).unwrap(),
+                transfer(
+                    &program_id,
+                    &account2_key,
+                    &account_key,
+                    &clock_key,
+                    &owner_key,
+                    &[],
+                    1
+                )
+                .unwrap(),
                 vec![
                     &mut account2_account,
                     &mut account_account,
+                    &mut clock_account,
                     &mut owner_account,
                 ],
             )
@@ -899,14 +978,17 @@ mod tests {
                 &program_id,
                 &account_key,
                 &delegate_key,
+                &clock_key,
                 &owner_key,
                 &[],
                 100,
+                0,
             )
             .unwrap(),
             vec![
                 &mut account_account,
                 &mut delegate_account,
+                &mut clock_account,
                 &mut owner_account,
             ],
         )
@@ -918,6 +1000,7 @@ mod tests {
                 &program_id,
                 &account_key,
                 &account2_key,
+                &clock_key,
                 &delegate_key,
                 &[],
                 100,
@@ -926,6 +1009,7 @@ mod tests {
             vec![
                 &mut account_account,
                 &mut account2_account,
+                &mut clock_account,
                 &mut delegate_account,
             ],
         )
@@ -933,20 +1017,22 @@ mod tests {
 
         // insufficient funds approved via delegate
         assert_eq!(
-            Err(TokenError::OwnerMismatch.into()),
+            Err(TokenError::InsufficientFunds.into()),
             do_process_instruction(
                 transfer(
                     &program_id,
                     &account_key,
                     &account2_key,
+                    &clock_key,
                     &delegate_key,
                     &[],
-                    100
+                    100,
                 )
                 .unwrap(),
                 vec![
                     &mut account_account,
                     &mut account2_account,
+                    &mut clock_account,
                     &mut delegate_account,
                 ],
             )
@@ -958,6 +1044,7 @@ mod tests {
                 &program_id,
                 &account_key,
                 &account2_key,
+                &clock_key,
                 &owner_key,
                 &[],
                 900,
@@ -966,6 +1053,7 @@ mod tests {
             vec![
                 &mut account_account,
                 &mut account2_account,
+                &mut clock_account,
                 &mut owner_account,
             ],
         )
@@ -977,14 +1065,17 @@ mod tests {
                 &program_id,
                 &account_key,
                 &delegate_key,
+                &clock_key,
                 &owner_key,
                 &[],
                 100,
+                0,
             )
             .unwrap(),
             vec![
                 &mut account_account,
                 &mut delegate_account,
+                &mut clock_account,
                 &mut owner_account,
             ],
         )
@@ -998,6 +1089,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     &account2_key,
+                    &clock_key,
                     &delegate_key,
                     &[],
                     100
@@ -1006,6 +1098,7 @@ mod tests {
                 vec![
                     &mut account_account,
                     &mut account2_account,
+                    &mut clock_account,
                     &mut delegate_account,
                 ],
             )
@@ -1091,6 +1184,9 @@ mod tests {
         let mut owner2_account = SolanaAccount::default();
         let mint_key = pubkey_rand();
         let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
+        let clock_key = pubkey_rand();
+        let mut clock_account = SolanaAccount::new(0, size_of::<Clock>(), &program_id);
+        Clock::default().to_account(&mut clock_account);
 
         // create account
         do_process_instruction(
@@ -1118,12 +1214,14 @@ mod tests {
             &program_id,
             &account_key,
             &delegate_key,
+            &clock_key,
             &owner_key,
             &[],
             100,
+            0,
         )
         .unwrap();
-        instruction.accounts[2].is_signer = false;
+        instruction.accounts[3].is_signer = false;
         assert_eq!(
             Err(ProgramError::MissingRequiredSignature),
             do_process_instruction(
@@ -1131,6 +1229,7 @@ mod tests {
                 vec![
                     &mut account_account,
                     &mut delegate_account,
+                    &mut clock_account,
                     &mut owner_account,
                 ],
             )
@@ -1144,14 +1243,17 @@ mod tests {
                     &program_id,
                     &account_key,
                     &delegate_key,
+                    &clock_key,
                     &owner2_key,
                     &[],
-                    100
+                    100,
+                    0,
                 )
                 .unwrap(),
                 vec![
                     &mut account_account,
                     &mut delegate_account,
+                    &mut clock_account,
                     &mut owner2_account,
                 ],
             )
@@ -1163,14 +1265,17 @@ mod tests {
                 &program_id,
                 &account_key,
                 &delegate_key,
+                &clock_key,
                 &owner_key,
                 &[],
                 100,
+                0,
             )
             .unwrap(),
             vec![
                 &mut account_account,
                 &mut delegate_account,
+                &mut clock_account,
                 &mut owner_account,
             ],
         )
@@ -1490,6 +1595,9 @@ mod tests {
         let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let mint2_key = pubkey_rand();
         let mut mint2_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
+        let clock_key = pubkey_rand();
+        let mut clock_account = SolanaAccount::new(0, size_of::<Clock>(), &program_id);
+        Clock::default().to_account(&mut clock_account);
 
         // create account
         do_process_instruction(
@@ -1576,14 +1684,17 @@ mod tests {
                 &program_id,
                 &account_key,
                 &delegate_key,
+                &clock_key,
                 &owner_key,
                 &[],
                 84,
+                0,
             )
             .unwrap(),
             vec![
                 &mut account_account,
                 &mut delegate_account,
+                &mut clock_account,
                 &mut owner_account,
             ],
         )
@@ -1639,6 +1750,9 @@ mod tests {
         let signer_keys = vec![pubkey_rand(); MAX_SIGNERS];
         let signer_key_refs: Vec<&Pubkey> = signer_keys.iter().map(|key| key).collect();
         let mut signer_accounts = vec![SolanaAccount::new(0, 0, &program_id); MAX_SIGNERS];
+        let clock_key = pubkey_rand();
+        let mut clock_account = SolanaAccount::new(0, size_of::<Clock>(), &program_id);
+        Clock::default().to_account(&mut clock_account);
 
         // single signer
         let account_info_iter = &mut signer_accounts.iter_mut();
@@ -1724,14 +1838,17 @@ mod tests {
                 &program_id,
                 &account_key,
                 &multisig_delegate_key,
+                &clock_key,
                 &multisig_key,
                 &[&signer_keys[0]],
                 100,
+                0,
             )
             .unwrap(),
             vec![
                 &mut account,
                 &mut multisig_delegate_account,
+                &mut clock_account,
                 &mut multisig_account,
                 &mut account_info_iter.next().unwrap(),
             ],
@@ -1745,6 +1862,7 @@ mod tests {
                 &program_id,
                 &account_key,
                 &account2_key,
+                &clock_key,
                 &multisig_key,
                 &[&signer_keys[0]],
                 42,
@@ -1753,6 +1871,7 @@ mod tests {
             vec![
                 &mut account,
                 &mut account2_account,
+                &mut clock_account,
                 &mut multisig_account,
                 &mut account_info_iter.next().unwrap(),
             ],
@@ -1766,6 +1885,7 @@ mod tests {
                 &program_id,
                 &account_key,
                 &account2_key,
+                &clock_key,
                 &multisig_delegate_key,
                 &signer_key_refs,
                 42,
@@ -1774,6 +1894,7 @@ mod tests {
             vec![
                 &mut account,
                 &mut account2_account,
+                &mut clock_account,
                 &mut multisig_delegate_account,
                 &mut account_info_iter.next().unwrap(),
                 &mut account_info_iter.next().unwrap(),
@@ -2118,6 +2239,8 @@ mod tests {
         let mut account3_account = SolanaAccount::new(2, 0, &program_id);
         let owner_key = pubkey_rand();
         let mut owner_account = SolanaAccount::default();
+        let clock_key = pubkey_rand();
+        let mut clock_account = SolanaAccount::new(0, size_of::<Clock>(), &program_id);
 
         // initialize native account
         do_process_instruction(
@@ -2183,6 +2306,7 @@ mod tests {
                 &program_id,
                 &account_key,
                 &account2_key,
+                &clock_key,
                 &owner_key,
                 &[],
                 40,
@@ -2191,6 +2315,7 @@ mod tests {
             vec![
                 &mut account_account,
                 &mut account2_account,
+                &mut clock_account,
                 &mut owner_account,
             ],
         )
@@ -2220,5 +2345,217 @@ mod tests {
         assert_eq!(account_account.lamports, 0);
         assert_eq!(account.amount, 0);
         assert_eq!(account3_account.lamports, 4);
+    }
+
+    #[test]
+    fn test_subscription() {
+        let program_id = pubkey_rand();
+        let account_key = pubkey_rand();
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
+        let account2_key = pubkey_rand();
+        let mut account2_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
+        let delegate_key = pubkey_rand();
+        let mut delegate_account = SolanaAccount::default();
+        let owner_key = pubkey_rand();
+        let mut owner_account = SolanaAccount::default();
+        let mint_key = pubkey_rand();
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
+        let clock_key = pubkey_rand();
+        let mut clock_account = SolanaAccount::new(0, size_of::<Clock>(), &program_id);
+        Clock {
+            slot: 5,
+            ..Clock::default()
+        }
+        .to_account(&mut clock_account);
+
+        // create account
+        do_process_instruction(
+            initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
+            vec![&mut account_account, &mut owner_account, &mut mint_account],
+        )
+        .unwrap();
+
+        // create another account
+        do_process_instruction(
+            initialize_account(&program_id, &account2_key, &mint_key, &owner_key).unwrap(),
+            vec![&mut account2_account, &mut owner_account, &mut mint_account],
+        )
+        .unwrap();
+
+        // create new mint
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, Some(&account_key), None, 1000, 2).unwrap(),
+            vec![&mut mint_account, &mut account_account],
+        )
+        .unwrap();
+
+        // approve delegate
+        do_process_instruction(
+            approve(
+                &program_id,
+                &account_key,
+                &delegate_key,
+                &clock_key,
+                &owner_key,
+                &[],
+                100,
+                10,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut delegate_account,
+                &mut clock_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account: &mut Account = State::unpack(&mut account_account.data).unwrap();
+        assert_eq!(
+            account.subscription,
+            Subscription {
+                amount: 100,
+                period: 10,
+                next_renewal: 5 + 10
+            }
+        );
+
+        do_process_instruction(
+            transfer(
+                &program_id,
+                &account_key,
+                &account2_key,
+                &clock_key,
+                &delegate_key,
+                &[],
+                100,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut account2_account,
+                &mut clock_account,
+                &mut delegate_account,
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(
+            Err(TokenError::InsufficientFunds.into()),
+            do_process_instruction(
+                transfer(
+                    &program_id,
+                    &account_key,
+                    &account2_key,
+                    &clock_key,
+                    &delegate_key,
+                    &[],
+                    100,
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account2_account,
+                    &mut clock_account,
+                    &mut delegate_account,
+                ],
+            )
+        );
+
+        Clock {
+            slot: 15,
+            ..Clock::default()
+        }
+        .to_account(&mut clock_account);
+
+        do_process_instruction(
+            transfer(
+                &program_id,
+                &account_key,
+                &account2_key,
+                &clock_key,
+                &delegate_key,
+                &[],
+                100,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut account2_account,
+                &mut clock_account,
+                &mut delegate_account,
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(
+            Err(TokenError::InsufficientFunds.into()),
+            do_process_instruction(
+                transfer(
+                    &program_id,
+                    &account_key,
+                    &account2_key,
+                    &clock_key,
+                    &delegate_key,
+                    &[],
+                    100,
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account2_account,
+                    &mut clock_account,
+                    &mut delegate_account,
+                ],
+            )
+        );
+
+        Clock {
+            slot: 105,
+            ..Clock::default()
+        }
+        .to_account(&mut clock_account);
+
+        do_process_instruction(
+            transfer(
+                &program_id,
+                &account_key,
+                &account2_key,
+                &clock_key,
+                &delegate_key,
+                &[],
+                100,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut account2_account,
+                &mut clock_account,
+                &mut delegate_account,
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(
+            Err(TokenError::InsufficientFunds.into()),
+            do_process_instruction(
+                transfer(
+                    &program_id,
+                    &account_key,
+                    &account2_key,
+                    &clock_key,
+                    &delegate_key,
+                    &[],
+                    100,
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account2_account,
+                    &mut clock_account,
+                    &mut delegate_account,
+                ],
+            )
+        );
     }
 }
