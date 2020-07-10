@@ -192,6 +192,18 @@ impl State {
         Ok(())
     }
 
+    fn refresh_subscription(source_account: &mut Account, maybe_clock: &Option<AccountInfo>) {
+        match (source_account.subscription, maybe_clock) {
+            (COption::Some(ref mut sub), Some(ref clock)) => {
+                if sub.last_refresh + sub.period < clock.slot {
+                    sub.last_refresh = clock.slot;
+                    source_account.delegate_amount = sub.amount;
+                }
+            }
+            _ => (),
+        }
+    }
+
     /// Processes a [Transfer](enum.TokenInstruction.html) instruction.
     pub fn process_transfer(
         program_id: &Pubkey,
@@ -227,6 +239,10 @@ impl State {
                     return Err(TokenError::InsufficientFunds.into());
                 }
                 source_account.delegated_amount -= amount;
+                if source_account.subscription.is_some() {
+                    let maybe_clock = next_account_info(account_info_iter).ok();
+                    Self::refresh_subscription(&source_account, maybe_clock);
+                }
                 if source_account.delegated_amount == 0 {
                     source_account.delegate = COption::None;
                 }
@@ -412,6 +428,10 @@ impl State {
                     return Err(TokenError::InsufficientFunds.into());
                 }
                 source_account.delegated_amount -= amount;
+                if source_account.subscription.is_some() {
+                    let maybe_clock = next_account_info(account_info_iter).ok();
+                    Self::refresh_subscription(&source_account, maybe_clock);
+                }
                 if source_account.delegated_amount == 0 {
                     source_account.delegate = COption::None;
                 }
