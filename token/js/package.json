@@ -56,7 +56,7 @@
     "event-emitter": "^0.3.5",
     "express": "^4.16.4",
     "flow-bin": "0.129.0",
-    "flow-typed": "^3.0.0",
+    "flow-typed": "^3.2.0",
     "http-server": "^0.12.3",
     "jayson": "^3.3.3",
     "json-to-pretty-yaml": "^1.2.2",
