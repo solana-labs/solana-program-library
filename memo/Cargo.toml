@@ -11,8 +11,7 @@ license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
-solana-sdk = { version = "1.2.4", default-features = false, features=["program"] }
-solana-sdk-bpf-test = { version = "1.2.4", default-features = false }
+solana-sdk = { version = "=1.2.10", default-features = false, features=["program"] }
 
 [lib]
 name = "spl_memo"

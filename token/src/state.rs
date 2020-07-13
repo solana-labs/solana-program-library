@@ -7,7 +7,7 @@ use crate::{
 };
 use solana_sdk::{
     account_info::AccountInfo, entrypoint::ProgramResult, info, program_error::ProgramError,
-    program_utils::next_account_info, pubkey::Pubkey,
+    account_info::next_account_info, pubkey::Pubkey,
 };
 use std::mem::size_of;
 
@@ -550,7 +550,7 @@ pub trait IsInitialized {
 
 // Pulls in the stubs required for `info!()`.
 #[cfg(not(target_arch = "bpf"))]
-solana_sdk_bpf_test::stubs!();
+solana_sdk::program_stubs!();
 
 #[cfg(test)]
 mod tests {

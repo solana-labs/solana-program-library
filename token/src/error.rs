@@ -5,7 +5,7 @@ use num_traits::FromPrimitive;
 use solana_sdk::{
     info,
     program_error::{PrintProgramError, ProgramError},
-    program_utils::DecodeError,
+    decode_error::DecodeError,
 };
 use thiserror::Error;
 
