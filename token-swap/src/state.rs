@@ -8,7 +8,7 @@ use crate::{
 use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     account_info::AccountInfo, entrypoint::ProgramResult, info, instruction::Instruction,
-    program_error::ProgramError, program_utils::next_account_info, pubkey::Pubkey,
+    program_error::ProgramError, account_info::next_account_info, pubkey::Pubkey,
 };
 use std::mem::size_of;
 
@@ -541,7 +541,7 @@ mod tests {
 
     // Pulls in the stubs required for `info!()`
     #[cfg(not(target_arch = "bpf"))]
-    solana_sdk_bpf_test::stubs!();
+    solana_sdk::program_stubs!();
 
     fn pubkey_rand() -> Pubkey {
         Pubkey::new(&rand::random::<[u8; 32]>())

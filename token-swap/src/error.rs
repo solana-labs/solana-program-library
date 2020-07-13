@@ -7,7 +7,7 @@ use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     info,
     program_error::{PrintProgramError, ProgramError},
-    program_utils::DecodeError,
+    decode_error::DecodeError,
 };
 use thiserror::Error;
 

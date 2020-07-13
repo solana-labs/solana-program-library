@@ -22,6 +22,11 @@
 #define Token_MIN_SIGNERS 1
 
 /**
+ * Program state handler.
+ */
+typedef struct Token_State Token_State;
+
+/**
  * Instructions supported by the token program.
  */
 typedef enum Token_TokenInstruction_Tag {
@@ -182,12 +187,12 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * Accounts expected by this instruction:
      *
-     *   * Single owner/delegate
+     *   * Single owner
      *   0. `[writable]` The account to close.
      *   1. '[writable]' The destination account.
      *   2. `[signer]` The account's owner.
      *
-     *   * Multisignature owner/delegate
+     *   * Multisignature owner
      *   0. `[writable]` The account to close.
      *   1. '[writable]' The destination account.
      *   2. `[]` The account's multisignature owner.
@@ -253,107 +258,3 @@ typedef struct Token_TokenInstruction {
         Token_Burn_Body burn;
     };
 } Token_TokenInstruction;
-
-typedef uint8_t Token_Pubkey[32];
-
-/**
- * A C representation of Rust's `std::option::Option`
- */
-typedef enum Token_COption_Pubkey_Tag {
-    /**
-     * No value
-     */
-    None_Pubkey,
-    /**
-     * Some value `T`
-     */
-    Some_Pubkey,
-} Token_COption_Pubkey_Tag;
-
-typedef struct Token_Some_Body_Pubkey {
-    Token_Pubkey _0;
-} Token_Some_Body_Pubkey;
-
-typedef struct Token_COption_Pubkey {
-    Token_COption_Pubkey_Tag tag;
-    union {
-        Token_Some_Body_Pubkey some;
-    };
-} Token_COption_Pubkey;
-
-/**
- * Mint data.
- */
-typedef struct Token_Mint {
-    /**
-     * Optional owner, used to mint new tokens.  The owner may only
-     * be provided during mint creation.  If no owner is present then the mint
-     * has a fixed supply and no further tokens may be minted.
-     */
-    Token_COption_Pubkey owner;
-    /**
-     * Number of base 10 digits to the right of the decimal place.
-     */
-    uint8_t decimals;
-    /**
-     * Is `true` if this structure has been initialized
-     */
-    bool is_initialized;
-} Token_Mint;
-
-/**
- * Account data.
- */
-typedef struct Token_Account {
-    /**
-     * The mint associated with this account
-     */
-    Token_Pubkey mint;
-    /**
-     * The owner of this account.
-     */
-    Token_Pubkey owner;
-    /**
-     * The amount of tokens this account holds.
-     */
-    uint64_t amount;
-    /**
-     * If `delegate` is `Some` then `delegated_amount` represents
-     * the amount authorized by the delegate
-     */
-    Token_COption_Pubkey delegate;
-    /**
-     * Is `true` if this structure has been initialized
-     */
-    bool is_initialized;
-    /**
-     * Is this a native token
-     */
-    bool is_native;
-    /**
-     * The amount delegated
-     */
-    uint64_t delegated_amount;
-} Token_Account;
-
-/**
- * Multisignature data.
- */
-typedef struct Token_Multisig {
-    /**
-     * Number of signers required
-     */
-    uint8_t m;
-    /**
-     * Number of valid signers
-     */
-    uint8_t n;
-    /**
-     * Is `true` if this structure has been initialized
-     */
-    bool is_initialized;
-    /**
-     * Signer public keys
-     */
-    Token_Pubkey signers[Token_MAX_SIGNERS];
-} Token_Multisig;

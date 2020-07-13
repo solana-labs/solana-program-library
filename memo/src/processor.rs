@@ -18,7 +18,7 @@ fn process_instruction<'a>(
 
 // Pulls in the stubs required for `info!()`
 #[cfg(not(target_arch = "bpf"))]
-solana_sdk_bpf_test::stubs!();
+solana_sdk::program_stubs!();
 
 #[cfg(test)]
 mod tests {
