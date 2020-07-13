@@ -3,7 +3,7 @@
 
 [package]
 name = "spl-memo"
-version = "1.0.1"
+version = "1.0.2"
 description = "Solana Program Library Memo"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
