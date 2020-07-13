@@ -253,7 +253,7 @@ dependencies = [
 
 [[package]]
 name = "spl-memo"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "solana-sdk 1.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
