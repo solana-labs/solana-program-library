@@ -16,7 +16,7 @@ import {
   mintTo,
   multisig,
   burn,
-  closeAccount,
+  failOnCloseAccount,
   nativeToken,
 } from './token-test';
 
@@ -43,8 +43,8 @@ async function main() {
   await multisig();
   console.log('Run test: burn');
   await burn();
-  console.log('Run test: closeAccount');
-  await closeAccount();
+  console.log('Run test: failOnCloseAccount');
+  await failOnCloseAccount();
   console.log('Run test: nativeToken');
   await nativeToken();
   console.log('Success\n');

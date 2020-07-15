@@ -388,7 +388,7 @@ export async function multisig(): Promise<void> {
   }
 }
 
-export async function closeAccount(): Promise<void> {
+export async function failOnCloseAccount(): Promise<void> {
   const connection = await getConnection();
   const owner = new Account();
   const close = await testToken.createAccount(owner.publicKey);
@@ -401,6 +401,7 @@ export async function closeAccount(): Promise<void> {
     throw new Error('Account not found');
   }
 
+  // Initialize destination account to isolate source of failure
   const balanceNeeded =
     await connection.getMinimumBalanceForRentExemption(0);
   const dest = await newAccountWithLamports(connection, balanceNeeded);
@@ -412,14 +413,11 @@ export async function closeAccount(): Promise<void> {
     throw new Error('Account not found');
   }
 
-  await testToken.closeAccount(close, dest.publicKey, owner, []);
+  assert(didThrow(testToken.closeAccount, [close, dest.publicKey, owner, []]));
+
   info = await connection.getAccountInfo(close);
   if (info != null) {
-    throw new Error('Account not closed');
-  }
-  info = await connection.getAccountInfo(dest.publicKey);
-  if (info != null) {
-    assert(info.lamports == balanceNeeded + close_balance);
+    assert(info.lamports == close_balance);
   } else {
     throw new Error('Account not found');
   }
