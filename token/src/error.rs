@@ -3,9 +3,9 @@
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use solana_sdk::{
+    decode_error::DecodeError,
     info,
     program_error::{PrintProgramError, ProgramError},
-    decode_error::DecodeError,
 };
 use thiserror::Error;
 
@@ -42,12 +42,12 @@ pub enum TokenError {
     /// Instruction does not support native tokens
     #[error("Instruction does not support native tokens")]
     NativeNotSupported,
+    /// Instruction does not support non-native tokens
+    #[error("Instruction does not support non-native tokens")]
+    NonNativeNotSupported,
     /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
-    /// Non-native account can only be closed if its balance is zero
-    #[error("Non-native account can only be closed if its balance is zero")]
-    NonNativeHasBalance,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -83,10 +83,10 @@ impl PrintProgramError for TokenError {
             TokenError::NativeNotSupported => {
                 info!("Error: Instruction does not support native tokens")
             }
-            TokenError::InvalidInstruction => info!("Error: Invalid instruction"),
-            TokenError::NonNativeHasBalance => {
-                info!("Non-native account can only be closed if its balance is zero")
+            TokenError::NonNativeNotSupported => {
+                info!("Error: Instruction does not support non-native tokens")
             }
+            TokenError::InvalidInstruction => info!("Error: Invalid instruction"),
         }
     }
 }
