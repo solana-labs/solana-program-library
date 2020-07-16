@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 
-set -e
+set -ex
 
 if [[ -d .vercel ]]; then
   rm -r .vercel
 fi
 
 CONFIG_FILE=vercel.json
+PROJECT_NAME=spl-solana-com
 
+PRODUCTION=
 if [[ -n "$CI" ]]; then
-  PROJECT_NAME=spl-docs-solana-com
-else
-  PROJECT_NAME=spl-docs
+  PRODUCTION=--prod
 fi
 
 cat > "$CONFIG_FILE" <<EOF
@@ -25,4 +25,4 @@ EOF
   echo "VERCEL_TOKEN is undefined.  Needed for Vercel authentication."
   exit 1
 }
-vercel deploy . --local-config="$CONFIG_FILE" --confirm --token "$VERCEL_TOKEN" --prod
+vercel deploy . --local-config="$CONFIG_FILE" --confirm --token "$VERCEL_TOKEN" "$PRODUCTION"

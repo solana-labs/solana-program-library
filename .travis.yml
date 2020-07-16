@@ -37,7 +37,7 @@ jobs:
 
 
     # docs pull request or commit to master
-    - name: "docs"
+    - name: "Build Docs"
       if: type IN (push, pull_request) AND branch = master
       language: node_js
       node_js:

@@ -33,4 +33,4 @@ On each PR, the docs are built, but not published.
 
 In each post-commit build, docs are built and published using `vercel`.
 
-Documentation is published to spl.docs.solana.com
+Documentation is published to spl.solana.com
