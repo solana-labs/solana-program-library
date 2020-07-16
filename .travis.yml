@@ -1,34 +1,51 @@
 dist: bionic
 sudo: required
-language: rust
-services:
-- docker
-cache:
-  cargo: true
-  directories:
-  - "~/.npm"
+
 notifications:
   email: false
 
-install:
-  - cargo --version
-  - rustup install nightly
-  - rustup component add clippy --toolchain nightly
-  - docker --version
-  - wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-  - sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
-  - sudo apt-get update
-  - sudo apt-get install -y clang-7 --allow-unauthenticated
-  - sudo apt-get install -y openssl --allow-unauthenticated
-  - sudo apt-get install -y libssl-dev --allow-unauthenticated
-  - sudo apt-get install -y libssl1.1 --allow-unauthenticated
-  - clang-7 --version
-  - nvm install node
-  - node --version
+cache:
+  cargo: true
+  directories:
+    - "~/.npm"
+
+services:
+  - docker
 
 jobs:
   include:
-    - stage: "Test Programs"
-      script: ./ci/memo.sh
-    - script: ./ci/token-swap.sh
-    - script: ./ci/token.sh
+    - name: "Test Memo"
+      language: rust
+      install:
+        source .travis/install-program-deps.sh
+      script:
+        ./ci/memo.sh
+
+    - name: "Test Token-Swap"
+      language: rust
+      install:
+        source .travis/install-program-deps.sh
+      script:
+        ./ci/token-swap.sh
+
+    - name: "Test Token Program"
+      language: rust
+      install:
+        source .travis/install-program-deps.sh
+      script:
+        ./ci/token.sh
+
+
+    # docs pull request or commit to master
+    - name: "Build Docs"
+      if: type IN (push, pull_request) AND branch = master
+      language: node_js
+      node_js:
+        - "node"
+
+      before_install:
+        - .travis/affects.sh docs/ .travis || travis_terminate 0
+        - cd docs/
+        - source .travis/before_install.sh
+      script:
+        - source .travis/script.sh
