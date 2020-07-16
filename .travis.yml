@@ -32,3 +32,18 @@ jobs:
       script: ./ci/memo.sh
     - script: ./ci/token-swap.sh
     - script: ./ci/token.sh
+
+    # docs pull request or commit
+    - name: "docs"
+      if: type IN (push, pull_request) OR tag IS present
+      language: node_js
+      node_js:
+        - "node"
+
+      before_install:
+        - .travis/affects.sh docs/ .travis || travis_terminate 0
+        - cd docs/
+        - source .travis/before_install.sh
+
+      script:
+        - source .travis/script.sh
