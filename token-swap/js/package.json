@@ -55,7 +55,7 @@
     "eslint-plugin-react": "^7.11.1",
     "event-emitter": "^0.3.5",
     "express": "^4.16.4",
-    "flow-bin": "0.128.0",
+    "flow-bin": "0.129.0",
     "flow-typed": "^3.0.0",
     "http-server": "^0.12.3",
     "jayson": "^3.0.1",
