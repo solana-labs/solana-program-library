@@ -28,7 +28,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "prettier": "^2.0.2"
+    "prettier": "^2.0.5"
   },
   "dependencies": {
     "@solana/web3.js": "^0.62.0",
@@ -47,33 +47,33 @@
     "bn.js": "^5.0.0",
     "body-parser": "^1.18.3",
     "buffer-layout": "^1.2.0",
-    "css-loader": "^3.1.0",
+    "css-loader": "^3.6.0",
     "dotenv": "8.2.0",
     "eslint": "^7.4.0",
     "eslint-loader": "^4.0.2",
-    "eslint-plugin-import": "^2.13.0",
-    "eslint-plugin-react": "^7.11.1",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-react": "^7.20.3",
     "event-emitter": "^0.3.5",
     "express": "^4.16.4",
     "flow-bin": "0.129.0",
-    "flow-typed": "^3.0.0",
+    "flow-typed": "^3.2.0",
     "http-server": "^0.12.3",
-    "jayson": "^3.0.1",
+    "jayson": "^3.3.3",
     "json-to-pretty-yaml": "^1.2.2",
     "mkdirp-promise": "^5.0.1",
-    "moment": "^2.22.2",
+    "moment": "^2.27.0",
     "mz": "^2.7.0",
     "node-fetch": "^2.2.0",
     "react": "^16.5.2",
-    "react-bootstrap": "^1.0.0",
+    "react-bootstrap": "^1.1.1",
     "react-dom": "^16.5.2",
     "readline-promise": "^1.0.3",
     "semver": "^7.0.0",
     "superstruct": "^0.10.12",
     "watch": "^1.0.2",
     "webpack": "^4.20.2",
-    "webpack-cli": "^3.1.1",
-    "webpack-dev-server": "^3.1.9"
+    "webpack-cli": "^3.3.12",
+    "webpack-dev-server": "^3.11.0"
   },
   "engines": {
     "node": "11.x"
