@@ -21,12 +21,12 @@ jobs:
       script:
         ./ci/memo.sh
 
-    - name: "Test Token-Swap"
-      language: rust
-      install:
-        source .travis/install-program-deps.sh
-      script:
-        ./ci/token-swap.sh
+    # - name: "Test Token-Swap"
+    #   language: rust
+    #   install:
+    #     source .travis/install-program-deps.sh
+    #   script:
+    #     ./ci/token-swap.sh
 
     - name: "Test Token Program"
       language: rust
