@@ -11,6 +11,7 @@ import {
   SystemProgram,
   Transaction,
   TransactionInstruction,
+  SYSVAR_CLOCK_PUBKEY
 } from '@solana/web3.js';
 import type {Connection, TransactionSignature} from '@solana/web3.js';
 
@@ -111,6 +112,21 @@ type AccountInfo = {|
   delegatedAmount: TokenAmount,
 
   /**
+   * The amount of tokens the delegate was originally authorized to the delegate
+   */
+  subscriptionAmount: TokenAmount,
+
+  /**
+   * The number of slots between renweals
+   */
+  subscriptionPeriod: TokenAmount,
+
+  /**
+   * The last slot at which the delegate was renewed
+   */
+  subscriptionLastRenewal: TokenAmount,
+
+  /**
    * Is this account initialized
    */
   isInitialized: boolean,
@@ -134,6 +150,9 @@ const AccountLayout = BufferLayout.struct([
   BufferLayout.u8('is_native'),
   BufferLayout.u16('padding'),
   Layout.uint64('delegatedAmount'),
+  Layout.uint64('subscriptionAmount'),
+  Layout.uint64('subscriptionPeriod'),
+  Layout.uint64('subscriptionLastRenewal'),
 ]);
 
 /**
@@ -540,6 +559,15 @@ export class Token {
         accountInfo.delegatedAmount,
       );
     }
+    accountInfo.subscriptionAmount = TokenAmount.fromBuffer(
+      accountInfo.subscriptionAmount,
+    );
+    accountInfo.subscriptionPeriod = TokenAmount.fromBuffer(
+      accountInfo.subscriptionPeriod,
+    );
+    accountInfo.subscriptionLastRenewal = TokenAmount.fromBuffer(
+      accountInfo.subscriptionLastRenewal,
+    );
 
     if (!accountInfo.mint.equals(this.publicKey)) {
       throw new Error(
@@ -642,6 +670,7 @@ export class Token {
     owner: Account | PublicKey,
     multiSigners: Array<Account>,
     amount: number | TokenAmount,
+    period: number,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
@@ -656,7 +685,7 @@ export class Token {
       'Approve',
       this.connection,
       new Transaction().add(
-        this.approveInstruction(account, delegate, ownerPublicKey, multiSigners, amount),
+        this.approveInstruction(account, delegate, ownerPublicKey, multiSigners, amount, period),
       ),
       this.payer,
       ...signers
@@ -858,6 +887,7 @@ export class Token {
     let keys = [
       {pubkey: source, isSigner: false, isWritable: true},
       {pubkey: destination, isSigner: false, isWritable: true},
+      {pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false},
     ];
     if (authority instanceof Account) {
       keys.push({pubkey: authority.publicKey, isSigner: true, isWritable: false});
@@ -887,10 +917,12 @@ export class Token {
     owner: Account | PublicKey,
     multiSigners: Array<Account>,
     amount: number | TokenAmount,
+    period: number,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
       Layout.uint64('amount'),
+      BufferLayout.nu64('period'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
@@ -898,13 +930,15 @@ export class Token {
       {
         instruction: 4, // Approve instruction
         amount: new TokenAmount(amount).toBuffer(),
+        period: new TokenAmount(period).toBuffer(),
       },
       data,
     );
 
     let keys = [
       {pubkey: account, isSigner: false, isWritable: true},
-      {pubkey: delegate, isSigner: false, isWritable: false}
+      {pubkey: delegate, isSigner: false, isWritable: false},
+      {pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false},
     ];
     if (owner instanceof Account) {
       keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});

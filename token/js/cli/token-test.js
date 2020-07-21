@@ -165,6 +165,7 @@ export async function approveRevoke(): Promise<void> {
     testAccountOwner,
     [],
     456,
+    0,
   );
   let testAccountInfo = await testToken.getAccountInfo(testAccount);
   assert(testAccountInfo.delegatedAmount.toNumber() == 456);
@@ -189,9 +190,9 @@ export async function invalidApprove(): Promise<void> {
   const delegate = new Account();
 
   // account2 is not a delegate account of account1
-  assert(didThrow(testToken.approve, [account1, account2, owner, [], 123]));
+  assert(didThrow(testToken.approve, [account1, account2, owner, [], 123, 0]));
   // account1Delegate is not a delegate account of account2
-  assert(didThrow(testToken.approve, [account2, delegate, owner, [], 123]));
+  assert(didThrow(testToken.approve, [account2, delegate, owner, [], 123, 0]));
 }
 
 export async function failOnApproveOverspend(): Promise<void> {
@@ -208,7 +209,7 @@ export async function failOnApproveOverspend(): Promise<void> {
     10,
   );
 
-  await testToken.approve(account1, delegate.publicKey, owner, [], 2);
+  await testToken.approve(account1, delegate.publicKey, owner, [], 2, 0);
 
   let account1Info = await testToken.getAccountInfo(account1);
   assert(account1Info.amount.toNumber() == 10);
@@ -229,8 +230,12 @@ export async function failOnApproveOverspend(): Promise<void> {
 
   account1Info = await testToken.getAccountInfo(account1);
   assert(account1Info.amount.toNumber() == 8);
-  assert(account1Info.delegate === null);
-  assert(account1Info.delegatedAmount.toNumber() == 0);
+  if (account1Info.delegate == null) {
+    throw new Error('deleage should not be null');
+  } else {
+    assert(account1Info.delegate.equals(delegate.publicKey));
+    assert(account1Info.delegatedAmount.toNumber() == 0);
+  }
 
   assert(didThrow(testToken.transfer, [account1, account2, delegate, [], 1]));
 }
@@ -350,6 +355,7 @@ export async function multisig(): Promise<void> {
       delegate,
       multisig, signerAccounts,
       1,
+      0,
     );
     const accountInfo = await testToken.getAccountInfo(multisigOwnedAccount);
     assert(accountInfo.delegate != null);
