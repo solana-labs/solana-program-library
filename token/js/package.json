@@ -19,7 +19,7 @@
     "cluster:testnet": "cp cluster-testnet.env .env",
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env",
     "localnet:update": "solana-localnet update",
-    "localnet:up": "set -x; solana-localnet down; set -e; solana-localnet up",
+    "localnet:up": "rm client/util/store/config.json; set -x; solana-localnet down; set -e; solana-localnet up",
     "localnet:down": "solana-localnet down",
     "localnet:logs": "solana-localnet logs -f",
     "pretty": "prettier --write '{,src/**/}*.js'"
@@ -49,7 +49,7 @@
     "buffer-layout": "^1.2.0",
     "css-loader": "^3.6.0",
     "dotenv": "8.2.0",
-    "eslint": "^6.1.0",
+    "eslint": "^7.4.0",
     "eslint-loader": "^4.0.2",
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-react": "^7.20.3",

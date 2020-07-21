@@ -2,12 +2,10 @@
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-#[cfg(target_arch = "bpf")]
-use solana_sdk::program::invoke_signed;
 use solana_sdk::{
+    decode_error::DecodeError,
     info,
     program_error::{PrintProgramError, ProgramError},
-    decode_error::DecodeError,
 };
 use thiserror::Error;
 

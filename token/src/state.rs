@@ -1905,8 +1905,8 @@ mod tests {
         let program_id = pubkey_rand();
         let owner_key = pubkey_rand();
         let mut signer_keys = [Pubkey::default(); MAX_SIGNERS];
-        for i in 0..MAX_SIGNERS {
-            signer_keys[i] = pubkey_rand();
+        for signer_key in signer_keys.iter_mut().take(MAX_SIGNERS) {
+            *signer_key = pubkey_rand();
         }
         let mut signer_lamports = 0;
         let mut signer_data = vec![];
@@ -1931,7 +1931,7 @@ mod tests {
         let mut multisig: &mut Multisig = State::unpack_unchecked(&mut data).unwrap();
         multisig.m = MAX_SIGNERS as u8;
         multisig.n = MAX_SIGNERS as u8;
-        multisig.signers = signer_keys.clone();
+        multisig.signers = signer_keys;
         multisig.is_initialized = true;
         let owner_account_info = AccountInfo::new(
             &owner_key,

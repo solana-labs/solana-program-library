@@ -2,8 +2,6 @@
 
 //! Instruction types
 
-#[cfg(target_arch = "bpf")]
-use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,

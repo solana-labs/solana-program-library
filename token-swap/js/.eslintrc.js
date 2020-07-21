@@ -1,3 +1,4 @@
+// eslint-disable-next-line
 module.exports = {
   // eslint-disable-line import/no-commonjs
   env: {
@@ -48,5 +49,10 @@ module.exports = {
     ],
     'require-await': ['error'],
     semi: ['error', 'always'],
+  },
+  settings: {
+    react: {
+      version: 'detect',
+    },
   },
 };
