@@ -2,6 +2,7 @@
 
 cargo --version
 rustup install nightly
+rustup component add rustfmt
 rustup component add clippy --toolchain nightly
 docker --version
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
