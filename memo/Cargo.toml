@@ -10,8 +10,12 @@ repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2018"
 
+[features]
+program = []
+default = ["program"]
+
 [dependencies]
-solana-sdk = { version = "=1.2.10", default-features = false, features=["program"] }
+solana-sdk = { version = "=1.2.12", default-features = false, features=["program"] }
 
 [lib]
 name = "spl_memo"

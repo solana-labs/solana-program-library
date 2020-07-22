@@ -10,11 +10,15 @@ repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2018"
 
+[features]
+program = []
+default = ["program"]
+
 [dependencies]
 num-derive = "0.2"
 num-traits = "0.2"
 remove_dir_all = "=0.5.0"
-solana-sdk = { version = "=1.2.10", default-features = false, features=["program"] }
+solana-sdk = { version = "=1.2.12", default-features = false, features=["program"] }
 spl-token = { path = "../token" }
 thiserror = "1.0"
 
