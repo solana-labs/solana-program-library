@@ -530,7 +530,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "cbindgen",
  "num-derive 0.2.5",
