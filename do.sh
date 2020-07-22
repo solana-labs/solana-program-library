@@ -37,10 +37,8 @@ perform_action() {
 
         so_path="$targetDir/$profile"
         so_name="spl_${3%/}"
-        if [ -f "$so_path/${so_name}.so" ]; then
-            cp "$so_path/${so_name}.so" "$so_path/${so_name}_debug.so"
-            "$sdkDir"/dependencies/llvm-native/bin/llvm-objcopy --strip-all "$so_path/${so_name}.so" "$so_path/$so_name.so"
-        fi
+        cp "$so_path/${so_name}.so" "$so_path/${so_name}_debug.so"
+        "$sdkDir"/dependencies/llvm-native/bin/llvm-objcopy --strip-all "$so_path/${so_name}.so" "$so_path/$so_name.so"
         ;;
     build-native)
         (
