@@ -23,7 +23,7 @@ $ ./do.sh update
 
 To build all programs, run:
 ```bash
-$ ./do.sh build
+$ ./do.sh build all
 ```
 
 Or choose a specific program:
@@ -35,7 +35,7 @@ $ ./do.sh build <program>
 
 Unit tests contained within all projects can be built via:
 ```bash
-$ ./do.sh test
+$ ./do.sh test all
 ```
 
 Or:
@@ -49,7 +49,7 @@ End-to-end testing may be performed via the per-project .js bindings.  See the [
 
 Clippy is also supported via:
 ```bash
-$ ./do.sh clippy
+$ ./do.sh clippy all
 ```
 
 Or:
