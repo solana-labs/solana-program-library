@@ -397,10 +397,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_version"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
+dependencies = [
+ "semver",
+]
+
+[[package]]
+name = "rustversion"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9bdc5e856e51e685846fb6c13a1f5e5432946c2c90501bdc76a1319f19e29da"
+dependencies = [
+ "proc-macro2 1.0.18",
+ "quote 1.0.7",
+ "syn 1.0.31",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
+
+[[package]]
+name = "semver"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
+dependencies = [
+ "semver-parser",
+]
+
+[[package]]
+name = "semver-parser"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
@@ -456,9 +491,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk"
-version = "1.2.10"
+version = "1.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3869d4a4784d10fc0db91fc666a7ccb916fd47e74636e37c328df5a3b7f8157f"
+checksum = "d6a3809bf6d1d39368fa7a539ea43d5db4dff319b267b8f9e22a00d89a7a977a"
 dependencies = [
  "bincode",
  "bs58",
@@ -470,6 +505,8 @@ dependencies = [
  "num-derive 0.3.0",
  "num-traits",
  "pbkdf2",
+ "rustc_version",
+ "rustversion",
  "serde",
  "serde_bytes",
  "serde_derive",
@@ -480,13 +517,14 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk-macro"
-version = "1.2.10"
+version = "1.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3fba494b48ee7d1b1c9cfd2df292d9dad69ccfd1f2b107eb030e29601cc4103"
+checksum = "81ce1a528901871a60147fd1747fb875638fd02af7dc8c7b233b353a65d9bc48"
 dependencies = [
  "bs58",
  "proc-macro2 1.0.18",
  "quote 1.0.7",
+ "rustversion",
  "syn 1.0.31",
 ]
 
