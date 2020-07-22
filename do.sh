@@ -26,59 +26,58 @@ EOF
 
 sdkParentDir=bin
 sdkDir="$sdkParentDir"/bpf-sdk
-targetDir="$PWD"/"$2"/target
 profile=bpfel-unknown-unknown/release
 
 perform_action() {
     set -e
+    projectDir="$PWD"/$2
+    targetDir="$projectDir"/target
     case "$1" in
     build)
-        "$sdkDir"/rust/build.sh "$2"
+        "$sdkDir"/rust/build.sh "$projectDir"
 
         so_path="$targetDir/$profile"
-        so_name="spl_${3%/}"
-        if [ -f "$so_path/${so_name}.so" ]; then
-            cp "$so_path/${so_name}.so" "$so_path/${so_name}_debug.so"
-            "$sdkDir"/dependencies/llvm-native/bin/llvm-objcopy --strip-all "$so_path/${so_name}.so" "$so_path/$so_name.so"
-        fi
+        so_name="spl_${2//\-/_}"
+        cp "$so_path/${so_name}.so" "$so_path/${so_name}_debug.so"
+        "$sdkDir"/dependencies/llvm-native/bin/llvm-objcopy --strip-all "$so_path/${so_name}.so" "$so_path/$so_name.so"
         ;;
     build-native)
         (
-            cd "$2"
-            echo "build $2"
-            export RUSTFLAGS="${@:4}"
+            cd "$projectDir"
+            echo "build $projectDir"
+            export RUSTFLAGS="${@:3}"
             cargo build
         )
         ;;
     clean)
-        "$sdkDir"/rust/clean.sh "$2"
+        "$sdkDir"/rust/clean.sh "$projectDir"
         ;;
     test)
         (
-            cd "$2"
-            echo "test $2"
-            cargo +nightly test ${@:4}
+            cd "$projectDir"
+            echo "test $projectDir"
+            cargo +nightly test ${@:3}
         )
         ;;
     clippy)
         (
-            cd "$2"
-            echo "clippy $2"
-            cargo +nightly clippy ${@:4}
+            cd "$projectDir"
+            echo "clippy $projectDir"
+            cargo +nightly clippy ${@:3}
         )
         ;;
     fmt)
         (
-            cd "$2"
-            echo "formatting $2"
-            cargo fmt ${@:4}
+            cd "$projectDir"
+            echo "formatting $projectDir"
+            cargo fmt ${@:3}
         )
         ;;
     doc)
         (
-            cd "$2"
-            echo "generating docs $2"
-            cargo doc ${@:4}
+            cd "$projectDir"
+            echo "generating docs $projectDir"
+            cargo doc ${@:3}
         )
         ;;
     update)
@@ -93,11 +92,11 @@ perform_action() {
         (
             download_bpf_sdk
             pwd
-            "$0" build "$3"
+            "$0" build "$2"
 
-            cd "$3"
+            cd "$projectDir"
             so_path="$targetDir/$profile"
-            so_name="solana_bpf_${3%/}"
+            so_name="solana_bpf_${2//\-/_}"
             so="$so_path/${so_name}_debug.so"
             dump="$so_path/${so_name}-dump"
 
@@ -156,12 +155,12 @@ if [[ $2 == "all" ]]; then
     # Perform operation on all projects
     for project in */; do
         if [[ -f "$project"Cargo.toml ]]; then
-            perform_action "$1" "$PWD/$project" "$project" ${@:3}
+            perform_action "$1" "${project%/}" ${@:3}
         else
             continue
         fi
     done
 else
     # Perform operation on requested project
-    perform_action "$1" "$PWD/$2" "$2" "${@:3}"
+    perform_action "$1" "$2" "${@:3}"
 fi
