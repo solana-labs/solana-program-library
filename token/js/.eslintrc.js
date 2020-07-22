@@ -6,12 +6,10 @@ module.exports = {
     es6: true,
     node: true,
   },
-  plugins: ['react'],
   extends: [
     'eslint:recommended',
     'plugin:import/errors',
     'plugin:import/warnings',
-    'plugin:react/recommended',
   ],
   parser: 'babel-eslint',
   parserOptions: {
