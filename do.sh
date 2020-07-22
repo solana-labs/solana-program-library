@@ -45,7 +45,7 @@ perform_action() {
         (
             cd "$projectDir"
             echo "build $projectDir"
-            export RUSTFLAGS="${@:4}"
+            export RUSTFLAGS="${@:3}"
             cargo build
         )
         ;;
@@ -56,28 +56,28 @@ perform_action() {
         (
             cd "$projectDir"
             echo "test $projectDir"
-            cargo +nightly test ${@:4}
+            cargo +nightly test ${@:3}
         )
         ;;
     clippy)
         (
             cd "$projectDir"
             echo "clippy $projectDir"
-            cargo +nightly clippy ${@:4}
+            cargo +nightly clippy ${@:3}
         )
         ;;
     fmt)
         (
             cd "$projectDir"
             echo "formatting $projectDir"
-            cargo fmt ${@:4}
+            cargo fmt ${@:3}
         )
         ;;
     doc)
         (
             cd "$projectDir"
             echo "generating docs $projectDir"
-            cargo doc ${@:4}
+            cargo doc ${@:3}
         )
         ;;
     update)
