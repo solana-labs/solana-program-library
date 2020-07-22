@@ -26,11 +26,11 @@ EOF
 
 sdkParentDir=bin
 sdkDir="$sdkParentDir"/bpf-sdk
-targetDir="$PWD"/"$2"/target
 profile=bpfel-unknown-unknown/release
 
 perform_action() {
     set -e
+    targetDir="$2"target
     case "$1" in
     build)
         "$sdkDir"/rust/build.sh "$2"
