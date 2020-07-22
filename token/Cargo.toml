@@ -11,6 +11,10 @@ license = "Apache-2.0"
 edition = "2018"
 exclude = ["js/**"]
 
+[features]
+program = []
+default = ["program"]
+
 [dependencies]
 num-derive = "0.2"
 num-traits = "0.2"
