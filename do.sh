@@ -4,9 +4,7 @@ cd "$(dirname "$0")"
 
 usage() {
     cat <<EOF
-
 Usage: do.sh <action> <project> <action specific arguments>
-
 Supported actions:
     build
     clean
@@ -16,11 +14,9 @@ Supported actions:
     fmt
     test
     update
-
 Supported projects:
     all
     any directory containing a Cargo.toml file
-
 EOF
 }
 
@@ -90,34 +86,37 @@ perform_action() {
         # - greadelf
         # - rustfilt
         (
-            download_bpf_sdk
             pwd
             "$0" build "$2"
 
-            cd "$projectDir"
             so_path="$targetDir/$profile"
-            so_name="solana_bpf_${2//\-/_}"
+            so_name="spl_${2//\-/_}"
             so="$so_path/${so_name}_debug.so"
-            dump="$so_path/${so_name}-dump"
+            dump="$so_path/${so_name}_dump"
+
+            echo $so_path
+            echo $so_name
+            echo $so
+            echo $dump
 
             if [ -f "$so" ]; then
                 ls \
                     -la \
                     "$so" \
-                    >"${dump}-mangled.txt"
+                    >"${dump}_mangled.txt"
                 greadelf \
                     -aW \
                     "$so" \
-                    >>"${dump}-mangled.txt"
+                    >>"${dump}_mangled.txt"
                 "$sdkDir/dependencies/llvm-native/bin/llvm-objdump" \
                     -print-imm-hex \
                     --source \
                     --disassemble \
                     "$so" \
-                    >>"${dump}-mangled.txt"
+                    >>"${dump}_mangled.txt"
                 sed \
                     s/://g \
-                    <"${dump}-mangled.txt" |
+                    <"${dump}_mangled.txt" |
                     rustfilt \
                         >"${dump}.txt"
             else
