@@ -491,9 +491,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk"
-version = "1.2.12"
+version = "1.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6a3809bf6d1d39368fa7a539ea43d5db4dff319b267b8f9e22a00d89a7a977a"
+checksum = "cae779f912f1cbe2fe91df656ecc5ccdda9dd3378c0934f4390b7ba33501b3dc"
 dependencies = [
  "bincode",
  "bs58",
@@ -517,9 +517,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk-macro"
-version = "1.2.12"
+version = "1.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81ce1a528901871a60147fd1747fb875638fd02af7dc8c7b233b353a65d9bc48"
+checksum = "8924af69f2685287988a530014c3268d78d6ce3fe4a1a61f87537c545afa8427"
 dependencies = [
  "bs58",
  "proc-macro2 1.0.18",
@@ -530,7 +530,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "cbindgen",
  "num-derive 0.2.5",
