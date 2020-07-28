@@ -9,7 +9,7 @@ The Token JavaScript library comprises:
 ## Getting Started
 
 First fetch the npm dependencies, including `@solana/web3.js`, by running:
-```sh
+```bash
 $ npm install
 ```
 
@@ -34,11 +34,18 @@ Solana cluster logs are available with:
 $ npm run localnet:logs
 ```
 
-For more details on working with a local cluster, see the [full instructions](https://github.com/solana-labs/solana-web3.js#local-network).
+For more details on working with a local cluster, see the [full
+instructions](https://github.com/solana-labs/solana-web3.js#local-network).
+
+### Build the on-chain program
+
+```bash
+$ npm run build:program
+```
 
 ### Run the test client
 
-```sh
+```bash
 $ npm run start
 ```
 

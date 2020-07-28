@@ -14,6 +14,7 @@
     "flow": "flow",
     "flow:watch": "watch 'flow' . --wait=1 --ignoreDirectoryPattern=/doc/",
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",
+    "build:program": "rm client/util/store/config.json; ../../do.sh build token",
     "cluster:localnet": "rm -f .env",
     "cluster:devnet": "cp cluster-devnet.env .env",
     "cluster:testnet": "cp cluster-testnet.env .env",
