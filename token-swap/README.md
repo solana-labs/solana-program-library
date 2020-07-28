@@ -1,8 +1,7 @@
 # Token-swap program
 
-An Uniswap-like exchange for the Token program on the Solana blockchain.
+A Uniswap-like exchange for the Token program on the Solana blockchain.
 
-The project comprises:
+Full documentation is available at https://spl.solana.com
 
-* The Rust on-chain program
-* A JavaScript library to interact with the on-chain program
+Javascript binding are available in the `./js` directory.
