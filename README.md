@@ -12,6 +12,8 @@ of Sealevel, solana-runtime, and deployed to its mainnet.  As others implement
 Sealevel, we will graciously accept patches to ensure the programs here are
 portable across all implementations.
 
+Full documentation is available at https://spl.solana.com
+
 ## Building
 
 These programs cannot be built directly via cargo and instead require the build scripts located in Solana's BPF-SDK.

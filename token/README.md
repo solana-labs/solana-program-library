@@ -1,8 +1,9 @@
 # Token program
 
-An ERC20-like Token program on the Solana blockchain.
+A Fungible Token program on the Solana blockchain.
 
-The project comprises:
+This program provides an interface and implementation that third parties can use to create and trade their own tokens.
 
-* The Rust on-chain program
-* A JavaScript library to interact with the on-chain program
+Full documentation is available at https://spl.solana.com
+
+Javascript binding are available in the ./js directory
