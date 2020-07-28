@@ -527,6 +527,10 @@ pub fn invoke_signed<'a>(
     )
 }
 
+// Pull in syscall stubs when building for non-BPF targets
+#[cfg(not(target_arch = "bpf"))]
+solana_sdk::program_stubs!();
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -540,10 +544,6 @@ mod tests {
     };
 
     const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
-
-    // Pulls in the stubs required for `info!()`
-    #[cfg(not(target_arch = "bpf"))]
-    solana_sdk::program_stubs!();
 
     fn pubkey_rand() -> Pubkey {
         Pubkey::new(&rand::random::<[u8; 32]>())

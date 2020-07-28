@@ -16,7 +16,7 @@ fn process_instruction<'a>(
     Ok(())
 }
 
-// Pulls in the stubs required for `info!()`
+// Pull in syscall stubs when building for non-BPF targets
 #[cfg(not(target_arch = "bpf"))]
 solana_sdk::program_stubs!();
 
