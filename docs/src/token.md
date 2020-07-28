@@ -50,7 +50,8 @@ A Mint can either be configured with a fixed-supply or non-fixed supply.  The
 total supply of a fixed-supply Mint is determined during initialization and
 deposited into a provided destination account.  A non-fixed-supply Mint also has
 an owner associated with it who has the authority to create new tokens in the
-future with the `MintTo` instruction.
+future with the `MintTo` instruction.  Both types of Mints can `Burn` tokens to
+decrease supply.ß
 
 It's important to note that the `InitializeMint` instruction does not require
 the Solana account being initialized also be a signer.  The `InitializeMint`
