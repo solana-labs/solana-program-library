@@ -62,3 +62,42 @@ Or:
 ```
 $ ./do.sh clippy <program>
 ```
+
+## Release Process
+
+SPL programs are currently tagged and released manually. Each program is
+versioned independently of the others, with all new development occurring on
+master. Once a program is tested and deemed ready for release:
+
+### Bump Version
+
+  * Increment the version number in the program's Cargo.toml
+  * Generate a new program ID and replace in `<program>/program-id.md` and `<program>/src/lib.rs`
+  * Run `./do.sh build <program>` to update relevant C bindings. (Note the location of the generated `spl_<program>.so` for attaching to the Github release.)
+  * Open a PR with these version changes and merge after passing CI.
+
+### Create Github tag
+
+Program tags are of the form `<program>-vX.Y.Z`.
+Create the new tag at the version-bump commit and push to the
+solana-program-library repository, eg:
+
+```
+$ git tag token-v1.0.0 b24bfe7
+$ git push upstream --tags
+```
+
+### Publish Github release
+
+  * Go to [GitHub Releases UI](https://github.com/solana-labs/solana-program-library/releases)
+  * Click "Draft new release", and enter the new tag in the "Tag version" box.
+  * Title the release "SPL <Program> vX.Y.Z", complete the description, and attach the `spl_<program>.so` binary
+  * Click "Publish release"
+
+### Publish to Crates.io
+
+Navigate to the program directory and run `cargo package`
+to test the build. Then run `cargo publish`. (Currently, programs with generated
+C bindings fail the final step of verification due to the location of the
+generated file. Once you are certain the crate is ready, run `cargo publish --no-verify`
+to bypass this error.)
