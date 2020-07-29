@@ -432,8 +432,8 @@ pub fn approve(
     let data = TokenInstruction::Approve { amount }.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
-    accounts.push(AccountMeta::new_readonly(*source_pubkey, false));
-    accounts.push(AccountMeta::new(*delegate_pubkey, false));
+    accounts.push(AccountMeta::new(*source_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(*delegate_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
         signer_pubkeys.is_empty(),
