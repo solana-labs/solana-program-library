@@ -226,7 +226,12 @@ export class Token {
    * @param programId token programId
    * @param payer Payer of fees
    */
-  constructor(connection: Connection, publicKey: PublicKey, programId: PublicKey, payer: Account) {
+  constructor(
+    connection: Connection,
+    publicKey: PublicKey,
+    programId: PublicKey,
+    payer: Account,
+  ) {
     Object.assign(this, {connection, publicKey, programId, payer});
   }
 
@@ -238,9 +243,7 @@ export class Token {
   static async getMinBalanceRentForExemptMint(
     connection: Connection,
   ): Promise<number> {
-    return await connection.getMinimumBalanceForRentExemption(
-      MintLayout.span,
-    );
+    return await connection.getMinimumBalanceForRentExemption(MintLayout.span);
   }
 
   /**
@@ -292,7 +295,12 @@ export class Token {
   ): Promise<TokenAndPublicKey> {
     let transaction;
     const mintAccount = new Account();
-    const token = new Token(connection, mintAccount.publicKey, programId, payer);
+    const token = new Token(
+      connection,
+      mintAccount.publicKey,
+      programId,
+      payer,
+    );
     const initialAccountPublicKey = await token.createAccount(accountOwner);
 
     // Allocate memory for the account
@@ -312,7 +320,11 @@ export class Token {
       {pubkey: mintAccount.publicKey, isSigner: false, isWritable: true},
     ];
     if (supply.toNumber() != 0) {
-      keys.push({pubkey: initialAccountPublicKey, isSigner: false, isWritable: true});
+      keys.push({
+        pubkey: initialAccountPublicKey,
+        isSigner: false,
+        isWritable: true,
+      });
     }
     if (is_owned) {
       keys.push({pubkey: mintOwner, isSigner: false, isWritable: false});
@@ -346,7 +358,7 @@ export class Token {
       connection,
       transaction,
       payer,
-      mintAccount
+      mintAccount,
     );
 
     return [token, initialAccountPublicKey];
@@ -365,9 +377,7 @@ export class Token {
    * @param owner User account that will own the new account
    * @return Public key of the new empty account
    */
-  async createAccount(
-    owner: PublicKey,
-  ): Promise<PublicKey> {
+  async createAccount(owner: PublicKey): Promise<PublicKey> {
     const mintAccount = new Account();
     let transaction;
 
@@ -409,7 +419,7 @@ export class Token {
       this.connection,
       transaction,
       this.payer,
-      mintAccount
+      mintAccount,
     );
 
     return mintAccount.publicKey;
@@ -446,13 +456,13 @@ export class Token {
     let keys = [
       {pubkey: multisigAccount.publicKey, isSigner: false, isWritable: true},
     ];
-    signers.forEach(signer => keys.push({pubkey: signer, isSigner: false, isWritable: false}));
-    const dataLayout = BufferLayout.struct(
-      [
-        BufferLayout.u8('instruction'),
-        BufferLayout.u8('m')
-      ]
+    signers.forEach(signer =>
+      keys.push({pubkey: signer, isSigner: false, isWritable: false}),
     );
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      BufferLayout.u8('m'),
+    ]);
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
@@ -473,7 +483,7 @@ export class Token {
       this.connection,
       transaction,
       this.payer,
-      multisigAccount
+      multisigAccount,
     );
 
     return multisigAccount.publicKey;
@@ -488,9 +498,7 @@ export class Token {
       throw new Error('Failed to find mint account');
     }
     if (!info.owner.equals(this.programId)) {
-      throw new Error(
-        `Invalid mint owner: ${JSON.stringify(info.owner)}`,
-      );
+      throw new Error(`Invalid mint owner: ${JSON.stringify(info.owner)}`);
     }
     if (info.data.length != MintLayout.span) {
       throw new Error(`Invalid mint size`);
@@ -535,9 +543,7 @@ export class Token {
       accountInfo.delegatedAmount = new u64();
     } else {
       accountInfo.delegate = new PublicKey(accountInfo.delegate);
-      accountInfo.delegatedAmount = u64.fromBuffer(
-        accountInfo.delegatedAmount,
-      );
+      accountInfo.delegatedAmount = u64.fromBuffer(accountInfo.delegatedAmount);
     }
 
     if (!accountInfo.mint.equals(this.publicKey)) {
@@ -623,7 +629,7 @@ export class Token {
         ),
       ),
       this.payer,
-      ...signers
+      ...signers,
     );
   }
 
@@ -656,10 +662,17 @@ export class Token {
       'Approve',
       this.connection,
       new Transaction().add(
-        Token.createApproveInstruction(this.programId, account, delegate, ownerPublicKey, multiSigners, amount),
+        Token.createApproveInstruction(
+          this.programId,
+          account,
+          delegate,
+          ownerPublicKey,
+          multiSigners,
+          amount,
+        ),
       ),
       this.payer,
-      ...signers
+      ...signers,
     );
   }
 
@@ -688,10 +701,15 @@ export class Token {
       'Revoke',
       this.connection,
       new Transaction().add(
-        Token.createRevokeInstruction(this.programId, account, ownerPublicKey, multiSigners),
+        Token.createRevokeInstruction(
+          this.programId,
+          account,
+          ownerPublicKey,
+          multiSigners,
+        ),
       ),
       this.payer,
-      ...signers
+      ...signers,
     );
   }
 
@@ -722,7 +740,13 @@ export class Token {
       'SetOwner',
       this.connection,
       new Transaction().add(
-        Token.createSetOwnerInstruction(this.programId, owned, newOwner, ownerPublicKey, multiSigners),
+        Token.createSetOwnerInstruction(
+          this.programId,
+          owned,
+          newOwner,
+          ownerPublicKey,
+          multiSigners,
+        ),
       ),
       this.payer,
       ...signers,
@@ -756,7 +780,16 @@ export class Token {
     await sendAndConfirmTransaction(
       'MintTo',
       this.connection,
-      new Transaction().add(Token.createMintToInstruction(this.programId, this.publicKey, dest, ownerPublicKey, multiSigners, amount)),
+      new Transaction().add(
+        Token.createMintToInstruction(
+          this.programId,
+          this.publicKey,
+          dest,
+          ownerPublicKey,
+          multiSigners,
+          amount,
+        ),
+      ),
       this.payer,
       ...signers,
     );
@@ -788,7 +821,15 @@ export class Token {
     await sendAndConfirmTransaction(
       'Burn',
       this.connection,
-      new Transaction().add(Token.createBurnInstruction(this.programId, account, ownerPublicKey, multiSigners, amount)),
+      new Transaction().add(
+        Token.createBurnInstruction(
+          this.programId,
+          account,
+          ownerPublicKey,
+          multiSigners,
+          amount,
+        ),
+      ),
       this.payer,
       ...signers,
     );
@@ -819,7 +860,15 @@ export class Token {
     await sendAndConfirmTransaction(
       'CloseAccount',
       this.connection,
-      new Transaction().add(Token.createCloseAccountInstruction(this.programId, account, dest, ownerPublicKey, multiSigners)),
+      new Transaction().add(
+        Token.createCloseAccountInstruction(
+          this.programId,
+          account,
+          dest,
+          ownerPublicKey,
+          multiSigners,
+        ),
+      ),
       this.payer,
       ...signers,
     );
@@ -861,10 +910,20 @@ export class Token {
       {pubkey: destination, isSigner: false, isWritable: true},
     ];
     if (authority instanceof Account) {
-      keys.push({pubkey: authority.publicKey, isSigner: true, isWritable: false});
+      keys.push({
+        pubkey: authority.publicKey,
+        isSigner: true,
+        isWritable: false,
+      });
     } else {
       keys.push({pubkey: authority, isSigner: false, isWritable: false});
-      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
     }
     return new TransactionInstruction({
       keys,
@@ -906,13 +965,19 @@ export class Token {
 
     let keys = [
       {pubkey: account, isSigner: false, isWritable: true},
-      {pubkey: delegate, isSigner: false, isWritable: false}
+      {pubkey: delegate, isSigner: false, isWritable: false},
     ];
     if (owner instanceof Account) {
       keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
-      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
     }
 
     return new TransactionInstruction({
@@ -937,9 +1002,7 @@ export class Token {
     owner: Account | PublicKey,
     multiSigners: Array<Account>,
   ): TransactionInstruction {
-    const dataLayout = BufferLayout.struct([
-      BufferLayout.u8('instruction'),
-    ]);
+    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
@@ -954,7 +1017,13 @@ export class Token {
       keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
-      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
     }
 
     return new TransactionInstruction({
@@ -997,7 +1066,13 @@ export class Token {
       keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
-      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
     }
 
     return new TransactionInstruction({
@@ -1043,10 +1118,20 @@ export class Token {
       {pubkey: dest, isSigner: false, isWritable: true},
     ];
     if (authority instanceof Account) {
-      keys.push({pubkey: authority.publicKey, isSigner: true, isWritable: false});
+      keys.push({
+        pubkey: authority.publicKey,
+        isSigner: true,
+        isWritable: false,
+      });
     } else {
       keys.push({pubkey: authority, isSigner: false, isWritable: false});
-      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
     }
 
     return new TransactionInstruction({
@@ -1085,14 +1170,22 @@ export class Token {
       data,
     );
 
-    let keys = [
-      {pubkey: account, isSigner: false, isWritable: true},
-    ];
+    let keys = [{pubkey: account, isSigner: false, isWritable: true}];
     if (authority instanceof Account) {
-      keys.push({pubkey: authority.publicKey, isSigner: true, isWritable: false});
+      keys.push({
+        pubkey: authority.publicKey,
+        isSigner: true,
+        isWritable: false,
+      });
     } else {
       keys.push({pubkey: authority, isSigner: false, isWritable: false});
-      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
     }
 
     return new TransactionInstruction({
@@ -1133,7 +1226,13 @@ export class Token {
       keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
-      multiSigners.forEach(signer => keys.push({pubkey: signer.publicKey, isSigner: true, isWritable: false}));
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
     }
 
     return new TransactionInstruction({

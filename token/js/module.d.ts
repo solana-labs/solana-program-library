@@ -1,11 +1,9 @@
 declare module '@solana/spl-token' {
   import {Buffer} from 'buffer';
-  import * as BufferLayout from 'buffer-layout';
   import { PublicKey, TransactionInstruction, TransactionSignature, Connection } from "@solana/web3.js";
   import BN from 'bn.js';
 
-
-  // === src/publickey.js ===
+  // === client/token.js ===
   export class u64 extends BN {
     toBuffer(): Buffer;
     static fromBuffer(buffer: Buffer): u64;
