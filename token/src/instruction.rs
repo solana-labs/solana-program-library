@@ -432,8 +432,8 @@ pub fn approve(
     let data = TokenInstruction::Approve { amount }.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
-    accounts.push(AccountMeta::new_readonly(*source_pubkey, false));
-    accounts.push(AccountMeta::new(*delegate_pubkey, false));
+    accounts.push(AccountMeta::new(*source_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(*delegate_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
         signer_pubkeys.is_empty(),
@@ -449,7 +449,7 @@ pub fn approve(
     })
 }
 
-/// Creates an `Approve` instruction.
+/// Creates a `Revoke` instruction.
 pub fn revoke(
     token_program_id: &Pubkey,
     source_pubkey: &Pubkey,
@@ -475,7 +475,7 @@ pub fn revoke(
     })
 }
 
-/// Creates an `SetOwner` instruction.
+/// Creates a `SetOwner` instruction.
 pub fn set_owner(
     token_program_id: &Pubkey,
     owned_pubkey: &Pubkey,
@@ -503,7 +503,7 @@ pub fn set_owner(
     })
 }
 
-/// Creates an `MintTo` instruction.
+/// Creates a `MintTo` instruction.
 pub fn mint_to(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
@@ -532,7 +532,7 @@ pub fn mint_to(
     })
 }
 
-/// Creates an `Burn` instruction.
+/// Creates a `Burn` instruction.
 pub fn burn(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
@@ -559,7 +559,7 @@ pub fn burn(
     })
 }
 
-/// Creates an `CloseAccount` instruction.
+/// Creates a `CloseAccount` instruction.
 pub fn close_account(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
