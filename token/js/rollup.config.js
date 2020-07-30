@@ -7,6 +7,7 @@ function generateConfig(configType) {
     input: 'client/token.js',
     plugins: [
       babel({
+        configFile: './babel.rollup.config.json',
         exclude: 'node_modules/**',
         babelHelpers: 'runtime',
       }),

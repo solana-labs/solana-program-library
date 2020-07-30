@@ -25,7 +25,7 @@
   "testnetDefaultChannel": "v1.2.12",
   "scripts": {
     "build": "rollup -c",
-    "start": "babel-node --config-file ./babel-node.config.json cli/main.js",
+    "start": "babel-node cli/main.js",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run lint -- --fix",
     "flow": "flow",
