@@ -9,7 +9,7 @@
 
 #define TOKEN_MAJOR_VERSION 1
 #define TOKEN_MINOR_VERSION 0
-#define TOKEN_PATCH_VERSION 2
+#define TOKEN_PATCH_VERSION 3
 
 /**
  * Maximum number of multisignature signers (max N)
