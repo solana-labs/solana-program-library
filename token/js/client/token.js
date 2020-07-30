@@ -19,9 +19,9 @@ import * as Layout from './layout';
 import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 
 /**
- * Some amount of tokens
+ * 64-bit value
  */
-export class TokenAmount extends BN {
+export class u64 extends BN {
   /**
    * Convert to Buffer representation
    */
@@ -31,7 +31,7 @@ export class TokenAmount extends BN {
     if (b.length === 8) {
       return b;
     }
-    assert(b.length < 8, 'TokenAmount too large');
+    assert(b.length < 8, 'u64 too large');
 
     const zeroPad = Buffer.alloc(8);
     b.copy(zeroPad);
@@ -39,9 +39,9 @@ export class TokenAmount extends BN {
   }
 
   /**
-   * Construct a TokenAmount from Buffer representation
+   * Construct a u64 from Buffer representation
    */
-  static fromBuffer(buffer: Buffer): TokenAmount {
+  static fromBuffer(buffer: Buffer): u64 {
     assert(buffer.length === 8, `Invalid buffer length: ${buffer.length}`);
     return new BN(
       [...buffer]
@@ -98,7 +98,7 @@ type AccountInfo = {|
   /**
    * Amount of tokens this account holds
    */
-  amount: TokenAmount,
+  amount: u64,
 
   /**
    * The delegate for this account
@@ -108,7 +108,7 @@ type AccountInfo = {|
   /**
    * The amount of tokens the delegate authorized to the delegate
    */
-  delegatedAmount: TokenAmount,
+  delegatedAmount: u64,
 
   /**
    * Is this account initialized
@@ -162,7 +162,6 @@ type MultisigInfo = {|
   signer1: PublicKey,
   signer2: PublicKey,
   signer3: PublicKey,
-  signer4: PublicKey,
   signer4: PublicKey,
   signer5: PublicKey,
   signer6: PublicKey,
@@ -286,7 +285,7 @@ export class Token {
     payer: Account,
     mintOwner: PublicKey,
     accountOwner: PublicKey,
-    supply: TokenAmount,
+    supply: u64,
     decimals: number,
     programId: PublicKey,
     is_owned: boolean = false,
@@ -528,15 +527,15 @@ export class Token {
     const accountInfo = AccountLayout.decode(data);
     accountInfo.mint = new PublicKey(accountInfo.mint);
     accountInfo.owner = new PublicKey(accountInfo.owner);
-    accountInfo.amount = TokenAmount.fromBuffer(accountInfo.amount);
+    accountInfo.amount = u64.fromBuffer(accountInfo.amount);
     accountInfo.isInitialized = accountInfo.isInitialized != 0;
     accountInfo.isNative = accountInfo.isNative != 0;
     if (accountInfo.option === 0) {
       accountInfo.delegate = null;
-      accountInfo.delegatedAmount = new TokenAmount();
+      accountInfo.delegatedAmount = new u64();
     } else {
       accountInfo.delegate = new PublicKey(accountInfo.delegate);
-      accountInfo.delegatedAmount = TokenAmount.fromBuffer(
+      accountInfo.delegatedAmount = u64.fromBuffer(
         accountInfo.delegatedAmount,
       );
     }
@@ -599,7 +598,7 @@ export class Token {
     destination: PublicKey,
     authority: Account | PublicKey,
     multiSigners: Array<Account>,
-    amount: number | TokenAmount,
+    amount: number | u64,
   ): Promise<?TransactionSignature> {
     let ownerPublicKey;
     let signers;
@@ -614,7 +613,8 @@ export class Token {
       'Transfer',
       this.connection,
       new Transaction().add(
-        this.transferInstruction(
+        Token.createTransferInstruction(
+          this.programId,
           source,
           destination,
           ownerPublicKey,
@@ -641,7 +641,7 @@ export class Token {
     delegate: PublicKey,
     owner: Account | PublicKey,
     multiSigners: Array<Account>,
-    amount: number | TokenAmount,
+    amount: number | u64,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
@@ -656,7 +656,7 @@ export class Token {
       'Approve',
       this.connection,
       new Transaction().add(
-        this.approveInstruction(account, delegate, ownerPublicKey, multiSigners, amount),
+        Token.createApproveInstruction(this.programId, account, delegate, ownerPublicKey, multiSigners, amount),
       ),
       this.payer,
       ...signers
@@ -688,7 +688,7 @@ export class Token {
       'Revoke',
       this.connection,
       new Transaction().add(
-        this.revokeInstruction(account, ownerPublicKey, multiSigners),
+        Token.createRevokeInstruction(this.programId, account, ownerPublicKey, multiSigners),
       ),
       this.payer,
       ...signers
@@ -722,7 +722,7 @@ export class Token {
       'SetOwner',
       this.connection,
       new Transaction().add(
-        this.setOwnerInstruction(owned, newOwner, ownerPublicKey, multiSigners),
+        Token.createSetOwnerInstruction(this.programId, owned, newOwner, ownerPublicKey, multiSigners),
       ),
       this.payer,
       ...signers,
@@ -756,7 +756,7 @@ export class Token {
     await sendAndConfirmTransaction(
       'MintTo',
       this.connection,
-      new Transaction().add(this.mintToInstruction(dest, ownerPublicKey, multiSigners, amount)),
+      new Transaction().add(Token.createMintToInstruction(this.programId, this.publicKey, dest, ownerPublicKey, multiSigners, amount)),
       this.payer,
       ...signers,
     );
@@ -788,7 +788,7 @@ export class Token {
     await sendAndConfirmTransaction(
       'Burn',
       this.connection,
-      new Transaction().add(this.burnInstruction(account, ownerPublicKey, multiSigners, amount)),
+      new Transaction().add(Token.createBurnInstruction(this.programId, account, ownerPublicKey, multiSigners, amount)),
       this.payer,
       ...signers,
     );
@@ -819,7 +819,7 @@ export class Token {
     await sendAndConfirmTransaction(
       'CloseAccount',
       this.connection,
-      new Transaction().add(this.closeAccountInstruction(account, dest, ownerPublicKey, multiSigners)),
+      new Transaction().add(Token.createCloseAccountInstruction(this.programId, account, dest, ownerPublicKey, multiSigners)),
       this.payer,
       ...signers,
     );
@@ -834,12 +834,13 @@ export class Token {
    * @param multiSigners Signing accounts if `authority` is a multiSig
    * @param amount Number of tokens to transfer
    */
-  transferInstruction(
+  static createTransferInstruction(
+    programId: PublicKey,
     source: PublicKey,
     destination: PublicKey,
     authority: Account | PublicKey,
     multiSigners: Array<Account>,
-    amount: number | TokenAmount,
+    amount: number | u64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
@@ -850,7 +851,7 @@ export class Token {
     dataLayout.encode(
       {
         instruction: 3, // Transfer instruction
-        amount: new TokenAmount(amount).toBuffer(),
+        amount: new u64(amount).toBuffer(),
       },
       data,
     );
@@ -867,7 +868,7 @@ export class Token {
     }
     return new TransactionInstruction({
       keys,
-      programId: this.programId,
+      programId: programId,
       data,
     });
   }
@@ -881,12 +882,13 @@ export class Token {
    * @param multiSigners Signing accounts if `owner` is a multiSig
    * @param amount Maximum number of tokens the delegate may transfer
    */
-  approveInstruction(
+  static createApproveInstruction(
+    programId: PublicKey,
     account: PublicKey,
     delegate: PublicKey,
     owner: Account | PublicKey,
     multiSigners: Array<Account>,
-    amount: number | TokenAmount,
+    amount: number | u64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
@@ -897,7 +899,7 @@ export class Token {
     dataLayout.encode(
       {
         instruction: 4, // Approve instruction
-        amount: new TokenAmount(amount).toBuffer(),
+        amount: new u64(amount).toBuffer(),
       },
       data,
     );
@@ -915,7 +917,7 @@ export class Token {
 
     return new TransactionInstruction({
       keys,
-      programId: this.programId,
+      programId: programId,
       data,
     });
   }
@@ -929,7 +931,8 @@ export class Token {
    * @param multiSigners Signing accounts if `owner` is a multiSig
    * @param amount Maximum number of tokens the delegate may transfer
    */
-  revokeInstruction(
+  static createRevokeInstruction(
+    programId: PublicKey,
     account: PublicKey,
     owner: Account | PublicKey,
     multiSigners: Array<Account>,
@@ -956,7 +959,7 @@ export class Token {
 
     return new TransactionInstruction({
       keys,
-      programId: this.programId,
+      programId: programId,
       data,
     });
   }
@@ -969,7 +972,8 @@ export class Token {
    * @param owner Owner of the account
    * @param multiSigners Signing accounts if `owner` is a multiSig
    */
-  setOwnerInstruction(
+  static createSetOwnerInstruction(
+    programId: PublicKey,
     owned: PublicKey,
     newOwner: PublicKey,
     owner: Account | PublicKey,
@@ -998,7 +1002,7 @@ export class Token {
 
     return new TransactionInstruction({
       keys,
-      programId: this.programId,
+      programId: programId,
       data,
     });
   }
@@ -1012,7 +1016,9 @@ export class Token {
 
    * @param amount amount to mint
    */
-  mintToInstruction(
+  static createMintToInstruction(
+    programId: PublicKey,
+    mint: PublicKey,
     dest: PublicKey,
     authority: Account | PublicKey,
     multiSigners: Array<Account>,
@@ -1027,13 +1033,13 @@ export class Token {
     dataLayout.encode(
       {
         instruction: 7, // MintTo instruction
-        amount: new TokenAmount(amount).toBuffer(),
+        amount: new u64(amount).toBuffer(),
       },
       data,
     );
 
     let keys = [
-      {pubkey: this.publicKey, isSigner: false, isWritable: true},
+      {pubkey: mint, isSigner: false, isWritable: true},
       {pubkey: dest, isSigner: false, isWritable: true},
     ];
     if (authority instanceof Account) {
@@ -1045,7 +1051,7 @@ export class Token {
 
     return new TransactionInstruction({
       keys,
-      programId: this.programId,
+      programId: programId,
       data,
     });
   }
@@ -1058,7 +1064,8 @@ export class Token {
    * @param multiSigners Signing accounts if `authority` is a multiSig
    * @param amount ammount to burn
    */
-  burnInstruction(
+  static createBurnInstruction(
+    programId: PublicKey,
     account: PublicKey,
     authority: Account | PublicKey,
     multiSigners: Array<Account>,
@@ -1073,7 +1080,7 @@ export class Token {
     dataLayout.encode(
       {
         instruction: 8, // Burn instruction
-        amount: new TokenAmount(amount).toBuffer(),
+        amount: new u64(amount).toBuffer(),
       },
       data,
     );
@@ -1090,7 +1097,7 @@ export class Token {
 
     return new TransactionInstruction({
       keys,
-      programId: this.programId,
+      programId: programId,
       data,
     });
   }
@@ -1102,7 +1109,8 @@ export class Token {
    * @param owner account owner
    * @param multiSigners Signing accounts if `owner` is a multiSig
    */
-  closeAccountInstruction(
+  static createCloseAccountInstruction(
+    programId: PublicKey,
     account: PublicKey,
     dest: PublicKey,
     owner: Account | PublicKey,
@@ -1130,7 +1138,7 @@ export class Token {
 
     return new TransactionInstruction({
       keys,
-      programId: this.programId,
+      programId: programId,
       data,
     });
   }

@@ -4,7 +4,7 @@ import fs from 'mz/fs';
 import semver from 'semver';
 import { Account, Connection, BpfLoader, PublicKey } from '@solana/web3.js';
 
-import { Token, TokenAmount } from '../../../token/js/client/token';
+import { Token, u64 } from '../../../token/js/client/token';
 import { TokenSwap } from '../client/token-swap';
 import { Store } from '../client/util/store';
 import { newAccountWithLamports } from '../client/util/new-account-with-lamports';
@@ -121,7 +121,7 @@ export async function createTokenSwap(): Promise<void> {
     payer,
     authority,
     owner.publicKey,
-    new TokenAmount(0),
+    new u64(0),
     2,
     tokenProgramId,
     true,
@@ -133,7 +133,7 @@ export async function createTokenSwap(): Promise<void> {
     payer,
     owner.publicKey,
     authority,
-    new TokenAmount(BASE_AMOUNT),
+    new u64(BASE_AMOUNT),
     2,
     tokenProgramId,
     true,
@@ -145,7 +145,7 @@ export async function createTokenSwap(): Promise<void> {
     payer,
     owner.publicKey,
     authority,
-    new TokenAmount(BASE_AMOUNT),
+    new u64(BASE_AMOUNT),
     2,
     tokenProgramId,
     true,

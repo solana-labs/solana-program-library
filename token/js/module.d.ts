@@ -1,22 +1,21 @@
-/**
- * Flow Library definition for spl-token
- *
- * This file is manually maintained
- *
- */
-
 declare module '@solana/spl-token' {
-  // === client/token.js ===
-  declare export class u64 extends BN {
+  import {Buffer} from 'buffer';
+  import * as BufferLayout from 'buffer-layout';
+  import { PublicKey, TransactionInstruction, TransactionSignature, Connection } from "@solana/web3.js";
+  import BN from 'bn.js';
+
+
+  // === src/publickey.js ===
+  export class u64 extends BN {
     toBuffer(): Buffer;
     static fromBuffer(buffer: Buffer): u64;
   }
-  declare export type MintInfo = {|
+  export type MintInfo = {
     owner: null | PublicKey,
     decimals: number,
     initialized: boolean,
-  |};
-  declare export type AccountInfo = {|
+  };
+  export type AccountInfo = {
     mint: PublicKey,
     owner: PublicKey,
     amount: u64,
@@ -24,8 +23,8 @@ declare module '@solana/spl-token' {
     delegatedAmount: u64,
     isInitialized: boolean,
     isNative: boolean,
-  |};
-  declare export type MultisigInfo = {|
+  };
+  export type MultisigInfo = {
     m: number,
     n: number,
     initialized: boolean,
@@ -40,15 +39,15 @@ declare module '@solana/spl-token' {
     signer9: PublicKey,
     signer10: PublicKey,
     signer11: PublicKey,
-  |};
-  declare export type TokenAndPublicKey = [Token, PublicKey];
-  declare export class Token {
+  };
+  export type TokenAndPublicKey = [Token, PublicKey];
+  export class Token {
     constructor(
       connection: Connection,
       publicKey: PublicKey,
       programId: PublicKey,
       payer: Account,
-    ): Token;
+    );
     static createMint(
       connection: Connection,
       payer: Account,
@@ -71,7 +70,7 @@ declare module '@solana/spl-token' {
       authority: Account | PublicKey,
       multiSigners: Array<Account>,
       amount: number | u64,
-    ): Promise<?TransactionSignature>;
+    ): Promise<TransactionSignature>;
     approve(
       account: PublicKey,
       delegate: PublicKey,
@@ -158,6 +157,6 @@ declare module '@solana/spl-token' {
       dest: PublicKey,
       owner: Account | PublicKey,
       multiSigners: Array<Account>,
-    ): TransactionInstructio;
+    ): TransactionInstruction;
   }
 }

@@ -14,4 +14,5 @@ sudo apt-get install -y libssl-dev --allow-unauthenticated
 sudo apt-get install -y libssl1.1 --allow-unauthenticated
 clang-7 --version
 nvm install node
+npm install -g typescript
 node --version

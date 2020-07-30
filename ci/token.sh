@@ -18,6 +18,7 @@ cd "$(dirname "$0")/../token/js"
 npm install
 npm run lint
 npm run flow
+tsc module.d.ts
 npm run cluster:localnet
 npm run localnet:update
 npm run localnet:up
