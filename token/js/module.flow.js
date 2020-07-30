@@ -5,7 +5,7 @@
  *
  */
 
-declare module '@solana/spl-token' {
+declare module 'spl-token' {
   // === client/token.js ===
   declare export class u64 extends BN {
     toBuffer(): Buffer;
