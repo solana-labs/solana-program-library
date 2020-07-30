@@ -168,7 +168,7 @@ type MultisigInfo = {|
   signer7: PublicKey,
   signer8: PublicKey,
   signer9: PublicKey,
-  signer20: PublicKey,
+  signer10: PublicKey,
   signer11: PublicKey,
 |};
 

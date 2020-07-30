@@ -15,9 +15,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "main": "lib/index.cjs.js",
-  "module": "lib/index.esm.js",
-  "types": "lib/index.d.ts",
+  "main": "client/token.js",
+  "types": "module.d.ts",
   "files": [
     "/cli",
     "/client",
@@ -25,6 +24,7 @@
   ],
   "testnetDefaultChannel": "v1.2.12",
   "scripts": {
+    "build": "cross-env NODE_ENV=production rollup -c",
     "start": "babel-node cli/main.js",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run lint -- --fix",
