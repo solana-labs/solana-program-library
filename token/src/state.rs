@@ -6,9 +6,13 @@ use crate::{
     option::COption,
 };
 use solana_sdk::{
-    account_info::next_account_info, account_info::AccountInfo, entrypoint::ProgramResult, info,
+    account_info::next_account_info, account_info::AccountInfo, entrypoint::ProgramResult,
     program_error::ProgramError, pubkey::Pubkey,
 };
+#[cfg(feature = "program")]
+use solana_sdk::info;
+#[cfg(not(feature = "program"))]
+use log::info;
 use std::mem::size_of;
 
 /// Mint data.
@@ -549,6 +553,7 @@ pub trait IsInitialized {
 }
 
 // Pull in syscall stubs when building for non-BPF targets
+#[cfg(feature = "program")]
 #[cfg(not(target_arch = "bpf"))]
 solana_sdk::program_stubs!();
 

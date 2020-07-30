@@ -14,12 +14,13 @@ exclude = ["js/**"]
 [features]
 skip-no-mangle = ["solana-sdk/skip-no-mangle"]
 program = ["solana-sdk/program"]
-default = ["solana-sdk/default"]
+default = ["solana-sdk/default", "log"]
 
 [dependencies]
 num-derive = "0.2"
 num-traits = "0.2"
 remove_dir_all = "=0.5.0"
+log = { version = "0.4.8", optional = true }
 solana-sdk = { version = "=1.2.13", default-features = false, optional = true }
 thiserror = "1.0"
 

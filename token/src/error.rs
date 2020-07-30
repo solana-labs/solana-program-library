@@ -4,9 +4,12 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use solana_sdk::{
     decode_error::DecodeError,
-    info,
     program_error::{PrintProgramError, ProgramError},
 };
+#[cfg(feature = "program")]
+use solana_sdk::info;
+#[cfg(not(feature = "program"))]
+use log::info;
 use thiserror::Error;
 
 /// Errors that may be returned by the Token program.
