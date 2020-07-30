@@ -457,7 +457,7 @@ impl State {
                 Self::process_initialize_account(accounts)
             }
             TokenInstruction::InitializeMultisig { m } => {
-                info!("Instruction: InitializeM<ultisig");
+                info!("Instruction: InitializeMultisig");
                 Self::process_initialize_multisig(accounts, m)
             }
             TokenInstruction::Transfer { amount } => {
