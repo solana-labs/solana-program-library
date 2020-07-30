@@ -47,7 +47,7 @@ let connection;
 async function getConnection(): Promise<Connection> {
   if (connection) return connection;
 
-  let newConnection = new Connection(url, 'recent', );
+  let newConnection = new Connection(url, 'recent');
   const version = await newConnection.getVersion();
 
   // commitment params are only supported >= 0.21.0
@@ -62,14 +62,16 @@ async function getConnection(): Promise<Connection> {
   return connection;
 }
 
-async function loadProgram(connection: Connection, path: string): Promise<PublicKey> {
+async function loadProgram(
+  connection: Connection,
+  path: string,
+): Promise<PublicKey> {
   const NUM_RETRIES = 500; /* allow some number of retries */
-  const data = await fs.readFile(path
-  );
-  const { feeCalculator } = await connection.getRecentBlockhash();
+  const data = await fs.readFile(path);
+  const {feeCalculator} = await connection.getRecentBlockhash();
   const balanceNeeded =
     feeCalculator.lamportsPerSignature *
-    (BpfLoader.getMinNumSignatures(data.length) + NUM_RETRIES) +
+      (BpfLoader.getMinNumSignatures(data.length) + NUM_RETRIES) +
     (await connection.getMinimumBalanceForRentExemption(data.length));
 
   const from = await newAccountWithLamports(connection, balanceNeeded);
@@ -85,10 +87,15 @@ async function GetPrograms(connection: Connection): Promise<PublicKey> {
   try {
     const config = await store.load('config.json');
     console.log('Using pre-loaded Token program');
-    console.log('  Note: To reload program remove client/util/store/config.json');
+    console.log(
+      '  Note: To reload program remove client/util/store/config.json',
+    );
     tokenProgramId = new PublicKey(config.tokenProgramId);
   } catch (err) {
-    tokenProgramId = await loadProgram(connection, '../target/bpfel-unknown-unknown/release/spl_token.so');
+    tokenProgramId = await loadProgram(
+      connection,
+      '../target/bpfel-unknown-unknown/release/spl_token.so',
+    );
     await store.save('config.json', {
       tokenProgramId: tokenProgramId.toString(),
     });
@@ -105,7 +112,10 @@ export async function loadTokenProgram(): Promise<void> {
 
 export async function createMint(): Promise<void> {
   const connection = await getConnection();
-  const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
+  const payer = await newAccountWithLamports(
+    connection,
+    100000000000 /* wag */,
+  );
   mintOwner = new Account();
   testAccountOwner = new Account();
   [testToken, testAccount] = await Token.createMint(
@@ -159,13 +169,7 @@ export async function approveRevoke(): Promise<void> {
   }
 
   const delegate = new PublicKey();
-  await testToken.approve(
-    testAccount,
-    delegate,
-    testAccountOwner,
-    [],
-    456,
-  );
+  await testToken.approve(testAccount, delegate, testAccountOwner, [], 456);
   let testAccountInfo = await testToken.getAccountInfo(testAccount);
   assert(testAccountInfo.delegatedAmount.toNumber() == 456);
   if (testAccountInfo.delegate === null) {
@@ -200,13 +204,7 @@ export async function failOnApproveOverspend(): Promise<void> {
   const account2 = await testToken.createAccount(owner.publicKey);
   const delegate = new Account();
 
-  await testToken.transfer(
-    testAccount,
-    account1,
-    testAccountOwner,
-    [],
-    10,
-  );
+  await testToken.transfer(testAccount, account1, testAccountOwner, [], 10);
 
   await testToken.approve(account1, delegate.publicKey, owner, [], 2);
 
@@ -242,12 +240,15 @@ export async function setOwner(): Promise<void> {
 
   await testToken.setOwner(owned, newOwner.publicKey, owner, []);
   assert(didThrow(testToken.setOwner, [owned, newOwner.publicKey, owner, []]));
-  await testToken.setOwner(owned, owner.publicKey,newOwner, []);
+  await testToken.setOwner(owned, owner.publicKey, newOwner, []);
 }
 
 export async function mintTo(): Promise<void> {
   const connection = await getConnection();
-  const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
+  const payer = await newAccountWithLamports(
+    connection,
+    100000000000 /* wag */,
+  );
   mintableOwner = new Account();
   testMintableAccountOwner = new Account();
   [testMintableToken, testMintableAccount] = await Token.createMint(
@@ -270,7 +271,9 @@ export async function mintTo(): Promise<void> {
       assert(mintInfo.owner.equals(mintableOwner.publicKey));
     }
 
-    const accountInfo = await testMintableToken.getAccountInfo(testMintableAccount);
+    const accountInfo = await testMintableToken.getAccountInfo(
+      testMintableAccount,
+    );
     assert(accountInfo.mint.equals(testMintableToken.publicKey));
     assert(accountInfo.owner.equals(testMintableAccountOwner.publicKey));
     assert(accountInfo.amount.toNumber() == 10000);
@@ -278,7 +281,9 @@ export async function mintTo(): Promise<void> {
     assert(accountInfo.delegatedAmount.toNumber() == 0);
   }
 
-  const dest = await testMintableToken.createAccount(testMintableAccountOwner.publicKey);
+  const dest = await testMintableToken.createAccount(
+    testMintableAccountOwner.publicKey,
+  );
   await testMintableToken.mintTo(dest, mintableOwner, [], 42);
 
   {
@@ -317,7 +322,6 @@ export async function multisig(): Promise<void> {
   let signerAccounts = [];
   for (var i = 0; i < n; i++) {
     signerAccounts.push(new Account());
-
   }
   let signerPublicKeys = [];
   signerAccounts.forEach(account => signerPublicKeys.push(account.publicKey));
@@ -334,10 +338,22 @@ export async function multisig(): Promise<void> {
 
   const multisigOwnedAccount = await testToken.createAccount(multisig);
   const finalDest = await testToken.createAccount(multisig);
-  await testToken.transfer(testAccount, multisigOwnedAccount, testAccountOwner, [], 2);
+  await testToken.transfer(
+    testAccount,
+    multisigOwnedAccount,
+    testAccountOwner,
+    [],
+    2,
+  );
 
   // Transfer via multisig
-  await testToken.transfer(multisigOwnedAccount, finalDest, multisig, signerAccounts, 1);
+  await testToken.transfer(
+    multisigOwnedAccount,
+    finalDest,
+    multisig,
+    signerAccounts,
+    1,
+  );
   await sleep(500);
   let accountInfo = await testToken.getAccountInfo(finalDest);
   assert(accountInfo.amount.toNumber() == 1);
@@ -348,7 +364,8 @@ export async function multisig(): Promise<void> {
     await testToken.approve(
       multisigOwnedAccount,
       delegate,
-      multisig, signerAccounts,
+      multisig,
+      signerAccounts,
       1,
     );
     const accountInfo = await testToken.getAccountInfo(multisigOwnedAccount);
@@ -361,17 +378,34 @@ export async function multisig(): Promise<void> {
 
   // MintTo via multisig
   {
-    let accountInfo = await testMintableToken.getAccountInfo(testMintableAccount);
+    let accountInfo = await testMintableToken.getAccountInfo(
+      testMintableAccount,
+    );
     const initialAmount = accountInfo.amount.toNumber();
-    await testMintableToken.setOwner(testMintableToken.publicKey, multisig, mintableOwner, []);
-    await testMintableToken.mintTo(testMintableAccount, multisig, signerAccounts, 42);
+    await testMintableToken.setOwner(
+      testMintableToken.publicKey,
+      multisig,
+      mintableOwner,
+      [],
+    );
+    await testMintableToken.mintTo(
+      testMintableAccount,
+      multisig,
+      signerAccounts,
+      42,
+    );
     accountInfo = await testMintableToken.getAccountInfo(testMintableAccount);
     assert(accountInfo.amount.toNumber() == initialAmount + 42);
   }
 
   // SetOwner of mint via multisig
   {
-    await testMintableToken.setOwner(testMintableToken.publicKey, mintableOwner.publicKey, multisig, signerAccounts);
+    await testMintableToken.setOwner(
+      testMintableToken.publicKey,
+      mintableOwner.publicKey,
+      multisig,
+      signerAccounts,
+    );
     const mintInfo = await testMintableToken.getMintInfo();
     assert(mintInfo.owner != null);
     if (mintInfo.owner != null) {
@@ -382,7 +416,12 @@ export async function multisig(): Promise<void> {
   // SetOwner of account via multisig
   {
     const newOwner = new PublicKey();
-    await testToken.setOwner(multisigOwnedAccount, newOwner, multisig, signerAccounts);
+    await testToken.setOwner(
+      multisigOwnedAccount,
+      newOwner,
+      multisig,
+      signerAccounts,
+    );
     const accountInfo = await testToken.getAccountInfo(multisigOwnedAccount);
     assert(accountInfo.owner.equals(newOwner));
   }
@@ -402,8 +441,7 @@ export async function failOnCloseAccount(): Promise<void> {
   }
 
   // Initialize destination account to isolate source of failure
-  const balanceNeeded =
-    await connection.getMinimumBalanceForRentExemption(0);
+  const balanceNeeded = await connection.getMinimumBalanceForRentExemption(0);
   const dest = await newAccountWithLamports(connection, balanceNeeded);
 
   info = await connection.getAccountInfo(dest.publicKey);
@@ -426,8 +464,13 @@ export async function failOnCloseAccount(): Promise<void> {
 export async function nativeToken(): Promise<void> {
   const connection = await getConnection();
 
-  const mintPublicKey = new PublicKey('So11111111111111111111111111111111111111111');
-  const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
+  const mintPublicKey = new PublicKey(
+    'So11111111111111111111111111111111111111111',
+  );
+  const payer = await newAccountWithLamports(
+    connection,
+    100000000000 /* wag */,
+  );
   const token = new Token(connection, mintPublicKey, programId, payer);
   const owner = new Account();
   const native = await token.createAccount(owner.publicKey);
@@ -441,8 +484,7 @@ export async function nativeToken(): Promise<void> {
     throw new Error('Account not found');
   }
 
-  const balanceNeeded =
-  await connection.getMinimumBalanceForRentExemption(0);
+  const balanceNeeded = await connection.getMinimumBalanceForRentExemption(0);
   const dest = await newAccountWithLamports(connection, balanceNeeded);
   await token.closeAccount(native, dest.publicKey, owner, []);
   info = await connection.getAccountInfo(native);
@@ -455,5 +497,4 @@ export async function nativeToken(): Promise<void> {
   } else {
     throw new Error('Account not found');
   }
-
 }

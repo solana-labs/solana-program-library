@@ -8,7 +8,7 @@
   },
   "testnetDefaultChannel": "v1.2.12",
   "scripts": {
-    "start": "babel-node cli/main.js",
+    "start": "babel-node --ignore node_modules cli/main.js",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run lint -- --fix",
     "flow": "flow",
@@ -27,41 +27,34 @@
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "devDependencies": {
-    "prettier": "^2.0.5"
-  },
   "dependencies": {
+    "@babel/runtime": "^7.10.5",
     "@solana/web3.js": "^0.62.0",
-    "babel-cli": "^6.26.0",
-    "babel-core": "^6.26.3",
-    "babel-eslint": "^10.0.1",
-    "babel-loader": "^7.1.5",
-    "babel-plugin-transform-class-properties": "^6.24.1",
-    "babel-plugin-transform-function-bind": "^6.22.0",
-    "babel-plugin-transform-runtime": "^6.23.0",
-    "babel-preset-env": "^1.7.0",
-    "babel-preset-flow": "^6.23.0",
-    "babel-preset-stage-2": "^6.24.1",
-    "babel-runtime": "^6.26.0",
     "bn.js": "^5.0.0",
     "buffer-layout": "^1.2.0",
     "dotenv": "8.2.0",
+    "json-to-pretty-yaml": "^1.2.2",
+    "mkdirp-promise": "^5.0.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.10.5",
+    "@babel/core": "^7.10.5",
+    "@babel/node": "^7.10.5",
+    "@babel/plugin-proposal-class-properties": "^7.10.4",
+    "@babel/plugin-transform-runtime": "^7.10.5",
+    "@babel/preset-env": "^7.10.4",
+    "@babel/preset-flow": "^7.10.4",
+    "babel-eslint": "^10.1.0",
     "eslint": "^7.4.0",
-    "eslint-loader": "^4.0.2",
     "eslint-plugin-import": "^2.22.0",
     "flow-bin": "0.129.0",
     "flow-typed": "^3.2.0",
-    "jayson": "^3.3.3",
-    "json-to-pretty-yaml": "^1.2.2",
-    "mkdirp-promise": "^5.0.1",
-    "moment": "^2.27.0",
     "mz": "^2.7.0",
-    "readline-promise": "^1.0.3",
+    "prettier": "^2.0.5",
     "semver": "^7.0.0",
-    "superstruct": "^0.10.12",
     "watch": "^1.0.2"
   },
   "engines": {
-    "node": "11.x"
+    "node": ">= 10"
   }
 }
