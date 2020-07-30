@@ -1,11 +1,28 @@
 {
-  "name": "spl-token",
+  "name": "@solana/spl-token",
   "version": "0.0.1",
-  "description": "",
+  "description": "SPL Token Javascript API",
+  "license": "MIT",
+  "author": "Solana Maintainers <maintainers@solana.com>",
+  "homepage": "https://solana.com/",
   "repository": {
     "type": "git",
     "url": "https://github.com/solana-labs/solana-program-library"
   },
+  "bugs": {
+    "url": "https://github.com/solana-labs/solana-program-library/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.cjs.js",
+  "module": "lib/index.esm.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "/cli",
+    "/client",
+    "/module.flow.js"
+  ],
   "testnetDefaultChannel": "v1.2.12",
   "scripts": {
     "start": "babel-node cli/main.js",
@@ -25,9 +42,6 @@
     "localnet:logs": "solana-localnet logs -f",
     "pretty": "prettier --write '{,src/**/}*.js'"
   },
-  "keywords": [],
-  "author": "",
-  "license": "MIT",
   "devDependencies": {
     "prettier": "^2.0.5"
   },

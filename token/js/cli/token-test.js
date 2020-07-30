@@ -4,7 +4,7 @@ import fs from 'mz/fs';
 import {Account, Connection, BpfLoader, PublicKey} from '@solana/web3.js';
 import semver from 'semver';
 
-import {Token, TokenAmount} from '../client/token';
+import {Token, u64} from '../client/token';
 import {url} from '../url';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {sleep} from '../client/util/sleep';
@@ -113,7 +113,7 @@ export async function createMint(): Promise<void> {
     payer,
     mintOwner.publicKey,
     testAccountOwner.publicKey,
-    new TokenAmount(10000),
+    new u64(10000),
     2,
     programId,
     false,
@@ -255,7 +255,7 @@ export async function mintTo(): Promise<void> {
     payer,
     mintableOwner.publicKey,
     testMintableAccountOwner.publicKey,
-    new TokenAmount(10000),
+    new u64(10000),
     2,
     programId,
     true,
