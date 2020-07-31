@@ -2,6 +2,7 @@
 
 //! An ERC20-like Token program for the Solana blockchain
 
+pub mod entrypoint;
 pub mod error;
 pub mod instruction;
 pub mod native_mint;

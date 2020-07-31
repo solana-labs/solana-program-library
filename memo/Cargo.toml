@@ -11,10 +11,13 @@ license = "Apache-2.0"
 edition = "2018"
 
 [features]
+no-entrypoint = []
 skip-no-mangle = ["solana-sdk/skip-no-mangle"]
+program = ["solana-sdk/program"]
+default = ["solana-sdk/default"]
 
 [dependencies]
-solana-sdk = { version = "=1.2.13", default-features = false, features=["program"] }
+solana-sdk = { version = "=1.2.13", default-features = false, optional = true }
 
 [lib]
 name = "spl_memo"

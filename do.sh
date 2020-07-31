@@ -7,7 +7,7 @@ usage() {
 Usage: do.sh <action> <project> <action specific arguments>
 Supported actions:
     build
-    build-native
+    build-lib
     clean
     clippy
     doc
@@ -42,7 +42,7 @@ perform_action() {
             echo "$projectDir does not contain a program, skipping"
         fi
         ;;
-    build-native)
+    build-lib)
         (
             cd "$projectDir"
             echo "build $projectDir"
@@ -57,7 +57,7 @@ perform_action() {
         (
             cd "$projectDir"
             echo "clippy $projectDir"
-            cargo +nightly clippy ${@:3}
+            cargo +nightly clippy  --features=program ${@:3}
         )
         ;;
     doc)
@@ -125,7 +125,7 @@ perform_action() {
         (
             cd "$projectDir"
             echo "test $projectDir"
-            cargo +nightly test ${@:3}
+            cargo test --features=program ${@:3}
         )
         ;;
     update)

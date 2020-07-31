@@ -1,12 +1,7 @@
 //! Error types
 
 use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
-use solana_sdk::{
-    decode_error::DecodeError,
-    info,
-    program_error::{PrintProgramError, ProgramError},
-};
+use solana_sdk::{decode_error::DecodeError, program_error::ProgramError};
 use thiserror::Error;
 
 /// Errors that may be returned by the Token program.
@@ -57,57 +52,5 @@ impl From<TokenError> for ProgramError {
 impl<T> DecodeError<T> for TokenError {
     fn type_of() -> &'static str {
         "TokenError"
-    }
-}
-impl PrintProgramError for TokenError {
-    fn print<E>(&self)
-    where
-        E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
-    {
-        match self {
-            TokenError::InsufficientFunds => info!("Error: insufficient funds"),
-            TokenError::MintMismatch => info!("Error: Account not associated with this Mint"),
-            TokenError::OwnerMismatch => info!("Error: owner does not match"),
-            TokenError::FixedSupply => info!("Error: the total supply of this token is fixed"),
-            TokenError::AlreadyInUse => info!("Error: account or token already in use"),
-            TokenError::OwnerRequiredIfNoInitialSupply => {
-                info!("Error: An owner is required if supply is zero")
-            }
-            TokenError::InvalidNumberOfProvidedSigners => {
-                info!("Error: Invalid number of provided signers")
-            }
-            TokenError::InvalidNumberOfRequiredSigners => {
-                info!("Error: Invalid number of required signers")
-            }
-            TokenError::UninitializedState => info!("Error: State is uninitialized"),
-            TokenError::NativeNotSupported => {
-                info!("Error: Instruction does not support native tokens")
-            }
-            TokenError::NonNativeNotSupported => {
-                info!("Error: Instruction does not support non-native tokens")
-            }
-            TokenError::InvalidInstruction => info!("Error: Invalid instruction"),
-        }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    fn return_token_error_as_program_error() -> ProgramError {
-        TokenError::MintMismatch.into()
-    }
-
-    #[test]
-    fn test_print_error() {
-        let error = return_token_error_as_program_error();
-        error.print::<TokenError>();
-    }
-
-    #[test]
-    #[should_panic(expected = "Custom(1)")]
-    fn test_error_unwrap() {
-        Err::<(), ProgramError>(return_token_error_as_program_error()).unwrap();
     }
 }

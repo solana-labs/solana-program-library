@@ -1,5 +1,8 @@
 //! Program entrypoint definitions
 
+#![cfg(feature = "program")]
+#![cfg(not(feature = "no-entrypoint"))]
+
 use solana_sdk::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, program_error::ProgramError,
     pubkey::Pubkey,

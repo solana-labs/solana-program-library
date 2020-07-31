@@ -1,12 +1,7 @@
 //! Error types
 
 use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
-use solana_sdk::{
-    decode_error::DecodeError,
-    info,
-    program_error::{PrintProgramError, ProgramError},
-};
+use solana_sdk::{decode_error::DecodeError, program_error::ProgramError};
 use thiserror::Error;
 
 /// Errors that may be returned by the TokenSwap program.
@@ -54,25 +49,5 @@ impl From<Error> for ProgramError {
 impl<T> DecodeError<T> for Error {
     fn type_of() -> &'static str {
         "Swap Error"
-    }
-}
-impl PrintProgramError for Error {
-    fn print<E>(&self)
-    where
-        E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
-    {
-        match self {
-            Error::AlreadyInUse => info!("Error: AlreadyInUse"),
-            Error::InvalidProgramAddress => info!("Error: InvalidProgramAddress"),
-            Error::InvalidOwner => info!("Error: InvalidOwner"),
-            Error::ExpectedToken => info!("Error: ExpectedToken"),
-            Error::ExpectedAccount => info!("Error: ExpectedAccount"),
-            Error::InvalidSupply => info!("Error: InvalidSupply"),
-            Error::InvalidDelegate => info!("Error: InvalidDelegate"),
-            Error::InvalidState => info!("Error: InvalidState"),
-            Error::InvalidInput => info!("Error: InvalidInput"),
-            Error::InvalidOutput => info!("Error: InvalidOutput"),
-            Error::CalculationFailure => info!("Error: CalculationFailure"),
-        }
     }
 }
