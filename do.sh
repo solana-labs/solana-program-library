@@ -31,12 +31,16 @@ perform_action() {
     targetDir="$projectDir"/target
     case "$1" in
     build)
-        "$sdkDir"/rust/build.sh "$projectDir"
+        if [[ -f "$projectDir"/Xargo.toml ]]; then
+          "$sdkDir"/rust/build.sh "$projectDir"
 
-        so_path="$targetDir/$profile"
-        so_name="spl_${2//\-/_}"
-        cp "$so_path/${so_name}.so" "$so_path/${so_name}_debug.so"
-        "$sdkDir"/dependencies/llvm-native/bin/llvm-objcopy --strip-all "$so_path/${so_name}.so" "$so_path/$so_name.so"
+          so_path="$targetDir/$profile"
+          so_name="spl_${2//\-/_}"
+          cp "$so_path/${so_name}.so" "$so_path/${so_name}_debug.so"
+          "$sdkDir"/dependencies/llvm-native/bin/llvm-objcopy --strip-all "$so_path/${so_name}.so" "$so_path/$so_name.so"
+        else
+            echo "$projectDir does not contain a program, skipping"
+        fi
         ;;
     build-native)
         (
