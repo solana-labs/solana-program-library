@@ -1,0 +1,14 @@
+[package]
+name = "test-client"
+version = "0.1.0"
+authors = ["Jack May <jack@solana.com>"]
+edition = "2018"
+
+# Used to ensure that SPL programs are buildable by external clients
+
+[dependencies]
+solana-sdk = { version = "=1.2.13", default-features = false }
+spl-memo = { path = "../../memo" }
+spl-token = { path = "../../token" }
+spl-token-swap = { path = "../../token-swap" }
+

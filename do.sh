@@ -121,7 +121,7 @@ perform_action() {
         (
             cd "$projectDir"
             echo "test $projectDir"
-            cargo +nightly test  --features=program ${@:3}
+            cargo test --features=program ${@:3}
         )
         ;;
     update)
