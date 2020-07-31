@@ -2,7 +2,7 @@
 set -e
 
 installDir=$1
-channel=v1.2.3
+channel=beta
 
 if [[ -n $2 ]]; then
   channel=$2
