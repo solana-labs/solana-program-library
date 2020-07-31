@@ -7,7 +7,7 @@ usage() {
 Usage: do.sh <action> <project> <action specific arguments>
 Supported actions:
     build
-    build-native
+    build-lib
     clean
     clippy
     doc
@@ -38,7 +38,7 @@ perform_action() {
         cp "$so_path/${so_name}.so" "$so_path/${so_name}_debug.so"
         "$sdkDir"/dependencies/llvm-native/bin/llvm-objcopy --strip-all "$so_path/${so_name}.so" "$so_path/$so_name.so"
         ;;
-    build-native)
+    build-lib)
         (
             cd "$projectDir"
             echo "build $projectDir"
@@ -53,7 +53,7 @@ perform_action() {
         (
             cd "$projectDir"
             echo "clippy $projectDir"
-            cargo +nightly clippy ${@:3}
+            cargo +nightly clippy  --features=program ${@:3}
         )
         ;;
     doc)
@@ -121,7 +121,7 @@ perform_action() {
         (
             cd "$projectDir"
             echo "test $projectDir"
-            cargo +nightly test ${@:3}
+            cargo +nightly test  --features=program ${@:3}
         )
         ;;
     update)

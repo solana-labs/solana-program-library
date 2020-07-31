@@ -6,7 +6,7 @@ set -e
 
 ./do.sh update
 ./do.sh fmt memo --all -- --check
-./do.sh build-native memo -D warnings
+./do.sh build-lib memo -D warnings
 ./do.sh build memo
 ./do.sh clippy memo -- --deny=warnings
 ./do.sh doc memo

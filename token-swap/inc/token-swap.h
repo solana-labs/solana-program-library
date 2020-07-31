@@ -117,21 +117,21 @@ typedef uint8_t TokenSwap_Pubkey[32];
  */
 typedef struct TokenSwap_SwapInfo {
     /**
-     * token A
+     * Token A
      * The Liquidity token is issued against this value.
      */
     TokenSwap_Pubkey token_a;
     /**
-     * token B
+     * Token B
      */
     TokenSwap_Pubkey token_b;
     /**
-     * pool tokens are issued when A or B tokens are deposited.
-     * pool tokens can be withdrawn back to the original A or B token.
+     * Pool tokens are issued when A or B tokens are deposited.
+     * Pool tokens can be withdrawn back to the original A or B token.
      */
     TokenSwap_Pubkey pool_mint;
     /**
-     * fee applied to the input token amount prior to output calculation.
+     * Fee applied to the input token amount prior to output calculation.
      */
     TokenSwap_Fee fee;
 } TokenSwap_SwapInfo;

@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 
 ./do.sh update
 ./do.sh fmt token --all -- --check
-./do.sh build-native token  -D warnings
+./do.sh build-lib token  -D warnings
 ./do.sh build token
 ./do.sh clippy token -- --deny=warnings
 ./do.sh doc token

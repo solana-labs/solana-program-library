@@ -1,6 +1,6 @@
-#![allow(clippy::too_many_arguments)]
-
 //! Instruction types
+
+#![allow(clippy::too_many_arguments)]
 
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
