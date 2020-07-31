@@ -13,7 +13,7 @@ exclude = ["js/**"]
 
 [features]
 skip-no-mangle = ["solana-sdk/skip-no-mangle"]
-program = ["solana-sdk/program", "spl-token/program"]
+program = ["solana-sdk/program", "spl-token/default"]
 default = ["solana-sdk/default", "spl-token/default"]
 
 [dependencies]

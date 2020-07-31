@@ -3,5 +3,6 @@
 set -e
 
 # Build programs as clients
-../do.sh build-lib memo -D warnings
-cargo run --manifest-path=client/Cargo.toml
+cd "$(dirname "$0")/.."
+./do.sh build-lib memo -D warnings
+cargo run --manifest-path=ci/client/Cargo.toml
