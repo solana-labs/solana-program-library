@@ -1,4 +1,4 @@
-//! Program entrypoint definitions
+//! Program state processor
 
 #![cfg(feature = "program")]
 
@@ -12,27 +12,12 @@ use num_traits::FromPrimitive;
 use solana_sdk::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
-    entrypoint,
     entrypoint::ProgramResult,
     info,
     program_error::{PrintProgramError, ProgramError},
     pubkey::Pubkey,
 };
 use std::mem::size_of;
-
-entrypoint!(process_instruction);
-fn process_instruction<'a>(
-    program_id: &Pubkey,
-    accounts: &'a [AccountInfo<'a>],
-    instruction_data: &[u8],
-) -> ProgramResult {
-    if let Err(error) = Processor::process(program_id, accounts, instruction_data) {
-        // catch the error so we can print it
-        error.print::<TokenError>();
-        return Err(error);
-    }
-    Ok(())
-}
 
 /// Program state handler.
 pub struct Processor {}

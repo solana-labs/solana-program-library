@@ -1,4 +1,4 @@
-//! Program entrypoint definitions
+//! Program state processor
 
 #![cfg(feature = "program")]
 
@@ -14,24 +14,10 @@ use solana_sdk::instruction::Instruction;
 use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
-    entrypoint, entrypoint::ProgramResult, info, program_error::PrintProgramError,
+    entrypoint::ProgramResult, info, program_error::PrintProgramError,
     program_error::ProgramError, pubkey::Pubkey,
 };
 use std::mem::size_of;
-
-entrypoint!(process_instruction);
-fn process_instruction<'a>(
-    program_id: &Pubkey,
-    accounts: &'a [AccountInfo<'a>],
-    instruction_data: &[u8],
-) -> ProgramResult {
-    if let Err(error) = State::process(program_id, accounts, instruction_data) {
-        // catch the error so we can print it
-        error.print::<Error>();
-        return Err(error);
-    }
-    Ok(())
-}
 
 impl State {
     /// Deserializes a byte buffer into a [State](struct.State.html).

@@ -11,6 +11,7 @@ license = "Apache-2.0"
 edition = "2018"
 
 [features]
+no-entrypoint = []
 skip-no-mangle = ["solana-sdk/skip-no-mangle"]
 program = ["solana-sdk/program"]
 default = ["solana-sdk/default"]
