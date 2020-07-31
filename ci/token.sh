@@ -16,6 +16,10 @@ git diff --exit-code token/inc/token.h
 ./do.sh test token
 cc token/inc/token.h -o token/target/token.gch
 
+# Test cli
+./do.sh fmt token-cli --all -- --check
+./do.sh clippy token-cli -- --deny=warnings
+
 # Test js bindings
 cd "$(dirname "$0")/../token/js"
 npm install

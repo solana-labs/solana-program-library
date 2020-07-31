@@ -28,6 +28,15 @@ updates:
     - "automerge"
   open-pull-requests-limit: 3
 - package-ecosystem: cargo
+  directory: "/token-cli"
+  schedule:
+    interval: daily
+    time: "01:00"
+    timezone: America/Los_Angeles
+  labels:
+    - "automerge"
+  open-pull-requests-limit: 3
+- package-ecosystem: cargo
   directory: "/memo"
   schedule:
     interval: daily
@@ -53,5 +62,5 @@ updates:
     timezone: America/Los_Angeles
   labels:
     - "automerge"
-  open-pull-requests-limit: 3 
-  
+  open-pull-requests-limit: 3
+
