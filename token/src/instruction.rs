@@ -563,17 +563,17 @@ pub fn burn(
 pub fn close_account(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
-    dest_pubkey: &Pubkey,
-    authority_pubkey: &Pubkey,
+    destination_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::CloseAccount.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
-    accounts.push(AccountMeta::new(*dest_pubkey, false));
+    accounts.push(AccountMeta::new(*destination_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
-        *authority_pubkey,
+        *owner_pubkey,
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
