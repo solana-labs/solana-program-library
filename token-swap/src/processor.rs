@@ -14,8 +14,8 @@ use solana_sdk::instruction::Instruction;
 use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
-    entrypoint::ProgramResult, info, program_error::PrintProgramError,
-    program_error::ProgramError, pubkey::Pubkey,
+    entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
+    pubkey::Pubkey,
 };
 use std::mem::size_of;
 
