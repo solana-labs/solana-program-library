@@ -14,7 +14,6 @@ import {
 } from '@solana/web3.js';
 import type {Connection, TransactionSignature} from '@solana/web3.js';
 
-import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import * as Layout from './layout';
 import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 
@@ -51,6 +50,10 @@ export class u64 extends BN {
       16,
     );
   }
+}
+
+function isAccount(accountOrPublicKey: any): boolean {
+  return 'publicKey' in accountOrPublicKey;
 }
 
 /**
@@ -364,11 +367,6 @@ export class Token {
     return [token, initialAccountPublicKey];
   }
 
-  // Create payer here to avoid cross-node_modules issues with `instanceof`
-  static async getAccount(connection: Connection): Promise<Account> {
-    return await newAccountWithLamports(connection, 100000000000 /* wag */);
-  }
-
   /**
    * Create and initializes a new account.
    *
@@ -602,13 +600,13 @@ export class Token {
   async transfer(
     source: PublicKey,
     destination: PublicKey,
-    authority: Account | PublicKey,
+    authority: any,
     multiSigners: Array<Account>,
     amount: number | u64,
   ): Promise<?TransactionSignature> {
     let ownerPublicKey;
     let signers;
-    if (authority instanceof Account) {
+    if (isAccount(authority)) {
       ownerPublicKey = authority.publicKey;
       signers = [authority];
     } else {
@@ -645,13 +643,13 @@ export class Token {
   async approve(
     account: PublicKey,
     delegate: PublicKey,
-    owner: Account | PublicKey,
+    owner: any,
     multiSigners: Array<Account>,
     amount: number | u64,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
-    if (owner instanceof Account) {
+    if (isAccount(owner)) {
       ownerPublicKey = owner.publicKey;
       signers = [owner];
     } else {
@@ -685,12 +683,12 @@ export class Token {
    */
   async revoke(
     account: PublicKey,
-    owner: Account | PublicKey,
+    owner: any,
     multiSigners: Array<Account>,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
-    if (owner instanceof Account) {
+    if (isAccount(owner)) {
       ownerPublicKey = owner.publicKey;
       signers = [owner];
     } else {
@@ -724,12 +722,12 @@ export class Token {
   async setOwner(
     owned: PublicKey,
     newOwner: PublicKey,
-    owner: Account | PublicKey,
+    owner: any,
     multiSigners: Array<Account>,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
-    if (owner instanceof Account) {
+    if (isAccount(owner)) {
       ownerPublicKey = owner.publicKey;
       signers = [owner];
     } else {
@@ -764,13 +762,13 @@ export class Token {
    */
   async mintTo(
     dest: PublicKey,
-    authority: Account | PublicKey,
+    authority: any,
     multiSigners: Array<Account>,
     amount: number,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
-    if (authority instanceof Account) {
+    if (isAccount(authority)) {
       ownerPublicKey = authority.publicKey;
       signers = [authority];
     } else {
@@ -805,13 +803,13 @@ export class Token {
    */
   async burn(
     account: PublicKey,
-    authority: Account | PublicKey,
+    authority: any,
     multiSigners: Array<Account>,
     amount: number,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
-    if (authority instanceof Account) {
+    if (isAccount(authority)) {
       ownerPublicKey = authority.publicKey;
       signers = [authority];
     } else {
@@ -845,12 +843,12 @@ export class Token {
   async closeAccount(
     account: PublicKey,
     dest: PublicKey,
-    owner: Account | PublicKey,
+    owner: any,
     multiSigners: Array<Account>,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
-    if (owner instanceof Account) {
+    if (isAccount(owner)) {
       ownerPublicKey = owner.publicKey;
       signers = [owner];
     } else {
@@ -887,7 +885,7 @@ export class Token {
     programId: PublicKey,
     source: PublicKey,
     destination: PublicKey,
-    authority: Account | PublicKey,
+    authority: any,
     multiSigners: Array<Account>,
     amount: number | u64,
   ): TransactionInstruction {
@@ -909,7 +907,7 @@ export class Token {
       {pubkey: source, isSigner: false, isWritable: true},
       {pubkey: destination, isSigner: false, isWritable: true},
     ];
-    if (authority instanceof Account) {
+    if (isAccount(authority)) {
       keys.push({
         pubkey: authority.publicKey,
         isSigner: true,
@@ -945,7 +943,7 @@ export class Token {
     programId: PublicKey,
     account: PublicKey,
     delegate: PublicKey,
-    owner: Account | PublicKey,
+    owner: any,
     multiSigners: Array<Account>,
     amount: number | u64,
   ): TransactionInstruction {
@@ -967,7 +965,7 @@ export class Token {
       {pubkey: account, isSigner: false, isWritable: true},
       {pubkey: delegate, isSigner: false, isWritable: false},
     ];
-    if (owner instanceof Account) {
+    if (isAccount(owner)) {
       keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
@@ -999,7 +997,7 @@ export class Token {
   static createRevokeInstruction(
     programId: PublicKey,
     account: PublicKey,
-    owner: Account | PublicKey,
+    owner: any,
     multiSigners: Array<Account>,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
@@ -1013,7 +1011,7 @@ export class Token {
     );
 
     let keys = [{pubkey: account, isSigner: false, isWritable: true}];
-    if (owner instanceof Account) {
+    if (isAccount(owner)) {
       keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
@@ -1045,7 +1043,7 @@ export class Token {
     programId: PublicKey,
     owned: PublicKey,
     newOwner: PublicKey,
-    owner: Account | PublicKey,
+    owner: any,
     multiSigners: Array<Account>,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
@@ -1062,7 +1060,7 @@ export class Token {
       {pubkey: owned, isSigner: false, isWritable: true},
       {pubkey: newOwner, isSigner: false, isWritable: false},
     ];
-    if (owner instanceof Account) {
+    if (isAccount(owner)) {
       keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
@@ -1095,7 +1093,7 @@ export class Token {
     programId: PublicKey,
     mint: PublicKey,
     dest: PublicKey,
-    authority: Account | PublicKey,
+    authority: any,
     multiSigners: Array<Account>,
     amount: number,
   ): TransactionInstruction {
@@ -1117,7 +1115,7 @@ export class Token {
       {pubkey: mint, isSigner: false, isWritable: true},
       {pubkey: dest, isSigner: false, isWritable: true},
     ];
-    if (authority instanceof Account) {
+    if (isAccount(authority)) {
       keys.push({
         pubkey: authority.publicKey,
         isSigner: true,
@@ -1152,7 +1150,7 @@ export class Token {
   static createBurnInstruction(
     programId: PublicKey,
     account: PublicKey,
-    authority: Account | PublicKey,
+    authority: any,
     multiSigners: Array<Account>,
     amount: number,
   ): TransactionInstruction {
@@ -1171,7 +1169,7 @@ export class Token {
     );
 
     let keys = [{pubkey: account, isSigner: false, isWritable: true}];
-    if (authority instanceof Account) {
+    if (isAccount(authority)) {
       keys.push({
         pubkey: authority.publicKey,
         isSigner: true,
@@ -1206,7 +1204,7 @@ export class Token {
     programId: PublicKey,
     account: PublicKey,
     dest: PublicKey,
-    owner: Account | PublicKey,
+    owner: any,
     multiSigners: Array<Account>,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
@@ -1222,7 +1220,7 @@ export class Token {
       {pubkey: account, isSigner: false, isWritable: true},
       {pubkey: dest, isSigner: false, isWritable: true},
     ];
-    if (owner instanceof Account) {
+    if (isAccount(owner)) {
       keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});

@@ -82,7 +82,7 @@ async function GetPrograms(connection: Connection): Promise<[PublicKey, PublicKe
   try {
     const config = await store.load('config.json');
     console.log('Using pre-loaded Token and Token-swap programs');
-    console.log('  Note: To reload programs remove client/util/sore/config.json');
+    console.log('  Note: To reload programs remove client/util/store/config.json');
     tokenProgramId = new PublicKey(config.tokenProgramId);
     tokenSwapProgramId = new PublicKey(config.tokenSwapProgramId);
   } catch (err) {
@@ -107,8 +107,8 @@ export async function loadPrograms(): Promise<void> {
 export async function createTokenSwap(): Promise<void> {
   const connection = await getConnection();
   const [tokenProgramId, tokenSwapProgramId] = await GetPrograms(connection);
-  const payer = await Token.getAccount(connection);
-  owner = await Token.getAccount(connection);
+  const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
+  owner = await newAccountWithLamports(connection, 100000000000 /* wag */);
   const tokenSwapAccount = new Account();
   authority = await PublicKey.createProgramAddress(
     [tokenSwapAccount.publicKey.toString().substring(0, 32)],
