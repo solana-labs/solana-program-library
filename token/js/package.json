@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-token",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "SPL Token Javascript API",
   "license": "MIT",
   "author": "Solana Maintainers <maintainers@solana.com>",
@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.10.5",
-    "@solana/web3.js": "^0.63.1",
+    "@solana/web3.js": "^0.63.2",
     "bn.js": "^5.0.0",
     "buffer-layout": "^1.2.0",
     "dotenv": "8.2.0",
