@@ -80,7 +80,7 @@ impl State {
 
     /// Calculates the authority id by generating a program address.
     pub fn authority_id(program_id: &Pubkey, my_info: &Pubkey) -> Result<Pubkey, Error> {
-        Pubkey::create_program_address(&[&my_info.to_string()[..32]], program_id)
+        Pubkey::create_program_address(&[&my_info.to_bytes()[..32]], program_id)
             .or(Err(Error::InvalidProgramAddress))
     }
     /// Issue a spl_token `Burn` instruction.
@@ -92,8 +92,8 @@ impl State {
         authority: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let swap_string = swap.to_string();
-        let signers = &[&[&swap_string[..32]][..]];
+        let swap_bytes = swap.to_bytes();
+        let signers = &[&[&swap_bytes[..32]][..]];
         let ix =
             spl_token::instruction::burn(token_program_id, burn_account, authority, &[], amount)?;
         invoke_signed(&ix, accounts, signers)
@@ -109,8 +109,8 @@ impl State {
         authority: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let swap_string = swap.to_string();
-        let signers = &[&[&swap_string[..32]][..]];
+        let swap_bytes = swap.to_bytes();
+        let signers = &[&[&swap_bytes[..32]][..]];
         let ix = spl_token::instruction::mint_to(
             token_program_id,
             mint,
@@ -132,8 +132,8 @@ impl State {
         authority: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let swap_string = swap.to_string();
-        let signers = &[&[&swap_string[..32]][..]];
+        let swap_bytes = swap.to_bytes();
+        let signers = &[&[&swap_bytes[..32]][..]];
         let ix = spl_token::instruction::transfer(
             token_program_id,
             source,
@@ -452,7 +452,7 @@ const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
 pub fn invoke_signed<'a>(
     instruction: &Instruction,
     account_infos: &[AccountInfo<'a>],
-    signers_seeds: &[&[&str]],
+    signers_seeds: &[&[&[u8]]],
 ) -> ProgramResult {
     let mut new_account_infos = vec![];
     for meta in instruction.accounts.iter() {
