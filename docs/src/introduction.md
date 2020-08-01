@@ -1,5 +1,5 @@
 ---
-title: Solana Program Library
+title: Introduction
 ---
 
 The Solana Program Library (SPL) is a collection of on-chain programs targeting
