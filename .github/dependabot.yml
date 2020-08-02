@@ -18,3 +18,32 @@ updates:
   open-pull-requests-limit: 3
   labels:
     - "automerge"
+- package-ecosystem: cargo
+  directory: "/token"
+  schedule:
+    interval: daily
+    time: "01:00"
+    timezone: America/Los_Angeles
+  labels:
+    - "automerge"
+  open-pull-requests-limit: 3
+- package-ecosystem: cargo
+  directory: "/memo"
+  schedule:
+    interval: daily
+    time: "01:00"
+    timezone: America/Los_Angeles
+  labels:
+    - "automerge"
+  open-pull-requests-limit: 3
+- package-ecosystem: cargo
+  directory: "/token-swap"
+  schedule:
+    interval: daily
+    time: "01:00"
+    timezone: America/Los_Angeles
+  labels:
+    - "automerge"
+  open-pull-requests-limit: 3
+  
+  
