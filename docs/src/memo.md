@@ -2,7 +2,7 @@
 title: Memo Program
 ---
 
-A simple program that validates a string of UTF-8 encoded characters.  It can be
+A simple program that validates a string of UTF-8 encoded characters. It can be
 used to record a string on-chain, stored in the instruction data of a successful
 transaction.
 
@@ -10,6 +10,7 @@ transaction.
 
 Solana's programming model and the definitions of the Solana terms used in this
 document are available at:
+
 - https://docs.solana.com/apps
 - https://docs.solana.com/terminology
 

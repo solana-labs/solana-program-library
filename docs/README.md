@@ -28,6 +28,7 @@ $ docs/build.sh
 ```
 
 ### CI Build Flow
+
 The docs are built and published in Travis CI with the `docs/build.sh` script.
 On each PR, the docs are built, but not published.
 

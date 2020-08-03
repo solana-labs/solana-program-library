@@ -2,7 +2,7 @@ module.exports = {
   title: "Solana Program Library Docs",
   tagline:
     "Solana is an open source project implementing a new, high-performance, permissionless blockchain.",
-  url: "https://spl.docs.solana.com",
+  url: "https://spl.solana.com",
   baseUrl: "/",
   favicon: "img/favicon.ico",
   organizationName: "solana-labs", // Usually your GitHub org/user name.
@@ -14,6 +14,24 @@ module.exports = {
         src: "img/logo-horizontal.svg",
         srcDark: "img/logo-horizontal-dark.svg",
       },
+      links: [
+        {
+          href: "https://docs.solana.com/",
+          label: "Docs »",
+          position: "left",
+        },
+        {
+          href: "https://discordapp.com/invite/pquxPsq",
+          label: "Chat",
+          position: "right",
+        },
+
+        {
+          href: "https://github.com/solana-labs/solana",
+          label: "GitHub",
+          position: "right",
+        },
+      ],
     },
     footer: {
       style: "dark",
@@ -55,7 +73,7 @@ module.exports = {
         docs: {
           path: "src",
           routeBasePath: "/",
-          homePageId: 'introduction',
+          homePageId: "introduction",
           sidebarPath: require.resolve("./sidebars.js"),
         },
         theme: {
