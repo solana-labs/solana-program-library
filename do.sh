@@ -29,6 +29,10 @@ perform_action() {
     set -e
     projectDir="$PWD"/$2
     targetDir="$projectDir"/target
+    features=
+    if [[ -f "$projectDir"/Xargo.toml ]]; then
+      features="--features=program"
+    fi
     case "$1" in
     build)
         if [[ -f "$projectDir"/Xargo.toml ]]; then
@@ -57,7 +61,7 @@ perform_action() {
         (
             cd "$projectDir"
             echo "clippy $projectDir"
-            cargo +nightly clippy  --features=program ${@:3}
+            cargo +nightly clippy $features ${@:3}
         )
         ;;
     doc)
@@ -125,7 +129,7 @@ perform_action() {
         (
             cd "$projectDir"
             echo "test $projectDir"
-            cargo test --features=program ${@:3}
+            cargo test $features ${@:3}
         )
         ;;
     update)
