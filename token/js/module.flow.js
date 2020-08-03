@@ -71,7 +71,7 @@ declare module '@solana/spl-token' {
       authority: Account | PublicKey,
       multiSigners: Array<Account>,
       amount: number | u64,
-    ): Promise<?TransactionSignature>;
+    ): Promise<TransactionSignature>;
     approve(
       account: PublicKey,
       delegate: PublicKey,

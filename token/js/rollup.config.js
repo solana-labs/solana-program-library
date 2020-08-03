@@ -62,7 +62,6 @@ function generateConfig(configType) {
         'bn.js',
         'buffer-layout',
         '@solana/web3.js',
-        'json-to-pretty-yaml',
       ];
       break;
     default:

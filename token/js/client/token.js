@@ -603,7 +603,7 @@ export class Token {
     authority: any,
     multiSigners: Array<Account>,
     amount: number | u64,
-  ): Promise<?TransactionSignature> {
+  ): Promise<TransactionSignature> {
     let ownerPublicKey;
     let signers;
     if (isAccount(authority)) {
