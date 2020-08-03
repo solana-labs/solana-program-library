@@ -73,7 +73,7 @@ module.exports = {
         docs: {
           path: "src",
           routeBasePath: "/",
-          homePageId: 'introduction',
+          homePageId: "introduction",
           sidebarPath: require.resolve("./sidebars.js"),
         },
         theme: {

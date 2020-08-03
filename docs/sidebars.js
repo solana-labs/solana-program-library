@@ -2,7 +2,7 @@ module.exports = {
   docs: {
     "Other Thing": [],
     "Solana Program Library (SPL)": [
-    	"introduction",
+      "introduction",
       "token",
       "token-swap",
       "memo",
