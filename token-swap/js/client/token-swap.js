@@ -292,7 +292,7 @@ export class TokenSwap {
     destination: PublicKey,
     tokenProgramId: PublicKey,
     amount: number | Numberu64,
-  ): Promise<?TransactionSignature> {
+  ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'swap',
       this.connection,
@@ -373,7 +373,7 @@ export class TokenSwap {
     poolAccount: PublicKey,
     tokenProgramId: PublicKey,
     amount: number | Numberu64,
-  ): Promise<?TransactionSignature> {
+  ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'deposit',
       this.connection,
@@ -459,7 +459,7 @@ export class TokenSwap {
     userAccountB: PublicKey,
     tokenProgramId: PublicKey,
     amount: number | Numberu64,
-  ): Promise<?TransactionSignature> {
+  ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'withdraw',
       this.connection,
