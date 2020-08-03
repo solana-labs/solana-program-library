@@ -17,7 +17,7 @@ program = ["solana-sdk/program"]
 default = ["solana-sdk/default"]
 
 [dependencies]
-solana-sdk = { version = "=1.2.13", default-features = false, optional = true }
+solana-sdk = { version = "=1.2.17", default-features = false, optional = true }
 
 [lib]
 name = "spl_memo"
