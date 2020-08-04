@@ -111,7 +111,7 @@ export async function createTokenSwap(): Promise<void> {
   owner = await newAccountWithLamports(connection, 100000000000 /* wag */);
   const tokenSwapAccount = new Account();
   authority = await PublicKey.createProgramAddress(
-    [tokenSwapAccount.publicKey.toString().substring(0, 32)],
+    [tokenSwapAccount.publicKey.toBuffer()],
     tokenSwapProgramId
   );
 
