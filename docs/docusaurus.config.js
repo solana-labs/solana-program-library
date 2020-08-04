@@ -27,7 +27,7 @@ module.exports = {
         },
 
         {
-          href: "https://github.com/solana-labs/solana",
+          href: "https://github.com/solana-labs/solana-program-library",
           label: "GitHub",
           position: "right",
         },
