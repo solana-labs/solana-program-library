@@ -11,6 +11,8 @@
 #define TOKEN_MINOR_VERSION 0
 #define TOKEN_PATCH_VERSION 3
 
+typedef uint8_t Token_U256[32];
+
 /**
  * Maximum number of multisignature signers (max N)
  */
@@ -200,7 +202,7 @@ typedef struct Token_TokenInstruction_Token_InitializeMint_Body {
     /**
      * Initial amount of tokens to mint.
      */
-    uint64_t amount;
+    Token_U256 amount;
     /**
      * Number of base 10 digits to the right of the decimal place.
      */
@@ -218,28 +220,28 @@ typedef struct Token_TokenInstruction_Token_Transfer_Body {
     /**
      * The amount of tokens to transfer.
      */
-    uint64_t amount;
+    Token_U256 amount;
 } Token_TokenInstruction_Token_Transfer_Body;
 
 typedef struct Token_TokenInstruction_Token_Approve_Body {
     /**
      * The amount of tokens the delegate is approved for.
      */
-    uint64_t amount;
+    Token_U256 amount;
 } Token_TokenInstruction_Token_Approve_Body;
 
 typedef struct Token_TokenInstruction_Token_MintTo_Body {
     /**
      * The amount of new tokens to mint.
      */
-    uint64_t amount;
+    Token_U256 amount;
 } Token_TokenInstruction_Token_MintTo_Body;
 
 typedef struct Token_TokenInstruction_Token_Burn_Body {
     /**
      * The amount of tokens to burn.
      */
-    uint64_t amount;
+    Token_U256 amount;
 } Token_TokenInstruction_Token_Burn_Body;
 
 typedef struct Token_TokenInstruction {
@@ -316,7 +318,7 @@ typedef struct Token_Account {
     /**
      * The amount of tokens this account holds.
      */
-    uint64_t amount;
+    Token_U256 amount;
     /**
      * If `delegate` is `Some` then `delegated_amount` represents
      * the amount authorized by the delegate
@@ -333,7 +335,7 @@ typedef struct Token_Account {
     /**
      * The amount delegated
      */
-    uint64_t delegated_amount;
+    Token_U256 delegated_amount;
 } Token_Account;
 
 /**

@@ -8,6 +8,7 @@ use crate::{
     state::{Invariant, State, SwapInfo},
 };
 use num_traits::FromPrimitive;
+use primitive_types::U256;
 #[cfg(not(target_arch = "bpf"))]
 use solana_sdk::instruction::Instruction;
 #[cfg(target_arch = "bpf")]
@@ -90,7 +91,7 @@ impl State {
         swap: &Pubkey,
         burn_account: &Pubkey,
         authority: &Pubkey,
-        amount: u64,
+        amount: U256,
     ) -> Result<(), ProgramError> {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
@@ -107,7 +108,7 @@ impl State {
         mint: &Pubkey,
         destination: &Pubkey,
         authority: &Pubkey,
-        amount: u64,
+        amount: U256,
     ) -> Result<(), ProgramError> {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
@@ -130,7 +131,7 @@ impl State {
         source: &Pubkey,
         destination: &Pubkey,
         authority: &Pubkey,
-        amount: u64,
+        amount: U256,
     ) -> Result<(), ProgramError> {
         let swap_string = swap.to_string();
         let signers = &[&[&swap_string[..32]][..]];
@@ -179,10 +180,10 @@ impl State {
         if spl_token::option::COption::Some(*authority_info.key) != pool_mint.owner {
             return Err(Error::InvalidOwner.into());
         }
-        if token_b.amount == 0 {
+        if token_b.amount == 0.into() {
             return Err(Error::InvalidSupply.into());
         }
-        if token_a.amount == 0 {
+        if token_a.amount == 0.into() {
             return Err(Error::InvalidSupply.into());
         }
         if token_a.delegate.is_some() {
@@ -217,7 +218,7 @@ impl State {
     /// Processes an [Swap](enum.Instruction.html).
     pub fn process_swap(
         program_id: &Pubkey,
-        amount: u64,
+        amount: U256,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -276,7 +277,7 @@ impl State {
     /// Processes an [Deposit](enum.Instruction.html).
     pub fn process_deposit(
         program_id: &Pubkey,
-        a_amount: u64,
+        a_amount: U256,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -353,7 +354,7 @@ impl State {
     /// Processes an [Withdraw](enum.Instruction.html).
     pub fn process_withdraw(
         program_id: &Pubkey,
-        amount: u64,
+        amount: U256,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -542,7 +543,7 @@ mod tests {
     fn mint_token(
         program_id: &Pubkey,
         authority_key: &Pubkey,
-        amount: u64,
+        amount: U256,
     ) -> ((Pubkey, Account), (Pubkey, Account)) {
         let token_key = pubkey_rand();
         let mut token_account = Account::new(0, size_of::<SplMint>(), &program_id);
@@ -570,7 +571,7 @@ mod tests {
                 2,
             )
             .unwrap(),
-            if amount == 0 {
+            if amount.is_zero() {
                 vec![&mut token_account, &mut authority_account]
             } else {
                 vec![
@@ -593,11 +594,11 @@ mod tests {
         let mut authority_account = Account::default();
 
         let ((pool_key, mut pool_account), (pool_token_key, mut pool_token_account)) =
-            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 0);
+            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 0.into());
         let ((_token_a_mint_key, mut _token_a_mint_account), (token_a_key, mut token_a_account)) =
-            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000);
+            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000.into());
         let ((_token_b_mint_key, mut _token_b_mint_account), (token_b_key, mut token_b_account)) =
-            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000);
+            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000.into());
 
         // Swap Init
         do_process_instruction(

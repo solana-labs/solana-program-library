@@ -17,6 +17,13 @@ export const uint64 = (property: string = 'uint64'): Object => {
 };
 
 /**
+ * Layout for a 256-bit unsigned value
+ */
+export const uint256 = (property: string = 'uint256'): Object => {
+  return BufferLayout.blob(32, property);
+};
+
+/**
  * Layout for a Rust String type
  */
 export const rustString = (property: string = 'string') => {

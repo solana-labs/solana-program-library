@@ -1,6 +1,9 @@
 //! Instruction types
 
 use crate::error::TokenError;
+// use bigint::U256;
+use primitive_types::U256;
+// use num_bigint::U256;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
@@ -34,7 +37,7 @@ pub enum TokenInstruction {
     ///
     InitializeMint {
         /// Initial amount of tokens to mint.
-        amount: u64,
+        amount: U256,
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
     },
@@ -87,7 +90,7 @@ pub enum TokenInstruction {
     ///   3. ..3+M '[signer]' M signer accounts.
     Transfer {
         /// The amount of tokens to transfer.
-        amount: u64,
+        amount: U256,
     },
     /// Approves a delegate.  A delegate is given the authority over
     /// tokens on behalf of the source account's owner.
@@ -106,7 +109,7 @@ pub enum TokenInstruction {
     ///   3. ..3+M '[signer]' M signer accounts
     Approve {
         /// The amount of tokens the delegate is approved for.
-        amount: u64,
+        amount: U256,
     },
     /// Revokes the delegate's authority.
     ///
@@ -152,7 +155,7 @@ pub enum TokenInstruction {
     ///   3. ..3+M '[signer]' M signer accounts.
     MintTo {
         /// The amount of new tokens to mint.
-        amount: u64,
+        amount: U256,
     },
     /// Burns tokens by removing them from an account.  `Burn` does not support accounts
     /// associated with the native mint, use `CloseAccount` instead.
@@ -169,7 +172,7 @@ pub enum TokenInstruction {
     ///   2. ..2+M '[signer]' M signer accounts.
     Burn {
         /// The amount of tokens to burn.
-        amount: u64,
+        amount: U256,
     },
     /// Close an account by transferring all its SOL to the destination account.
     /// Non-native accounts may only be closed if its token amount is zero.
@@ -196,13 +199,13 @@ impl TokenInstruction {
         }
         Ok(match input[0] {
             0 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
+                if input.len() < size_of::<u8>() + size_of::<U256>() + size_of::<u8>() {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const U256) };
                 let decimals =
-                    unsafe { *(&input[size_of::<u8>() + size_of::<u64>()] as *const u8) };
+                    unsafe { *(&input[size_of::<u8>() + size_of::<U256>()] as *const u8) };
                 Self::InitializeMint { amount, decimals }
             }
             1 => Self::InitializeAccount,
@@ -215,37 +218,37 @@ impl TokenInstruction {
                 Self::InitializeMultisig { m }
             }
             3 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() {
+                if input.len() < size_of::<u8>() + size_of::<U256>() {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const U256) };
                 Self::Transfer { amount }
             }
             4 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() {
+                if input.len() < size_of::<u8>() + size_of::<U256>() {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const U256) };
                 Self::Approve { amount }
             }
             5 => Self::Revoke,
             6 => Self::SetOwner,
             7 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() {
+                if input.len() < size_of::<u8>() + size_of::<U256>() {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const U256) };
                 Self::MintTo { amount }
             }
             8 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() {
+                if input.len() < size_of::<u8>() + size_of::<U256>() {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const U256) };
                 Self::Burn { amount }
             }
             9 => Self::CloseAccount,
@@ -260,10 +263,10 @@ impl TokenInstruction {
             Self::InitializeMint { amount, decimals } => {
                 output[0] = 0;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut U256) };
                 *value = *amount;
                 let value =
-                    unsafe { &mut *(&mut output[size_of::<u8>() + size_of::<u64>()] as *mut u8) };
+                    unsafe { &mut *(&mut output[size_of::<u8>() + size_of::<U256>()] as *mut u8) };
                 *value = *decimals;
             }
             Self::InitializeAccount => output[0] = 1,
@@ -276,13 +279,13 @@ impl TokenInstruction {
             Self::Transfer { amount } => {
                 output[0] = 3;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut U256) };
                 *value = *amount;
             }
             Self::Approve { amount } => {
                 output[0] = 4;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut U256) };
                 *value = *amount;
             }
             Self::Revoke => output[0] = 5,
@@ -290,13 +293,13 @@ impl TokenInstruction {
             Self::MintTo { amount } => {
                 output[0] = 7;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut U256) };
                 *value = *amount;
             }
             Self::Burn { amount } => {
                 output[0] = 8;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut U256) };
                 *value = *amount;
             }
             Self::CloseAccount => output[0] = 9,
@@ -311,13 +314,13 @@ pub fn initialize_mint(
     mint_pubkey: &Pubkey,
     account_pubkey: Option<&Pubkey>,
     owner_pubkey: Option<&Pubkey>,
-    amount: u64,
+    amount: U256,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::InitializeMint { amount, decimals }.pack()?;
 
     let mut accounts = vec![AccountMeta::new(*mint_pubkey, false)];
-    if amount != 0 {
+    if !amount.is_zero() {
         match account_pubkey {
             Some(pubkey) => accounts.push(AccountMeta::new(*pubkey, false)),
             None => {
@@ -328,7 +331,7 @@ pub fn initialize_mint(
     match owner_pubkey {
         Some(pubkey) => accounts.push(AccountMeta::new_readonly(*pubkey, false)),
         None => {
-            if amount == 0 {
+            if amount == 0.into() {
                 return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
             }
         }
@@ -398,7 +401,7 @@ pub fn transfer(
     destination_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
-    amount: u64,
+    amount: U256,
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::Transfer { amount }.pack()?;
 
@@ -427,7 +430,7 @@ pub fn approve(
     delegate_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
-    amount: u64,
+    amount: U256,
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::Approve { amount }.pack()?;
 
@@ -510,7 +513,7 @@ pub fn mint_to(
     account_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
-    amount: u64,
+    amount: U256,
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::MintTo { amount }.pack()?;
 
@@ -538,7 +541,7 @@ pub fn burn(
     account_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
-    amount: u64,
+    amount: U256,
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::Burn { amount }.pack()?;
 

@@ -18,9 +18,9 @@ import * as Layout from './layout';
 import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 
 /**
- * Some amount of tokens
+ * 64-bit value
  */
-export class Numberu64 extends BN {
+export class u64 extends BN {
   /**
    * Convert to Buffer representation
    */
@@ -30,7 +30,7 @@ export class Numberu64 extends BN {
     if (b.length === 8) {
       return b;
     }
-    assert(b.length < 8, 'Numberu64 too large');
+    assert(b.length < 8, 'u64 too large');
 
     const zeroPad = Buffer.alloc(8);
     b.copy(zeroPad);
@@ -38,10 +38,45 @@ export class Numberu64 extends BN {
   }
 
   /**
-   * Construct a Numberu64 from Buffer representation
+   * Construct a u64 from Buffer representation
    */
-  static fromBuffer(buffer: Buffer): Numberu64 {
+  static fromBuffer(buffer: Buffer): u64 {
     assert(buffer.length === 8, `Invalid buffer length: ${buffer.length}`);
+    return new BN(
+      [...buffer]
+        .reverse()
+        .map(i => `00${i.toString(16)}`.slice(-2))
+        .join(''),
+      16,
+    );
+  }
+}
+
+/**
+ * 256-bit value
+ */
+export class u256 extends BN {
+  /**
+   * Convert to Buffer representation
+   */
+  toBuffer(): Buffer {
+    const a = super.toArray().reverse();
+    const b = Buffer.from(a);
+    if (b.length === 32) {
+      return b;
+    }
+    assert(b.length < 32, 'u256 too large');
+
+    const zeroPad = Buffer.alloc(32);
+    b.copy(zeroPad);
+    return zeroPad;
+  }
+
+  /**
+   * Construct a u256 from Buffer representation
+   */
+  static fromBuffer(buffer: Buffer): u256 {
+    assert(buffer.length === 32, `Invalid buffer length: ${buffer.length}`);
     return new BN(
       [...buffer]
         .reverse()
@@ -74,12 +109,12 @@ type TokenSwapInfo = {|
   /**
    * Fee numerator
    */
-  feesNumerator: Numberu64,
+  feesNumerator: u64,
 
   /**
   * Fee denominator
   */
-  feesDenominator: Numberu64,
+  feesDenominator: u64,
 
     /**
    * Fee ratio applied to the input token amount prior to output calculation
@@ -266,8 +301,8 @@ export class TokenSwap {
     tokenSwapInfo.tokenAccountA = new PublicKey(tokenSwapInfo.tokenAccountA);
     tokenSwapInfo.tokenAccountB = new PublicKey(tokenSwapInfo.tokenAccountB);
     tokenSwapInfo.tokenPool = new PublicKey(tokenSwapInfo.tokenPool);
-    tokenSwapInfo.feesNumerator = Numberu64.fromBuffer(tokenSwapInfo.feesNumerator);
-    tokenSwapInfo.feesDenominator = Numberu64.fromBuffer(tokenSwapInfo.feesDenominator);
+    tokenSwapInfo.feesNumerator = u64.fromBuffer(tokenSwapInfo.feesNumerator);
+    tokenSwapInfo.feesDenominator = u64.fromBuffer(tokenSwapInfo.feesDenominator);
     tokenSwapInfo.feeRatio = tokenSwapInfo.feesNumerator.toNumber() / tokenSwapInfo.feesDenominator.toNumber();
 
     return tokenSwapInfo;
@@ -291,7 +326,7 @@ export class TokenSwap {
     from: PublicKey,
     destination: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    amount: number | u256,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'swap',
@@ -317,18 +352,18 @@ export class TokenSwap {
     from: PublicKey,
     destination: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    amount: number | u256,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount'),
+      Layout.uint256('amount'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 1, // Swap instruction
-        amount: new Numberu64(amount).toBuffer(),
+        amount: new u256(amount).toBuffer(),
       },
       data,
     );
@@ -372,7 +407,7 @@ export class TokenSwap {
     poolToken: PublicKey,
     poolAccount: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    amount: number | u256,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'deposit',
@@ -402,18 +437,18 @@ export class TokenSwap {
     poolToken: PublicKey,
     poolAccount: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    amount: number | u256,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount'),
+      Layout.uint256('amount'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 2, // Deposit instruction
-        amount: new Numberu64(amount).toBuffer(),
+        amount: new u256(amount).toBuffer(),
       },
       data,
     );
@@ -458,7 +493,7 @@ export class TokenSwap {
     userAccountA: PublicKey,
     userAccountB: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    amount: number | u256,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'withdraw',
@@ -486,18 +521,18 @@ export class TokenSwap {
     userAccountA: PublicKey,
     userAccountB: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    amount: number | u256,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount'),
+      Layout.uint256('amount'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 3, // Withdraw instruction
-        amount: new Numberu64(amount).toBuffer(),
+        amount: new u256(amount).toBuffer(),
       },
       data,
     );

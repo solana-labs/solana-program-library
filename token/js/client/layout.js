@@ -10,10 +10,10 @@ export const publicKey = (property: string = 'publicKey'): Object => {
 };
 
 /**
- * Layout for a 64bit unsigned value
+ * Layout for a 256-bit unsigned value
  */
-export const uint64 = (property: string = 'uint64'): Object => {
-  return BufferLayout.blob(8, property);
+export const uint256 = (property: string = 'uint256'): Object => {
+  return BufferLayout.blob(32, property);
 };
 
 /**

@@ -2,6 +2,7 @@
 
 #![allow(clippy::too_many_arguments)]
 
+use primitive_types::U256;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
@@ -45,7 +46,7 @@ pub enum SwapInstruction {
     ///   6. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
     ///   7. '[]` Token program id
     ///   userdata: SOURCE amount to transfer, output to DEST is based on the exchange rate
-    Swap(u64),
+    Swap(U256),
 
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
@@ -60,7 +61,7 @@ pub enum SwapInstruction {
     ///   9. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
     ///   10. '[]` Token program id
     ///   userdata: token_a amount to transfer.  token_b amount is set by the current exchange rate.
-    Deposit(u64),
+    Deposit(U256),
 
     ///   Withdraw the token from the pool at the current ratio.
     ///   
@@ -74,7 +75,7 @@ pub enum SwapInstruction {
     ///   9. '[]` Token program id
     ///   userdata: SOURCE amount of pool tokens to transfer. User receives an output based on the
     ///   percentage of the pool tokens that are returned.
-    Withdraw(u64),
+    Withdraw(U256),
 }
 impl SwapInstruction {
     /// Deserializes a byte buffer into an [SwapInstruction](enum.SwapInstruction.html).
@@ -88,16 +89,16 @@ impl SwapInstruction {
                 Self::Initialize(*fee)
             }
             1 => {
-                let fee: &u64 = unpack(input)?;
-                Self::Swap(*fee)
+                let amount: &U256 = unpack(input)?;
+                Self::Swap(*amount)
             }
             2 => {
-                let fee: &u64 = unpack(input)?;
-                Self::Deposit(*fee)
+                let amount: &U256 = unpack(input)?;
+                Self::Deposit(*amount)
             }
             3 => {
-                let fee: &u64 = unpack(input)?;
-                Self::Withdraw(*fee)
+                let amount: &U256 = unpack(input)?;
+                Self::Withdraw(*amount)
             }
             _ => return Err(ProgramError::InvalidAccountData),
         })
@@ -116,19 +117,19 @@ impl SwapInstruction {
             Self::Swap(amount) => {
                 output[0] = 1;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut U256) };
                 *value = *amount;
             }
             Self::Deposit(amount) => {
                 output[0] = 2;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut U256) };
                 *value = *amount;
             }
             Self::Withdraw(amount) => {
                 output[0] = 3;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut U256) };
                 *value = *amount;
             }
         }

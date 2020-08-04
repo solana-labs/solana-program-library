@@ -7,9 +7,9 @@
 
 declare module '@solana/spl-token' {
   // === client/token.js ===
-  declare export class u64 extends BN {
+  declare export class u256 extends BN {
     toBuffer(): Buffer;
-    static fromBuffer(buffer: Buffer): u64;
+    static fromBuffer(buffer: Buffer): u256;
   }
   declare export type MintInfo = {|
     owner: null | PublicKey,
@@ -19,9 +19,9 @@ declare module '@solana/spl-token' {
   declare export type AccountInfo = {|
     mint: PublicKey,
     owner: PublicKey,
-    amount: u64,
+    amount: u256,
     delegate: null | PublicKey,
-    delegatedAmount: u64,
+    delegatedAmount: u256,
     isInitialized: boolean,
     isNative: boolean,
   |};
@@ -54,7 +54,7 @@ declare module '@solana/spl-token' {
       payer: Account,
       mintOwner: PublicKey,
       accountOwner: PublicKey,
-      supply: u64,
+      supply: u256,
       decimals: number,
       programId: PublicKey,
       is_owned: boolean,
@@ -70,14 +70,14 @@ declare module '@solana/spl-token' {
       destination: PublicKey,
       authority: Account | PublicKey,
       multiSigners: Array<Account>,
-      amount: number | u64,
+      amount: number | u256,
     ): Promise<TransactionSignature>;
     approve(
       account: PublicKey,
       delegate: PublicKey,
       owner: Account | PublicKey,
       multiSigners: Array<Account>,
-      amount: number | u64,
+      amount: number | u256,
     ): Promise<void>;
     revoke(
       account: PublicKey,
@@ -114,7 +114,7 @@ declare module '@solana/spl-token' {
       destination: PublicKey,
       authority: Account | PublicKey,
       multiSigners: Array<Account>,
-      amount: number | u64,
+      amount: number | u256,
     ): TransactionInstruction;
     static createApproveInstruction(
       programId: PublicKey,
@@ -122,7 +122,7 @@ declare module '@solana/spl-token' {
       delegate: PublicKey,
       owner: Account | PublicKey,
       multiSigners: Array<Account>,
-      amount: number | u64,
+      amount: number | u256,
     ): TransactionInstruction;
     static createRevokeInstruction(
       programId: PublicKey,

@@ -1,6 +1,7 @@
 //! State transition types
 
 use crate::instruction::Fee;
+use primitive_types::U256;
 use solana_sdk::pubkey::Pubkey;
 
 /// Initialized program details.
@@ -32,22 +33,22 @@ pub enum State {
 /// The Uniswap invariant calculator.
 pub struct Invariant {
     /// Token A
-    pub token_a: u64,
+    pub token_a: U256,
     /// Token B
-    pub token_b: u64,
+    pub token_b: U256,
     /// Fee
     pub fee: Fee,
 }
 impl Invariant {
     /// Swap
-    pub fn swap(&mut self, token_a: u64) -> Option<u64> {
+    pub fn swap(&mut self, token_a: U256) -> Option<U256> {
         let invariant = self.token_a.checked_mul(self.token_b)?;
         let new_a = self.token_a.checked_add(token_a)?;
         let new_b = invariant.checked_div(new_a)?;
         let remove = self.token_b.checked_sub(new_b)?;
         let fee = remove
-            .checked_mul(self.fee.numerator)?
-            .checked_div(self.fee.denominator)?;
+            .checked_mul(self.fee.numerator.into())?
+            .checked_div(self.fee.denominator.into())?;
         let new_b_with_fee = new_b.checked_add(fee)?;
         let remove_less_fee = remove.checked_sub(fee)?;
         self.token_a = new_a;
@@ -55,7 +56,7 @@ impl Invariant {
         Some(remove_less_fee)
     }
     /// Exchange rate
-    pub fn exchange_rate(&self, token_a: u64) -> Option<u64> {
+    pub fn exchange_rate(&self, token_a: U256) -> Option<U256> {
         token_a.checked_mul(self.token_b)?.checked_div(self.token_a)
     }
 }

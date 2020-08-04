@@ -89,15 +89,15 @@ typedef struct TokenSwap_Initialize_Body {
 } TokenSwap_Initialize_Body;
 
 typedef struct TokenSwap_Swap_Body {
-    uint64_t _0;
+    TokenSwap_U256 _0;
 } TokenSwap_Swap_Body;
 
 typedef struct TokenSwap_Deposit_Body {
-    uint64_t _0;
+    TokenSwap_U256 _0;
 } TokenSwap_Deposit_Body;
 
 typedef struct TokenSwap_Withdraw_Body {
-    uint64_t _0;
+    TokenSwap_U256 _0;
 } TokenSwap_Withdraw_Body;
 
 typedef struct TokenSwap_SwapInstruction {

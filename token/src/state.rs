@@ -1,6 +1,7 @@
 //! State transition types
 
 use crate::{error::TokenError, instruction::MAX_SIGNERS, option::COption};
+use primitive_types::U256;
 use solana_sdk::{program_error::ProgramError, pubkey::Pubkey};
 use std::mem::size_of;
 
@@ -32,7 +33,7 @@ pub struct Account {
     /// The owner of this account.
     pub owner: Pubkey,
     /// The amount of tokens this account holds.
-    pub amount: u64,
+    pub amount: U256,
     /// If `delegate` is `Some` then `delegated_amount` represents
     /// the amount authorized by the delegate
     pub delegate: COption<Pubkey>,
@@ -41,7 +42,7 @@ pub struct Account {
     /// Is this a native token
     pub is_native: bool,
     /// The amount delegated
-    pub delegated_amount: u64,
+    pub delegated_amount: U256,
 }
 impl IsInitialized for Account {
     fn is_initialized(&self) -> bool {

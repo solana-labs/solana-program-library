@@ -18,30 +18,30 @@ import * as Layout from './layout';
 import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 
 /**
- * 64-bit value
+ * 256-bit value
  */
-export class u64 extends BN {
+export class u256 extends BN {
   /**
    * Convert to Buffer representation
    */
   toBuffer(): Buffer {
     const a = super.toArray().reverse();
     const b = Buffer.from(a);
-    if (b.length === 8) {
+    if (b.length === 32) {
       return b;
     }
-    assert(b.length < 8, 'u64 too large');
+    assert(b.length < 32, 'u256 too large');
 
-    const zeroPad = Buffer.alloc(8);
+    const zeroPad = Buffer.alloc(32);
     b.copy(zeroPad);
     return zeroPad;
   }
 
   /**
-   * Construct a u64 from Buffer representation
+   * Construct a u256 from Buffer representation
    */
-  static fromBuffer(buffer: Buffer): u64 {
-    assert(buffer.length === 8, `Invalid buffer length: ${buffer.length}`);
+  static fromBuffer(buffer: Buffer): u256 {
+    assert(buffer.length === 32, `Invalid buffer length: ${buffer.length}`);
     return new BN(
       [...buffer]
         .reverse()
@@ -101,7 +101,7 @@ type AccountInfo = {|
   /**
    * Amount of tokens this account holds
    */
-  amount: u64,
+  amount: u256,
 
   /**
    * The delegate for this account
@@ -111,7 +111,7 @@ type AccountInfo = {|
   /**
    * The amount of tokens the delegate authorized to the delegate
    */
-  delegatedAmount: u64,
+  delegatedAmount: u256,
 
   /**
    * Is this account initialized
@@ -130,13 +130,13 @@ type AccountInfo = {|
 const AccountLayout = BufferLayout.struct([
   Layout.publicKey('mint'),
   Layout.publicKey('owner'),
-  Layout.uint64('amount'),
+  Layout.uint256('amount'),
   BufferLayout.u32('option'),
   Layout.publicKey('delegate'),
   BufferLayout.u8('is_initialized'),
   BufferLayout.u8('is_native'),
   BufferLayout.u16('padding'),
-  Layout.uint64('delegatedAmount'),
+  Layout.uint256('delegatedAmount'),
 ]);
 
 /**
@@ -291,7 +291,7 @@ export class Token {
     payer: Account,
     mintOwner: PublicKey,
     accountOwner: PublicKey,
-    supply: u64,
+    supply: u256,
     decimals: number,
     programId: PublicKey,
     is_owned: boolean = false,
@@ -334,7 +334,7 @@ export class Token {
     }
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('supply'),
+      Layout.uint256('supply'),
       BufferLayout.u8('decimals'),
     ]);
     let data = Buffer.alloc(1024);
@@ -533,15 +533,17 @@ export class Token {
     const accountInfo = AccountLayout.decode(data);
     accountInfo.mint = new PublicKey(accountInfo.mint);
     accountInfo.owner = new PublicKey(accountInfo.owner);
-    accountInfo.amount = u64.fromBuffer(accountInfo.amount);
+    accountInfo.amount = u256.fromBuffer(accountInfo.amount);
     accountInfo.isInitialized = accountInfo.isInitialized != 0;
     accountInfo.isNative = accountInfo.isNative != 0;
     if (accountInfo.option === 0) {
       accountInfo.delegate = null;
-      accountInfo.delegatedAmount = new u64();
+      accountInfo.delegatedAmount = new u256();
     } else {
       accountInfo.delegate = new PublicKey(accountInfo.delegate);
-      accountInfo.delegatedAmount = u64.fromBuffer(accountInfo.delegatedAmount);
+      accountInfo.delegatedAmount = u256.fromBuffer(
+        accountInfo.delegatedAmount,
+      );
     }
 
     if (!accountInfo.mint.equals(this.publicKey)) {
@@ -602,7 +604,7 @@ export class Token {
     destination: PublicKey,
     authority: any,
     multiSigners: Array<Account>,
-    amount: number | u64,
+    amount: number | u256,
   ): Promise<TransactionSignature> {
     let ownerPublicKey;
     let signers;
@@ -645,7 +647,7 @@ export class Token {
     delegate: PublicKey,
     owner: any,
     multiSigners: Array<Account>,
-    amount: number | u64,
+    amount: number | u256,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
@@ -887,18 +889,18 @@ export class Token {
     destination: PublicKey,
     authority: any,
     multiSigners: Array<Account>,
-    amount: number | u64,
+    amount: number | u256,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount'),
+      Layout.uint256('amount'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 3, // Transfer instruction
-        amount: new u64(amount).toBuffer(),
+        amount: new u256(amount).toBuffer(),
       },
       data,
     );
@@ -945,18 +947,18 @@ export class Token {
     delegate: PublicKey,
     owner: any,
     multiSigners: Array<Account>,
-    amount: number | u64,
+    amount: number | u256,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount'),
+      Layout.uint256('amount'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 4, // Approve instruction
-        amount: new u64(amount).toBuffer(),
+        amount: new u256(amount).toBuffer(),
       },
       data,
     );
@@ -1099,14 +1101,14 @@ export class Token {
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount'),
+      Layout.uint256('amount'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 7, // MintTo instruction
-        amount: new u64(amount).toBuffer(),
+        amount: new u256(amount).toBuffer(),
       },
       data,
     );
@@ -1156,14 +1158,14 @@ export class Token {
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount'),
+      Layout.uint256('amount'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 8, // Burn instruction
-        amount: new u64(amount).toBuffer(),
+        amount: new u256(amount).toBuffer(),
       },
       data,
     );
