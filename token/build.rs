@@ -27,6 +27,10 @@ fn main() {
         tab_width: 4,
         cpp_compat: true,
         pragma_once: true,
+        enumeration: cbindgen::EnumConfig {
+            prefix_with_name: true,
+            ..cbindgen::EnumConfig::default()
+        },
         export: cbindgen::ExportConfig {
             prefix: Some("Token_".to_string()),
             include: vec![
