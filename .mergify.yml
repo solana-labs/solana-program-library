@@ -1,19 +1,36 @@
+# Validate your changes with:
+#
+#   $ curl -F 'data=@.mergify.yml' https://gh.mergify.io/validate/
+#
+# https://doc.mergify.io/
 pull_request_rules:
-  - name: automatic merge on CI success
+  - name: automatic merge (squash) on CI success
     conditions:
-      - status-success=continuous-integration/travis-ci/pr
+      - status-success=Travis CI - Pull Request
       - label=automerge
+      - author≠@dont-squash-my-commits
     actions:
       merge:
         method: squash
+  # Join the dont-squash-my-commits group if you won't like your commits squashed
+  - name: automatic merge (rebase) on CI success
+    conditions:
+      - status-success=Travis CI - Pull Request
+      - label=automerge
+      - author=@dont-squash-my-commits
+    actions:
+      merge:
+        method: rebase
   - name: remove automerge label on CI failure
     conditions:
-      - status-failure=continuous-integration/travis-ci/pr
       - label=automerge
+      - "#status-failure!=0"
     actions:
       label:
         remove:
           - automerge
+      comment:
+        message: automerge label removed due to a CI failure
   - name: remove outdated reviews
     conditions:
       - base=master
