@@ -12,6 +12,7 @@ sudo apt-get install -y clang-7 --allow-unauthenticated
 sudo apt-get install -y openssl --allow-unauthenticated
 sudo apt-get install -y libssl-dev --allow-unauthenticated
 sudo apt-get install -y libssl1.1 --allow-unauthenticated
+sudo apt-get install -y libudev-dev
 clang-7 --version
 nvm install node
 npm install -g typescript
