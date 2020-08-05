@@ -28,7 +28,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@babel/runtime": "^7.11.0",
+    "@babel/runtime": "^7.11.1",
     "@solana/web3.js": "^0.64.0",
     "bn.js": "^5.0.0",
     "buffer-layout": "^1.2.0",
