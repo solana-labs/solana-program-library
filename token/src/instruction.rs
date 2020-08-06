@@ -6,7 +6,10 @@ use solana_sdk::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use std::mem::size_of;
+use std::{
+    mem::size_of,
+    ptr::{read_unaligned, write_unaligned},
+};
 
 /// Minimum number of multisignature signers (min N)
 pub const MIN_SIGNERS: usize = 1;
@@ -200,9 +203,9 @@ impl TokenInstruction {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
-                let decimals =
-                    unsafe { *(&input[size_of::<u8>() + size_of::<u64>()] as *const u8) };
+                let amount =
+                    unsafe { read_unaligned(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let decimals = input[size_of::<u8>() + size_of::<u64>()];
                 Self::InitializeMint { amount, decimals }
             }
             1 => Self::InitializeAccount,
@@ -210,8 +213,7 @@ impl TokenInstruction {
                 if input.len() < size_of::<u8>() + size_of::<u8>() {
                     return Err(TokenError::InvalidInstruction.into());
                 }
-                #[allow(clippy::cast_ptr_alignment)]
-                let m = unsafe { *(&input[1] as *const u8) };
+                let m = input[1];
                 Self::InitializeMultisig { m }
             }
             3 => {
@@ -219,7 +221,8 @@ impl TokenInstruction {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let amount =
+                    unsafe { read_unaligned(&input[size_of::<u8>()] as *const u8 as *const u64) };
                 Self::Transfer { amount }
             }
             4 => {
@@ -227,7 +230,8 @@ impl TokenInstruction {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let amount =
+                    unsafe { read_unaligned(&input[size_of::<u8>()] as *const u8 as *const u64) };
                 Self::Approve { amount }
             }
             5 => Self::Revoke,
@@ -237,7 +241,8 @@ impl TokenInstruction {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let amount =
+                    unsafe { read_unaligned(&input[size_of::<u8>()] as *const u8 as *const u64) };
                 Self::MintTo { amount }
             }
             8 => {
@@ -245,7 +250,8 @@ impl TokenInstruction {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let amount =
+                    unsafe { read_unaligned(&input[size_of::<u8>()] as *const u8 as *const u64) };
                 Self::Burn { amount }
             }
             9 => Self::CloseAccount,
@@ -260,44 +266,45 @@ impl TokenInstruction {
             Self::InitializeMint { amount, decimals } => {
                 output[0] = 0;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
-                *value = *amount;
-                let value =
-                    unsafe { &mut *(&mut output[size_of::<u8>() + size_of::<u64>()] as *mut u8) };
-                *value = *decimals;
+                unsafe {
+                    write_unaligned(&mut output[size_of::<u8>()] as *mut u8 as *mut u64, *amount)
+                };
+                output[size_of::<u8>() + size_of::<u64>()] = *decimals;
             }
             Self::InitializeAccount => output[0] = 1,
             Self::InitializeMultisig { m } => {
                 output[0] = 2;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u8) };
-                *value = *m;
+                output[size_of::<u8>()] = *m;
             }
             Self::Transfer { amount } => {
                 output[0] = 3;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
-                *value = *amount;
+                unsafe {
+                    write_unaligned(&mut output[size_of::<u8>()] as *mut u8 as *mut u64, *amount)
+                };
             }
             Self::Approve { amount } => {
                 output[0] = 4;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
-                *value = *amount;
+                unsafe {
+                    write_unaligned(&mut output[size_of::<u8>()] as *mut u8 as *mut u64, *amount)
+                };
             }
             Self::Revoke => output[0] = 5,
             Self::SetOwner => output[0] = 6,
             Self::MintTo { amount } => {
                 output[0] = 7;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
-                *value = *amount;
+                unsafe {
+                    write_unaligned(&mut output[size_of::<u8>()] as *mut u8 as *mut u64, *amount)
+                };
             }
             Self::Burn { amount } => {
                 output[0] = 8;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
-                *value = *amount;
+                unsafe {
+                    write_unaligned(&mut output[size_of::<u8>()] as *mut u8 as *mut u64, *amount)
+                };
             }
             Self::CloseAccount => output[0] = 9,
         }

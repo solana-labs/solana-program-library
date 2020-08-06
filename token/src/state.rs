@@ -2,7 +2,7 @@
 
 use crate::{error::TokenError, instruction::MAX_SIGNERS, option::COption};
 use solana_sdk::{program_error::ProgramError, pubkey::Pubkey};
-use std::mem::size_of;
+use std::mem::{align_of, size_of};
 
 /// Mint data.
 #[repr(C)]
@@ -87,6 +87,10 @@ pub fn unpack_unchecked<T: IsInitialized>(input: &mut [u8]) -> Result<&mut T, Pr
     if input.len() != size_of::<T>() {
         return Err(ProgramError::InvalidAccountData);
     }
-    #[allow(clippy::cast_ptr_alignment)]
-    Ok(unsafe { &mut *(&mut input[0] as *mut u8 as *mut T) })
+    Ok({
+        #[allow(clippy::cast_ptr_alignment)]
+        let ptr = &mut input[0] as *mut u8 as *mut T;
+        assert_eq!(ptr.align_offset(align_of::<T>()), 0);
+        unsafe { &mut *ptr }
+    })
 }
