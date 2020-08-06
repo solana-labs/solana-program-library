@@ -7,7 +7,7 @@ edition = "2018"
 # Used to ensure that SPL programs are buildable by external clients
 
 [dependencies]
-solana-sdk = "1.2.17"
+solana-sdk = "1.2.19"
 spl-memo = { path = "../../memo" }
 spl-token = { path = "../../token" }
 spl-token-swap = { path = "../../token-swap" }
