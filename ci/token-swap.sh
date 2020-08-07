@@ -14,7 +14,7 @@ git diff --exit-code token-swap/inc/token-swap.h
 ./do.sh build token-swap
 ./do.sh doc token-swap
 ./do.sh test token-swap
-cc token-swap/inc/token-swap.h -o token-swap/target/token-swap.gch
+cc token-swap/inc/token-swap.h -o target/token-swap.gch
 
 # Install dependency project
 cd "token/js"
