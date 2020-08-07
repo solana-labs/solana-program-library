@@ -11,7 +11,7 @@ use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
 use solana_sdk::instruction::Instruction;
 #[cfg(target_arch = "bpf")]
-use solana_sdk::program::invoke_signed;
+use solana_sdk::program::{create_program_address, invoke_signed};
 use solana_sdk::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
     entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
@@ -80,7 +80,7 @@ impl State {
 
     /// Calculates the authority id by generating a program address.
     pub fn authority_id(program_id: &Pubkey, my_info: &Pubkey) -> Result<Pubkey, Error> {
-        Pubkey::create_program_address(&[&my_info.to_bytes()[..32]], program_id)
+        create_program_address(&[&my_info.to_bytes()[..32]], program_id)
             .or(Err(Error::InvalidProgramAddress))
     }
     /// Issue a spl_token `Burn` instruction.

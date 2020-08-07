@@ -28,7 +28,7 @@ profile=bpfel-unknown-unknown/release
 perform_action() {
     set -e
     projectDir="$PWD"/$2
-    targetDir="$projectDir"/target
+    targetDir="$PWD"/target
     features=
     if [[ -f "$projectDir"/Xargo.toml ]]; then
       features="--features=program"
