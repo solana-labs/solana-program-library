@@ -21,8 +21,7 @@ Supported projects:
 EOF
 }
 
-sdkParentDir=bin
-sdkDir="$sdkParentDir"/bpf-sdk
+sdkDir=bin/bpf-sdk
 profile=bpfel-unknown-unknown/release
 
 perform_action() {
@@ -133,8 +132,7 @@ perform_action() {
         )
         ;;
     update)
-        mkdir -p $sdkParentDir
-        ./bpf-sdk-install.sh $sdkParentDir
+        ./bpf-sdk-install.sh
         ./do.sh clean all
         ;;
     *)
