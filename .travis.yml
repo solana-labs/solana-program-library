@@ -18,33 +18,15 @@ env:
 
 jobs:
   include:
-    - name: "Test programs as clients"
+    - name: "Build programs"
       language: rust
       install:
         source .travis/install-program-deps.sh
       script:
-        ./ci/clients.sh
-
-    - name: "Test Memo"
-      language: rust
-      install:
-        source .travis/install-program-deps.sh
-      script:
-        ./ci/memo.sh
-
-    - name: "Test Token"
-      language: rust
-      install:
-        source .travis/install-program-deps.sh
-      script:
-        ./ci/token.sh
-
-    - name: "Test Token-Swap"
-      language: rust
-      install:
-        source .travis/install-program-deps.sh
-      script:
-        ./ci/token-swap.sh
+        - ./ci/clients.sh
+        - ./ci/memo.sh
+        - ./ci/token.sh
+        - ./ci/token-swap.sh
 
     # docs pull request or commit to master
     - name: "Build Docs"
