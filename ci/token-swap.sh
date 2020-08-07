@@ -4,7 +4,6 @@ set -ex
 
 # Test program
 cd "$(dirname "$0")/.."
-./do.sh update
 ./do.sh fmt token-swap --all -- --check
 ./do.sh clippy token-swap -- --deny=warnings
 
