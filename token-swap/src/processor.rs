@@ -460,7 +460,7 @@ pub fn invoke_signed<'a>(
             if meta.pubkey == *account_info.key {
                 let mut new_account_info = account_info.clone();
                 for seeds in signers_seeds.iter() {
-                    let signer = Pubkey::create_program_address(seeds, &SWAP_PROGRAM_ID).unwrap();
+                    let signer = create_program_address(seeds, &SWAP_PROGRAM_ID).unwrap();
                     if *account_info.key == signer {
                         new_account_info.is_signer = true;
                     }
@@ -474,6 +474,26 @@ pub fn invoke_signed<'a>(
         &new_account_infos,
         &instruction.data,
     )
+}
+
+/// TODO: Remove this stub function once solana-sdk exports it
+#[cfg(not(target_arch = "bpf"))]
+pub fn create_program_address(
+    seeds: &[&[u8]],
+    program_id: &Pubkey,
+) -> Result<Pubkey, solana_sdk::pubkey::PubkeyError> {
+    let mut hasher = solana_sdk::hash::Hasher::default();
+    for seed in seeds.iter() {
+        if seed.len() > solana_sdk::pubkey::MAX_SEED_LEN {
+            return Err(solana_sdk::pubkey::PubkeyError::MaxSeedLengthExceeded);
+        }
+        hasher.hash(seed);
+    }
+    hasher.hashv(&[program_id.as_ref(), "ProgramDerivedAddress".as_ref()]);
+
+    Ok(Pubkey::new(
+        solana_sdk::hash::hash(hasher.result().as_ref()).as_ref(),
+    ))
 }
 
 impl PrintProgramError for Error {
