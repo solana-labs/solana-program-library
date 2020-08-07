@@ -1,22 +1,21 @@
 #!/usr/bin/env bash
 set -e
 
-installDir=$1
-channel=v1.2.17
-
-if [[ -n $2 ]]; then
-  channel=$2
-fi
+channel=${1:-v1.2.17}
+installDir="$(dirname "$0")"/bin
+cacheDir=~/.cache/solana-bpf-sdk/"$channel"
 
 echo "Installing $channel BPF SDK into $installDir"
 
 set -x
-cd "$installDir/"
-curl -L  --retry 5 --retry-delay 2 -o bpf-sdk.tar.bz2 \
-  http://solana-sdk.s3.amazonaws.com/"$channel"/bpf-sdk.tar.bz2
-rm -rf bpf-sdk
-mkdir -p bpf-sdk
-tar jxf bpf-sdk.tar.bz2
-rm -f bpf-sdk.tar.bz2
 
-cat bpf-sdk/version.txt
+if [[ ! -r "$cacheDir"/bpf-sdk.tar.bz2 ]]; then
+  mkdir -p "$cacheDir"
+  curl -L  --retry 5 --retry-delay 2 -o "$cacheDir"/bpf-sdk.tar.bz2 \
+    http://solana-sdk.s3.amazonaws.com/"$channel"/bpf-sdk.tar.bz2
+fi
+
+rm -rf "$installDir"
+mkdir -p "$installDir"
+( cd "$installDir"; tar jxf "$cacheDir"/bpf-sdk.tar.bz2 )
+cat "$installDir"/bpf-sdk/version.txt
