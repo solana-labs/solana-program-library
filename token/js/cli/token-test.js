@@ -94,7 +94,7 @@ async function GetPrograms(connection: Connection): Promise<PublicKey> {
   } catch (err) {
     tokenProgramId = await loadProgram(
       connection,
-      '../target/bpfel-unknown-unknown/release/spl_token.so',
+      '../../target/bpfel-unknown-unknown/release/spl_token.so',
     );
     await store.save('config.json', {
       tokenProgramId: tokenProgramId.toString(),

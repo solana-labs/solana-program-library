@@ -86,8 +86,8 @@ async function GetPrograms(connection: Connection): Promise<[PublicKey, PublicKe
     tokenProgramId = new PublicKey(config.tokenProgramId);
     tokenSwapProgramId = new PublicKey(config.tokenSwapProgramId);
   } catch (err) {
-    tokenProgramId = await loadProgram(connection, '../../token/target/bpfel-unknown-unknown/release/spl_token.so');
-    tokenSwapProgramId = await loadProgram(connection, '../target/bpfel-unknown-unknown/release/spl_token_swap.so');
+    tokenProgramId = await loadProgram(connection, '../../target/bpfel-unknown-unknown/release/spl_token.so');
+    tokenSwapProgramId = await loadProgram(connection, '../../target/bpfel-unknown-unknown/release/spl_token_swap.so');
     await store.save('config.json', {
       tokenProgramId: tokenProgramId.toString(),
       tokenSwapProgramId: tokenSwapProgramId.toString()
