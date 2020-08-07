@@ -12,6 +12,10 @@ cache:
 services:
   - docker
 
+env:
+  global:
+    - RUST_BACKTRACE=1
+
 jobs:
   include:
     - name: "Test programs as clients"
