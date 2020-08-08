@@ -24,10 +24,7 @@ jobs:
       install:
         source .travis/install-program-deps.sh
       script:
-        - ./ci/clients.sh
-        - ./ci/memo.sh
-        - ./ci/token.sh
-        - ./ci/token-swap.sh
+        - ci/script.sh
 
     # docs pull request or commit to master
     - name: "Build Docs"
