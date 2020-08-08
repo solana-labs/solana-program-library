@@ -8,16 +8,16 @@ cd "$(dirname "$0")/.."
 ./do.sh clippy token -- --deny=warnings
 
 SPL_CBINDGEN=1 ./do.sh build-lib token -D warnings
-git diff --exit-code token/inc/token.h
+git diff --exit-code token/program/inc/token.h
+cc token/program/inc/token.h -o target/token.gch
 
 ./do.sh build token
 ./do.sh doc token
 ./do.sh test token
-cc token/inc/token.h -o target/token.gch
 
 # Test cli
-./do.sh fmt token-cli --all -- --check
-./do.sh clippy token-cli -- --deny=warnings
+./do.sh fmt token/cli --all -- --check
+./do.sh clippy token/cli -- --deny=warnings
 
 # Test js bindings
 cd "$(dirname "$0")/../token/js"

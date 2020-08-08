@@ -8,13 +8,13 @@ cd "$(dirname "$0")/.."
 ./do.sh clippy token-swap -- --deny=warnings
 
 SPL_CBINDGEN=1 ./do.sh build-lib token-swap -D warnings
-git diff --exit-code token-swap/inc/token-swap.h
+git diff --exit-code token-swap/program/inc/token-swap.h
+cc token-swap/program/inc/token-swap.h -o target/token-swap.gch
 
 ./do.sh build token
 ./do.sh build token-swap
 ./do.sh doc token-swap
 ./do.sh test token-swap
-cc token-swap/inc/token-swap.h -o target/token-swap.gch
 
 # Install dependency project
 (

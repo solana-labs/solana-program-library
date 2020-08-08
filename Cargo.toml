@@ -1,10 +1,10 @@
 [workspace]
 members = [
   "ci/client",
-  "memo",
-  "token",
-  "token-cli",
-  "token-swap",
+  "memo/program",
+  "token-swap/program",
+  "token/cli",
+  "token/program",
 ]
 
 # Workflow for developing against local Solana crates
