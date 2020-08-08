@@ -24,21 +24,38 @@ EOF
 sdkDir=bin/bpf-sdk
 profile=bpfel-unknown-unknown/release
 
+readCargoVariable() {
+  declare variable="$1"
+  declare Cargo_toml="$2"
+
+  while read -r name equals value _; do
+    if [[ $name = "$variable" && $equals = = ]]; then
+      echo "${value//\"/}"
+      return
+    fi
+  done < <(cat "$Cargo_toml")
+  echo "Unable to locate $variable in $Cargo_toml" 1>&2
+}
+
 perform_action() {
     set -e
     projectDir="$PWD"/$2
     targetDir="$PWD"/target
     features=
+
+    crateName="$(readCargoVariable name "$projectDir/Cargo.toml")"
+
     if [[ -f "$projectDir"/Xargo.toml ]]; then
       features="--features=program"
     fi
     case "$1" in
     build)
         if [[ -f "$projectDir"/Xargo.toml ]]; then
+          echo "build $crateName ($projectDir)"
           "$sdkDir"/rust/build.sh "$projectDir"
 
           so_path="$targetDir/$profile"
-          so_name="spl_${2//\-/_}"
+          so_name="${crateName//\-/_}"
           cp "$so_path/${so_name}.so" "$so_path/${so_name}_debug.so"
           "$sdkDir"/dependencies/llvm-native/bin/llvm-objcopy --strip-all "$so_path/${so_name}.so" "$so_path/$so_name.so"
         else
@@ -48,7 +65,7 @@ perform_action() {
     build-lib)
         (
             cd "$projectDir"
-            echo "build $projectDir"
+            echo "build-lib $crateName ($projectDir)"
             export RUSTFLAGS="${@:3}"
             cargo build
         )
@@ -59,14 +76,14 @@ perform_action() {
     clippy)
         (
             cd "$projectDir"
-            echo "clippy $projectDir"
+            echo "clippy $crateName ($projectDir)"
             cargo +nightly clippy $features ${@:3}
         )
         ;;
     doc)
         (
             cd "$projectDir"
-            echo "generating docs $projectDir"
+            echo "generating docs $crateName ($projectDir)"
             cargo doc ${@:3}
         )
         ;;
@@ -159,7 +176,7 @@ fi
 
 if [[ $2 == "all" ]]; then
     # Perform operation on all projects
-    for project in */; do
+    for project in */program*; do
         if [[ -f "$project"Cargo.toml ]]; then
             perform_action "$1" "${project%/}" ${@:3}
         else
@@ -168,5 +185,9 @@ if [[ $2 == "all" ]]; then
     done
 else
     # Perform operation on requested project
-    perform_action "$1" "$2" "${@:3}"
+    if [[ -d $2/program ]]; then
+      perform_action "$1" "$2/program" "${@:3}"
+    else
+      perform_action "$1" "$2" "${@:3}"
+    fi
 fi
