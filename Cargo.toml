@@ -6,3 +6,17 @@ members = [
   "token-cli",
   "token-swap",
 ]
+
+# Workflow for developing against local Solana crates
+#
+# 0. Uncomment the below patches
+# 1. Replace PATH_TO_SOLANA with your local filestem path to the Solana mono-repo
+# 2. Run `cargo update`
+# 3. Use `cargo` normally
+#
+[patch.crates-io]
+#solana-clap-utils = {path = "PATH_TO_SOLANA/clap-utils" }
+#solana-cli-config = {path = "PATH_TO_SOLANA/cli-config" }
+#solana-client = { path = "PATH_TO_SOLANA/client"}
+#solana-logger = {path = "PATH_TO_SOLANA/logger" }
+#solana-sdk = { path = "PATH_TO_SOLANA/sdk" }
