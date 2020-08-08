@@ -17,11 +17,13 @@ git diff --exit-code token-swap/inc/token-swap.h
 cc token-swap/inc/token-swap.h -o target/token-swap.gch
 
 # Install dependency project
-cd "token/js"
-npm install
+(
+  cd token/js
+  npm install
+)
 
 # Test js bindings
-cd "../../token-swap/js"
+cd token-swap/js
 npm install
 npm run lint
 npm run flow
