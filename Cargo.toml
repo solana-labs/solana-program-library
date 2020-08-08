@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "budget/program",
   "utils/cgen",
   "utils/test-client",
   "memo/program",
