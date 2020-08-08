@@ -1395,9 +1395,9 @@ dependencies = [
 
 [[package]]
 name = "solana-crate-features"
-version = "1.2.19"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a53fa749781b80f28732ba068202b883525661a62c021df2e8d888bd795820fd"
+checksum = "66ce44be0cf411c28919c5d2af9b87dcaf7a631df66494eef1134e12fa8916b6"
 dependencies = [
  "backtrace",
  "bytes 0.4.12",
@@ -1420,9 +1420,9 @@ dependencies = [
 
 [[package]]
 name = "solana-logger"
-version = "1.2.19"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5a80865598dcd6d37b83513b3b479a082e14c61028a6c229e062f753658e862"
+checksum = "e4c7ac685637629a11a6cd8d41f8b69c99f6deff8cf2a5ffdb1d5f659d81a7a4"
 dependencies = [
  "env_logger",
  "lazy_static",
@@ -1431,9 +1431,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk"
-version = "1.2.19"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "418bc99efe6ac804f9c643aeff9f7a361d531c37996a3e5e9a1236950cf3b3a8"
+checksum = "5502cfd8063437ac2b289b525cff9c271f59f3c267be6e2f6e8256df842d0d96"
 dependencies = [
  "assert_matches",
  "bincode",
@@ -1441,6 +1441,7 @@ dependencies = [
  "bv",
  "byteorder",
  "chrono",
+ "curve25519-dalek",
  "ed25519-dalek",
  "generic-array 0.14.3",
  "hex",
@@ -1463,19 +1464,33 @@ dependencies = [
  "solana-crate-features",
  "solana-logger",
  "solana-sdk-macro",
+ "solana-sdk-macro-frozen-abi",
  "thiserror",
 ]
 
 [[package]]
 name = "solana-sdk-macro"
-version = "1.2.19"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a9e5fc7f134a4cd9d4220c06df1820baed8a673e113e07a5fb363def56a3c70"
+checksum = "b4ea42a0ab1199059e60b00bebd58156bc6a8c89672fbb78bd474d98c49d330c"
 dependencies = [
  "bs58",
  "proc-macro2 1.0.19",
  "quote 1.0.7",
  "rustversion",
+ "syn 1.0.36",
+]
+
+[[package]]
+name = "solana-sdk-macro-frozen-abi"
+version = "1.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddd83d11379007984161d413872ed8ba1f94c7625967d1a8de6f1e08215eede7"
+dependencies = [
+ "lazy_static",
+ "proc-macro2 1.0.19",
+ "quote 1.0.7",
+ "rustc_version",
  "syn 1.0.36",
 ]
 
