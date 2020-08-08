@@ -3,5 +3,6 @@ members = [
   "ci/client",
   "memo",
   "token",
+  "token-cli",
   "token-swap",
 ]
