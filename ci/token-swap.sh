@@ -26,6 +26,7 @@ npm install
 npm run lint
 npm run flow
 npm run cluster:localnet
+npm run localnet:down
 npm run localnet:update
 npm run localnet:up
 npm run start
