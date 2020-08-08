@@ -1,14 +1,15 @@
 [package]
 name = "test-client"
 version = "0.1.0"
-authors = ["Jack May <jack@solana.com>"]
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+publish = false
 edition = "2018"
 
 # Used to ensure that SPL programs are buildable by external clients
 
 [dependencies]
 solana-sdk = "1.3.1"
-spl-memo = { path = "../../memo" }
-spl-token = { path = "../../token" }
-spl-token-swap = { path = "../../token-swap" }
+spl-memo = { path = "../../memo/program" }
+spl-token = { path = "../../token/program" }
+spl-token-swap = { path = "../../token-swap/program" }
 
