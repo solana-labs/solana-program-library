@@ -6,8 +6,12 @@ set -ex
 cd "$(dirname "$0")/.."
 ./do.sh update
 ./do.sh fmt token --all -- --check
-./do.sh build token
 ./do.sh clippy token -- --deny=warnings
+
+SPL_CBINDGEN=1 ./do.sh build-lib token -D warnings
+git diff --exit-code token/inc/token.h
+
+./do.sh build token
 ./do.sh doc token
 ./do.sh test token
 cc token/inc/token.h -o token/target/token.gch
