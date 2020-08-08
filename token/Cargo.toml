@@ -28,7 +28,7 @@ thiserror = "1.0"
 rand = { version = "0.7.0"}
 
 [build-dependencies]
-cbindgen = "=0.14.2"
+cbindgen = "=0.14.3"
 
 [lib]
 name = "spl_token"
