@@ -27,9 +27,11 @@ cd token-swap/js
 npm install
 npm run lint
 npm run flow
-npm run cluster:localnet
-npm run localnet:down
-npm run localnet:update
-npm run localnet:up
-npm run start
-npm run localnet:down
+
+# TODO: Uncomment once https://github.com/solana-labs/solana/issues/11465 is resolved
+# npm run cluster:localnet
+# npm run localnet:down
+# npm run localnet:update
+# npm run localnet:up
+# npm run start
+# npm run localnet:down
