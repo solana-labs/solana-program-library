@@ -256,51 +256,85 @@ impl TokenInstruction {
     /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte buffer.
     pub fn pack(self: &Self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<TokenInstruction>()];
+        let mut output_len = 0;
         match self {
             Self::InitializeMint { amount, decimals } => {
-                output[0] = 0;
+                output[output_len] = 0;
+                output_len += size_of::<u8>();
+
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
                 *value = *amount;
-                let value =
-                    unsafe { &mut *(&mut output[size_of::<u8>() + size_of::<u64>()] as *mut u8) };
+                output_len += size_of::<u64>();
+
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
                 *value = *decimals;
+                output_len += size_of::<u8>();
             }
-            Self::InitializeAccount => output[0] = 1,
+            Self::InitializeAccount => {
+                output[output_len] = 1;
+                output_len += size_of::<u8>();
+            }
             Self::InitializeMultisig { m } => {
-                output[0] = 2;
+                output[output_len] = 2;
+                output_len += size_of::<u8>();
+
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u8) };
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u8) };
                 *value = *m;
+                output_len += size_of::<u8>();
             }
             Self::Transfer { amount } => {
-                output[0] = 3;
+                output[output_len] = 3;
+                output_len += size_of::<u8>();
+
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
                 *value = *amount;
+                output_len += size_of::<u64>();
             }
             Self::Approve { amount } => {
-                output[0] = 4;
+                output[output_len] = 4;
+                output_len += size_of::<u8>();
+
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
                 *value = *amount;
+                output_len += size_of::<u64>();
             }
-            Self::Revoke => output[0] = 5,
-            Self::SetOwner => output[0] = 6,
+            Self::Revoke => {
+                output[output_len] = 5;
+                output_len += size_of::<u8>();
+            }
+            Self::SetOwner => {
+                output[output_len] = 6;
+                output_len += size_of::<u8>();
+            }
             Self::MintTo { amount } => {
-                output[0] = 7;
+                output[output_len] = 7;
+                output_len += size_of::<u8>();
+
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
                 *value = *amount;
+                output_len += size_of::<u64>();
             }
             Self::Burn { amount } => {
-                output[0] = 8;
+                output[output_len] = 8;
+                output_len += size_of::<u8>();
+
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[size_of::<u8>()] as *mut u8 as *mut u64) };
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
                 *value = *amount;
+                output_len += size_of::<u64>();
             }
-            Self::CloseAccount => output[0] = 9,
+            Self::CloseAccount => {
+                output[output_len] = 9;
+                output_len += size_of::<u8>();
+            }
         }
+
+        output.truncate(output_len);
         Ok(output)
     }
 }
@@ -590,4 +624,85 @@ pub fn close_account(
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     !(index < MIN_SIGNERS || index > MAX_SIGNERS)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_instruction_packing() {
+        let check = TokenInstruction::InitializeMint {
+            amount: 1,
+            decimals: 2,
+        };
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeAccount;
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([1u8]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMultisig { m: 1 };
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([2u8, 1]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::Transfer { amount: 1 };
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([3u8, 1, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::Approve { amount: 1 };
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([4u8, 1, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::Revoke;
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([5u8]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::SetOwner;
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([6u8]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::MintTo { amount: 1 };
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([7u8, 1, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::Burn { amount: 1 };
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([8u8, 1, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::CloseAccount;
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([9u8]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+    }
 }
