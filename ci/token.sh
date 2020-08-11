@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 ./do.sh clippy token -- --deny=warnings
 
 SPL_CBINDGEN=1 ./do.sh build-lib token -D warnings
-git diff --exit-code token/program/inc/token.h
+# git diff --exit-code token/program/inc/token.h
 cc token/program/inc/token.h -o target/token.gch
 
 ./do.sh build token
