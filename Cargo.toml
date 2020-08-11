@@ -15,6 +15,7 @@ members = [
 # 3. Use `cargo` normally
 #
 [patch.crates-io]
+#solana-account-decoder = {path = "PATH_TO_SOLANA/clap-utils" }
 #solana-clap-utils = {path = "PATH_TO_SOLANA/clap-utils" }
 #solana-cli-config = {path = "PATH_TO_SOLANA/cli-config" }
 #solana-client = { path = "PATH_TO_SOLANA/client"}
