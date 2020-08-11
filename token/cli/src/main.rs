@@ -2,6 +2,7 @@ use clap::{
     crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
     SubCommand,
 };
+use solana_account_decoder::{parse_token::TokenAccountType, UiAccountData};
 use solana_clap_utils::{
     input_parsers::{keypair_of, pubkey_of},
     input_validators::{is_amount, is_keypair, is_pubkey_or_keypair, is_url},
@@ -25,6 +26,7 @@ use std::{mem::size_of, process::exit};
 
 struct Config {
     rpc_client: RpcClient,
+    verbose: bool,
     owner: Keypair,
     fee_payer: Keypair,
     commitment_config: CommitmentConfig,
@@ -60,19 +62,6 @@ fn check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Err
         .into())
     } else {
         Ok(())
-    }
-}
-
-fn get_decimals_for_token(config: &Config, token: &Pubkey) -> Result<u8, Error> {
-    if *token == native_mint::id() {
-        Ok(native_mint::DECIMALS)
-    } else {
-        let mint = config
-            .rpc_client
-            .get_token_mint_with_commitment(token, config.commitment_config)?
-            .value
-            .ok_or_else(|| format!("Invalid token: {}", token))?;
-        Ok(mint.decimals)
     }
 }
 
@@ -192,39 +181,12 @@ fn command_transfer(
         ui_amount, sender, recipient
     );
 
-    let sender_token_account = config
+    let sender_token_balance = config
         .rpc_client
-        .get_token_account_with_commitment(&sender, config.commitment_config)?
-        .value;
-    let recipient_token_account = config
-        .rpc_client
-        .get_token_account_with_commitment(&recipient, config.commitment_config)?
+        .get_token_account_balance_with_commitment(&sender, config.commitment_config)?
         .value;
 
-    let decimals = match (sender_token_account, recipient_token_account) {
-        (Some(sender_token_account), Some(recipient_token_account)) => {
-            if sender_token_account.mint != recipient_token_account.mint {
-                eprintln!("Error: token mismatch between sender and recipient");
-                exit(1)
-            }
-            get_decimals_for_token(config, &sender_token_account.mint.parse::<Pubkey>()?)?
-        }
-        (None, _) => {
-            eprintln!(
-                "Error: sender account is invalid or does not exist: {}",
-                sender
-            );
-            exit(1)
-        }
-        (Some(_), None) => {
-            eprintln!(
-                "Error: recipient account is invalid or does not exist: {}",
-                recipient
-            );
-            exit(1)
-        }
-    };
-    let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+    let amount = spl_token::ui_amount_to_amount(ui_amount, sender_token_balance.decimals);
 
     let mut transaction = Transaction::new_with_payer(
         &[transfer(
@@ -247,25 +209,12 @@ fn command_transfer(
 fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommmandResult {
     println!("Burn {} tokens\n  Source: {}", ui_amount, source);
 
-    let source_token_account = config
+    let source_token_balance = config
         .rpc_client
-        .get_token_account_with_commitment(&source, config.commitment_config)?
+        .get_token_account_balance_with_commitment(&source, config.commitment_config)?
         .value;
 
-    let decimals = match source_token_account {
-        Some(source_token_account) => {
-            get_decimals_for_token(config, &source_token_account.mint.parse::<Pubkey>()?)?
-        }
-        None => {
-            eprintln!(
-                "Error: burn account is invalid or does not exist: {}",
-                source
-            );
-            exit(1)
-        }
-    };
-    let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-
+    let amount = spl_token::ui_amount_to_amount(ui_amount, source_token_balance.decimals);
     let mut transaction = Transaction::new_with_payer(
         &[burn(
             &spl_token::id(),
@@ -294,24 +243,11 @@ fn command_mint(
         ui_amount, token, recipient
     );
 
-    let recipient_token_account = config
+    let recipient_token_balance = config
         .rpc_client
-        .get_token_account_with_commitment(&recipient, config.commitment_config)?
+        .get_token_account_balance_with_commitment(&recipient, config.commitment_config)?
         .value;
-
-    let decimals = match recipient_token_account {
-        Some(recipient_token_account) => {
-            get_decimals_for_token(config, &recipient_token_account.mint.parse::<Pubkey>()?)?
-        }
-        None => {
-            eprintln!(
-                "Error: recipient account is invalid or does not exist: {}",
-                recipient
-            );
-            exit(1)
-        }
-    };
-    let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+    let amount = spl_token::ui_amount_to_amount(ui_amount, recipient_token_balance.decimals);
 
     let mut transaction = Transaction::new_with_payer(
         &[mint_to(
@@ -400,7 +336,14 @@ fn command_balance(config: &Config, address: Pubkey) -> CommmandResult {
         .rpc_client
         .get_token_account_balance_with_commitment(&address, config.commitment_config)?
         .value;
-    println!("{}", balance.ui_amount);
+
+    if config.verbose {
+        println!("ui amount: {}", balance.ui_amount);
+        println!("decimals: {}", balance.decimals);
+        println!("amount: {}", balance.amount);
+    } else {
+        println!("{}", balance.ui_amount);
+    }
     Ok(None)
 }
 
@@ -432,16 +375,28 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommmandResult {
 
     println!("Account                                      Token                                        Balance");
     println!("-------------------------------------------------------------------------------------------------");
-    for (address, account) in accounts {
-        let balance = match config
-            .rpc_client
-            .get_token_account_balance_with_commitment(&address, config.commitment_config)
-        {
-            Ok(response) => response.value.ui_amount.to_string(),
-            Err(err) => format!("{}", err),
-        };
+    for keyed_account in accounts {
+        let address = keyed_account.pubkey;
 
-        println!("{:<44} {:<44} {}", address, account.mint, balance);
+        if let UiAccountData::Json(parsed_account) = keyed_account.account.data {
+            if parsed_account.program != "spl-token" {
+                println!(
+                    "{:<44} Unsupported account program: {}",
+                    address, parsed_account.program
+                );
+            } else {
+                match serde_json::from_value(parsed_account.parsed) {
+                    Ok(TokenAccountType::Account(ui_token_account)) => println!(
+                        "{:<44} {:<44} {}",
+                        address, ui_token_account.mint, ui_token_account.token_amount.ui_amount
+                    ),
+                    Ok(_) => println!("{:<44} Unsupported token account", address),
+                    Err(err) => println!("{:<44} Account parse failure: {}", address, err),
+                }
+            }
+        } else {
+            println!("{:<44} Unsupported account data format", address);
+        }
     }
     Ok(None)
 }
@@ -466,6 +421,14 @@ fn main() {
                 arg
             }
         })
+        .arg(
+            Arg::with_name("verbose")
+                .long("verbose")
+                .short("v")
+                .takes_value(false)
+                .global(true)
+                .help("Show additional information"),
+        )
         .arg(
             Arg::with_name("json_rpc_url")
                 .long("url")
@@ -715,9 +678,11 @@ fn main() {
 
         let owner = keypair_of(&matches, "owner").unwrap_or_else(client_keypair);
         let fee_payer = keypair_of(&matches, "fee_payer").unwrap_or_else(client_keypair);
+        let verbose = matches.is_present("verbose");
 
         Config {
             rpc_client: RpcClient::new(json_rpc_url),
+            verbose,
             owner,
             fee_payer,
             commitment_config: CommitmentConfig::single(),

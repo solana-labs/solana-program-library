@@ -44,8 +44,8 @@ tokens.  Once you have [Rust installed](https://rustup.rs/), run:
 $ cargo install spl-token-cli
 ```
 
-The `spl-token` configuration is shared with the `solana` command-line tool
-Run `spl-token --help` for al full description of available commands.
+The `spl-token` configuration is shared with the `solana` command-line tool.
+Run `spl-token --help` for a full description of available commands.
 
 ### Example: Creating your own Token
 
