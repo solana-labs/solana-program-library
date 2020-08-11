@@ -43,7 +43,7 @@ typedef enum Token_TokenInstruction_Tag {
      *   1.
      *      * If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
      *      * If supply is zero: `[]` The owner/multisignature of the mint.
-     *   2. `[]` (optional) The owner/multisignature of the mint if supply is non-zero, if
+     *   2. `[]`  (optional) The owner/multisignature of the mint if supply is non-zero, if
      *                      present then further minting is supported.
      *
      */
