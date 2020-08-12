@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/solana-labs/solana-program-library"
   },
-  "testnetDefaultChannel": "v1.3.1",
+  "testnetDefaultChannel": "v1.3.2",
   "scripts": {
     "start": "babel-node --ignore node_modules cli/main.js",
     "lint": "npm run pretty && eslint .",
