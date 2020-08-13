@@ -254,7 +254,7 @@ impl TokenInstruction {
     }
 
     /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte buffer.
-    pub fn pack(self: &Self) -> Result<Vec<u8>, ProgramError> {
+    pub fn pack(&self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<TokenInstruction>()];
         let mut output_len = 0;
         match self {

@@ -63,7 +63,7 @@ pub enum SwapInstruction {
     Deposit(u64),
 
     ///   Withdraw the token from the pool at the current ratio.
-    ///   
+    ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
     ///   2. `[writable]` SOURCE Pool account, amount is transferable by $authority.
@@ -104,7 +104,7 @@ impl SwapInstruction {
     }
 
     /// Serializes an [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
-    pub fn serialize(self: &Self) -> Result<Vec<u8>, ProgramError> {
+    pub fn serialize(&self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<SwapInstruction>()];
         match self {
             Self::Initialize(fees) => {

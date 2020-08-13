@@ -36,7 +36,7 @@ impl State {
     }
 
     /// Serializes [State](struct.State.html) into a byte buffer.
-    pub fn serialize(self: &Self, output: &mut [u8]) -> ProgramResult {
+    pub fn serialize(&self, output: &mut [u8]) -> ProgramResult {
         if output.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
