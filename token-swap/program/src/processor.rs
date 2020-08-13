@@ -80,8 +80,7 @@ impl State {
 
     /// Calculates the authority id by generating a program address.
     pub fn authority_id(program_id: &Pubkey, my_info: &Pubkey) -> Result<Pubkey, Error> {
-        Pubkey::create_program_address(&[&my_info.to_bytes()[..32]], program_id)
-            .or(Err(Error::InvalidProgramAddress))
+        Ok(Pubkey::find_program_address(&[&my_info.to_bytes()[..32]], program_id).0)
     }
     /// Issue a spl_token `Burn` instruction.
     pub fn token_burn(
@@ -460,7 +459,7 @@ pub fn invoke_signed<'a>(
             if meta.pubkey == *account_info.key {
                 let mut new_account_info = account_info.clone();
                 for seeds in signers_seeds.iter() {
-                    let signer = Pubkey::create_program_address(seeds, &SWAP_PROGRAM_ID).unwrap();
+                    let signer = Pubkey::find_program_address(seeds, &SWAP_PROGRAM_ID).0;
                     if *account_info.key == signer {
                         new_account_info.is_signer = true;
                     }
