@@ -47,6 +47,7 @@ fn main() {
                 "Account".to_string(),
                 "Multisig".to_string(),
             ],
+            exclude: vec!["DECIMALS".to_string()],
             ..cbindgen::ExportConfig::default()
         },
         parse: cbindgen::ParseConfig {
