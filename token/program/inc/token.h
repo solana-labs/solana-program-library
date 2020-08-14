@@ -12,11 +12,6 @@
 #define TOKEN_PATCH_VERSION 7
 
 /**
- * There are 10^9 lamports in one SOL
- */
-#define Token_DECIMALS 9
-
-/**
  * Maximum number of multisignature signers (max N)
  */
 #define Token_MAX_SIGNERS 11
