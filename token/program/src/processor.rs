@@ -133,10 +133,6 @@ impl Processor {
         let dest_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        if source_account_info.key == dest_account_info.key {
-            return Ok(());
-        }
-
         let mut source_data = source_account_info.data.borrow_mut();
         let mut source_account: &mut Account = state::unpack(&mut source_data)?;
         let mut dest_data = dest_account_info.data.borrow_mut();
@@ -852,41 +848,6 @@ mod tests {
             ],
         )
         .unwrap();
-
-        // transfer to self
-        {
-            let instruction = transfer(
-                &program_id,
-                &account_key,
-                &account_key,
-                &owner_key,
-                &[],
-                500,
-            )
-            .unwrap();
-            let account_account_info = AccountInfo::from((
-                &instruction.accounts[0].pubkey,
-                instruction.accounts[0].is_signer,
-                &mut account_account,
-            ));
-            let owner_account_info = AccountInfo::from((
-                &instruction.accounts[2].pubkey,
-                instruction.accounts[2].is_signer,
-                &mut owner_account,
-            ));
-            Processor::process(
-                &instruction.program_id,
-                &[
-                    account_account_info.clone(),
-                    account_account_info,
-                    owner_account_info,
-                ],
-                &instruction.data,
-            )
-            .unwrap()
-        }
-        let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
-        assert_eq!(account.amount, 1000);
 
         // insufficient funds
         assert_eq!(
