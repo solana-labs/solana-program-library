@@ -11,5 +11,6 @@ edition = "2018"
 solana-sdk = "1.2.17"
 spl-memo = { path = "../../memo/program" }
 spl-token = { path = "../../token/program" }
+spl-token2 = { path = "../../token/program2" }
 spl-token-swap = { path = "../../token-swap/program" }
 
