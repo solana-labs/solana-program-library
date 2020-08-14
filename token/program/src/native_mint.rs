@@ -13,9 +13,8 @@ mod tests {
 
     #[test]
     fn test_decimals() {
-        assert_eq!(
-            lamports_to_sol(42),
-            crate::amount_to_ui_amount(42, DECIMALS)
+        assert!(
+            lamports_to_sol(42) - crate::amount_to_ui_amount(42, DECIMALS).abs() < f64::EPSILON
         );
         assert_eq!(
             sol_to_lamports(42.),
