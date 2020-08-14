@@ -5,9 +5,7 @@ notifications:
   email: false
 
 cache:
-  cargo: true
   directories:
-    - "~/.npm"
     - "~/.cache"
 
 services:
