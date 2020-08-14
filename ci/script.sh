@@ -67,15 +67,15 @@ js_token() {
     set -x
     cd token/js
     time npm install
-    npm run lint
-    npm run flow
+    time npm run lint
+    time npm run flow
     tsc module.d.ts
 
     npm run cluster:localnet
     npm run localnet:down
     npm run localnet:update
     npm run localnet:up
-    npm run start
+    time npm run start
     npm run localnet:down
   )
 }
@@ -87,8 +87,8 @@ js_token_swap() {
     set -x
     cd token-swap/js
     time npm install
-    npm run lint
-    npm run flow
+    time npm run lint
+    time npm run flow
 
     # TODO: Uncomment once https://github.com/solana-labs/solana/issues/11465 is resolved
     # npm run cluster:localnet
