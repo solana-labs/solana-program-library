@@ -1,6 +1,10 @@
 dist: bionic
 sudo: required
 
+branches:
+  only:
+    - master
+
 notifications:
   email: false
 
