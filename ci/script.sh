@@ -42,7 +42,7 @@ _ "memo_test" ./do.sh test memo
 )
 
 # Check generated C headers
-#_ "diff token.h" git diff --exit-code token/program/inc/token.h
+_ "diff_token.h" git diff --exit-code token/program/inc/token.h
 _ "cc_token.sh" cc token/program/inc/token.h -o target/token.gch
 
 _ "diff_token-swap.h" git diff --exit-code token-swap/program/inc/token-swap.h
