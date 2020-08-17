@@ -1953,9 +1953,9 @@ dependencies = [
 
 [[package]]
 name = "solana-logger"
-version = "1.3.2"
+version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "528b213ad620e1c7dffcdb14d9da8ccca70f88ecaf1dd77a49603aea1c8b7ecd"
+checksum = "912c9224a8be284f28b49f173b5e3a99fce7c82cfde819f8086adb2a1ac4f2b3"
 dependencies = [
  "env_logger",
  "lazy_static",
@@ -2200,7 +2200,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token"
-version = "1.0.7"
+version = "1.0.8"
 dependencies = [
  "cbindgen",
  "num-derive 0.3.1",
@@ -2223,7 +2223,7 @@ dependencies = [
  "solana-client",
  "solana-logger",
  "solana-sdk",
- "spl-token 1.0.7",
+ "spl-token 1.0.8",
 ]
 
 [[package]]
@@ -2236,7 +2236,7 @@ dependencies = [
  "rand",
  "remove_dir_all",
  "solana-sdk",
- "spl-token 1.0.7",
+ "spl-token 1.0.8",
  "thiserror",
 ]
 
@@ -2353,7 +2353,7 @@ version = "0.1.0"
 dependencies = [
  "solana-sdk",
  "spl-memo 1.0.7",
- "spl-token 1.0.7",
+ "spl-token 1.0.8",
  "spl-token-swap",
  "spl-token2",
 ]
