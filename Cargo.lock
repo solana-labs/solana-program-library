@@ -1928,9 +1928,9 @@ dependencies = [
 
 [[package]]
 name = "solana-crate-features"
-version = "1.3.2"
+version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b637d625477c279cf890dcd8f322db3849f829f5e10a1a966a56d76362c7b1fa"
+checksum = "41045abbf3dd7ecb01db9851590cb2951df54d06f5f13667cfbc178497a9683b"
 dependencies = [
  "backtrace",
  "bytes 0.4.12",
@@ -1953,9 +1953,9 @@ dependencies = [
 
 [[package]]
 name = "solana-logger"
-version = "1.3.2"
+version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "528b213ad620e1c7dffcdb14d9da8ccca70f88ecaf1dd77a49603aea1c8b7ecd"
+checksum = "912c9224a8be284f28b49f173b5e3a99fce7c82cfde819f8086adb2a1ac4f2b3"
 dependencies = [
  "env_logger",
  "lazy_static",
@@ -2021,9 +2021,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk"
-version = "1.3.2"
+version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "105e110f5fbd4b45672194715a9155480c897c12893dba46c3d27e028bc09e5b"
+checksum = "d96fb797cf378f8c85ce4e37f45e2fdc75f3a27793e831b3cccd74b0c66e809d"
 dependencies = [
  "assert_matches",
  "bincode",
@@ -2060,9 +2060,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk-macro"
-version = "1.3.2"
+version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f98dced0e17ff17e910fc1f4c92e06cd3c4137c6ff0804936bfbe25202fceaee"
+checksum = "0aad003e717fc4f1831494de7c5307d667a5c5d2fa22b3dfbedd34a6e61ed4ea"
 dependencies = [
  "bs58",
  "proc-macro2 1.0.19",
@@ -2073,9 +2073,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk-macro-frozen-abi"
-version = "1.3.2"
+version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc0646321745ba69b47071e97ddef7dedc8e11e7ecef95f2b023a2125e4da08c"
+checksum = "a0e77bab38b9683d7f0c87e4a860b9b752f81c6b1785d89b49cfd0296846dcb1"
 dependencies = [
  "lazy_static",
  "proc-macro2 1.0.19",
@@ -2200,7 +2200,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token"
-version = "1.0.7"
+version = "1.0.8"
 dependencies = [
  "cbindgen",
  "num-derive 0.3.1",
@@ -2223,7 +2223,7 @@ dependencies = [
  "solana-client",
  "solana-logger",
  "solana-sdk",
- "spl-token 1.0.7",
+ "spl-token 1.0.8",
 ]
 
 [[package]]
@@ -2236,7 +2236,7 @@ dependencies = [
  "rand",
  "remove_dir_all",
  "solana-sdk",
- "spl-token 1.0.7",
+ "spl-token 1.0.8",
  "thiserror",
 ]
 
@@ -2353,7 +2353,7 @@ version = "0.1.0"
 dependencies = [
  "solana-sdk",
  "spl-memo 1.0.7",
- "spl-token 1.0.7",
+ "spl-token 1.0.8",
  "spl-token-swap",
  "spl-token2",
 ]
