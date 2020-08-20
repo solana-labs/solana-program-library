@@ -29,7 +29,7 @@
   "license": "MIT",
   "dependencies": {
     "@babel/runtime": "^7.11.2",
-    "@solana/web3.js": "^0.71.1",
+    "@solana/web3.js": "^0.71.6",
     "bn.js": "^5.0.0",
     "buffer-layout": "^1.2.0",
     "dotenv": "8.2.0",
