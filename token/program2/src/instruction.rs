@@ -187,6 +187,31 @@ pub enum TokenInstruction {
     ///   2. `[]` The account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts.
     CloseAccount,
+
+    /// Transfers tokens from one account to another either directly or via a delegate.  If this
+    /// account is associated with the native mint then equal amounts of SOL and Tokens will be
+    /// transferred to the destination account.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[]` The mint for this account
+    ///   1. `[writable]` The source account.
+    ///   2. `[writable]` The destination account.
+    ///   3. '[signer]' The source account's owner/delegate.
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[]` The mint for this account
+    ///   1. `[writable]` The source account.
+    ///   2. `[writable]` The destination account.
+    ///   3. '[]' The source account's multisignature owner/delegate.
+    ///   4. ..3+M '[signer]' M signer accounts.
+    Transfer2 {
+        /// The amount of tokens to transfer.
+        amount: u64,
+        /// Number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+    },
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -249,6 +274,16 @@ impl TokenInstruction {
                 Self::Burn { amount }
             }
             9 => Self::CloseAccount,
+            10 => {
+                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
+                    return Err(TokenError::InvalidInstruction.into());
+                }
+                #[allow(clippy::cast_ptr_alignment)]
+                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
+                let decimals =
+                    unsafe { *(&input[size_of::<u8>() + size_of::<u64>()] as *const u8) };
+                Self::Transfer2 { amount, decimals }
+            }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -330,6 +365,19 @@ impl TokenInstruction {
             }
             Self::CloseAccount => {
                 output[output_len] = 9;
+                output_len += size_of::<u8>();
+            }
+            Self::Transfer2 { amount, decimals } => {
+                output[output_len] = 10;
+                output_len += size_of::<u8>();
+
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
+                *value = *amount;
+                output_len += size_of::<u64>();
+
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
+                *value = *decimals;
                 output_len += size_of::<u8>();
             }
         }
@@ -608,6 +656,39 @@ pub fn close_account(
     accounts.push(AccountMeta::new(*destination_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a `Transfer2` instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn transfer2(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    source_pubkey: &Pubkey,
+    destination_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+    amount: u64,
+    decimals: u8,
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::Transfer2 { amount, decimals }.pack()?;
+
+    let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*mint_pubkey, false));
+    accounts.push(AccountMeta::new(*source_pubkey, false));
+    accounts.push(AccountMeta::new(*destination_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *authority_pubkey,
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {

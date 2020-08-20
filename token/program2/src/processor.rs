@@ -127,8 +127,16 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         amount: u64,
+        decimals: Option<u8>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+
+        let mint_account_info = if let Some(decimals) = decimals {
+            Some((next_account_info(account_info_iter)?, decimals))
+        } else {
+            None
+        };
+
         let source_account_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
@@ -147,6 +155,18 @@ impl Processor {
         }
         if source_account.mint != dest_account.mint {
             return Err(TokenError::MintMismatch.into());
+        }
+
+        if let Some((mint_account_info, decimals)) = mint_account_info {
+            let mut mint_info_data = mint_account_info.data.borrow_mut();
+            let mint: &Mint = state::unpack_unchecked(&mut mint_info_data)?;
+
+            if source_account.mint != *mint_account_info.key {
+                return Err(TokenError::MintMismatch.into());
+            }
+            if decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
+            }
         }
 
         match source_account.delegate {
@@ -410,7 +430,7 @@ impl Processor {
             }
             TokenInstruction::Transfer { amount } => {
                 info!("Instruction: Transfer");
-                Self::process_transfer(program_id, accounts, amount)
+                Self::process_transfer(program_id, accounts, amount, None)
             }
             TokenInstruction::Approve { amount } => {
                 info!("Instruction: Approve");
@@ -435,6 +455,10 @@ impl Processor {
             TokenInstruction::CloseAccount => {
                 info!("Instruction: CloseAccount");
                 Self::process_close_account(program_id, accounts)
+            }
+            TokenInstruction::Transfer2 { amount, decimals } => {
+                info!("Instruction: Transfer2");
+                Self::process_transfer(program_id, accounts, amount, Some(decimals))
             }
         }
     }
@@ -501,6 +525,9 @@ impl PrintProgramError for TokenError {
                 info!("Error: Instruction does not support non-native tokens")
             }
             TokenError::InvalidInstruction => info!("Error: Invalid instruction"),
+            TokenError::MintDecimalsMismatch => {
+                info!("Error: decimals different from the Mint decimals")
+            }
         }
     }
 }
@@ -514,7 +541,7 @@ mod tests {
     use super::*;
     use crate::instruction::{
         approve, burn, close_account, initialize_account, initialize_mint, initialize_multisig,
-        mint_to, revoke, set_owner, transfer, MAX_SIGNERS,
+        mint_to, revoke, set_owner, transfer, transfer2, MAX_SIGNERS,
     };
     use solana_sdk::{
         account::Account as SolanaAccount, account_info::create_is_signer_account_infos,
@@ -834,18 +861,45 @@ mod tests {
         )
         .unwrap();
 
-        // transfer rest
+        // incorrect decimals
+        assert_eq!(
+            Err(TokenError::MintDecimalsMismatch.into()),
+            do_process_instruction(
+                transfer2(
+                    &program_id,
+                    &mint_key,
+                    &account2_key,
+                    &account_key,
+                    &owner_key,
+                    &[],
+                    1,
+                    10 // <-- wrong decimals
+                )
+                .unwrap(),
+                vec![
+                    &mut mint_account,
+                    &mut account2_account,
+                    &mut account_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // transfer rest with explicit decimals
         do_process_instruction(
-            transfer(
+            transfer2(
                 &program_id,
+                &mint_key,
                 &account2_key,
                 &account_key,
                 &owner_key,
                 &[],
                 500,
+                2,
             )
             .unwrap(),
             vec![
+                &mut mint_account,
                 &mut account2_account,
                 &mut account_account,
                 &mut owner_account,

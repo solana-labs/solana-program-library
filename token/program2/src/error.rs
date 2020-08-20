@@ -43,6 +43,9 @@ pub enum TokenError {
     /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
+    /// Account not associated with this Mint.
+    #[error("The provided decimals value different from the Mint decimals")]
+    MintDecimalsMismatch,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

@@ -194,6 +194,27 @@ typedef enum Token_TokenInstruction_Tag {
      *   3. ..3+M '[signer]' M signer accounts.
      */
     Token_TokenInstruction_CloseAccount,
+    /**
+     * Transfers tokens from one account to another either directly or via a delegate.  If this
+     * account is associated with the native mint then equal amounts of SOL and Tokens will be
+     * transferred to the destination account.
+     *
+     * Accounts expected by this instruction:
+     *
+     *   * Single owner/delegate
+     *   0. `[]` The mint for this account
+     *   1. `[writable]` The source account.
+     *   2. `[writable]` The destination account.
+     *   3. '[signer]' The source account's owner/delegate.
+     *
+     *   * Multisignature owner/delegate
+     *   0. `[]` The mint for this account
+     *   1. `[writable]` The source account.
+     *   2. `[writable]` The destination account.
+     *   3. '[]' The source account's multisignature owner/delegate.
+     *   4. ..3+M '[signer]' M signer accounts.
+     */
+    Token_TokenInstruction_Transfer2,
 } Token_TokenInstruction_Tag;
 
 typedef struct Token_TokenInstruction_Token_InitializeMint_Body {
@@ -242,6 +263,17 @@ typedef struct Token_TokenInstruction_Token_Burn_Body {
     uint64_t amount;
 } Token_TokenInstruction_Token_Burn_Body;
 
+typedef struct Token_TokenInstruction_Token_Transfer2_Body {
+    /**
+     * The amount of tokens to transfer.
+     */
+    uint64_t amount;
+    /**
+     * Number of base 10 digits to the right of the decimal place.
+     */
+    uint8_t decimals;
+} Token_TokenInstruction_Token_Transfer2_Body;
+
 typedef struct Token_TokenInstruction {
     Token_TokenInstruction_Tag tag;
     union {
@@ -251,6 +283,7 @@ typedef struct Token_TokenInstruction {
         Token_TokenInstruction_Token_Approve_Body approve;
         Token_TokenInstruction_Token_MintTo_Body mint_to;
         Token_TokenInstruction_Token_Burn_Body burn;
+        Token_TokenInstruction_Token_Transfer2_Body transfer2;
     };
 } Token_TokenInstruction;
 
