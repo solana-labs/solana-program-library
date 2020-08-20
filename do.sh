@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+CALLER_PWD=$PWD
 cd "$(dirname "$0")"
 
 usage() {
@@ -39,7 +40,7 @@ readCargoVariable() {
 
 perform_action() {
     set -e
-    projectDir="$PWD"/$2
+    projectDir="$CALLER_PWD"/$2
     targetDir="$PWD"/target
     features=
 
