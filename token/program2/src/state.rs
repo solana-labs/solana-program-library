@@ -16,6 +16,8 @@ pub struct Mint {
     pub decimals: u8,
     /// Is `true` if this structure has been initialized
     pub is_initialized: bool,
+    /// Optional authority to freeze token accounts.
+    pub freeze_authority: COption<Pubkey>,
 }
 impl IsInitialized for Mint {
     fn is_initialized(&self) -> bool {
@@ -36,8 +38,8 @@ pub struct Account {
     /// If `delegate` is `Some` then `delegated_amount` represents
     /// the amount authorized by the delegate
     pub delegate: COption<Pubkey>,
-    /// Is `true` if this structure has been initialized
-    pub is_initialized: bool,
+    /// Whether the account has been initialized or frozen
+    pub is_initialized: AccountState,
     /// Is this a native token
     pub is_native: bool,
     /// The amount delegated
@@ -45,7 +47,27 @@ pub struct Account {
 }
 impl IsInitialized for Account {
     fn is_initialized(&self) -> bool {
-        self.is_initialized
+        self.is_initialized == AccountState::Initialized
+    }
+}
+
+/// Account state.
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AccountState {
+    /// Account is not yet initialized
+    Uninitialized,
+    /// Account is initialized; the account owner and/or delegate may perform permitted operations
+    /// on this account
+    Initialized,
+    /// Account has been frozen by the mint freeze authority. Neither the account owner nor
+    /// the delegate are able to perform operations on this account.
+    Frozen,
+}
+
+impl Default for AccountState {
+    fn default() -> Self {
+        AccountState::Uninitialized
     }
 }
 

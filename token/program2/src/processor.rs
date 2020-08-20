@@ -6,7 +6,7 @@ use crate::{
     error::TokenError,
     instruction::{is_valid_signer_index, TokenInstruction},
     option::COption,
-    state::{self, Account, Mint, Multisig},
+    state::{self, Account, AccountState, IsInitialized, Mint, Multisig},
 };
 use num_traits::FromPrimitive;
 use solana_sdk::{
@@ -75,7 +75,7 @@ impl Processor {
 
         let mut new_account_data = new_account_info.data.borrow_mut();
         let mut account: &mut Account = state::unpack_unchecked(&mut new_account_data)?;
-        if account.is_initialized {
+        if account.is_initialized() {
             return Err(TokenError::AlreadyInUse.into());
         }
 
@@ -83,7 +83,7 @@ impl Processor {
         account.owner = *owner_info.key;
         account.delegate = COption::None;
         account.delegated_amount = 0;
-        account.is_initialized = true;
+        account.is_initialized = AccountState::Initialized;
         if *mint_info.key == crate::native_mint::id() {
             account.is_native = true;
             account.amount = new_account_info.lamports();
@@ -1076,6 +1076,7 @@ mod tests {
                 owner: COption::Some(owner_key),
                 decimals,
                 is_initialized: true,
+                freeze_authority: COption::None,
             }
         );
 
