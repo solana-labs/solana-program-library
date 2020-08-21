@@ -45,6 +45,12 @@ pub struct Account {
     /// The amount delegated
     pub delegated_amount: u64,
 }
+impl Account {
+    /// Checks if account is frozen
+    pub fn is_frozen(&self) -> bool {
+        self.is_initialized == AccountState::Frozen
+    }
+}
 impl IsInitialized for Account {
     fn is_initialized(&self) -> bool {
         self.is_initialized != AccountState::Uninitialized

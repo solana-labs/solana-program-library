@@ -143,9 +143,7 @@ impl Processor {
         if source_account.mint != dest_account.mint {
             return Err(TokenError::MintMismatch.into());
         }
-        if source_account.is_initialized == AccountState::Frozen
-            || dest_account.is_initialized == AccountState::Frozen
-        {
+        if source_account.is_frozen() || dest_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
@@ -201,7 +199,7 @@ impl Processor {
         let delegate_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
 
-        if source_account.is_initialized == AccountState::Frozen {
+        if source_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
@@ -227,7 +225,7 @@ impl Processor {
         let mut source_account: &mut Account = state::unpack(&mut source_data)?;
         let owner_info = next_account_info(account_info_iter)?;
 
-        if source_account.is_initialized == AccountState::Frozen {
+        if source_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
@@ -262,7 +260,7 @@ impl Processor {
             let mut account_data = account_info.data.borrow_mut();
             let mut account: &mut Account = state::unpack(&mut account_data)?;
 
-            if account.is_initialized == AccountState::Frozen {
+            if account.is_frozen() {
                 return Err(TokenError::AccountFrozen.into());
             }
 
@@ -329,7 +327,7 @@ impl Processor {
         let mut dest_account_data = dest_account_info.data.borrow_mut();
         let mut dest_account: &mut Account = state::unpack(&mut dest_account_data)?;
 
-        if dest_account.is_initialized == AccountState::Frozen {
+        if dest_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
@@ -384,7 +382,7 @@ impl Processor {
         if source_account.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
-        if source_account.is_initialized == AccountState::Frozen {
+        if source_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
@@ -467,7 +465,7 @@ impl Processor {
             return Err(TokenError::MintMismatch.into());
         }
         if freeze && source_account.is_initialized != AccountState::Initialized
-            || !freeze && source_account.is_initialized != AccountState::Frozen
+            || !freeze && !source_account.is_frozen()
         {
             return Err(TokenError::InvalidState.into());
         }
