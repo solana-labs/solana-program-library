@@ -37,6 +37,8 @@ pub enum TokenInstruction {
         amount: u64,
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
+        /// Whether the mint freeze_authority should be enabled to freeze associated token accounts
+        can_freeze: bool,
     },
     /// Initializes a new account to hold tokens.  If this account is associated with the native mint
     /// then the token balance of the initialized account will be equal to the amount of SOL in the account.
@@ -196,14 +198,25 @@ impl TokenInstruction {
         }
         Ok(match input[0] {
             0 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
+                if input.len()
+                    < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() + size_of::<bool>()
+                {
                     return Err(TokenError::InvalidInstruction.into());
                 }
+                let mut input_len = 0;
+                input_len += size_of::<u8>();
+
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
-                let decimals =
-                    unsafe { *(&input[size_of::<u8>() + size_of::<u64>()] as *const u8) };
-                Self::InitializeMint { amount, decimals }
+                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
+                input_len += size_of::<u64>();
+                let decimals = unsafe { *(&input[input_len] as *const u8) };
+                input_len += size_of::<u8>();
+                let can_freeze = unsafe { *(&input[input_len] as *const u8 as *const bool) };
+                Self::InitializeMint {
+                    amount,
+                    decimals,
+                    can_freeze,
+                }
             }
             1 => Self::InitializeAccount,
             2 => {
@@ -258,7 +271,11 @@ impl TokenInstruction {
         let mut output = vec![0u8; size_of::<TokenInstruction>()];
         let mut output_len = 0;
         match self {
-            Self::InitializeMint { amount, decimals } => {
+            Self::InitializeMint {
+                amount,
+                decimals,
+                can_freeze,
+            } => {
                 output[output_len] = 0;
                 output_len += size_of::<u8>();
 
@@ -270,6 +287,10 @@ impl TokenInstruction {
                 let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
                 *value = *decimals;
                 output_len += size_of::<u8>();
+
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut bool) };
+                *value = *can_freeze;
+                output_len += size_of::<bool>();
             }
             Self::InitializeAccount => {
                 output[output_len] = 1;
@@ -347,8 +368,14 @@ pub fn initialize_mint(
     owner_pubkey: Option<&Pubkey>,
     amount: u64,
     decimals: u8,
+    can_freeze: bool,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::InitializeMint { amount, decimals }.pack()?;
+    let data = TokenInstruction::InitializeMint {
+        amount,
+        decimals,
+        can_freeze,
+    }
+    .pack()?;
 
     let mut accounts = vec![AccountMeta::new(*mint_pubkey, false)];
     if amount != 0 {
@@ -635,9 +662,10 @@ mod test {
         let check = TokenInstruction::InitializeMint {
             amount: 1,
             decimals: 2,
+            can_freeze: true,
         };
         let packed = check.pack().unwrap();
-        let expect = Vec::from([0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
+        let expect = Vec::from([0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2, 1]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

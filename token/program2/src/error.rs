@@ -46,6 +46,9 @@ pub enum TokenError {
     /// Operation overflowed
     #[error("Operation overflowed")]
     Overflow,
+    /// An owner is required if mint can freeze token accounts.
+    #[error("An owner is required if mint can freeze token accounts")]
+    OwnerRequiredIfCanFreeze,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
