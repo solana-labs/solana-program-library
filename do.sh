@@ -178,7 +178,7 @@ fi
 if [[ $2 == "all" ]]; then
     # Perform operation on all projects
     for project in */program*; do
-        if [[ -f "$project"Cargo.toml ]]; then
+        if [[ -f "$project"/Cargo.toml ]]; then
             perform_action "$1" "${project%/}" ${@:3}
         else
             continue
