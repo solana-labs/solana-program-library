@@ -29,14 +29,17 @@ pub enum TokenInstruction {
     ///   1.
     ///      * If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
     ///      * If supply is zero: `[]` The owner/multisignature of the mint.
-    ///   2. `[]` (optional) The owner/multisignature of the mint if supply is non-zero, if
-    ///                      present then further minting is supported.
+    ///   2. `[]` (optional) The owner/multisignature of the mint, if supply is non-zero and:
+    ///                     (a) further minting is supported; or
+    ///                     (b) the mint freeze authority is enabled.
     ///
     InitializeMint {
         /// Initial amount of tokens to mint.
         amount: u64,
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
+        /// Whether further minting is supported
+        fixed_supply: bool,
         /// Whether the mint freeze_authority should be enabled to freeze associated token accounts
         can_freeze: bool,
     },
@@ -211,10 +214,13 @@ impl TokenInstruction {
                 input_len += size_of::<u64>();
                 let decimals = unsafe { *(&input[input_len] as *const u8) };
                 input_len += size_of::<u8>();
+                let fixed_supply = unsafe { *(&input[input_len] as *const u8 as *const bool) };
+                input_len += size_of::<u8>();
                 let can_freeze = unsafe { *(&input[input_len] as *const u8 as *const bool) };
                 Self::InitializeMint {
                     amount,
                     decimals,
+                    fixed_supply,
                     can_freeze,
                 }
             }
@@ -274,6 +280,7 @@ impl TokenInstruction {
             Self::InitializeMint {
                 amount,
                 decimals,
+                fixed_supply,
                 can_freeze,
             } => {
                 output[output_len] = 0;
@@ -287,6 +294,10 @@ impl TokenInstruction {
                 let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
                 *value = *decimals;
                 output_len += size_of::<u8>();
+
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut bool) };
+                *value = *fixed_supply;
+                output_len += size_of::<bool>();
 
                 let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut bool) };
                 *value = *can_freeze;
@@ -361,6 +372,7 @@ impl TokenInstruction {
 }
 
 /// Creates a 'InitializeMint' instruction.
+#[allow(clippy::too_many_arguments)]
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
@@ -368,11 +380,13 @@ pub fn initialize_mint(
     owner_pubkey: Option<&Pubkey>,
     amount: u64,
     decimals: u8,
+    fixed_supply: bool,
     can_freeze: bool,
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::InitializeMint {
         amount,
         decimals,
+        fixed_supply,
         can_freeze,
     }
     .pack()?;
@@ -391,6 +405,9 @@ pub fn initialize_mint(
         None => {
             if amount == 0 {
                 return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
+            }
+            if can_freeze {
+                return Err(TokenError::OwnerRequiredIfCanFreeze.into());
             }
         }
     }
@@ -662,10 +679,11 @@ mod test {
         let check = TokenInstruction::InitializeMint {
             amount: 1,
             decimals: 2,
+            fixed_supply: false,
             can_freeze: true,
         };
         let packed = check.pack().unwrap();
-        let expect = Vec::from([0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2, 1]);
+        let expect = Vec::from([0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 1]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
