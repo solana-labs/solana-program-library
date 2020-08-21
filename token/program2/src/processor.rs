@@ -318,7 +318,7 @@ impl Processor {
                             account_info_iter.as_slice(),
                         )?;
                     }
-                    COption::None => return Err(TokenError::CannotFreeze.into()),
+                    COption::None => return Err(TokenError::MintCannotFreeze.into()),
                 },
             }
         } else {
@@ -458,6 +458,7 @@ impl Processor {
     pub fn process_toggle_freeze_account(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
+        freeze: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
@@ -473,6 +474,11 @@ impl Processor {
         if mint_info.key != &source_account.mint {
             return Err(TokenError::MintMismatch.into());
         }
+        if freeze && source_account.is_initialized != AccountState::Initialized
+            || !freeze && source_account.is_initialized != AccountState::Frozen
+        {
+            return Err(TokenError::InvalidState.into());
+        }
 
         let mut mint_info_data = mint_info.data.borrow_mut();
         let mint: &mut Mint = state::unpack(&mut mint_info_data)?;
@@ -487,14 +493,14 @@ impl Processor {
                 )?;
             }
             COption::None => {
-                return Err(TokenError::CannotFreeze.into());
+                return Err(TokenError::MintCannotFreeze.into());
             }
         }
 
-        let new_state = match source_account.is_initialized {
-            AccountState::Initialized => AccountState::Frozen,
-            AccountState::Frozen => AccountState::Initialized,
-            _ => return Err(TokenError::UninitializedState.into()),
+        let new_state = if freeze {
+            AccountState::Frozen
+        } else {
+            AccountState::Initialized
         };
         source_account.is_initialized = new_state;
 
@@ -551,9 +557,9 @@ impl Processor {
                 info!("Instruction: CloseAccount");
                 Self::process_close_account(program_id, accounts)
             }
-            TokenInstruction::ToggleFreeze => {
+            TokenInstruction::ToggleFreeze { freeze } => {
                 info!("Instruction: ToggleFreeze");
-                Self::process_toggle_freeze_account(program_id, accounts)
+                Self::process_toggle_freeze_account(program_id, accounts, freeze)
             }
         }
     }
@@ -620,6 +626,7 @@ impl PrintProgramError for TokenError {
                 info!("Error: Instruction does not support non-native tokens")
             }
             TokenError::InvalidInstruction => info!("Error: Invalid instruction"),
+            TokenError::InvalidState => info!("Error: Invalid account state for operation"),
             TokenError::Overflow => info!("Error: Operation overflowed"),
             TokenError::OwnerRequiredIfCanFreeze => {
                 info!("Error: An owner is required if mint can freeze token accounts")
@@ -627,7 +634,7 @@ impl PrintProgramError for TokenError {
             TokenError::AuthorityTypeNotSupported => {
                 info!("Error: Account does not support specified authority type")
             }
-            TokenError::CannotFreeze => info!("Error: This token mint cannot freeze accounts"),
+            TokenError::MintCannotFreeze => info!("Error: This token mint cannot freeze accounts"),
             TokenError::AccountFrozen => info!("Error: Account is frozen"),
         }
     }
@@ -1648,7 +1655,7 @@ mod tests {
 
         // cannot freeze
         assert_eq!(
-            Err(TokenError::CannotFreeze.into()),
+            Err(TokenError::MintCannotFreeze.into()),
             do_process_instruction(
                 set_authority(
                     &program_id,
@@ -2323,6 +2330,7 @@ mod tests {
             toggle_freeze_account(
                 &program_id,
                 &account3_key,
+                true,
                 &mint2_key,
                 &multisig_key,
                 &[&signer_keys[0]],
@@ -3064,9 +3072,9 @@ mod tests {
 
         // mint cannot freeze
         assert_eq!(
-            Err(TokenError::CannotFreeze.into()),
+            Err(TokenError::MintCannotFreeze.into()),
             do_process_instruction(
-                toggle_freeze_account(&program_id, &account_key, &mint_key, &owner_key, &[])
+                toggle_freeze_account(&program_id, &account_key, true, &mint_key, &owner_key, &[])
                     .unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner_account],
             )
@@ -3078,24 +3086,53 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
-                toggle_freeze_account(&program_id, &account_key, &mint_key, &owner2_key, &[])
+                toggle_freeze_account(&program_id, &account_key, true, &mint_key, &owner2_key, &[])
                     .unwrap(),
+                vec![&mut account_account, &mut mint_account, &mut owner2_account],
+            )
+        );
+
+        // check explicit unfreeze
+        assert_eq!(
+            Err(TokenError::InvalidState.into()),
+            do_process_instruction(
+                toggle_freeze_account(
+                    &program_id,
+                    &account_key,
+                    false,
+                    &mint_key,
+                    &owner2_key,
+                    &[]
+                )
+                .unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner2_account],
             )
         );
 
         // freeze
         do_process_instruction(
-            toggle_freeze_account(&program_id, &account_key, &mint_key, &owner_key, &[]).unwrap(),
+            toggle_freeze_account(&program_id, &account_key, true, &mint_key, &owner_key, &[])
+                .unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
         assert_eq!(account.is_initialized, AccountState::Frozen);
 
+        // check explicit unfreeze
+        assert_eq!(
+            Err(TokenError::InvalidState.into()),
+            do_process_instruction(
+                toggle_freeze_account(&program_id, &account_key, true, &mint_key, &owner2_key, &[])
+                    .unwrap(),
+                vec![&mut account_account, &mut mint_account, &mut owner2_account],
+            )
+        );
+
         // unfreeze
         do_process_instruction(
-            toggle_freeze_account(&program_id, &account_key, &mint_key, &owner_key, &[]).unwrap(),
+            toggle_freeze_account(&program_id, &account_key, false, &mint_key, &owner_key, &[])
+                .unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();

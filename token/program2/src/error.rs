@@ -43,6 +43,9 @@ pub enum TokenError {
     /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
+    /// State is invalid for request operation.
+    #[error("State is invalid for request operation")]
+    InvalidState,
     /// Operation overflowed
     #[error("Operation overflowed")]
     Overflow,
@@ -54,7 +57,7 @@ pub enum TokenError {
     AuthorityTypeNotSupported,
     /// This token mint cannot freeze accounts.
     #[error("This token mint cannot freeze accounts")]
-    CannotFreeze,
+    MintCannotFreeze,
     /// Account is frozen; all account operations will fail
     #[error("Account is frozen")]
     AccountFrozen,

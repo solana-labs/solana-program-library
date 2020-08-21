@@ -197,7 +197,6 @@ pub enum TokenInstruction {
     CloseAccount,
     /// Freeze an Initialized account or unfreeze a Frozen account, using the Mint's
     /// freeze_authority (if set).
-    /// Native accounts cannot be frozen
     ///
     /// Accounts expected by this instruction:
     ///
@@ -211,7 +210,11 @@ pub enum TokenInstruction {
     ///   1. '[]' The token mint.
     ///   2. `[]` The mint's multisignature freeze authority.
     ///   3. ..3+M '[signer]' M signer accounts.
-    ToggleFreeze,
+    ToggleFreeze {
+        /// Explicitly: whether to freeze the account if it is Initialized. `false` means to
+        /// unfreeze if the account is Frozen.
+        freeze: bool,
+    },
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -298,7 +301,14 @@ impl TokenInstruction {
                 Self::Burn { amount }
             }
             9 => Self::CloseAccount,
-            10 => Self::ToggleFreeze,
+            10 => {
+                if input.len() < size_of::<u8>() + size_of::<u8>() {
+                    return Err(TokenError::InvalidInstruction.into());
+                }
+                #[allow(clippy::cast_ptr_alignment)]
+                let freeze = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const bool) };
+                Self::ToggleFreeze { freeze }
+            }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -402,8 +412,13 @@ impl TokenInstruction {
                 output[output_len] = 9;
                 output_len += size_of::<u8>();
             }
-            Self::ToggleFreeze => {
+            Self::ToggleFreeze { freeze } => {
                 output[output_len] = 10;
+                output_len += size_of::<u8>();
+
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut bool) };
+                *value = *freeze;
                 output_len += size_of::<u8>();
             }
         }
@@ -722,11 +737,12 @@ pub fn close_account(
 pub fn toggle_freeze_account(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
+    freeze: bool,
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::ToggleFreeze.pack()?;
+    let data = TokenInstruction::ToggleFreeze { freeze }.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
