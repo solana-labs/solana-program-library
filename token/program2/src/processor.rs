@@ -438,8 +438,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [ToggleFreeze](enum.TokenInstruction.html) instruction.
-    pub fn process_toggle_freeze_account(
+    /// Processes a [FreezeAccount](enum.TokenInstruction.html) instruction.
+    pub fn process_freeze_account(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         freeze: bool,
@@ -541,9 +541,9 @@ impl Processor {
                 info!("Instruction: CloseAccount");
                 Self::process_close_account(program_id, accounts)
             }
-            TokenInstruction::ToggleFreeze { freeze } => {
-                info!("Instruction: ToggleFreeze");
-                Self::process_toggle_freeze_account(program_id, accounts, freeze)
+            TokenInstruction::FreezeAccount { freeze } => {
+                info!("Instruction: FreezeAccount");
+                Self::process_freeze_account(program_id, accounts, freeze)
             }
         }
     }
@@ -629,8 +629,8 @@ solana_sdk::program_stubs!();
 mod tests {
     use super::*;
     use crate::instruction::{
-        approve, burn, close_account, initialize_account, initialize_mint, initialize_multisig,
-        mint_to, revoke, set_authority, toggle_freeze_account, transfer, MAX_SIGNERS,
+        approve, burn, close_account, freeze_account, initialize_account, initialize_mint,
+        initialize_multisig, mint_to, revoke, set_authority, transfer, MAX_SIGNERS,
     };
     use solana_sdk::{
         account::Account as SolanaAccount, account_info::create_is_signer_account_infos,
@@ -2251,7 +2251,7 @@ mod tests {
         .unwrap();
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
-            toggle_freeze_account(
+            freeze_account(
                 &program_id,
                 &account3_key,
                 true,
@@ -2961,7 +2961,7 @@ mod tests {
     }
 
     #[test]
-    fn test_toggle_freeze_account() {
+    fn test_freeze_account() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
         let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
@@ -3005,7 +3005,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::MintCannotFreeze.into()),
             do_process_instruction(
-                toggle_freeze_account(&program_id, &account_key, true, &mint_key, &owner_key, &[])
+                freeze_account(&program_id, &account_key, true, &mint_key, &owner_key, &[])
                     .unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner_account],
             )
@@ -3017,7 +3017,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
-                toggle_freeze_account(&program_id, &account_key, true, &mint_key, &owner2_key, &[])
+                freeze_account(&program_id, &account_key, true, &mint_key, &owner2_key, &[])
                     .unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner2_account],
             )
@@ -3027,7 +3027,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::InvalidState.into()),
             do_process_instruction(
-                toggle_freeze_account(
+                freeze_account(
                     &program_id,
                     &account_key,
                     false,
@@ -3042,8 +3042,7 @@ mod tests {
 
         // freeze
         do_process_instruction(
-            toggle_freeze_account(&program_id, &account_key, true, &mint_key, &owner_key, &[])
-                .unwrap(),
+            freeze_account(&program_id, &account_key, true, &mint_key, &owner_key, &[]).unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
@@ -3054,7 +3053,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::InvalidState.into()),
             do_process_instruction(
-                toggle_freeze_account(&program_id, &account_key, true, &mint_key, &owner2_key, &[])
+                freeze_account(&program_id, &account_key, true, &mint_key, &owner2_key, &[])
                     .unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner2_account],
             )
@@ -3062,8 +3061,7 @@ mod tests {
 
         // unfreeze
         do_process_instruction(
-            toggle_freeze_account(&program_id, &account_key, false, &mint_key, &owner_key, &[])
-                .unwrap(),
+            freeze_account(&program_id, &account_key, false, &mint_key, &owner_key, &[]).unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
