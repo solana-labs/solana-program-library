@@ -42,7 +42,6 @@ fn main() {
             prefix: Some("Token_".to_string()),
             include: vec![
                 "TokenInstruction".to_string(),
-                "TokenInstruction".to_string(),
                 "Mint".to_string(),
                 "Account".to_string(),
                 "Multisig".to_string(),
