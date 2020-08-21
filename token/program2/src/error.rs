@@ -49,6 +49,12 @@ pub enum TokenError {
     /// An owner is required if mint can freeze token accounts.
     #[error("An owner is required if mint can freeze token accounts")]
     OwnerRequiredIfCanFreeze,
+    /// Account does not support specified authority type.
+    #[error("Account does not support specified authority type")]
+    AuthorityTypeNotSupported,
+    /// This token mint cannot freeze accounts.
+    #[error("This token mint cannot freeze accounts")]
+    CannotFreeze,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

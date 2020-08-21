@@ -4,7 +4,7 @@
 
 use crate::{
     error::TokenError,
-    instruction::{is_valid_signer_index, TokenInstruction},
+    instruction::{is_valid_signer_index, AuthorityType, TokenInstruction},
     option::COption,
     state::{self, Account, AccountState, IsInitialized, Mint, Multisig},
 };
@@ -247,14 +247,21 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [SetOwner](enum.TokenInstruction.html) instruction.
-    pub fn process_set_owner(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    /// Processes a [SetAuthority](enum.TokenInstruction.html) instruction.
+    pub fn process_set_authority(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        authority_type: AuthorityType,
+    ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let account_info = next_account_info(account_info_iter)?;
         let new_owner_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
         if account_info.data_len() == size_of::<Account>() {
+            if authority_type != AuthorityType::Owner {
+                return Err(TokenError::AuthorityTypeNotSupported.into());
+            }
             let mut account_data = account_info.data.borrow_mut();
             let mut account: &mut Account = state::unpack(&mut account_data)?;
 
@@ -270,18 +277,33 @@ impl Processor {
             let mut account_data = account_info.data.borrow_mut();
             let mut mint: &mut Mint = state::unpack(&mut account_data)?;
 
-            match mint.owner {
-                COption::Some(ref owner) => {
-                    Self::validate_owner(
-                        program_id,
-                        owner,
-                        authority_info,
-                        account_info_iter.as_slice(),
-                    )?;
+            match authority_type {
+                AuthorityType::Owner => {
+                    match mint.owner {
+                        COption::Some(ref owner) => {
+                            Self::validate_owner(
+                                program_id,
+                                owner,
+                                authority_info,
+                                account_info_iter.as_slice(),
+                            )?;
+                        }
+                        COption::None => return Err(TokenError::FixedSupply.into()),
+                    }
+                    mint.owner = COption::Some(*new_owner_info.key);
                 }
-                COption::None => return Err(TokenError::FixedSupply.into()),
+                AuthorityType::Freezer => match mint.freeze_authority {
+                    COption::Some(ref freeze_authority) => {
+                        Self::validate_owner(
+                            program_id,
+                            freeze_authority,
+                            authority_info,
+                            account_info_iter.as_slice(),
+                        )?;
+                    }
+                    COption::None => return Err(TokenError::CannotFreeze.into()),
+                },
             }
-            mint.owner = COption::Some(*new_owner_info.key);
         } else {
             return Err(ProgramError::InvalidArgument);
         }
@@ -442,9 +464,9 @@ impl Processor {
                 info!("Instruction: Revoke");
                 Self::process_revoke(program_id, accounts)
             }
-            TokenInstruction::SetOwner => {
-                info!("Instruction: SetOwner");
-                Self::process_set_owner(program_id, accounts)
+            TokenInstruction::SetAuthority { authority_type } => {
+                info!("Instruction: SetAuthority");
+                Self::process_set_authority(program_id, accounts, authority_type)
             }
             TokenInstruction::MintTo { amount } => {
                 info!("Instruction: MintTo");
@@ -527,6 +549,10 @@ impl PrintProgramError for TokenError {
             TokenError::OwnerRequiredIfCanFreeze => {
                 info!("Error: An owner is required if mint can freeze token accounts")
             }
+            TokenError::AuthorityTypeNotSupported => {
+                info!("Error: Account does not support specified authority type")
+            }
+            TokenError::CannotFreeze => info!("Error: This token mint cannot freeze accounts"),
         }
     }
 }
@@ -540,7 +566,7 @@ mod tests {
     use super::*;
     use crate::instruction::{
         approve, burn, close_account, initialize_account, initialize_mint, initialize_multisig,
-        mint_to, revoke, set_owner, transfer, MAX_SIGNERS,
+        mint_to, revoke, set_authority, transfer, MAX_SIGNERS,
     };
     use solana_sdk::{
         account::Account as SolanaAccount, account_info::create_is_signer_account_infos,
@@ -1349,7 +1375,7 @@ mod tests {
     }
 
     #[test]
-    fn test_set_owner() {
+    fn test_set_authority() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
         let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
@@ -1365,12 +1391,22 @@ mod tests {
         let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let mint2_key = pubkey_rand();
         let mut mint2_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
+        let mint3_key = pubkey_rand();
+        let mut mint3_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
 
         // invalid account
         assert_eq!(
             Err(TokenError::UninitializedState.into()),
             do_process_instruction(
-                set_owner(&program_id, &account_key, &owner2_key, &owner_key, &[]).unwrap(),
+                set_authority(
+                    &program_id,
+                    &account_key,
+                    &owner2_key,
+                    AuthorityType::Owner,
+                    &owner_key,
+                    &[]
+                )
+                .unwrap(),
                 vec![
                     &mut account_account,
                     &mut owner2_account,
@@ -1401,7 +1437,15 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
-                set_owner(&program_id, &account_key, &owner_key, &owner2_key, &[]).unwrap(),
+                set_authority(
+                    &program_id,
+                    &account_key,
+                    &owner_key,
+                    AuthorityType::Owner,
+                    &owner2_key,
+                    &[]
+                )
+                .unwrap(),
                 vec![
                     &mut account_account,
                     &mut owner_account,
@@ -1411,8 +1455,15 @@ mod tests {
         );
 
         // owner did not sign
-        let mut instruction =
-            set_owner(&program_id, &account_key, &owner2_key, &owner_key, &[]).unwrap();
+        let mut instruction = set_authority(
+            &program_id,
+            &account_key,
+            &owner2_key,
+            AuthorityType::Owner,
+            &owner_key,
+            &[],
+        )
+        .unwrap();
         instruction.accounts[2].is_signer = false;
         assert_eq!(
             Err(ProgramError::MissingRequiredSignature),
@@ -1426,9 +1477,38 @@ mod tests {
             )
         );
 
+        // wrong authority type
+        assert_eq!(
+            Err(TokenError::AuthorityTypeNotSupported.into()),
+            do_process_instruction(
+                set_authority(
+                    &program_id,
+                    &account_key,
+                    &owner2_key,
+                    AuthorityType::Freezer,
+                    &owner_key,
+                    &[],
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut owner2_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
         // set owner
         do_process_instruction(
-            set_owner(&program_id, &account_key, &owner2_key, &owner_key, &[]).unwrap(),
+            set_authority(
+                &program_id,
+                &account_key,
+                &owner2_key,
+                AuthorityType::Owner,
+                &owner_key,
+                &[],
+            )
+            .unwrap(),
             vec![
                 &mut account_account,
                 &mut owner2_account,
@@ -1458,14 +1538,29 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
-                set_owner(&program_id, &mint_key, &owner3_key, &owner2_key, &[]).unwrap(),
+                set_authority(
+                    &program_id,
+                    &mint_key,
+                    &owner3_key,
+                    AuthorityType::Owner,
+                    &owner2_key,
+                    &[]
+                )
+                .unwrap(),
                 vec![&mut mint_account, &mut owner3_account, &mut owner2_account],
             )
         );
 
         // owner did not sign
-        let mut instruction =
-            set_owner(&program_id, &mint_key, &owner2_key, &owner_key, &[]).unwrap();
+        let mut instruction = set_authority(
+            &program_id,
+            &mint_key,
+            &owner2_key,
+            AuthorityType::Owner,
+            &owner_key,
+            &[],
+        )
+        .unwrap();
         instruction.accounts[2].is_signer = false;
         assert_eq!(
             Err(ProgramError::MissingRequiredSignature),
@@ -1475,9 +1570,34 @@ mod tests {
             )
         );
 
+        // cannot freeze
+        assert_eq!(
+            Err(TokenError::CannotFreeze.into()),
+            do_process_instruction(
+                set_authority(
+                    &program_id,
+                    &mint_key,
+                    &owner2_key,
+                    AuthorityType::Freezer,
+                    &owner_key,
+                    &[],
+                )
+                .unwrap(),
+                vec![&mut mint_account, &mut owner2_account, &mut owner_account],
+            )
+        );
+
         // set owner
         do_process_instruction(
-            set_owner(&program_id, &mint_key, &owner2_key, &owner_key, &[]).unwrap(),
+            set_authority(
+                &program_id,
+                &mint_key,
+                &owner2_key,
+                AuthorityType::Owner,
+                &owner_key,
+                &[],
+            )
+            .unwrap(),
             vec![&mut mint_account, &mut owner2_account, &mut owner_account],
         )
         .unwrap();
@@ -1503,10 +1623,40 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
-                set_owner(&program_id, &mint2_key, &owner2_key, &owner_key, &[]).unwrap(),
+                set_authority(
+                    &program_id,
+                    &mint2_key,
+                    &owner2_key,
+                    AuthorityType::Owner,
+                    &owner_key,
+                    &[]
+                )
+                .unwrap(),
                 vec![&mut mint_account, &mut owner2_account, &mut owner_account],
             )
         );
+
+        // create mint with owner and freeze_authority
+        do_process_instruction(
+            initialize_mint(&program_id, &mint3_key, None, Some(&owner_key), 0, 2, true).unwrap(),
+            vec![&mut mint3_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // set freeze_authority
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &mint3_key,
+                &owner2_key,
+                AuthorityType::Freezer,
+                &owner_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut mint3_account, &mut owner2_account, &mut owner_account],
+        )
+        .unwrap();
     }
 
     #[test]
@@ -2049,13 +2199,14 @@ mod tests {
         )
         .unwrap();
 
-        // do SetOwner on mint
+        // do SetAuthority on mint
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
-            set_owner(
+            set_authority(
                 &program_id,
                 &mint_key,
                 &owner_key,
+                AuthorityType::Owner,
                 &multisig_key,
                 &[&signer_keys[0]],
             )
@@ -2069,13 +2220,14 @@ mod tests {
         )
         .unwrap();
 
-        // do SetOwner on account
+        // do SetAuthority on account
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
-            set_owner(
+            set_authority(
                 &program_id,
                 &account_key,
                 &owner_key,
+                AuthorityType::Owner,
                 &multisig_key,
                 &[&signer_keys[0]],
             )

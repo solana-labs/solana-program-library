@@ -140,7 +140,10 @@ pub enum TokenInstruction {
     ///   1. `[]` The new owner/delegate/multisignature.
     ///   2. `[]` The mint's or account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts
-    SetOwner,
+    SetAuthority {
+        /// The type of authority to update.
+        authority_type: AuthorityType,
+    },
     /// Mints new tokens to an account.  The native mint does not support minting.
     ///
     /// Accounts expected by this instruction:
@@ -250,7 +253,17 @@ impl TokenInstruction {
                 Self::Approve { amount }
             }
             5 => Self::Revoke,
-            6 => Self::SetOwner,
+            6 => {
+                if input.len() < size_of::<u8>() + size_of::<u8>() {
+                    return Err(TokenError::InvalidInstruction.into());
+                }
+                let authority_type = match input[1] {
+                    0 => AuthorityType::Owner,
+                    1 => AuthorityType::Freezer,
+                    _ => return Err(TokenError::InvalidInstruction.into()),
+                };
+                Self::SetAuthority { authority_type }
+            }
             7 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
                     return Err(TokenError::InvalidInstruction.into());
@@ -338,8 +351,15 @@ impl TokenInstruction {
                 output[output_len] = 5;
                 output_len += size_of::<u8>();
             }
-            Self::SetOwner => {
+            Self::SetAuthority { authority_type } => {
                 output[output_len] = 6;
+                output_len += size_of::<u8>();
+
+                let byte = match authority_type {
+                    AuthorityType::Owner => 0,
+                    AuthorityType::Freezer => 1,
+                };
+                output[output_len] = byte;
                 output_len += size_of::<u8>();
             }
             Self::MintTo { amount } => {
@@ -369,6 +389,16 @@ impl TokenInstruction {
         output.truncate(output_len);
         Ok(output)
     }
+}
+
+/// Specifies the authority type for SetAuthority instructions
+#[repr(u8)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum AuthorityType {
+    /// General authority, valid for Account and Mint
+    Owner,
+    /// Freeze authority, only valid for Mint
+    Freezer,
 }
 
 /// Creates a 'InitializeMint' instruction.
@@ -553,15 +583,16 @@ pub fn revoke(
     })
 }
 
-/// Creates a `SetOwner` instruction.
-pub fn set_owner(
+/// Creates a `SetAuthority` instruction.
+pub fn set_authority(
     token_program_id: &Pubkey,
     owned_pubkey: &Pubkey,
     new_owner_pubkey: &Pubkey,
+    authority_type: AuthorityType,
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::SetOwner.pack()?;
+    let data = TokenInstruction::SetAuthority { authority_type }.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*owned_pubkey, false));
@@ -723,9 +754,11 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::SetOwner;
+        let check = TokenInstruction::SetAuthority {
+            authority_type: AuthorityType::Freezer,
+        };
         let packed = check.pack().unwrap();
-        let expect = Vec::from([6u8]);
+        let expect = Vec::from([6u8, 1]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
