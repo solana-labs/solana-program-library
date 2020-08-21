@@ -27,7 +27,7 @@ impl Processor {
         accounts: &[AccountInfo],
         amount: u64,
         decimals: u8,
-        owner: COption<Pubkey>,
+        mint_authority: COption<Pubkey>,
         freeze_authority: COption<Pubkey>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -49,11 +49,11 @@ impl Processor {
             }
 
             dest_account.amount = amount;
-        } else if owner.is_none() {
+        } else if mint_authority.is_none() {
             return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
         }
 
-        mint.owner = owner;
+        mint.mint_authority = mint_authority;
         mint.decimals = decimals;
         mint.is_initialized = true;
         mint.freeze_authority = freeze_authority;
@@ -252,7 +252,7 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let account_info = next_account_info(account_info_iter)?;
-        let new_owner_info = next_account_info(account_info_iter)?;
+        let new_authority_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
         if account_info.data_len() == size_of::<Account>() {
@@ -273,25 +273,25 @@ impl Processor {
                 account_info_iter.as_slice(),
             )?;
 
-            account.owner = *new_owner_info.key;
+            account.owner = *new_authority_info.key;
         } else if account_info.data_len() == size_of::<Mint>() {
             let mut account_data = account_info.data.borrow_mut();
             let mut mint: &mut Mint = state::unpack(&mut account_data)?;
 
             match authority_type {
                 AuthorityType::MintTokens => {
-                    match mint.owner {
-                        COption::Some(ref owner) => {
+                    match mint.mint_authority {
+                        COption::Some(ref mint_authority) => {
                             Self::validate_owner(
                                 program_id,
-                                owner,
+                                mint_authority,
                                 authority_info,
                                 account_info_iter.as_slice(),
                             )?;
                         }
                         COption::None => return Err(TokenError::FixedSupply.into()),
                     }
-                    mint.owner = COption::Some(*new_owner_info.key);
+                    mint.mint_authority = COption::Some(*new_authority_info.key);
                 }
                 AuthorityType::FreezeAccount => match mint.freeze_authority {
                     COption::Some(ref freeze_authority) => {
@@ -343,9 +343,14 @@ impl Processor {
         let mut mint_info_data = mint_info.data.borrow_mut();
         let mint: &mut Mint = state::unpack(&mut mint_info_data)?;
 
-        match mint.owner {
-            COption::Some(owner) => {
-                Self::validate_owner(program_id, &owner, owner_info, account_info_iter.as_slice())?;
+        match mint.mint_authority {
+            COption::Some(mint_authority) => {
+                Self::validate_owner(
+                    program_id,
+                    &mint_authority,
+                    owner_info,
+                    account_info_iter.as_slice(),
+                )?;
             }
             COption::None => {
                 return Err(TokenError::FixedSupply.into());
@@ -502,11 +507,17 @@ impl Processor {
             TokenInstruction::InitializeMint {
                 amount,
                 decimals,
-                owner,
+                mint_authority,
                 freeze_authority,
             } => {
                 info!("Instruction: InitializeMint");
-                Self::process_initialize_mint(accounts, amount, decimals, owner, freeze_authority)
+                Self::process_initialize_mint(
+                    accounts,
+                    amount,
+                    decimals,
+                    mint_authority,
+                    freeze_authority,
+                )
             }
             TokenInstruction::InitializeAccount => {
                 info!("Instruction: InitializeAccount");
@@ -1259,7 +1270,7 @@ mod tests {
         assert_eq!(
             *mint,
             Mint {
-                owner: COption::Some(owner_key),
+                mint_authority: COption::Some(owner_key),
                 decimals,
                 is_initialized: true,
                 freeze_authority: COption::None,

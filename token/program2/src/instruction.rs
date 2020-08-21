@@ -33,9 +33,9 @@ pub enum TokenInstruction {
         amount: u64,
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
-        /// The mint-tokens authority/multisignature of the mint if supply is non-zero. If present,
+        /// The authority/multisignature to mint tokens, if supply is non-zero. If present,
         /// further minting is supported.
-        owner: COption<Pubkey>,
+        mint_authority: COption<Pubkey>,
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
     },
@@ -234,7 +234,7 @@ impl TokenInstruction {
                 let decimals = unsafe { *(&input[input_len] as *const u8) };
                 input_len += size_of::<u8>();
 
-                let owner = match input[input_len] {
+                let mint_authority = match input[input_len] {
                     0 => {
                         input_len += size_of::<u8>();
                         COption::None
@@ -242,9 +242,10 @@ impl TokenInstruction {
                     1 => {
                         input_len += size_of::<u8>();
                         #[allow(clippy::cast_ptr_alignment)]
-                        let owner = unsafe { *(&input[input_len] as *const u8 as *const Pubkey) };
+                        let mint_authority =
+                            unsafe { *(&input[input_len] as *const u8 as *const Pubkey) };
                         input_len += size_of::<Pubkey>();
-                        COption::Some(owner)
+                        COption::Some(mint_authority)
                     }
                     _ => {
                         return Err(TokenError::InvalidInstruction.into());
@@ -266,7 +267,7 @@ impl TokenInstruction {
                 };
 
                 Self::InitializeMint {
-                    owner,
+                    mint_authority,
                     freeze_authority,
                     amount,
                     decimals,
@@ -345,7 +346,7 @@ impl TokenInstruction {
         let mut output_len = 0;
         match self {
             Self::InitializeMint {
-                owner,
+                mint_authority,
                 freeze_authority,
                 amount,
                 decimals,
@@ -362,15 +363,15 @@ impl TokenInstruction {
                 *value = *decimals;
                 output_len += size_of::<u8>();
 
-                match owner {
-                    COption::Some(owner) => {
+                match mint_authority {
+                    COption::Some(mint_authority) => {
                         output[output_len] = 1;
                         output_len += size_of::<u8>();
 
                         #[allow(clippy::cast_ptr_alignment)]
                         let value =
                             unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut Pubkey) };
-                        *value = *owner;
+                        *value = *mint_authority;
                         output_len += size_of::<Pubkey>();
                     }
                     COption::None => {
@@ -498,23 +499,23 @@ pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
     account_pubkey: Option<&Pubkey>,
-    owner_pubkey: Option<&Pubkey>,
-    freeze_pubkey: Option<&Pubkey>,
+    mint_authority_pubkey: Option<&Pubkey>,
+    freeze_authority_pubkey: Option<&Pubkey>,
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let owner = if let Some(owner) = owner_pubkey {
-        COption::Some(*owner)
+    let mint_authority = if let Some(mint_authority) = mint_authority_pubkey {
+        COption::Some(*mint_authority)
     } else {
         COption::None
     };
-    let freeze_authority = if let Some(freeze_authority) = freeze_pubkey {
+    let freeze_authority = if let Some(freeze_authority) = freeze_authority_pubkey {
         COption::Some(*freeze_authority)
     } else {
         COption::None
     };
     let data = TokenInstruction::InitializeMint {
-        owner,
+        mint_authority,
         freeze_authority,
         amount,
         decimals,
@@ -828,7 +829,7 @@ mod test {
         let check = TokenInstruction::InitializeMint {
             amount: 1,
             decimals: 2,
-            owner: COption::None,
+            mint_authority: COption::None,
             freeze_authority: COption::None,
         };
         let packed = check.pack().unwrap();
@@ -840,7 +841,7 @@ mod test {
         let check = TokenInstruction::InitializeMint {
             amount: 1,
             decimals: 2,
-            owner: COption::Some(Pubkey::new(&[2u8; 32])),
+            mint_authority: COption::Some(Pubkey::new(&[2u8; 32])),
             freeze_authority: COption::Some(Pubkey::new(&[3u8; 32])),
         };
         let packed = check.pack().unwrap();

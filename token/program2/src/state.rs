@@ -8,10 +8,10 @@ use std::mem::size_of;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Mint {
-    /// Optional owner, used to mint new tokens.  The owner may only
-    /// be provided during mint creation.  If no owner is present then the mint
-    /// has a fixed supply and no further tokens may be minted.
-    pub owner: COption<Pubkey>,
+    /// Optional authority used to mint new tokens. The mint authority may only be provided during
+    /// mint creation. If no mint authority is present then the mint has a fixed supply and no
+    /// further tokens may be minted.
+    pub mint_authority: COption<Pubkey>,
     /// Number of base 10 digits to the right of the decimal place.
     pub decimals: u8,
     /// Is `true` if this structure has been initialized
