@@ -33,8 +33,8 @@ pub enum TokenInstruction {
         amount: u64,
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
-        /// The owner/multisignature of the mint if supply is non-zero. If present, further minting
-        /// is supported.
+        /// The mint-tokens authority/multisignature of the mint if supply is non-zero. If present,
+        /// further minting is supported.
         owner: COption<Pubkey>,
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
@@ -122,19 +122,19 @@ pub enum TokenInstruction {
     ///   1. '[]' The source account's multisignature owner.
     ///   2. ..2+M '[signer]' M signer accounts
     Revoke,
-    /// Sets a new owner of a mint or account.
+    /// Sets a new authority of a mint or account.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   * Single owner
-    ///   0. `[writable]` The mint or account to change the owner of.
-    ///   1. `[]` The new owner/delegate/multisignature.
-    ///   2. `[signer]` The owner of the mint or account.
+    ///   * Single authority
+    ///   0. `[writable]` The mint or account to change the authority of.
+    ///   1. `[]` The new authority/multisignature.
+    ///   2. `[signer]` The current authority of the mint or account.
     ///
-    ///   * Multisignature owner
-    ///   0. `[writable]` The mint or account to change the owner of.
-    ///   1. `[]` The new owner/delegate/multisignature.
-    ///   2. `[]` The mint's or account's multisignature owner.
+    ///   * Multisignature authority
+    ///   0. `[writable]` The mint or account to change the authority of.
+    ///   1. `[]` The new authority/multisignature.
+    ///   2. `[]` The mint's or account's multisignature authority.
     ///   3. ..3+M '[signer]' M signer accounts
     SetAuthority {
         /// The type of authority to update.
@@ -144,15 +144,15 @@ pub enum TokenInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   * Single owner
+    ///   * Single authority
     ///   0. `[writable]` The mint.
     ///   1. `[writable]` The account to mint tokens to.
-    ///   2. `[signer]` The mint's owner.
+    ///   2. `[signer]` The mint's mint-tokens authority.
     ///
-    ///   * Multisignature owner
+    ///   * Multisignature authority
     ///   0. `[writable]` The mint.
     ///   1. `[writable]` The account to mint tokens to.
-    ///   2. `[]` The mint's multisignature owner.
+    ///   2. `[]` The mint's multisignature mint-tokens authority.
     ///   3. ..3+M '[signer]' M signer accounts.
     MintTo {
         /// The amount of new tokens to mint.
@@ -303,8 +303,9 @@ impl TokenInstruction {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 let authority_type = match input[1] {
-                    0 => AuthorityType::Owner,
-                    1 => AuthorityType::Freezer,
+                    0 => AuthorityType::MintTokens,
+                    1 => AuthorityType::FreezeAccount,
+                    2 => AuthorityType::AccountHolder,
                     _ => return Err(TokenError::InvalidInstruction.into()),
                 };
                 Self::SetAuthority { authority_type }
@@ -435,8 +436,9 @@ impl TokenInstruction {
                 output_len += size_of::<u8>();
 
                 let byte = match authority_type {
-                    AuthorityType::Owner => 0,
-                    AuthorityType::Freezer => 1,
+                    AuthorityType::MintTokens => 0,
+                    AuthorityType::FreezeAccount => 1,
+                    AuthorityType::AccountHolder => 2,
                 };
                 output[output_len] = byte;
                 output_len += size_of::<u8>();
@@ -483,10 +485,12 @@ impl TokenInstruction {
 #[repr(u8)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum AuthorityType {
-    /// General authority, valid for Account and Mint
-    Owner,
-    /// Freeze authority, only valid for Mint
-    Freezer,
+    /// Authority to mint new tokens
+    MintTokens,
+    /// Authority to freeze any account associated with the Mint
+    FreezeAccount,
+    /// Holder of a given token account
+    AccountHolder,
 }
 
 /// Creates a 'InitializeMint' instruction.
@@ -885,7 +889,7 @@ mod test {
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::SetAuthority {
-            authority_type: AuthorityType::Freezer,
+            authority_type: AuthorityType::FreezeAccount,
         };
         let packed = check.pack().unwrap();
         let expect = Vec::from([6u8, 1]);

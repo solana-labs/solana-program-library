@@ -256,7 +256,7 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
 
         if account_info.data_len() == size_of::<Account>() {
-            if authority_type != AuthorityType::Owner {
+            if authority_type != AuthorityType::AccountHolder {
                 return Err(TokenError::AuthorityTypeNotSupported.into());
             }
             let mut account_data = account_info.data.borrow_mut();
@@ -279,7 +279,7 @@ impl Processor {
             let mut mint: &mut Mint = state::unpack(&mut account_data)?;
 
             match authority_type {
-                AuthorityType::Owner => {
+                AuthorityType::MintTokens => {
                     match mint.owner {
                         COption::Some(ref owner) => {
                             Self::validate_owner(
@@ -293,7 +293,7 @@ impl Processor {
                     }
                     mint.owner = COption::Some(*new_owner_info.key);
                 }
-                AuthorityType::Freezer => match mint.freeze_authority {
+                AuthorityType::FreezeAccount => match mint.freeze_authority {
                     COption::Some(ref freeze_authority) => {
                         Self::validate_owner(
                             program_id,
@@ -304,6 +304,9 @@ impl Processor {
                     }
                     COption::None => return Err(TokenError::MintCannotFreeze.into()),
                 },
+                _ => {
+                    return Err(TokenError::AuthorityTypeNotSupported.into());
+                }
             }
         } else {
             return Err(ProgramError::InvalidArgument);
@@ -1420,7 +1423,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     &owner2_key,
-                    AuthorityType::Owner,
+                    AuthorityType::AccountHolder,
                     &owner_key,
                     &[]
                 )
@@ -1459,7 +1462,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     &owner_key,
-                    AuthorityType::Owner,
+                    AuthorityType::AccountHolder,
                     &owner2_key,
                     &[]
                 )
@@ -1477,7 +1480,7 @@ mod tests {
             &program_id,
             &account_key,
             &owner2_key,
-            AuthorityType::Owner,
+            AuthorityType::AccountHolder,
             &owner_key,
             &[],
         )
@@ -1503,7 +1506,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     &owner2_key,
-                    AuthorityType::Freezer,
+                    AuthorityType::FreezeAccount,
                     &owner_key,
                     &[],
                 )
@@ -1522,7 +1525,7 @@ mod tests {
                 &program_id,
                 &account_key,
                 &owner2_key,
-                AuthorityType::Owner,
+                AuthorityType::AccountHolder,
                 &owner_key,
                 &[],
             )
@@ -1559,7 +1562,7 @@ mod tests {
                     &program_id,
                     &mint_key,
                     &owner3_key,
-                    AuthorityType::Owner,
+                    AuthorityType::MintTokens,
                     &owner2_key,
                     &[]
                 )
@@ -1573,7 +1576,7 @@ mod tests {
             &program_id,
             &mint_key,
             &owner2_key,
-            AuthorityType::Owner,
+            AuthorityType::MintTokens,
             &owner_key,
             &[],
         )
@@ -1595,7 +1598,7 @@ mod tests {
                     &program_id,
                     &mint_key,
                     &owner2_key,
-                    AuthorityType::Freezer,
+                    AuthorityType::FreezeAccount,
                     &owner_key,
                     &[],
                 )
@@ -1610,7 +1613,7 @@ mod tests {
                 &program_id,
                 &mint_key,
                 &owner2_key,
-                AuthorityType::Owner,
+                AuthorityType::MintTokens,
                 &owner_key,
                 &[],
             )
@@ -1643,7 +1646,7 @@ mod tests {
                     &program_id,
                     &mint2_key,
                     &owner2_key,
-                    AuthorityType::Owner,
+                    AuthorityType::MintTokens,
                     &owner_key,
                     &[]
                 )
@@ -1674,7 +1677,7 @@ mod tests {
                 &program_id,
                 &mint3_key,
                 &owner2_key,
-                AuthorityType::Freezer,
+                AuthorityType::FreezeAccount,
                 &owner_key,
                 &[],
             )
@@ -2276,7 +2279,7 @@ mod tests {
                 &program_id,
                 &mint_key,
                 &owner_key,
-                AuthorityType::Owner,
+                AuthorityType::MintTokens,
                 &multisig_key,
                 &[&signer_keys[0]],
             )
@@ -2297,7 +2300,7 @@ mod tests {
                 &program_id,
                 &account_key,
                 &owner_key,
-                AuthorityType::Owner,
+                AuthorityType::AccountHolder,
                 &multisig_key,
                 &[&signer_keys[0]],
             )
@@ -2918,7 +2921,7 @@ mod tests {
             )
         );
 
-        // no set owner if account is frozen
+        // no set authority if account is frozen
         let new_owner_key = pubkey_rand();
         let mut new_owner_account = SolanaAccount::default();
         assert_eq!(
@@ -2928,7 +2931,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     &new_owner_key,
-                    AuthorityType::Owner,
+                    AuthorityType::AccountHolder,
                     &owner_key,
                     &[]
                 )
