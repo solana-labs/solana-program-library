@@ -27,8 +27,8 @@ impl Processor {
         accounts: &[AccountInfo],
         amount: u64,
         decimals: u8,
-        fixed_supply: bool,
-        can_freeze: bool,
+        owner: COption<Pubkey>,
+        freeze_authority: COption<Pubkey>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_info = next_account_info(account_info_iter)?;
@@ -39,7 +39,7 @@ impl Processor {
             return Err(TokenError::AlreadyInUse.into());
         }
 
-        let owner = if amount != 0 {
+        if amount != 0 {
             let dest_account_info = next_account_info(account_info_iter)?;
             let mut dest_account_data = dest_account_info.data.borrow_mut();
             let mut dest_account: &mut Account = state::unpack(&mut dest_account_data)?;
@@ -49,30 +49,14 @@ impl Processor {
             }
 
             dest_account.amount = amount;
-
-            if let Ok(owner_info) = next_account_info(account_info_iter) {
-                COption::Some(*owner_info.key)
-            } else {
-                COption::None
-            }
-        } else if let Ok(owner_info) = next_account_info(account_info_iter) {
-            COption::Some(*owner_info.key)
-        } else {
+        } else if owner.is_none() {
             return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
-        };
-        if owner.is_none() {
-            if !fixed_supply {
-                return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
-            }
-            if can_freeze {
-                return Err(TokenError::OwnerRequiredIfCanFreeze.into());
-            }
         }
 
-        mint.owner = if !fixed_supply { owner } else { COption::None };
+        mint.owner = owner;
         mint.decimals = decimals;
         mint.is_initialized = true;
-        mint.freeze_authority = if can_freeze { owner } else { COption::None };
+        mint.freeze_authority = freeze_authority;
 
         Ok(())
     }
@@ -515,11 +499,11 @@ impl Processor {
             TokenInstruction::InitializeMint {
                 amount,
                 decimals,
-                fixed_supply,
-                can_freeze,
+                owner,
+                freeze_authority,
             } => {
                 info!("Instruction: InitializeMint");
-                Self::process_initialize_mint(accounts, amount, decimals, fixed_supply, can_freeze)
+                Self::process_initialize_mint(accounts, amount, decimals, owner, freeze_authority)
             }
             TokenInstruction::InitializeAccount => {
                 info!("Instruction: InitializeAccount");
@@ -628,9 +612,6 @@ impl PrintProgramError for TokenError {
             TokenError::InvalidInstruction => info!("Error: Invalid instruction"),
             TokenError::InvalidState => info!("Error: Invalid account state for operation"),
             TokenError::Overflow => info!("Error: Operation overflowed"),
-            TokenError::OwnerRequiredIfCanFreeze => {
-                info!("Error: An owner is required if mint can freeze token accounts")
-            }
             TokenError::AuthorityTypeNotSupported => {
                 info!("Error: Account does not support specified authority type")
             }
@@ -724,10 +705,9 @@ mod tests {
                     &mint_key,
                     Some(&account_key),
                     None,
+                    None,
                     1000,
                     2,
-                    true,
-                    false
                 )
                 .unwrap(),
                 vec![&mut mint_account, &mut account_account]
@@ -748,10 +728,9 @@ mod tests {
                 &mint_key,
                 Some(&account_key),
                 None,
+                None,
                 1000,
                 2,
-                true,
-                false,
             )
             .unwrap(),
             vec![&mut mint_account, &mut account_account],
@@ -774,10 +753,9 @@ mod tests {
                     &mint2_key,
                     Some(&account2_key),
                     None,
+                    None,
                     1000,
                     2,
-                    true,
-                    false
                 )
                 .unwrap(),
                 vec![&mut mint2_account, &mut account2_account]
@@ -793,17 +771,16 @@ mod tests {
                     &mint_key,
                     Some(&account_key),
                     None,
+                    None,
                     1000,
                     2,
-                    true,
-                    false
                 )
                 .unwrap(),
                 vec![&mut mint_account, &mut account_account]
             )
         );
 
-        // attempt to create a mint that can freeze, but with no owner
+        // create another mint that can freeze
         let account3_key = pubkey_rand();
         let mut account3_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
         do_process_instruction(
@@ -815,48 +792,18 @@ mod tests {
             ],
         )
         .unwrap();
-        let mut instruction = initialize_mint(
-            &program_id,
-            &mint2_key,
-            Some(&account3_key),
-            Some(&owner_key),
-            1000,
-            2,
-            true,
-            true,
-        )
-        .unwrap();
-        instruction.accounts.pop();
-        assert_eq!(
-            Err(TokenError::OwnerRequiredIfCanFreeze.into()),
-            do_process_instruction(
-                instruction,
-                vec![
-                    &mut mint2_account,
-                    &mut account3_account,
-                    &mut owner_account
-                ]
-            )
-        );
-
-        // create another mint that can freeze
         do_process_instruction(
             initialize_mint(
                 &program_id,
                 &mint2_key,
                 Some(&account3_key),
                 Some(&owner_key),
+                Some(&owner_key),
                 1000,
                 2,
-                true,
-                true,
             )
             .unwrap(),
-            vec![
-                &mut mint2_account,
-                &mut account3_account,
-                &mut owner_account,
-            ],
+            vec![&mut mint2_account, &mut account3_account],
         )
         .unwrap();
         let mint2: &mut Mint = state::unpack(&mut mint2_account.data).unwrap();
@@ -951,10 +898,9 @@ mod tests {
                 &mint_key,
                 Some(&account_key),
                 None,
+                None,
                 1000,
                 2,
-                true,
-                false,
             )
             .unwrap(),
             vec![&mut mint_account, &mut account_account],
@@ -1281,21 +1227,12 @@ mod tests {
         .unwrap();
 
         // create mint-able token without owner
-        let mut instruction = initialize_mint(
-            &program_id,
-            &mint_key,
-            None,
-            Some(&owner_key),
-            0,
-            2,
-            false,
-            false,
-        )
-        .unwrap();
-        instruction.accounts.pop();
         assert_eq!(
             Err(TokenError::OwnerRequiredIfNoInitialSupply.into()),
-            do_process_instruction(instruction, vec![&mut mint_account])
+            do_process_instruction(
+                initialize_mint(&program_id, &mint_key, None, None, None, 0, 2,).unwrap(),
+                vec![&mut mint_account]
+            )
         );
 
         // create mint-able token with zero supply
@@ -1307,10 +1244,9 @@ mod tests {
                 &mint_key,
                 None,
                 Some(&owner_key),
+                None,
                 amount,
                 decimals,
-                false,
-                false,
             )
             .unwrap(),
             vec![&mut mint_account, &mut account_account],
@@ -1376,10 +1312,9 @@ mod tests {
                 &mint_key,
                 Some(&account_key),
                 None,
+                None,
                 1000,
                 2,
-                true,
-                false,
             )
             .unwrap(),
             vec![&mut mint_account, &mut account_account],
@@ -1607,13 +1542,12 @@ mod tests {
                 &mint_key,
                 Some(&account_key),
                 Some(&owner_key),
+                None,
                 1000,
                 2,
-                false,
-                false,
             )
             .unwrap(),
-            vec![&mut mint_account, &mut account_account, &mut owner_account],
+            vec![&mut mint_account, &mut account_account],
         )
         .unwrap();
 
@@ -1692,10 +1626,9 @@ mod tests {
                 &mint2_key,
                 Some(&account2_key),
                 None,
+                None,
                 1000,
                 2,
-                true,
-                false,
             )
             .unwrap(),
             vec![&mut mint2_account, &mut account2_account],
@@ -1726,10 +1659,9 @@ mod tests {
                 &mint3_key,
                 None,
                 Some(&owner_key),
+                Some(&owner_key),
                 0,
                 2,
-                false,
-                true,
             )
             .unwrap(),
             vec![&mut mint3_account, &mut owner_account],
@@ -1813,13 +1745,12 @@ mod tests {
                 &mint_key,
                 Some(&account_key),
                 Some(&owner_key),
+                None,
                 1000,
                 2,
-                false,
-                false,
             )
             .unwrap(),
-            vec![&mut mint_account, &mut account_account, &mut owner_account],
+            vec![&mut mint_account, &mut account_account],
         )
         .unwrap();
 
@@ -1951,10 +1882,9 @@ mod tests {
                 &mint_key,
                 Some(&account_key),
                 None,
+                None,
                 1000,
                 2,
-                true,
-                false,
             )
             .unwrap(),
             vec![&mut mint_account, &mut account_account],
@@ -2133,20 +2063,19 @@ mod tests {
         )
         .unwrap();
 
-        // create new m int with multisig owner
+        // create new mint with multisig owner
         do_process_instruction(
             initialize_mint(
                 &program_id,
                 &mint_key,
                 Some(&account_key),
                 Some(&multisig_key),
+                None,
                 1000,
                 2,
-                false,
-                false,
             )
             .unwrap(),
-            vec![&mut mint_account, &mut account, &mut multisig_account],
+            vec![&mut mint_account, &mut account],
         )
         .unwrap();
 
@@ -2311,18 +2240,13 @@ mod tests {
                 &program_id,
                 &mint2_key,
                 Some(&account3_key),
+                None,
                 Some(&multisig_key),
                 1000,
                 2,
-                false,
-                true,
             )
             .unwrap(),
-            vec![
-                &mut mint2_account,
-                &mut account3_account,
-                &mut multisig_account,
-            ],
+            vec![&mut mint2_account, &mut account3_account],
         )
         .unwrap();
         let account_info_iter = &mut signer_accounts.iter_mut();
@@ -2746,7 +2670,16 @@ mod tests {
 
         // create new mint with owner
         do_process_instruction(
-            initialize_mint(&program_id, &mint_key, None, Some(&mint_owner_key), 0, 2).unwrap(),
+            initialize_mint(
+                &program_id,
+                &mint_key,
+                None,
+                Some(&mint_owner_key),
+                None,
+                0,
+                2,
+            )
+            .unwrap(),
             vec![&mut mint_account, &mut mint_owner_account],
         )
         .unwrap();
@@ -2892,10 +2825,9 @@ mod tests {
                 &mint_key,
                 Some(&account_key),
                 None,
+                None,
                 1000,
                 2,
-                true,
-                false,
             )
             .unwrap(),
             vec![&mut mint_account, &mut account_account],
@@ -3053,20 +2985,19 @@ mod tests {
         )
         .unwrap();
 
-        // create new mint with owner different from account
+        // create new mint with owner different from account owner
         do_process_instruction(
             initialize_mint(
                 &program_id,
                 &mint_key,
                 Some(&account_key),
                 Some(&owner_key),
+                None,
                 1000,
                 2,
-                false,
-                false,
             )
             .unwrap(),
-            vec![&mut mint_account, &mut account_account, &mut owner_account],
+            vec![&mut mint_account, &mut account_account],
         )
         .unwrap();
 

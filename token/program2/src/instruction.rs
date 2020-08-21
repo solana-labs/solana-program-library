@@ -1,6 +1,6 @@
 //! Instruction types
 
-use crate::error::TokenError;
+use crate::{error::TokenError, option::COption};
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
@@ -26,22 +26,18 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    ///   1.
-    ///      * If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
-    ///      * If supply is zero: `[]` The owner/multisignature of the mint.
-    ///   2. `[]` (optional) The owner/multisignature of the mint, if supply is non-zero and:
-    ///                     (a) further minting is supported; or
-    ///                     (b) the mint freeze authority is enabled.
+    ///   1. If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
     ///
     InitializeMint {
         /// Initial amount of tokens to mint.
         amount: u64,
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
-        /// Whether further minting is supported
-        fixed_supply: bool,
-        /// Whether the mint freeze_authority should be enabled to freeze associated token accounts
-        can_freeze: bool,
+        /// The owner/multisignature of the mint if supply is non-zero. If present, further minting
+        /// is supported.
+        owner: COption<Pubkey>,
+        /// The freeze authority/multisignature of the mint.
+        freeze_authority: COption<Pubkey>,
     },
     /// Initializes a new account to hold tokens.  If this account is associated with the native mint
     /// then the token balance of the initialized account will be equal to the amount of SOL in the account.
@@ -237,14 +233,43 @@ impl TokenInstruction {
                 input_len += size_of::<u64>();
                 let decimals = unsafe { *(&input[input_len] as *const u8) };
                 input_len += size_of::<u8>();
-                let fixed_supply = unsafe { *(&input[input_len] as *const u8 as *const bool) };
-                input_len += size_of::<u8>();
-                let can_freeze = unsafe { *(&input[input_len] as *const u8 as *const bool) };
+
+                let owner = match input[input_len] {
+                    0 => {
+                        input_len += size_of::<u8>();
+                        COption::None
+                    }
+                    1 => {
+                        input_len += size_of::<u8>();
+                        #[allow(clippy::cast_ptr_alignment)]
+                        let owner = unsafe { *(&input[input_len] as *const u8 as *const Pubkey) };
+                        input_len += size_of::<Pubkey>();
+                        COption::Some(owner)
+                    }
+                    _ => {
+                        return Err(TokenError::InvalidInstruction.into());
+                    }
+                };
+
+                let freeze_authority = match input[input_len] {
+                    0 => COption::None,
+                    1 => {
+                        input_len += size_of::<u8>();
+                        #[allow(clippy::cast_ptr_alignment)]
+                        let freeze_authority =
+                            unsafe { *(&input[input_len] as *const u8 as *const Pubkey) };
+                        COption::Some(freeze_authority)
+                    }
+                    _ => {
+                        return Err(TokenError::InvalidInstruction.into());
+                    }
+                };
+
                 Self::InitializeMint {
+                    owner,
+                    freeze_authority,
                     amount,
                     decimals,
-                    fixed_supply,
-                    can_freeze,
                 }
             }
             1 => Self::InitializeAccount,
@@ -319,10 +344,10 @@ impl TokenInstruction {
         let mut output_len = 0;
         match self {
             Self::InitializeMint {
+                owner,
+                freeze_authority,
                 amount,
                 decimals,
-                fixed_supply,
-                can_freeze,
             } => {
                 output[output_len] = 0;
                 output_len += size_of::<u8>();
@@ -336,13 +361,39 @@ impl TokenInstruction {
                 *value = *decimals;
                 output_len += size_of::<u8>();
 
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut bool) };
-                *value = *fixed_supply;
-                output_len += size_of::<bool>();
+                match owner {
+                    COption::Some(owner) => {
+                        output[output_len] = 1;
+                        output_len += size_of::<u8>();
 
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut bool) };
-                *value = *can_freeze;
-                output_len += size_of::<bool>();
+                        #[allow(clippy::cast_ptr_alignment)]
+                        let value =
+                            unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut Pubkey) };
+                        *value = *owner;
+                        output_len += size_of::<Pubkey>();
+                    }
+                    COption::None => {
+                        output[output_len] = 0;
+                        output_len += size_of::<u8>();
+                    }
+                }
+
+                match freeze_authority {
+                    COption::Some(freeze_authority) => {
+                        output[output_len] = 1;
+                        output_len += size_of::<u8>();
+
+                        #[allow(clippy::cast_ptr_alignment)]
+                        let value =
+                            unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut Pubkey) };
+                        *value = *freeze_authority;
+                        output_len += size_of::<Pubkey>();
+                    }
+                    COption::None => {
+                        output[output_len] = 0;
+                        output_len += size_of::<u8>();
+                    }
+                }
             }
             Self::InitializeAccount => {
                 output[output_len] = 1;
@@ -439,22 +490,30 @@ pub enum AuthorityType {
 }
 
 /// Creates a 'InitializeMint' instruction.
-#[allow(clippy::too_many_arguments)]
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
     account_pubkey: Option<&Pubkey>,
     owner_pubkey: Option<&Pubkey>,
+    freeze_pubkey: Option<&Pubkey>,
     amount: u64,
     decimals: u8,
-    fixed_supply: bool,
-    can_freeze: bool,
 ) -> Result<Instruction, ProgramError> {
+    let owner = if let Some(owner) = owner_pubkey {
+        COption::Some(*owner)
+    } else {
+        COption::None
+    };
+    let freeze_authority = if let Some(freeze_authority) = freeze_pubkey {
+        COption::Some(*freeze_authority)
+    } else {
+        COption::None
+    };
     let data = TokenInstruction::InitializeMint {
+        owner,
+        freeze_authority,
         amount,
         decimals,
-        fixed_supply,
-        can_freeze,
     }
     .pack()?;
 
@@ -464,17 +523,6 @@ pub fn initialize_mint(
             Some(pubkey) => accounts.push(AccountMeta::new(*pubkey, false)),
             None => {
                 return Err(ProgramError::NotEnoughAccountKeys);
-            }
-        }
-    }
-    match owner_pubkey {
-        Some(pubkey) => accounts.push(AccountMeta::new_readonly(*pubkey, false)),
-        None => {
-            if amount == 0 {
-                return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
-            }
-            if can_freeze {
-                return Err(TokenError::OwnerRequiredIfCanFreeze.into());
             }
         }
     }
@@ -776,11 +824,27 @@ mod test {
         let check = TokenInstruction::InitializeMint {
             amount: 1,
             decimals: 2,
-            fixed_supply: false,
-            can_freeze: true,
+            owner: COption::None,
+            freeze_authority: COption::None,
         };
         let packed = check.pack().unwrap();
-        let expect = Vec::from([0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 1]);
+        let expect = Vec::from([0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMint {
+            amount: 1,
+            decimals: 2,
+            owner: COption::Some(Pubkey::new(&[2u8; 32])),
+            freeze_authority: COption::Some(Pubkey::new(&[3u8; 32])),
+        };
+        let packed = check.pack().unwrap();
+        let expect = vec![
+            0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+        ];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
