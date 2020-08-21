@@ -454,6 +454,45 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [FreezeAccount](enum.TokenInstruction.html) instruction.
+    pub fn process_freeze_account(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let source_account_info = next_account_info(account_info_iter)?;
+        let mint_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+
+        let mut source_data = source_account_info.data.borrow_mut();
+        let source_account: &mut Account = state::unpack(&mut source_data)?;
+
+        if source_account.is_native {
+            return Err(TokenError::NativeNotSupported.into());
+        }
+        if mint_info.key != &source_account.mint {
+            return Err(TokenError::MintMismatch.into());
+        }
+
+        let mut mint_info_data = mint_info.data.borrow_mut();
+        let mint: &mut Mint = state::unpack(&mut mint_info_data)?;
+
+        match mint.freeze_authority {
+            COption::Some(authority) => {
+                Self::validate_owner(
+                    program_id,
+                    &authority,
+                    authority_info,
+                    account_info_iter.as_slice(),
+                )?;
+            }
+            COption::None => {
+                return Err(TokenError::CannotFreeze.into());
+            }
+        }
+
+        source_account.is_initialized = AccountState::Frozen;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -503,6 +542,10 @@ impl Processor {
             TokenInstruction::CloseAccount => {
                 info!("Instruction: CloseAccount");
                 Self::process_close_account(program_id, accounts)
+            }
+            TokenInstruction::FreezeAccount => {
+                info!("Instruction: FreezeAccount");
+                Self::process_freeze_account(program_id, accounts)
             }
         }
     }
@@ -590,8 +633,8 @@ solana_sdk::program_stubs!();
 mod tests {
     use super::*;
     use crate::instruction::{
-        approve, burn, close_account, initialize_account, initialize_mint, initialize_multisig,
-        mint_to, revoke, set_authority, transfer, MAX_SIGNERS,
+        approve, burn, close_account, freeze_account, initialize_account, initialize_mint,
+        initialize_multisig, mint_to, revoke, set_authority, transfer, MAX_SIGNERS,
     };
     use solana_sdk::{
         account::Account as SolanaAccount, account_info::create_is_signer_account_infos,
@@ -2234,6 +2277,58 @@ mod tests {
         )
         .unwrap();
 
+        // freeze account
+        let account3_key = pubkey_rand();
+        let mut account3_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
+        let mint2_key = pubkey_rand();
+        let mut mint2_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
+        do_process_instruction(
+            initialize_account(&program_id, &account3_key, &mint2_key, &owner_key).unwrap(),
+            vec![
+                &mut account3_account,
+                &mut mint2_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        do_process_instruction(
+            initialize_mint(
+                &program_id,
+                &mint2_key,
+                Some(&account3_key),
+                Some(&multisig_key),
+                1000,
+                2,
+                false,
+                true,
+            )
+            .unwrap(),
+            vec![
+                &mut mint2_account,
+                &mut account3_account,
+                &mut multisig_account,
+            ],
+        )
+        .unwrap();
+        let account_info_iter = &mut signer_accounts.iter_mut();
+        do_process_instruction(
+            freeze_account(
+                &program_id,
+                &account3_key,
+                &mint2_key,
+                &multisig_key,
+                &[&signer_keys[0]],
+            )
+            .unwrap(),
+            vec![
+                &mut account3_account,
+                &mut mint2_account,
+                &mut multisig_account,
+                &mut account_info_iter.next().unwrap(),
+            ],
+        )
+        .unwrap();
+
         // do SetAuthority on mint
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
@@ -2915,5 +3010,77 @@ mod tests {
                 vec![&mut account_account, &mut owner_account,],
             )
         );
+    }
+
+    #[test]
+    fn test_freeze_account() {
+        let program_id = pubkey_rand();
+        let account_key = pubkey_rand();
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
+        let account_owner_key = pubkey_rand();
+        let mut account_owner_account = SolanaAccount::default();
+        let owner_key = pubkey_rand();
+        let mut owner_account = SolanaAccount::default();
+        let owner2_key = pubkey_rand();
+        let mut owner2_account = SolanaAccount::default();
+        let mint_key = pubkey_rand();
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
+
+        // create account
+        do_process_instruction(
+            initialize_account(&program_id, &account_key, &mint_key, &account_owner_key).unwrap(),
+            vec![
+                &mut account_account,
+                &mut mint_account,
+                &mut account_owner_account,
+            ],
+        )
+        .unwrap();
+
+        // create new mint with owner different from account
+        do_process_instruction(
+            initialize_mint(
+                &program_id,
+                &mint_key,
+                Some(&account_key),
+                Some(&owner_key),
+                1000,
+                2,
+                false,
+                false,
+            )
+            .unwrap(),
+            vec![&mut mint_account, &mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // mint cannot freeze
+        assert_eq!(
+            Err(TokenError::CannotFreeze.into()),
+            do_process_instruction(
+                freeze_account(&program_id, &account_key, &mint_key, &owner_key, &[]).unwrap(),
+                vec![&mut account_account, &mut mint_account, &mut owner_account],
+            )
+        );
+
+        // missing freeze_authority
+        let mint: &mut Mint = state::unpack(&mut mint_account.data).unwrap();
+        mint.freeze_authority = COption::Some(owner_key);
+        assert_eq!(
+            Err(TokenError::OwnerMismatch.into()),
+            do_process_instruction(
+                freeze_account(&program_id, &account_key, &mint_key, &owner2_key, &[]).unwrap(),
+                vec![&mut account_account, &mut mint_account, &mut owner2_account],
+            )
+        );
+
+        // freeze
+        do_process_instruction(
+            freeze_account(&program_id, &account_key, &mint_key, &owner_key, &[]).unwrap(),
+            vec![&mut account_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+        let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
+        assert_eq!(account.is_initialized, AccountState::Frozen);
     }
 }

@@ -195,6 +195,22 @@ pub enum TokenInstruction {
     ///   2. `[]` The account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts.
     CloseAccount,
+    /// Freeze an account, using the Mint's freeze_authority, if set.
+    /// Native accounts cannot be frozen
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner
+    ///   0. `[writable]` The account to freeze.
+    ///   1. '[]' The token mint.
+    ///   2. `[signer]` The mint freeze authority.
+    ///
+    ///   * Multisignature owner
+    ///   0. `[writable]` The account to freeze.
+    ///   1. '[]' The token mint.
+    ///   2. `[]` The mint's multisignature freeze authority.
+    ///   3. ..3+M '[signer]' M signer accounts.
+    FreezeAccount,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -281,6 +297,7 @@ impl TokenInstruction {
                 Self::Burn { amount }
             }
             9 => Self::CloseAccount,
+            10 => Self::FreezeAccount,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -382,6 +399,10 @@ impl TokenInstruction {
             }
             Self::CloseAccount => {
                 output[output_len] = 9;
+                output_len += size_of::<u8>();
+            }
+            Self::FreezeAccount => {
+                output[output_len] = 10;
                 output_len += size_of::<u8>();
             }
         }
@@ -681,6 +702,34 @@ pub fn close_account(
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
     accounts.push(AccountMeta::new(*destination_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a `FreezeAccount` instruction.
+pub fn freeze_account(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::FreezeAccount.pack()?;
+
+    let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(*mint_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
         signer_pubkeys.is_empty(),
