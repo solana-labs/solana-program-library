@@ -47,7 +47,7 @@ pub struct Account {
 }
 impl IsInitialized for Account {
     fn is_initialized(&self) -> bool {
-        self.is_initialized == AccountState::Initialized
+        self.is_initialized != AccountState::Uninitialized
     }
 }
 

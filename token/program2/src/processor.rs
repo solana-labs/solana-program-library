@@ -159,6 +159,11 @@ impl Processor {
         if source_account.mint != dest_account.mint {
             return Err(TokenError::MintMismatch.into());
         }
+        if source_account.is_initialized == AccountState::Frozen
+            || dest_account.is_initialized == AccountState::Frozen
+        {
+            return Err(TokenError::AccountFrozen.into());
+        }
 
         match source_account.delegate {
             COption::Some(ref delegate) if authority_info.key == delegate => {
@@ -212,6 +217,10 @@ impl Processor {
         let delegate_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
 
+        if source_account.is_initialized == AccountState::Frozen {
+            return Err(TokenError::AccountFrozen.into());
+        }
+
         Self::validate_owner(
             program_id,
             &source_account.owner,
@@ -233,6 +242,10 @@ impl Processor {
         let mut source_data = source_account_info.data.borrow_mut();
         let mut source_account: &mut Account = state::unpack(&mut source_data)?;
         let owner_info = next_account_info(account_info_iter)?;
+
+        if source_account.is_initialized == AccountState::Frozen {
+            return Err(TokenError::AccountFrozen.into());
+        }
 
         Self::validate_owner(
             program_id,
@@ -264,6 +277,10 @@ impl Processor {
             }
             let mut account_data = account_info.data.borrow_mut();
             let mut account: &mut Account = state::unpack(&mut account_data)?;
+
+            if account.is_initialized == AccountState::Frozen {
+                return Err(TokenError::AccountFrozen.into());
+            }
 
             Self::validate_owner(
                 program_id,
@@ -325,6 +342,10 @@ impl Processor {
         let mut dest_account_data = dest_account_info.data.borrow_mut();
         let mut dest_account: &mut Account = state::unpack(&mut dest_account_data)?;
 
+        if dest_account.is_initialized == AccountState::Frozen {
+            return Err(TokenError::AccountFrozen.into());
+        }
+
         if dest_account.is_native {
             return Err(TokenError::NativeNotSupported.into());
         }
@@ -370,6 +391,9 @@ impl Processor {
         }
         if source_account.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
+        }
+        if source_account.is_initialized == AccountState::Frozen {
+            return Err(TokenError::AccountFrozen.into());
         }
 
         match source_account.delegate {
@@ -553,6 +577,7 @@ impl PrintProgramError for TokenError {
                 info!("Error: Account does not support specified authority type")
             }
             TokenError::CannotFreeze => info!("Error: This token mint cannot freeze accounts"),
+            TokenError::AccountFrozen => info!("Error: Account is frozen"),
         }
     }
 }
@@ -1638,7 +1663,17 @@ mod tests {
 
         // create mint with owner and freeze_authority
         do_process_instruction(
-            initialize_mint(&program_id, &mint3_key, None, Some(&owner_key), 0, 2, true).unwrap(),
+            initialize_mint(
+                &program_id,
+                &mint3_key,
+                None,
+                Some(&owner_key),
+                0,
+                2,
+                false,
+                true,
+            )
+            .unwrap(),
             vec![&mut mint3_account, &mut owner_account],
         )
         .unwrap();
@@ -2709,6 +2744,175 @@ mod tests {
                     &mut account_account,
                     &mut owner2_account,
                 ],
+            )
+        );
+    }
+
+    #[test]
+    fn test_frozen() {
+        let program_id = pubkey_rand();
+        let account_key = pubkey_rand();
+        let mut account_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
+        let account2_key = pubkey_rand();
+        let mut account2_account = SolanaAccount::new(0, size_of::<Account>(), &program_id);
+        let owner_key = pubkey_rand();
+        let mut owner_account = SolanaAccount::default();
+        let mint_key = pubkey_rand();
+        let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
+
+        // create account
+        do_process_instruction(
+            initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
+            vec![&mut account_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // create another account
+        do_process_instruction(
+            initialize_account(&program_id, &account2_key, &mint_key, &owner_key).unwrap(),
+            vec![&mut account2_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // create new mint and fund first account
+        do_process_instruction(
+            initialize_mint(
+                &program_id,
+                &mint_key,
+                Some(&account_key),
+                None,
+                1000,
+                2,
+                true,
+                false,
+            )
+            .unwrap(),
+            vec![&mut mint_account, &mut account_account],
+        )
+        .unwrap();
+
+        // no transfer if either account is frozen
+        let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
+        account.is_initialized = AccountState::Frozen;
+        assert_eq!(
+            Err(TokenError::AccountFrozen.into()),
+            do_process_instruction(
+                transfer(
+                    &program_id,
+                    &account_key,
+                    &account2_key,
+                    &owner_key,
+                    &[],
+                    500,
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account2_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
+        account.is_initialized = AccountState::Initialized;
+        let account2: &mut Account = state::unpack(&mut account2_account.data).unwrap();
+        account2.is_initialized = AccountState::Frozen;
+        assert_eq!(
+            Err(TokenError::AccountFrozen.into()),
+            do_process_instruction(
+                transfer(
+                    &program_id,
+                    &account_key,
+                    &account2_key,
+                    &owner_key,
+                    &[],
+                    500,
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account2_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // no approve if account is frozen
+        let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
+        account.is_initialized = AccountState::Frozen;
+        let delegate_key = pubkey_rand();
+        let mut delegate_account = SolanaAccount::default();
+        assert_eq!(
+            Err(TokenError::AccountFrozen.into()),
+            do_process_instruction(
+                approve(
+                    &program_id,
+                    &account_key,
+                    &delegate_key,
+                    &owner_key,
+                    &[],
+                    100
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut delegate_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // no revoke if account is frozen
+        let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
+        account.delegate = COption::Some(delegate_key);
+        account.delegated_amount = 100;
+        assert_eq!(
+            Err(TokenError::AccountFrozen.into()),
+            do_process_instruction(
+                revoke(&program_id, &account_key, &owner_key, &[]).unwrap(),
+                vec![&mut account_account, &mut owner_account,],
+            )
+        );
+
+        // no set owner if account is frozen
+        let new_owner_key = pubkey_rand();
+        let mut new_owner_account = SolanaAccount::default();
+        assert_eq!(
+            Err(TokenError::AccountFrozen.into()),
+            do_process_instruction(
+                set_authority(
+                    &program_id,
+                    &account_key,
+                    &new_owner_key,
+                    AuthorityType::Owner,
+                    &owner_key,
+                    &[]
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut new_owner_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // no mint_to if destination account is frozen
+        assert_eq!(
+            Err(TokenError::AccountFrozen.into()),
+            do_process_instruction(
+                mint_to(&program_id, &mint_key, &account_key, &owner_key, &[], 100).unwrap(),
+                vec![&mut mint_account, &mut account_account, &mut owner_account,],
+            )
+        );
+
+        // no burn if account is frozen
+        assert_eq!(
+            Err(TokenError::AccountFrozen.into()),
+            do_process_instruction(
+                burn(&program_id, &account_key, &owner_key, &[], 100).unwrap(),
+                vec![&mut account_account, &mut owner_account,],
             )
         );
     }

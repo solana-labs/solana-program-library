@@ -55,6 +55,9 @@ pub enum TokenError {
     /// This token mint cannot freeze accounts.
     #[error("This token mint cannot freeze accounts")]
     CannotFreeze,
+    /// Account is frozen; all account operations will fail
+    #[error("Account is frozen")]
+    AccountFrozen,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
