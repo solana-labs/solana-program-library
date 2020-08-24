@@ -71,7 +71,7 @@ async function loadProgram(connection: Connection, path: string): Promise<Public
   const from = await newAccountWithLamports(connection, balanceNeeded);
   const program_account = new Account();
   console.log('Loading program:', path);
-  await BpfLoader.load(connection, from, program_account, data);
+  await BpfLoader.load(connection, from, program_account, data, 1);
   return program_account.publicKey;
 }
 

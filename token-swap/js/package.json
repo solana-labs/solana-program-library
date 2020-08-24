@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/solana-labs/solana-program-library"
   },
-  "testnetDefaultChannel": "v1.3.2",
+  "testnetDefaultChannel": "v1.3.4",
   "scripts": {
     "start": "babel-node --ignore node_modules cli/main.js",
     "lint": "npm run pretty && eslint .",
@@ -29,7 +29,7 @@
   "license": "MIT",
   "dependencies": {
     "@babel/runtime": "^7.11.2",
-    "@solana/web3.js": "^0.71.1",
+    "@solana/web3.js": "^0.71.6",
     "bn.js": "^5.0.0",
     "buffer-layout": "^1.2.0",
     "dotenv": "8.2.0",
