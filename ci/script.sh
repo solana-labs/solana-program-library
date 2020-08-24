@@ -66,41 +66,35 @@ done
 
 # Test token js bindings
 js_token() {
-  (
-    set -x
-    cd token/js
-    time npm install
-    time npm run lint
-    time npm run flow
-    tsc module.d.ts
+  cd token/js
+  time npm install || exit $?
+  time npm run lint || exit $?
+  time npm run flow || exit $?
+  tsc module.d.ts || exit $?
 
-    npm run cluster:localnet
-    npm run localnet:down
-    npm run localnet:update
-    npm run localnet:up
-    time npm run start
-    npm run localnet:down
-  )
+  npm run cluster:localnet || exit $?
+  npm run localnet:down
+  npm run localnet:update || exit $?
+  npm run localnet:up || exit $?
+  time npm run start || exit $?
+  npm run localnet:down
 }
 _ js_token
 
 # Test token-swap js bindings
 js_token_swap() {
-  (
-    set -x
-    cd token-swap/js
-    time npm install
-    time npm run lint
-    time npm run flow
+  cd token-swap/js
+  time npm install || exit $?
+  time npm run lint || exit $?
+  time npm run flow || exit $?
 
-    # TODO: Uncomment once https://github.com/solana-labs/solana/issues/11465 is resolved
-    # npm run cluster:localnet
-    # npm run localnet:down
-    # npm run localnet:update
-    # npm run localnet:up
-    # npm run start
-    # npm run localnet:down
-  )
+  # TODO: Uncomment once https://github.com/solana-labs/solana/issues/11465 is resolved
+  # npm run cluster:localnet || exit $?
+  # npm run localnet:down
+  # npm run localnet:update || exit $?
+  # npm run localnet:up || exit $?
+  # npm run start || exit $?
+  # npm run localnet:down
 }
 _ js_token_swap
 
