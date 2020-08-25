@@ -44,6 +44,8 @@ pub struct Account {
     pub is_native: bool,
     /// The amount delegated
     pub delegated_amount: u64,
+    /// Optional authority to close the account.
+    pub close_authority: COption<Pubkey>,
 }
 impl Account {
     /// Checks if account is frozen

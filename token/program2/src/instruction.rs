@@ -451,6 +451,8 @@ pub enum AuthorityType {
     FreezeAccount,
     /// Holder of a given token account
     AccountHolder,
+    /// Authority to close a token account
+    CloseAccount,
 }
 
 impl AuthorityType {
@@ -459,6 +461,7 @@ impl AuthorityType {
             AuthorityType::MintTokens => 0,
             AuthorityType::FreezeAccount => 1,
             AuthorityType::AccountHolder => 2,
+            AuthorityType::CloseAccount => 3,
         }
     }
 
@@ -467,6 +470,7 @@ impl AuthorityType {
             0 => Ok(AuthorityType::MintTokens),
             1 => Ok(AuthorityType::FreezeAccount),
             2 => Ok(AuthorityType::AccountHolder),
+            3 => Ok(AuthorityType::CloseAccount),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

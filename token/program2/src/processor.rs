@@ -254,9 +254,6 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
 
         if account_info.data_len() == size_of::<Account>() {
-            if authority_type != AuthorityType::AccountHolder {
-                return Err(TokenError::AuthorityTypeNotSupported.into());
-            }
             let mut account_data = account_info.data.borrow_mut();
             let mut account: &mut Account = state::unpack(&mut account_data)?;
 
@@ -264,17 +261,34 @@ impl Processor {
                 return Err(TokenError::AccountFrozen.into());
             }
 
-            Self::validate_owner(
-                program_id,
-                &account.owner,
-                authority_info,
-                account_info_iter.as_slice(),
-            )?;
+            match authority_type {
+                AuthorityType::AccountHolder => {
+                    Self::validate_owner(
+                        program_id,
+                        &account.owner,
+                        authority_info,
+                        account_info_iter.as_slice(),
+                    )?;
 
-            if let COption::Some(authority) = new_authority {
-                account.owner = authority;
-            } else {
-                return Err(TokenError::InvalidInstruction.into());
+                    if let COption::Some(authority) = new_authority {
+                        account.owner = authority;
+                    } else {
+                        return Err(TokenError::InvalidInstruction.into());
+                    }
+                }
+                AuthorityType::CloseAccount => {
+                    let authority = account.close_authority.unwrap_or(account.owner);
+                    Self::validate_owner(
+                        program_id,
+                        &authority,
+                        authority_info,
+                        account_info_iter.as_slice(),
+                    )?;
+                    account.close_authority = new_authority;
+                }
+                _ => {
+                    return Err(TokenError::AuthorityTypeNotSupported.into());
+                }
             }
         } else if account_info.data_len() == size_of::<Mint>() {
             let mut account_data = account_info.data.borrow_mut();
@@ -282,6 +296,8 @@ impl Processor {
 
             match authority_type {
                 AuthorityType::MintTokens => {
+                    // Once a mint's supply is fixed, it cannot be undone by setting a new
+                    // mint_authority
                     let mint_authority = mint
                         .mint_authority
                         .ok_or(Into::<ProgramError>::into(TokenError::FixedSupply))?;
@@ -294,6 +310,8 @@ impl Processor {
                     mint.mint_authority = new_authority;
                 }
                 AuthorityType::FreezeAccount => {
+                    // Once a mint's freeze authority is disabled, it cannot be re-enabled by
+                    // setting a new freeze_authority
                     let freeze_authority = mint
                         .freeze_authority
                         .ok_or(Into::<ProgramError>::into(TokenError::MintCannotFreeze))?;
@@ -429,13 +447,16 @@ impl Processor {
         let mut source_data = source_account_info.data.borrow_mut();
         let source_account: &mut Account = state::unpack(&mut source_data)?;
 
-        if !source_account.is_native {
-            return Err(TokenError::NonNativeNotSupported.into());
+        if !source_account.is_native && source_account.amount != 0 {
+            return Err(TokenError::NonNativeHasBalance.into());
         }
 
+        let authority = source_account
+            .close_authority
+            .unwrap_or(source_account.owner);
         Self::validate_owner(
             program_id,
-            &source_account.owner,
+            &authority,
             authority_info,
             account_info_iter.as_slice(),
         )?;
@@ -626,8 +647,8 @@ impl PrintProgramError for TokenError {
             TokenError::NativeNotSupported => {
                 info!("Error: Instruction does not support native tokens")
             }
-            TokenError::NonNativeNotSupported => {
-                info!("Error: Instruction does not support non-native tokens")
+            TokenError::NonNativeHasBalance => {
+                info!("Error: Non-native account can only be closed if its balance is zero")
             }
             TokenError::InvalidInstruction => info!("Error: Invalid instruction"),
             TokenError::InvalidState => info!("Error: Invalid account state for operation"),
@@ -1444,7 +1465,7 @@ mod tests {
                     &[]
                 )
                 .unwrap(),
-                vec![&mut account_account, &mut owner_account,],
+                vec![&mut account_account, &mut owner_account],
             )
         );
 
@@ -1479,7 +1500,7 @@ mod tests {
                     &[]
                 )
                 .unwrap(),
-                vec![&mut account_account, &mut owner2_account,],
+                vec![&mut account_account, &mut owner2_account],
             )
         );
 
@@ -1512,7 +1533,24 @@ mod tests {
                     &[],
                 )
                 .unwrap(),
-                vec![&mut account_account, &mut owner_account,],
+                vec![&mut account_account, &mut owner_account],
+            )
+        );
+
+        // account owner may not be set to None
+        assert_eq!(
+            Err(TokenError::InvalidInstruction.into()),
+            do_process_instruction(
+                set_authority(
+                    &program_id,
+                    &account_key,
+                    None,
+                    AuthorityType::AccountHolder,
+                    &owner_key,
+                    &[],
+                )
+                .unwrap(),
+                vec![&mut account_account, &mut owner_account],
             )
         );
 
@@ -1528,6 +1566,36 @@ mod tests {
             )
             .unwrap(),
             vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // set close_authority
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &account_key,
+                Some(&owner2_key),
+                AuthorityType::CloseAccount,
+                &owner2_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut account_account, &mut owner2_account],
+        )
+        .unwrap();
+
+        // close_authority may be set to None
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &account_key,
+                None,
+                AuthorityType::CloseAccount,
+                &owner2_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut account_account, &mut owner2_account],
         )
         .unwrap();
 
@@ -2486,12 +2554,28 @@ mod tests {
             )
         );
 
-        // initialize non-native account
+        // initialize and mint to non-native account
         do_process_instruction(
             initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
+        do_process_instruction(
+            initialize_mint(
+                &program_id,
+                &mint_key,
+                Some(&account_key),
+                None,
+                None,
+                42,
+                2,
+            )
+            .unwrap(),
+            vec![&mut mint_account, &mut account_account, &mut owner_account],
+        )
+        .unwrap();
+        let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
+        assert_eq!(account.amount, 42);
 
         // initialize native account
         do_process_instruction(
@@ -2509,9 +2593,9 @@ mod tests {
         assert!(account.is_native);
         assert_eq!(account.amount, 2);
 
-        // close non-native account
+        // close non-native account with balance
         assert_eq!(
-            Err(TokenError::NonNativeNotSupported.into()),
+            Err(TokenError::NonNativeHasBalance.into()),
             do_process_instruction(
                 close_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
                 vec![
@@ -2522,6 +2606,94 @@ mod tests {
             )
         );
         assert_eq!(account_account.lamports, 42);
+
+        // empty account
+        do_process_instruction(
+            burn(&program_id, &account_key, &owner_key, &[], 42).unwrap(),
+            vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // wrong owner
+        assert_eq!(
+            Err(TokenError::OwnerMismatch.into()),
+            do_process_instruction(
+                close_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account3_account,
+                    &mut owner2_account,
+                ],
+            )
+        );
+
+        // close account
+        do_process_instruction(
+            close_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
+            vec![
+                &mut account_account,
+                &mut account3_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account: &mut Account = state::unpack_unchecked(&mut account_account.data).unwrap();
+        assert_eq!(account_account.lamports, 0);
+        assert_eq!(account.amount, 0);
+        assert_eq!(account3_account.lamports, 44);
+
+        // fund and initialize new non-native account to test close authority
+        let account_key = pubkey_rand();
+        let mut account_account = SolanaAccount::new(42, size_of::<Account>(), &program_id);
+        let owner2_key = pubkey_rand();
+        let mut owner2_account = SolanaAccount::new(42, size_of::<Account>(), &program_id);
+        do_process_instruction(
+            initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
+            vec![&mut account_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+        account_account.lamports = 2;
+
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &account_key,
+                Some(&owner2_key),
+                AuthorityType::CloseAccount,
+                &owner_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // account owner cannot authorize close if close_authority is set
+        assert_eq!(
+            Err(TokenError::OwnerMismatch.into()),
+            do_process_instruction(
+                close_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account3_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // close non-native account with close_authority
+        do_process_instruction(
+            close_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
+            vec![
+                &mut account_account,
+                &mut account3_account,
+                &mut owner2_account,
+            ],
+        )
+        .unwrap();
+        assert_eq!(account_account.lamports, 0);
+        assert_eq!(account.amount, 0);
+        assert_eq!(account3_account.lamports, 46);
 
         // close native account
         do_process_instruction(
@@ -2535,8 +2707,9 @@ mod tests {
         .unwrap();
         let account: &mut Account = state::unpack_unchecked(&mut account2_account.data).unwrap();
         assert!(account.is_native);
+        assert_eq!(account_account.lamports, 0);
         assert_eq!(account.amount, 0);
-        assert_eq!(account3_account.lamports, 4);
+        assert_eq!(account3_account.lamports, 48);
     }
 
     #[test]
