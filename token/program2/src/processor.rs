@@ -464,9 +464,7 @@ impl Processor {
         if mint_info.key != &source_account.mint {
             return Err(TokenError::MintMismatch.into());
         }
-        if freeze && source_account.state != AccountState::Initialized
-            || !freeze && !source_account.is_frozen()
-        {
+        if freeze && source_account.is_frozen() || !freeze && !source_account.is_frozen() {
             return Err(TokenError::InvalidState.into());
         }
 

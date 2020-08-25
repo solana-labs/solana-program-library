@@ -147,7 +147,7 @@ pub enum TokenInstruction {
     ///   * Single authority
     ///   0. `[writable]` The mint.
     ///   1. `[writable]` The account to mint tokens to.
-    ///   2. `[signer]` The mint's mint-tokens authority.
+    ///   2. `[signer]` The mint's minting authority.
     ///
     ///   * Multisignature authority
     ///   0. `[writable]` The mint.
