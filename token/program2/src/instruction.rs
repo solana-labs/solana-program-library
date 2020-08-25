@@ -303,12 +303,7 @@ impl TokenInstruction {
                 if input.len() < size_of::<u8>() + size_of::<u8>() {
                     return Err(TokenError::InvalidInstruction.into());
                 }
-                let authority_type = match input[1] {
-                    0 => AuthorityType::MintTokens,
-                    1 => AuthorityType::FreezeAccount,
-                    2 => AuthorityType::AccountHolder,
-                    _ => return Err(TokenError::InvalidInstruction.into()),
-                };
+                let authority_type = AuthorityType::from(input[1])?;
                 Self::SetAuthority { authority_type }
             }
             7 => {
@@ -436,12 +431,7 @@ impl TokenInstruction {
                 output[output_len] = 6;
                 output_len += size_of::<u8>();
 
-                let byte = match authority_type {
-                    AuthorityType::MintTokens => 0,
-                    AuthorityType::FreezeAccount => 1,
-                    AuthorityType::AccountHolder => 2,
-                };
-                output[output_len] = byte;
+                output[output_len] = authority_type.into();
                 output_len += size_of::<u8>();
             }
             Self::MintTo { amount } => {
@@ -492,6 +482,25 @@ pub enum AuthorityType {
     FreezeAccount,
     /// Holder of a given token account
     AccountHolder,
+}
+
+impl AuthorityType {
+    fn into(&self) -> u8 {
+        match self {
+            AuthorityType::MintTokens => 0,
+            AuthorityType::FreezeAccount => 1,
+            AuthorityType::AccountHolder => 2,
+        }
+    }
+
+    fn from(index: u8) -> Result<Self, ProgramError> {
+        match index {
+            0 => Ok(AuthorityType::MintTokens),
+            1 => Ok(AuthorityType::FreezeAccount),
+            2 => Ok(AuthorityType::AccountHolder),
+            _ => Err(TokenError::InvalidInstruction.into()),
+        }
+    }
 }
 
 /// Creates a 'InitializeMint' instruction.
