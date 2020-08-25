@@ -322,7 +322,7 @@ export class Token {
     let keys = [
       {pubkey: mintAccount.publicKey, isSigner: false, isWritable: true},
     ];
-    if (supply.toNumber() != 0) {
+    if (supply.cmp(0) != 0) {
       keys.push({
         pubkey: initialAccountPublicKey,
         isSigner: false,
