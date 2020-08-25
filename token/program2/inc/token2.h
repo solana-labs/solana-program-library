@@ -208,13 +208,11 @@ typedef enum Token_TokenInstruction_Tag {
      *
      *   * Single authority
      *   0. `[writable]` The mint or account to change the authority of.
-     *   1. `[]` The new authority/multisignature.
-     *   2. `[signer]` The current authority of the mint or account.
+     *   1. `[signer]` The current authority of the mint or account.
      *
      *   * Multisignature authority
      *   0. `[writable]` The mint or account to change the authority of.
-     *   1. `[]` The new authority/multisignature.
-     *   2. `[]` The mint's or account's multisignature authority.
+     *   1. `[]` The mint's or account's multisignature authority.
      *   3. ..3+M '[signer]' M signer accounts
      */
     Token_TokenInstruction_SetAuthority,
@@ -226,7 +224,7 @@ typedef enum Token_TokenInstruction_Tag {
      *   * Single authority
      *   0. `[writable]` The mint.
      *   1. `[writable]` The account to mint tokens to.
-     *   2. `[signer]` The mint's mint-tokens authority.
+     *   2. `[signer]` The mint's minting authority.
      *
      *   * Multisignature authority
      *   0. `[writable]` The mint.
@@ -270,8 +268,7 @@ typedef enum Token_TokenInstruction_Tag {
      */
     Token_TokenInstruction_CloseAccount,
     /**
-     * Freeze an Initialized account or unfreeze a Frozen account, using the Mint's
-     * freeze_authority (if set).
+     * Freeze an Initialized account using the Mint's freeze_authority (if set).
      *
      * Accounts expected by this instruction:
      *
@@ -287,6 +284,23 @@ typedef enum Token_TokenInstruction_Tag {
      *   3. ..3+M '[signer]' M signer accounts.
      */
     Token_TokenInstruction_FreezeAccount,
+    /**
+     * Thaw a Frozen account using the Mint's freeze_authority (if set).
+     *
+     * Accounts expected by this instruction:
+     *
+     *   * Single owner
+     *   0. `[writable]` The account to freeze.
+     *   1. '[]' The token mint.
+     *   2. `[signer]` The mint freeze authority.
+     *
+     *   * Multisignature owner
+     *   0. `[writable]` The account to freeze.
+     *   1. '[]' The token mint.
+     *   2. `[]` The mint's multisignature freeze authority.
+     *   3. ..3+M '[signer]' M signer accounts.
+     */
+    Token_TokenInstruction_ThawAccount,
 } Token_TokenInstruction_Tag;
 
 typedef struct Token_TokenInstruction_Token_InitializeMint_Body {
@@ -335,6 +349,10 @@ typedef struct Token_TokenInstruction_Token_SetAuthority_Body {
      * The type of authority to update.
      */
     Token_AuthorityType authority_type;
+    /**
+     * The new authority
+     */
+    Token_COption_Pubkey new_authority;
 } Token_TokenInstruction_Token_SetAuthority_Body;
 
 typedef struct Token_TokenInstruction_Token_MintTo_Body {
@@ -351,14 +369,6 @@ typedef struct Token_TokenInstruction_Token_Burn_Body {
     uint64_t amount;
 } Token_TokenInstruction_Token_Burn_Body;
 
-typedef struct Token_TokenInstruction_Token_FreezeAccount_Body {
-    /**
-     * Explicitly: whether to freeze the account if it is Initialized. `false` means to
-     * unfreeze if the account is Frozen.
-     */
-    bool freeze;
-} Token_TokenInstruction_Token_FreezeAccount_Body;
-
 typedef struct Token_TokenInstruction {
     Token_TokenInstruction_Tag tag;
     union {
@@ -369,7 +379,6 @@ typedef struct Token_TokenInstruction {
         Token_TokenInstruction_Token_SetAuthority_Body set_authority;
         Token_TokenInstruction_Token_MintTo_Body mint_to;
         Token_TokenInstruction_Token_Burn_Body burn;
-        Token_TokenInstruction_Token_FreezeAccount_Body freeze_account;
     };
 } Token_TokenInstruction;
 
@@ -419,9 +428,9 @@ typedef struct Token_Account {
      */
     Token_COption_Pubkey delegate;
     /**
-     * Whether the account has been initialized or frozen
+     * The account's state
      */
-    Token_AccountState is_initialized;
+    Token_AccountState state;
     /**
      * Is this a native token
      */
