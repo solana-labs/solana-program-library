@@ -452,7 +452,7 @@ impl Processor {
     pub fn process_toggle_freeze_account(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        desired_account_state: AccountState,
+        freeze: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
@@ -468,9 +468,7 @@ impl Processor {
         if mint_info.key != &source_account.mint {
             return Err(TokenError::MintMismatch.into());
         }
-        if desired_account_state == AccountState::Frozen && source_account.is_frozen()
-            || desired_account_state == AccountState::Initialized && !source_account.is_frozen()
-        {
+        if freeze && source_account.is_frozen() || !freeze && !source_account.is_frozen() {
             return Err(TokenError::InvalidState.into());
         }
 
@@ -491,7 +489,11 @@ impl Processor {
             }
         }
 
-        source_account.state = desired_account_state;
+        source_account.state = if freeze {
+            AccountState::Frozen
+        } else {
+            AccountState::Initialized
+        };
 
         Ok(())
     }
@@ -557,11 +559,11 @@ impl Processor {
             }
             TokenInstruction::FreezeAccount => {
                 info!("Instruction: FreezeAccount");
-                Self::process_toggle_freeze_account(program_id, accounts, AccountState::Frozen)
+                Self::process_toggle_freeze_account(program_id, accounts, true)
             }
             TokenInstruction::ThawAccount => {
                 info!("Instruction: FreezeAccount");
-                Self::process_toggle_freeze_account(program_id, accounts, AccountState::Initialized)
+                Self::process_toggle_freeze_account(program_id, accounts, false)
             }
         }
     }
