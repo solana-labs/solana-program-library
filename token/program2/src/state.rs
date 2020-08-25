@@ -8,14 +8,16 @@ use std::mem::size_of;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Mint {
-    /// Optional owner, used to mint new tokens.  The owner may only
-    /// be provided during mint creation.  If no owner is present then the mint
-    /// has a fixed supply and no further tokens may be minted.
-    pub owner: COption<Pubkey>,
+    /// Optional authority used to mint new tokens. The mint authority may only be provided during
+    /// mint creation. If no mint authority is present then the mint has a fixed supply and no
+    /// further tokens may be minted.
+    pub mint_authority: COption<Pubkey>,
     /// Number of base 10 digits to the right of the decimal place.
     pub decimals: u8,
     /// Is `true` if this structure has been initialized
     pub is_initialized: bool,
+    /// Optional authority to freeze token accounts.
+    pub freeze_authority: COption<Pubkey>,
 }
 impl IsInitialized for Mint {
     fn is_initialized(&self) -> bool {
@@ -36,16 +38,42 @@ pub struct Account {
     /// If `delegate` is `Some` then `delegated_amount` represents
     /// the amount authorized by the delegate
     pub delegate: COption<Pubkey>,
-    /// Is `true` if this structure has been initialized
-    pub is_initialized: bool,
+    /// The account's state
+    pub state: AccountState,
     /// Is this a native token
     pub is_native: bool,
     /// The amount delegated
     pub delegated_amount: u64,
 }
+impl Account {
+    /// Checks if account is frozen
+    pub fn is_frozen(&self) -> bool {
+        self.state == AccountState::Frozen
+    }
+}
 impl IsInitialized for Account {
     fn is_initialized(&self) -> bool {
-        self.is_initialized
+        self.state != AccountState::Uninitialized
+    }
+}
+
+/// Account state.
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AccountState {
+    /// Account is not yet initialized
+    Uninitialized,
+    /// Account is initialized; the account owner and/or delegate may perform permitted operations
+    /// on this account
+    Initialized,
+    /// Account has been frozen by the mint freeze authority. Neither the account owner nor
+    /// the delegate are able to perform operations on this account.
+    Frozen,
+}
+
+impl Default for AccountState {
+    fn default() -> Self {
+        AccountState::Uninitialized
     }
 }
 

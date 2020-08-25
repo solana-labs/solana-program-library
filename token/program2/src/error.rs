@@ -43,9 +43,21 @@ pub enum TokenError {
     /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
+    /// State is invalid for requested operation.
+    #[error("State is invalid for requested operation")]
+    InvalidState,
     /// Operation overflowed
     #[error("Operation overflowed")]
     Overflow,
+    /// Account does not support specified authority type.
+    #[error("Account does not support specified authority type")]
+    AuthorityTypeNotSupported,
+    /// This token mint cannot freeze accounts.
+    #[error("This token mint cannot freeze accounts")]
+    MintCannotFreeze,
+    /// Account is frozen; all account operations will fail
+    #[error("Account is frozen")]
+    AccountFrozen,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

@@ -1,6 +1,6 @@
 //! Instruction types
 
-use crate::error::TokenError;
+use crate::{error::TokenError, option::COption};
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
@@ -26,17 +26,18 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    ///   1.
-    ///      * If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
-    ///      * If supply is zero: `[]` The owner/multisignature of the mint.
-    ///   2. `[]` (optional) The owner/multisignature of the mint if supply is non-zero, if
-    ///                      present then further minting is supported.
+    ///   1. If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
     ///
     InitializeMint {
         /// Initial amount of tokens to mint.
         amount: u64,
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
+        /// The authority/multisignature to mint tokens, if supply is non-zero. If present,
+        /// further minting is supported.
+        mint_authority: COption<Pubkey>,
+        /// The freeze authority/multisignature of the mint.
+        freeze_authority: COption<Pubkey>,
     },
     /// Initializes a new account to hold tokens.  If this account is associated with the native mint
     /// then the token balance of the initialized account will be equal to the amount of SOL in the account.
@@ -121,34 +122,37 @@ pub enum TokenInstruction {
     ///   1. '[]' The source account's multisignature owner.
     ///   2. ..2+M '[signer]' M signer accounts
     Revoke,
-    /// Sets a new owner of a mint or account.
+    /// Sets a new authority of a mint or account.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   * Single owner
-    ///   0. `[writable]` The mint or account to change the owner of.
-    ///   1. `[]` The new owner/delegate/multisignature.
-    ///   2. `[signer]` The owner of the mint or account.
+    ///   * Single authority
+    ///   0. `[writable]` The mint or account to change the authority of.
+    ///   1. `[signer]` The current authority of the mint or account.
     ///
-    ///   * Multisignature owner
-    ///   0. `[writable]` The mint or account to change the owner of.
-    ///   1. `[]` The new owner/delegate/multisignature.
-    ///   2. `[]` The mint's or account's multisignature owner.
+    ///   * Multisignature authority
+    ///   0. `[writable]` The mint or account to change the authority of.
+    ///   1. `[]` The mint's or account's multisignature authority.
     ///   3. ..3+M '[signer]' M signer accounts
-    SetOwner,
+    SetAuthority {
+        /// The type of authority to update.
+        authority_type: AuthorityType,
+        /// The new authority
+        new_authority: COption<Pubkey>,
+    },
     /// Mints new tokens to an account.  The native mint does not support minting.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   * Single owner
+    ///   * Single authority
     ///   0. `[writable]` The mint.
     ///   1. `[writable]` The account to mint tokens to.
-    ///   2. `[signer]` The mint's owner.
+    ///   2. `[signer]` The mint's minting authority.
     ///
-    ///   * Multisignature owner
+    ///   * Multisignature authority
     ///   0. `[writable]` The mint.
     ///   1. `[writable]` The account to mint tokens to.
-    ///   2. `[]` The mint's multisignature owner.
+    ///   2. `[]` The mint's multisignature mint-tokens authority.
     ///   3. ..3+M '[signer]' M signer accounts.
     MintTo {
         /// The amount of new tokens to mint.
@@ -187,6 +191,36 @@ pub enum TokenInstruction {
     ///   2. `[]` The account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts.
     CloseAccount,
+    /// Freeze an Initialized account using the Mint's freeze_authority (if set).
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner
+    ///   0. `[writable]` The account to freeze.
+    ///   1. '[]' The token mint.
+    ///   2. `[signer]` The mint freeze authority.
+    ///
+    ///   * Multisignature owner
+    ///   0. `[writable]` The account to freeze.
+    ///   1. '[]' The token mint.
+    ///   2. `[]` The mint's multisignature freeze authority.
+    ///   3. ..3+M '[signer]' M signer accounts.
+    FreezeAccount,
+    /// Thaw a Frozen account using the Mint's freeze_authority (if set).
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner
+    ///   0. `[writable]` The account to freeze.
+    ///   1. '[]' The token mint.
+    ///   2. `[signer]` The mint freeze authority.
+    ///
+    ///   * Multisignature owner
+    ///   0. `[writable]` The account to freeze.
+    ///   1. '[]' The token mint.
+    ///   2. `[]` The mint's multisignature freeze authority.
+    ///   3. ..3+M '[signer]' M signer accounts.
+    ThawAccount,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -196,14 +230,37 @@ impl TokenInstruction {
         }
         Ok(match input[0] {
             0 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
+                if input.len()
+                    < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() + size_of::<bool>()
+                {
                     return Err(TokenError::InvalidInstruction.into());
                 }
+                let mut input_len = 0;
+                input_len += size_of::<u8>();
+
                 #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
-                let decimals =
-                    unsafe { *(&input[size_of::<u8>() + size_of::<u64>()] as *const u8) };
-                Self::InitializeMint { amount, decimals }
+                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
+                input_len += size_of::<u64>();
+                let decimals = unsafe { *(&input[input_len] as *const u8) };
+                input_len += size_of::<u8>();
+
+                let mint_authority = COption::unpack_or(
+                    input,
+                    &mut input_len,
+                    Into::<ProgramError>::into(TokenError::InvalidInstruction),
+                )?;
+                let freeze_authority = COption::unpack_or(
+                    input,
+                    &mut input_len,
+                    Into::<ProgramError>::into(TokenError::InvalidInstruction),
+                )?;
+
+                Self::InitializeMint {
+                    mint_authority,
+                    freeze_authority,
+                    amount,
+                    decimals,
+                }
             }
             1 => Self::InitializeAccount,
             2 => {
@@ -231,7 +288,26 @@ impl TokenInstruction {
                 Self::Approve { amount }
             }
             5 => Self::Revoke,
-            6 => Self::SetOwner,
+            6 => {
+                if input.len() < size_of::<u8>() + size_of::<u8>() {
+                    return Err(TokenError::InvalidInstruction.into());
+                }
+                let mut input_len = 0;
+                input_len += size_of::<u8>();
+                let authority_type = AuthorityType::from(input[1])?;
+                input_len += size_of::<u8>();
+
+                let new_authority = COption::unpack_or(
+                    input,
+                    &mut input_len,
+                    Into::<ProgramError>::into(TokenError::InvalidInstruction),
+                )?;
+
+                Self::SetAuthority {
+                    authority_type,
+                    new_authority,
+                }
+            }
             7 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
                     return Err(TokenError::InvalidInstruction.into());
@@ -249,6 +325,8 @@ impl TokenInstruction {
                 Self::Burn { amount }
             }
             9 => Self::CloseAccount,
+            10 => Self::FreezeAccount,
+            11 => Self::ThawAccount,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -258,7 +336,12 @@ impl TokenInstruction {
         let mut output = vec![0u8; size_of::<TokenInstruction>()];
         let mut output_len = 0;
         match self {
-            Self::InitializeMint { amount, decimals } => {
+            Self::InitializeMint {
+                mint_authority,
+                freeze_authority,
+                amount,
+                decimals,
+            } => {
                 output[output_len] = 0;
                 output_len += size_of::<u8>();
 
@@ -270,6 +353,9 @@ impl TokenInstruction {
                 let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
                 *value = *decimals;
                 output_len += size_of::<u8>();
+
+                mint_authority.pack(&mut output, &mut output_len);
+                freeze_authority.pack(&mut output, &mut output_len);
             }
             Self::InitializeAccount => {
                 output[output_len] = 1;
@@ -306,9 +392,17 @@ impl TokenInstruction {
                 output[output_len] = 5;
                 output_len += size_of::<u8>();
             }
-            Self::SetOwner => {
+            Self::SetAuthority {
+                authority_type,
+                new_authority,
+            } => {
                 output[output_len] = 6;
                 output_len += size_of::<u8>();
+
+                output[output_len] = authority_type.into();
+                output_len += size_of::<u8>();
+
+                new_authority.pack(&mut output, &mut output_len);
             }
             Self::MintTo { amount } => {
                 output[output_len] = 7;
@@ -332,10 +426,49 @@ impl TokenInstruction {
                 output[output_len] = 9;
                 output_len += size_of::<u8>();
             }
+            Self::FreezeAccount => {
+                output[output_len] = 10;
+                output_len += size_of::<u8>();
+            }
+            Self::ThawAccount => {
+                output[output_len] = 11;
+                output_len += size_of::<u8>();
+            }
         }
 
         output.truncate(output_len);
         Ok(output)
+    }
+}
+
+/// Specifies the authority type for SetAuthority instructions
+#[repr(u8)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum AuthorityType {
+    /// Authority to mint new tokens
+    MintTokens,
+    /// Authority to freeze any account associated with the Mint
+    FreezeAccount,
+    /// Holder of a given token account
+    AccountHolder,
+}
+
+impl AuthorityType {
+    fn into(&self) -> u8 {
+        match self {
+            AuthorityType::MintTokens => 0,
+            AuthorityType::FreezeAccount => 1,
+            AuthorityType::AccountHolder => 2,
+        }
+    }
+
+    fn from(index: u8) -> Result<Self, ProgramError> {
+        match index {
+            0 => Ok(AuthorityType::MintTokens),
+            1 => Ok(AuthorityType::FreezeAccount),
+            2 => Ok(AuthorityType::AccountHolder),
+            _ => Err(TokenError::InvalidInstruction.into()),
+        }
     }
 }
 
@@ -344,11 +477,20 @@ pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
     account_pubkey: Option<&Pubkey>,
-    owner_pubkey: Option<&Pubkey>,
+    mint_authority_pubkey: Option<&Pubkey>,
+    freeze_authority_pubkey: Option<&Pubkey>,
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::InitializeMint { amount, decimals }.pack()?;
+    let mint_authority = mint_authority_pubkey.cloned().into();
+    let freeze_authority = freeze_authority_pubkey.cloned().into();
+    let data = TokenInstruction::InitializeMint {
+        mint_authority,
+        freeze_authority,
+        amount,
+        decimals,
+    }
+    .pack()?;
 
     let mut accounts = vec![AccountMeta::new(*mint_pubkey, false)];
     if amount != 0 {
@@ -356,14 +498,6 @@ pub fn initialize_mint(
             Some(pubkey) => accounts.push(AccountMeta::new(*pubkey, false)),
             None => {
                 return Err(ProgramError::NotEnoughAccountKeys);
-            }
-        }
-    }
-    match owner_pubkey {
-        Some(pubkey) => accounts.push(AccountMeta::new_readonly(*pubkey, false)),
-        None => {
-            if amount == 0 {
-                return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
             }
         }
     }
@@ -509,19 +643,24 @@ pub fn revoke(
     })
 }
 
-/// Creates a `SetOwner` instruction.
-pub fn set_owner(
+/// Creates a `SetAuthority` instruction.
+pub fn set_authority(
     token_program_id: &Pubkey,
     owned_pubkey: &Pubkey,
-    new_owner_pubkey: &Pubkey,
+    new_authority_pubkey: Option<&Pubkey>,
+    authority_type: AuthorityType,
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::SetOwner.pack()?;
+    let new_authority = new_authority_pubkey.cloned().into();
+    let data = TokenInstruction::SetAuthority {
+        authority_type,
+        new_authority,
+    }
+    .pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*owned_pubkey, false));
-    accounts.push(AccountMeta::new_readonly(*new_owner_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
         signer_pubkeys.is_empty(),
@@ -621,6 +760,62 @@ pub fn close_account(
     })
 }
 
+/// Creates a `FreezeAccount` instruction.
+pub fn freeze_account(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::FreezeAccount.pack()?;
+
+    let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(*mint_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a `ThawAccount` instruction.
+pub fn thaw_account(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::ThawAccount.pack()?;
+
+    let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(*mint_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     !(index < MIN_SIGNERS || index > MAX_SIGNERS)
@@ -635,9 +830,27 @@ mod test {
         let check = TokenInstruction::InitializeMint {
             amount: 1,
             decimals: 2,
+            mint_authority: COption::None,
+            freeze_authority: COption::None,
         };
         let packed = check.pack().unwrap();
-        let expect = Vec::from([0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
+        let expect = Vec::from([0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMint {
+            amount: 1,
+            decimals: 2,
+            mint_authority: COption::Some(Pubkey::new(&[2u8; 32])),
+            freeze_authority: COption::Some(Pubkey::new(&[3u8; 32])),
+        };
+        let packed = check.pack().unwrap();
+        let mut expect = vec![0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2];
+        expect.extend_from_slice(&[1]);
+        expect.extend_from_slice(&[2u8; 32]);
+        expect.extend_from_slice(&[1]);
+        expect.extend_from_slice(&[3u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
@@ -677,9 +890,14 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::SetOwner;
+        let check = TokenInstruction::SetAuthority {
+            authority_type: AuthorityType::FreezeAccount,
+            new_authority: COption::Some(Pubkey::new(&[4u8; 32])),
+        };
         let packed = check.pack().unwrap();
-        let expect = Vec::from([6u8]);
+        let mut expect = Vec::from([6u8, 1]);
+        expect.extend_from_slice(&[1]);
+        expect.extend_from_slice(&[4u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
@@ -701,6 +919,20 @@ mod test {
         let check = TokenInstruction::CloseAccount;
         let packed = check.pack().unwrap();
         let expect = Vec::from([9u8]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::FreezeAccount;
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([10u8]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::ThawAccount;
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([11u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
