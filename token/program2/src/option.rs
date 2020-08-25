@@ -963,3 +963,41 @@ impl<T> COption<COption<T>> {
         self.and_then(convert::identity)
     }
 }
+
+impl<T> From<Option<T>> for COption<T> {
+    fn from(option: Option<T>) -> Self {
+        match option {
+            Some(value) => COption::Some(value),
+            None => COption::None,
+        }
+    }
+}
+
+impl<T> Into<Option<T>> for COption<T> {
+    fn into(self) -> Option<T> {
+        match self {
+            COption::Some(value) => Some(value),
+            COption::None => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_from_rust_option() {
+        let option = Some(99u64);
+        let c_option: COption<u64> = option.into();
+        assert_eq!(c_option, COption::Some(99u64));
+        let expected = c_option.into();
+        assert_eq!(option, expected);
+
+        let option = None;
+        let c_option: COption<u64> = option.into();
+        assert_eq!(c_option, COption::None);
+        let expected = c_option.into();
+        assert_eq!(option, expected);
+    }
+}
