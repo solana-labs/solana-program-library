@@ -43,6 +43,9 @@ pub enum TokenError {
     /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
+    /// Operation overflowed
+    #[error("Operation overflowed")]
+    Overflow,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
