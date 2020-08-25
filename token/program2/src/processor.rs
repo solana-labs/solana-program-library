@@ -78,7 +78,7 @@ impl Processor {
         account.owner = *owner_info.key;
         account.delegate = COption::None;
         account.delegated_amount = 0;
-        account.is_initialized = AccountState::Initialized;
+        account.state = AccountState::Initialized;
         if *mint_info.key == crate::native_mint::id() {
             account.is_native = true;
             account.amount = new_account_info.lamports();
@@ -464,7 +464,7 @@ impl Processor {
         if mint_info.key != &source_account.mint {
             return Err(TokenError::MintMismatch.into());
         }
-        if freeze && source_account.is_initialized != AccountState::Initialized
+        if freeze && source_account.state != AccountState::Initialized
             || !freeze && !source_account.is_frozen()
         {
             return Err(TokenError::InvalidState.into());
@@ -487,12 +487,11 @@ impl Processor {
             }
         }
 
-        let new_state = if freeze {
+        source_account.state = if freeze {
             AccountState::Frozen
         } else {
             AccountState::Initialized
         };
-        source_account.is_initialized = new_state;
 
         Ok(())
     }
@@ -2848,7 +2847,7 @@ mod tests {
 
         // no transfer if either account is frozen
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
-        account.is_initialized = AccountState::Frozen;
+        account.state = AccountState::Frozen;
         assert_eq!(
             Err(TokenError::AccountFrozen.into()),
             do_process_instruction(
@@ -2870,9 +2869,9 @@ mod tests {
         );
 
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
-        account.is_initialized = AccountState::Initialized;
+        account.state = AccountState::Initialized;
         let account2: &mut Account = state::unpack(&mut account2_account.data).unwrap();
-        account2.is_initialized = AccountState::Frozen;
+        account2.state = AccountState::Frozen;
         assert_eq!(
             Err(TokenError::AccountFrozen.into()),
             do_process_instruction(
@@ -2895,7 +2894,7 @@ mod tests {
 
         // no approve if account is frozen
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
-        account.is_initialized = AccountState::Frozen;
+        account.state = AccountState::Frozen;
         let delegate_key = pubkey_rand();
         let mut delegate_account = SolanaAccount::default();
         assert_eq!(
@@ -3059,7 +3058,7 @@ mod tests {
         )
         .unwrap();
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
-        assert_eq!(account.is_initialized, AccountState::Frozen);
+        assert_eq!(account.state, AccountState::Frozen);
 
         // check explicit unfreeze
         assert_eq!(
@@ -3078,6 +3077,6 @@ mod tests {
         )
         .unwrap();
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
-        assert_eq!(account.is_initialized, AccountState::Initialized);
+        assert_eq!(account.state, AccountState::Initialized);
     }
 }

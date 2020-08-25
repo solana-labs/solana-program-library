@@ -38,8 +38,8 @@ pub struct Account {
     /// If `delegate` is `Some` then `delegated_amount` represents
     /// the amount authorized by the delegate
     pub delegate: COption<Pubkey>,
-    /// Whether the account has been initialized or frozen
-    pub is_initialized: AccountState,
+    /// The account's state
+    pub state: AccountState,
     /// Is this a native token
     pub is_native: bool,
     /// The amount delegated
@@ -48,12 +48,12 @@ pub struct Account {
 impl Account {
     /// Checks if account is frozen
     pub fn is_frozen(&self) -> bool {
-        self.is_initialized == AccountState::Frozen
+        self.state == AccountState::Frozen
     }
 }
 impl IsInitialized for Account {
     fn is_initialized(&self) -> bool {
-        self.is_initialized != AccountState::Uninitialized
+        self.state != AccountState::Uninitialized
     }
 }
 
