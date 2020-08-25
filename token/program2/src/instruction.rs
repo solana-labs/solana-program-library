@@ -244,37 +244,16 @@ impl TokenInstruction {
                 let decimals = unsafe { *(&input[input_len] as *const u8) };
                 input_len += size_of::<u8>();
 
-                let mint_authority = match input[input_len] {
-                    0 => {
-                        input_len += size_of::<u8>();
-                        COption::None
-                    }
-                    1 => {
-                        input_len += size_of::<u8>();
-                        #[allow(clippy::cast_ptr_alignment)]
-                        let mint_authority =
-                            unsafe { *(&input[input_len] as *const u8 as *const Pubkey) };
-                        input_len += size_of::<Pubkey>();
-                        COption::Some(mint_authority)
-                    }
-                    _ => {
-                        return Err(TokenError::InvalidInstruction.into());
-                    }
-                };
-
-                let freeze_authority = match input[input_len] {
-                    0 => COption::None,
-                    1 => {
-                        input_len += size_of::<u8>();
-                        #[allow(clippy::cast_ptr_alignment)]
-                        let freeze_authority =
-                            unsafe { *(&input[input_len] as *const u8 as *const Pubkey) };
-                        COption::Some(freeze_authority)
-                    }
-                    _ => {
-                        return Err(TokenError::InvalidInstruction.into());
-                    }
-                };
+                let mint_authority = COption::unpack_or(
+                    input,
+                    &mut input_len,
+                    Into::<ProgramError>::into(TokenError::InvalidInstruction),
+                )?;
+                let freeze_authority = COption::unpack_or(
+                    input,
+                    &mut input_len,
+                    Into::<ProgramError>::into(TokenError::InvalidInstruction),
+                )?;
 
                 Self::InitializeMint {
                     mint_authority,
@@ -318,19 +297,12 @@ impl TokenInstruction {
                 let authority_type = AuthorityType::from(input[1])?;
                 input_len += size_of::<u8>();
 
-                let new_authority = match input[input_len] {
-                    0 => COption::None,
-                    1 => {
-                        input_len += size_of::<u8>();
-                        #[allow(clippy::cast_ptr_alignment)]
-                        let authority =
-                            unsafe { *(&input[input_len] as *const u8 as *const Pubkey) };
-                        COption::Some(authority)
-                    }
-                    _ => {
-                        return Err(TokenError::InvalidInstruction.into());
-                    }
-                };
+                let new_authority = COption::unpack_or(
+                    input,
+                    &mut input_len,
+                    Into::<ProgramError>::into(TokenError::InvalidInstruction),
+                )?;
+
                 Self::SetAuthority {
                     authority_type,
                     new_authority,
@@ -382,39 +354,8 @@ impl TokenInstruction {
                 *value = *decimals;
                 output_len += size_of::<u8>();
 
-                match mint_authority {
-                    COption::Some(mint_authority) => {
-                        output[output_len] = 1;
-                        output_len += size_of::<u8>();
-
-                        #[allow(clippy::cast_ptr_alignment)]
-                        let value =
-                            unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut Pubkey) };
-                        *value = *mint_authority;
-                        output_len += size_of::<Pubkey>();
-                    }
-                    COption::None => {
-                        output[output_len] = 0;
-                        output_len += size_of::<u8>();
-                    }
-                }
-
-                match freeze_authority {
-                    COption::Some(freeze_authority) => {
-                        output[output_len] = 1;
-                        output_len += size_of::<u8>();
-
-                        #[allow(clippy::cast_ptr_alignment)]
-                        let value =
-                            unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut Pubkey) };
-                        *value = *freeze_authority;
-                        output_len += size_of::<Pubkey>();
-                    }
-                    COption::None => {
-                        output[output_len] = 0;
-                        output_len += size_of::<u8>();
-                    }
-                }
+                mint_authority.pack(&mut output, &mut output_len);
+                freeze_authority.pack(&mut output, &mut output_len);
             }
             Self::InitializeAccount => {
                 output[output_len] = 1;
@@ -461,22 +402,7 @@ impl TokenInstruction {
                 output[output_len] = authority_type.into();
                 output_len += size_of::<u8>();
 
-                match new_authority {
-                    COption::Some(new_authority) => {
-                        output[output_len] = 1;
-                        output_len += size_of::<u8>();
-
-                        #[allow(clippy::cast_ptr_alignment)]
-                        let value =
-                            unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut Pubkey) };
-                        *value = *new_authority;
-                        output_len += size_of::<Pubkey>();
-                    }
-                    COption::None => {
-                        output[output_len] = 0;
-                        output_len += size_of::<u8>();
-                    }
-                }
+                new_authority.pack(&mut output, &mut output_len);
             }
             Self::MintTo { amount } => {
                 output[output_len] = 7;
@@ -556,16 +482,8 @@ pub fn initialize_mint(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let mint_authority = if let Some(mint_authority) = mint_authority_pubkey {
-        COption::Some(*mint_authority)
-    } else {
-        COption::None
-    };
-    let freeze_authority = if let Some(freeze_authority) = freeze_authority_pubkey {
-        COption::Some(*freeze_authority)
-    } else {
-        COption::None
-    };
+    let mint_authority = mint_authority_pubkey.cloned().into();
+    let freeze_authority = freeze_authority_pubkey.cloned().into();
     let data = TokenInstruction::InitializeMint {
         mint_authority,
         freeze_authority,
@@ -734,11 +652,7 @@ pub fn set_authority(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let new_authority = if let Some(new_authority) = new_authority_pubkey {
-        COption::Some(*new_authority)
-    } else {
-        COption::None
-    };
+    let new_authority = new_authority_pubkey.cloned().into();
     let data = TokenInstruction::SetAuthority {
         authority_type,
         new_authority,
