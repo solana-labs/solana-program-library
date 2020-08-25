@@ -444,11 +444,12 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [FreezeAccount](enum.TokenInstruction.html) instruction.
-    pub fn process_freeze_account(
+    /// Processes a [FreezeAccount](enum.TokenInstruction.html) or a
+    /// [ThawAccount](enum.TokenInstruction.html) instruction.
+    pub fn process_toggle_freeze_account(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        freeze: bool,
+        desired_account_state: AccountState,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
@@ -464,7 +465,9 @@ impl Processor {
         if mint_info.key != &source_account.mint {
             return Err(TokenError::MintMismatch.into());
         }
-        if freeze && source_account.is_frozen() || !freeze && !source_account.is_frozen() {
+        if desired_account_state == AccountState::Frozen && source_account.is_frozen()
+            || desired_account_state == AccountState::Initialized && !source_account.is_frozen()
+        {
             return Err(TokenError::InvalidState.into());
         }
 
@@ -485,11 +488,7 @@ impl Processor {
             }
         }
 
-        source_account.state = if freeze {
-            AccountState::Frozen
-        } else {
-            AccountState::Initialized
-        };
+        source_account.state = desired_account_state;
 
         Ok(())
     }
@@ -550,9 +549,13 @@ impl Processor {
                 info!("Instruction: CloseAccount");
                 Self::process_close_account(program_id, accounts)
             }
-            TokenInstruction::FreezeAccount { freeze } => {
+            TokenInstruction::FreezeAccount => {
                 info!("Instruction: FreezeAccount");
-                Self::process_freeze_account(program_id, accounts, freeze)
+                Self::process_toggle_freeze_account(program_id, accounts, AccountState::Frozen)
+            }
+            TokenInstruction::ThawAccount => {
+                info!("Instruction: FreezeAccount");
+                Self::process_toggle_freeze_account(program_id, accounts, AccountState::Initialized)
             }
         }
     }
@@ -639,7 +642,7 @@ mod tests {
     use super::*;
     use crate::instruction::{
         approve, burn, close_account, freeze_account, initialize_account, initialize_mint,
-        initialize_multisig, mint_to, revoke, set_authority, transfer, MAX_SIGNERS,
+        initialize_multisig, mint_to, revoke, set_authority, thaw_account, transfer, MAX_SIGNERS,
     };
     use solana_sdk::{
         account::Account as SolanaAccount, account_info::create_is_signer_account_infos,
@@ -2263,7 +2266,6 @@ mod tests {
             freeze_account(
                 &program_id,
                 &account3_key,
-                true,
                 &mint2_key,
                 &multisig_key,
                 &[&signer_keys[0]],
@@ -3014,8 +3016,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::MintCannotFreeze.into()),
             do_process_instruction(
-                freeze_account(&program_id, &account_key, true, &mint_key, &owner_key, &[])
-                    .unwrap(),
+                freeze_account(&program_id, &account_key, &mint_key, &owner_key, &[]).unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner_account],
             )
         );
@@ -3026,51 +3027,50 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
-                freeze_account(&program_id, &account_key, true, &mint_key, &owner2_key, &[])
-                    .unwrap(),
+                freeze_account(&program_id, &account_key, &mint_key, &owner2_key, &[]).unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner2_account],
             )
         );
 
-        // check explicit unfreeze
+        // check explicit thaw
         assert_eq!(
             Err(TokenError::InvalidState.into()),
             do_process_instruction(
-                freeze_account(
-                    &program_id,
-                    &account_key,
-                    false,
-                    &mint_key,
-                    &owner2_key,
-                    &[]
-                )
-                .unwrap(),
+                thaw_account(&program_id, &account_key, &mint_key, &owner2_key, &[]).unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner2_account],
             )
         );
 
         // freeze
         do_process_instruction(
-            freeze_account(&program_id, &account_key, true, &mint_key, &owner_key, &[]).unwrap(),
+            freeze_account(&program_id, &account_key, &mint_key, &owner_key, &[]).unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
         assert_eq!(account.state, AccountState::Frozen);
 
-        // check explicit unfreeze
+        // check explicit freeze
         assert_eq!(
             Err(TokenError::InvalidState.into()),
             do_process_instruction(
-                freeze_account(&program_id, &account_key, true, &mint_key, &owner2_key, &[])
-                    .unwrap(),
+                freeze_account(&program_id, &account_key, &mint_key, &owner_key, &[]).unwrap(),
+                vec![&mut account_account, &mut mint_account, &mut owner_account],
+            )
+        );
+
+        // check thaw authority
+        assert_eq!(
+            Err(TokenError::OwnerMismatch.into()),
+            do_process_instruction(
+                thaw_account(&program_id, &account_key, &mint_key, &owner2_key, &[]).unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner2_account],
             )
         );
 
-        // unfreeze
+        // thaw
         do_process_instruction(
-            freeze_account(&program_id, &account_key, false, &mint_key, &owner_key, &[]).unwrap(),
+            thaw_account(&program_id, &account_key, &mint_key, &owner_key, &[]).unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();

@@ -191,8 +191,7 @@ pub enum TokenInstruction {
     ///   2. `[]` The account's multisignature owner.
     ///   3. ..3+M '[signer]' M signer accounts.
     CloseAccount,
-    /// Freeze an Initialized account or unfreeze a Frozen account, using the Mint's
-    /// freeze_authority (if set).
+    /// Freeze an Initialized account using the Mint's freeze_authority (if set).
     ///
     /// Accounts expected by this instruction:
     ///
@@ -206,11 +205,22 @@ pub enum TokenInstruction {
     ///   1. '[]' The token mint.
     ///   2. `[]` The mint's multisignature freeze authority.
     ///   3. ..3+M '[signer]' M signer accounts.
-    FreezeAccount {
-        /// Explicitly: whether to freeze the account if it is Initialized. `false` means to
-        /// unfreeze if the account is Frozen.
-        freeze: bool,
-    },
+    FreezeAccount,
+    /// Thaw a Frozen account using the Mint's freeze_authority (if set).
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner
+    ///   0. `[writable]` The account to freeze.
+    ///   1. '[]' The token mint.
+    ///   2. `[signer]` The mint freeze authority.
+    ///
+    ///   * Multisignature owner
+    ///   0. `[writable]` The account to freeze.
+    ///   1. '[]' The token mint.
+    ///   2. `[]` The mint's multisignature freeze authority.
+    ///   3. ..3+M '[signer]' M signer accounts.
+    ThawAccount,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -323,14 +333,8 @@ impl TokenInstruction {
                 Self::Burn { amount }
             }
             9 => Self::CloseAccount,
-            10 => {
-                if input.len() < size_of::<u8>() + size_of::<u8>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                #[allow(clippy::cast_ptr_alignment)]
-                let freeze = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const bool) };
-                Self::FreezeAccount { freeze }
-            }
+            10 => Self::FreezeAccount,
+            11 => Self::ThawAccount,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -456,13 +460,12 @@ impl TokenInstruction {
                 output[output_len] = 9;
                 output_len += size_of::<u8>();
             }
-            Self::FreezeAccount { freeze } => {
+            Self::FreezeAccount => {
                 output[output_len] = 10;
                 output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut bool) };
-                *value = *freeze;
+            }
+            Self::ThawAccount => {
+                output[output_len] = 11;
                 output_len += size_of::<u8>();
             }
         }
@@ -799,12 +802,39 @@ pub fn close_account(
 pub fn freeze_account(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
-    freeze: bool,
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::FreezeAccount { freeze }.pack()?;
+    let data = TokenInstruction::FreezeAccount.pack()?;
+
+    let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(*mint_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a `ThawAccount` instruction.
+pub fn thaw_account(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::ThawAccount.pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
@@ -924,6 +954,20 @@ mod test {
         let check = TokenInstruction::CloseAccount;
         let packed = check.pack().unwrap();
         let expect = Vec::from([9u8]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::FreezeAccount;
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([10u8]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::ThawAccount;
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([11u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
