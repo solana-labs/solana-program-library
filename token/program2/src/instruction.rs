@@ -128,17 +128,17 @@ pub enum TokenInstruction {
     ///
     ///   * Single authority
     ///   0. `[writable]` The mint or account to change the authority of.
-    ///   1. `[]` The new authority/multisignature.
-    ///   2. `[signer]` The current authority of the mint or account.
+    ///   1. `[signer]` The current authority of the mint or account.
     ///
     ///   * Multisignature authority
     ///   0. `[writable]` The mint or account to change the authority of.
-    ///   1. `[]` The new authority/multisignature.
-    ///   2. `[]` The mint's or account's multisignature authority.
+    ///   1. `[]` The mint's or account's multisignature authority.
     ///   3. ..3+M '[signer]' M signer accounts
     SetAuthority {
         /// The type of authority to update.
         authority_type: AuthorityType,
+        /// The new authority
+        new_authority: COption<Pubkey>,
     },
     /// Mints new tokens to an account.  The native mint does not support minting.
     ///
@@ -313,8 +313,28 @@ impl TokenInstruction {
                 if input.len() < size_of::<u8>() + size_of::<u8>() {
                     return Err(TokenError::InvalidInstruction.into());
                 }
+                let mut input_len = 0;
+                input_len += size_of::<u8>();
                 let authority_type = AuthorityType::from(input[1])?;
-                Self::SetAuthority { authority_type }
+                input_len += size_of::<u8>();
+
+                let new_authority = match input[input_len] {
+                    0 => COption::None,
+                    1 => {
+                        input_len += size_of::<u8>();
+                        #[allow(clippy::cast_ptr_alignment)]
+                        let authority =
+                            unsafe { *(&input[input_len] as *const u8 as *const Pubkey) };
+                        COption::Some(authority)
+                    }
+                    _ => {
+                        return Err(TokenError::InvalidInstruction.into());
+                    }
+                };
+                Self::SetAuthority {
+                    authority_type,
+                    new_authority,
+                }
             }
             7 => {
                 if input.len() < size_of::<u8>() + size_of::<u64>() {
@@ -431,12 +451,32 @@ impl TokenInstruction {
                 output[output_len] = 5;
                 output_len += size_of::<u8>();
             }
-            Self::SetAuthority { authority_type } => {
+            Self::SetAuthority {
+                authority_type,
+                new_authority,
+            } => {
                 output[output_len] = 6;
                 output_len += size_of::<u8>();
 
                 output[output_len] = authority_type.into();
                 output_len += size_of::<u8>();
+
+                match new_authority {
+                    COption::Some(new_authority) => {
+                        output[output_len] = 1;
+                        output_len += size_of::<u8>();
+
+                        #[allow(clippy::cast_ptr_alignment)]
+                        let value =
+                            unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut Pubkey) };
+                        *value = *new_authority;
+                        output_len += size_of::<Pubkey>();
+                    }
+                    COption::None => {
+                        output[output_len] = 0;
+                        output_len += size_of::<u8>();
+                    }
+                }
             }
             Self::MintTo { amount } => {
                 output[output_len] = 7;
@@ -689,16 +729,24 @@ pub fn revoke(
 pub fn set_authority(
     token_program_id: &Pubkey,
     owned_pubkey: &Pubkey,
-    new_owner_pubkey: &Pubkey,
+    new_authority_pubkey: Option<&Pubkey>,
     authority_type: AuthorityType,
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::SetAuthority { authority_type }.pack()?;
+    let new_authority = if let Some(new_authority) = new_authority_pubkey {
+        COption::Some(*new_authority)
+    } else {
+        COption::None
+    };
+    let data = TokenInstruction::SetAuthority {
+        authority_type,
+        new_authority,
+    }
+    .pack()?;
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*owned_pubkey, false));
-    accounts.push(AccountMeta::new_readonly(*new_owner_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
         signer_pubkeys.is_empty(),
@@ -884,11 +932,11 @@ mod test {
             freeze_authority: COption::Some(Pubkey::new(&[3u8; 32])),
         };
         let packed = check.pack().unwrap();
-        let expect = vec![
-            0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-        ];
+        let mut expect = vec![0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2];
+        expect.extend_from_slice(&[1]);
+        expect.extend_from_slice(&[2u8; 32]);
+        expect.extend_from_slice(&[1]);
+        expect.extend_from_slice(&[3u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
@@ -930,9 +978,12 @@ mod test {
 
         let check = TokenInstruction::SetAuthority {
             authority_type: AuthorityType::FreezeAccount,
+            new_authority: COption::Some(Pubkey::new(&[4u8; 32])),
         };
         let packed = check.pack().unwrap();
-        let expect = Vec::from([6u8, 1]);
+        let mut expect = Vec::from([6u8, 1]);
+        expect.extend_from_slice(&[1]);
+        expect.extend_from_slice(&[4u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

@@ -247,10 +247,10 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         authority_type: AuthorityType,
+        new_authority: COption<Pubkey>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let account_info = next_account_info(account_info_iter)?;
-        let new_authority_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
         if account_info.data_len() == size_of::<Account>() {
@@ -271,37 +271,40 @@ impl Processor {
                 account_info_iter.as_slice(),
             )?;
 
-            account.owner = *new_authority_info.key;
+            if let COption::Some(authority) = new_authority {
+                account.owner = authority;
+            } else {
+                return Err(TokenError::InvalidInstruction.into());
+            }
         } else if account_info.data_len() == size_of::<Mint>() {
             let mut account_data = account_info.data.borrow_mut();
             let mut mint: &mut Mint = state::unpack(&mut account_data)?;
 
             match authority_type {
                 AuthorityType::MintTokens => {
-                    match mint.mint_authority {
-                        COption::Some(ref mint_authority) => {
-                            Self::validate_owner(
-                                program_id,
-                                mint_authority,
-                                authority_info,
-                                account_info_iter.as_slice(),
-                            )?;
-                        }
-                        COption::None => return Err(TokenError::FixedSupply.into()),
-                    }
-                    mint.mint_authority = COption::Some(*new_authority_info.key);
+                    let mint_authority = mint
+                        .mint_authority
+                        .ok_or(Into::<ProgramError>::into(TokenError::FixedSupply))?;
+                    Self::validate_owner(
+                        program_id,
+                        &mint_authority,
+                        authority_info,
+                        account_info_iter.as_slice(),
+                    )?;
+                    mint.mint_authority = new_authority;
                 }
-                AuthorityType::FreezeAccount => match mint.freeze_authority {
-                    COption::Some(ref freeze_authority) => {
-                        Self::validate_owner(
-                            program_id,
-                            freeze_authority,
-                            authority_info,
-                            account_info_iter.as_slice(),
-                        )?;
-                    }
-                    COption::None => return Err(TokenError::MintCannotFreeze.into()),
-                },
+                AuthorityType::FreezeAccount => {
+                    let freeze_authority = mint
+                        .freeze_authority
+                        .ok_or(Into::<ProgramError>::into(TokenError::MintCannotFreeze))?;
+                    Self::validate_owner(
+                        program_id,
+                        &freeze_authority,
+                        authority_info,
+                        account_info_iter.as_slice(),
+                    )?;
+                    mint.freeze_authority = new_authority;
+                }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
@@ -533,9 +536,12 @@ impl Processor {
                 info!("Instruction: Revoke");
                 Self::process_revoke(program_id, accounts)
             }
-            TokenInstruction::SetAuthority { authority_type } => {
+            TokenInstruction::SetAuthority {
+                authority_type,
+                new_authority,
+            } => {
                 info!("Instruction: SetAuthority");
-                Self::process_set_authority(program_id, accounts, authority_type)
+                Self::process_set_authority(program_id, accounts, authority_type, new_authority)
             }
             TokenInstruction::MintTo { amount } => {
                 info!("Instruction: MintTo");
@@ -1416,7 +1422,6 @@ mod tests {
         let owner2_key = pubkey_rand();
         let mut owner2_account = SolanaAccount::default();
         let owner3_key = pubkey_rand();
-        let mut owner3_account = SolanaAccount::default();
         let mint_key = pubkey_rand();
         let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let mint2_key = pubkey_rand();
@@ -1431,17 +1436,13 @@ mod tests {
                 set_authority(
                     &program_id,
                     &account_key,
-                    &owner2_key,
+                    Some(&owner2_key),
                     AuthorityType::AccountHolder,
                     &owner_key,
                     &[]
                 )
                 .unwrap(),
-                vec![
-                    &mut account_account,
-                    &mut owner2_account,
-                    &mut owner_account,
-                ],
+                vec![&mut account_account, &mut owner_account,],
             )
         );
 
@@ -1470,17 +1471,13 @@ mod tests {
                 set_authority(
                     &program_id,
                     &account_key,
-                    &owner_key,
+                    Some(&owner_key),
                     AuthorityType::AccountHolder,
                     &owner2_key,
                     &[]
                 )
                 .unwrap(),
-                vec![
-                    &mut account_account,
-                    &mut owner_account,
-                    &mut owner2_account,
-                ],
+                vec![&mut account_account, &mut owner2_account,],
             )
         );
 
@@ -1488,23 +1485,16 @@ mod tests {
         let mut instruction = set_authority(
             &program_id,
             &account_key,
-            &owner2_key,
+            Some(&owner2_key),
             AuthorityType::AccountHolder,
             &owner_key,
             &[],
         )
         .unwrap();
-        instruction.accounts[2].is_signer = false;
+        instruction.accounts[1].is_signer = false;
         assert_eq!(
             Err(ProgramError::MissingRequiredSignature),
-            do_process_instruction(
-                instruction,
-                vec![
-                    &mut account_account,
-                    &mut owner2_account,
-                    &mut owner_account,
-                ],
-            )
+            do_process_instruction(instruction, vec![&mut account_account, &mut owner_account,],)
         );
 
         // wrong authority type
@@ -1514,17 +1504,13 @@ mod tests {
                 set_authority(
                     &program_id,
                     &account_key,
-                    &owner2_key,
+                    Some(&owner2_key),
                     AuthorityType::FreezeAccount,
                     &owner_key,
                     &[],
                 )
                 .unwrap(),
-                vec![
-                    &mut account_account,
-                    &mut owner2_account,
-                    &mut owner_account,
-                ],
+                vec![&mut account_account, &mut owner_account,],
             )
         );
 
@@ -1533,17 +1519,13 @@ mod tests {
             set_authority(
                 &program_id,
                 &account_key,
-                &owner2_key,
+                Some(&owner2_key),
                 AuthorityType::AccountHolder,
                 &owner_key,
                 &[],
             )
             .unwrap(),
-            vec![
-                &mut account_account,
-                &mut owner2_account,
-                &mut owner_account,
-            ],
+            vec![&mut account_account, &mut owner_account],
         )
         .unwrap();
 
@@ -1570,13 +1552,13 @@ mod tests {
                 set_authority(
                     &program_id,
                     &mint_key,
-                    &owner3_key,
+                    Some(&owner3_key),
                     AuthorityType::MintTokens,
                     &owner2_key,
                     &[]
                 )
                 .unwrap(),
-                vec![&mut mint_account, &mut owner3_account, &mut owner2_account],
+                vec![&mut mint_account, &mut owner2_account],
             )
         );
 
@@ -1584,19 +1566,16 @@ mod tests {
         let mut instruction = set_authority(
             &program_id,
             &mint_key,
-            &owner2_key,
+            Some(&owner2_key),
             AuthorityType::MintTokens,
             &owner_key,
             &[],
         )
         .unwrap();
-        instruction.accounts[2].is_signer = false;
+        instruction.accounts[1].is_signer = false;
         assert_eq!(
             Err(ProgramError::MissingRequiredSignature),
-            do_process_instruction(
-                instruction,
-                vec![&mut mint_account, &mut owner2_account, &mut owner_account],
-            )
+            do_process_instruction(instruction, vec![&mut mint_account, &mut owner_account],)
         );
 
         // cannot freeze
@@ -1606,13 +1585,13 @@ mod tests {
                 set_authority(
                     &program_id,
                     &mint_key,
-                    &owner2_key,
+                    Some(&owner2_key),
                     AuthorityType::FreezeAccount,
                     &owner_key,
                     &[],
                 )
                 .unwrap(),
-                vec![&mut mint_account, &mut owner2_account, &mut owner_account],
+                vec![&mut mint_account, &mut owner_account],
             )
         );
 
@@ -1621,13 +1600,13 @@ mod tests {
             set_authority(
                 &program_id,
                 &mint_key,
-                &owner2_key,
+                Some(&owner2_key),
                 AuthorityType::MintTokens,
                 &owner_key,
                 &[],
             )
             .unwrap(),
-            vec![&mut mint_account, &mut owner2_account, &mut owner_account],
+            vec![&mut mint_account, &mut owner_account],
         )
         .unwrap();
 
@@ -1654,13 +1633,13 @@ mod tests {
                 set_authority(
                     &program_id,
                     &mint2_key,
-                    &owner2_key,
+                    Some(&owner2_key),
                     AuthorityType::MintTokens,
                     &owner_key,
                     &[]
                 )
                 .unwrap(),
-                vec![&mut mint_account, &mut owner2_account, &mut owner_account],
+                vec![&mut mint_account, &mut owner_account],
             )
         );
 
@@ -1685,15 +1664,46 @@ mod tests {
             set_authority(
                 &program_id,
                 &mint3_key,
-                &owner2_key,
+                Some(&owner2_key),
                 AuthorityType::FreezeAccount,
                 &owner_key,
                 &[],
             )
             .unwrap(),
-            vec![&mut mint3_account, &mut owner2_account, &mut owner_account],
+            vec![&mut mint3_account, &mut owner_account],
         )
         .unwrap();
+
+        // test unsetting freeze_authority is one-way operation
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &mint3_key,
+                None,
+                AuthorityType::FreezeAccount,
+                &owner2_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut mint3_account, &mut owner2_account],
+        )
+        .unwrap();
+
+        assert_eq!(
+            Err(TokenError::MintCannotFreeze.into()),
+            do_process_instruction(
+                set_authority(
+                    &program_id,
+                    &mint3_key,
+                    Some(&owner2_key),
+                    AuthorityType::FreezeAccount,
+                    &owner_key,
+                    &[],
+                )
+                .unwrap(),
+                vec![&mut mint_account, &mut owner2_account],
+            )
+        );
     }
 
     #[test]
@@ -2286,7 +2296,7 @@ mod tests {
             set_authority(
                 &program_id,
                 &mint_key,
-                &owner_key,
+                Some(&owner_key),
                 AuthorityType::MintTokens,
                 &multisig_key,
                 &[&signer_keys[0]],
@@ -2294,7 +2304,6 @@ mod tests {
             .unwrap(),
             vec![
                 &mut mint_account,
-                &mut owner_account,
                 &mut multisig_account,
                 &mut account_info_iter.next().unwrap(),
             ],
@@ -2307,7 +2316,7 @@ mod tests {
             set_authority(
                 &program_id,
                 &account_key,
-                &owner_key,
+                Some(&owner_key),
                 AuthorityType::AccountHolder,
                 &multisig_key,
                 &[&signer_keys[0]],
@@ -2315,7 +2324,6 @@ mod tests {
             .unwrap(),
             vec![
                 &mut account,
-                &mut owner_account,
                 &mut multisig_account,
                 &mut account_info_iter.next().unwrap(),
             ],
@@ -2931,24 +2939,19 @@ mod tests {
 
         // no set authority if account is frozen
         let new_owner_key = pubkey_rand();
-        let mut new_owner_account = SolanaAccount::default();
         assert_eq!(
             Err(TokenError::AccountFrozen.into()),
             do_process_instruction(
                 set_authority(
                     &program_id,
                     &account_key,
-                    &new_owner_key,
+                    Some(&new_owner_key),
                     AuthorityType::AccountHolder,
                     &owner_key,
                     &[]
                 )
                 .unwrap(),
-                vec![
-                    &mut account_account,
-                    &mut new_owner_account,
-                    &mut owner_account,
-                ],
+                vec![&mut account_account, &mut owner_account,],
             )
         );
 
