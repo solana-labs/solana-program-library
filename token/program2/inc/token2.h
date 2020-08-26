@@ -118,7 +118,6 @@ typedef enum Token_TokenInstruction_Tag {
      * Accounts expected by this instruction:
      *
      *   0. `[writable]` The mint to initialize.
-     *   1. If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
      *
      */
     Token_TokenInstruction_InitializeMint,
@@ -309,16 +308,11 @@ typedef enum Token_TokenInstruction_Tag {
 
 typedef struct Token_TokenInstruction_Token_InitializeMint_Body {
     /**
-     * Initial amount of tokens to mint.
-     */
-    uint64_t amount;
-    /**
      * Number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
     /**
-     * The authority/multisignature to mint tokens, if supply is non-zero. If present,
-     * further minting is supported.
+     * The authority/multisignature to mint tokens. If present, further minting is supported.
      */
     Token_COption_Pubkey mint_authority;
     /**
