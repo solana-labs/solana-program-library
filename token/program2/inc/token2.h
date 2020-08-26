@@ -68,6 +68,10 @@ enum Token_AuthorityType
      * Holder of a given token account
      */
     Token_AuthorityType_AccountHolder,
+    /**
+     * Authority to close a token account
+     */
+    Token_AuthorityType_CloseAccount,
 };
 #ifndef __cplusplus
 typedef uint8_t Token_AuthorityType;
@@ -439,6 +443,10 @@ typedef struct Token_Account {
      * The amount delegated
      */
     uint64_t delegated_amount;
+    /**
+     * Optional authority to close the account.
+     */
+    Token_COption_Pubkey close_authority;
 } Token_Account;
 
 /**

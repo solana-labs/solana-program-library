@@ -37,9 +37,9 @@ pub enum TokenError {
     /// Instruction does not support native tokens
     #[error("Instruction does not support native tokens")]
     NativeNotSupported,
-    /// Instruction does not support non-native tokens
-    #[error("Instruction does not support non-native tokens")]
-    NonNativeNotSupported,
+    /// Non-native account can only be closed if its balance is zero
+    #[error("Non-native account can only be closed if its balance is zero")]
+    NonNativeHasBalance,
     /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
