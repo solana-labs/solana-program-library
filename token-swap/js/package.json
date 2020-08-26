@@ -47,7 +47,7 @@
     "babel-eslint": "^10.1.0",
     "eslint": "^7.7.0",
     "eslint-plugin-import": "^2.22.0",
-    "flow-bin": "0.131.0",
+    "flow-bin": "0.132.0",
     "flow-typed": "^3.2.0",
     "mz": "^2.7.0",
     "prettier": "^2.1.1",
