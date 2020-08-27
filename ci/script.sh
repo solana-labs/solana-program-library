@@ -37,9 +37,6 @@ _ cargo run --manifest-path=ci/client/Cargo.toml
 _ git diff --exit-code token/program/inc/token.h
 _ cc token/program/inc/token.h -o target/token.gch
 
-_ git diff --exit-code token/program2/inc/token2.h
-_ cc token/program2/inc/token2.h -o target/token2.gch
-
 _ git diff --exit-code token-swap/program/inc/token-swap.h
 _ cc token-swap/program/inc/token-swap.h -o target/token-swap.gch
 

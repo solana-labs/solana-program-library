@@ -2200,7 +2200,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token"
-version = "1.0.8"
+version = "1.1.0"
 dependencies = [
  "cbindgen",
  "num-derive 0.3.2",
@@ -2223,7 +2223,7 @@ dependencies = [
  "solana-client",
  "solana-logger",
  "solana-sdk",
- "spl-token 1.0.8",
+ "spl-token 1.1.0",
 ]
 
 [[package]]
@@ -2236,20 +2236,7 @@ dependencies = [
  "rand",
  "remove_dir_all",
  "solana-sdk",
- "spl-token 1.0.8",
- "thiserror",
-]
-
-[[package]]
-name = "spl-token2"
-version = "1.0.0"
-dependencies = [
- "cbindgen",
- "num-derive 0.3.2",
- "num-traits",
- "rand",
- "remove_dir_all",
- "solana-sdk",
+ "spl-token 1.1.0",
  "thiserror",
 ]
 
@@ -2353,9 +2340,8 @@ version = "0.1.0"
 dependencies = [
  "solana-sdk",
  "spl-memo 1.0.7",
- "spl-token 1.0.8",
+ "spl-token 1.1.0",
  "spl-token-swap",
- "spl-token2",
 ]
 
 [[package]]
