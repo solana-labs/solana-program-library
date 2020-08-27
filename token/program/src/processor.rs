@@ -80,7 +80,10 @@ impl Processor {
         if *mint_info.key == crate::native_mint::id() {
             let rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
             account.is_native = COption::Some(rent_exempt_reserve);
-            account.amount = new_account_info.lamports() - rent_exempt_reserve;
+            account.amount = new_account_info
+                .lamports()
+                .checked_sub(rent_exempt_reserve)
+                .ok_or(TokenError::Overflow)?;
         } else {
             account.is_native = COption::None;
             account.amount = 0;
@@ -164,7 +167,10 @@ impl Processor {
                 if source_account.delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
                 }
-                source_account.delegated_amount -= amount;
+                source_account.delegated_amount = source_account
+                    .delegated_amount
+                    .checked_sub(amount)
+                    .ok_or(TokenError::Overflow)?;
                 if source_account.delegated_amount == 0 {
                     source_account.delegate = COption::None;
                 }
@@ -177,15 +183,25 @@ impl Processor {
             )?,
         };
 
-        source_account.amount -= amount;
+        source_account.amount = source_account
+            .amount
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
         dest_account.amount = dest_account
             .amount
             .checked_add(amount)
             .ok_or(TokenError::Overflow)?;
 
         if source_account.is_native() {
-            **source_account_info.lamports.borrow_mut() -= amount;
-            **dest_account_info.lamports.borrow_mut() += amount;
+            let source_starting_lamports = source_account_info.lamports();
+            **source_account_info.lamports.borrow_mut() = source_starting_lamports
+                .checked_sub(amount)
+                .ok_or(TokenError::Overflow)?;
+
+            let dest_starting_lamports = dest_account_info.lamports();
+            **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
+                .checked_add(amount)
+                .ok_or(TokenError::Overflow)?;
         }
 
         Ok(())
@@ -437,7 +453,10 @@ impl Processor {
                 if source_account.delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
                 }
-                source_account.delegated_amount -= amount;
+                source_account.delegated_amount = source_account
+                    .delegated_amount
+                    .checked_sub(amount)
+                    .ok_or(TokenError::Overflow)?;
                 if source_account.delegated_amount == 0 {
                     source_account.delegate = COption::None;
                 }
@@ -450,8 +469,14 @@ impl Processor {
             )?,
         }
 
-        source_account.amount -= amount;
-        mint.supply -= amount;
+        source_account.amount = source_account
+            .amount
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
+        mint.supply = mint
+            .supply
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
 
         Ok(())
     }
@@ -480,7 +505,11 @@ impl Processor {
             account_info_iter.as_slice(),
         )?;
 
-        **dest_account_info.lamports.borrow_mut() += source_account_info.lamports();
+        let dest_starting_lamports = dest_account_info.lamports();
+        **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
+            .checked_add(source_account_info.lamports())
+            .ok_or(TokenError::Overflow)?;
+
         **source_account_info.lamports.borrow_mut() = 0;
         source_account.amount = 0;
 
