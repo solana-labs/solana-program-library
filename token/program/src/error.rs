@@ -13,6 +13,9 @@ pub enum TokenError {
     /// Insufficient funds for the operation requested.
     #[error("Insufficient funds")]
     InsufficientFunds,
+    /// Invalid Mint.
+    #[error("Invalid Mint")]
+    InvalidMint,
     /// Account not associated with this Mint.
     #[error("Account not associated with this Mint")]
     MintMismatch,
