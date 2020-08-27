@@ -85,9 +85,8 @@ fn command_create_token(config: &Config, decimals: u8) -> CommmandResult {
             initialize_mint(
                 &spl_token::id(),
                 &token.pubkey(),
+                &config.owner.pubkey(),
                 None,
-                Some(&config.owner.pubkey()),
-                0,
                 decimals,
             )?,
         ],
@@ -154,10 +153,11 @@ fn command_assign(config: &Config, account: Pubkey, new_owner: Pubkey) -> Commma
     );
 
     let mut transaction = Transaction::new_with_payer(
-        &[set_owner(
+        &[set_authority(
             &spl_token::id(),
             &account,
-            &new_owner,
+            Some(&new_owner),
+            AuthorityType::AccountHolder,
             &config.owner.pubkey(),
             &[],
         )?],
