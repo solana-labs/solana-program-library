@@ -123,8 +123,10 @@ typedef enum Token_TokenInstruction_Tag {
      */
     Token_TokenInstruction_InitializeMint,
     /**
-     * Initializes a new account to hold tokens.  If this account is associated with the native mint
-     * then the token balance of the initialized account will be equal to the amount of SOL in the account.
+     * Initializes a new account to hold tokens.  If this account is associated with the native
+     * mint then the token balance of the initialized account will be equal to the amount of SOL
+     * in the account. If this account is associated with another mint, that mint must be
+     * initialized before this command can succeed.
      *
      * The `InitializeAccount` instruction requires no signers and MUST be included within
      * the same Transaction as the system program's `CreateInstruction` that creates the account
