@@ -78,11 +78,11 @@ impl Processor {
         account.delegated_amount = 0;
         account.state = AccountState::Initialized;
         if *mint_info.key == crate::native_mint::id() {
-            account.is_native = true;
-            account.amount = new_account_info.lamports();
-            account.rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
+            let rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
+            account.is_native = COption::Some(rent_exempt_reserve);
+            account.amount = new_account_info.lamports() - rent_exempt_reserve;
         } else {
-            account.is_native = false;
+            account.is_native = COption::None;
             account.amount = 0;
         };
 
@@ -183,11 +183,7 @@ impl Processor {
             .checked_add(amount)
             .ok_or(TokenError::Overflow)?;
 
-        if source_account.is_native {
-            // Ensure that wrapped SOL accounts remain rent-exempt
-            if source_account_info.lamports() < source_account.rent_exempt_reserve + amount {
-                return Err(TokenError::InsufficientFunds.into());
-            }
+        if source_account.is_native() {
             **source_account_info.lamports.borrow_mut() -= amount;
             **dest_account_info.lamports.borrow_mut() += amount;
         }
@@ -362,7 +358,7 @@ impl Processor {
             return Err(TokenError::AccountFrozen.into());
         }
 
-        if dest_account.is_native {
+        if dest_account.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
         if mint_info.key != &dest_account.mint {
@@ -407,7 +403,7 @@ impl Processor {
         let mut source_data = source_account_info.data.borrow_mut();
         let source_account: &mut Account = state::unpack(&mut source_data)?;
 
-        if source_account.is_native {
+        if source_account.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
         if source_account.amount < amount {
@@ -457,7 +453,7 @@ impl Processor {
         let mut source_data = source_account_info.data.borrow_mut();
         let source_account: &mut Account = state::unpack(&mut source_data)?;
 
-        if !source_account.is_native && source_account.amount != 0 {
+        if !source_account.is_native() && source_account.amount != 0 {
             return Err(TokenError::NonNativeHasBalance.into());
         }
 
@@ -493,7 +489,7 @@ impl Processor {
         let mut source_data = source_account_info.data.borrow_mut();
         let source_account: &mut Account = state::unpack(&mut source_data)?;
 
-        if source_account.is_native {
+        if source_account.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
         if mint_info.key != &source_account.mint {
@@ -2626,8 +2622,11 @@ mod tests {
         let mut account_account =
             SolanaAccount::new(account_minimum_balance(), size_of::<Account>(), &program_id);
         let account2_key = pubkey_rand();
-        let mut account2_account =
-            SolanaAccount::new(account_minimum_balance(), size_of::<Account>(), &program_id);
+        let mut account2_account = SolanaAccount::new(
+            account_minimum_balance() + 42,
+            size_of::<Account>(),
+            &program_id,
+        );
         let account3_key = pubkey_rand();
         let mut account3_account =
             SolanaAccount::new(account_minimum_balance(), size_of::<Account>(), &program_id);
@@ -2697,8 +2696,8 @@ mod tests {
         )
         .unwrap();
         let account: &mut Account = state::unpack(&mut account2_account.data).unwrap();
-        assert!(account.is_native);
-        assert_eq!(account.amount, account_minimum_balance());
+        assert!(account.is_native());
+        assert_eq!(account.amount, 42);
 
         // close non-native account with balance
         assert_eq!(
@@ -2820,10 +2819,13 @@ mod tests {
         )
         .unwrap();
         let account: &mut Account = state::unpack_unchecked(&mut account2_account.data).unwrap();
-        assert!(account.is_native);
+        assert!(account.is_native());
         assert_eq!(account_account.lamports, 0);
         assert_eq!(account.amount, 0);
-        assert_eq!(account3_account.lamports, 3 * account_minimum_balance() + 2);
+        assert_eq!(
+            account3_account.lamports,
+            3 * account_minimum_balance() + 2 + 42
+        );
     }
 
     #[test]
@@ -2864,8 +2866,8 @@ mod tests {
         )
         .unwrap();
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
-        assert!(account.is_native);
-        assert_eq!(account.amount, account_minimum_balance() + 40);
+        assert!(account.is_native());
+        assert_eq!(account.amount, 40);
 
         // initialize native account
         do_process_instruction(
@@ -2885,8 +2887,8 @@ mod tests {
         )
         .unwrap();
         let account: &mut Account = state::unpack(&mut account2_account.data).unwrap();
-        assert!(account.is_native);
-        assert_eq!(account.amount, account_minimum_balance());
+        assert!(account.is_native());
+        assert_eq!(account.amount, 0);
 
         // mint_to unsupported
         assert_eq!(
@@ -2914,7 +2916,28 @@ mod tests {
             )
         );
 
-        // initialize native account
+        // ensure can't transfer below rent-exempt reserve
+        assert_eq!(
+            Err(TokenError::InsufficientFunds.into()),
+            do_process_instruction(
+                transfer(
+                    &program_id,
+                    &account_key,
+                    &account2_key,
+                    &owner_key,
+                    &[],
+                    50,
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account2_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // transfer between native accounts
         do_process_instruction(
             transfer(
                 &program_id,
@@ -2934,13 +2957,13 @@ mod tests {
         .unwrap();
 
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
-        assert!(account.is_native);
+        assert!(account.is_native());
         assert_eq!(account_account.lamports, account_minimum_balance());
-        assert_eq!(account.amount, account_minimum_balance());
+        assert_eq!(account.amount, 0);
         let account: &mut Account = state::unpack(&mut account2_account.data).unwrap();
-        assert!(account.is_native);
+        assert!(account.is_native());
         assert_eq!(account2_account.lamports, account_minimum_balance() + 40);
-        assert_eq!(account.amount, account_minimum_balance() + 40);
+        assert_eq!(account.amount, 40);
 
         // close native account
         do_process_instruction(
@@ -2953,7 +2976,7 @@ mod tests {
         )
         .unwrap();
         let account: &mut Account = state::unpack_unchecked(&mut account_account.data).unwrap();
-        assert!(account.is_native);
+        assert!(account.is_native());
         assert_eq!(account_account.lamports, 0);
         assert_eq!(account.amount, 0);
         assert_eq!(account3_account.lamports, 2 * account_minimum_balance());

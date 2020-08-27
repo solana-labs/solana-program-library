@@ -40,20 +40,23 @@ pub struct Account {
     pub delegate: COption<Pubkey>,
     /// The account's state
     pub state: AccountState,
-    /// Is this a native token
-    pub is_native: bool,
+    /// If is_some, this is a native token, and the value logs the rent-exempt reserve. An Account
+    /// is required to be rent-exempt, so the value is used by the Processor to ensure that wrapped
+    /// SOL accounts do not drop below this threshold.
+    pub is_native: COption<u64>,
     /// The amount delegated
     pub delegated_amount: u64,
     /// Optional authority to close the account.
     pub close_authority: COption<Pubkey>,
-    /// An Account is required to be rent-exempt. This value logs the reserve required to be
-    /// rent-exempt so that wrapped SOL accounts do not drop below this threshold.
-    pub rent_exempt_reserve: u64,
 }
 impl Account {
     /// Checks if account is frozen
     pub fn is_frozen(&self) -> bool {
         self.state == AccountState::Frozen
+    }
+    /// Checks if account is native
+    pub fn is_native(&self) -> bool {
+        self.is_native.is_some()
     }
 }
 impl IsInitialized for Account {
