@@ -118,6 +118,7 @@ typedef enum Token_TokenInstruction_Tag {
      * Accounts expected by this instruction:
      *
      *   0. `[writable]` The mint to initialize.
+     *   1. `[]` Rent sysvar
      *
      */
     Token_TokenInstruction_InitializeMint,
@@ -134,6 +135,7 @@ typedef enum Token_TokenInstruction_Tag {
      *   0. `[writable]`  The account to initialize.
      *   1. `[]` The mint this account will be associated with.
      *   2. `[]` The new account's owner/multisignature.
+     *   3. `[]` Rent sysvar
      */
     Token_TokenInstruction_InitializeAccount,
     /**
@@ -150,7 +152,8 @@ typedef enum Token_TokenInstruction_Tag {
      * Accounts expected by this instruction:
      *
      *   0. `[writable]` The multisignature account to initialize.
-     *   1. ..1+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
+     *   2. `[]` Rent sysvar
+     *   3. ..2+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
      */
     Token_TokenInstruction_InitializeMultisig,
     /**
@@ -441,6 +444,11 @@ typedef struct Token_Account {
      * Optional authority to close the account.
      */
     Token_COption_Pubkey close_authority;
+    /**
+     * An Account is required to be rent-exempt. This value logs the reserve required to be
+     * rent-exempt so that wrapped SOL accounts do not drop below this threshold.
+     */
+    uint64_t rent_exempt_reserve;
 } Token_Account;
 
 /**
