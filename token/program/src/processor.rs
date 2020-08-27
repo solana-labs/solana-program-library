@@ -387,6 +387,11 @@ impl Processor {
             .checked_add(amount)
             .ok_or(TokenError::Overflow)?;
 
+        mint.supply = mint
+            .supply
+            .checked_add(amount)
+            .ok_or(TokenError::Overflow)?;
+
         Ok(())
     }
 
@@ -398,13 +403,20 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
+        let mint_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+
+        let mut mint_data = mint_info.data.borrow_mut();
+        let mint: &mut Mint = state::unpack(&mut mint_data)?;
 
         let mut source_data = source_account_info.data.borrow_mut();
         let source_account: &mut Account = state::unpack(&mut source_data)?;
 
         if source_account.is_native() {
             return Err(TokenError::NativeNotSupported.into());
+        }
+        if mint_info.key != &source_account.mint {
+            return Err(TokenError::MintMismatch.into());
         }
         if source_account.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
@@ -439,6 +451,7 @@ impl Processor {
         }
 
         source_account.amount -= amount;
+        mint.supply -= amount;
 
         Ok(())
     }
@@ -1268,6 +1281,7 @@ mod tests {
             *mint,
             Mint {
                 mint_authority: COption::Some(owner_key),
+                supply: 0,
                 decimals,
                 is_initialized: true,
                 freeze_authority: COption::None,
@@ -1833,12 +1847,25 @@ mod tests {
 
         // mint to
         do_process_instruction(
+            mint_to(&program_id, &mint_key, &account_key, &owner_key, &[], 42).unwrap(),
+            vec![&mut mint_account, &mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        let mint: &mut Mint = state::unpack(&mut mint_account.data).unwrap();
+        assert_eq!(mint.supply, 42);
+        let dest_account: &mut Account = state::unpack(&mut account_account.data).unwrap();
+        assert_eq!(dest_account.amount, 42);
+
+        // mint to another account to test supply accumulation
+        do_process_instruction(
             mint_to(&program_id, &mint_key, &account2_key, &owner_key, &[], 42).unwrap(),
             vec![&mut mint_account, &mut account2_account, &mut owner_account],
         )
         .unwrap();
 
-        let _: &mut Mint = state::unpack(&mut mint_account.data).unwrap();
+        let mint: &mut Mint = state::unpack(&mut mint_account.data).unwrap();
+        assert_eq!(mint.supply, 84);
         let dest_account: &mut Account = state::unpack(&mut account2_account.data).unwrap();
         assert_eq!(dest_account.amount, 42);
 
@@ -2010,13 +2037,18 @@ mod tests {
         .unwrap();
 
         // missing signer
-        let mut instruction = burn(&program_id, &account_key, &delegate_key, &[], 42).unwrap();
+        let mut instruction =
+            burn(&program_id, &account_key, &mint_key, &delegate_key, &[], 42).unwrap();
         instruction.accounts[1].is_signer = false;
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 instruction,
-                vec![&mut account_account, &mut delegate_account],
+                vec![
+                    &mut account_account,
+                    &mut mint_account,
+                    &mut delegate_account
+                ],
             )
         );
 
@@ -2024,19 +2056,29 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
-                burn(&program_id, &account_key, &owner2_key, &[], 42).unwrap(),
-                vec![&mut account_account, &mut owner2_account],
+                burn(&program_id, &account_key, &mint_key, &owner2_key, &[], 42).unwrap(),
+                vec![&mut account_account, &mut mint_account, &mut owner2_account],
+            )
+        );
+
+        // mint mismatch
+        assert_eq!(
+            Err(TokenError::MintMismatch.into()),
+            do_process_instruction(
+                burn(&program_id, &mismatch_key, &mint_key, &owner_key, &[], 42).unwrap(),
+                vec![&mut mismatch_account, &mut mint_account, &mut owner_account],
             )
         );
 
         // burn
         do_process_instruction(
-            burn(&program_id, &account_key, &owner_key, &[], 42).unwrap(),
-            vec![&mut account_account, &mut owner_account],
+            burn(&program_id, &account_key, &mint_key, &owner_key, &[], 42).unwrap(),
+            vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
 
-        let _: &mut Mint = state::unpack(&mut mint_account.data).unwrap();
+        let mint: &mut Mint = state::unpack(&mut mint_account.data).unwrap();
+        assert_eq!(mint.supply, 1000 - 42);
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
         assert_eq!(account.amount, 1000 - 42);
 
@@ -2044,8 +2086,16 @@ mod tests {
         assert_eq!(
             Err(TokenError::InsufficientFunds.into()),
             do_process_instruction(
-                burn(&program_id, &account_key, &owner_key, &[], 100_000_000).unwrap(),
-                vec![&mut account_account, &mut owner_account],
+                burn(
+                    &program_id,
+                    &account_key,
+                    &mint_key,
+                    &owner_key,
+                    &[],
+                    100_000_000
+                )
+                .unwrap(),
+                vec![&mut account_account, &mut mint_account, &mut owner_account],
             )
         );
 
@@ -2072,20 +2122,33 @@ mod tests {
         assert_eq!(
             Err(TokenError::InsufficientFunds.into()),
             do_process_instruction(
-                burn(&program_id, &account_key, &owner_key, &[], 100_000_000).unwrap(),
-                vec![&mut account_account, &mut owner_account],
+                burn(
+                    &program_id,
+                    &account_key,
+                    &mint_key,
+                    &owner_key,
+                    &[],
+                    100_000_000
+                )
+                .unwrap(),
+                vec![&mut account_account, &mut mint_account, &mut owner_account],
             )
         );
 
         // burn via delegate
         do_process_instruction(
-            burn(&program_id, &account_key, &delegate_key, &[], 84).unwrap(),
-            vec![&mut account_account, &mut delegate_account],
+            burn(&program_id, &account_key, &mint_key, &delegate_key, &[], 84).unwrap(),
+            vec![
+                &mut account_account,
+                &mut mint_account,
+                &mut delegate_account,
+            ],
         )
         .unwrap();
 
         // match
-        let _: &mut Mint = state::unpack(&mut mint_account.data).unwrap();
+        let mint: &mut Mint = state::unpack(&mut mint_account.data).unwrap();
+        assert_eq!(mint.supply, 1000 - 42 - 84);
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
         assert_eq!(account.amount, 1000 - 42 - 84);
 
@@ -2093,8 +2156,20 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
-                burn(&program_id, &account_key, &delegate_key, &[], 100).unwrap(),
-                vec![&mut account_account, &mut delegate_account],
+                burn(
+                    &program_id,
+                    &account_key,
+                    &mint_key,
+                    &delegate_key,
+                    &[],
+                    100
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut mint_account,
+                    &mut delegate_account
+                ],
             )
         );
     }
@@ -2338,6 +2413,7 @@ mod tests {
             burn(
                 &program_id,
                 &account_key,
+                &mint_key,
                 &multisig_key,
                 &[&signer_keys[0]],
                 42,
@@ -2345,6 +2421,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut account,
+                &mut mint_account,
                 &mut multisig_account,
                 &mut account_info_iter.next().unwrap(),
             ],
@@ -2357,6 +2434,7 @@ mod tests {
             burn(
                 &program_id,
                 &account_key,
+                &mint_key,
                 &multisig_delegate_key,
                 &signer_key_refs,
                 42,
@@ -2364,6 +2442,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut account,
+                &mut mint_account,
                 &mut multisig_delegate_account,
                 &mut account_info_iter.next().unwrap(),
                 &mut account_info_iter.next().unwrap(),
@@ -2715,8 +2794,8 @@ mod tests {
 
         // empty account
         do_process_instruction(
-            burn(&program_id, &account_key, &owner_key, &[], 42).unwrap(),
-            vec![&mut account_account, &mut owner_account],
+            burn(&program_id, &account_key, &mint_key, &owner_key, &[], 42).unwrap(),
+            vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();
 
@@ -2908,11 +2987,32 @@ mod tests {
         );
 
         // burn unsupported
+        let bogus_mint_key = pubkey_rand();
+        let mut bogus_mint_account =
+            SolanaAccount::new(mint_minimum_balance(), size_of::<Mint>(), &program_id);
+        do_process_instruction(
+            initialize_mint(&program_id, &bogus_mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut bogus_mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
         assert_eq!(
             Err(TokenError::NativeNotSupported.into()),
             do_process_instruction(
-                burn(&program_id, &account_key, &owner_key, &[], 42).unwrap(),
-                vec![&mut account_account, &mut owner_account],
+                burn(
+                    &program_id,
+                    &account_key,
+                    &bogus_mint_key,
+                    &owner_key,
+                    &[],
+                    42
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut bogus_mint_account,
+                    &mut owner_account
+                ],
             )
         );
 
@@ -3002,7 +3102,7 @@ mod tests {
             SolanaAccount::new(mint_minimum_balance(), size_of::<Mint>(), &program_id);
         let mut rent_sysvar = rent_sysvar();
 
-        // create victim account
+        // create an account
         do_process_instruction(
             initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
             vec![
@@ -3033,28 +3133,7 @@ mod tests {
         )
         .unwrap();
 
-        // mint the max to attacker
-        do_process_instruction(
-            mint_to(
-                &program_id,
-                &mint_key,
-                &account2_key,
-                &mint_owner_key,
-                &[],
-                42,
-            )
-            .unwrap(),
-            vec![
-                &mut mint_account,
-                &mut account2_account,
-                &mut mint_owner_account,
-            ],
-        )
-        .unwrap();
-        let account: &mut Account = state::unpack(&mut account2_account.data).unwrap();
-        assert_eq!(account.amount, 42);
-
-        // mint the max to victum
+        // mint the max to an account
         do_process_instruction(
             mint_to(
                 &program_id,
@@ -3075,7 +3154,7 @@ mod tests {
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
         assert_eq!(account.amount, u64::MAX);
 
-        // mint one more
+        // attempt to mint one more to account
         assert_eq!(
             Err(TokenError::Overflow.into()),
             do_process_instruction(
@@ -3095,10 +3174,39 @@ mod tests {
                 ],
             )
         );
-
-        // mint back to large amount
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
-        account.amount = 0;
+        assert_eq!(account.amount, u64::MAX);
+
+        // atttempt to mint one more to the other account
+        assert_eq!(
+            Err(TokenError::Overflow.into()),
+            do_process_instruction(
+                mint_to(
+                    &program_id,
+                    &mint_key,
+                    &account2_key,
+                    &mint_owner_key,
+                    &[],
+                    1,
+                )
+                .unwrap(),
+                vec![
+                    &mut mint_account,
+                    &mut account2_account,
+                    &mut mint_owner_account,
+                ],
+            )
+        );
+
+        // burn some of the supply
+        do_process_instruction(
+            burn(&program_id, &account_key, &mint_key, &owner_key, &[], 100).unwrap(),
+            vec![&mut account_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+        let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
+        assert_eq!(account.amount, u64::MAX - 100);
+
         do_process_instruction(
             mint_to(
                 &program_id,
@@ -3106,7 +3214,7 @@ mod tests {
                 &account_key,
                 &mint_owner_key,
                 &[],
-                u64::MAX,
+                100,
             )
             .unwrap(),
             vec![
@@ -3119,7 +3227,10 @@ mod tests {
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
         assert_eq!(account.amount, u64::MAX);
 
-        // transfer to burn victim
+        // manipulate account balance to attempt overflow transfer
+        let account: &mut Account = state::unpack(&mut account2_account.data).unwrap();
+        account.amount = 1;
+
         assert_eq!(
             Err(TokenError::Overflow.into()),
             do_process_instruction(
@@ -3308,8 +3419,8 @@ mod tests {
         assert_eq!(
             Err(TokenError::AccountFrozen.into()),
             do_process_instruction(
-                burn(&program_id, &account_key, &owner_key, &[], 100).unwrap(),
-                vec![&mut account_account, &mut owner_account,],
+                burn(&program_id, &account_key, &mint_key, &owner_key, &[], 100).unwrap(),
+                vec![&mut account_account, &mut mint_account, &mut owner_account],
             )
         );
     }

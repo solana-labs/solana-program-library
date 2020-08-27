@@ -12,6 +12,8 @@ pub struct Mint {
     /// mint creation. If no mint authority is present then the mint has a fixed supply and no
     /// further tokens may be minted.
     pub mint_authority: COption<Pubkey>,
+    /// Total supply of tokens.
+    pub supply: u64,
     /// Number of base 10 digits to the right of the decimal place.
     pub decimals: u8,
     /// Is `true` if this structure has been initialized
