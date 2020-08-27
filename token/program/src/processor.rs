@@ -26,7 +26,7 @@ impl Processor {
     pub fn process_initialize_mint(
         accounts: &[AccountInfo],
         decimals: u8,
-        mint_authority: COption<Pubkey>,
+        mint_authority: Pubkey,
         freeze_authority: COption<Pubkey>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -38,11 +38,7 @@ impl Processor {
             return Err(TokenError::AlreadyInUse.into());
         }
 
-        if mint_authority.is_none() {
-            return Err(TokenError::OwnerRequiredIfNoInitialSupply.into());
-        }
-
-        mint.mint_authority = mint_authority;
+        mint.mint_authority = COption::Some(mint_authority);
         mint.decimals = decimals;
         mint.is_initialized = true;
         mint.freeze_authority = freeze_authority;
@@ -616,9 +612,6 @@ impl PrintProgramError for TokenError {
             TokenError::OwnerMismatch => info!("Error: owner does not match"),
             TokenError::FixedSupply => info!("Error: the total supply of this token is fixed"),
             TokenError::AlreadyInUse => info!("Error: account or token already in use"),
-            TokenError::OwnerRequiredIfNoInitialSupply => {
-                info!("Error: An owner is required if supply is zero")
-            }
             TokenError::InvalidNumberOfProvidedSigners => {
                 info!("Error: Invalid number of provided signers")
             }
@@ -713,20 +706,6 @@ mod tests {
         let mut mint_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
         let mint2_key = pubkey_rand();
         let mut mint2_account = SolanaAccount::new(0, size_of::<Mint>(), &program_id);
-
-        // mint_authority not provided
-        let mut instruction = initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap();
-        instruction.data = TokenInstruction::InitializeMint {
-            mint_authority: COption::None,
-            freeze_authority: COption::None,
-            decimals: 2,
-        }
-        .pack()
-        .unwrap();
-        assert_eq!(
-            Err(TokenError::OwnerRequiredIfNoInitialSupply.into()),
-            do_process_instruction(instruction, vec![&mut mint_account])
-        );
 
         // create new mint
         do_process_instruction(
