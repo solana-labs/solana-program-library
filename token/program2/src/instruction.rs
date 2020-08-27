@@ -26,15 +26,11 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    ///   1. If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
     ///
     InitializeMint {
-        /// Initial amount of tokens to mint.
-        amount: u64,
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
-        /// The authority/multisignature to mint tokens, if supply is non-zero. If present,
-        /// further minting is supported.
+        /// The authority/multisignature to mint tokens. If present, further minting is supported.
         mint_authority: COption<Pubkey>,
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
@@ -230,17 +226,12 @@ impl TokenInstruction {
         }
         Ok(match input[0] {
             0 => {
-                if input.len()
-                    < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() + size_of::<bool>()
-                {
+                if input.len() < size_of::<u8>() + size_of::<u8>() + size_of::<bool>() {
                     return Err(TokenError::InvalidInstruction.into());
                 }
                 let mut input_len = 0;
                 input_len += size_of::<u8>();
 
-                #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
-                input_len += size_of::<u64>();
                 let decimals = unsafe { *(&input[input_len] as *const u8) };
                 input_len += size_of::<u8>();
 
@@ -258,7 +249,6 @@ impl TokenInstruction {
                 Self::InitializeMint {
                     mint_authority,
                     freeze_authority,
-                    amount,
                     decimals,
                 }
             }
@@ -339,16 +329,10 @@ impl TokenInstruction {
             Self::InitializeMint {
                 mint_authority,
                 freeze_authority,
-                amount,
                 decimals,
             } => {
                 output[output_len] = 0;
                 output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
-                *value = *amount;
-                output_len += size_of::<u64>();
 
                 let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
                 *value = *decimals;
@@ -480,31 +464,20 @@ impl AuthorityType {
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
-    account_pubkey: Option<&Pubkey>,
-    mint_authority_pubkey: Option<&Pubkey>,
+    mint_authority_pubkey: &Pubkey,
     freeze_authority_pubkey: Option<&Pubkey>,
-    amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let mint_authority = mint_authority_pubkey.cloned().into();
+    let mint_authority = COption::Some(*mint_authority_pubkey);
     let freeze_authority = freeze_authority_pubkey.cloned().into();
     let data = TokenInstruction::InitializeMint {
         mint_authority,
         freeze_authority,
-        amount,
         decimals,
     }
     .pack()?;
 
-    let mut accounts = vec![AccountMeta::new(*mint_pubkey, false)];
-    if amount != 0 {
-        match account_pubkey {
-            Some(pubkey) => accounts.push(AccountMeta::new(*pubkey, false)),
-            None => {
-                return Err(ProgramError::NotEnoughAccountKeys);
-            }
-        }
-    }
+    let accounts = vec![AccountMeta::new(*mint_pubkey, false)];
 
     Ok(Instruction {
         program_id: *token_program_id,
@@ -832,25 +805,23 @@ mod test {
     #[test]
     fn test_instruction_packing() {
         let check = TokenInstruction::InitializeMint {
-            amount: 1,
             decimals: 2,
             mint_authority: COption::None,
             freeze_authority: COption::None,
         };
         let packed = check.pack().unwrap();
-        let expect = Vec::from([0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0]);
+        let expect = Vec::from([0u8, 2, 0, 0]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::InitializeMint {
-            amount: 1,
             decimals: 2,
             mint_authority: COption::Some(Pubkey::new(&[2u8; 32])),
             freeze_authority: COption::Some(Pubkey::new(&[3u8; 32])),
         };
         let packed = check.pack().unwrap();
-        let mut expect = vec![0u8, 1, 0, 0, 0, 0, 0, 0, 0, 2];
+        let mut expect = vec![0u8, 2];
         expect.extend_from_slice(&[1]);
         expect.extend_from_slice(&[2u8; 32]);
         expect.extend_from_slice(&[1]);
