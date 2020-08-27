@@ -408,6 +408,31 @@ typedef struct Token_Mint {
 } Token_Mint;
 
 /**
+ * A C representation of Rust's `std::option::Option`
+ */
+typedef enum Token_COption_u64_Tag {
+    /**
+     * No value
+     */
+    Token_COption_u64_None_u64,
+    /**
+     * Some value `T`
+     */
+    Token_COption_u64_Some_u64,
+} Token_COption_u64_Tag;
+
+typedef struct Token_COption_u64_Token_Some_Body_u64 {
+    uint64_t _0;
+} Token_COption_u64_Token_Some_Body_u64;
+
+typedef struct Token_COption_u64 {
+    Token_COption_u64_Tag tag;
+    union {
+        Token_COption_u64_Token_Some_Body_u64 some;
+    };
+} Token_COption_u64;
+
+/**
  * Account data.
  */
 typedef struct Token_Account {
@@ -433,9 +458,11 @@ typedef struct Token_Account {
      */
     Token_AccountState state;
     /**
-     * Is this a native token
+     * If is_some, this is a native token, and the value logs the rent-exempt reserve. An Account
+     * is required to be rent-exempt, so the value is used by the Processor to ensure that wrapped
+     * SOL accounts do not drop below this threshold.
      */
-    bool is_native;
+    Token_COption_u64 is_native;
     /**
      * The amount delegated
      */
@@ -444,11 +471,6 @@ typedef struct Token_Account {
      * Optional authority to close the account.
      */
     Token_COption_Pubkey close_authority;
-    /**
-     * An Account is required to be rent-exempt. This value logs the reserve required to be
-     * rent-exempt so that wrapped SOL accounts do not drop below this threshold.
-     */
-    uint64_t rent_exempt_reserve;
 } Token_Account;
 
 /**
