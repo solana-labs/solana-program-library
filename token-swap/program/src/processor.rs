@@ -89,13 +89,20 @@ impl State {
         token_program_id: &Pubkey,
         swap: &Pubkey,
         burn_account: &Pubkey,
+        mint: &Pubkey,
         authority: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_bytes = swap.to_bytes();
         let signers = &[&[&swap_bytes[..32]][..]];
-        let ix =
-            spl_token::instruction::burn(token_program_id, burn_account, authority, &[], amount)?;
+        let ix = spl_token::instruction::burn(
+            token_program_id,
+            burn_account,
+            mint,
+            authority,
+            &[],
+            amount,
+        )?;
         invoke_signed(&ix, accounts, signers)
     }
 
@@ -414,6 +421,7 @@ impl State {
             token_program_info.key,
             swap_info.key,
             source_info.key,
+            &token_swap.pool_mint,
             authority_info.key,
             amount,
         )?;
