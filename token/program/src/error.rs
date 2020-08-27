@@ -22,9 +22,6 @@ pub enum TokenError {
     /// The account cannot be initialized because it is already being used.
     #[error("AlreadyInUse")]
     AlreadyInUse,
-    /// An owner is required if initial supply is zero.
-    #[error("An owner is required if supply is zero")]
-    OwnerRequiredIfNoInitialSupply,
     /// Invalid number of provided signers.
     #[error("Invalid number of provided signers")]
     InvalidNumberOfProvidedSigners,
