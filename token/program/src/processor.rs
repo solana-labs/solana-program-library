@@ -137,9 +137,18 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         amount: u64,
+        expected_decimals: Option<u8>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+
         let source_account_info = next_account_info(account_info_iter)?;
+
+        let expected_mint_info = if let Some(expected_decimals) = expected_decimals {
+            Some((next_account_info(account_info_iter)?, expected_decimals))
+        } else {
+            None
+        };
+
         let dest_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
@@ -160,6 +169,19 @@ impl Processor {
         }
         if source_account.is_frozen() || dest_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
+        }
+
+        if let Some((mint_account_info, expected_decimals)) = expected_mint_info {
+            if source_account.mint != *mint_account_info.key {
+                return Err(TokenError::MintMismatch.into());
+            }
+
+            let mut mint_info_data = mint_account_info.data.borrow_mut();
+            let mint: &Mint = state::unpack_unchecked(&mut mint_info_data)?;
+
+            if expected_decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
+            }
         }
 
         match source_account.delegate {
@@ -218,17 +240,37 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         amount: u64,
+        expected_decimals: Option<u8>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let source_account_info = next_account_info(account_info_iter)?;
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        let mut source_account: &mut Account = state::unpack(&mut source_data)?;
+        let source_account_info = next_account_info(account_info_iter)?;
+        let expected_mint_info = if let Some(expected_decimals) = expected_decimals {
+            Some((next_account_info(account_info_iter)?, expected_decimals))
+        } else {
+            None
+        };
         let delegate_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
 
+        let mut source_data = source_account_info.data.borrow_mut();
+        let mut source_account: &mut Account = state::unpack(&mut source_data)?;
+
         if source_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
+        }
+
+        if let Some((mint_account_info, expected_decimals)) = expected_mint_info {
+            if source_account.mint != *mint_account_info.key {
+                return Err(TokenError::MintMismatch.into());
+            }
+
+            let mut mint_info_data = mint_account_info.data.borrow_mut();
+            let mint: &Mint = state::unpack_unchecked(&mut mint_info_data)?;
+
+            if expected_decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
+            }
         }
 
         Self::validate_owner(
@@ -367,6 +409,7 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         amount: u64,
+        expected_decimals: Option<u8>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_info = next_account_info(account_info_iter)?;
@@ -389,6 +432,12 @@ impl Processor {
 
         let mut mint_info_data = mint_info.data.borrow_mut();
         let mint: &mut Mint = state::unpack(&mut mint_info_data)?;
+
+        if let Some(expected_decimals) = expected_decimals {
+            if expected_decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
+            }
+        }
 
         match mint.mint_authority {
             COption::Some(mint_authority) => {
@@ -422,8 +471,10 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         amount: u64,
+        expected_decimals: Option<u8>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+
         let source_account_info = next_account_info(account_info_iter)?;
         let mint_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
@@ -445,6 +496,12 @@ impl Processor {
         }
         if source_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
+        }
+
+        if let Some(expected_decimals) = expected_decimals {
+            if expected_decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
+            }
         }
 
         match source_account.delegate {
@@ -596,11 +653,11 @@ impl Processor {
             }
             TokenInstruction::Transfer { amount } => {
                 info!("Instruction: Transfer");
-                Self::process_transfer(program_id, accounts, amount)
+                Self::process_transfer(program_id, accounts, amount, None)
             }
             TokenInstruction::Approve { amount } => {
                 info!("Instruction: Approve");
-                Self::process_approve(program_id, accounts, amount)
+                Self::process_approve(program_id, accounts, amount, None)
             }
             TokenInstruction::Revoke => {
                 info!("Instruction: Revoke");
@@ -615,11 +672,11 @@ impl Processor {
             }
             TokenInstruction::MintTo { amount } => {
                 info!("Instruction: MintTo");
-                Self::process_mint_to(program_id, accounts, amount)
+                Self::process_mint_to(program_id, accounts, amount, None)
             }
             TokenInstruction::Burn { amount } => {
                 info!("Instruction: Burn");
-                Self::process_burn(program_id, accounts, amount)
+                Self::process_burn(program_id, accounts, amount, None)
             }
             TokenInstruction::CloseAccount => {
                 info!("Instruction: CloseAccount");
@@ -632,6 +689,22 @@ impl Processor {
             TokenInstruction::ThawAccount => {
                 info!("Instruction: FreezeAccount");
                 Self::process_toggle_freeze_account(program_id, accounts, false)
+            }
+            TokenInstruction::Transfer2 { amount, decimals } => {
+                info!("Instruction: Transfer");
+                Self::process_transfer(program_id, accounts, amount, Some(decimals))
+            }
+            TokenInstruction::Approve2 { amount, decimals } => {
+                info!("Instruction: Approve");
+                Self::process_approve(program_id, accounts, amount, Some(decimals))
+            }
+            TokenInstruction::MintTo2 { amount, decimals } => {
+                info!("Instruction: MintTo");
+                Self::process_mint_to(program_id, accounts, amount, Some(decimals))
+            }
+            TokenInstruction::Burn2 { amount, decimals } => {
+                info!("Instruction: Burn");
+                Self::process_burn(program_id, accounts, amount, Some(decimals))
             }
         }
     }
@@ -706,6 +779,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::MintCannotFreeze => info!("Error: This token mint cannot freeze accounts"),
             TokenError::AccountFrozen => info!("Error: Account is frozen"),
+            TokenError::MintDecimalsMismatch => {
+                info!("Error: decimals different from the Mint decimals")
+            }
         }
     }
 }
@@ -717,10 +793,7 @@ solana_sdk::program_stubs!();
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instruction::{
-        approve, burn, close_account, freeze_account, initialize_account, initialize_mint,
-        initialize_multisig, mint_to, revoke, set_authority, thaw_account, transfer, MAX_SIGNERS,
-    };
+    use crate::instruction::*;
     use solana_sdk::{
         account::Account as SolanaAccount, account_info::create_is_signer_account_infos,
         clock::Epoch, instruction::Instruction, sysvar::rent,
@@ -1118,19 +1191,69 @@ mod tests {
         )
         .unwrap();
 
-        // transfer rest
+        // incorrect decimals
+        assert_eq!(
+            Err(TokenError::MintDecimalsMismatch.into()),
+            do_process_instruction(
+                transfer2(
+                    &program_id,
+                    &account2_key,
+                    &mint_key,
+                    &account_key,
+                    &owner_key,
+                    &[],
+                    1,
+                    10 // <-- incorrect decimals
+                )
+                .unwrap(),
+                vec![
+                    &mut account2_account,
+                    &mut mint_account,
+                    &mut account_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // incorrect mint
+        assert_eq!(
+            Err(TokenError::MintMismatch.into()),
+            do_process_instruction(
+                transfer2(
+                    &program_id,
+                    &account2_key,
+                    &account3_key, // <-- incorrect mint
+                    &account_key,
+                    &owner_key,
+                    &[],
+                    1,
+                    2
+                )
+                .unwrap(),
+                vec![
+                    &mut account2_account,
+                    &mut account3_account, // <-- incorrect mint
+                    &mut account_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+        // transfer rest with explicit decimals
         do_process_instruction(
-            transfer(
+            transfer2(
                 &program_id,
                 &account2_key,
+                &mint_key,
                 &account_key,
                 &owner_key,
                 &[],
                 500,
+                2,
             )
             .unwrap(),
             vec![
                 &mut account2_account,
+                &mut mint_account,
                 &mut account_account,
                 &mut owner_account,
             ],
@@ -1355,9 +1478,47 @@ mod tests {
         )
         .unwrap();
 
+        // mint to 2, with incorrect decimals
+        assert_eq!(
+            Err(TokenError::MintDecimalsMismatch.into()),
+            do_process_instruction(
+                mint_to2(
+                    &program_id,
+                    &mint_key,
+                    &account_key,
+                    &owner_key,
+                    &[],
+                    42,
+                    decimals + 1
+                )
+                .unwrap(),
+                vec![&mut mint_account, &mut account_account, &mut owner_account],
+            )
+        );
+
         let _: &mut Mint = state::unpack(&mut mint_account.data).unwrap();
         let dest_account: &mut Account = state::unpack(&mut account_account.data).unwrap();
         assert_eq!(dest_account.amount, 42);
+
+        // mint to 2
+        do_process_instruction(
+            mint_to2(
+                &program_id,
+                &mint_key,
+                &account_key,
+                &owner_key,
+                &[],
+                42,
+                decimals,
+            )
+            .unwrap(),
+            vec![&mut mint_account, &mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        let _: &mut Mint = state::unpack(&mut mint_account.data).unwrap();
+        let dest_account: &mut Account = state::unpack(&mut account_account.data).unwrap();
+        assert_eq!(dest_account.amount, 84);
     }
 
     #[test]
@@ -1475,6 +1636,76 @@ mod tests {
             .unwrap(),
             vec![
                 &mut account_account,
+                &mut delegate_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+
+        // approve delegate 2, with incorrect decimals
+        assert_eq!(
+            Err(TokenError::MintDecimalsMismatch.into()),
+            do_process_instruction(
+                approve2(
+                    &program_id,
+                    &account_key,
+                    &mint_key,
+                    &delegate_key,
+                    &owner_key,
+                    &[],
+                    100,
+                    0 // <-- incorrect decimals
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut mint_account,
+                    &mut delegate_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // approve delegate 2, with incorrect mint
+        assert_eq!(
+            Err(TokenError::MintMismatch.into()),
+            do_process_instruction(
+                approve2(
+                    &program_id,
+                    &account_key,
+                    &account2_key, // <-- bad mint
+                    &delegate_key,
+                    &owner_key,
+                    &[],
+                    100,
+                    0
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account2_account, // <-- bad mint
+                    &mut delegate_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // approve delegate 2
+        do_process_instruction(
+            approve2(
+                &program_id,
+                &account_key,
+                &mint_key,
+                &delegate_key,
+                &owner_key,
+                &[],
+                100,
+                2,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut mint_account,
                 &mut delegate_account,
                 &mut owner_account,
             ],
@@ -2136,7 +2367,23 @@ mod tests {
 
         // burn
         do_process_instruction(
-            burn(&program_id, &account_key, &mint_key, &owner_key, &[], 42).unwrap(),
+            burn(&program_id, &account_key, &mint_key, &owner_key, &[], 21).unwrap(),
+            vec![&mut account_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // burn2, with incorrect decimals
+        assert_eq!(
+            Err(TokenError::MintDecimalsMismatch.into()),
+            do_process_instruction(
+                burn2(&program_id, &account_key, &mint_key, &owner_key, &[], 21, 3).unwrap(),
+                vec![&mut account_account, &mut mint_account, &mut owner_account],
+            )
+        );
+
+        // burn2
+        do_process_instruction(
+            burn2(&program_id, &account_key, &mint_key, &owner_key, &[], 21, 2).unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();

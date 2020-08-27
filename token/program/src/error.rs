@@ -61,6 +61,9 @@ pub enum TokenError {
     /// Account is frozen; all account operations will fail
     #[error("Account is frozen")]
     AccountFrozen,
+    /// Mint decimals mismatch between the client and mint
+    #[error("The provided decimals value different from the Mint decimals")]
+    MintDecimalsMismatch,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
