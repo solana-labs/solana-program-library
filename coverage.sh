@@ -23,7 +23,6 @@ if [[ -z $1 ]]; then
   programs=(
     memo/program
     token/program
-    token/program2
     token-swap/program
   )
 else

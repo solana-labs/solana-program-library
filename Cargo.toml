@@ -5,7 +5,6 @@ members = [
   "token-swap/program",
   "token/cli",
   "token/program",
-  "token/program2",
 ]
 
 # Workflow for developing against local Solana crates

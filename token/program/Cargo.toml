@@ -2,9 +2,9 @@
 # Note: This crate must be built using do.sh
 
 [package]
-name = "spl-token2"
-version = "1.0.0"
-description = "Solana Program Library Token 2"
+name = "spl-token"
+version = "1.1.0"
+description = "Solana Program Library Token"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"

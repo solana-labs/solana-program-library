@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 #define TOKEN_MAJOR_VERSION 1
-#define TOKEN_MINOR_VERSION 0
+#define TOKEN_MINOR_VERSION 1
 #define TOKEN_PATCH_VERSION 0
 
 /**
@@ -20,89 +20,6 @@
  * Minimum number of multisignature signers (min N)
  */
 #define Token_MIN_SIGNERS 1
-
-/**
- * Account state.
- */
-enum Token_AccountState
-#ifdef __cplusplus
-  : uint8_t
-#endif // __cplusplus
- {
-    /**
-     * Account is not yet initialized
-     */
-    Token_AccountState_Uninitialized,
-    /**
-     * Account is initialized; the account owner and/or delegate may perform permitted operations
-     * on this account
-     */
-    Token_AccountState_Initialized,
-    /**
-     * Account has been frozen by the mint freeze authority. Neither the account owner nor
-     * the delegate are able to perform operations on this account.
-     */
-    Token_AccountState_Frozen,
-};
-#ifndef __cplusplus
-typedef uint8_t Token_AccountState;
-#endif // __cplusplus
-
-/**
- * Specifies the authority type for SetAuthority instructions
- */
-enum Token_AuthorityType
-#ifdef __cplusplus
-  : uint8_t
-#endif // __cplusplus
- {
-    /**
-     * Authority to mint new tokens
-     */
-    Token_AuthorityType_MintTokens,
-    /**
-     * Authority to freeze any account associated with the Mint
-     */
-    Token_AuthorityType_FreezeAccount,
-    /**
-     * Holder of a given token account
-     */
-    Token_AuthorityType_AccountHolder,
-    /**
-     * Authority to close a token account
-     */
-    Token_AuthorityType_CloseAccount,
-};
-#ifndef __cplusplus
-typedef uint8_t Token_AuthorityType;
-#endif // __cplusplus
-
-typedef uint8_t Token_Pubkey[32];
-
-/**
- * A C representation of Rust's `std::option::Option`
- */
-typedef enum Token_COption_Pubkey_Tag {
-    /**
-     * No value
-     */
-    Token_COption_Pubkey_None_Pubkey,
-    /**
-     * Some value `T`
-     */
-    Token_COption_Pubkey_Some_Pubkey,
-} Token_COption_Pubkey_Tag;
-
-typedef struct Token_COption_Pubkey_Token_Some_Body_Pubkey {
-    Token_Pubkey _0;
-} Token_COption_Pubkey_Token_Some_Body_Pubkey;
-
-typedef struct Token_COption_Pubkey {
-    Token_COption_Pubkey_Tag tag;
-    union {
-        Token_COption_Pubkey_Token_Some_Body_Pubkey some;
-    };
-} Token_COption_Pubkey;
 
 /**
  * Instructions supported by the token program.
@@ -118,6 +35,11 @@ typedef enum Token_TokenInstruction_Tag {
      * Accounts expected by this instruction:
      *
      *   0. `[writable]` The mint to initialize.
+     *   1.
+     *      * If supply is non-zero: `[writable]` The account to hold all the newly minted tokens.
+     *      * If supply is zero: `[]` The owner/multisignature of the mint.
+     *   2. `[]` (optional) The owner/multisignature of the mint if supply is non-zero, if
+     *                      present then further minting is supported.
      *
      */
     Token_TokenInstruction_InitializeMint,
@@ -205,34 +127,36 @@ typedef enum Token_TokenInstruction_Tag {
      */
     Token_TokenInstruction_Revoke,
     /**
-     * Sets a new authority of a mint or account.
+     * Sets a new owner of a mint or account.
      *
      * Accounts expected by this instruction:
      *
-     *   * Single authority
-     *   0. `[writable]` The mint or account to change the authority of.
-     *   1. `[signer]` The current authority of the mint or account.
+     *   * Single owner
+     *   0. `[writable]` The mint or account to change the owner of.
+     *   1. `[]` The new owner/delegate/multisignature.
+     *   2. `[signer]` The owner of the mint or account.
      *
-     *   * Multisignature authority
-     *   0. `[writable]` The mint or account to change the authority of.
-     *   1. `[]` The mint's or account's multisignature authority.
+     *   * Multisignature owner
+     *   0. `[writable]` The mint or account to change the owner of.
+     *   1. `[]` The new owner/delegate/multisignature.
+     *   2. `[]` The mint's or account's multisignature owner.
      *   3. ..3+M '[signer]' M signer accounts
      */
-    Token_TokenInstruction_SetAuthority,
+    Token_TokenInstruction_SetOwner,
     /**
      * Mints new tokens to an account.  The native mint does not support minting.
      *
      * Accounts expected by this instruction:
      *
-     *   * Single authority
+     *   * Single owner
      *   0. `[writable]` The mint.
      *   1. `[writable]` The account to mint tokens to.
-     *   2. `[signer]` The mint's minting authority.
+     *   2. `[signer]` The mint's owner.
      *
-     *   * Multisignature authority
+     *   * Multisignature owner
      *   0. `[writable]` The mint.
      *   1. `[writable]` The account to mint tokens to.
-     *   2. `[]` The mint's multisignature mint-tokens authority.
+     *   2. `[]` The mint's multisignature owner.
      *   3. ..3+M '[signer]' M signer accounts.
      */
     Token_TokenInstruction_MintTo,
@@ -270,55 +194,17 @@ typedef enum Token_TokenInstruction_Tag {
      *   3. ..3+M '[signer]' M signer accounts.
      */
     Token_TokenInstruction_CloseAccount,
-    /**
-     * Freeze an Initialized account using the Mint's freeze_authority (if set).
-     *
-     * Accounts expected by this instruction:
-     *
-     *   * Single owner
-     *   0. `[writable]` The account to freeze.
-     *   1. '[]' The token mint.
-     *   2. `[signer]` The mint freeze authority.
-     *
-     *   * Multisignature owner
-     *   0. `[writable]` The account to freeze.
-     *   1. '[]' The token mint.
-     *   2. `[]` The mint's multisignature freeze authority.
-     *   3. ..3+M '[signer]' M signer accounts.
-     */
-    Token_TokenInstruction_FreezeAccount,
-    /**
-     * Thaw a Frozen account using the Mint's freeze_authority (if set).
-     *
-     * Accounts expected by this instruction:
-     *
-     *   * Single owner
-     *   0. `[writable]` The account to freeze.
-     *   1. '[]' The token mint.
-     *   2. `[signer]` The mint freeze authority.
-     *
-     *   * Multisignature owner
-     *   0. `[writable]` The account to freeze.
-     *   1. '[]' The token mint.
-     *   2. `[]` The mint's multisignature freeze authority.
-     *   3. ..3+M '[signer]' M signer accounts.
-     */
-    Token_TokenInstruction_ThawAccount,
 } Token_TokenInstruction_Tag;
 
 typedef struct Token_TokenInstruction_Token_InitializeMint_Body {
     /**
+     * Initial amount of tokens to mint.
+     */
+    uint64_t amount;
+    /**
      * Number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
-    /**
-     * The authority/multisignature to mint tokens. If present, further minting is supported.
-     */
-    Token_COption_Pubkey mint_authority;
-    /**
-     * The freeze authority/multisignature of the mint.
-     */
-    Token_COption_Pubkey freeze_authority;
 } Token_TokenInstruction_Token_InitializeMint_Body;
 
 typedef struct Token_TokenInstruction_Token_InitializeMultisig_Body {
@@ -342,17 +228,6 @@ typedef struct Token_TokenInstruction_Token_Approve_Body {
     uint64_t amount;
 } Token_TokenInstruction_Token_Approve_Body;
 
-typedef struct Token_TokenInstruction_Token_SetAuthority_Body {
-    /**
-     * The type of authority to update.
-     */
-    Token_AuthorityType authority_type;
-    /**
-     * The new authority
-     */
-    Token_COption_Pubkey new_authority;
-} Token_TokenInstruction_Token_SetAuthority_Body;
-
 typedef struct Token_TokenInstruction_Token_MintTo_Body {
     /**
      * The amount of new tokens to mint.
@@ -374,22 +249,48 @@ typedef struct Token_TokenInstruction {
         Token_TokenInstruction_Token_InitializeMultisig_Body initialize_multisig;
         Token_TokenInstruction_Token_Transfer_Body transfer;
         Token_TokenInstruction_Token_Approve_Body approve;
-        Token_TokenInstruction_Token_SetAuthority_Body set_authority;
         Token_TokenInstruction_Token_MintTo_Body mint_to;
         Token_TokenInstruction_Token_Burn_Body burn;
     };
 } Token_TokenInstruction;
+
+typedef uint8_t Token_Pubkey[32];
+
+/**
+ * A C representation of Rust's `std::option::Option`
+ */
+typedef enum Token_COption_Pubkey_Tag {
+    /**
+     * No value
+     */
+    Token_COption_Pubkey_None_Pubkey,
+    /**
+     * Some value `T`
+     */
+    Token_COption_Pubkey_Some_Pubkey,
+} Token_COption_Pubkey_Tag;
+
+typedef struct Token_COption_Pubkey_Token_Some_Body_Pubkey {
+    Token_Pubkey _0;
+} Token_COption_Pubkey_Token_Some_Body_Pubkey;
+
+typedef struct Token_COption_Pubkey {
+    Token_COption_Pubkey_Tag tag;
+    union {
+        Token_COption_Pubkey_Token_Some_Body_Pubkey some;
+    };
+} Token_COption_Pubkey;
 
 /**
  * Mint data.
  */
 typedef struct Token_Mint {
     /**
-     * Optional authority used to mint new tokens. The mint authority may only be provided during
-     * mint creation. If no mint authority is present then the mint has a fixed supply and no
-     * further tokens may be minted.
+     * Optional owner, used to mint new tokens.  The owner may only
+     * be provided during mint creation.  If no owner is present then the mint
+     * has a fixed supply and no further tokens may be minted.
      */
-    Token_COption_Pubkey mint_authority;
+    Token_COption_Pubkey owner;
     /**
      * Number of base 10 digits to the right of the decimal place.
      */
@@ -398,10 +299,6 @@ typedef struct Token_Mint {
      * Is `true` if this structure has been initialized
      */
     bool is_initialized;
-    /**
-     * Optional authority to freeze token accounts.
-     */
-    Token_COption_Pubkey freeze_authority;
 } Token_Mint;
 
 /**
@@ -426,9 +323,9 @@ typedef struct Token_Account {
      */
     Token_COption_Pubkey delegate;
     /**
-     * The account's state
+     * Is `true` if this structure has been initialized
      */
-    Token_AccountState state;
+    bool is_initialized;
     /**
      * Is this a native token
      */
@@ -437,10 +334,6 @@ typedef struct Token_Account {
      * The amount delegated
      */
     uint64_t delegated_amount;
-    /**
-     * Optional authority to close the account.
-     */
-    Token_COption_Pubkey close_authority;
 } Token_Account;
 
 /**
