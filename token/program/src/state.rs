@@ -46,6 +46,9 @@ pub struct Account {
     pub delegated_amount: u64,
     /// Optional authority to close the account.
     pub close_authority: COption<Pubkey>,
+    /// An Account is required to be rent-exempt. This value logs the reserve required to be
+    /// rent-exempt so that wrapped SOL accounts do not drop below this threshold.
+    pub rent_exempt_reserve: u64,
 }
 impl Account {
     /// Checks if account is frozen
