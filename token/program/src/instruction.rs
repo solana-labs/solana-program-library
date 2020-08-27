@@ -5,6 +5,7 @@ use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     pubkey::Pubkey,
+    sysvar,
 };
 use std::mem::size_of;
 
@@ -26,6 +27,7 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
+    ///   1. `[]` Rent sysvar
     ///
     InitializeMint {
         /// Number of base 10 digits to the right of the decimal place.
@@ -47,6 +49,7 @@ pub enum TokenInstruction {
     ///   0. `[writable]`  The account to initialize.
     ///   1. `[]` The mint this account will be associated with.
     ///   2. `[]` The new account's owner/multisignature.
+    ///   3. `[]` Rent sysvar
     InitializeAccount,
     /// Initializes a multisignature account with N provided signers.
     ///
@@ -61,7 +64,8 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The multisignature account to initialize.
-    ///   1. ..1+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
+    ///   2. `[]` Rent sysvar
+    ///   3. ..2+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
     InitializeMultisig {
         /// The number of signers (M) required to validate this multisignature account.
         m: u8,
@@ -478,7 +482,10 @@ pub fn initialize_mint(
     }
     .pack()?;
 
-    let accounts = vec![AccountMeta::new(*mint_pubkey, false)];
+    let accounts = vec![
+        AccountMeta::new(*mint_pubkey, false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
 
     Ok(Instruction {
         program_id: *token_program_id,
@@ -500,6 +507,7 @@ pub fn initialize_account(
         AccountMeta::new(*account_pubkey, false),
         AccountMeta::new_readonly(*mint_pubkey, false),
         AccountMeta::new_readonly(*owner_pubkey, false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
     Ok(Instruction {
@@ -524,8 +532,9 @@ pub fn initialize_multisig(
     }
     let data = TokenInstruction::InitializeMultisig { m }.pack()?;
 
-    let mut accounts = Vec::with_capacity(1 + signer_pubkeys.len());
+    let mut accounts = Vec::with_capacity(1 + 1 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*multisig_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(sysvar::rent::id(), false));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new_readonly(**signer_pubkey, false));
     }
