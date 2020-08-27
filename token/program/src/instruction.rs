@@ -94,7 +94,7 @@ pub enum TokenInstruction {
     },
     /// Approves a delegate.  A delegate is given the authority over
     /// tokens on behalf of the source account's owner.
-
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner
@@ -225,6 +225,109 @@ pub enum TokenInstruction {
     ///   2. `[]` The mint's multisignature freeze authority.
     ///   3. ..3+M '[signer]' M signer accounts.
     ThawAccount,
+
+    /// Transfers tokens from one account to another either directly or via a delegate.  If this
+    /// account is associated with the native mint then equal amounts of SOL and Tokens will be
+    /// transferred to the destination account.
+    ///
+    /// This instruction differs from Transfer in that the token mint and decimals value is
+    /// asserted by the caller.  This may be useful when creating transactions offline or within a
+    /// hardware wallet.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The source account.
+    ///   1. '[]' The token mint.
+    ///   2. `[writable]` The destination account.
+    ///   3. '[signer]' The source account's owner/delegate.
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[writable]` The source account.
+    ///   1. '[]' The token mint.
+    ///   2. `[writable]` The destination account.
+    ///   3. '[]' The source account's multisignature owner/delegate.
+    ///   4. ..4+M '[signer]' M signer accounts.
+    Transfer2 {
+        /// The amount of tokens to transfer.
+        amount: u64,
+        /// Expected number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+    },
+    /// Approves a delegate.  A delegate is given the authority over
+    /// tokens on behalf of the source account's owner.
+    ///
+    /// This instruction differs from Approve in that the token mint and decimals value is asserted
+    /// by the caller.  This may be useful when creating transactions offline or within a hardware
+    /// wallet.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner
+    ///   0. `[writable]` The source account.
+    ///   1. '[]' The token mint.
+    ///   2. `[]` The delegate.
+    ///   3. `[signer]` The source account owner.
+    ///
+    ///   * Multisignature owner
+    ///   0. `[writable]` The source account.
+    ///   1. '[]' The token mint.
+    ///   2. `[]` The delegate.
+    ///   3. '[]' The source account's multisignature owner.
+    ///   4. ..4+M '[signer]' M signer accounts
+    Approve2 {
+        /// The amount of tokens the delegate is approved for.
+        amount: u64,
+        /// Expected number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+    },
+    /// Mints new tokens to an account.  The native mint does not support minting.
+    ///
+    /// This instruction differs from MintTo in that the decimals value is asserted by the
+    /// caller.  This may be useful when creating transactions offline or within a hardware wallet.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single authority
+    ///   0. `[writable]` The mint.
+    ///   1. `[writable]` The account to mint tokens to.
+    ///   2. `[signer]` The mint's minting authority.
+    ///
+    ///   * Multisignature authority
+    ///   0. `[writable]` The mint.
+    ///   1. `[writable]` The account to mint tokens to.
+    ///   2. `[]` The mint's multisignature mint-tokens authority.
+    ///   3. ..3+M '[signer]' M signer accounts.
+    MintTo2 {
+        /// The amount of new tokens to mint.
+        amount: u64,
+        /// Expected number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+    },
+    /// Burns tokens by removing them from an account.  `Burn2` does not support accounts
+    /// associated with the native mint, use `CloseAccount` instead.
+    ///
+    /// This instruction differs from Burn in that the decimals value is asserted by the caller.
+    /// This may be useful when creating transactions offline or within a hardware wallet.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The account to burn from.
+    ///   1. '[writable]' The token mint.
+    ///   2. `[signer]` The account's owner/delegate.
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[writable]` The account to burn from.
+    ///   1. '[writable]' The token mint.
+    ///   2. `[]` The account's multisignature owner/delegate.
+    ///   3. ..3+M '[signer]' M signer accounts.
+    Burn2 {
+        /// The amount of tokens to burn.
+        amount: u64,
+        /// Expected number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+    },
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -323,6 +426,67 @@ impl TokenInstruction {
             9 => Self::CloseAccount,
             10 => Self::FreezeAccount,
             11 => Self::ThawAccount,
+            12 => {
+                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
+                    return Err(TokenError::InvalidInstruction.into());
+                }
+                let mut input_len = 0;
+                input_len += size_of::<u8>();
+
+                #[allow(clippy::cast_ptr_alignment)]
+                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
+                input_len += size_of::<u64>();
+
+                let decimals = unsafe { *(&input[input_len] as *const u8) };
+
+                Self::Transfer2 { amount, decimals }
+            }
+            13 => {
+                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
+                    return Err(TokenError::InvalidInstruction.into());
+                }
+                let mut input_len = 0;
+                input_len += size_of::<u8>();
+
+                #[allow(clippy::cast_ptr_alignment)]
+                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
+                input_len += size_of::<u64>();
+
+                let decimals = unsafe { *(&input[input_len] as *const u8) };
+
+                Self::Approve2 { amount, decimals }
+            }
+            14 => {
+                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
+                    return Err(TokenError::InvalidInstruction.into());
+                }
+                let mut input_len = 0;
+                input_len += size_of::<u8>();
+
+                #[allow(clippy::cast_ptr_alignment)]
+                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
+                input_len += size_of::<u64>();
+
+                let decimals = unsafe { *(&input[input_len] as *const u8) };
+
+                Self::MintTo2 { amount, decimals }
+            }
+            15 => {
+                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
+                    return Err(TokenError::InvalidInstruction.into());
+                }
+                let mut input_len = 0;
+                input_len += size_of::<u8>();
+
+                #[allow(clippy::cast_ptr_alignment)]
+                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
+                input_len += size_of::<u64>();
+
+                let decimals = unsafe { *(&input[input_len] as *const u8) };
+
+                Self::Burn2 { amount, decimals }
+            }
+
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -426,6 +590,59 @@ impl TokenInstruction {
             }
             Self::ThawAccount => {
                 output[output_len] = 11;
+                output_len += size_of::<u8>();
+            }
+            Self::Transfer2 { amount, decimals } => {
+                output[output_len] = 12;
+                output_len += size_of::<u8>();
+
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
+                *value = *amount;
+                output_len += size_of::<u64>();
+
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
+                *value = *decimals;
+                output_len += size_of::<u8>();
+            }
+            Self::Approve2 { amount, decimals } => {
+                output[output_len] = 13;
+                output_len += size_of::<u8>();
+
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
+                *value = *amount;
+                output_len += size_of::<u64>();
+
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
+                *value = *decimals;
+                output_len += size_of::<u8>();
+            }
+            Self::MintTo2 { amount, decimals } => {
+                output[output_len] = 14;
+                output_len += size_of::<u8>();
+
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
+                *value = *amount;
+                output_len += size_of::<u64>();
+
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
+                *value = *decimals;
+                output_len += size_of::<u8>();
+            }
+
+            Self::Burn2 { amount, decimals } => {
+                output[output_len] = 15;
+                output_len += size_of::<u8>();
+
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
+                *value = *amount;
+                output_len += size_of::<u64>();
+
+                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
+                *value = *decimals;
                 output_len += size_of::<u8>();
             }
         }
@@ -809,6 +1026,132 @@ pub fn thaw_account(
     })
 }
 
+/// Creates a `Transfer2` instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn transfer2(
+    token_program_id: &Pubkey,
+    source_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    destination_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+    amount: u64,
+    decimals: u8,
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::Transfer2 { amount, decimals }.pack()?;
+
+    let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*source_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(*mint_pubkey, false));
+    accounts.push(AccountMeta::new(*destination_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *authority_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates an `Approve2` instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn approve2(
+    token_program_id: &Pubkey,
+    source_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    delegate_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+    amount: u64,
+    decimals: u8,
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::Approve2 { amount, decimals }.pack()?;
+
+    let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*source_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(*mint_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(*delegate_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a `MintTo2` instruction.
+pub fn mint_to2(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    account_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+    amount: u64,
+    decimals: u8,
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::MintTo2 { amount, decimals }.pack()?;
+
+    let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*mint_pubkey, false));
+    accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a `Burn2` instruction.
+pub fn burn2(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+    amount: u64,
+    decimals: u8,
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::Burn2 { amount, decimals }.pack()?;
+
+    let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new(*mint_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *authority_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     !(index < MIN_SIGNERS || index > MAX_SIGNERS)
@@ -925,6 +1268,46 @@ mod test {
         let check = TokenInstruction::ThawAccount;
         let packed = check.pack().unwrap();
         let expect = Vec::from([11u8]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::Transfer2 {
+            amount: 1,
+            decimals: 2,
+        };
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([12u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::Approve2 {
+            amount: 1,
+            decimals: 2,
+        };
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([13u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::MintTo2 {
+            amount: 1,
+            decimals: 2,
+        };
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([14u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::Burn2 {
+            amount: 1,
+            decimals: 2,
+        };
+        let packed = check.pack().unwrap();
+        let expect = Vec::from([15u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
