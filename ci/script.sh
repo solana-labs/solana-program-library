@@ -69,12 +69,13 @@ js_token() {
   time npm run flow || exit $?
   tsc module.d.ts || exit $?
 
-  npm run cluster:localnet || exit $?
-  npm run localnet:down
-  npm run localnet:update || exit $?
-  npm run localnet:up || exit $?
-  time npm run start || exit $?
-  npm run localnet:down
+  # TODO: Uncomment when resolving https://github.com/solana-labs/solana-program-library/issues/332
+  # npm run cluster:localnet || exit $?
+  # npm run localnet:down
+  # npm run localnet:update || exit $?
+  # npm run localnet:up || exit $?
+  # time npm run start || exit $?
+  # npm run localnet:down
 }
 _ js_token
 
