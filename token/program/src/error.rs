@@ -7,6 +7,9 @@ use thiserror::Error;
 /// Errors that may be returned by the Token program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum TokenError {
+    /// Lamport balance below rent-exempt threshold.
+    #[error("Lamport balance below rent-exempt threshold")]
+    NotRentExempt,
     /// Insufficient funds for the operation requested.
     #[error("Insufficient funds")]
     InsufficientFunds,
