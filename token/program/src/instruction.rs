@@ -64,8 +64,8 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The multisignature account to initialize.
-    ///   2. `[]` Rent sysvar
-    ///   3. ..2+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
+    ///   1. `[]` Rent sysvar
+    ///   2. ..2+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
     InitializeMultisig {
         /// The number of signers (M) required to validate this multisignature account.
         m: u8,
@@ -133,7 +133,7 @@ pub enum TokenInstruction {
     ///   * Multisignature authority
     ///   0. `[writable]` The mint or account to change the authority of.
     ///   1. `[]` The mint's or account's multisignature authority.
-    ///   3. ..3+M '[signer]' M signer accounts
+    ///   2. ..2+M '[signer]' M signer accounts
     SetAuthority {
         /// The type of authority to update.
         authority_type: AuthorityType,
@@ -165,12 +165,14 @@ pub enum TokenInstruction {
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The account to burn from.
-    ///   1. `[signer]` The account's owner/delegate.
+    ///   1. '[writable]' The token mint.
+    ///   2. `[signer]` The account's owner/delegate.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The account to burn from.
-    ///   1. `[]` The account's multisignature owner/delegate.
-    ///   2. ..2+M '[signer]' M signer accounts.
+    ///   1. '[writable]' The token mint.
+    ///   2. `[]` The account's multisignature owner/delegate.
+    ///   3. ..3+M '[signer]' M signer accounts.
     Burn {
         /// The amount of tokens to burn.
         amount: u64,
@@ -696,14 +698,16 @@ pub fn mint_to(
 pub fn burn(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     let data = TokenInstruction::Burn { amount }.pack()?;
 
-    let mut accounts = Vec::with_capacity(2 + signer_pubkeys.len());
+    let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new(*mint_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *authority_pubkey,
         signer_pubkeys.is_empty(),
