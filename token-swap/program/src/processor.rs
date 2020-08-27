@@ -176,7 +176,7 @@ impl State {
         if *authority_info.key != token_b.owner {
             return Err(Error::InvalidOwner.into());
         }
-        if spl_token::option::COption::Some(*authority_info.key) != pool_mint.owner {
+        if spl_token::option::COption::Some(*authority_info.key) != pool_mint.mint_authority {
             return Err(Error::InvalidOwner.into());
         }
         if token_b.amount == 0 {
