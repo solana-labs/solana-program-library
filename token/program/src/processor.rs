@@ -41,7 +41,7 @@ impl Processor {
             return Err(TokenError::AlreadyInUse.into());
         }
 
-        if mint_info.lamports() < rent.minimum_balance(mint_info_data_len) {
+        if !rent.is_exempt(mint_info.lamports(), mint_info_data_len) {
             return Err(TokenError::NotRentExempt.into());
         }
 
@@ -68,7 +68,7 @@ impl Processor {
             return Err(TokenError::AlreadyInUse.into());
         }
 
-        if new_account_info.lamports() < rent.minimum_balance(new_account_info_data_len) {
+        if !rent.is_exempt(new_account_info.lamports(), new_account_info_data_len) {
             return Err(TokenError::NotRentExempt.into());
         }
 
@@ -80,6 +80,7 @@ impl Processor {
         if *mint_info.key == crate::native_mint::id() {
             account.is_native = true;
             account.amount = new_account_info.lamports();
+            account.rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
         } else {
             account.is_native = false;
             account.amount = 0;
@@ -101,7 +102,7 @@ impl Processor {
             return Err(TokenError::AlreadyInUse.into());
         }
 
-        if multisig_info.lamports() < rent.minimum_balance(multisig_info_data_len) {
+        if !rent.is_exempt(multisig_info.lamports(), multisig_info_data_len) {
             return Err(TokenError::NotRentExempt.into());
         }
 
@@ -183,6 +184,10 @@ impl Processor {
             .ok_or(TokenError::Overflow)?;
 
         if source_account.is_native {
+            // Ensure that wrapped SOL accounts remain rent-exempt
+            if source_account_info.lamports() < source_account.rent_exempt_reserve + amount {
+                return Err(TokenError::InsufficientFunds.into());
+            }
             **source_account_info.lamports.borrow_mut() -= amount;
             **dest_account_info.lamports.borrow_mut() += amount;
         }
@@ -2827,8 +2832,11 @@ mod tests {
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), size_of::<Mint>(), &program_id);
         let account_key = pubkey_rand();
-        let mut account_account =
-            SolanaAccount::new(account_minimum_balance(), size_of::<Account>(), &program_id);
+        let mut account_account = SolanaAccount::new(
+            account_minimum_balance() + 40,
+            size_of::<Account>(),
+            &program_id,
+        );
         let account2_key = pubkey_rand();
         let mut account2_account =
             SolanaAccount::new(account_minimum_balance(), size_of::<Account>(), &program_id);
@@ -2857,7 +2865,7 @@ mod tests {
         .unwrap();
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
         assert!(account.is_native);
-        assert_eq!(account.amount, account_minimum_balance());
+        assert_eq!(account.amount, account_minimum_balance() + 40);
 
         // initialize native account
         do_process_instruction(
@@ -2927,8 +2935,8 @@ mod tests {
 
         let account: &mut Account = state::unpack(&mut account_account.data).unwrap();
         assert!(account.is_native);
-        assert_eq!(account_account.lamports, account_minimum_balance() - 40);
-        assert_eq!(account.amount, account_minimum_balance() - 40);
+        assert_eq!(account_account.lamports, account_minimum_balance());
+        assert_eq!(account.amount, account_minimum_balance());
         let account: &mut Account = state::unpack(&mut account2_account.data).unwrap();
         assert!(account.is_native);
         assert_eq!(account2_account.lamports, account_minimum_balance() + 40);
@@ -2948,10 +2956,7 @@ mod tests {
         assert!(account.is_native);
         assert_eq!(account_account.lamports, 0);
         assert_eq!(account.amount, 0);
-        assert_eq!(
-            account3_account.lamports,
-            2 * account_minimum_balance() - 40
-        );
+        assert_eq!(account3_account.lamports, 2 * account_minimum_balance());
     }
 
     #[test]
