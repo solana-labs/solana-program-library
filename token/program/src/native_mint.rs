@@ -4,7 +4,7 @@
 pub const DECIMALS: u8 = 9;
 
 // The Mint for native SOL Token accounts
-solana_sdk::declare_id!("So12111111111111111111111111111111111111111");
+solana_sdk::declare_id!("So11111111111111111111111111111111111111112");
 
 #[cfg(test)]
 mod tests {
