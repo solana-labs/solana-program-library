@@ -188,7 +188,7 @@ The owner of the source Account must be present as a signer in the `Transfer`
 instruction.
 
 An Account's owner may transfer ownership of an account to another using the
-`SetOwner` instruction.
+`SetAuthority` instruction.
 
 It's important to note that the `InitializeAccount` instruction does not require
 the Solana account being initialized also be a signer. The `InitializeAccount`
