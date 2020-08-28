@@ -83,7 +83,9 @@ js_token_swap() {
   cd token-swap/js
   time npm install || exit $?
   time npm run lint || exit $?
-  time npm run flow || exit $?
+
+  # TODO: Restore flow
+  # time npm run flow || exit $?
 
   # TODO: Uncomment once https://github.com/solana-labs/solana/issues/11465 is resolved
   # npm run cluster:localnet || exit $?
