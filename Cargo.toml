@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "ci/client",
+  "utils/test-client",
   "memo/program",
   "token-swap/program",
   "token/cli",

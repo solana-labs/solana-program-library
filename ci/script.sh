@@ -27,11 +27,9 @@ _ cargo +nightly clippy --workspace --all-targets -- --deny=warnings
 
 
 # Build client libraries
-(
-  #export SPL_CBINDGEN=1     # <-- Force cbindgen header generation
-  _ cargo build
-)
-_ cargo run --manifest-path=ci/client/Cargo.toml
+_ cargo build
+_ cargo run --manifest-path=utils/test-client/Cargo.toml
+
 
 # Check generated C headers
 #_ git diff --exit-code token/program/inc/token.h
