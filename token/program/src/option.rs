@@ -4,9 +4,8 @@
 //! This implementation mostly matches `std::option` except iterators since the iteration
 //! trait requires returning `std::option::Option`
 
-use std::pin::Pin;
 use std::{
-    convert, hint, mem,
+    convert, mem,
     ops::{Deref, DerefMut},
 };
 
@@ -148,28 +147,6 @@ impl<T> COption<T> {
         match *self {
             COption::Some(ref mut x) => COption::Some(x),
             COption::None => COption::None,
-        }
-    }
-
-    /// Converts from [`Pin`]`<&COption<T>>` to `COption<`[`Pin`]`<&T>>`.
-    ///
-    /// [`Pin`]: ../pin/struct.Pin.html
-    #[inline]
-    #[allow(clippy::wrong_self_convention)]
-    pub fn as_pin_ref(self: Pin<&Self>) -> COption<Pin<&T>> {
-        unsafe { Pin::get_ref(self).as_ref().map(|x| Pin::new_unchecked(x)) }
-    }
-
-    /// Converts from [`Pin`]`<&mut COption<T>>` to `COption<`[`Pin`]`<&mut T>>`.
-    ///
-    /// [`Pin`]: ../pin/struct.Pin.html
-    #[inline]
-    #[allow(clippy::wrong_self_convention)]
-    pub fn as_pin_mut(self: Pin<&mut Self>) -> COption<Pin<&mut T>> {
-        unsafe {
-            Pin::get_unchecked_mut(self)
-                .as_mut()
-                .map(|x| Pin::new_unchecked(x))
         }
     }
 
@@ -645,7 +622,7 @@ impl<T> COption<T> {
 
         match *self {
             COption::Some(ref mut v) => v,
-            COption::None => unsafe { hint::unreachable_unchecked() },
+            COption::None => unreachable!(),
         }
     }
 
