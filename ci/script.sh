@@ -31,13 +31,13 @@ _ cargo build
 _ cargo run --manifest-path=utils/test-client/Cargo.toml
 
 
-# Check generated C headers
-_ cargo run --manifest-path=utils/cgen/Cargo.toml
-
-_ git diff --exit-code token/program/inc/token.h
-_ cc token/program/inc/token.h -o target/token.gch
-_ git diff --exit-code token-swap/program/inc/token-swap.h
-_ cc token-swap/program/inc/token-swap.h -o target/token-swap.gch
+#  # Check generated C headers
+#  _ cargo run --manifest-path=utils/cgen/Cargo.toml
+#
+#  _ git diff --exit-code token/program/inc/token.h
+#  _ cc token/program/inc/token.h -o target/token.gch
+#  _ git diff --exit-code token-swap/program/inc/token-swap.h
+#  _ cc token-swap/program/inc/token-swap.h -o target/token-swap.gch
 
 
 # Run clippy for all program crates, with the `program` feature enabled
