@@ -543,8 +543,8 @@ pub enum AuthorityType {
     MintTokens,
     /// Authority to freeze any account associated with the Mint
     FreezeAccount,
-    /// Holder of a given token account
-    AccountHolder,
+    /// Owner of a given token account
+    AccountOwner,
     /// Authority to close a token account
     CloseAccount,
 }
@@ -554,7 +554,7 @@ impl AuthorityType {
         match self {
             AuthorityType::MintTokens => 0,
             AuthorityType::FreezeAccount => 1,
-            AuthorityType::AccountHolder => 2,
+            AuthorityType::AccountOwner => 2,
             AuthorityType::CloseAccount => 3,
         }
     }
@@ -563,7 +563,7 @@ impl AuthorityType {
         match index {
             0 => Ok(AuthorityType::MintTokens),
             1 => Ok(AuthorityType::FreezeAccount),
-            2 => Ok(AuthorityType::AccountHolder),
+            2 => Ok(AuthorityType::AccountOwner),
             3 => Ok(AuthorityType::CloseAccount),
             _ => Err(TokenError::InvalidInstruction.into()),
         }

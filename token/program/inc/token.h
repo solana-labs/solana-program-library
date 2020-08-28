@@ -61,9 +61,9 @@ enum Token_AuthorityType
      */
     Token_AuthorityType_FreezeAccount,
     /**
-     * Holder of a given token account
+     * Owner of a given token account
      */
-    Token_AuthorityType_AccountHolder,
+    Token_AuthorityType_AccountOwner,
     /**
      * Authority to close a token account
      */
