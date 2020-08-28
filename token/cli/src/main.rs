@@ -20,7 +20,8 @@ use spl_token::{
     self,
     instruction::*,
     native_mint,
-    state::{self, Account, Mint},
+    pack::Pack,
+    state::{Account, Mint},
 };
 use std::{mem::size_of, process::exit};
 
@@ -218,9 +219,8 @@ fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommmandResu
         .get_account_with_commitment(&source, config.commitment_config)?
         .value
         .unwrap_or_default();
-    let mut data = source_account.data.to_vec();
-    let mint_pubkey = state::unpack::<Account>(&mut data)?.mint;
-
+    let data = source_account.data.to_vec();
+    let mint_pubkey = Account::unpack_from_slice(&data)?.mint;
     let amount = spl_token::ui_amount_to_amount(ui_amount, source_token_balance.decimals);
     let mut transaction = Transaction::new_with_payer(
         &[burn(

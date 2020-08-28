@@ -7,6 +7,7 @@ use solana_sdk::{
     pubkey::Pubkey,
     sysvar,
 };
+use std::convert::TryInto;
 use std::mem::size_of;
 
 /// Minimum number of multisignature signers (min N)
@@ -332,29 +333,14 @@ pub enum TokenInstruction {
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < size_of::<u8>() {
-            return Err(TokenError::InvalidInstruction.into());
-        }
-        Ok(match input[0] {
+        use TokenError::InvalidInstruction;
+
+        let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
+        Ok(match tag {
             0 => {
-                if input.len() < size_of::<u8>() + size_of::<Pubkey>() + size_of::<bool>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                let mut input_len = 0;
-                input_len += size_of::<u8>();
-
-                let decimals = unsafe { *(&input[input_len] as *const u8) };
-                input_len += size_of::<u8>();
-
-                let mint_authority = unsafe { *(&input[input_len] as *const u8 as *const Pubkey) };
-                input_len += size_of::<Pubkey>();
-
-                let freeze_authority = COption::unpack_or(
-                    input,
-                    &mut input_len,
-                    Into::<ProgramError>::into(TokenError::InvalidInstruction),
-                )?;
-
+                let (&decimals, rest) = rest.split_first().ok_or(InvalidInstruction)?;
+                let (mint_authority, rest) = Self::unpack_pubkey(rest)?;
+                let (freeze_authority, _rest) = Self::unpack_pubkey_option(rest)?;
                 Self::InitializeMint {
                     mint_authority,
                     freeze_authority,
@@ -363,126 +349,80 @@ impl TokenInstruction {
             }
             1 => Self::InitializeAccount,
             2 => {
-                if input.len() < size_of::<u8>() + size_of::<u8>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                #[allow(clippy::cast_ptr_alignment)]
-                let m = unsafe { *(&input[1] as *const u8) };
+                let &m = rest.get(0).ok_or(InvalidInstruction)?;
                 Self::InitializeMultisig { m }
             }
-            3 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(TokenError::InvalidInstruction.into());
+            3 | 4 | 7 | 8 => {
+                let amount = rest
+                    .get(..8)
+                    .and_then(|slice| slice.try_into().ok())
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                match tag {
+                    3 => Self::Transfer { amount },
+                    4 => Self::Approve { amount },
+                    7 => Self::MintTo { amount },
+                    8 => Self::Burn { amount },
+                    _ => unreachable!(),
                 }
-                #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
-                Self::Transfer { amount }
-            }
-            4 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
-                Self::Approve { amount }
             }
             5 => Self::Revoke,
             6 => {
-                if input.len() < size_of::<u8>() + size_of::<u8>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                let mut input_len = 0;
-                input_len += size_of::<u8>();
-                let authority_type = AuthorityType::from(input[1])?;
-                input_len += size_of::<u8>();
-
-                let new_authority = COption::unpack_or(
-                    input,
-                    &mut input_len,
-                    Into::<ProgramError>::into(TokenError::InvalidInstruction),
-                )?;
+                let (authority_type, rest) = rest
+                    .split_first()
+                    .ok_or_else(|| ProgramError::from(InvalidInstruction))
+                    .and_then(|(&t, rest)| Ok((AuthorityType::from(t)?, rest)))?;
+                let (new_authority, _rest) = Self::unpack_pubkey_option(rest)?;
 
                 Self::SetAuthority {
                     authority_type,
                     new_authority,
                 }
             }
-            7 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
-                Self::MintTo { amount }
-            }
-            8 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[size_of::<u8>()] as *const u8 as *const u64) };
-                Self::Burn { amount }
-            }
             9 => Self::CloseAccount,
             10 => Self::FreezeAccount,
             11 => Self::ThawAccount,
             12 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                let mut input_len = 0;
-                input_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
-                input_len += size_of::<u64>();
-
-                let decimals = unsafe { *(&input[input_len] as *const u8) };
+                let (amount, rest) = rest.split_at(8);
+                let amount = amount
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
 
                 Self::Transfer2 { amount, decimals }
             }
             13 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                let mut input_len = 0;
-                input_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
-                input_len += size_of::<u64>();
-
-                let decimals = unsafe { *(&input[input_len] as *const u8) };
+                let (amount, rest) = rest.split_at(8);
+                let amount = amount
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
 
                 Self::Approve2 { amount, decimals }
             }
             14 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                let mut input_len = 0;
-                input_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
-                input_len += size_of::<u64>();
-
-                let decimals = unsafe { *(&input[input_len] as *const u8) };
+                let (amount, rest) = rest.split_at(8);
+                let amount = amount
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
 
                 Self::MintTo2 { amount, decimals }
             }
             15 => {
-                if input.len() < size_of::<u8>() + size_of::<u64>() + size_of::<u8>() {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
-                let mut input_len = 0;
-                input_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let amount = unsafe { *(&input[input_len] as *const u8 as *const u64) };
-                input_len += size_of::<u64>();
-
-                let decimals = unsafe { *(&input[input_len] as *const u8) };
+                let (amount, rest) = rest.split_at(8);
+                let amount = amount
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
 
                 Self::Burn2 { amount, decimals }
             }
@@ -492,163 +432,106 @@ impl TokenInstruction {
     }
 
     /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte buffer.
-    pub fn pack(&self) -> Result<Vec<u8>, ProgramError> {
-        let mut output = vec![0u8; size_of::<TokenInstruction>()];
-        let mut output_len = 0;
+    pub fn pack(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(size_of::<Self>());
         match self {
-            Self::InitializeMint {
-                mint_authority,
-                freeze_authority,
+            &Self::InitializeMint {
+                ref mint_authority,
+                ref freeze_authority,
                 decimals,
             } => {
-                output[output_len] = 0;
-                output_len += size_of::<u8>();
-
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
-                *value = *decimals;
-                output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut Pubkey) };
-                *value = *mint_authority;
-                output_len += size_of::<Pubkey>();
-
-                freeze_authority.pack(&mut output, &mut output_len);
+                buf.push(0);
+                buf.push(decimals);
+                buf.extend_from_slice(mint_authority.as_ref());
+                Self::pack_pubkey_option(freeze_authority, &mut buf);
             }
-            Self::InitializeAccount => {
-                output[output_len] = 1;
-                output_len += size_of::<u8>();
+            Self::InitializeAccount => buf.push(1),
+            &Self::InitializeMultisig { m } => {
+                buf.push(2);
+                buf.push(m);
             }
-            Self::InitializeMultisig { m } => {
-                output[output_len] = 2;
-                output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u8) };
-                *value = *m;
-                output_len += size_of::<u8>();
+            &Self::Transfer { amount } => {
+                buf.push(3);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
-            Self::Transfer { amount } => {
-                output[output_len] = 3;
-                output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
-                *value = *amount;
-                output_len += size_of::<u64>();
+            &Self::Approve { amount } => {
+                buf.push(4);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
-            Self::Approve { amount } => {
-                output[output_len] = 4;
-                output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
-                *value = *amount;
-                output_len += size_of::<u64>();
+            &Self::MintTo { amount } => {
+                buf.push(7);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
-            Self::Revoke => {
-                output[output_len] = 5;
-                output_len += size_of::<u8>();
+            &Self::Burn { amount } => {
+                buf.push(8);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
+            Self::Revoke => buf.push(5),
             Self::SetAuthority {
                 authority_type,
-                new_authority,
+                ref new_authority,
             } => {
-                output[output_len] = 6;
-                output_len += size_of::<u8>();
-
-                output[output_len] = authority_type.into();
-                output_len += size_of::<u8>();
-
-                new_authority.pack(&mut output, &mut output_len);
+                buf.push(6);
+                buf.push(authority_type.into());
+                Self::pack_pubkey_option(new_authority, &mut buf);
             }
-            Self::MintTo { amount } => {
-                output[output_len] = 7;
-                output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
-                *value = *amount;
-                output_len += size_of::<u64>();
+            Self::CloseAccount => buf.push(9),
+            Self::FreezeAccount => buf.push(10),
+            Self::ThawAccount => buf.push(11),
+            &Self::Transfer2 { amount, decimals } => {
+                buf.push(12);
+                buf.extend_from_slice(&amount.to_le_bytes());
+                buf.push(decimals);
             }
-            Self::Burn { amount } => {
-                output[output_len] = 8;
-                output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
-                *value = *amount;
-                output_len += size_of::<u64>();
+            &Self::Approve2 { amount, decimals } => {
+                buf.push(13);
+                buf.extend_from_slice(&amount.to_le_bytes());
+                buf.push(decimals);
             }
-            Self::CloseAccount => {
-                output[output_len] = 9;
-                output_len += size_of::<u8>();
+            &Self::MintTo2 { amount, decimals } => {
+                buf.push(14);
+                buf.extend_from_slice(&amount.to_le_bytes());
+                buf.push(decimals);
             }
-            Self::FreezeAccount => {
-                output[output_len] = 10;
-                output_len += size_of::<u8>();
+            &Self::Burn2 { amount, decimals } => {
+                buf.push(15);
+                buf.extend_from_slice(&amount.to_le_bytes());
+                buf.push(decimals);
             }
-            Self::ThawAccount => {
-                output[output_len] = 11;
-                output_len += size_of::<u8>();
-            }
-            Self::Transfer2 { amount, decimals } => {
-                output[output_len] = 12;
-                output_len += size_of::<u8>();
+        };
+        buf
+    }
 
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
-                *value = *amount;
-                output_len += size_of::<u64>();
-
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
-                *value = *decimals;
-                output_len += size_of::<u8>();
-            }
-            Self::Approve2 { amount, decimals } => {
-                output[output_len] = 13;
-                output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
-                *value = *amount;
-                output_len += size_of::<u64>();
-
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
-                *value = *decimals;
-                output_len += size_of::<u8>();
-            }
-            Self::MintTo2 { amount, decimals } => {
-                output[output_len] = 14;
-                output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
-                *value = *amount;
-                output_len += size_of::<u64>();
-
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
-                *value = *decimals;
-                output_len += size_of::<u8>();
-            }
-
-            Self::Burn2 { amount, decimals } => {
-                output[output_len] = 15;
-                output_len += size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8 as *mut u64) };
-                *value = *amount;
-                output_len += size_of::<u64>();
-
-                let value = unsafe { &mut *(&mut output[output_len] as *mut u8) };
-                *value = *decimals;
-                output_len += size_of::<u8>();
-            }
+    fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
+        if input.len() >= 32 {
+            let (key, rest) = input.split_at(32);
+            let pk = Pubkey::new(key);
+            Ok((pk, rest))
+        } else {
+            Err(TokenError::InvalidInstruction.into())
         }
+    }
 
-        output.truncate(output_len);
-        Ok(output)
+    fn unpack_pubkey_option(input: &[u8]) -> Result<(COption<Pubkey>, &[u8]), ProgramError> {
+        match input.split_first() {
+            Option::Some((&0, rest)) => Ok((COption::None, rest)),
+            Option::Some((&1, rest)) if rest.len() >= 32 => {
+                let (key, rest) = rest.split_at(32);
+                let pk = Pubkey::new(key);
+                Ok((COption::Some(pk), rest))
+            }
+            _ => Err(TokenError::InvalidInstruction.into()),
+        }
+    }
+
+    fn pack_pubkey_option(value: &COption<Pubkey>, buf: &mut Vec<u8>) {
+        match *value {
+            COption::Some(ref key) => {
+                buf.push(1);
+                buf.extend_from_slice(&key.to_bytes());
+            }
+            COption::None => buf.push(0),
+        }
     }
 }
 
@@ -701,7 +584,7 @@ pub fn initialize_mint(
         freeze_authority,
         decimals,
     }
-    .pack()?;
+    .pack();
 
     let accounts = vec![
         AccountMeta::new(*mint_pubkey, false),
@@ -722,7 +605,7 @@ pub fn initialize_account(
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::InitializeAccount.pack()?;
+    let data = TokenInstruction::InitializeAccount.pack(); // TODO do we need to return result?
 
     let accounts = vec![
         AccountMeta::new(*account_pubkey, false),
@@ -751,7 +634,7 @@ pub fn initialize_multisig(
     {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    let data = TokenInstruction::InitializeMultisig { m }.pack()?;
+    let data = TokenInstruction::InitializeMultisig { m }.pack();
 
     let mut accounts = Vec::with_capacity(1 + 1 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*multisig_pubkey, false));
@@ -776,7 +659,7 @@ pub fn transfer(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Transfer { amount }.pack()?;
+    let data = TokenInstruction::Transfer { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*source_pubkey, false));
@@ -805,7 +688,7 @@ pub fn approve(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Approve { amount }.pack()?;
+    let data = TokenInstruction::Approve { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*source_pubkey, false));
@@ -832,7 +715,7 @@ pub fn revoke(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Revoke.pack()?;
+    let data = TokenInstruction::Revoke.pack();
 
     let mut accounts = Vec::with_capacity(2 + signer_pubkeys.len());
     accounts.push(AccountMeta::new_readonly(*source_pubkey, false));
@@ -865,7 +748,7 @@ pub fn set_authority(
         authority_type,
         new_authority,
     }
-    .pack()?;
+    .pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*owned_pubkey, false));
@@ -893,7 +776,7 @@ pub fn mint_to(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::MintTo { amount }.pack()?;
+    let data = TokenInstruction::MintTo { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*mint_pubkey, false));
@@ -922,7 +805,7 @@ pub fn burn(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Burn { amount }.pack()?;
+    let data = TokenInstruction::Burn { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
@@ -950,7 +833,7 @@ pub fn close_account(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::CloseAccount.pack()?;
+    let data = TokenInstruction::CloseAccount.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
@@ -978,7 +861,7 @@ pub fn freeze_account(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::FreezeAccount.pack()?;
+    let data = TokenInstruction::FreezeAccount.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
@@ -1006,7 +889,7 @@ pub fn thaw_account(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::ThawAccount.pack()?;
+    let data = TokenInstruction::ThawAccount.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
@@ -1038,7 +921,7 @@ pub fn transfer2(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Transfer2 { amount, decimals }.pack()?;
+    let data = TokenInstruction::Transfer2 { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*source_pubkey, false));
@@ -1071,7 +954,7 @@ pub fn approve2(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Approve2 { amount, decimals }.pack()?;
+    let data = TokenInstruction::Approve2 { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*source_pubkey, false));
@@ -1102,7 +985,7 @@ pub fn mint_to2(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::MintTo2 { amount, decimals }.pack()?;
+    let data = TokenInstruction::MintTo2 { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*mint_pubkey, false));
@@ -1132,7 +1015,7 @@ pub fn burn2(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Burn2 { amount, decimals }.pack()?;
+    let data = TokenInstruction::Burn2 { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
@@ -1168,7 +1051,7 @@ mod test {
             mint_authority: Pubkey::new(&[1u8; 32]),
             freeze_authority: COption::None,
         };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let mut expect = Vec::from([0u8, 2]);
         expect.extend_from_slice(&[1u8; 32]);
         expect.extend_from_slice(&[0]);
@@ -1181,7 +1064,7 @@ mod test {
             mint_authority: Pubkey::new(&[2u8; 32]),
             freeze_authority: COption::Some(Pubkey::new(&[3u8; 32])),
         };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let mut expect = vec![0u8, 2];
         expect.extend_from_slice(&[2u8; 32]);
         expect.extend_from_slice(&[1]);
@@ -1191,35 +1074,35 @@ mod test {
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::InitializeAccount;
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([1u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::InitializeMultisig { m: 1 };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([2u8, 1]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::Transfer { amount: 1 };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([3u8, 1, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::Approve { amount: 1 };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([4u8, 1, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::Revoke;
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([5u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
@@ -1229,7 +1112,7 @@ mod test {
             authority_type: AuthorityType::FreezeAccount,
             new_authority: COption::Some(Pubkey::new(&[4u8; 32])),
         };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let mut expect = Vec::from([6u8, 1]);
         expect.extend_from_slice(&[1]);
         expect.extend_from_slice(&[4u8; 32]);
@@ -1238,35 +1121,35 @@ mod test {
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::MintTo { amount: 1 };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([7u8, 1, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::Burn { amount: 1 };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([8u8, 1, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::CloseAccount;
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([9u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::FreezeAccount;
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([10u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::ThawAccount;
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([11u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
@@ -1276,7 +1159,7 @@ mod test {
             amount: 1,
             decimals: 2,
         };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([12u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
@@ -1286,7 +1169,7 @@ mod test {
             amount: 1,
             decimals: 2,
         };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([13u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
@@ -1296,7 +1179,7 @@ mod test {
             amount: 1,
             decimals: 2,
         };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([14u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
@@ -1306,7 +1189,7 @@ mod test {
             amount: 1,
             decimals: 2,
         };
-        let packed = check.pack().unwrap();
+        let packed = check.pack();
         let expect = Vec::from([15u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();

@@ -17,6 +17,7 @@ use solana_sdk::{
     entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
     pubkey::Pubkey,
 };
+use spl_token::pack::Pack;
 use std::mem::size_of;
 
 impl State {
@@ -68,14 +69,19 @@ impl State {
     pub fn token_account_deserialize(
         info: &AccountInfo,
     ) -> Result<spl_token::state::Account, Error> {
-        Ok(*spl_token::state::unpack(&mut info.data.borrow_mut())
-            .map_err(|_| Error::ExpectedAccount)?)
+        spl_token::state::Account::unpack_from_slice(&info.data.borrow_mut())
+            .map_err(|_| Error::ExpectedAccount)
+        // Ok(*spl_token::state::unpack(&mut info.data.borrow_mut())
+        //     .map_err(|_| Error::ExpectedAccount)?)
     }
 
     /// Deserializes a spl_token `Mint`.
     pub fn mint_deserialize(info: &AccountInfo) -> Result<spl_token::state::Mint, Error> {
-        Ok(*spl_token::state::unpack(&mut info.data.borrow_mut())
-            .map_err(|_| Error::ExpectedToken)?)
+        spl_token::state::Mint::unpack_from_slice(&info.data.borrow_mut())
+            .map_err(|_| Error::ExpectedAccount)
+
+        // Ok(*spl_token::state::unpack(&mut info.data.borrow_mut())
+        //     .map_err(|_| Error::ExpectedToken)?)
     }
 
     /// Calculates the authority id by generating a program address.
