@@ -69,19 +69,13 @@ impl State {
     pub fn token_account_deserialize(
         info: &AccountInfo,
     ) -> Result<spl_token::state::Account, Error> {
-        spl_token::state::Account::unpack_from_slice(&info.data.borrow_mut())
+        spl_token::state::Account::unpack(&info.data.borrow_mut())
             .map_err(|_| Error::ExpectedAccount)
-        // Ok(*spl_token::state::unpack(&mut info.data.borrow_mut())
-        //     .map_err(|_| Error::ExpectedAccount)?)
     }
 
     /// Deserializes a spl_token `Mint`.
     pub fn mint_deserialize(info: &AccountInfo) -> Result<spl_token::state::Mint, Error> {
-        spl_token::state::Mint::unpack_from_slice(&info.data.borrow_mut())
-            .map_err(|_| Error::ExpectedAccount)
-
-        // Ok(*spl_token::state::unpack(&mut info.data.borrow_mut())
-        //     .map_err(|_| Error::ExpectedToken)?)
+        spl_token::state::Mint::unpack(&info.data.borrow_mut()).map_err(|_| Error::ExpectedAccount)
     }
 
     /// Calculates the authority id by generating a program address.
@@ -523,7 +517,7 @@ mod tests {
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
     };
     use spl_token::{
-        instruction::{initialize_account, initialize_mint},
+        instruction::{initialize_account, initialize_mint, mint_to},
         processor::Processor as SplProcessor,
         state::{Account as SplAccount, Mint as SplMint},
     };
@@ -575,24 +569,26 @@ mod tests {
         .unwrap();
         let mut authority_account = Account::default();
         do_process_instruction(
-            initialize_mint(
+            initialize_mint(&program_id, &token_key, authority_key, None, 2).unwrap(),
+            vec![&mut token_account, &mut authority_account],
+        )
+        .unwrap();
+
+        do_process_instruction(
+            mint_to(
                 &program_id,
                 &token_key,
-                Some(&account_key),
-                Some(&authority_key),
+                &account_key,
+                authority_key,
+                &[],
                 amount,
-                2,
             )
             .unwrap(),
-            if amount == 0 {
-                vec![&mut token_account, &mut authority_account]
-            } else {
-                vec![
-                    &mut token_account,
-                    &mut account_account,
-                    &mut authority_account,
-                ]
-            },
+            vec![
+                &mut token_account,
+                &mut account_account,
+                &mut authority_account,
+            ],
         )
         .unwrap();
 
