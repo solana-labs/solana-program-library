@@ -28,17 +28,17 @@ _ cargo +nightly clippy --workspace --all-targets -- --deny=warnings
 
 # Build client libraries
 (
-  export SPL_CBINDGEN=1     # <-- Force cbindgen header generation
+  #export SPL_CBINDGEN=1     # <-- Force cbindgen header generation
   _ cargo build
 )
 _ cargo run --manifest-path=ci/client/Cargo.toml
 
 # Check generated C headers
-_ git diff --exit-code token/program/inc/token.h
-_ cc token/program/inc/token.h -o target/token.gch
-
-_ git diff --exit-code token-swap/program/inc/token-swap.h
-_ cc token-swap/program/inc/token-swap.h -o target/token-swap.gch
+#_ git diff --exit-code token/program/inc/token.h
+#_ cc token/program/inc/token.h -o target/token.gch
+#
+#_ git diff --exit-code token-swap/program/inc/token-swap.h
+#_ cc token-swap/program/inc/token-swap.h -o target/token-swap.gch
 
 
 # Run clippy for all program crates, with the `program` feature enabled
