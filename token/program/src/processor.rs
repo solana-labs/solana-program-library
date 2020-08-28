@@ -342,7 +342,7 @@ impl Processor {
                 }
 
                 match authority_type {
-                    AuthorityType::AccountHolder => {
+                    AuthorityType::AccountOwner => {
                         Self::validate_owner(
                             program_id,
                             &account.owner,
@@ -1795,7 +1795,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     Some(&owner2_key),
-                    AuthorityType::AccountHolder,
+                    AuthorityType::AccountOwner,
                     &owner_key,
                     &[]
                 )
@@ -1836,7 +1836,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     Some(&owner_key),
-                    AuthorityType::AccountHolder,
+                    AuthorityType::AccountOwner,
                     &owner2_key,
                     &[]
                 )
@@ -1850,7 +1850,7 @@ mod tests {
             &program_id,
             &account_key,
             Some(&owner2_key),
-            AuthorityType::AccountHolder,
+            AuthorityType::AccountOwner,
             &owner_key,
             &[],
         )
@@ -1886,7 +1886,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     None,
-                    AuthorityType::AccountHolder,
+                    AuthorityType::AccountOwner,
                     &owner_key,
                     &[],
                 )
@@ -1901,7 +1901,7 @@ mod tests {
                 &program_id,
                 &account_key,
                 Some(&owner2_key),
-                AuthorityType::AccountHolder,
+                AuthorityType::AccountOwner,
                 &owner_key,
                 &[],
             )
@@ -2928,7 +2928,7 @@ mod tests {
                 &program_id,
                 &account_key,
                 Some(&owner_key),
-                AuthorityType::AccountHolder,
+                AuthorityType::AccountOwner,
                 &multisig_key,
                 &[&signer_keys[0]],
             )
@@ -3858,7 +3858,7 @@ mod tests {
                     &program_id,
                     &account_key,
                     Some(&new_owner_key),
-                    AuthorityType::AccountHolder,
+                    AuthorityType::AccountOwner,
                     &owner_key,
                     &[]
                 )

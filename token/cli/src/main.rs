@@ -158,7 +158,7 @@ fn command_assign(config: &Config, account: Pubkey, new_owner: Pubkey) -> Commma
             &spl_token::id(),
             &account,
             Some(&new_owner),
-            AuthorityType::AccountHolder,
+            AuthorityType::AccountOwner,
             &config.owner.pubkey(),
             &[],
         )?],
