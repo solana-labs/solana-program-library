@@ -676,55 +676,6 @@ impl<T> COption<T> {
     pub fn replace(&mut self, value: T) -> COption<T> {
         mem::replace(self, COption::Some(value))
     }
-
-    /////////////////////////////////////////////////////////////////////////
-    // SPL Token-Specific Methods
-    /////////////////////////////////////////////////////////////////////////
-
-    /// Packs a COption into a mutable slice as compactly as possible
-    #[inline]
-    pub fn pack(&self, output: &mut [u8], cursor: &mut usize)
-    where
-        T: Copy,
-    {
-        match self {
-            COption::Some(some_value) => {
-                output[*cursor] = 1;
-                *cursor += mem::size_of::<u8>();
-
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[*cursor] as *mut u8 as *mut T) };
-                *value = *some_value;
-                *cursor += mem::size_of::<T>();
-            }
-            COption::None => {
-                output[*cursor] = 0;
-                *cursor += mem::size_of::<u8>();
-            }
-        }
-    }
-
-    /// Unpacks a COption from a compact slice
-    #[inline]
-    pub fn unpack_or<E>(input: &[u8], cursor: &mut usize, error: E) -> Result<COption<T>, E>
-    where
-        T: Copy,
-    {
-        match input[*cursor] {
-            0 => {
-                *cursor += mem::size_of::<u8>();
-                Ok(COption::None)
-            }
-            1 => {
-                *cursor += mem::size_of::<u8>();
-                #[allow(clippy::cast_ptr_alignment)]
-                let result = unsafe { *(&input[*cursor] as *const u8 as *const T) };
-                *cursor += mem::size_of::<T>();
-                Ok(COption::Some(result))
-            }
-            _ => Err(error),
-        }
-    }
 }
 
 impl<T: Copy> COption<&T> {
@@ -1034,7 +985,6 @@ impl<T> Into<Option<T>> for COption<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use solana_sdk::pubkey::Pubkey;
 
     #[test]
     fn test_from_rust_option() {
@@ -1049,64 +999,5 @@ mod test {
         assert_eq!(c_option, COption::None);
         let expected = c_option.into();
         assert_eq!(option, expected);
-    }
-
-    #[test]
-    fn test_coption_packing() {
-        // Solana Pubkey
-        let option_pubkey = COption::Some(Pubkey::new(&[2u8; 32]));
-        let expected_size = mem::size_of::<u8>() + mem::size_of::<Pubkey>();
-        let mut output = vec![0u8; expected_size];
-        let mut cursor = 0;
-        option_pubkey.pack(&mut output, &mut cursor);
-
-        let mut expected = vec![1u8];
-        expected.extend_from_slice(&[2u8; 32]);
-        assert_eq!(output, expected);
-
-        let mut cursor = 0;
-        let unpacked = COption::unpack_or(&expected, &mut cursor, "Error".to_string()).unwrap();
-        assert_eq!(unpacked, option_pubkey);
-
-        let option_pubkey: COption<Pubkey> = COption::None;
-        let expected_size = mem::size_of::<u8>();
-        let mut output = vec![0u8; expected_size];
-        let mut cursor = 0;
-        option_pubkey.pack(&mut output, &mut cursor);
-
-        let expected = vec![0u8];
-        assert_eq!(output, expected);
-
-        let mut cursor = 0;
-        let unpacked = COption::unpack_or(&expected, &mut cursor, "Error".to_string()).unwrap();
-        assert_eq!(unpacked, option_pubkey);
-
-        // u64
-        let option_pubkey = COption::Some(99u64);
-        let expected_size = mem::size_of::<u8>() + mem::size_of::<u64>();
-        let mut output = vec![0u8; expected_size];
-        let mut cursor = 0;
-        option_pubkey.pack(&mut output, &mut cursor);
-
-        let mut expected = vec![1u8];
-        expected.extend_from_slice(&[99, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(output, expected);
-
-        let mut cursor = 0;
-        let unpacked = COption::unpack_or(&expected, &mut cursor, "Error".to_string()).unwrap();
-        assert_eq!(unpacked, option_pubkey);
-
-        let option_pubkey: COption<u64> = COption::None;
-        let expected_size = mem::size_of::<u8>();
-        let mut output = vec![0u8; expected_size];
-        let mut cursor = 0;
-        option_pubkey.pack(&mut output, &mut cursor);
-
-        let expected = vec![0u8];
-        assert_eq!(output, expected);
-
-        let mut cursor = 0;
-        let unpacked = COption::unpack_or(&expected, &mut cursor, "Error".to_string()).unwrap();
-        assert_eq!(unpacked, option_pubkey);
     }
 }
