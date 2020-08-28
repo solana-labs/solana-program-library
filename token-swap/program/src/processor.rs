@@ -69,7 +69,7 @@ impl State {
     pub fn token_account_deserialize(
         info: &AccountInfo,
     ) -> Result<spl_token::state::Account, Error> {
-        spl_token::state::Account::unpack_from_slice(&mut info.data.borrow_mut())
+        spl_token::state::Account::unpack_from_slice(&info.data.borrow_mut())
             .map_err(|_| Error::ExpectedAccount)
         // Ok(*spl_token::state::unpack(&mut info.data.borrow_mut())
         //     .map_err(|_| Error::ExpectedAccount)?)
@@ -77,7 +77,7 @@ impl State {
 
     /// Deserializes a spl_token `Mint`.
     pub fn mint_deserialize(info: &AccountInfo) -> Result<spl_token::state::Mint, Error> {
-        spl_token::state::Mint::unpack_from_slice(&mut info.data.borrow_mut())
+        spl_token::state::Mint::unpack_from_slice(&info.data.borrow_mut())
             .map_err(|_| Error::ExpectedAccount)
 
         // Ok(*spl_token::state::unpack(&mut info.data.borrow_mut())
