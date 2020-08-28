@@ -21,6 +21,28 @@ pub trait Pack: Sealed {
     #[doc(hidden)]
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError>;
 
+    /// Unpack from slice and check if initialized
+    fn unpack(input: &[u8]) -> Result<Self, ProgramError>
+    where
+        Self: IsInitialized,
+    {
+        let value = Self::unpack_unchecked(input)?;
+        if value.is_initialized() {
+            Ok(value)
+        } else {
+            Err(TokenError::UninitializedState.into())
+        }
+    }
+
+    /// Unpack from slice without checking if initialized
+    fn unpack_unchecked(input: &[u8]) -> Result<Self, ProgramError> {
+        if input.len() < Self::LEN {
+            println!("ilen {:?} tlen {:?}", input.len(), Self::LEN);
+            return Err(ProgramError::InvalidAccountData);
+        }
+        Ok(Self::unpack_from_slice(input)?)
+    }
+
     /// Borrow `Self` from `input` for the duration of the call to `f`, but first check that `Self`
     /// is initialized
     #[inline(never)]
@@ -29,9 +51,9 @@ pub trait Pack: Sealed {
         F: FnMut(&mut Self) -> Result<U, ProgramError>,
         Self: IsInitialized,
     {
-        let mut t = unpack(input)?;
+        let mut t = Self::unpack(input)?;
         let u = f(&mut t)?;
-        pack(t, input)?;
+        Self::pack(t, input)?;
         Ok(u)
     }
 
@@ -42,35 +64,19 @@ pub trait Pack: Sealed {
     where
         F: FnMut(&mut Self) -> Result<U, ProgramError>,
     {
-        let mut t = unpack_unchecked(input)?;
+        let mut t = Self::unpack_unchecked(input)?;
         let u = f(&mut t)?;
-        pack(t, input)?;
+        Self::pack(t, input)?;
         Ok(u)
     }
-}
 
-fn pack<T: Pack>(src: T, dst: &mut [u8]) -> Result<(), ProgramError> {
-    if dst.len() < T::LEN {
-        println!("dlen {:?} tlen {:?}", dst.len(), T::LEN);
-        return Err(ProgramError::InvalidAccountData);
+    /// Pack into slice
+    fn pack(src: Self, dst: &mut [u8]) -> Result<(), ProgramError> {
+        if dst.len() < Self::LEN {
+            println!("dlen {:?} tlen {:?}", dst.len(), Self::LEN);
+            return Err(ProgramError::InvalidAccountData);
+        }
+        src.pack_into_slice(dst);
+        Ok(())
     }
-    src.pack_into_slice(dst);
-    Ok(())
-}
-
-fn unpack<T: Pack + IsInitialized>(input: &[u8]) -> Result<T, ProgramError> {
-    let value: T = unpack_unchecked(input)?;
-    if value.is_initialized() {
-        Ok(value)
-    } else {
-        Err(TokenError::UninitializedState.into())
-    }
-}
-
-fn unpack_unchecked<T: Pack>(input: &[u8]) -> Result<T, ProgramError> {
-    if input.len() < T::LEN {
-        println!("ilen {:?} tlen {:?}", input.len(), T::LEN);
-        return Err(ProgramError::InvalidAccountData);
-    }
-    Ok(T::unpack_from_slice(input)?)
 }

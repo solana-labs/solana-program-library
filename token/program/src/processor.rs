@@ -75,8 +75,7 @@ impl Processor {
             }
 
             if *mint_info.key != crate::native_mint::id() {
-                let mut mint_info_data = mint_info.data.borrow_mut();
-                Mint::unpack_mut(&mut mint_info_data, &mut |_| Ok(()))
+                let _ = Mint::unpack(&mint_info.data.borrow_mut())
                     .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
             }
 
@@ -177,18 +176,15 @@ impl Processor {
                     return Err(TokenError::AccountFrozen.into());
                 }
 
-                if let Some((mint_account_info, expected_decimals)) = expected_mint_info {
-                    if source_account.mint != *mint_account_info.key {
+                if let Some((mint_info, expected_decimals)) = expected_mint_info {
+                    if source_account.mint != *mint_info.key {
                         return Err(TokenError::MintMismatch.into());
                     }
 
-                    let mut mint_info_data = mint_account_info.data.borrow_mut();
-                    Mint::unpack_mut(&mut mint_info_data, &mut |mint: &mut Mint| {
-                        if expected_decimals != mint.decimals {
-                            return Err(TokenError::MintDecimalsMismatch.into());
-                        }
-                        Ok(())
-                    })?;
+                    let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
+                    if expected_decimals != mint.decimals {
+                        return Err(TokenError::MintDecimalsMismatch.into());
+                    }
                 }
 
                 match source_account.delegate {
@@ -268,18 +264,15 @@ impl Processor {
                 return Err(TokenError::AccountFrozen.into());
             }
 
-            if let Some((mint_account_info, expected_decimals)) = expected_mint_info {
-                if source_account.mint != *mint_account_info.key {
+            if let Some((mint_info, expected_decimals)) = expected_mint_info {
+                if source_account.mint != *mint_info.key {
                     return Err(TokenError::MintMismatch.into());
                 }
 
-                let mut mint_info_data = mint_account_info.data.borrow_mut();
-                Mint::unpack_mut(&mut mint_info_data, &mut |mint: &mut Mint| {
-                    if expected_decimals != mint.decimals {
-                        return Err(TokenError::MintDecimalsMismatch.into());
-                    }
-                    Ok(())
-                })?;
+                let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
+                if expected_decimals != mint.decimals {
+                    return Err(TokenError::MintDecimalsMismatch.into());
+                }
             }
 
             Self::validate_owner(
@@ -442,8 +435,8 @@ impl Processor {
                 return Err(TokenError::MintMismatch.into());
             }
 
-            let mut mint_info_data = mint_info.data.borrow_mut();
-            Mint::unpack_mut(&mut mint_info_data, &mut |mint: &mut Mint| {
+            let mut mint_data = mint_info.data.borrow_mut();
+            Mint::unpack_mut(&mut mint_data, &mut |mint: &mut Mint| {
                 if let Some(expected_decimals) = expected_decimals {
                     if expected_decimals != mint.decimals {
                         return Err(TokenError::MintDecimalsMismatch.into());
@@ -612,19 +605,16 @@ impl Processor {
                 return Err(TokenError::InvalidState.into());
             }
 
-            let mut mint_data = mint_info.data.borrow_mut();
-            Mint::unpack_mut(
-                &mut mint_data,
-                &mut |mint: &mut Mint| match mint.freeze_authority {
-                    COption::Some(authority) => Self::validate_owner(
-                        program_id,
-                        &authority,
-                        authority_info,
-                        account_info_iter.as_slice(),
-                    ),
-                    COption::None => Err(TokenError::MintCannotFreeze.into()),
-                },
-            )?;
+            let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
+            match mint.freeze_authority {
+                COption::Some(authority) => Self::validate_owner(
+                    program_id,
+                    &authority,
+                    authority_info,
+                    account_info_iter.as_slice(),
+                ),
+                COption::None => Err(TokenError::MintCannotFreeze.into()),
+            }?;
 
             source_account.state = if freeze {
                 AccountState::Frozen
@@ -1497,7 +1487,7 @@ mod tests {
             vec![&mut mint_account, &mut account_account, &mut owner_account],
         )
         .unwrap();
-        Mint::unpack_unchecked_mut(&mut mint_account.data, &mut |_| Ok(())).unwrap();
+        let _ = Mint::unpack(&mut mint_account.data).unwrap();
         Account::unpack_unchecked_mut(&mut account_account.data, &mut |account: &mut Account| {
             assert_eq!(account.amount, 42);
             Ok(())
@@ -1522,7 +1512,7 @@ mod tests {
             )
         );
 
-        Mint::unpack_unchecked_mut(&mut mint_account.data, &mut |_| Ok(())).unwrap();
+        let _ = Mint::unpack(&mut mint_account.data).unwrap();
         Account::unpack_unchecked_mut(&mut account_account.data, &mut |account: &mut Account| {
             assert_eq!(account.amount, 42);
             Ok(())
@@ -1544,7 +1534,7 @@ mod tests {
             vec![&mut mint_account, &mut account_account, &mut owner_account],
         )
         .unwrap();
-        Mint::unpack_unchecked_mut(&mut mint_account.data, &mut |_| Ok(())).unwrap();
+        let _ = Mint::unpack(&mut mint_account.data).unwrap();
         Account::unpack_unchecked_mut(&mut account_account.data, &mut |account: &mut Account| {
             assert_eq!(account.amount, 84);
             Ok(())
