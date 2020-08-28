@@ -21,6 +21,11 @@ pub trait Pack: Sealed {
     #[doc(hidden)]
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError>;
 
+    /// Get the packed length
+    fn get_packed_len() -> usize {
+        Self::LEN
+    }
+
     /// Unpack from slice and check if initialized
     fn unpack(input: &[u8]) -> Result<Self, ProgramError>
     where
@@ -36,8 +41,7 @@ pub trait Pack: Sealed {
 
     /// Unpack from slice without checking if initialized
     fn unpack_unchecked(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < Self::LEN {
-            println!("ilen {:?} tlen {:?}", input.len(), Self::LEN);
+        if input.len() != Self::LEN {
             return Err(ProgramError::InvalidAccountData);
         }
         Ok(Self::unpack_from_slice(input)?)
@@ -72,8 +76,7 @@ pub trait Pack: Sealed {
 
     /// Pack into slice
     fn pack(src: Self, dst: &mut [u8]) -> Result<(), ProgramError> {
-        if dst.len() < Self::LEN {
-            println!("dlen {:?} tlen {:?}", dst.len(), Self::LEN);
+        if dst.len() != Self::LEN {
             return Err(ProgramError::InvalidAccountData);
         }
         src.pack_into_slice(dst);
