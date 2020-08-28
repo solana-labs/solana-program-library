@@ -29,8 +29,5 @@ num_enum = "0.5.1"
 [dev-dependencies]
 rand = { version = "0.7.0"}
 
-[build-dependencies]
-cbindgen = "=0.14.2"
-
 [lib]
 crate-type = ["cdylib", "lib"]
