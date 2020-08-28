@@ -24,12 +24,9 @@ pub trait Pack: Sealed {
     /// Borrow `Self` from `input` for the duration of the call to `f`, but first check that `Self`
     /// is initialized
     #[inline(never)]
-    fn unpack_mut<U>(
-        input: &mut [u8],
-        f: &mut dyn FnMut(&mut Self) -> Result<U, ProgramError>,
-    ) -> Result<U, ProgramError>
+    fn unpack_mut<F, U>(input: &mut [u8], f: &mut F) -> Result<U, ProgramError>
     where
-        //F: FnOnce(&mut Self) -> Result<U, ProgramError>,
+        F: FnMut(&mut Self) -> Result<U, ProgramError>,
         Self: IsInitialized,
     {
         let mut t = unpack(input)?;
@@ -41,10 +38,10 @@ pub trait Pack: Sealed {
     /// Borrow `Self` from `input` for the duration of the call to `f`, without checking that
     /// `Self` has been initialized
     #[inline(never)]
-    fn unpack_unchecked_mut<U>(
-        input: &mut [u8],
-        f: &mut dyn FnMut(&mut Self) -> Result<U, ProgramError>,
-    ) -> Result<U, ProgramError> {
+    fn unpack_unchecked_mut<F, U>(input: &mut [u8], f: &mut F) -> Result<U, ProgramError>
+    where
+        F: FnMut(&mut Self) -> Result<U, ProgramError>,
+    {
         let mut t = unpack_unchecked(input)?;
         let u = f(&mut t)?;
         pack(t, input)?;
