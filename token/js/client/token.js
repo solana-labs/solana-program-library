@@ -11,6 +11,7 @@ import {
   SystemProgram,
   Transaction,
   TransactionInstruction,
+  SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
 import type {Connection, TransactionSignature} from '@solana/web3.js';
 
@@ -56,14 +57,34 @@ function isAccount(accountOrPublicKey: any): boolean {
   return 'publicKey' in accountOrPublicKey;
 }
 
+type AuthorityType =
+  | 'MintTokens'
+  | 'FreezeAccount'
+  | 'AccountOwner'
+  | 'CloseAccount';
+
+const AuthorityTypeCodes = {
+  MintTokens: 0,
+  FreezeAccount: 1,
+  AccountOwner: 2,
+  CloseAccount: 3,
+};
+
 /**
  * Information about the mint
  */
 type MintInfo = {|
   /**
-   * Owner of the mint, given authority to mint new tokens
+   * Optional authority used to mint new tokens. The mint authority may only be provided during
+   * mint creation. If no mint authority is present then the mint has a fixed supply and no
+   * further tokens may be minted.
    */
-  owner: null | PublicKey,
+  mintAuthority: null | PublicKey,
+
+  /**
+   * Total supply of tokens
+   */
+  supply: u64,
 
   /**
    * Number of base 10 digits to the right of the decimal place
@@ -73,14 +94,22 @@ type MintInfo = {|
   /**
    * Is this mint initialized
    */
-  initialized: boolean,
+  isInitialized: boolean,
+
+  /**
+   * Optional authority to freeze token accounts
+   */
+  freezeAuthority: null | PublicKey,
 |};
 
 const MintLayout = BufferLayout.struct([
-  BufferLayout.u32('option'),
-  Layout.publicKey('owner'),
+  BufferLayout.u32('mintAuthorityOption'),
+  Layout.publicKey('mintAuthority'),
+  Layout.uint64('supply'),
   BufferLayout.u8('decimals'),
-  BufferLayout.u8('is_initialized'),
+  BufferLayout.u8('isInitialized'),
+  BufferLayout.u32('freezeAuthorityOption'),
+  Layout.publicKey('freezeAuthority'),
   BufferLayout.u16('padding'),
 ]);
 
@@ -119,9 +148,26 @@ type AccountInfo = {|
   isInitialized: boolean,
 
   /**
+   * Is this account frozen
+   */
+  isFrozen: boolean,
+
+  /**
    * Is this a native token account
    */
   isNative: boolean,
+
+  /**
+   * If this account is a native token, it must be rent-exempt. This
+   * value logs the rent-exempt reserve which must remain in the balance
+   * until the account is closed.
+   */
+  rentExemptReserve: null | u64,
+
+  /**
+   * Optional authority to close the account
+   */
+  closeAuthority: null | PublicKey,
 |};
 
 /**
@@ -131,12 +177,15 @@ const AccountLayout = BufferLayout.struct([
   Layout.publicKey('mint'),
   Layout.publicKey('owner'),
   Layout.uint64('amount'),
-  BufferLayout.u32('option'),
+  BufferLayout.u32('delegateOption'),
   Layout.publicKey('delegate'),
-  BufferLayout.u8('is_initialized'),
-  BufferLayout.u8('is_native'),
-  BufferLayout.u16('padding'),
+  BufferLayout.u8('state'),
+  BufferLayout.u32('isNativeOption'),
+  Layout.uint64('isNative'),
   Layout.uint64('delegatedAmount'),
+  BufferLayout.u32('closeAuthorityOption'),
+  Layout.publicKey('closeAuthority'),
+  BufferLayout.blob(11, 'padding'),
 ]);
 
 /**
@@ -194,8 +243,6 @@ const MultisigLayout = BufferLayout.struct([
   Layout.publicKey('signer10'),
   Layout.publicKey('signer11'),
 ]);
-
-type TokenAndPublicKey = [Token, PublicKey]; // This type exists to workaround an esdoc parse error
 
 /**
  * An ERC20-like Token
@@ -289,14 +336,11 @@ export class Token {
   static async createMint(
     connection: Connection,
     payer: Account,
-    mintOwner: PublicKey,
-    accountOwner: PublicKey,
-    supply: u64,
+    mintAuthority: PublicKey,
+    freezeAuthority: PublicKey | null,
     decimals: number,
     programId: PublicKey,
-    is_owned: boolean = false,
-  ): Promise<TokenAndPublicKey> {
-    let transaction;
+  ): Promise<Token> {
     const mintAccount = new Account();
     const token = new Token(
       connection,
@@ -304,13 +348,13 @@ export class Token {
       programId,
       payer,
     );
-    const initialAccountPublicKey = await token.createAccount(accountOwner);
 
     // Allocate memory for the account
     const balanceNeeded = await Token.getMinBalanceRentForExemptMint(
       connection,
     );
-    transaction = SystemProgram.createAccount({
+
+    const transaction = SystemProgram.createAccount({
       fromPubkey: payer.publicKey,
       newAccountPubkey: mintAccount.publicKey,
       lamports: balanceNeeded,
@@ -318,42 +362,15 @@ export class Token {
       programId,
     });
 
-    // Create the mint
-    let keys = [
-      {pubkey: mintAccount.publicKey, isSigner: false, isWritable: true},
-    ];
-    if (supply.cmp(0) != 0) {
-      keys.push({
-        pubkey: initialAccountPublicKey,
-        isSigner: false,
-        isWritable: true,
-      });
-    }
-    if (is_owned) {
-      keys.push({pubkey: mintOwner, isSigner: false, isWritable: false});
-    }
-    const commandDataLayout = BufferLayout.struct([
-      BufferLayout.u8('instruction'),
-      Layout.uint64('supply'),
-      BufferLayout.u8('decimals'),
-    ]);
-    let data = Buffer.alloc(1024);
-    {
-      const encodeLength = commandDataLayout.encode(
-        {
-          instruction: 0, // InitializeMint instruction
-          supply: supply.toBuffer(),
-          decimals,
-        },
-        data,
-      );
-      data = data.slice(0, encodeLength);
-    }
-    transaction.add({
-      keys,
-      programId,
-      data,
-    });
+    transaction.add(
+      Token.createInitMintInstruction(
+        programId,
+        mintAccount.publicKey,
+        decimals,
+        mintAuthority,
+        freezeAuthority,
+      ),
+    );
 
     // Send the two instructions
     await sendAndConfirmTransaction(
@@ -364,7 +381,7 @@ export class Token {
       mintAccount,
     );
 
-    return [token, initialAccountPublicKey];
+    return token;
   }
 
   /**
@@ -376,40 +393,29 @@ export class Token {
    * @return Public key of the new empty account
    */
   async createAccount(owner: PublicKey): Promise<PublicKey> {
-    const mintAccount = new Account();
-    let transaction;
-
     // Allocate memory for the account
     const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
       this.connection,
     );
-    transaction = SystemProgram.createAccount({
+
+    const newAccount = new Account();
+    const transaction = SystemProgram.createAccount({
       fromPubkey: this.payer.publicKey,
-      newAccountPubkey: mintAccount.publicKey,
+      newAccountPubkey: newAccount.publicKey,
       lamports: balanceNeeded,
       space: AccountLayout.span,
       programId: this.programId,
     });
 
-    // create the new account
-    const keys = [
-      {pubkey: mintAccount.publicKey, isSigner: false, isWritable: true},
-      {pubkey: this.publicKey, isSigner: false, isWritable: false},
-      {pubkey: owner, isSigner: false, isWritable: false},
-    ];
-    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
-      {
-        instruction: 1, // InitializeAccount instruction
-      },
-      data,
+    const mintPublicKey = this.publicKey;
+    transaction.add(
+      Token.createInitAccountInstruction(
+        this.programId,
+        mintPublicKey,
+        newAccount.publicKey,
+        owner,
+      ),
     );
-    transaction.add({
-      keys,
-      programId: this.programId,
-      data,
-    });
 
     // Send the two instructions
     await sendAndConfirmTransaction(
@@ -417,10 +423,10 @@ export class Token {
       this.connection,
       transaction,
       this.payer,
-      mintAccount,
+      newAccount,
     );
 
-    return mintAccount.publicKey;
+    return newAccount.publicKey;
   }
 
   /**
@@ -428,7 +434,6 @@ export class Token {
    *
    * This account may then be used for multisignature verification
    *
-   * @param owner User account that will own the multsig account
    * @return Public key of the new multisig account
    */
   async createMultisig(
@@ -453,6 +458,7 @@ export class Token {
     // create the new account
     let keys = [
       {pubkey: multisigAccount.publicKey, isSigner: false, isWritable: true},
+      {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
     ];
     signers.forEach(signer =>
       keys.push({pubkey: signer, isSigner: false, isWritable: false}),
@@ -464,7 +470,7 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 2, // InitializeM<ultisig instruction
+        instruction: 2, // InitializeMultisig instruction
         m,
       },
       data,
@@ -504,10 +510,20 @@ export class Token {
 
     const data = Buffer.from(info.data);
     const mintInfo = MintLayout.decode(data);
-    if (mintInfo.option === 0) {
-      mintInfo.owner = null;
+
+    if (mintInfo.mintAuthorityOption === 0) {
+      mintInfo.mintAuthority = null;
     } else {
-      mintInfo.owner = new PublicKey(mintInfo.owner);
+      mintInfo.mintAuthority = new PublicKey(mintInfo.mintAuthority);
+    }
+
+    mintInfo.supply = u64.fromBuffer(mintInfo.supply);
+    mintInfo.isInitialized = mintInfo.isInitialized != 0;
+
+    if (mintInfo.freezeAuthorityOption === 0) {
+      mintInfo.freezeAuthority = null;
+    } else {
+      mintInfo.freezeAuthority = new PublicKey(mintInfo.freezeAuthority);
     }
     return mintInfo;
   }
@@ -534,14 +550,30 @@ export class Token {
     accountInfo.mint = new PublicKey(accountInfo.mint);
     accountInfo.owner = new PublicKey(accountInfo.owner);
     accountInfo.amount = u64.fromBuffer(accountInfo.amount);
-    accountInfo.isInitialized = accountInfo.isInitialized != 0;
-    accountInfo.isNative = accountInfo.isNative != 0;
-    if (accountInfo.option === 0) {
+
+    if (accountInfo.delegateOption === 0) {
       accountInfo.delegate = null;
       accountInfo.delegatedAmount = new u64();
     } else {
       accountInfo.delegate = new PublicKey(accountInfo.delegate);
       accountInfo.delegatedAmount = u64.fromBuffer(accountInfo.delegatedAmount);
+    }
+
+    accountInfo.isInitialized = accountInfo.state === 1;
+    accountInfo.isFrozen = accountInfo.state === 2;
+
+    if (accountInfo.isNativeOption === 1) {
+      accountInfo.rentExemptReserve = u64.fromBuffer(accountInfo.isNative);
+      accountInfo.isNative = true;
+    } else {
+      accountInfo.rentExemptReserve = null;
+      accountInfo.isNative = false;
+    }
+
+    if (accountInfo.closeAuthorityOption === 0) {
+      accountInfo.closeAuthority = null;
+    } else {
+      accountInfo.closeAuthority = new PublicKey(accountInfo.closeAuthority);
     }
 
     if (!accountInfo.mint.equals(this.publicKey)) {
@@ -712,37 +744,40 @@ export class Token {
   }
 
   /**
-   * Assign a new owner to the account
+   * Assign a new authority to the account
    *
    * @param account Public key of the account
-   * @param newOwner New owner of the account
-   * @param owner Owner of the account
-   * @param multiSigners Signing accounts if `owner` is a multiSig
+   * @param newAuthority New authority of the account
+   * @param authorityType Type of authority to set
+   * @param currentAuthority Current authority of the account
+   * @param multiSigners Signing accounts if `currentAuthority` is a multiSig
    */
-  async setOwner(
-    owned: PublicKey,
-    newOwner: PublicKey,
-    owner: any,
+  async setAuthority(
+    account: PublicKey,
+    newAuthority: PublicKey | null,
+    authorityType: AuthorityType,
+    currentAuthority: any,
     multiSigners: Array<Account>,
   ): Promise<void> {
-    let ownerPublicKey;
+    let currentAuthorityPublicKey: PublicKey;
     let signers;
-    if (isAccount(owner)) {
-      ownerPublicKey = owner.publicKey;
-      signers = [owner];
+    if (isAccount(currentAuthority)) {
+      currentAuthorityPublicKey = currentAuthority.publicKey;
+      signers = [currentAuthority];
     } else {
-      ownerPublicKey = owner;
+      currentAuthorityPublicKey = currentAuthority;
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
-      'SetOwner',
+      'SetAuthority',
       this.connection,
       new Transaction().add(
-        Token.createSetOwnerInstruction(
+        Token.createSetAuthorityInstruction(
           this.programId,
-          owned,
-          newOwner,
-          ownerPublicKey,
+          account,
+          newAuthority,
+          authorityType,
+          currentAuthorityPublicKey,
           multiSigners,
         ),
       ),
@@ -754,7 +789,6 @@ export class Token {
   /**
    * Mint new tokens
    *
-   * @param mint Public key of the mint
    * @param dest Public key of the account to mint to
    * @param authority Owner of the mint
    * @param multiSigners Signing accounts if `authority` is a multiSig
@@ -797,23 +831,23 @@ export class Token {
    * Burn tokens
    *
    * @param account Account to burn tokens from
-   * @param authority Public key account owner
+   * @param owner Public key account owner
    * @param multiSigners Signing accounts if `authority` is a multiSig
-   * @param amount ammount to burn
+   * @param amount amount to burn
    */
   async burn(
     account: PublicKey,
-    authority: any,
+    owner: any,
     multiSigners: Array<Account>,
     amount: number,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
-    if (isAccount(authority)) {
-      ownerPublicKey = authority.publicKey;
-      signers = [authority];
+    if (isAccount(owner)) {
+      ownerPublicKey = owner.publicKey;
+      signers = [owner];
     } else {
-      ownerPublicKey = authority;
+      ownerPublicKey = owner;
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
@@ -822,6 +856,7 @@ export class Token {
       new Transaction().add(
         Token.createBurnInstruction(
           this.programId,
+          this.publicKey,
           account,
           ownerPublicKey,
           multiSigners,
@@ -834,25 +869,26 @@ export class Token {
   }
 
   /**
-   * Burn account
+   * Close account
    *
-   * @param account Account to burn
-   * @param authority account owner
+   * @param account Account to close
+   * @param dest Account to receive the remaining balance of the closed account
+   * @param authority Account which is allowed to close the account
    * @param multiSigners Signing accounts if `owner` is a multiSig
    */
   async closeAccount(
     account: PublicKey,
     dest: PublicKey,
-    owner: any,
+    authority: any,
     multiSigners: Array<Account>,
   ): Promise<void> {
-    let ownerPublicKey;
+    let authorityPublicKey;
     let signers;
-    if (isAccount(owner)) {
-      ownerPublicKey = owner.publicKey;
-      signers = [owner];
+    if (isAccount(authority)) {
+      authorityPublicKey = authority.publicKey;
+      signers = [authority];
     } else {
-      ownerPublicKey = owner;
+      authorityPublicKey = authority;
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
@@ -863,7 +899,7 @@ export class Token {
           this.programId,
           account,
           dest,
-          ownerPublicKey,
+          authorityPublicKey,
           multiSigners,
         ),
       ),
@@ -873,11 +909,95 @@ export class Token {
   }
 
   /**
+   * Construct an init mint instruction
+   *
+   * @param programId SPL Token program account
+   * @param mint Token mint account
+   * @param token New token account
+   * @param owner Owner of the new token account
+   */
+  static createInitMintInstruction(
+    programId: PublicKey,
+    mint: PublicKey,
+    decimals: number,
+    mintAuthority: PublicKey,
+    freezeAuthority: PublicKey | null,
+  ): TransactionInstruction {
+    let keys = [
+      {pubkey: mint, isSigner: false, isWritable: true},
+      {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+    ];
+    const commandDataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      BufferLayout.u8('decimals'),
+      Layout.publicKey('mintAuthority'),
+      BufferLayout.u8('option'),
+      Layout.publicKey('freezeAuthority'),
+    ]);
+    let data = Buffer.alloc(1024);
+    {
+      const encodeLength = commandDataLayout.encode(
+        {
+          instruction: 0, // InitializeMint instruction
+          decimals,
+          mintAuthority: mintAuthority.toBuffer(),
+          option: freezeAuthority === null ? 0 : 1,
+          freezeAuthority: (freezeAuthority || new PublicKey()).toBuffer(),
+        },
+        data,
+      );
+      data = data.slice(0, encodeLength);
+    }
+
+    return new TransactionInstruction({
+      keys,
+      programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct an init account instruction
+   *
+   * @param programId SPL Token program account
+   * @param mint Token mint account
+   * @param account New account
+   * @param owner Owner of the new account
+   */
+  static createInitAccountInstruction(
+    programId: PublicKey,
+    mint: PublicKey,
+    account: PublicKey,
+    owner: PublicKey,
+  ): TransactionInstruction {
+    const keys = [
+      {pubkey: account, isSigner: false, isWritable: true},
+      {pubkey: mint, isSigner: false, isWritable: false},
+      {pubkey: owner, isSigner: false, isWritable: false},
+      {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+    ];
+    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 1, // InitializeAccount instruction
+      },
+      data,
+    );
+
+    return new TransactionInstruction({
+      keys,
+      programId,
+      data,
+    });
+  }
+
+  /**
    * Construct a Transfer instruction
    *
    * @param source Source account
    * @param destination Destination account
-   * @param authority Owner of the source account
+   * @param owner Owner of the source account
    * @param multiSigners Signing accounts if `authority` is a multiSig
    * @param amount Number of tokens to transfer
    */
@@ -885,7 +1005,7 @@ export class Token {
     programId: PublicKey,
     source: PublicKey,
     destination: PublicKey,
-    authority: any,
+    owner: PublicKey,
     multiSigners: Array<Account>,
     amount: number | u64,
   ): TransactionInstruction {
@@ -907,14 +1027,14 @@ export class Token {
       {pubkey: source, isSigner: false, isWritable: true},
       {pubkey: destination, isSigner: false, isWritable: true},
     ];
-    if (isAccount(authority)) {
+    if (multiSigners.length === 0) {
       keys.push({
-        pubkey: authority.publicKey,
+        pubkey: owner,
         isSigner: true,
         isWritable: false,
       });
     } else {
-      keys.push({pubkey: authority, isSigner: false, isWritable: false});
+      keys.push({pubkey: owner, isSigner: false, isWritable: false});
       multiSigners.forEach(signer =>
         keys.push({
           pubkey: signer.publicKey,
@@ -943,7 +1063,7 @@ export class Token {
     programId: PublicKey,
     account: PublicKey,
     delegate: PublicKey,
-    owner: any,
+    owner: PublicKey,
     multiSigners: Array<Account>,
     amount: number | u64,
   ): TransactionInstruction {
@@ -965,8 +1085,8 @@ export class Token {
       {pubkey: account, isSigner: false, isWritable: true},
       {pubkey: delegate, isSigner: false, isWritable: false},
     ];
-    if (isAccount(owner)) {
-      keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
+    if (multiSigners.length === 0) {
+      keys.push({pubkey: owner, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
       multiSigners.forEach(signer =>
@@ -997,7 +1117,7 @@ export class Token {
   static createRevokeInstruction(
     programId: PublicKey,
     account: PublicKey,
-    owner: any,
+    owner: PublicKey,
     multiSigners: Array<Account>,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
@@ -1011,8 +1131,8 @@ export class Token {
     );
 
     let keys = [{pubkey: account, isSigner: false, isWritable: true}];
-    if (isAccount(owner)) {
-      keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
+    if (multiSigners.length === 0) {
+      keys.push({pubkey: owner, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
       multiSigners.forEach(signer =>
@@ -1032,38 +1152,48 @@ export class Token {
   }
 
   /**
-   * Construct a SetOwner instruction
+   * Construct a SetAuthority instruction
    *
    * @param account Public key of the account
-   * @param newOwner New owner of the account
-   * @param owner Owner of the account
-   * @param multiSigners Signing accounts if `owner` is a multiSig
+   * @param newAuthority New authority of the account
+   * @param authorityType Type of authority to set
+   * @param currentAuthority Current authority of the specified type
+   * @param multiSigners Signing accounts if `currentAuthority` is a multiSig
    */
-  static createSetOwnerInstruction(
+  static createSetAuthorityInstruction(
     programId: PublicKey,
-    owned: PublicKey,
-    newOwner: PublicKey,
-    owner: any,
+    account: PublicKey,
+    newAuthority: PublicKey | null,
+    authorityType: AuthorityType,
+    currentAuthority: PublicKey,
     multiSigners: Array<Account>,
   ): TransactionInstruction {
-    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
+    const commandDataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      BufferLayout.u8('authorityType'),
+      BufferLayout.u8('option'),
+      Layout.publicKey('newAuthority'),
+    ]);
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
-      {
-        instruction: 6, // SetOwner instruction
-      },
-      data,
-    );
+    let data = Buffer.alloc(1024);
+    {
+      const encodeLength = commandDataLayout.encode(
+        {
+          instruction: 6, // SetAuthority instruction
+          authorityType: AuthorityTypeCodes[authorityType],
+          option: newAuthority === null ? 0 : 1,
+          newAuthority: (newAuthority || new PublicKey()).toBuffer(),
+        },
+        data,
+      );
+      data = data.slice(0, encodeLength);
+    }
 
-    let keys = [
-      {pubkey: owned, isSigner: false, isWritable: true},
-      {pubkey: newOwner, isSigner: false, isWritable: false},
-    ];
-    if (isAccount(owner)) {
-      keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
+    let keys = [{pubkey: account, isSigner: false, isWritable: true}];
+    if (multiSigners.length === 0) {
+      keys.push({pubkey: currentAuthority, isSigner: true, isWritable: false});
     } else {
-      keys.push({pubkey: owner, isSigner: false, isWritable: false});
+      keys.push({pubkey: currentAuthority, isSigner: false, isWritable: false});
       multiSigners.forEach(signer =>
         keys.push({
           pubkey: signer.publicKey,
@@ -1084,16 +1214,15 @@ export class Token {
    * Construct a MintTo instruction
    *
    * @param dest Public key of the account to mint to
-   * @param authority Owner of the mint
+   * @param authority The mint authority
    * @param multiSigners Signing accounts if `authority` is a multiSig
-
    * @param amount amount to mint
    */
   static createMintToInstruction(
     programId: PublicKey,
     mint: PublicKey,
     dest: PublicKey,
-    authority: any,
+    authority: PublicKey,
     multiSigners: Array<Account>,
     amount: number,
   ): TransactionInstruction {
@@ -1115,9 +1244,9 @@ export class Token {
       {pubkey: mint, isSigner: false, isWritable: true},
       {pubkey: dest, isSigner: false, isWritable: true},
     ];
-    if (isAccount(authority)) {
+    if (multiSigners.length === 0) {
       keys.push({
-        pubkey: authority.publicKey,
+        pubkey: authority,
         isSigner: true,
         isWritable: false,
       });
@@ -1142,15 +1271,17 @@ export class Token {
   /**
    * Construct a Burn instruction
    *
+   * @param mint Mint for the account
    * @param account Account to burn tokens from
-   * @param authority Public key account owner
+   * @param owner Owner of the account
    * @param multiSigners Signing accounts if `authority` is a multiSig
-   * @param amount ammount to burn
+   * @param amount amount to burn
    */
   static createBurnInstruction(
     programId: PublicKey,
+    mint: PublicKey,
     account: PublicKey,
-    authority: any,
+    owner: PublicKey,
     multiSigners: Array<Account>,
     amount: number,
   ): TransactionInstruction {
@@ -1168,15 +1299,18 @@ export class Token {
       data,
     );
 
-    let keys = [{pubkey: account, isSigner: false, isWritable: true}];
-    if (isAccount(authority)) {
+    let keys = [
+      {pubkey: account, isSigner: false, isWritable: true},
+      {pubkey: mint, isSigner: false, isWritable: true},
+    ];
+    if (multiSigners.length === 0) {
       keys.push({
-        pubkey: authority.publicKey,
+        pubkey: owner,
         isSigner: true,
         isWritable: false,
       });
     } else {
-      keys.push({pubkey: authority, isSigner: false, isWritable: false});
+      keys.push({pubkey: owner, isSigner: false, isWritable: false});
       multiSigners.forEach(signer =>
         keys.push({
           pubkey: signer.publicKey,
@@ -1204,7 +1338,7 @@ export class Token {
     programId: PublicKey,
     account: PublicKey,
     dest: PublicKey,
-    owner: any,
+    owner: PublicKey,
     multiSigners: Array<Account>,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
@@ -1220,8 +1354,8 @@ export class Token {
       {pubkey: account, isSigner: false, isWritable: true},
       {pubkey: dest, isSigner: false, isWritable: true},
     ];
-    if (isAccount(owner)) {
-      keys.push({pubkey: owner.publicKey, isSigner: true, isWritable: false});
+    if (multiSigners.length === 0) {
+      keys.push({pubkey: owner, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
       multiSigners.forEach(signer =>

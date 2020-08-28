@@ -12,11 +12,11 @@ import {
   approveRevoke,
   invalidApprove,
   failOnApproveOverspend,
-  setOwner,
+  setAuthority,
   mintTo,
   multisig,
   burn,
-  failOnCloseAccount,
+  closeAccount,
   nativeToken,
 } from './token-test';
 
@@ -27,6 +27,8 @@ async function main() {
   await createMint();
   console.log('Run test: createAccount');
   await createAccount();
+  console.log('Run test: mintTo');
+  await mintTo();
   console.log('Run test: transfer');
   await transfer();
   console.log('Run test: approveRevoke');
@@ -35,16 +37,14 @@ async function main() {
   await invalidApprove();
   console.log('Run test: failOnApproveOverspend');
   await failOnApproveOverspend();
-  console.log('Run test: setOwner');
-  await setOwner();
-  console.log('Run test: mintTo');
-  await mintTo();
-  console.log('Run test: multisig');
-  await multisig();
+  console.log('Run test: setAuthority');
+  await setAuthority();
   console.log('Run test: burn');
   await burn();
-  console.log('Run test: failOnCloseAccount');
-  await failOnCloseAccount();
+  console.log('Run test: closeAccount');
+  await closeAccount();
+  console.log('Run test: multisig');
+  await multisig();
   console.log('Run test: nativeToken');
   await nativeToken();
   console.log('Success\n');
