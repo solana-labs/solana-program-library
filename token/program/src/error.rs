@@ -26,7 +26,7 @@ pub enum TokenError {
     #[error("Fixed supply")]
     FixedSupply,
     /// The account cannot be initialized because it is already being used.
-    #[error("AlreadyInUse")]
+    #[error("Already in use")]
     AlreadyInUse,
     /// Invalid number of provided signers.
     #[error("Invalid number of provided signers")]

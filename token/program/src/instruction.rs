@@ -669,7 +669,7 @@ pub fn transfer(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -698,7 +698,7 @@ pub fn approve(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -718,13 +718,13 @@ pub fn revoke(
     let data = TokenInstruction::Revoke.pack();
 
     let mut accounts = Vec::with_capacity(2 + signer_pubkeys.len());
-    accounts.push(AccountMeta::new_readonly(*source_pubkey, false));
+    accounts.push(AccountMeta::new(*source_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *owner_pubkey,
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -757,7 +757,7 @@ pub fn set_authority(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -786,7 +786,7 @@ pub fn mint_to(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -815,7 +815,7 @@ pub fn burn(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -843,7 +843,7 @@ pub fn close_account(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -871,7 +871,7 @@ pub fn freeze_account(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -899,7 +899,7 @@ pub fn thaw_account(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -932,7 +932,7 @@ pub fn transfer2(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -965,7 +965,7 @@ pub fn approve2(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -995,7 +995,7 @@ pub fn mint_to2(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
@@ -1025,7 +1025,7 @@ pub fn burn2(
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new(**signer_pubkey, true));
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {

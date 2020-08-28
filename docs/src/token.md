@@ -230,7 +230,7 @@ called from other programs that interact with the Token Program's interface.
 
 Accounts containing wrapped SOL are associated with a specific Mint called the
 "Native Mint" using the public key
-`So11111111111111111111111111111111111111111`.
+`So11111111111111111111111111111111111111112`.
 
 These accounts have a few unique behaviors
 
