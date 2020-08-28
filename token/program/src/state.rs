@@ -10,9 +10,6 @@ use num_enum::TryFromPrimitive;
 use solana_sdk::{program_error::ProgramError, pubkey::Pubkey};
 
 impl Sealed for Option<Pubkey> {}
-impl Sealed for Mint {}
-impl Sealed for Account {}
-impl Sealed for Multisig {}
 
 /// Mint data.
 #[repr(C)]
@@ -31,6 +28,7 @@ pub struct Mint {
     /// Optional authority to freeze token accounts.
     pub freeze_authority: COption<Pubkey>,
 }
+impl Sealed for Mint {}
 impl IsInitialized for Mint {
     fn is_initialized(&self) -> bool {
         self.is_initialized
@@ -117,6 +115,7 @@ impl Account {
         self.is_native.is_some()
     }
 }
+impl Sealed for Account {}
 impl IsInitialized for Account {
     fn is_initialized(&self) -> bool {
         self.state != AccountState::Uninitialized
@@ -206,6 +205,7 @@ pub struct Multisig {
     /// Signer public keys
     pub signers: [Pubkey; MAX_SIGNERS],
 }
+impl Sealed for Multisig {}
 impl IsInitialized for Multisig {
     fn is_initialized(&self) -> bool {
         self.is_initialized
