@@ -2,7 +2,7 @@
 use crate::expr::BudgetExpr;
 use bincode::{self, deserialize, serialize_into};
 use serde::{Deserialize, Serialize};
-use solana_sdk::instruction::InstructionError;
+use solana_sdk::program_error::ProgramError;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct BudgetState {
@@ -22,12 +22,12 @@ impl BudgetState {
         self.pending_budget.is_some()
     }
 
-    pub fn serialize(&self, output: &mut [u8]) -> Result<(), InstructionError> {
-        serialize_into(output, self).map_err(|_| InstructionError::AccountDataTooSmall)
+    pub fn serialize(&self, output: &mut [u8]) -> Result<(), ProgramError> {
+        serialize_into(output, self).map_err(|_| ProgramError::AccountDataTooSmall)
     }
 
-    pub fn deserialize(input: &[u8]) -> Result<Self, InstructionError> {
-        deserialize(input).map_err(|_| InstructionError::InvalidAccountData)
+    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
+        deserialize(input).map_err(|_| ProgramError::InvalidAccountData)
     }
 }
 
@@ -52,7 +52,7 @@ mod test {
         let b = BudgetState::default();
         assert_eq!(
             b.serialize(&mut a.data),
-            Err(InstructionError::AccountDataTooSmall)
+            Err(ProgramError::AccountDataTooSmall)
         );
     }
 }
