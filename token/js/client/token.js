@@ -559,7 +559,7 @@ export class Token {
       accountInfo.delegatedAmount = u64.fromBuffer(accountInfo.delegatedAmount);
     }
 
-    accountInfo.isInitialized = accountInfo.state === 1;
+    accountInfo.isInitialized = accountInfo.state !== 0;
     accountInfo.isFrozen = accountInfo.state === 2;
 
     if (accountInfo.isNativeOption === 1) {
