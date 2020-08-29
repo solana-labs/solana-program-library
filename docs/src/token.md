@@ -24,7 +24,7 @@ The Token Program's source is available on
 
 The on-chain Token Program is written in Rust and available on crates.io as
 [spl-token](https://docs.rs/spl-token). The program's [instruction interface
-documentation](https://docs.rs/spl-token/1.0.2/spl_token/instruction/enum.TokenInstruction.html)
+documentation](https://docs.rs/spl-token/2.0.1/spl_token/instruction/enum.TokenInstruction.html)
 can also be found there.
 
 Auto-generated C bindings are also available for the on-chain Token Program and
@@ -33,7 +33,7 @@ available
 
 [Javascript
 bindings](https://github.com/solana-labs/solana-program-library/blob/master/token/js/client/token.js)
-are available that support loading the Token Program on to a chain and issuing
+are available that support loading the Token Program on to a chain and issue
 instructions.
 
 ## Command-line Utility
@@ -159,23 +159,26 @@ CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1
 ### Creating a new token type
 
 A new token type can be created by initializing a new Mint with the
-`InitializeMint` instruction. The Mint is used to create or "Mint" new tokens,
+`InitializeMint` instruction. The Mint is used to create or "mint" new tokens,
 and these tokens are stored in Accounts. A Mint is associated with each
 Account, which means that the total supply of a particular token type is equal
 to the balances of all the associated Accounts.
-
-A Mint can either be configured with a fixed-supply or non-fixed supply. The
-total supply of a fixed-supply Mint is determined during initialization and
-deposited into a provided destination account. A non-fixed-supply Mint also has
-an owner associated with it who has the authority to create new tokens in the
-future with the `MintTo` instruction. Both types of Mints can `Burn` tokens to
-decrease supply.ß
 
 It's important to note that the `InitializeMint` instruction does not require
 the Solana account being initialized also be a signer. The `InitializeMint`
 instruction should be atomically processed with the system instruction that
 creates the Solana account by including both instructions in the same
 transaction.
+
+Once a Mint is initialized, the `mint_authority` can create new tokens using the
+`MintTo` instruction.  As long as a Mint contains a valid `mint_authority`, the
+Mint is considered to have a non-fixed supply, and the `mint_authority` can
+create new tokens with the `MintTo` instruction at any time.  The `SetAuthority`
+instruction can be used to irreversibly set the Mint's authority to `None`,
+rendering the Mint's supply fixed.  No further tokens can ever be Minted.
+
+Token supply can be reduced at any time by issuing a `Burn` instruction which
+removes and discards tokens from an Account.
 
 ### Creating accounts
 
@@ -205,13 +208,13 @@ to another Account, effectively removing the token from circulation permanently.
 
 Account owners may delegate authority over some or all of their token balance
 using the `Approve` instruction. Delegated authorities may transfer or burn up
-to the amount they've been delegated. Authority delegation may be revoked by
-the Account's owner via the `Revoke` instruction.
+to the amount they've been delegated. Authority delegation may be revoked by the
+Account's owner via the `Revoke` instruction.
 
 ### Multisignatures
 
-M of N multisignatures are supported and can be used in place of Mint owners, or
-Account owners or delegates. Multisignature owners or delegates must be
+M of N multisignatures are supported and can be used in place of Mint
+authorities or Account owners or delegates. Multisignature authorities must be
 initialized with the `InitializeMultisig` instruction. Initialization specifies
 the set of N public keys that are valid and the number M of those N that must be
 present as instruction signers for the authority to be legitimate.
@@ -221,6 +224,15 @@ require the Solana account being initialized also be a signer. The
 `InitializeMultisig` instruction should be atomically processed with the system
 instruction that creates the Solana account by including both instructions in
 the same transaction.
+
+### Freezing accounts
+
+The Mint may also contain a `freeze_authority` can be used to issue
+`FreezeAccount` instructions that will render an Account unusable.  Token
+instructions that include a frozen account will fail until the Account is thawed
+using the `ThawAccount` instruction.  The `SetAuthority` instruction can be used
+to change a Mint's `freeze_authority`.  If a Mint's `freeze_authority` is set to
+`None` then account freezing is permanently disabled
 
 ### Wrapping SOL
 
@@ -242,9 +254,16 @@ These accounts have a few unique behaviors
 - Burning is not supported
 - When closing an Account the balance may be non-zero.
 
+### Rent-exemption
+
+To ensure a reliable calculation of supply, a consistency valid Mint, and
+consistently valid Multisig accounts all Solana accounts holding a Account,
+Mint, or Multisig must contain enough SOL to be considered (rent
+exempt)[https://docs.solana.com/implemented-proposals/rent]
+
 ### Closing accounts
 
 An account may be closed using the `CloseAccount` instruction. When closing an
 Account, all remaining SOL will be transferred to another Solana account
-(doesn't have to be associated with the Token Program). Non-native accounts
-must have a balance of zero to be closed.
+(doesn't have to be associated with the Token Program). Non-native Accounts must
+have a balance of zero to be closed.
