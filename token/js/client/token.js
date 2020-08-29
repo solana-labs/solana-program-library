@@ -110,7 +110,6 @@ const MintLayout = BufferLayout.struct([
   BufferLayout.u8('isInitialized'),
   BufferLayout.u32('freezeAuthorityOption'),
   Layout.publicKey('freezeAuthority'),
-  BufferLayout.u16('padding'),
 ]);
 
 /**
@@ -185,7 +184,6 @@ const AccountLayout = BufferLayout.struct([
   Layout.uint64('delegatedAmount'),
   BufferLayout.u32('closeAuthorityOption'),
   Layout.publicKey('closeAuthority'),
-  BufferLayout.blob(11, 'padding'),
 ]);
 
 /**
