@@ -23,7 +23,7 @@ use spl_token::{
     pack::Pack,
     state::{Account, Mint},
 };
-use std::{mem::size_of, process::exit};
+use std::process::exit;
 
 struct Config {
     rpc_client: RpcClient,
@@ -72,7 +72,7 @@ fn command_create_token(config: &Config, decimals: u8) -> CommmandResult {
 
     let minimum_balance_for_rent_exemption = config
         .rpc_client
-        .get_minimum_balance_for_rent_exemption(size_of::<Mint>())?;
+        .get_minimum_balance_for_rent_exemption(Mint::LEN)?;
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -80,7 +80,7 @@ fn command_create_token(config: &Config, decimals: u8) -> CommmandResult {
                 &config.fee_payer.pubkey(),
                 &token.pubkey(),
                 minimum_balance_for_rent_exemption,
-                size_of::<Mint>() as u64,
+                Mint::LEN as u64,
                 &spl_token::id(),
             ),
             initialize_mint(
@@ -112,7 +112,7 @@ fn command_create_account(config: &Config, token: Pubkey) -> CommmandResult {
 
     let minimum_balance_for_rent_exemption = config
         .rpc_client
-        .get_minimum_balance_for_rent_exemption(size_of::<Account>())?;
+        .get_minimum_balance_for_rent_exemption(Account::LEN)?;
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -120,7 +120,7 @@ fn command_create_account(config: &Config, token: Pubkey) -> CommmandResult {
                 &config.fee_payer.pubkey(),
                 &account.pubkey(),
                 minimum_balance_for_rent_exemption,
-                size_of::<Account>() as u64,
+                Account::LEN as u64,
                 &spl_token::id(),
             ),
             initialize_account(
@@ -286,7 +286,7 @@ fn command_wrap(config: &Config, sol: f64) -> CommmandResult {
                 &config.owner.pubkey(),
                 &account.pubkey(),
                 lamports,
-                size_of::<Account>() as u64,
+                Account::LEN as u64,
                 &spl_token::id(),
             ),
             initialize_account(
