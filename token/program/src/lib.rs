@@ -27,4 +27,4 @@ pub fn amount_to_ui_amount(amount: u64, decimals: u8) -> f64 {
     amount as f64 / 10_usize.pow(decimals as u32) as f64
 }
 
-solana_sdk::declare_id!("TokenFSDHBLHfbT65SnYJx77ysXc1WTC2W3kvnXnZZR");
+solana_sdk::declare_id!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
