@@ -71,11 +71,21 @@ async function loadProgram(
   const from = await newAccountWithLamports(connection, balanceNeeded);
   const program_account = new Account();
   console.log('Loading program:', path);
-  await BpfLoader.load(connection, from, program_account, data, 1);
+  await BpfLoader.load(connection, from, program_account, data, 2);
   return program_account.publicKey;
 }
 
 async function GetPrograms(connection: Connection): Promise<PublicKey> {
+  const programVersion = process.env.PROGRAM_VERSION;
+  if (programVersion) {
+    switch (programVersion) {
+      case '2.0.3':
+        return new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+      default:
+        throw new Error('Unknown program version');
+    }
+  }
+
   const store = new Store();
   let tokenProgramId = null;
   try {
