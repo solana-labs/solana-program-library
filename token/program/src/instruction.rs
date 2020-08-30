@@ -173,9 +173,9 @@ pub enum TokenInstruction {
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The account to burn from.
-    ///   1. '[writable]' The token mint.
+    ///   1. `[writable]` The token mint.
     ///   2. `[]` The account's multisignature owner/delegate.
-    ///   3. ..3+M '[signer]' M signer accounts.
+    ///   3. ..3+M `[signer]` M signer accounts.
     Burn {
         /// The amount of tokens to burn.
         amount: u64,
