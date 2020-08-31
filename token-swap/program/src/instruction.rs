@@ -40,10 +40,10 @@ pub enum SwapInstruction {
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
     ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transferable by $authority,
-    ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
-    ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
-    ///   6. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
-    ///   7. '[]` Token program id
+    ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
+    ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
+    ///   5. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
+    ///   6. '[]` Token program id
     ///   userdata: SOURCE amount to transfer, output to DEST is based on the exchange rate
     Swap(u64),
 
@@ -52,13 +52,13 @@ pub enum SwapInstruction {
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
-    ///   2. `[writable]` token_a $authority can transfer amount,
-    ///   4. `[writable]` token_b $authority can transfer amount,
-    ///   6. `[writable]` token_a Base Account to deposit into.
-    ///   7. `[writable]` token_b Base Account to deposit into.
-    ///   8. `[writable]` Pool MINT account, $authority is the owner.
-    ///   9. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   10. '[]` Token program id
+    ///   2. `[writable]` token_a $authority can transfer amount from, user is the owner
+    ///   3. `[writable]` token_b $authority can transfer amount from, user is the owner
+    ///   4. `[writable]` token_a Base Account to deposit into, $authority is the owner
+    ///   5. `[writable]` token_b Base Account to deposit into, $authority is the owner
+    ///   6. `[writable]` Pool MINT account, $authority is the owner.
+    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   8. '[]` Token program id
     ///   userdata: token_a amount to transfer.  token_b amount is set by the current exchange rate.
     Deposit(u64),
 
@@ -67,11 +67,11 @@ pub enum SwapInstruction {
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
     ///   2. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   5. `[writable]` token_a Account to withdraw FROM.
-    ///   6. `[writable]` token_b Account to withdraw FROM.
-    ///   7. `[writable]` token_a user Account.
-    ///   8. `[writable]` token_b user Account.
-    ///   9. '[]` Token program id
+    ///   3. `[writable]` token_a Account to withdraw FROM.
+    ///   4. `[writable]` token_b Account to withdraw FROM.
+    ///   5. `[writable]` token_a user Account.
+    ///   6. `[writable]` token_b user Account.
+    ///   7. '[]` Token program id
     ///   userdata: SOURCE amount of pool tokens to transfer. User receives an output based on the
     ///   percentage of the pool tokens that are returned.
     Withdraw(u64),

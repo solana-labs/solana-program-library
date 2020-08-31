@@ -9,7 +9,7 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
-use solana_sdk::instruction::Instruction;
+use solana_sdk::instruction::AccountMeta;
 #[cfg(target_arch = "bpf")]
 use solana_sdk::program::invoke_signed;
 use solana_sdk::{
@@ -83,8 +83,12 @@ impl State {
         Pubkey::create_program_address(&[&my_info.to_bytes()[..32]], program_id)
             .or(Err(Error::InvalidProgramAddress))
     }
+
     /// Issue a spl_token `Burn` instruction.
+    #[allow(clippy::too_many_arguments)]
     pub fn token_burn(
+        #[allow(unused_variables)]
+        swap_program_id: &Pubkey,
         accounts: &[AccountInfo],
         token_program_id: &Pubkey,
         swap: &Pubkey,
@@ -103,11 +107,26 @@ impl State {
             &[],
             amount,
         )?;
-        invoke_signed(&ix, accounts, signers)
+        #[cfg(target_arch = "bpf")]
+        {
+            invoke_signed(&ix, accounts, signers)
+        }
+        #[cfg(not(target_arch = "bpf"))]
+        {
+            let signed_accounts = signed_account_infos(swap_program_id, &ix.accounts, accounts, signers);
+            spl_token::processor::Processor::process(
+                &ix.program_id,
+                &signed_accounts,
+                &ix.data,
+            )
+        }
     }
 
     /// Issue a spl_token `MintTo` instruction.
+    #[allow(clippy::too_many_arguments)]
     pub fn token_mint_to(
+        #[allow(unused_variables)]
+        swap_program_id: &Pubkey,
         accounts: &[AccountInfo],
         token_program_id: &Pubkey,
         swap: &Pubkey,
@@ -126,11 +145,26 @@ impl State {
             &[],
             amount,
         )?;
-        invoke_signed(&ix, accounts, signers)
+        #[cfg(target_arch = "bpf")]
+        {
+            invoke_signed(&ix, accounts, signers)
+        }
+        #[cfg(not(target_arch = "bpf"))]
+        {
+            let signed_accounts = signed_account_infos(swap_program_id, &ix.accounts, accounts, signers);
+            spl_token::processor::Processor::process(
+                &ix.program_id,
+                &signed_accounts,
+                &ix.data,
+            )
+        }
     }
 
     /// Issue a spl_token `Transfer` instruction.
+    #[allow(clippy::too_many_arguments)]
     pub fn token_transfer(
+        #[allow(unused_variables)]
+        swap_program_id: &Pubkey,
         accounts: &[AccountInfo],
         token_program_id: &Pubkey,
         swap: &Pubkey,
@@ -149,7 +183,19 @@ impl State {
             &[],
             amount,
         )?;
-        invoke_signed(&ix, accounts, signers)
+        #[cfg(target_arch = "bpf")]
+        {
+            invoke_signed(&ix, accounts, signers)
+        }
+        #[cfg(not(target_arch = "bpf"))]
+        {
+            let signed_accounts = signed_account_infos(swap_program_id, &ix.accounts, accounts, signers);
+            spl_token::processor::Processor::process(
+                &ix.program_id,
+                &signed_accounts,
+                &ix.data,
+            )
+        }
     }
 
     /// Processes an [Initialize](enum.Instruction.html).
@@ -203,6 +249,7 @@ impl State {
         // the pool are equal
         let amount = token_a.amount;
         Self::token_mint_to(
+            program_id,
             accounts,
             token_program_info.key,
             swap_info.key,
@@ -261,6 +308,7 @@ impl State {
             .swap(amount)
             .ok_or_else(|| Error::CalculationFailure)?;
         Self::token_transfer(
+            program_id,
             accounts,
             token_program_info.key,
             swap_info.key,
@@ -270,6 +318,7 @@ impl State {
             amount,
         )?;
         Self::token_transfer(
+            program_id,
             accounts,
             token_program_info.key,
             swap_info.key,
@@ -327,6 +376,7 @@ impl State {
         let output = a_amount;
 
         Self::token_transfer(
+            program_id,
             accounts,
             token_program_info.key,
             swap_info.key,
@@ -336,6 +386,7 @@ impl State {
             a_amount,
         )?;
         Self::token_transfer(
+            program_id,
             accounts,
             token_program_info.key,
             swap_info.key,
@@ -345,6 +396,7 @@ impl State {
             b_amount,
         )?;
         Self::token_mint_to(
+            program_id,
             accounts,
             token_program_info.key,
             swap_info.key,
@@ -399,6 +451,7 @@ impl State {
             .ok_or_else(|| Error::CalculationFailure)?;
 
         Self::token_transfer(
+            program_id,
             accounts,
             token_program_info.key,
             swap_info.key,
@@ -408,6 +461,7 @@ impl State {
             a_amount,
         )?;
         Self::token_transfer(
+            program_id,
             accounts,
             token_program_info.key,
             swap_info.key,
@@ -417,6 +471,7 @@ impl State {
             b_amount,
         )?;
         Self::token_burn(
+            program_id,
             accounts,
             token_program_info.key,
             swap_info.key,
@@ -451,24 +506,21 @@ impl State {
     }
 }
 
-// Test program id for the swap program.
+/// Sets up program signer to mimic bpf_loader's syscalls
 #[cfg(not(target_arch = "bpf"))]
-const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
-
-/// Routes invokes to the token program, used for testing.
-#[cfg(not(target_arch = "bpf"))]
-pub fn invoke_signed<'a>(
-    instruction: &Instruction,
+pub fn signed_account_infos<'a>(
+    swap_program_id: &Pubkey,
+    instruction_accounts: &[AccountMeta],
     account_infos: &[AccountInfo<'a>],
     signers_seeds: &[&[&[u8]]],
-) -> ProgramResult {
+) -> Vec<AccountInfo<'a>> {
     let mut new_account_infos = vec![];
-    for meta in instruction.accounts.iter() {
+    for meta in instruction_accounts.iter() {
         for account_info in account_infos.iter() {
             if meta.pubkey == *account_info.key {
                 let mut new_account_info = account_info.clone();
                 for seeds in signers_seeds.iter() {
-                    let signer = Pubkey::create_program_address(seeds, &SWAP_PROGRAM_ID).unwrap();
+                    let signer = Pubkey::create_program_address(seeds, &swap_program_id).unwrap();
                     if *account_info.key == signer {
                         new_account_info.is_signer = true;
                     }
@@ -477,11 +529,7 @@ pub fn invoke_signed<'a>(
             }
         }
     }
-    spl_token::processor::Processor::process(
-        &instruction.program_id,
-        &new_account_infos,
-        &instruction.data,
-    )
+    new_account_infos
 }
 
 impl PrintProgramError for Error {
@@ -514,7 +562,10 @@ mod tests {
     use super::*;
     use crate::instruction::initialize;
     use solana_sdk::{
-        account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
+        account::Account,
+        account_info::create_is_signer_account_infos,
+        instruction::Instruction,
+        signature::Keypair,
     };
     use spl_token::{
         instruction::{initialize_account, initialize_mint, mint_to},
@@ -522,13 +573,11 @@ mod tests {
         state::{Account as SplAccount, Mint as SplMint},
     };
 
-    const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
-
     fn pubkey_rand() -> Pubkey {
         Pubkey::new(&rand::random::<[u8; 32]>())
     }
 
-    fn do_process_instruction(
+    fn do_process_swap_instruction(
         instruction: Instruction,
         accounts: Vec<&mut Account>,
     ) -> ProgramResult {
@@ -540,11 +589,22 @@ mod tests {
             .collect::<Vec<_>>();
 
         let account_infos = create_is_signer_account_infos(&mut meta);
-        if instruction.program_id == SWAP_PROGRAM_ID {
-            State::process(&instruction.program_id, &account_infos, &instruction.data)
-        } else {
-            SplProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
-        }
+        State::process(&instruction.program_id, &account_infos, &instruction.data)
+    }
+
+    fn do_process_token_instruction(
+        instruction: Instruction,
+        accounts: Vec<&mut Account>,
+    ) -> ProgramResult {
+        let mut meta = instruction
+            .accounts
+            .iter()
+            .zip(accounts)
+            .map(|(account_meta, account)| (&account_meta.pubkey, account_meta.is_signer, account))
+            .collect::<Vec<_>>();
+
+        let account_infos = create_is_signer_account_infos(&mut meta);
+        SplProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
     }
 
     fn mint_token(
@@ -558,7 +618,7 @@ mod tests {
         let mut account_account = Account::new(0, size_of::<SplAccount>(), &program_id);
 
         // create pool and pool account
-        do_process_instruction(
+        do_process_token_instruction(
             initialize_account(&program_id, &account_key, &token_key, &authority_key).unwrap(),
             vec![
                 &mut account_account,
@@ -568,13 +628,13 @@ mod tests {
         )
         .unwrap();
         let mut authority_account = Account::default();
-        do_process_instruction(
+        do_process_token_instruction(
             initialize_mint(&program_id, &token_key, authority_key, None, 2).unwrap(),
             vec![&mut token_account, &mut authority_account],
         )
         .unwrap();
 
-        do_process_instruction(
+        do_process_token_instruction(
             mint_to(
                 &program_id,
                 &token_key,
@@ -597,23 +657,28 @@ mod tests {
 
     #[test]
     fn test_initialize() {
+        let token_program_keypair = Keypair::new();
+        let token_program_id = token_program_keypair.pubkey();
+        let swap_program_keypair = Keypair::new();
+        let swap_program_id = swap_program_keypair.pubkey();
+
         let swap_key = pubkey_rand();
-        let mut swap_account = Account::new(0, size_of::<State>(), &SWAP_PROGRAM_ID);
-        let authority_key = State::authority_id(&SWAP_PROGRAM_ID, &swap_key).unwrap();
+        let mut swap_account = Account::new(0, size_of::<State>(), &swap_program_id);
+        let authority_key = State::authority_id(&swap_program_id, &swap_key).unwrap();
         let mut authority_account = Account::default();
 
         let ((pool_key, mut pool_account), (pool_token_key, mut pool_token_account)) =
-            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 0);
+            mint_token(&token_program_id, &authority_key, 0);
         let ((_token_a_mint_key, mut _token_a_mint_account), (token_a_key, mut token_a_account)) =
-            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000);
+            mint_token(&token_program_id, &authority_key, 1000);
         let ((_token_b_mint_key, mut _token_b_mint_account), (token_b_key, mut token_b_account)) =
-            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000);
+            mint_token(&token_program_id, &authority_key, 1000);
 
         // Swap Init
-        do_process_instruction(
+        do_process_swap_instruction(
             initialize(
-                &SWAP_PROGRAM_ID,
-                &TOKEN_PROGRAM_ID,
+                &swap_program_id,
+                &token_program_id,
                 &swap_key,
                 &authority_key,
                 &token_a_key,
