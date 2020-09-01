@@ -6,6 +6,8 @@ members = [
   "token-swap/program",
   "token/cli",
   "token/program",
+]
+exclude = [
   "token/perf-monitor",
 ]
 
