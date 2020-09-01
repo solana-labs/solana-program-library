@@ -57,7 +57,7 @@ fn run_program(
     .unwrap();
     assert_eq!(
         SUCCESS,
-        vm.execute_program(parameter_bytes.as_mut_slice(), &[], &[heap_region.clone()])
+        vm.execute_program(parameter_bytes.as_mut_slice(), &[], &[heap_region])
             .unwrap()
     );
     deserialize_parameters(&bpf_loader::id(), parameter_accounts, &parameter_bytes).unwrap();
@@ -68,17 +68,16 @@ fn run_program(
 fn assert_instruction_count() {
     let program_id = Pubkey::new_rand();
     let source_key = Pubkey::new_rand();
-    let mut source_account =
-        SolanaAccount::new_ref(u64::MAX, Account::get_packed_len(), &program_id);
+    let source_account = SolanaAccount::new_ref(u64::MAX, Account::get_packed_len(), &program_id);
     let destination_key = Pubkey::new_rand();
-    let mut destination_account =
+    let destination_account =
         SolanaAccount::new_ref(u64::MAX, Account::get_packed_len(), &program_id);
     let owner_key = Pubkey::new_rand();
-    let mut owner_account = RefCell::new(SolanaAccount::default());
+    let owner_account = RefCell::new(SolanaAccount::default());
     let mint_key = Pubkey::new_rand();
-    let mut mint_account = SolanaAccount::new_ref(0, Mint::get_packed_len(), &program_id);
+    let mint_account = SolanaAccount::new_ref(0, Mint::get_packed_len(), &program_id);
     let rent_key = rent::id();
-    let mut rent_account = RefCell::new(rent::create_account(42, &Rent::default()));
+    let rent_account = RefCell::new(rent::create_account(42, &Rent::default()));
 
     // Create new mint
     let instruction_data = TokenInstruction::InitializeMint {
@@ -88,8 +87,8 @@ fn assert_instruction_count() {
     }
     .pack();
     let parameter_accounts = vec![
-        KeyedAccount::new(&mint_key, false, &mut mint_account),
-        KeyedAccount::new(&source_key, false, &mut source_account),
+        KeyedAccount::new(&mint_key, false, &mint_account),
+        KeyedAccount::new(&source_key, false, &source_account),
     ];
     let initialize_mint_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
@@ -97,10 +96,10 @@ fn assert_instruction_count() {
     // Create source account
     let instruction_data = TokenInstruction::InitializeAccount.pack();
     let parameter_accounts = vec![
-        KeyedAccount::new(&source_key, false, &mut source_account),
-        KeyedAccount::new(&mint_key, false, &mut mint_account),
-        KeyedAccount::new(&owner_key, false, &mut owner_account),
-        KeyedAccount::new(&rent_key, false, &mut rent_account),
+        KeyedAccount::new(&source_key, false, &source_account),
+        KeyedAccount::new(&mint_key, false, &mint_account),
+        KeyedAccount::new(&owner_key, false, &owner_account),
+        KeyedAccount::new(&rent_key, false, &rent_account),
     ];
     let mintto_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
@@ -108,19 +107,19 @@ fn assert_instruction_count() {
     // Create destination account
     let instruction_data = TokenInstruction::InitializeAccount.pack();
     let parameter_accounts = vec![
-        KeyedAccount::new(&destination_key, false, &mut destination_account),
-        KeyedAccount::new(&mint_key, false, &mut mint_account),
-        KeyedAccount::new(&owner_key, false, &mut owner_account),
-        KeyedAccount::new(&rent_key, false, &mut rent_account),
+        KeyedAccount::new(&destination_key, false, &destination_account),
+        KeyedAccount::new(&mint_key, false, &mint_account),
+        KeyedAccount::new(&owner_key, false, &owner_account),
+        KeyedAccount::new(&rent_key, false, &rent_account),
     ];
     let _ = run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
 
     // MintTo source account
     let instruction_data = TokenInstruction::MintTo { amount: 100 }.pack();
     let parameter_accounts = vec![
-        KeyedAccount::new(&mint_key, false, &mut mint_account),
-        KeyedAccount::new(&source_key, false, &mut source_account),
-        KeyedAccount::new(&owner_key, true, &mut owner_account),
+        KeyedAccount::new(&mint_key, false, &mint_account),
+        KeyedAccount::new(&source_key, false, &source_account),
+        KeyedAccount::new(&owner_key, true, &owner_account),
     ];
     let initialize_account_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
@@ -129,9 +128,9 @@ fn assert_instruction_count() {
     let instruction = TokenInstruction::Transfer { amount: 100 };
     let instruction_data = instruction.pack();
     let parameter_accounts = vec![
-        KeyedAccount::new(&source_key, false, &mut source_account),
-        KeyedAccount::new(&destination_key, false, &mut destination_account),
-        KeyedAccount::new(&owner_key, true, &mut owner_account),
+        KeyedAccount::new(&source_key, false, &source_account),
+        KeyedAccount::new(&destination_key, false, &destination_account),
+        KeyedAccount::new(&owner_key, true, &owner_account),
     ];
     let transfer_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
