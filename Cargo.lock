@@ -1315,17 +1315,6 @@ dependencies = [
 
 [[package]]
 name = "num-derive"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eafd0b45c5537c3ba526f79d3e75120036502bebacbb3f3220914067ce39dbf2"
-dependencies = [
- "proc-macro2 0.4.30",
- "quote 0.6.13",
- "syn 0.15.44",
-]
-
-[[package]]
-name = "num-derive"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f09b9841adb6b5e1f89ef7087ea636e0fd94b2851f887c1e3eb5d5f8228fab3"
@@ -2130,7 +2119,7 @@ checksum = "0ff0a65125bd1060e46bbafffc4bc77ebc16e519b20630586a4030c7f9a0383a"
 dependencies = [
  "bincode",
  "byteorder",
- "num-derive 0.3.2",
+ "num-derive",
  "num-traits",
  "solana-runtime",
  "solana-sdk",
@@ -2315,7 +2304,7 @@ dependencies = [
  "dialoguer",
  "hidapi",
  "log",
- "num-derive 0.3.2",
+ "num-derive",
  "num-traits",
  "parking_lot 0.10.2",
  "semver",
@@ -2345,7 +2334,7 @@ dependencies = [
  "libloading",
  "log",
  "memmap",
- "num-derive 0.3.2",
+ "num-derive",
  "num-traits",
  "num_cpus",
  "rand",
@@ -2390,7 +2379,7 @@ dependencies = [
  "itertools",
  "log",
  "memmap",
- "num-derive 0.3.2",
+ "num-derive",
  "num-traits",
  "pbkdf2",
  "rand",
@@ -2443,7 +2432,7 @@ checksum = "9f8f7ee75e6bdb70f9e300f60785c66ae1b7f95d44146aca9ea7e055fb11a3a7"
 dependencies = [
  "bincode",
  "log",
- "num-derive 0.3.2",
+ "num-derive",
  "num-traits",
  "rustc_version",
  "serde",
@@ -2502,7 +2491,7 @@ checksum = "8940877a7f41bff1389d7c8d502f49f0a29d443f24df2f53bdc69cbcfc50fd1c"
 dependencies = [
  "bincode",
  "log",
- "num-derive 0.3.2",
+ "num-derive",
  "num-traits",
  "rustc_version",
  "serde",
@@ -2559,7 +2548,7 @@ name = "spl-token"
 version = "2.0.3"
 dependencies = [
  "arrayref",
- "num-derive 0.3.2",
+ "num-derive",
  "num-traits",
  "num_enum",
  "rand",
@@ -2575,7 +2564,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "813ab51fcfeabfc60157e6556b96cf005bab55321508053ade8c9f9bcfe5ce0b"
 dependencies = [
  "arrayref",
- "num-derive 0.3.2",
+ "num-derive",
  "num-traits",
  "num_enum",
  "remove_dir_all",
@@ -2602,7 +2591,7 @@ dependencies = [
 name = "spl-token-swap"
 version = "0.1.0"
 dependencies = [
- "num-derive 0.3.2",
+ "num-derive",
  "num-traits",
  "rand",
  "remove_dir_all",
@@ -2612,16 +2601,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-token-tests"
-version = "0.1.0"
+name = "spl_token_perf_monitor"
+version = "0.0.1"
 dependencies = [
- "byteorder",
- "num-derive 0.2.5",
- "num-traits",
  "rand",
  "solana-bpf-loader-program",
- "solana-logger",
  "solana-sdk",
+ "solana_rbpf",
  "spl-token 2.0.3",
 ]
 
