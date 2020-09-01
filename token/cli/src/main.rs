@@ -4,15 +4,16 @@ use clap::{
 };
 use solana_account_decoder::{parse_token::TokenAccountType, UiAccountData};
 use solana_clap_utils::{
-    input_parsers::{keypair_of, pubkey_of},
+    input_parsers::pubkey_of,
     input_validators::{is_amount, is_keypair, is_pubkey_or_keypair, is_url},
+    keypair::signer_from_path,
 };
 use solana_client::{rpc_client::RpcClient, rpc_request::TokenAccountsFilter};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     native_token::*,
     pubkey::Pubkey,
-    signature::{read_keypair_file, Keypair, Signer},
+    signature::{Keypair, Signer},
     system_instruction,
     transaction::Transaction,
 };
@@ -28,13 +29,20 @@ use std::process::exit;
 struct Config {
     rpc_client: RpcClient,
     verbose: bool,
-    owner: Keypair,
-    fee_payer: Keypair,
+    owner: Box<dyn Signer>,
+    fee_payer: Box<dyn Signer>,
     commitment_config: CommitmentConfig,
 }
 
 type Error = Box<dyn std::error::Error>;
 type CommmandResult = Result<Option<Transaction>, Error>;
+
+macro_rules! unique_signers {
+    ($vec:ident) => {
+        $vec.sort_by_key(|l| l.pubkey());
+        $vec.dedup();
+    };
+}
 
 fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
     let balance = config.rpc_client.get_balance(&config.fee_payer.pubkey())?;
@@ -99,10 +107,9 @@ fn command_create_token(config: &Config, decimals: u8) -> CommmandResult {
         config,
         minimum_balance_for_rent_exemption + fee_calculator.calculate_fee(&transaction.message()),
     )?;
-    transaction.sign(
-        &[&config.fee_payer, &config.owner, &token],
-        recent_blockhash,
-    );
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref(), &token];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
 }
 
@@ -138,10 +145,9 @@ fn command_create_account(config: &Config, token: Pubkey) -> CommmandResult {
         config,
         minimum_balance_for_rent_exemption + fee_calculator.calculate_fee(&transaction.message()),
     )?;
-    transaction.sign(
-        &[&config.fee_payer, &config.owner, &account],
-        recent_blockhash,
-    );
+    let mut signers = vec![config.fee_payer.as_ref(), &account, config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
 }
 
@@ -167,7 +173,9 @@ fn command_assign(config: &Config, account: Pubkey, new_owner: Pubkey) -> Commma
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    transaction.sign(&[&config.fee_payer, &config.owner], recent_blockhash);
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
 }
 
@@ -203,7 +211,9 @@ fn command_transfer(
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    transaction.sign(&[&config.fee_payer, &config.owner], recent_blockhash);
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
 }
 
@@ -236,7 +246,9 @@ fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommmandResu
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    transaction.sign(&[&config.fee_payer, &config.owner], recent_blockhash);
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
 }
 
@@ -271,7 +283,9 @@ fn command_mint(
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    transaction.sign(&[&config.fee_payer, &config.owner], recent_blockhash);
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
 }
 
@@ -302,10 +316,9 @@ fn command_wrap(config: &Config, sol: f64) -> CommmandResult {
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_owner_balance(config, lamports)?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    transaction.sign(
-        &[&config.fee_payer, &config.owner, &account],
-        recent_blockhash,
-    );
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref(), &account];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
 }
 
@@ -335,7 +348,9 @@ fn command_unwrap(config: &Config, address: Pubkey) -> CommmandResult {
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    transaction.sign(&[&config.fee_payer, &config.owner], recent_blockhash);
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
 }
 
@@ -677,15 +692,27 @@ fn main() {
         let json_rpc_url = value_t!(matches, "json_rpc_url", String)
             .unwrap_or_else(|_| cli_config.json_rpc_url.clone());
 
-        let client_keypair = || {
-            read_keypair_file(&cli_config.keypair_path).unwrap_or_else(|err| {
-                eprintln!("Unable to read {}: {}", cli_config.keypair_path, err);
-                exit(1)
-            })
-        };
-
-        let owner = keypair_of(&matches, "owner").unwrap_or_else(client_keypair);
-        let fee_payer = keypair_of(&matches, "fee_payer").unwrap_or_else(client_keypair);
+        let mut wallet_manager = None;
+        let owner = signer_from_path(
+            &matches,
+            &cli_config.keypair_path,
+            "owner",
+            &mut wallet_manager,
+        )
+        .unwrap_or_else(|e| {
+            eprintln!("error: {}", e);
+            exit(1);
+        });
+        let fee_payer = signer_from_path(
+            &matches,
+            &cli_config.keypair_path,
+            "fee_payer",
+            &mut wallet_manager,
+        )
+        .unwrap_or_else(|e| {
+            eprintln!("error: {}", e);
+            exit(1);
+        });
         let verbose = matches.is_present("verbose");
 
         Config {
