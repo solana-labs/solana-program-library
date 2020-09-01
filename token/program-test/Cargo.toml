@@ -1,0 +1,27 @@
+
+[package]
+name = "spl-token-tests"
+version = "0.1.0"
+description = "System tests and benches for spl-token"
+authors = ["Solana Maintainers <maintainers@solana.com>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[features]
+no-entrypoint = []
+skip-no-mangle = ["solana-sdk/skip-no-mangle"]
+program = ["solana-sdk/program"]
+default = ["solana-sdk/default"]
+
+[dependencies]
+byteorder = "1.3.2"
+num-derive = "0.2"
+num-traits = "0.2"
+spl-token = { path = "../program" }
+solana-sdk = { version = "1.3.6", default-features = false, optional = true }
+solana-bpf-loader-program = { version = "1.3.6" }
+solana-logger = { version = "1.3.6" }
+
+[dev-dependencies]
+rand = { version = "0.7.0"}
