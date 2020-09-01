@@ -59,6 +59,9 @@ for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
   fi
 done
 
+# Run SPL Token's performance monitor
+cargo test --manifest-path=token/perf-monitor/Cargo.toml -- --nocapture
+
 
 # Test token js bindings
 js_token() {
