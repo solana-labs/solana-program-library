@@ -194,17 +194,25 @@ fn command_transfer(
         .rpc_client
         .get_token_account_balance_with_commitment(&sender, config.commitment_config)?
         .value;
-
+    let source_account = config
+        .rpc_client
+        .get_account_with_commitment(&sender, config.commitment_config)?
+        .value
+        .unwrap_or_default();
+    let data = source_account.data.to_vec();
+    let mint_pubkey = Account::unpack_from_slice(&data)?.mint;
     let amount = spl_token::ui_amount_to_amount(ui_amount, sender_token_balance.decimals);
 
     let mut transaction = Transaction::new_with_payer(
-        &[transfer(
+        &[transfer2(
             &spl_token::id(),
             &sender,
+            &mint_pubkey,
             &recipient,
             &config.owner.pubkey(),
             &[],
             amount,
+            sender_token_balance.decimals,
         )?],
         Some(&config.fee_payer.pubkey()),
     );
@@ -233,13 +241,14 @@ fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommmandResu
     let mint_pubkey = Account::unpack_from_slice(&data)?.mint;
     let amount = spl_token::ui_amount_to_amount(ui_amount, source_token_balance.decimals);
     let mut transaction = Transaction::new_with_payer(
-        &[burn(
+        &[burn2(
             &spl_token::id(),
             &source,
             &mint_pubkey,
             &config.owner.pubkey(),
             &[],
             amount,
+            source_token_balance.decimals,
         )?],
         Some(&config.fee_payer.pubkey()),
     );
@@ -270,13 +279,14 @@ fn command_mint(
     let amount = spl_token::ui_amount_to_amount(ui_amount, recipient_token_balance.decimals);
 
     let mut transaction = Transaction::new_with_payer(
-        &[mint_to(
+        &[mint_to2(
             &spl_token::id(),
             &token,
             &recipient,
             &config.owner.pubkey(),
             &[],
             amount,
+            recipient_token_balance.decimals,
         )?],
         Some(&config.fee_payer.pubkey()),
     );
