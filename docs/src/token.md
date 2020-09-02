@@ -254,8 +254,8 @@ These accounts have a few unique behaviors
 - Burning is not supported
 - When closing an Account the balance may be non-zero.
 
-In spl-token v2.0, the Native Mint supply will always report 0, regardless of
-how much SOL is currently wrapped. This is expect to be fixed in spl-token v3.
+In spl-token v2, the Native Mint supply will always report 0, regardless of
+how much SOL is currently wrapped.
 
 ### Rent-exemption
 
