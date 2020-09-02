@@ -24,12 +24,12 @@ The Token Program's source is available on
 
 The on-chain Token Program is written in Rust and available on crates.io as
 [spl-token](https://docs.rs/spl-token). The program's [instruction interface
-documentation](https://docs.rs/spl-token/2.0.1/spl_token/instruction/enum.TokenInstruction.html)
+documentation](https://docs.rs/spl-token/2.0.3/spl_token/instruction/enum.TokenInstruction.html)
 can also be found there.
 
 Auto-generated C bindings are also available for the on-chain Token Program and
 available
-[here](https://github.com/solana-labs/solana-program-library/blob/master/token/inc/token.h)
+[here](https://github.com/solana-labs/solana-program-library/blob/master/token/program/inc/token.h)
 
 [Javascript
 bindings](https://github.com/solana-labs/solana-program-library/blob/master/token/js/client/token.js)
@@ -253,6 +253,9 @@ These accounts have a few unique behaviors
   equal amount of SOL from the source account to the destination account.
 - Burning is not supported
 - When closing an Account the balance may be non-zero.
+
+In spl-token v2, the Native Mint supply will always report 0, regardless of
+how much SOL is currently wrapped.
 
 ### Rent-exemption
 
