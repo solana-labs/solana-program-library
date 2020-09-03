@@ -57,6 +57,11 @@ export class Numberu64 extends BN {
  */
 type TokenSwapInfo = {|
   /**
+   * Nonce. Used to generate the valid program address in the program
+   */
+  nonce: number,
+
+  /**
    * Token A. The Liquidity token is issued against this value.
    */
   tokenAccountA: PublicKey,
@@ -93,11 +98,14 @@ type TokenSwapInfo = {|
  */
 const TokenSwapLayout = BufferLayout.struct([
   BufferLayout.u8('state'),
+  BufferLayout.u8('nonce'),
   Layout.publicKey('tokenAccountA'),
   Layout.publicKey('tokenAccountB'),
   Layout.publicKey('tokenPool'),
+  BufferLayout.blob(7, 'padding'),
   Layout.uint64('feesDenominator'),
   Layout.uint64('feesNumerator'),
+  BufferLayout.blob(7, 'padding'),
 ]);
 
 /**
@@ -176,6 +184,7 @@ export class TokenSwap {
     tokenPool: PublicKey,
     tokenAccountPool: PublicKey,
     tokenProgramId: PublicKey,
+    nonce: number,
     feeNumerator: number,
     feeDenominator: number,
     programId: PublicKey,
@@ -205,16 +214,18 @@ export class TokenSwap {
     let keys = [
       {pubkey: tokenSwapAccount.publicKey, isSigner: true, isWritable: true},
       {pubkey: authority, isSigner: false, isWritable: false},
-      {pubkey: tokenAccountA, isSigner: false, isWritable: true},
-      {pubkey: tokenAccountB, isSigner: false, isWritable: true},
+      {pubkey: tokenAccountA, isSigner: false, isWritable: false},
+      {pubkey: tokenAccountB, isSigner: false, isWritable: false},
       {pubkey: tokenPool, isSigner: false, isWritable: true},
       {pubkey: tokenAccountPool, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      BufferLayout.nu64('feeDenominator'),
       BufferLayout.nu64('feeNumerator'),
+      BufferLayout.nu64('feeDenominator'),
+      BufferLayout.u8('nonce'),
+      BufferLayout.blob(14, 'padding'),
     ]);
     let data = Buffer.alloc(1024);
     {
@@ -223,6 +234,7 @@ export class TokenSwap {
           instruction: 0, // InitializeSwap instruction
           feeNumerator,
           feeDenominator,
+          nonce,
         },
         data,
       );
@@ -263,6 +275,8 @@ export class TokenSwap {
     if (tokenSwapInfo.state !== 1) {
       throw new Error(`Invalid token swap state`);
     }
+    // already properly filled in
+    // tokenSwapInfo.nonce = tokenSwapInfo.nonce;
     tokenSwapInfo.tokenAccountA = new PublicKey(tokenSwapInfo.tokenAccountA);
     tokenSwapInfo.tokenAccountB = new PublicKey(tokenSwapInfo.tokenAccountB);
     tokenSwapInfo.tokenPool = new PublicKey(tokenSwapInfo.tokenPool);

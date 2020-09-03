@@ -7,6 +7,8 @@ use solana_sdk::pubkey::Pubkey;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SwapInfo {
+    /// Nonce used in construction of program_address
+    pub nonce: u8,
     /// Token A
     /// The Liquidity token is issued against this value.
     pub token_a: Pubkey,
