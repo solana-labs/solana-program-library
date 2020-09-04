@@ -474,7 +474,7 @@ pub fn invoke_signed<'a>(
     let mut new_account_infos = vec![];
 
     // mimic check for token program in accounts
-    if account_infos.iter().position(|x| *x.key == TOKEN_PROGRAM_ID) == None {
+    if !account_infos.iter().any(|&x| x.key == TOKEN_PROGRAM_ID) {
         return Err(ProgramError::InvalidAccountData);
     }
 
