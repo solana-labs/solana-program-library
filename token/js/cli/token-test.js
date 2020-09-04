@@ -79,7 +79,7 @@ async function GetPrograms(connection: Connection): Promise<PublicKey> {
   const programVersion = process.env.PROGRAM_VERSION;
   if (programVersion) {
     switch (programVersion) {
-      case '2.0.3':
+      case '2.0.4':
         return new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
       default:
         throw new Error('Unknown program version');

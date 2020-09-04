@@ -76,7 +76,7 @@ js_token() {
   npm run localnet:update || exit $?
   npm run localnet:up || exit $?
   time npm run start || exit $?
-  time PROGRAM_VERSION=2.0.3 npm run start || exit $?
+  time PROGRAM_VERSION=2.0.4 npm run start || exit $?
   npm run localnet:down
 }
 _ js_token
