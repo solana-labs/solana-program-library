@@ -24,7 +24,7 @@ The Token Program's source is available on
 
 The on-chain Token Program is written in Rust and available on crates.io as
 [spl-token](https://docs.rs/spl-token). The program's [instruction interface
-documentation](https://docs.rs/spl-token/2.0.3/spl_token/instruction/enum.TokenInstruction.html)
+documentation](https://docs.rs/spl-token/2.0.4/spl_token/instruction/enum.TokenInstruction.html)
 can also be found there.
 
 Auto-generated C bindings are also available for the on-chain Token Program and
