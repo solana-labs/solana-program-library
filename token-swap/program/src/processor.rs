@@ -474,7 +474,7 @@ pub fn invoke_signed<'a>(
     let mut new_account_infos = vec![];
 
     // mimic check for token program in accounts
-    if !account_infos.iter().any(|&x| x.key == TOKEN_PROGRAM_ID) {
+    if !account_infos.iter().any(|x| *x.key == TOKEN_PROGRAM_ID) {
         return Err(ProgramError::InvalidAccountData);
     }
 
@@ -628,8 +628,8 @@ mod tests {
         let (authority_key, nonce) = Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
         let mut authority = (authority_key, Account::default());
         let swap_bytes = swap_key.to_bytes();
-        let nonce = &[nonce];
-        let signers = &[&[&swap_bytes[..32], nonce][..]];
+        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
+        let signers = &[&authority_signature_seeds[..]];
         let ix = spl_token::instruction::mint_to(
             &token_program.0,
             &mint.0,

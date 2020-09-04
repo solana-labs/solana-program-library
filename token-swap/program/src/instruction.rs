@@ -201,7 +201,6 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{State, SwapInfo};
 
     #[test]
     fn test_instruction_deserialization() {
@@ -224,40 +223,5 @@ mod tests {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,];
         let unpacked = SwapInstruction::deserialize(&data).unwrap();
         assert_eq!(check, unpacked);
-    }
-
-    #[test]
-    fn test_state_swap_info_deserialization() {
-        let nonce = 255;
-        let token_a_raw = [1u8; 32];
-        let token_b_raw = [2u8; 32];
-        let pool_mint_raw = [3u8; 32];
-        let token_a = Pubkey::new_from_array(token_a_raw);
-        let token_b = Pubkey::new_from_array(token_b_raw);
-        let pool_mint = Pubkey::new_from_array(pool_mint_raw);
-        let numerator = 1;
-        let denominator = 4;
-        let fee = Fee { numerator, denominator };
-        let state = State::Init(SwapInfo { nonce, token_a, token_b, pool_mint, fee, });
-
-        let mut data = [0u8; size_of::<State>()];
-        state.serialize(&mut data).unwrap();
-        let deserialized = State::deserialize(&data).unwrap();
-        assert_eq!(state, deserialized);
-
-        let mut data = vec![];
-        data.push(1 as u8);
-        data.push(nonce);
-        data.extend_from_slice(&token_a_raw);
-        data.extend_from_slice(&token_b_raw);
-        data.extend_from_slice(&pool_mint_raw);
-        data.extend_from_slice(&[0u8; 7]); // padding
-        data.push(denominator as u8);
-        data.extend_from_slice(&[0u8; 7]); // padding
-        data.push(numerator as u8);
-        data.extend_from_slice(&[0u8; 7]); // padding
-        data.extend_from_slice(&[0u8; 7]); // padding
-        let deserialized = State::deserialize(&data).unwrap();
-        assert_eq!(state, deserialized);
     }
 }
