@@ -536,7 +536,7 @@ mod tests {
     use spl_token::{
         instruction::{initialize_account, initialize_mint, mint_to},
         pack::Pack,
-        processor::Processor as TokenProcessor,
+        processor::Processor as SplProcessor,
         state::{Account as SplAccount, Mint as SplMint},
     };
 
@@ -574,7 +574,7 @@ mod tests {
         if instruction.program_id == SWAP_PROGRAM_ID {
             State::process(&instruction.program_id, &account_infos, &instruction.data)
         } else {
-            TokenProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
+            SplProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
         }
     }
 

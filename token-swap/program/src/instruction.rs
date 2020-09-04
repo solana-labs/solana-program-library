@@ -117,6 +117,7 @@ impl SwapInstruction {
     }
 
     /// Serializes an [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
+    /// TODO Pack things better than standard memory layout.
     pub fn serialize(&self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<SwapInstruction>()];
         match self {
@@ -187,6 +188,7 @@ pub fn initialize(
 }
 
 /// Unpacks a reference from a bytes buffer.
+/// TODO actually pack / unpack instead of relying on normal memory layout.
 pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
     if input.len() < size_of::<u8>() + size_of::<T>() {
         return Err(ProgramError::InvalidAccountData);

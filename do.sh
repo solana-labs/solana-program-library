@@ -146,7 +146,7 @@ perform_action() {
         (
             cd "$projectDir"
             echo "test $projectDir"
-            cargo test $features ${@:3} -- --nocapture
+            cargo test $features ${@:3}
         )
         ;;
     update)
