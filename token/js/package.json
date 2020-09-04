@@ -22,7 +22,7 @@
     "/lib",
     "/module.flow.js"
   ],
-  "testnetDefaultChannel": "v1.3.6",
+  "testnetDefaultChannel": "v1.3.8",
   "scripts": {
     "build": "rollup -c",
     "start": "babel-node cli/main.js",
