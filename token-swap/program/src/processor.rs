@@ -257,9 +257,7 @@ impl State {
             token_b: from_token.amount,
             fee: token_swap.fee,
         };
-        let output = invariant
-            .swap(amount)
-            .ok_or_else(|| Error::CalculationFailure)?;
+        let output = invariant.swap(amount).ok_or(Error::CalculationFailure)?;
         Self::token_transfer(
             accounts,
             token_program_info.key,
@@ -320,7 +318,7 @@ impl State {
         };
         let b_amount = invariant
             .exchange_rate(a_amount)
-            .ok_or_else(|| Error::CalculationFailure)?;
+            .ok_or(Error::CalculationFailure)?;
 
         // liquidity is measured in terms of token_a's value
         // since both sides of the pool are equal
@@ -396,7 +394,7 @@ impl State {
         let a_amount = amount;
         let b_amount = invariant
             .exchange_rate(a_amount)
-            .ok_or_else(|| Error::CalculationFailure)?;
+            .ok_or(Error::CalculationFailure)?;
 
         Self::token_transfer(
             accounts,
