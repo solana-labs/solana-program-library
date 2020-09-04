@@ -515,12 +515,15 @@ mod tests {
     use crate::instruction::initialize;
     use solana_sdk::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
+        rent::Rent, sysvar::rent,
     };
     use spl_token::{
         instruction::{initialize_account, initialize_mint, mint_to},
+        pack::Pack,
         processor::Processor as SplProcessor,
         state::{Account as SplAccount, Mint as SplMint},
     };
+    use std::str::FromStr;
 
     const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
 
@@ -553,27 +556,29 @@ mod tests {
         amount: u64,
     ) -> ((Pubkey, Account), (Pubkey, Account)) {
         let token_key = pubkey_rand();
-        let mut token_account = Account::new(0, size_of::<SplMint>(), &program_id);
+        let mut token_account = Account::new(0, SplMint::get_packed_len(), &program_id);
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<SplAccount>(), &program_id);
+        let mut account_account = Account::new(0, SplAccount::get_packed_len(), &program_id);
+        let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
 
         // create pool and pool account
+        do_process_instruction(
+            initialize_mint(&program_id, &token_key, authority_key, None, 2).unwrap(),
+            vec![&mut token_account, &mut rent_sysvar_account],
+        )
+        .unwrap();
         do_process_instruction(
             initialize_account(&program_id, &account_key, &token_key, &authority_key).unwrap(),
             vec![
                 &mut account_account,
-                &mut Account::default(),
                 &mut token_account,
+                &mut Account::default(),
+                &mut rent_sysvar_account,
             ],
         )
         .unwrap();
-        let mut authority_account = Account::default();
-        do_process_instruction(
-            initialize_mint(&program_id, &token_key, authority_key, None, 2).unwrap(),
-            vec![&mut token_account, &mut authority_account],
-        )
-        .unwrap();
 
+        let mut authority_account = Account::default();
         do_process_instruction(
             mint_to(
                 &program_id,
@@ -597,7 +602,7 @@ mod tests {
 
     #[test]
     fn test_initialize() {
-        let swap_key = pubkey_rand();
+        let swap_key = Pubkey::from_str("7eLu8C6ZGATFZFXgzyem5oQaWMr2qTUBoHAbAoEQ5EZi").unwrap();
         let mut swap_account = Account::new(0, size_of::<State>(), &SWAP_PROGRAM_ID);
         let authority_key = State::authority_id(&SWAP_PROGRAM_ID, &swap_key).unwrap();
         let mut authority_account = Account::default();
