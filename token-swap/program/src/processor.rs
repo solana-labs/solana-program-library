@@ -584,9 +584,17 @@ mod tests {
         amount: u64,
     ) -> ((Pubkey, Account), (Pubkey, Account)) {
         let token_key = pubkey_rand();
-        let mut token_account = Account::new(mint_minimum_balance(), SplMint::get_packed_len(), &program_id);
+        let mut token_account = Account::new(
+            mint_minimum_balance(),
+            SplMint::get_packed_len(),
+            &program_id,
+        );
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(account_minimum_balance(), SplAccount::get_packed_len(), &program_id);
+        let mut account_account = Account::new(
+            account_minimum_balance(),
+            SplAccount::get_packed_len(),
+            &program_id,
+        );
         let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
 
         // create token mint
@@ -611,8 +619,20 @@ mod tests {
         .unwrap();
 
         do_process_instruction(
-            mint_to(&program_id, &token_key, &account_key, &authority_key, &[], amount).unwrap(),
-            vec![&mut token_account, &mut account_account, &mut authority_account],
+            mint_to(
+                &program_id,
+                &token_key,
+                &account_key,
+                &authority_key,
+                &[],
+                amount,
+            )
+            .unwrap(),
+            vec![
+                &mut token_account,
+                &mut account_account,
+                &mut authority_account,
+            ],
         )
         .unwrap();
 
@@ -625,7 +645,8 @@ mod tests {
         let mut mint = (pubkey_rand(), Account::default());
         let mut destination = (pubkey_rand(), Account::default());
         let token_program = (TOKEN_PROGRAM_ID, Account::default());
-        let (authority_key, nonce) = Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
+        let (authority_key, nonce) =
+            Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
         let mut authority = (authority_key, Account::default());
         let swap_bytes = swap_key.to_bytes();
         let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
@@ -637,7 +658,8 @@ mod tests {
             &authority.0,
             &[],
             10,
-        ).unwrap();
+        )
+        .unwrap();
         let mint = (&mut mint).into();
         let destination = (&mut destination).into();
         let authority = (&mut authority).into();
@@ -650,7 +672,8 @@ mod tests {
         let mut account_infos = vec![];
         let swap_key = pubkey_rand();
         let mut swap_account = Account::new(0, size_of::<State>(), &SWAP_PROGRAM_ID);
-        let (authority_key, nonce) = Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
+        let (authority_key, nonce) =
+            Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
         let ((pool_key, mut pool_account), (pool_token_key, mut pool_token_account)) =
             mint_token(&TOKEN_PROGRAM_ID, &authority_key, 0);
@@ -672,7 +695,10 @@ mod tests {
                 &pool_key,
                 &pool_token_key,
                 nonce,
-                Fee { denominator, numerator, },
+                Fee {
+                    denominator,
+                    numerator,
+                },
             )
             .unwrap(),
             vec![
@@ -684,7 +710,8 @@ mod tests {
                 &mut pool_token_account,
                 &mut Account::default(),
             ],
-        ).unwrap();
+        )
+        .unwrap();
         account_infos.insert(SWAP_INDEX, (swap_key, swap_account));
         account_infos.insert(TOKEN_A_INDEX, (token_a_key, token_a_account));
         account_infos.insert(TOKEN_B_INDEX, (token_b_key, token_b_account));
@@ -708,7 +735,7 @@ mod tests {
                 assert_eq!(swap_info.pool_mint, account_infos[POOL_MINT_INDEX].0);
                 assert_eq!(swap_info.fee.denominator, denominator);
                 assert_eq!(swap_info.fee.numerator, numerator);
-            },
+            }
             _ => {
                 panic!("Incorrect state");
             }

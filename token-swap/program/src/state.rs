@@ -82,8 +82,17 @@ mod tests {
         let pool_mint = Pubkey::new_from_array(pool_mint_raw);
         let numerator = 1;
         let denominator = 4;
-        let fee = Fee { numerator, denominator };
-        let state = State::Init(SwapInfo { nonce, token_a, token_b, pool_mint, fee, });
+        let fee = Fee {
+            numerator,
+            denominator,
+        };
+        let state = State::Init(SwapInfo {
+            nonce,
+            token_a,
+            token_b,
+            pool_mint,
+            fee,
+        });
 
         let mut data = [0u8; size_of::<State>()];
         state.serialize(&mut data).unwrap();

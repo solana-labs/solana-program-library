@@ -216,11 +216,15 @@ mod tests {
         let unpacked = SwapInstruction::deserialize(&packed).unwrap();
         assert_eq!(check, unpacked);
 
-        let data: [u8; size_of::<SwapInstruction>()] = [0,
-            fee_numerator as u8, 0, 0, 0, 0, 0, 0, 0,
-            fee_denominator as u8, 0, 0, 0, 0, 0, 0, 0,
-            nonce,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,];
+        let mut data = vec![];
+        data.push(0 as u8);
+        data.push(fee_numerator as u8);
+        data.extend_from_slice(&[0u8; 7]); // padding
+        data.push(fee_denominator as u8);
+        data.extend_from_slice(&[0u8; 7]); // padding
+        data.push(nonce);
+        data.extend_from_slice(&[0u8; 14]); // padding
+        data.extend_from_slice(&[0u8; 7]); // padding
         let unpacked = SwapInstruction::deserialize(&data).unwrap();
         assert_eq!(check, unpacked);
     }
