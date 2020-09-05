@@ -13,8 +13,12 @@ use solana_sdk::instruction::Instruction;
 #[cfg(target_arch = "bpf")]
 use solana_sdk::program::invoke_signed;
 use solana_sdk::{
-    account_info::{next_account_info, AccountInfo}, decode_error::DecodeError,
-    entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
+    account_info::{next_account_info, AccountInfo},
+    decode_error::DecodeError,
+    entrypoint::ProgramResult,
+    info,
+    program_error::PrintProgramError,
+    program_error::ProgramError,
     pubkey::Pubkey,
 };
 use spl_token::pack::Pack;
