@@ -51,12 +51,7 @@ for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
 
   _ ./do.sh build "$program_dir"
 
-  if [[ $program_dir =~ token-swap/* ]]; then
-    # TODO: Remove once "Undefined symbols for architecture x86_64: _sol_create_program_address" is resolved
-    _ echo "SKIPPED token-swap test due to: Undefined symbols for architecture x86_64: _sol_create_program_address"
-  else
-    _ ./do.sh test "$program_dir"
-  fi
+  _ ./do.sh test "$program_dir"
 done
 
 # Run SPL Token's performance monitor
@@ -90,7 +85,7 @@ js_token_swap() {
   # TODO: Restore flow
   # time npm run flow || exit $?
 
-  # TODO: Uncomment once https://github.com/solana-labs/solana/issues/11465 is resolved
+  # TODO reenable once all issues are fixed
   # npm run cluster:localnet || exit $?
   # npm run localnet:down
   # npm run localnet:update || exit $?

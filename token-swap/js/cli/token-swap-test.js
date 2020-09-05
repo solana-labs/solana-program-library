@@ -2,9 +2,9 @@
 
 import fs from 'mz/fs';
 import semver from 'semver';
-import { Account, Connection, BpfLoader, PublicKey } from '@solana/web3.js';
+import { Account, Connection, BpfLoader, PublicKey, BPF_LOADER_PROGRAM_ID } from '@solana/web3.js';
 
-import { Token, u64 } from '../../../token/js/client/token';
+import { Token } from '../../../token/js/client/token';
 import { TokenSwap } from '../client/token-swap';
 import { Store } from '../client/util/store';
 import { newAccountWithLamports } from '../client/util/new-account-with-lamports';
@@ -16,6 +16,8 @@ import { sleep } from '../client/util/sleep';
 let tokenSwap: TokenSwap;
 // authority of the token and accounts
 let authority: PublicKey;
+// nonce used to generate the authority public key
+let nonce: number;
 // owner of the user accounts
 let owner: Account;
 // Token pool
@@ -71,7 +73,7 @@ async function loadProgram(connection: Connection, path: string): Promise<Public
   const from = await newAccountWithLamports(connection, balanceNeeded);
   const program_account = new Account();
   console.log('Loading program:', path);
-  await BpfLoader.load(connection, from, program_account, data, 1);
+  await BpfLoader.load(connection, from, program_account, data, BPF_LOADER_PROGRAM_ID);
   return program_account.publicKey;
 }
 
@@ -110,48 +112,56 @@ export async function createTokenSwap(): Promise<void> {
   const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
   owner = await newAccountWithLamports(connection, 100000000000 /* wag */);
   const tokenSwapAccount = new Account();
-  authority = await PublicKey.createProgramAddress(
+
+  [authority, nonce] = await PublicKey.findProgramAddress(
     [tokenSwapAccount.publicKey.toBuffer()],
     tokenSwapProgramId
   );
 
-  // create pool
-  [tokenPool, tokenAccountPool] = await Token.createMint(
+  console.log('creating pool mint');
+  tokenPool = await Token.createMint(
     connection,
     payer,
     authority,
-    owner.publicKey,
-    new u64(0),
+    null,
     2,
     tokenProgramId,
-    true,
   );
 
-  // create token A
-  [mintA, tokenAccountA] = await Token.createMint(
+  console.log('creating pool account');
+  tokenAccountPool = await tokenPool.createAccount(owner.publicKey);
+
+  console.log('creating token A');
+  mintA = await Token.createMint(
     connection,
     payer,
     owner.publicKey,
-    authority,
-    new u64(BASE_AMOUNT),
+    null,
     2,
     tokenProgramId,
-    true,
   );
 
-  // create token B
-  [mintB, tokenAccountB] = await Token.createMint(
+  console.log('creating token A account');
+  tokenAccountA = await mintA.createAccount(authority);
+  console.log('minting token A to swap');
+  await mintA.mintTo(tokenAccountA, owner, [], BASE_AMOUNT);
+
+  console.log('creating token B');
+  mintB = await Token.createMint(
     connection,
     payer,
     owner.publicKey,
-    authority,
-    new u64(BASE_AMOUNT),
+    null,
     2,
     tokenProgramId,
-    true,
   );
 
-  // create token swap
+  console.log('creating token B account');
+  tokenAccountB = await mintB.createAccount(authority);
+  console.log('minting token B to swap');
+  await mintB.mintTo(tokenAccountB, owner, [], BASE_AMOUNT);
+
+  console.log('creating token swap');
   const swapPayer = await newAccountWithLamports(connection, 100000000000 /* wag */);
   tokenSwap = await TokenSwap.createTokenSwap(
     connection,
@@ -163,11 +173,13 @@ export async function createTokenSwap(): Promise<void> {
     tokenPool.publicKey,
     tokenAccountPool,
     tokenProgramId,
+    nonce,
     1,
     4,
     tokenSwapProgramId
   );
 
+  console.log('getting token swap');
   const swapInfo = await tokenSwap.getInfo();
   assert(swapInfo.tokenAccountA.equals(tokenAccountA));
   assert(swapInfo.tokenAccountB.equals(tokenAccountB));

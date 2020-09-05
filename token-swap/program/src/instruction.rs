@@ -19,6 +19,18 @@ pub struct Fee {
     pub numerator: u64,
 }
 
+/// Swap initialization data
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct InitializationData {
+    /// swap pool fee numerator
+    pub fee_numerator: u64,
+    /// swap pool fee denominator
+    pub fee_denominator: u64,
+    /// nonce used to create valid program address
+    pub nonce: u8,
+}
+
 /// Instructions supported by the SwapInfo program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
@@ -32,8 +44,8 @@ pub enum SwapInstruction {
     ///   4. `[writable]` pool Token. Must be empty, owned by $authority.
     ///   5. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
     ///   6. '[]` Token program id
-    ///   userdata: fee rate as a ratio
-    Initialize(Fee),
+    ///   userdata: nonce for program address, fee rate as a ratio (numerator and denominator separate)
+    Initialize(InitializationData),
 
     ///   Swap the tokens in the pool.
     ///
@@ -76,6 +88,7 @@ pub enum SwapInstruction {
     ///   percentage of the pool tokens that are returned.
     Withdraw(u64),
 }
+
 impl SwapInstruction {
     /// Deserializes a byte buffer into an [SwapInstruction](enum.SwapInstruction.html).
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
@@ -84,8 +97,8 @@ impl SwapInstruction {
         }
         Ok(match input[0] {
             0 => {
-                let fee: &Fee = unpack(input)?;
-                Self::Initialize(*fee)
+                let init_data: &InitializationData = unpack(input)?;
+                Self::Initialize(*init_data)
             }
             1 => {
                 let fee: &u64 = unpack(input)?;
@@ -104,14 +117,15 @@ impl SwapInstruction {
     }
 
     /// Serializes an [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
+    /// TODO Pack things better than standard memory layout.
     pub fn serialize(&self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<SwapInstruction>()];
         match self {
-            Self::Initialize(fees) => {
+            Self::Initialize(init_data) => {
                 output[0] = 0;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Fee) };
-                *value = *fees;
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut InitializationData) };
+                *value = *init_data;
             }
             Self::Swap(amount) => {
                 output[0] = 1;
@@ -146,9 +160,15 @@ pub fn initialize(
     token_b_pubkey: &Pubkey,
     pool_pubkey: &Pubkey,
     user_output_pubkey: &Pubkey,
+    nonce: u8,
     fee: Fee,
 ) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Initialize(fee).serialize()?;
+    let init_data = InitializationData {
+        fee_numerator: fee.numerator,
+        fee_denominator: fee.denominator,
+        nonce,
+    };
+    let data = SwapInstruction::Initialize(init_data).serialize()?;
 
     let accounts = vec![
         AccountMeta::new(*swap_pubkey, true),
@@ -168,6 +188,7 @@ pub fn initialize(
 }
 
 /// Unpacks a reference from a bytes buffer.
+/// TODO actually pack / unpack instead of relying on normal memory layout.
 pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
     if input.len() < size_of::<u8>() + size_of::<T>() {
         return Err(ProgramError::InvalidAccountData);
@@ -175,4 +196,36 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
     #[allow(clippy::cast_ptr_alignment)]
     let val: &T = unsafe { &*(&input[1] as *const u8 as *const T) };
     Ok(val)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_instruction_deserialization() {
+        let fee_numerator: u64 = 1;
+        let fee_denominator: u64 = 4;
+        let nonce: u8 = 255;
+        let check = SwapInstruction::Initialize(InitializationData {
+            fee_numerator,
+            fee_denominator,
+            nonce,
+        });
+        let packed = check.serialize().unwrap();
+        let unpacked = SwapInstruction::deserialize(&packed).unwrap();
+        assert_eq!(check, unpacked);
+
+        let mut data = vec![];
+        data.push(0 as u8);
+        data.push(fee_numerator as u8);
+        data.extend_from_slice(&[0u8; 7]); // padding
+        data.push(fee_denominator as u8);
+        data.extend_from_slice(&[0u8; 7]); // padding
+        data.push(nonce);
+        data.extend_from_slice(&[0u8; 14]); // padding
+        data.extend_from_slice(&[0u8; 7]); // padding
+        let unpacked = SwapInstruction::deserialize(&data).unwrap();
+        assert_eq!(check, unpacked);
+    }
 }
