@@ -4,7 +4,7 @@ import fs from 'mz/fs';
 import semver from 'semver';
 import { Account, Connection, BpfLoader, PublicKey, BPF_LOADER_PROGRAM_ID } from '@solana/web3.js';
 
-import { Token, u64 } from '../../../token/js/client/token';
+import { Token } from '../../../token/js/client/token';
 import { TokenSwap } from '../client/token-swap';
 import { Store } from '../client/util/store';
 import { newAccountWithLamports } from '../client/util/new-account-with-lamports';
