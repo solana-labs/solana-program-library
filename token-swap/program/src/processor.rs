@@ -84,9 +84,9 @@ impl Processor {
         nonce: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let nonce = &[nonce];
         let swap_bytes = swap.to_bytes();
-        let signers = &[&[&swap_bytes[..32], nonce][..]];
+        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
+        let signers = &[&authority_signature_seeds[..]];
         let ix = spl_token::instruction::mint_to(
             token_program.key,
             mint.key,
