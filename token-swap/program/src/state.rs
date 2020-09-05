@@ -1,7 +1,15 @@
 //! State transition types
 
-use crate::instruction::Fee;
-use solana_sdk::pubkey::Pubkey;
+use crate::{
+    error::Error,
+    instruction::{unpack, Fee}
+};
+use solana_sdk::{
+    entrypoint::ProgramResult,
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
+use std::mem::size_of;
 
 /// Initialized program details.
 #[repr(C)]
@@ -35,6 +43,52 @@ pub enum State {
     Init(SwapInfo),
 }
 
+impl State {
+    /// Deserializes a byte buffer into a [State](struct.State.html).
+    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
+        if input.len() < size_of::<u8>() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        Ok(match input[0] {
+            0 => Self::Unallocated,
+            1 => {
+                let swap: &SwapInfo = unpack(input)?;
+                Self::Init(*swap)
+            }
+            _ => return Err(ProgramError::InvalidAccountData),
+        })
+    }
+
+    /// Serializes [State](struct.State.html) into a byte buffer.
+    pub fn serialize(&self, output: &mut [u8]) -> ProgramResult {
+        if output.len() < size_of::<u8>() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        match self {
+            Self::Unallocated => output[0] = 0,
+            Self::Init(swap) => {
+                if output.len() < size_of::<u8>() + size_of::<SwapInfo>() {
+                    return Err(ProgramError::InvalidAccountData);
+                }
+                output[0] = 1;
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut SwapInfo) };
+                *value = *swap;
+            }
+        }
+        Ok(())
+    }
+
+    /// Gets the `SwapInfo` from `State`
+    pub fn token_swap(&self) -> Result<SwapInfo, ProgramError> {
+        if let State::Init(swap) = &self {
+            Ok(*swap)
+        } else {
+            Err(Error::InvalidState.into())
+        }
+    }
+}
+
 /// The Uniswap invariant calculator.
 pub struct Invariant {
     /// Token A
@@ -44,6 +98,7 @@ pub struct Invariant {
     /// Fee
     pub fee: Fee,
 }
+
 impl Invariant {
     /// Swap
     pub fn swap(&mut self, token_a: u64) -> Option<u64> {

@@ -4,7 +4,7 @@
 
 use crate::{
     error::Error,
-    instruction::{unpack, Fee, SwapInstruction},
+    instruction::{Fee, SwapInstruction},
     state::{Invariant, State, SwapInfo},
 };
 use num_traits::FromPrimitive;
@@ -13,58 +13,22 @@ use solana_sdk::instruction::Instruction;
 #[cfg(target_arch = "bpf")]
 use solana_sdk::program::invoke_signed;
 use solana_sdk::{
-    account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
+    account_info::{next_account_info, AccountInfo}, decode_error::DecodeError,
     entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
     pubkey::Pubkey,
 };
 use spl_token::pack::Pack;
-use std::mem::size_of;
 
-impl State {
-    /// Deserializes a byte buffer into a [State](struct.State.html).
-    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < size_of::<u8>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        Ok(match input[0] {
-            0 => Self::Unallocated,
-            1 => {
-                let swap: &SwapInfo = unpack(input)?;
-                Self::Init(*swap)
-            }
-            _ => return Err(ProgramError::InvalidAccountData),
-        })
-    }
+// Test program id for the swap program.
+#[cfg(not(target_arch = "bpf"))]
+const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
+// Test program id for the token program.
+#[cfg(not(target_arch = "bpf"))]
+const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
 
-    /// Serializes [State](struct.State.html) into a byte buffer.
-    pub fn serialize(&self, output: &mut [u8]) -> ProgramResult {
-        if output.len() < size_of::<u8>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        match self {
-            Self::Unallocated => output[0] = 0,
-            Self::Init(swap) => {
-                if output.len() < size_of::<u8>() + size_of::<SwapInfo>() {
-                    return Err(ProgramError::InvalidAccountData);
-                }
-                output[0] = 1;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut SwapInfo) };
-                *value = *swap;
-            }
-        }
-        Ok(())
-    }
-
-    /// Gets the `SwapInfo` from `State`
-    fn token_swap(&self) -> Result<SwapInfo, ProgramError> {
-        if let State::Init(swap) = &self {
-            Ok(*swap)
-        } else {
-            Err(Error::InvalidState.into())
-        }
-    }
-
+/// Program state handler.
+pub struct Processor {}
+impl Processor {
     /// Deserializes a spl_token `Account`.
     pub fn token_account_deserialize(
         info: &AccountInfo,
@@ -240,7 +204,7 @@ impl State {
         let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
+        let token_swap = State::deserialize(&swap_info.data.borrow())?.token_swap()?;
 
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(Error::InvalidProgramAddress.into());
@@ -299,7 +263,7 @@ impl State {
         let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
+        let token_swap = State::deserialize(&swap_info.data.borrow())?.token_swap()?;
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(Error::InvalidProgramAddress.into());
         }
@@ -375,7 +339,7 @@ impl State {
         let dest_token_b_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
+        let token_swap = State::deserialize(&swap_info.data.borrow())?.token_swap()?;
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(Error::InvalidProgramAddress.into());
         }
@@ -457,13 +421,6 @@ impl State {
     }
 }
 
-// Test program id for the swap program.
-#[cfg(not(target_arch = "bpf"))]
-const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
-// Test program id for the token program.
-#[cfg(not(target_arch = "bpf"))]
-const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
-
 /// Routes invokes to the token program, used for testing.
 #[cfg(not(target_arch = "bpf"))]
 pub fn invoke_signed<'a>(
@@ -539,6 +496,7 @@ mod tests {
         processor::Processor as SplProcessor,
         state::{Account as SplAccount, Mint as SplMint},
     };
+    use std::mem::size_of;
 
     const SWAP_INDEX: usize = 0;
     const TOKEN_A_INDEX: usize = 1;
@@ -572,7 +530,7 @@ mod tests {
 
         let account_infos = create_is_signer_account_infos(&mut meta);
         if instruction.program_id == SWAP_PROGRAM_ID {
-            State::process(&instruction.program_id, &account_infos, &instruction.data)
+            Processor::process(&instruction.program_id, &account_infos, &instruction.data)
         } else {
             SplProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
         }
