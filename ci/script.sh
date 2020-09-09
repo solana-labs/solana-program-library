@@ -85,13 +85,12 @@ js_token_swap() {
   # TODO: Restore flow
   # time npm run flow || exit $?
 
-  # TODO reenable once all issues are fixed
-  # npm run cluster:localnet || exit $?
-  # npm run localnet:down
-  # npm run localnet:update || exit $?
-  # npm run localnet:up || exit $?
-  # npm run start || exit $?
-  # npm run localnet:down
+  npm run cluster:localnet || exit $?
+  npm run localnet:down
+  npm run localnet:update || exit $?
+  npm run localnet:up || exit $?
+  npm run start || exit $?
+  npm run localnet:down
 }
 _ js_token_swap
 

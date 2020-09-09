@@ -281,6 +281,7 @@ export async function withdraw(): Promise<void> {
 }
 
 export async function swap(): Promise<void> {
+  console.log('Creating swap token a account');
   let userAccountA = await mintA.createAccount(owner.publicKey);
   await mintA.mintTo(userAccountA, owner, [], USER_AMOUNT);
   await mintA.approve(
@@ -290,9 +291,11 @@ export async function swap(): Promise<void> {
     [],
     USER_AMOUNT,
   );
+  console.log('Creating swap token b account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
   const [tokenProgramId,] = await GetPrograms(connection);
 
+  console.log('Swapping');
   await tokenSwap.swap(
     authority,
     userAccountA,
@@ -305,18 +308,13 @@ export async function swap(): Promise<void> {
   await sleep(500);
   let info;
   info = await mintA.getAccountInfo(userAccountA);
-  console.log('userAccountA', info.amount.toNumber());
   assert(info.amount.toNumber() == 0);
   info = await mintA.getAccountInfo(tokenAccountA);
-  console.log('tokenAccountA', info.amount.toNumber());
   assert(info.amount.toNumber() == BASE_AMOUNT + USER_AMOUNT);
   info = await mintB.getAccountInfo(tokenAccountB);
-  console.log('tokenAccountB', info.amount.toNumber());
   assert(info.amount.toNumber() == 931);
   info = await mintB.getAccountInfo(userAccountB);
-  console.log('userAccountB', info.amount.toNumber());
   assert(info.amount.toNumber() == 69);
   info = await tokenPool.getAccountInfo(tokenAccountPool);
-  console.log('tokenAccountPool', info.amount.toNumber());
   assert(info.amount.toNumber() == BASE_AMOUNT - USER_AMOUNT);
 }

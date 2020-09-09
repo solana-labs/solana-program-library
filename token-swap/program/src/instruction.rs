@@ -52,11 +52,11 @@ pub enum SwapInstruction {
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
     ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transferable by $authority,
-    ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
-    ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
-    ///   6. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
-    ///   7. '[]` Token program id
-    ///   userdata: SOURCE amount to transfer, output to DEST is based on the exchange rate
+    ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
+    ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the OUTPUT token.
+    ///   5. `[writable]` token_(A|B) OUTPUT Account assigned to USER as the owner.
+    ///   6. '[]` Token program id
+    ///   userdata: SOURCE amount to transfer, output to OUTPUT is based on the exchange rate
     Swap(u64),
 
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
@@ -248,6 +248,37 @@ pub fn withdraw(
         AccountMeta::new(*swap_token_b_pubkey, false),
         AccountMeta::new(*output_token_a_pubkey, false),
         AccountMeta::new(*output_token_b_pubkey, false),
+        AccountMeta::new(*token_program_id, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'swap' instruction.
+pub fn swap(
+    program_id: &Pubkey,
+    token_program_id: &Pubkey,
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    source_pubkey: &Pubkey,
+    swap_source_pubkey: &Pubkey,
+    swap_dest_pubkey: &Pubkey,
+    dest_pubkey: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::Swap(amount).serialize()?;
+
+    let accounts = vec![
+        AccountMeta::new(*swap_pubkey, false),
+        AccountMeta::new(*authority_pubkey, false),
+        AccountMeta::new(*source_pubkey, false),
+        AccountMeta::new(*swap_source_pubkey, false),
+        AccountMeta::new(*swap_dest_pubkey, false),
+        AccountMeta::new(*dest_pubkey, false),
         AccountMeta::new(*token_program_id, false),
     ];
 
