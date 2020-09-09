@@ -985,6 +985,189 @@ export class Token {
   }
 
   /**
+   * Transfer tokens to another account, asserting the token mint and decimals
+   *
+   * @param source Source account
+   * @param destination Destination account
+   * @param owner Owner of the source account
+   * @param multiSigners Signing accounts if `owner` is a multiSig
+   * @param amount Number of tokens to transfer
+   * @param decimals Number of decimals in transfer amount
+   */
+  async transfer2(
+    source: PublicKey,
+    destination: PublicKey,
+    owner: any,
+    multiSigners: Array<Account>,
+    amount: number | u64,
+    decimals: number,
+  ): Promise<TransactionSignature> {
+    let ownerPublicKey;
+    let signers;
+    if (isAccount(owner)) {
+      ownerPublicKey = owner.publicKey;
+      signers = [owner];
+    } else {
+      ownerPublicKey = owner;
+      signers = multiSigners;
+    }
+    return await sendAndConfirmTransaction(
+      'Transfer2',
+      this.connection,
+      new Transaction().add(
+        Token.createTransfer2Instruction(
+          this.programId,
+          source,
+          this.publicKey,
+          destination,
+          ownerPublicKey,
+          multiSigners,
+          amount,
+          decimals,
+        ),
+      ),
+      this.payer,
+      ...signers,
+    );
+  }
+
+  /**
+   * Grant a third-party permission to transfer up the specified number of tokens from an account,
+   * asserting the token mint and decimals
+   *
+   * @param account Public key of the account
+   * @param delegate Account authorized to perform a transfer tokens from the source account
+   * @param owner Owner of the source account
+   * @param multiSigners Signing accounts if `owner` is a multiSig
+   * @param amount Maximum number of tokens the delegate may transfer
+   * @param decimals Number of decimals in approve amount
+   */
+  async approve2(
+    account: PublicKey,
+    delegate: PublicKey,
+    owner: any,
+    multiSigners: Array<Account>,
+    amount: number | u64,
+    decimals: number,
+  ): Promise<void> {
+    let ownerPublicKey;
+    let signers;
+    if (isAccount(owner)) {
+      ownerPublicKey = owner.publicKey;
+      signers = [owner];
+    } else {
+      ownerPublicKey = owner;
+      signers = multiSigners;
+    }
+    await sendAndConfirmTransaction(
+      'Approve2',
+      this.connection,
+      new Transaction().add(
+        Token.createApprove2Instruction(
+          this.programId,
+          account,
+          this.publicKey,
+          delegate,
+          ownerPublicKey,
+          multiSigners,
+          amount,
+          decimals,
+        ),
+      ),
+      this.payer,
+      ...signers,
+    );
+  }
+
+  /**
+   * Mint new tokens, asserting the token mint and decimals
+   *
+   * @param dest Public key of the account to mint to
+   * @param authority Minting authority
+   * @param multiSigners Signing accounts if `authority` is a multiSig
+   * @param amount Amount to mint
+   * @param decimals Number of decimals in amount to mint
+   */
+  async mintTo2(
+    dest: PublicKey,
+    authority: any,
+    multiSigners: Array<Account>,
+    amount: number,
+    decimals: number,
+  ): Promise<void> {
+    let ownerPublicKey;
+    let signers;
+    if (isAccount(authority)) {
+      ownerPublicKey = authority.publicKey;
+      signers = [authority];
+    } else {
+      ownerPublicKey = authority;
+      signers = multiSigners;
+    }
+    await sendAndConfirmTransaction(
+      'MintTo2',
+      this.connection,
+      new Transaction().add(
+        Token.createMintTo2Instruction(
+          this.programId,
+          this.publicKey,
+          dest,
+          ownerPublicKey,
+          multiSigners,
+          amount,
+          decimals,
+        ),
+      ),
+      this.payer,
+      ...signers,
+    );
+  }
+
+  /**
+   * Burn tokens, asserting the token mint and decimals
+   *
+   * @param account Account to burn tokens from
+   * @param owner Account owner
+   * @param multiSigners Signing accounts if `owner` is a multiSig
+   * @param amount Amount to burn
+   * @param decimals Number of decimals in amount to burn
+   */
+  async burn2(
+    account: PublicKey,
+    owner: any,
+    multiSigners: Array<Account>,
+    amount: number,
+    decimals: number,
+  ): Promise<void> {
+    let ownerPublicKey;
+    let signers;
+    if (isAccount(owner)) {
+      ownerPublicKey = owner.publicKey;
+      signers = [owner];
+    } else {
+      ownerPublicKey = owner;
+      signers = multiSigners;
+    }
+    await sendAndConfirmTransaction(
+      'Burn2',
+      this.connection,
+      new Transaction().add(
+        Token.createBurn2Instruction(
+          this.programId,
+          this.publicKey,
+          account,
+          ownerPublicKey,
+          multiSigners,
+          amount,
+          decimals,
+        ),
+      ),
+      this.payer,
+      ...signers,
+    );
+  }
+
+  /**
    * Construct an init mint instruction
    *
    * @param programId SPL Token program account
@@ -1297,7 +1480,7 @@ export class Token {
    * @param dest Public key of the account to mint to
    * @param authority The mint authority
    * @param multiSigners Signing accounts if `authority` is a multiSig
-   * @param amount amount to mint
+   * @param amount Amount to mint
    */
   static createMintToInstruction(
     programId: PublicKey,
@@ -1540,6 +1723,262 @@ export class Token {
       keys.push({pubkey: authority, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: authority, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
+    }
+
+    return new TransactionInstruction({
+      keys,
+      programId: programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct a Transfer2 instruction
+   *
+   * @param programId SPL Token program account
+   * @param source Source account
+   * @param mint Mint account
+   * @param destination Destination account
+   * @param owner Owner of the source account
+   * @param multiSigners Signing accounts if `authority` is a multiSig
+   * @param amount Number of tokens to transfer
+   * @param decimals Number of decimals in transfer amount
+   */
+  static createTransfer2Instruction(
+    programId: PublicKey,
+    source: PublicKey,
+    mint: PublicKey,
+    destination: PublicKey,
+    owner: PublicKey,
+    multiSigners: Array<Account>,
+    amount: number | u64,
+    decimals: number,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      Layout.uint64('amount'),
+      BufferLayout.u8('decimals'),
+    ]);
+
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 12, // Transfer2 instruction
+        amount: new u64(amount).toBuffer(),
+        decimals,
+      },
+      data,
+    );
+
+    let keys = [
+      {pubkey: source, isSigner: false, isWritable: true},
+      {pubkey: mint, isSigner: false, isWritable: false},
+      {pubkey: destination, isSigner: false, isWritable: true},
+    ];
+    if (multiSigners.length === 0) {
+      keys.push({
+        pubkey: owner,
+        isSigner: true,
+        isWritable: false,
+      });
+    } else {
+      keys.push({pubkey: owner, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
+    }
+    return new TransactionInstruction({
+      keys,
+      programId: programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct an Approve2 instruction
+   *
+   * @param programId SPL Token program account
+   * @param account Public key of the account
+   * @param mint Mint account
+   * @param delegate Account authorized to perform a transfer of tokens from the source account
+   * @param owner Owner of the source account
+   * @param multiSigners Signing accounts if `owner` is a multiSig
+   * @param amount Maximum number of tokens the delegate may transfer
+   * @param decimals Number of decimals in approve amount
+   */
+  static createApprove2Instruction(
+    programId: PublicKey,
+    account: PublicKey,
+    mint: PublicKey,
+    delegate: PublicKey,
+    owner: PublicKey,
+    multiSigners: Array<Account>,
+    amount: number | u64,
+    decimals: number,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      Layout.uint64('amount'),
+      BufferLayout.u8('decimals'),
+    ]);
+
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 13, // Approve2 instruction
+        amount: new u64(amount).toBuffer(),
+        decimals,
+      },
+      data,
+    );
+
+    let keys = [
+      {pubkey: account, isSigner: false, isWritable: true},
+      {pubkey: mint, isSigner: false, isWritable: false},
+      {pubkey: delegate, isSigner: false, isWritable: false},
+    ];
+    if (multiSigners.length === 0) {
+      keys.push({pubkey: owner, isSigner: true, isWritable: false});
+    } else {
+      keys.push({pubkey: owner, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
+    }
+
+    return new TransactionInstruction({
+      keys,
+      programId: programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct a MintTo2 instruction
+   *
+   * @param programId SPL Token program account
+   * @param mint Public key of the mint
+   * @param dest Public key of the account to mint to
+   * @param authority The mint authority
+   * @param multiSigners Signing accounts if `authority` is a multiSig
+   * @param amount Amount to mint
+   * @param decimals Number of decimals in amount to mint
+   */
+  static createMintTo2Instruction(
+    programId: PublicKey,
+    mint: PublicKey,
+    dest: PublicKey,
+    authority: PublicKey,
+    multiSigners: Array<Account>,
+    amount: number,
+    decimals: number,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      Layout.uint64('amount'),
+      BufferLayout.u8('decimals'),
+    ]);
+
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 14, // MintTo2 instruction
+        amount: new u64(amount).toBuffer(),
+        decimals,
+      },
+      data,
+    );
+
+    let keys = [
+      {pubkey: mint, isSigner: false, isWritable: true},
+      {pubkey: dest, isSigner: false, isWritable: true},
+    ];
+    if (multiSigners.length === 0) {
+      keys.push({
+        pubkey: authority,
+        isSigner: true,
+        isWritable: false,
+      });
+    } else {
+      keys.push({pubkey: authority, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
+    }
+
+    return new TransactionInstruction({
+      keys,
+      programId: programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct a Burn2 instruction
+   *
+   * @param programId SPL Token program account
+   * @param mint Mint for the account
+   * @param account Account to burn tokens from
+   * @param owner Owner of the account
+   * @param multiSigners Signing accounts if `authority` is a multiSig
+   * @param amount amount to burn
+   */
+  static createBurn2Instruction(
+    programId: PublicKey,
+    mint: PublicKey,
+    account: PublicKey,
+    owner: PublicKey,
+    multiSigners: Array<Account>,
+    amount: number,
+    decimals: number,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      Layout.uint64('amount'),
+      BufferLayout.u8('decimals'),
+    ]);
+
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 15, // Burn2 instruction
+        amount: new u64(amount).toBuffer(),
+        decimals,
+      },
+      data,
+    );
+
+    let keys = [
+      {pubkey: account, isSigner: false, isWritable: true},
+      {pubkey: mint, isSigner: false, isWritable: true},
+    ];
+    if (multiSigners.length === 0) {
+      keys.push({
+        pubkey: owner,
+        isSigner: true,
+        isWritable: false,
+      });
+    } else {
+      keys.push({pubkey: owner, isSigner: false, isWritable: false});
       multiSigners.forEach(signer =>
         keys.push({
           pubkey: signer.publicKey,
