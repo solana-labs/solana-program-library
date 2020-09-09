@@ -1,4 +1,4 @@
-# Token Javascript API
+# Token JavaScript API
 
 The Token JavaScript library comprises:
 
