@@ -48,27 +48,35 @@ impl Processor {
         Pubkey::create_program_address(&[&my_info.to_bytes()[..32], &[nonce]], program_id)
             .or(Err(Error::InvalidProgramAddress))
     }
+
     /// Issue a spl_token `Burn` instruction.
-    pub fn token_burn(
-        accounts: &[AccountInfo],
-        token_program_id: &Pubkey,
+    pub fn token_burn<'a>(
         swap: &Pubkey,
-        burn_account: &Pubkey,
-        mint: &Pubkey,
-        authority: &Pubkey,
+        token_program: AccountInfo<'a>,
+        burn_account: AccountInfo<'a>,
+        mint: AccountInfo<'a>,
+        authority: AccountInfo<'a>,
+        nonce: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_bytes = swap.to_bytes();
-        let signers = &[&[&swap_bytes[..32]][..]];
+        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
+        let signers = &[&authority_signature_seeds[..]];
+
         let ix = spl_token::instruction::burn(
-            token_program_id,
-            burn_account,
-            mint,
-            authority,
+            token_program.key,
+            burn_account.key,
+            mint.key,
+            authority.key,
             &[],
             amount,
         )?;
-        invoke_signed(&ix, accounts, signers)
+
+        invoke_signed(
+            &ix,
+            &[burn_account, mint, authority, token_program],
+            signers,
+        )
     }
 
     /// Issue a spl_token `MintTo` instruction.
@@ -338,6 +346,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
@@ -389,16 +398,17 @@ impl Processor {
             b_amount,
         )?;
         Self::token_burn(
-            accounts,
-            token_program_info.key,
             swap_info.key,
-            source_info.key,
-            &token_swap.pool_mint,
-            authority_info.key,
+            token_program_info.clone(),
+            source_info.clone(),
+            pool_mint_info.clone(),
+            authority_info.clone(),
+            token_swap.nonce,
             amount,
         )?;
         Ok(())
     }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = SwapInstruction::deserialize(input)?;
@@ -491,7 +501,7 @@ solana_sdk::program_stubs!();
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instruction::{deposit, initialize};
+    use crate::instruction::{deposit, initialize, withdraw};
     use solana_sdk::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
         rent::Rent, sysvar::rent,
@@ -510,7 +520,7 @@ mod tests {
         swap_account: Account,
         pool_mint_key: Pubkey,
         pool_mint_account: Account,
-        _pool_token_key: Pubkey,
+        pool_token_key: Pubkey,
         pool_token_account: Account,
         token_a_key: Pubkey,
         token_a_account: Account,
@@ -724,7 +734,7 @@ mod tests {
             swap_account,
             pool_mint_key,
             pool_mint_account,
-            _pool_token_key: pool_token_key,
+            pool_token_key,
             pool_token_account,
             token_a_key,
             token_a_account,
@@ -851,5 +861,77 @@ mod tests {
             pool_mint.supply,
             pool_account.amount + depositor_pool_account.amount
         );
+    }
+
+    #[test]
+    fn test_withdraw() {
+        let numerator = 1;
+        let denominator = 2;
+        let token_a_amount = 1000;
+        let token_b_amount = 2000;
+        let mut accounts = initialize_swap(numerator, denominator, token_a_amount, token_b_amount);
+        let seeds = [&accounts.swap_key.to_bytes()[..32], &[accounts.nonce]];
+        let authority_key = Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
+        let initial_a = token_a_amount / 10;
+        let (withdraw_token_a_key, mut withdraw_token_a_account) = mint_token(
+            &TOKEN_PROGRAM_ID,
+            &accounts.token_a_mint_key,
+            &mut accounts.token_a_mint_account,
+            &authority_key,
+            initial_a,
+        );
+        let initial_b = token_b_amount / 10;
+        let (withdraw_token_b_key, mut withdraw_token_b_account) = mint_token(
+            &TOKEN_PROGRAM_ID,
+            &accounts.token_b_mint_key,
+            &mut accounts.token_b_mint_account,
+            &authority_key,
+            initial_b,
+        );
+
+        let withdraw_amount = token_a_amount / 4;
+        do_process_instruction(
+            withdraw(
+                &SWAP_PROGRAM_ID,
+                &TOKEN_PROGRAM_ID,
+                &accounts.swap_key,
+                &authority_key,
+                &accounts.pool_mint_key,
+                &accounts.pool_token_key,
+                &accounts.token_a_key,
+                &accounts.token_b_key,
+                &withdraw_token_a_key,
+                &withdraw_token_b_key,
+                withdraw_amount,
+            )
+            .unwrap(),
+            vec![
+                &mut accounts.swap_account,
+                &mut Account::default(),
+                &mut accounts.pool_mint_account,
+                &mut accounts.pool_token_account,
+                &mut accounts.token_a_account,
+                &mut accounts.token_b_account,
+                &mut withdraw_token_a_account,
+                &mut withdraw_token_b_account,
+                &mut Account::default(),
+            ],
+        )
+        .unwrap();
+
+        let token_a = Processor::token_account_deserialize(&accounts.token_a_account.data).unwrap();
+        assert_eq!(token_a.amount, token_a_amount - withdraw_amount);
+        let token_b = Processor::token_account_deserialize(&accounts.token_b_account.data).unwrap();
+        assert_eq!(token_b.amount, token_b_amount - (withdraw_amount * 2));
+        let withdraw_token_a =
+            Processor::token_account_deserialize(&withdraw_token_a_account.data).unwrap();
+        assert_eq!(withdraw_token_a.amount, initial_a + withdraw_amount);
+        let withdraw_token_b =
+            Processor::token_account_deserialize(&withdraw_token_b_account.data).unwrap();
+        assert_eq!(withdraw_token_b.amount, initial_b + (withdraw_amount * 2));
+        let pool_account =
+            Processor::token_account_deserialize(&accounts.pool_token_account.data).unwrap();
+        let pool_mint = Processor::mint_deserialize(&accounts.pool_mint_account.data).unwrap();
+        assert_eq!(pool_mint.supply, pool_account.amount);
     }
 }

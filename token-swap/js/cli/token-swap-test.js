@@ -240,8 +240,12 @@ export async function deposit(): Promise<void> {
 }
 
 export async function withdraw(): Promise<void> {
+  console.log('Creating withdraw token A account');
   let userAccountA = await mintA.createAccount(owner.publicKey);
+  console.log('Creating withdraw token B account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
+
+  console.log('Approving withdrawal from pool account');
   await tokenPool.approve(
     tokenAccountPool,
     authority,
@@ -251,8 +255,10 @@ export async function withdraw(): Promise<void> {
   );
   const [tokenProgramId,] = await GetPrograms(connection);
 
+  console.log('Withdrawing pool tokens for A and B tokens');
   await tokenSwap.withdraw(
     authority,
+    tokenPool.publicKey,
     tokenAccountPool,
     tokenAccountA,
     tokenAccountB,
@@ -262,21 +268,15 @@ export async function withdraw(): Promise<void> {
     USER_AMOUNT
   );
 
-  let info;
-  info = await tokenPool.getAccountInfo(tokenAccountPool);
-  console.log('tokenAccountPool', info.amount.toNumber());
+  let info = await tokenPool.getAccountInfo(tokenAccountPool);
   assert(info.amount.toNumber() == BASE_AMOUNT - USER_AMOUNT);
   info = await mintA.getAccountInfo(tokenAccountA);
-  console.log('tokenAccountA', info.amount.toNumber());
   assert(info.amount.toNumber() == BASE_AMOUNT);
   info = await mintB.getAccountInfo(tokenAccountB);
-  console.log('tokenAccountB', info.amount.toNumber());
   assert(info.amount.toNumber() == BASE_AMOUNT);
   info = await mintA.getAccountInfo(userAccountA);
-  console.log('userAccountA', info.amount.toNumber());
   assert(info.amount.toNumber() == USER_AMOUNT);
   info = await mintB.getAccountInfo(userAccountB);
-  console.log('userAccountB', info.amount.toNumber());
   assert(info.amount.toNumber() == USER_AMOUNT);
 }
 

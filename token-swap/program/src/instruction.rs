@@ -78,12 +78,13 @@ pub enum SwapInstruction {
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
-    ///   2. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   5. `[writable]` token_a Account to withdraw FROM.
-    ///   6. `[writable]` token_b Account to withdraw FROM.
-    ///   7. `[writable]` token_a user Account.
-    ///   8. `[writable]` token_b user Account.
-    ///   9. '[]` Token program id
+    ///   2. `[writable]` Pool mint account, $authority is the owner
+    ///   3. `[writable]` SOURCE Pool account, amount is transferable by $authority.
+    ///   4. `[writable]` token_a Swap Account to withdraw FROM.
+    ///   5. `[writable]` token_b Swap Account to withdraw FROM.
+    ///   6. `[writable]` token_a user Account to credit.
+    ///   7. `[writable]` token_b user Account to credit.
+    ///   8. '[]` Token program id
     ///   userdata: SOURCE amount of pool tokens to transfer. User receives an output based on the
     ///   percentage of the pool tokens that are returned.
     Withdraw(u64),
@@ -212,6 +213,41 @@ pub fn deposit(
         AccountMeta::new(*swap_token_b_pubkey, false),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*user_output_pubkey, false),
+        AccountMeta::new(*token_program_id, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'withdraw' instruction.
+pub fn withdraw(
+    program_id: &Pubkey,
+    token_program_id: &Pubkey,
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    pool_mint_pubkey: &Pubkey,
+    source_pubkey: &Pubkey,
+    swap_token_a_pubkey: &Pubkey,
+    swap_token_b_pubkey: &Pubkey,
+    output_token_a_pubkey: &Pubkey,
+    output_token_b_pubkey: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::Withdraw(amount).serialize()?;
+
+    let accounts = vec![
+        AccountMeta::new(*swap_pubkey, false),
+        AccountMeta::new(*authority_pubkey, false),
+        AccountMeta::new(*pool_mint_pubkey, false),
+        AccountMeta::new(*source_pubkey, false),
+        AccountMeta::new(*swap_token_a_pubkey, false),
+        AccountMeta::new(*swap_token_b_pubkey, false),
+        AccountMeta::new(*output_token_a_pubkey, false),
+        AccountMeta::new(*output_token_b_pubkey, false),
         AccountMeta::new(*token_program_id, false),
     ];
 

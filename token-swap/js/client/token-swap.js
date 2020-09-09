@@ -467,6 +467,7 @@ export class TokenSwap {
    */
   async withdraw(
     authority: PublicKey,
+    poolMint: PublicKey,
     sourcePoolAccount: PublicKey,
     fromA: PublicKey,
     fromB: PublicKey,
@@ -481,6 +482,7 @@ export class TokenSwap {
       new Transaction().add(
         this.withdrawInstruction(
           authority,
+          poolMint,
           sourcePoolAccount,
           fromA,
           fromB,
@@ -493,8 +495,10 @@ export class TokenSwap {
       this.payer,
     );
   }
+
   withdrawInstruction(
     authority: PublicKey,
+    poolMint: PublicKey,
     sourcePoolAccount: PublicKey,
     fromA: PublicKey,
     fromB: PublicKey,
@@ -520,6 +524,7 @@ export class TokenSwap {
     const keys = [
       {pubkey: this.tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
+      {pubkey: poolMint, isSigner: false, isWritable: true},
       {pubkey: sourcePoolAccount, isSigner: false, isWritable: true},
       {pubkey: fromA, isSigner: false, isWritable: true},
       {pubkey: fromB, isSigner: false, isWritable: true},
