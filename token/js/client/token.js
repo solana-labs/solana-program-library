@@ -324,12 +324,12 @@ export class Token {
    * Creates and initializes a token.
    *
    * @param connection The connection to use
-   * @param owner User account that will own the returned account
-   * @param supply Initial supply to mint
+   * @param payer Fee payer for transaction
+   * @param mintAuthority Account or multisig that will control minting
+   * @param freezeAuthority Optional account or multisig that can freeze token accounts
    * @param decimals Location of the decimal place
    * @param programId Optional token programId, uses the system programId by default
-   * @return Token object for the newly minted token, Public key of the account
-   *         holding the total amount of new tokens
+   * @return Token object for the newly minted token
    */
   static async createMint(
     connection: Connection,
@@ -432,6 +432,8 @@ export class Token {
    *
    * This account may then be used for multisignature verification
    *
+   * @param m Number of required signatures
+   * @param signers Full set of signers
    * @return Public key of the new multisig account
    */
   async createMultisig(
@@ -623,24 +625,24 @@ export class Token {
    *
    * @param source Source account
    * @param destination Destination account
-   * @param authority Owner of the source account
-   * @param multiSigners Signing accounts if `authority` is a multiSig
+   * @param owner Owner of the source account
+   * @param multiSigners Signing accounts if `owner` is a multiSig
    * @param amount Number of tokens to transfer
    */
   async transfer(
     source: PublicKey,
     destination: PublicKey,
-    authority: any,
+    owner: any,
     multiSigners: Array<Account>,
     amount: number | u64,
   ): Promise<TransactionSignature> {
     let ownerPublicKey;
     let signers;
-    if (isAccount(authority)) {
-      ownerPublicKey = authority.publicKey;
-      signers = [authority];
+    if (isAccount(owner)) {
+      ownerPublicKey = owner.publicKey;
+      signers = [owner];
     } else {
-      ownerPublicKey = authority;
+      ownerPublicKey = owner;
       signers = multiSigners;
     }
     return await sendAndConfirmTransaction(
@@ -788,9 +790,9 @@ export class Token {
    * Mint new tokens
    *
    * @param dest Public key of the account to mint to
-   * @param authority Owner of the mint
+   * @param authority Minting authority
    * @param multiSigners Signing accounts if `authority` is a multiSig
-   * @param amount ammount to mint
+   * @param amount Amount to mint
    */
   async mintTo(
     dest: PublicKey,
@@ -829,9 +831,9 @@ export class Token {
    * Burn tokens
    *
    * @param account Account to burn tokens from
-   * @param owner Public key account owner
-   * @param multiSigners Signing accounts if `authority` is a multiSig
-   * @param amount amount to burn
+   * @param owner Account owner
+   * @param multiSigners Signing accounts if `owner` is a multiSig
+   * @param amount Amount to burn
    */
   async burn(
     account: PublicKey,
@@ -871,8 +873,8 @@ export class Token {
    *
    * @param account Account to close
    * @param dest Account to receive the remaining balance of the closed account
-   * @param authority Account which is allowed to close the account
-   * @param multiSigners Signing accounts if `owner` is a multiSig
+   * @param authority Authority which is allowed to close the account
+   * @param multiSigners Signing accounts if `authority` is a multiSig
    */
   async closeAccount(
     account: PublicKey,
@@ -911,8 +913,9 @@ export class Token {
    *
    * @param programId SPL Token program account
    * @param mint Token mint account
-   * @param token New token account
-   * @param owner Owner of the new token account
+   * @param decimals Number of decimals in token account amounts
+   * @param mintAuthority Minting authority
+   * @param freezeAuthority Optional authority that can freeze token accounts
    */
   static createInitMintInstruction(
     programId: PublicKey,
@@ -993,6 +996,7 @@ export class Token {
   /**
    * Construct a Transfer instruction
    *
+   * @param programId SPL Token program account
    * @param source Source account
    * @param destination Destination account
    * @param owner Owner of the source account
@@ -1051,6 +1055,7 @@ export class Token {
   /**
    * Construct an Approve instruction
    *
+   * @param programId SPL Token program account
    * @param account Public key of the account
    * @param delegate Account authorized to perform a transfer of tokens from the source account
    * @param owner Owner of the source account
@@ -1104,13 +1109,12 @@ export class Token {
   }
 
   /**
-   * Construct an Approve instruction
+   * Construct a Revoke instruction
    *
+   * @param programId SPL Token program account
    * @param account Public key of the account
-   * @param delegate Account authorized to perform a transfer of tokens from the source account
    * @param owner Owner of the source account
    * @param multiSigners Signing accounts if `owner` is a multiSig
-   * @param amount Maximum number of tokens the delegate may transfer
    */
   static createRevokeInstruction(
     programId: PublicKey,
@@ -1152,6 +1156,7 @@ export class Token {
   /**
    * Construct a SetAuthority instruction
    *
+   * @param programId SPL Token program account
    * @param account Public key of the account
    * @param newAuthority New authority of the account
    * @param authorityType Type of authority to set
@@ -1211,6 +1216,8 @@ export class Token {
   /**
    * Construct a MintTo instruction
    *
+   * @param programId SPL Token program account
+   * @param mint Public key of the mint
    * @param dest Public key of the account to mint to
    * @param authority The mint authority
    * @param multiSigners Signing accounts if `authority` is a multiSig
@@ -1269,6 +1276,7 @@ export class Token {
   /**
    * Construct a Burn instruction
    *
+   * @param programId SPL Token program account
    * @param mint Mint for the account
    * @param account Account to burn tokens from
    * @param owner Owner of the account
@@ -1326,10 +1334,12 @@ export class Token {
   }
 
   /**
-   * Construct a Burn instruction
+   * Construct a Close instruction
    *
-   * @param account Account to burn tokens from
-   * @param owner account owner
+   * @param programId SPL Token program account
+   * @param account Account to close
+   * @param dest Account to receive the remaining balance of the closed account
+   * @param authority Account Close authority
    * @param multiSigners Signing accounts if `owner` is a multiSig
    */
   static createCloseAccountInstruction(
