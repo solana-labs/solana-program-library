@@ -65,12 +65,12 @@ pub enum SwapInstruction {
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
     ///   2. `[writable]` token_a $authority can transfer amount,
-    ///   4. `[writable]` token_b $authority can transfer amount,
-    ///   6. `[writable]` token_a Base Account to deposit into.
-    ///   7. `[writable]` token_b Base Account to deposit into.
-    ///   8. `[writable]` Pool MINT account, $authority is the owner.
-    ///   9. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   10. '[]` Token program id
+    ///   3. `[writable]` token_b $authority can transfer amount,
+    ///   4. `[writable]` token_a Base Account to deposit into.
+    ///   5. `[writable]` token_b Base Account to deposit into.
+    ///   6. `[writable]` Pool MINT account, $authority is the owner.
+    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   8. '[]` Token program id
     ///   userdata: token_a amount to transfer.  token_b amount is set by the current exchange rate.
     Deposit(u64),
 
@@ -176,6 +176,41 @@ pub fn initialize(
         AccountMeta::new(*token_a_pubkey, false),
         AccountMeta::new(*token_b_pubkey, false),
         AccountMeta::new(*pool_pubkey, false),
+        AccountMeta::new(*user_output_pubkey, false),
+        AccountMeta::new(*token_program_id, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'deposit' instruction.
+pub fn deposit(
+    program_id: &Pubkey,
+    token_program_id: &Pubkey,
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    deposit_token_a_pubkey: &Pubkey,
+    deposit_token_b_pubkey: &Pubkey,
+    swap_token_a_pubkey: &Pubkey,
+    swap_token_b_pubkey: &Pubkey,
+    pool_mint_pubkey: &Pubkey,
+    user_output_pubkey: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::Deposit(amount).serialize()?;
+
+    let accounts = vec![
+        AccountMeta::new(*swap_pubkey, false),
+        AccountMeta::new(*authority_pubkey, false),
+        AccountMeta::new(*deposit_token_a_pubkey, false),
+        AccountMeta::new(*deposit_token_b_pubkey, false),
+        AccountMeta::new(*swap_token_a_pubkey, false),
+        AccountMeta::new(*swap_token_b_pubkey, false),
+        AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*user_output_pubkey, false),
         AccountMeta::new(*token_program_id, false),
     ];
