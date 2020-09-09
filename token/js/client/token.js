@@ -909,6 +909,82 @@ export class Token {
   }
 
   /**
+   * Freeze account
+   *
+   * @param account Account to freeze
+   * @param authority The mint freeze authority
+   * @param multiSigners Signing accounts if `authority` is a multiSig
+   */
+  async freezeAccount(
+    account: PublicKey,
+    authority: any,
+    multiSigners: Array<Account>,
+  ): Promise<void> {
+    let authorityPublicKey;
+    let signers;
+    if (isAccount(authority)) {
+      authorityPublicKey = authority.publicKey;
+      signers = [authority];
+    } else {
+      authorityPublicKey = authority;
+      signers = multiSigners;
+    }
+    await sendAndConfirmTransaction(
+      'FreezeAccount',
+      this.connection,
+      new Transaction().add(
+        Token.createFreezeAccountInstruction(
+          this.programId,
+          account,
+          this.publicKey,
+          authorityPublicKey,
+          multiSigners,
+        ),
+      ),
+      this.payer,
+      ...signers,
+    );
+  }
+
+  /**
+   * Thaw account
+   *
+   * @param account Account to thaw
+   * @param authority The mint freeze authority
+   * @param multiSigners Signing accounts if `authority` is a multiSig
+   */
+  async thawAccount(
+    account: PublicKey,
+    authority: any,
+    multiSigners: Array<Account>,
+  ): Promise<void> {
+    let authorityPublicKey;
+    let signers;
+    if (isAccount(authority)) {
+      authorityPublicKey = authority.publicKey;
+      signers = [authority];
+    } else {
+      authorityPublicKey = authority;
+      signers = multiSigners;
+    }
+    await sendAndConfirmTransaction(
+      'ThawAccount',
+      this.connection,
+      new Transaction().add(
+        Token.createThawAccountInstruction(
+          this.programId,
+          account,
+          this.publicKey,
+          authorityPublicKey,
+          multiSigners,
+        ),
+      ),
+      this.payer,
+      ...signers,
+    );
+  }
+
+  /**
    * Construct an init mint instruction
    *
    * @param programId SPL Token program account
@@ -1366,6 +1442,104 @@ export class Token {
       keys.push({pubkey: owner, isSigner: true, isWritable: false});
     } else {
       keys.push({pubkey: owner, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
+    }
+
+    return new TransactionInstruction({
+      keys,
+      programId: programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct a Freeze instruction
+   *
+   * @param programId SPL Token program account
+   * @param account Account to freeze
+   * @param mint Mint account
+   * @param authority Mint freeze authority
+   * @param multiSigners Signing accounts if `owner` is a multiSig
+   */
+  static createFreezeAccountInstruction(
+    programId: PublicKey,
+    account: PublicKey,
+    mint: PublicKey,
+    authority: PublicKey,
+    multiSigners: Array<Account>,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 10, // FreezeAccount instruction
+      },
+      data,
+    );
+
+    let keys = [
+      {pubkey: account, isSigner: false, isWritable: true},
+      {pubkey: mint, isSigner: false, isWritable: false},
+    ];
+    if (multiSigners.length === 0) {
+      keys.push({pubkey: authority, isSigner: true, isWritable: false});
+    } else {
+      keys.push({pubkey: authority, isSigner: false, isWritable: false});
+      multiSigners.forEach(signer =>
+        keys.push({
+          pubkey: signer.publicKey,
+          isSigner: true,
+          isWritable: false,
+        }),
+      );
+    }
+
+    return new TransactionInstruction({
+      keys,
+      programId: programId,
+      data,
+    });
+  }
+
+  /**
+   * Construct a Thaw instruction
+   *
+   * @param programId SPL Token program account
+   * @param account Account to thaw
+   * @param mint Mint account
+   * @param authority Mint freeze authority
+   * @param multiSigners Signing accounts if `owner` is a multiSig
+   */
+  static createThawAccountInstruction(
+    programId: PublicKey,
+    account: PublicKey,
+    mint: PublicKey,
+    authority: PublicKey,
+    multiSigners: Array<Account>,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 11, // ThawAccount instruction
+      },
+      data,
+    );
+
+    let keys = [
+      {pubkey: account, isSigner: false, isWritable: true},
+      {pubkey: mint, isSigner: false, isWritable: false},
+    ];
+    if (multiSigners.length === 0) {
+      keys.push({pubkey: authority, isSigner: true, isWritable: false});
+    } else {
+      keys.push({pubkey: authority, isSigner: false, isWritable: false});
       multiSigners.forEach(signer =>
         keys.push({
           pubkey: signer.publicKey,
