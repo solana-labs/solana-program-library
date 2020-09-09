@@ -31,7 +31,7 @@ Auto-generated C bindings are also available for the on-chain Token Program and
 available
 [here](https://github.com/solana-labs/solana-program-library/blob/master/token/program/inc/token.h)
 
-[Javascript
+[JavaScript
 bindings](https://github.com/solana-labs/solana-program-library/blob/master/token/js/client/token.js)
 are available that support loading the Token Program on to a chain and issue
 instructions.

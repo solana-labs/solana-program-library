@@ -1,4 +1,4 @@
-# Token-swap Javascript API
+# Token-swap JavaScript API
 
 The Token-swap JavaScript library comprises:
 
