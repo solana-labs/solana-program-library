@@ -1,6 +1,6 @@
 declare module '@solana/spl-token' {
-  import {Buffer} from 'buffer';
-  import { PublicKey, TransactionInstruction, TransactionSignature, Connection } from "@solana/web3.js";
+  import { Buffer } from 'buffer';
+  import { PublicKey, TransactionInstruction, TransactionSignature, Connection, Account } from "@solana/web3.js";
   import BN from 'bn.js';
 
   // === client/token.js ===
