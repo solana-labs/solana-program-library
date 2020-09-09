@@ -213,7 +213,7 @@ export async function deposit(): Promise<void> {
   let newAccountPool = await tokenPool.createAccount(owner.publicKey);
   const [tokenProgramId,] = await GetPrograms(connection);
 
-  console.log('Depositing into swap')
+  console.log('Depositing into swap');
   await tokenSwap.deposit(
     authority,
     userAccountA,
