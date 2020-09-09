@@ -125,7 +125,7 @@ export async function createMint(): Promise<void> {
     connection,
     payer,
     testMintAuthority.publicKey,
-    null,
+    testMintAuthority.publicKey,
     2,
     programId,
   );
@@ -139,7 +139,11 @@ export async function createMint(): Promise<void> {
   assert(mintInfo.supply.toNumber() === 0);
   assert(mintInfo.decimals === 2);
   assert(mintInfo.isInitialized === true);
-  assert(mintInfo.freezeAuthority === null);
+  if (mintInfo.freezeAuthority !== null) {
+    assert(mintInfo.freezeAuthority.equals(testMintAuthority.publicKey));
+  } else {
+    assert(mintInfo.freezeAuthority !== null);
+  }
 }
 
 export async function createAccount(): Promise<void> {
@@ -168,6 +172,18 @@ export async function mintTo(): Promise<void> {
   assert(accountInfo.amount.toNumber() === 1000);
 }
 
+export async function mintTo2(): Promise<void> {
+  assert(didThrow(testToken.mintTo2, [testMintAuthority, [], 1000, 1]));
+
+  await testToken.mintTo2(testAccount, testMintAuthority, [], 1000, 2);
+
+  const mintInfo = await testToken.getMintInfo();
+  assert(mintInfo.supply.toNumber() === 2000);
+
+  const accountInfo = await testToken.getAccountInfo(testAccount);
+  assert(accountInfo.amount.toNumber() === 2000);
+}
+
 export async function transfer(): Promise<void> {
   const destOwner = new Account();
   const dest = await testToken.createAccount(destOwner.publicKey);
@@ -175,13 +191,40 @@ export async function transfer(): Promise<void> {
   await testToken.transfer(testAccount, dest, testAccountOwner, [], 100);
 
   const mintInfo = await testToken.getMintInfo();
-  assert(mintInfo.supply.toNumber() === 1000);
+  assert(mintInfo.supply.toNumber() === 2000);
 
   let destAccountInfo = await testToken.getAccountInfo(dest);
   assert(destAccountInfo.amount.toNumber() === 100);
 
   let testAccountInfo = await testToken.getAccountInfo(testAccount);
-  assert(testAccountInfo.amount.toNumber() === 900);
+  assert(testAccountInfo.amount.toNumber() === 1900);
+}
+
+export async function transfer2(): Promise<void> {
+  const destOwner = new Account();
+  const dest = await testToken.createAccount(destOwner.publicKey);
+
+  assert(
+    didThrow(testToken.transfer2, [
+      testAccount,
+      dest,
+      testAccountOwner,
+      [],
+      100,
+      1,
+    ]),
+  );
+
+  await testToken.transfer2(testAccount, dest, testAccountOwner, [], 100, 2);
+
+  const mintInfo = await testToken.getMintInfo();
+  assert(mintInfo.supply.toNumber() === 2000);
+
+  let destAccountInfo = await testToken.getAccountInfo(dest);
+  assert(destAccountInfo.amount.toNumber() === 100);
+
+  let testAccountInfo = await testToken.getAccountInfo(testAccount);
+  assert(testAccountInfo.amount.toNumber() === 1800);
 }
 
 export async function approveRevoke(): Promise<void> {
@@ -288,6 +331,45 @@ export async function burn(): Promise<void> {
 
   accountInfo = await testToken.getAccountInfo(testAccount);
   assert(accountInfo.amount.toNumber() == amount - 1);
+}
+
+export async function burn2(): Promise<void> {
+  let accountInfo = await testToken.getAccountInfo(testAccount);
+  const amount = accountInfo.amount.toNumber();
+
+  assert(didThrow(testToken.burn2, [testAccount, testAccountOwner, [], 1, 1]));
+
+  await testToken.burn2(testAccount, testAccountOwner, [], 1, 2);
+
+  accountInfo = await testToken.getAccountInfo(testAccount);
+  assert(accountInfo.amount.toNumber() == amount - 1);
+}
+
+export async function freezeThawAccount(): Promise<void> {
+  let accountInfo = await testToken.getAccountInfo(testAccount);
+  const amount = accountInfo.amount.toNumber();
+
+  await testToken.freezeAccount(testAccount, testMintAuthority, []);
+
+  const destOwner = new Account();
+  const dest = await testToken.createAccount(destOwner.publicKey);
+
+  assert(
+    didThrow(testToken.transfer, [
+      testAccount,
+      dest,
+      testAccountOwner,
+      [],
+      100,
+    ]),
+  );
+
+  await testToken.thawAccount(testAccount, testMintAuthority, []);
+
+  await testToken.transfer(testAccount, dest, testAccountOwner, [], 100);
+
+  let testAccountInfo = await testToken.getAccountInfo(testAccount);
+  assert(testAccountInfo.amount.toNumber() === amount - 100);
 }
 
 export async function closeAccount(): Promise<void> {
