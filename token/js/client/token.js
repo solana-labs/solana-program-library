@@ -358,13 +358,15 @@ export class Token {
     );
 
     const transaction = new Transaction();
-    transaction.add(SystemProgram.createAccount({
-      fromPubkey: payer.publicKey,
-      newAccountPubkey: mintAccount.publicKey,
-      lamports: balanceNeeded,
-      space: MintLayout.span,
-      programId,
-    }));
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: payer.publicKey,
+        newAccountPubkey: mintAccount.publicKey,
+        lamports: balanceNeeded,
+        space: MintLayout.span,
+        programId,
+      }),
+    );
 
     transaction.add(
       Token.createInitMintInstruction(
@@ -404,13 +406,15 @@ export class Token {
 
     const newAccount = new Account();
     const transaction = new Transaction();
-    transaction.add(SystemProgram.createAccount({
-      fromPubkey: this.payer.publicKey,
-      newAccountPubkey: newAccount.publicKey,
-      lamports: balanceNeeded,
-      space: AccountLayout.span,
-      programId: this.programId,
-    }));
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: this.payer.publicKey,
+        newAccountPubkey: newAccount.publicKey,
+        lamports: balanceNeeded,
+        space: AccountLayout.span,
+        programId: this.programId,
+      }),
+    );
 
     const mintPublicKey = this.publicKey;
     transaction.add(
@@ -463,13 +467,16 @@ export class Token {
 
     // Create a new account
     const newAccount = new Account();
-    const transaction = SystemProgram.createAccount({
-      fromPubkey: payer.publicKey,
-      newAccountPubkey: newAccount.publicKey,
-      lamports: balanceNeeded,
-      space: AccountLayout.span,
-      programId,
-    });
+    const transaction = new Transaction();
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: payer.publicKey,
+        newAccountPubkey: newAccount.publicKey,
+        lamports: balanceNeeded,
+        space: AccountLayout.span,
+        programId,
+      }),
+    );
 
     // Send lamports to it (these will be wrapped into native tokens by the token program)
     transaction.add(
@@ -524,13 +531,15 @@ export class Token {
       this.connection,
     );
     const transaction = new Transaction();
-    transaction.add(SystemProgram.createAccount({
-      fromPubkey: this.payer.publicKey,
-      newAccountPubkey: multisigAccount.publicKey,
-      lamports: balanceNeeded,
-      space: MultisigLayout.span,
-      programId: this.programId,
-    }));
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: this.payer.publicKey,
+        newAccountPubkey: multisigAccount.publicKey,
+        lamports: balanceNeeded,
+        space: MultisigLayout.span,
+        programId: this.programId,
+      }),
+    );
 
     // create the new account
     let keys = [
