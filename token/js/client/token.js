@@ -70,6 +70,11 @@ const AuthorityTypeCodes = {
   CloseAccount: 3,
 };
 
+// The address of the special mint for wrapped native token.
+export const NATIVE_MINT = new PublicKey(
+  'So11111111111111111111111111111111111111112',
+);
+
 /**
  * Information about the mint
  */
@@ -384,7 +389,7 @@ export class Token {
   }
 
   /**
-   * Create and initializes a new account.
+   * Create and initialize a new account.
    *
    * This account may then be used as a `transfer()` or `approve()` destination
    *
@@ -423,6 +428,76 @@ export class Token {
       this.connection,
       transaction,
       this.payer,
+      newAccount,
+    );
+
+    return newAccount.publicKey;
+  }
+
+  /**
+   * Create an initialize a new account on the special native token mint.
+   *
+   * In order to wrap native tokens, the account must have a balance of native tokens
+   * when it is initialized with the token program.
+   *
+   * This function sends lamports to the new account before initializing it.
+   *
+   * @param connection A solana web3 connection
+   * @param programId The token program ID
+   * @param owner The owner of the new token account
+   * @param payer The source of the lamports to initialize, and payer of the initialization fees.
+   * @param amount The amount of lamports to wrap
+   * @return {Promise<PublicKey>} The new token account
+   */
+  static async createWrappedNativeAccount(
+    connection: Connection,
+    programId: PublicKey,
+    owner: PublicKey,
+    payer: Account,
+    amount: number,
+  ): Promise<PublicKey> {
+    // Allocate memory for the account
+    const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
+      connection,
+    );
+
+    // Create a new account
+    const newAccount = new Account();
+    const transaction = SystemProgram.createAccount({
+      fromPubkey: payer.publicKey,
+      newAccountPubkey: newAccount.publicKey,
+      lamports: balanceNeeded,
+      space: AccountLayout.span,
+      programId,
+    });
+
+    // Send lamports to it (these will be wrapped into native tokens by the token program)
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: newAccount.publicKey,
+        lamports: amount,
+      }),
+    );
+
+    // assign the new account to the native token mint.
+    // the account will be initialized with a balance equal to the native token balance.
+    // (i.e. amount)
+    transaction.add(
+      Token.createInitAccountInstruction(
+        programId,
+        NATIVE_MINT,
+        newAccount.publicKey,
+        owner,
+      ),
+    );
+
+    // Send the two instructions
+    await sendAndConfirmTransaction(
+      'createAccount, transfer, and initializeAccount',
+      connection,
+      transaction,
+      payer,
       newAccount,
     );
 

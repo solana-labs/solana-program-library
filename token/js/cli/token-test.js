@@ -10,7 +10,7 @@ import {
 } from '@solana/web3.js';
 import semver from 'semver';
 
-import {Token} from '../client/token';
+import {Token, NATIVE_MINT} from '../client/token';
 import {url} from '../url';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {sleep} from '../client/util/sleep';
@@ -527,19 +527,29 @@ export async function multisig(): Promise<void> {
 
 export async function nativeToken(): Promise<void> {
   const connection = await getConnection();
-
-  const mintPublicKey = new PublicKey(
-    'So11111111111111111111111111111111111111112',
-  );
+  // this user both pays for the creation of the new token account
+  // and provides the lamports to wrap
   const payer = await newAccountWithLamports(
     connection,
     100000000000 /* wag */,
   );
-  const token = new Token(connection, mintPublicKey, programId, payer);
+  const lamportsToWrap = 50000000000;
+
+  const token = new Token(connection, NATIVE_MINT, programId, payer);
   const owner = new Account();
-  const native = await token.createAccount(owner.publicKey);
+  const native = await Token.createWrappedNativeAccount(
+    connection,
+    programId,
+    owner.publicKey,
+    payer,
+    lamportsToWrap,
+  );
   let accountInfo = await token.getAccountInfo(native);
   assert(accountInfo.isNative);
+
+  // check that the new account has wrapped native tokens.
+  assert(accountInfo.amount.toNumber() === lamportsToWrap);
+
   let balance;
   let info = await connection.getAccountInfo(native);
   if (info != null) {
