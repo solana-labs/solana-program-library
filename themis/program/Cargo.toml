@@ -1,0 +1,43 @@
+
+# Note: This crate must be built using do.sh
+
+[package]
+name = "spl-themis"
+version = "0.1.0"
+description = "Solana Program Library THEMIS"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+exclude = ["js/**"]
+
+[features]
+no-entrypoint = []
+skip-no-mangle = ["solana-sdk/skip-no-mangle"]
+program = ["solana-sdk/program"]
+default = ["solana-sdk/default"]
+
+[dependencies]
+arrayref = "0.3.6"
+bn = {git = "https://github.com/paritytech/bn", rev = "635c4cdd560bc0c8b262e6bf809dc709da8bcd7e"}
+elgamal_bn = { git = "https://github.com/brave-experiments/elgamal_bn", rev = "942247a243e3de26c907452232b6bf24af8d9b3a"}
+num-derive = "0.3"
+num_enum = "0.5.1"
+num-traits = "0.2"
+primitive-types = "0.7.2"
+rand = "0.5.0"
+remove_dir_all = "=0.5.0"
+serde_json = "1.0.57"
+sha3 = "0.9.1"
+solana-sdk = { version = "1.3.9", default-features = false, optional = true }
+thiserror = "1.0"
+
+[dependencies.bincode]
+version = "0.6"
+default-features = false
+features = ["rustc-serialize"]
+
+[dev-dependencies]
+
+[lib]
+crate-type = ["cdylib", "lib"]
