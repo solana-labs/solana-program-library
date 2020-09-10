@@ -145,7 +145,7 @@ impl Processor {
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
         let pool_info = next_account_info(account_info_iter)?;
-        let user_output_info = next_account_info(account_info_iter)?;
+        let user_destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         if State::Unallocated != State::deserialize(&swap_info.data.borrow())? {
@@ -187,7 +187,7 @@ impl Processor {
             swap_info.key,
             token_program_info.clone(),
             pool_info.clone(),
-            user_output_info.clone(),
+            user_destination_info.clone(),
             authority_info.clone(),
             nonce,
             amount,
@@ -213,9 +213,9 @@ impl Processor {
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
-        let into_info = next_account_info(account_info_iter)?;
-        let from_info = next_account_info(account_info_iter)?;
-        let dest_info = next_account_info(account_info_iter)?;
+        let swap_source_info = next_account_info(account_info_iter)?;
+        let swap_destination_info = next_account_info(account_info_iter)?;
+        let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = State::deserialize(&swap_info.data.borrow())?.token_swap()?;
@@ -223,43 +223,62 @@ impl Processor {
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(Error::InvalidProgramAddress.into());
         }
-        if !(*into_info.key == token_swap.token_a || *into_info.key == token_swap.token_b) {
+        if !(*swap_source_info.key == token_swap.token_a
+            || *swap_source_info.key == token_swap.token_b)
+        {
             return Err(Error::InvalidInput.into());
         }
-        if !(*from_info.key == token_swap.token_a || *from_info.key == token_swap.token_b) {
+        if !(*swap_destination_info.key == token_swap.token_a
+            || *swap_destination_info.key == token_swap.token_b)
+        {
             return Err(Error::InvalidOutput.into());
         }
-        if *into_info.key == *from_info.key {
+        if *swap_source_info.key == *swap_destination_info.key {
             return Err(Error::InvalidInput.into());
         }
-        let into_token = Self::token_account_deserialize(&into_info.data.borrow())?;
-        let from_token = Self::token_account_deserialize(&from_info.data.borrow())?;
-        let mut invariant = Invariant {
-            token_a: into_token.amount,
-            token_b: from_token.amount,
-            fee: token_swap.fee,
+        let source_account = Self::token_account_deserialize(&swap_source_info.data.borrow())?;
+        let dest_account = Self::token_account_deserialize(&swap_destination_info.data.borrow())?;
+
+        let output = if *swap_source_info.key == token_swap.token_a {
+            let mut invariant = Invariant {
+                token_a: source_account.amount,
+                token_b: dest_account.amount,
+                fee: token_swap.fee,
+            };
+            invariant
+                .swap_a_to_b(amount)
+                .ok_or(Error::CalculationFailure)?
+        } else {
+            let mut invariant = Invariant {
+                token_a: dest_account.amount,
+                token_b: source_account.amount,
+                fee: token_swap.fee,
+            };
+            invariant
+                .swap_b_to_a(amount)
+                .ok_or(Error::CalculationFailure)?
         };
-        let output = invariant.swap(amount).ok_or(Error::CalculationFailure)?;
         Self::token_transfer(
-            token_program_info.key,
-            swap_info.clone(),
+            swap_info.key,
+            token_program_info.clone(),
             source_info.clone(),
-            into_info.clone(),
+            swap_source_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
             amount,
         )?;
         Self::token_transfer(
-            token_program_info.key,
-            swap_info.clone(),
-            from_info.clone(),
-            dest_info.clone(),
+            swap_info.key,
+            token_program_info.clone(),
+            swap_destination_info.clone(),
+            destination_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
             output,
         )?;
         Ok(())
     }
+
     /// Processes an [Deposit](enum.Instruction.html).
     pub fn process_deposit(
         program_id: &Pubkey,
@@ -501,7 +520,10 @@ solana_sdk::program_stubs!();
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instruction::{deposit, initialize, withdraw};
+    use crate::{
+        instruction::{deposit, initialize, swap, withdraw},
+        state::SwapResult,
+    };
     use solana_sdk::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
         rent::Rent, sysvar::rent,
@@ -698,7 +720,6 @@ mod tests {
             token_b_amount,
         );
 
-        // Swap Init
         let mut authority_account = Account::default();
         do_process_instruction(
             initialize(
@@ -785,7 +806,7 @@ mod tests {
         let numerator = 1;
         let denominator = 2;
         let token_a_amount = 1000;
-        let token_b_amount = 2000;
+        let token_b_amount = 8000;
         let mut accounts = initialize_swap(numerator, denominator, token_a_amount, token_b_amount);
         let seeds = [&accounts.swap_key.to_bytes()[..32], &[accounts.nonce]];
         let authority_key = Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
@@ -933,5 +954,145 @@ mod tests {
             Processor::token_account_deserialize(&accounts.pool_token_account.data).unwrap();
         let pool_mint = Processor::mint_deserialize(&accounts.pool_mint_account.data).unwrap();
         assert_eq!(pool_mint.supply, pool_account.amount);
+    }
+
+    #[test]
+    fn test_swap() {
+        let numerator = 1;
+        let denominator = 10;
+        let token_a_amount = 1000;
+        let token_b_amount = 5000;
+        let mut accounts = initialize_swap(numerator, denominator, token_a_amount, token_b_amount);
+        let seeds = [&accounts.swap_key.to_bytes()[..32], &[accounts.nonce]];
+        let authority_key = Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
+
+        let initial_a = token_a_amount / 5;
+        let (user_token_a_key, mut user_token_a_account) = mint_token(
+            &TOKEN_PROGRAM_ID,
+            &accounts.token_a_mint_key,
+            &mut accounts.token_a_mint_account,
+            &authority_key,
+            initial_a,
+        );
+        let initial_b = token_b_amount / 5;
+        let (user_token_b_key, mut user_token_b_account) = mint_token(
+            &TOKEN_PROGRAM_ID,
+            &accounts.token_b_mint_key,
+            &mut accounts.token_b_mint_account,
+            &authority_key,
+            initial_b,
+        );
+
+        let a_to_b_amount = initial_a / 10;
+        do_process_instruction(
+            swap(
+                &SWAP_PROGRAM_ID,
+                &TOKEN_PROGRAM_ID,
+                &accounts.swap_key,
+                &authority_key,
+                &user_token_a_key,
+                &accounts.token_a_key,
+                &accounts.token_b_key,
+                &user_token_b_key,
+                a_to_b_amount,
+            )
+            .unwrap(),
+            vec![
+                &mut accounts.swap_account,
+                &mut Account::default(),
+                &mut user_token_a_account,
+                &mut accounts.token_a_account,
+                &mut accounts.token_b_account,
+                &mut user_token_b_account,
+                &mut Account::default(),
+            ],
+        )
+        .unwrap();
+
+        let results = SwapResult::swap_to(
+            a_to_b_amount,
+            token_a_amount,
+            token_b_amount,
+            &Fee {
+                numerator,
+                denominator,
+            },
+        )
+        .unwrap();
+
+        let swap_token_a =
+            Processor::token_account_deserialize(&accounts.token_a_account.data).unwrap();
+        let token_a_amount = swap_token_a.amount;
+        assert_eq!(token_a_amount, results.new_source);
+        let user_token_a =
+            Processor::token_account_deserialize(&user_token_a_account.data).unwrap();
+        assert_eq!(user_token_a.amount, initial_a - a_to_b_amount);
+
+        let swap_token_b =
+            Processor::token_account_deserialize(&accounts.token_b_account.data).unwrap();
+        let token_b_amount = swap_token_b.amount;
+        assert_eq!(token_b_amount, results.new_destination);
+        let user_token_b =
+            Processor::token_account_deserialize(&user_token_b_account.data).unwrap();
+        assert_eq!(user_token_b.amount, initial_b + results.amount_swapped);
+
+        let first_swap_amount = results.amount_swapped;
+
+        let b_to_a_amount = initial_b / 10;
+        do_process_instruction(
+            swap(
+                &SWAP_PROGRAM_ID,
+                &TOKEN_PROGRAM_ID,
+                &accounts.swap_key,
+                &authority_key,
+                &user_token_b_key,
+                &accounts.token_b_key,
+                &accounts.token_a_key,
+                &user_token_a_key,
+                b_to_a_amount,
+            )
+            .unwrap(),
+            vec![
+                &mut accounts.swap_account,
+                &mut Account::default(),
+                &mut user_token_b_account,
+                &mut accounts.token_b_account,
+                &mut accounts.token_a_account,
+                &mut user_token_a_account,
+                &mut Account::default(),
+            ],
+        )
+        .unwrap();
+
+        let results = SwapResult::swap_to(
+            b_to_a_amount,
+            token_b_amount,
+            token_a_amount,
+            &Fee {
+                numerator,
+                denominator,
+            },
+        )
+        .unwrap();
+
+        let swap_token_a =
+            Processor::token_account_deserialize(&accounts.token_a_account.data).unwrap();
+        assert_eq!(swap_token_a.amount, results.new_destination);
+        let user_token_a =
+            Processor::token_account_deserialize(&user_token_a_account.data).unwrap();
+        assert_eq!(
+            user_token_a.amount,
+            initial_a - a_to_b_amount + results.amount_swapped
+        );
+
+        let swap_token_b =
+            Processor::token_account_deserialize(&accounts.token_b_account.data).unwrap();
+        assert_eq!(swap_token_b.amount, results.new_source);
+        let user_token_b =
+            Processor::token_account_deserialize(&user_token_b_account.data).unwrap();
+        assert_eq!(
+            user_token_b.amount,
+            initial_b + first_swap_amount - b_to_a_amount
+        );
     }
 }

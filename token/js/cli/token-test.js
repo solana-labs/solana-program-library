@@ -1,7 +1,13 @@
 // @flow
 
 import fs from 'mz/fs';
-import {Account, Connection, BpfLoader, PublicKey} from '@solana/web3.js';
+import {
+  Account,
+  Connection,
+  BpfLoader,
+  PublicKey,
+  BPF_LOADER_PROGRAM_ID,
+} from '@solana/web3.js';
 import semver from 'semver';
 
 import {Token} from '../client/token';
@@ -71,7 +77,13 @@ async function loadProgram(
   const from = await newAccountWithLamports(connection, balanceNeeded);
   const program_account = new Account();
   console.log('Loading program:', path);
-  await BpfLoader.load(connection, from, program_account, data, 2);
+  await BpfLoader.load(
+    connection,
+    from,
+    program_account,
+    data,
+    BPF_LOADER_PROGRAM_ID,
+  );
   return program_account.publicKey;
 }
 

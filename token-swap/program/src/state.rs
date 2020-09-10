@@ -85,6 +85,42 @@ impl State {
     }
 }
 
+/// Encodes all results of swapping from a source token to a destination token
+pub struct SwapResult {
+    /// New amount of source token
+    pub new_source: u64,
+    /// New amount of destination token
+    pub new_destination: u64,
+    /// Amount of destination token swapped
+    pub amount_swapped: u64,
+}
+
+impl SwapResult {
+    /// SwapResult for swap from one currency into another, given pool information
+    /// and fee
+    pub fn swap_to(
+        source: u64,
+        source_amount: u64,
+        dest_amount: u64,
+        fee: &Fee,
+    ) -> Option<SwapResult> {
+        let invariant = source_amount.checked_mul(dest_amount)?;
+        let new_source = source_amount.checked_add(source)?;
+        let new_destination = invariant.checked_div(new_source)?;
+        let remove = dest_amount.checked_sub(new_destination)?;
+        let fee = remove
+            .checked_mul(fee.numerator)?
+            .checked_div(fee.denominator)?;
+        let new_destination = new_destination.checked_add(fee)?;
+        let amount_swapped = remove.checked_sub(fee)?;
+        Some(SwapResult {
+            new_source,
+            new_destination,
+            amount_swapped,
+        })
+    }
+}
+
 /// The Uniswap invariant calculator.
 pub struct Invariant {
     /// Token A
@@ -96,21 +132,22 @@ pub struct Invariant {
 }
 
 impl Invariant {
-    /// Swap
-    pub fn swap(&mut self, token_a: u64) -> Option<u64> {
-        let invariant = self.token_a.checked_mul(self.token_b)?;
-        let new_a = self.token_a.checked_add(token_a)?;
-        let new_b = invariant.checked_div(new_a)?;
-        let remove = self.token_b.checked_sub(new_b)?;
-        let fee = remove
-            .checked_mul(self.fee.numerator)?
-            .checked_div(self.fee.denominator)?;
-        let new_b_with_fee = new_b.checked_add(fee)?;
-        let remove_less_fee = remove.checked_sub(fee)?;
-        self.token_a = new_a;
-        self.token_b = new_b_with_fee;
-        Some(remove_less_fee)
+    /// Swap token a to b
+    pub fn swap_a_to_b(&mut self, token_a: u64) -> Option<u64> {
+        let result = SwapResult::swap_to(token_a, self.token_a, self.token_b, &self.fee)?;
+        self.token_a = result.new_source;
+        self.token_b = result.new_destination;
+        Some(result.amount_swapped)
     }
+
+    /// Swap token b to a
+    pub fn swap_b_to_a(&mut self, token_b: u64) -> Option<u64> {
+        let result = SwapResult::swap_to(token_b, self.token_b, self.token_a, &self.fee)?;
+        self.token_b = result.new_source;
+        self.token_a = result.new_destination;
+        Some(result.amount_swapped)
+    }
+
     /// Exchange rate
     pub fn exchange_rate(&self, token_a: u64) -> Option<u64> {
         token_a.checked_mul(self.token_b)?.checked_div(self.token_a)

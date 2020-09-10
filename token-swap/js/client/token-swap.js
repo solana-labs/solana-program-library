@@ -196,13 +196,14 @@ export class TokenSwap {
     const balanceNeeded = await TokenSwap.getMinBalanceRentForExemptTokenSwap(
       connection,
     );
-    transaction = SystemProgram.createAccount({
+    transaction = new Transaction();
+    transaction.add(SystemProgram.createAccount({
       fromPubkey: payer.publicKey,
       newAccountPubkey: tokenSwapAccount.publicKey,
       lamports: balanceNeeded,
       space: TokenSwapLayout.span,
       programId,
-    });
+    }));
     await sendAndConfirmTransaction(
       'createAccount',
       connection,
@@ -292,17 +293,17 @@ export class TokenSwap {
    *
    * @param authority Authority
    * @param source Source account
-   * @param into Base account to swap into, must be a source token
-   * @param from Base account to swap from, must be a destination token
-   * @param dest Destination token
+   * @param swap_source Base account to swap into, must be a source token
+   * @param swap_destination Base account to swap from, must be a destination token
+   * @param destination Destination token account
    * @param tokenProgramId Token program id
    * @param amount Amount to transfer from source account
    */
   async swap(
     authority: PublicKey,
     source: PublicKey,
-    into: PublicKey,
-    from: PublicKey,
+    swap_source: PublicKey,
+    swap_destination: PublicKey,
     destination: PublicKey,
     tokenProgramId: PublicKey,
     amount: number | Numberu64,
@@ -314,8 +315,8 @@ export class TokenSwap {
         this.swapInstruction(
           authority,
           source,
-          into,
-          from,
+          swap_source,
+          swap_destination,
           destination,
           tokenProgramId,
           amount,
@@ -324,11 +325,12 @@ export class TokenSwap {
       this.payer,
     );
   }
+
   swapInstruction(
     authority: PublicKey,
     source: PublicKey,
-    into: PublicKey,
-    from: PublicKey,
+    swap_source: PublicKey,
+    swap_destination: PublicKey,
     destination: PublicKey,
     tokenProgramId: PublicKey,
     amount: number | Numberu64,
@@ -351,11 +353,10 @@ export class TokenSwap {
       {pubkey: this.tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
       {pubkey: source, isSigner: false, isWritable: true},
-      {pubkey: into, isSigner: false, isWritable: true},
-      {pubkey: from, isSigner: false, isWritable: true},
+      {pubkey: swap_source, isSigner: false, isWritable: true},
+      {pubkey: swap_destination, isSigner: false, isWritable: true},
       {pubkey: destination, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
-
     ];
     return new TransactionInstruction({
       keys,
@@ -443,7 +444,6 @@ export class TokenSwap {
       {pubkey: poolToken, isSigner: false, isWritable: true},
       {pubkey: poolAccount, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
-
     ];
     return new TransactionInstruction({
       keys,

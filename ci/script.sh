@@ -85,7 +85,8 @@ js_token_swap() {
   # TODO: Restore flow
   # time npm run flow || exit $?
 
-  # TODO reenable once all issues are fixed
+  # TODO re-enable after investigating CI issues
+  # https://github.com/solana-labs/solana-program-library/pull/408
   # npm run cluster:localnet || exit $?
   # npm run localnet:down
   # npm run localnet:update || exit $?

@@ -352,13 +352,14 @@ export class Token {
       connection,
     );
 
-    const transaction = SystemProgram.createAccount({
+    const transaction = new Transaction();
+    transaction.add(SystemProgram.createAccount({
       fromPubkey: payer.publicKey,
       newAccountPubkey: mintAccount.publicKey,
       lamports: balanceNeeded,
       space: MintLayout.span,
       programId,
-    });
+    }));
 
     transaction.add(
       Token.createInitMintInstruction(
@@ -397,13 +398,14 @@ export class Token {
     );
 
     const newAccount = new Account();
-    const transaction = SystemProgram.createAccount({
+    const transaction = new Transaction();
+    transaction.add(SystemProgram.createAccount({
       fromPubkey: this.payer.publicKey,
       newAccountPubkey: newAccount.publicKey,
       lamports: balanceNeeded,
       space: AccountLayout.span,
       programId: this.programId,
-    });
+    }));
 
     const mintPublicKey = this.publicKey;
     transaction.add(
@@ -441,19 +443,19 @@ export class Token {
     signers: Array<PublicKey>,
   ): Promise<PublicKey> {
     const multisigAccount = new Account();
-    let transaction;
 
     // Allocate memory for the account
     const balanceNeeded = await Token.getMinBalanceRentForExemptMultisig(
       this.connection,
     );
-    transaction = SystemProgram.createAccount({
+    const transaction = new Transaction();
+    transaction.add(SystemProgram.createAccount({
       fromPubkey: this.payer.publicKey,
       newAccountPubkey: multisigAccount.publicKey,
       lamports: balanceNeeded,
       space: MultisigLayout.span,
       programId: this.programId,
-    });
+    }));
 
     // create the new account
     let keys = [
