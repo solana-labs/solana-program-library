@@ -28,9 +28,9 @@ function assert(condition, message) {
   }
 }
 
-async function didThrow(func, args): Promise<boolean> {
+async function didThrow(obj, func, args): Promise<boolean> {
   try {
-    await func.apply(args);
+    await func.apply(testToken, args);
   } catch (e) {
     return true;
   }
@@ -173,7 +173,15 @@ export async function mintTo(): Promise<void> {
 }
 
 export async function mintTo2(): Promise<void> {
-  assert(didThrow(testToken.mintTo2, [testMintAuthority, [], 1000, 1]));
+  assert(
+    await didThrow(testToken, testToken.mintTo2, [
+      testAccount,
+      testMintAuthority,
+      [],
+      1000,
+      1,
+    ]),
+  );
 
   await testToken.mintTo2(testAccount, testMintAuthority, [], 1000, 2);
 
@@ -205,7 +213,7 @@ export async function transfer2(): Promise<void> {
   const dest = await testToken.createAccount(destOwner.publicKey);
 
   assert(
-    didThrow(testToken.transfer2, [
+    await didThrow(testToken, testToken.transfer2, [
       testAccount,
       dest,
       testAccountOwner,
@@ -249,18 +257,6 @@ export async function approveRevoke(): Promise<void> {
   }
 }
 
-export async function invalidApprove(): Promise<void> {
-  const owner = new Account();
-  const account1 = await testToken.createAccount(owner.publicKey);
-  const account2 = await testToken.createAccount(owner.publicKey);
-  const delegate = new Account();
-
-  // account2 is not a delegate account of account1
-  assert(didThrow(testToken.approve, [account1, account2, owner, [], 123]));
-  // account1Delegate is not a delegate account of account2
-  assert(didThrow(testToken.approve, [account2, delegate, owner, [], 123]));
-}
-
 export async function failOnApproveOverspend(): Promise<void> {
   const owner = new Account();
   const account1 = await testToken.createAccount(owner.publicKey);
@@ -275,7 +271,7 @@ export async function failOnApproveOverspend(): Promise<void> {
   assert(account1Info.amount.toNumber() == 10);
   assert(account1Info.delegatedAmount.toNumber() == 2);
   if (account1Info.delegate === null) {
-    throw new Error('deleage should not be null');
+    throw new Error('delegate should not be null');
   } else {
     assert(account1Info.delegate.equals(delegate.publicKey));
   }
@@ -293,7 +289,15 @@ export async function failOnApproveOverspend(): Promise<void> {
   assert(account1Info.delegate === null);
   assert(account1Info.delegatedAmount.toNumber() == 0);
 
-  assert(didThrow(testToken.transfer, [account1, account2, delegate, [], 1]));
+  assert(
+    await didThrow(testToken, testToken.transfer, [
+      account1,
+      account2,
+      delegate,
+      [],
+      1,
+    ]),
+  );
 }
 
 export async function setAuthority(): Promise<void> {
@@ -306,8 +310,8 @@ export async function setAuthority(): Promise<void> {
     [],
   );
   assert(
-    didThrow(testToken.setAuthority, [
-      testAccountOwner,
+    await didThrow(testToken, testToken.setAuthority, [
+      testAccount,
       newOwner.publicKey,
       'AccountOwner',
       testAccountOwner,
@@ -337,7 +341,15 @@ export async function burn2(): Promise<void> {
   let accountInfo = await testToken.getAccountInfo(testAccount);
   const amount = accountInfo.amount.toNumber();
 
-  assert(didThrow(testToken.burn2, [testAccount, testAccountOwner, [], 1, 1]));
+  assert(
+    await didThrow(testToken, testToken.burn2, [
+      testAccount,
+      testAccountOwner,
+      [],
+      1,
+      1,
+    ]),
+  );
 
   await testToken.burn2(testAccount, testAccountOwner, [], 1, 2);
 
@@ -355,7 +367,7 @@ export async function freezeThawAccount(): Promise<void> {
   const dest = await testToken.createAccount(destOwner.publicKey);
 
   assert(
-    didThrow(testToken.transfer, [
+    await didThrow(testToken, testToken.transfer, [
       testAccount,
       dest,
       testAccountOwner,
@@ -394,7 +406,12 @@ export async function closeAccount(): Promise<void> {
 
   // Check that accounts with non-zero token balance cannot be closed
   assert(
-    didThrow(testToken.closeAccount, [testAccount, dest, closeAuthority, []]),
+    await didThrow(testToken, testToken.closeAccount, [
+      testAccount,
+      dest,
+      closeAuthority,
+      [],
+    ]),
   );
 
   const connection = await getConnection();

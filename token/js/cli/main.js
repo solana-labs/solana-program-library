@@ -11,7 +11,6 @@ import {
   transfer,
   transfer2,
   approveRevoke,
-  invalidApprove,
   failOnApproveOverspend,
   setAuthority,
   mintTo,
@@ -41,8 +40,6 @@ async function main() {
   await transfer2();
   console.log('Run test: approveRevoke');
   await approveRevoke();
-  console.log('Run test: invalidApprove');
-  await invalidApprove();
   console.log('Run test: failOnApproveOverspend');
   await failOnApproveOverspend();
   console.log('Run test: setAuthority');
