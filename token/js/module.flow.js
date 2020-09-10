@@ -16,6 +16,7 @@ declare module '@solana/spl-token' {
     | 'FreezeAccount'
     | 'AccountOwner'
     | 'CloseAccount';
+  declare export var NATIVE_MINT: PublicKey;
   declare export type MintInfo = {|
     mintAuthority: null | PublicKey,
     supply: u64,
@@ -68,6 +69,13 @@ declare module '@solana/spl-token' {
     ): Promise<Token>;
     static getAccount(connection: Connection): Promise<Account>;
     createAccount(owner: PublicKey): Promise<PublicKey>;
+    static createWrappedNativeAccount(
+      connection: Connection,
+      programId: PublicKey,
+      owner: PublicKey,
+      payer: Account,
+      amount: number,
+    ): Promise<PublicKey>;
     createMultisig(m: number, signers: Array<PublicKey>): Promise<PublicKey>;
     getMintInfo(): Promise<MintInfo>;
     getAccountInfo(account: PublicKey): Promise<AccountInfo>;
