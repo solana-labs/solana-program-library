@@ -416,16 +416,15 @@ export async function multisig(): Promise<void> {
 
 export async function nativeToken(): Promise<void> {
   const connection = await getConnection();
-
-  const mintPublicKey = NATIVE_MINT;
+  // this user both pays for the creation of the new token account
+  // and provides the lamports to wrap
   const payer = await newAccountWithLamports(
     connection,
     100000000000 /* wag */,
   );
-
   const lamportsToWrap = 50000000000;
 
-  const token = new Token(connection, mintPublicKey, programId, payer);
+  const token = new Token(connection, NATIVE_MINT, programId, payer);
   const owner = new Account();
   const native = await Token.createWrappedNativeAccount(
     connection,
