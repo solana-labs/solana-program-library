@@ -3,7 +3,7 @@
 #![cfg(feature = "program")]
 #![cfg(not(feature = "no-entrypoint"))]
 
-use crate::{error::Error, processor::Processor};
+use crate::{error::SwapError, processor::Processor};
 use solana_sdk::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult,
     program_error::PrintProgramError, pubkey::Pubkey,
@@ -17,7 +17,7 @@ fn process_instruction<'a>(
 ) -> ProgramResult {
     if let Err(error) = Processor::process(program_id, accounts, instruction_data) {
         // catch the error so we can print it
-        error.print::<Error>();
+        error.print::<SwapError>();
         return Err(error);
     }
     Ok(())

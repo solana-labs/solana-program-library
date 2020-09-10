@@ -6,7 +6,7 @@ use thiserror::Error;
 
 /// Errors that may be returned by the TokenSwap program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
-pub enum Error {
+pub enum SwapError {
     /// The account cannot be initialized because it is already being used.
     #[error("AlreadyInUse")]
     AlreadyInUse,
@@ -40,13 +40,16 @@ pub enum Error {
     /// The calculation failed.
     #[error("CalculationFailure")]
     CalculationFailure,
+    /// Invalid instruction number passed in
+    #[error("Invalid instruction")]
+    InvalidInstruction,
 }
-impl From<Error> for ProgramError {
-    fn from(e: Error) -> Self {
+impl From<SwapError> for ProgramError {
+    fn from(e: SwapError) -> Self {
         ProgramError::Custom(e as u32)
     }
 }
-impl<T> DecodeError<T> for Error {
+impl<T> DecodeError<T> for SwapError {
     fn type_of() -> &'static str {
         "Swap Error"
     }

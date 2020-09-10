@@ -3,9 +3,9 @@
 #![cfg(feature = "program")]
 
 use crate::{
-    error::Error,
-    instruction::{Fee, SwapInstruction},
-    state::{Invariant, State, SwapInfo},
+    error::SwapError,
+    instruction::SwapInstruction,
+    state::{Invariant, SwapInfo},
 };
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
@@ -34,19 +34,23 @@ const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
 pub struct Processor {}
 impl Processor {
     /// Deserializes a spl_token `Account`.
-    pub fn token_account_deserialize(data: &[u8]) -> Result<spl_token::state::Account, Error> {
-        spl_token::state::Account::unpack(data).map_err(|_| Error::ExpectedAccount)
+    pub fn token_account_deserialize(data: &[u8]) -> Result<spl_token::state::Account, SwapError> {
+        spl_token::state::Account::unpack(data).map_err(|_| SwapError::ExpectedAccount)
     }
 
     /// Deserializes a spl_token `Mint`.
-    pub fn mint_deserialize(data: &[u8]) -> Result<spl_token::state::Mint, Error> {
-        spl_token::state::Mint::unpack(data).map_err(|_| Error::ExpectedAccount)
+    pub fn mint_deserialize(data: &[u8]) -> Result<spl_token::state::Mint, SwapError> {
+        spl_token::state::Mint::unpack(data).map_err(|_| SwapError::ExpectedAccount)
     }
 
     /// Calculates the authority id by generating a program address.
-    pub fn authority_id(program_id: &Pubkey, my_info: &Pubkey, nonce: u8) -> Result<Pubkey, Error> {
+    pub fn authority_id(
+        program_id: &Pubkey,
+        my_info: &Pubkey,
+        nonce: u8,
+    ) -> Result<Pubkey, SwapError> {
         Pubkey::create_program_address(&[&my_info.to_bytes()[..32], &[nonce]], program_id)
-            .or(Err(Error::InvalidProgramAddress))
+            .or(Err(SwapError::InvalidProgramAddress))
     }
 
     /// Issue a spl_token `Burn` instruction.
@@ -136,7 +140,8 @@ impl Processor {
     pub fn process_initialize(
         program_id: &Pubkey,
         nonce: u8,
-        fee: Fee,
+        fee_numerator: u64,
+        fee_denominator: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -148,36 +153,37 @@ impl Processor {
         let user_destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        if State::Unallocated != State::deserialize(&swap_info.data.borrow())? {
-            return Err(Error::AlreadyInUse.into());
+        let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
+        if token_swap.is_initialized {
+            return Err(SwapError::AlreadyInUse.into());
         }
 
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, nonce)? {
-            return Err(Error::InvalidProgramAddress.into());
+            return Err(SwapError::InvalidProgramAddress.into());
         }
         let token_a = Self::token_account_deserialize(&token_a_info.data.borrow())?;
         let token_b = Self::token_account_deserialize(&token_b_info.data.borrow())?;
         let pool_mint = Self::mint_deserialize(&pool_info.data.borrow())?;
         if *authority_info.key != token_a.owner {
-            return Err(Error::InvalidOwner.into());
+            return Err(SwapError::InvalidOwner.into());
         }
         if *authority_info.key != token_b.owner {
-            return Err(Error::InvalidOwner.into());
+            return Err(SwapError::InvalidOwner.into());
         }
         if spl_token::option::COption::Some(*authority_info.key) != pool_mint.mint_authority {
-            return Err(Error::InvalidOwner.into());
+            return Err(SwapError::InvalidOwner.into());
         }
         if token_b.amount == 0 {
-            return Err(Error::InvalidSupply.into());
+            return Err(SwapError::InvalidSupply.into());
         }
         if token_a.amount == 0 {
-            return Err(Error::InvalidSupply.into());
+            return Err(SwapError::InvalidSupply.into());
         }
         if token_a.delegate.is_some() {
-            return Err(Error::InvalidDelegate.into());
+            return Err(SwapError::InvalidDelegate.into());
         }
         if token_b.delegate.is_some() {
-            return Err(Error::InvalidDelegate.into());
+            return Err(SwapError::InvalidDelegate.into());
         }
 
         // liquidity is measured in terms of token_a's value since both sides of
@@ -193,14 +199,17 @@ impl Processor {
             amount,
         )?;
 
-        let obj = State::Init(SwapInfo {
+        let obj = SwapInfo {
+            is_initialized: true,
             nonce,
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
             pool_mint: *pool_info.key,
-            fee,
-        });
-        obj.serialize(&mut swap_info.data.borrow_mut())
+            fee_numerator,
+            fee_denominator,
+        };
+        obj.pack(&mut swap_info.data.borrow_mut());
+        Ok(())
     }
 
     /// Processes an [Swap](enum.Instruction.html).
@@ -218,23 +227,26 @@ impl Processor {
         let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let token_swap = State::deserialize(&swap_info.data.borrow())?.token_swap()?;
+        let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
+        if !token_swap.is_initialized {
+            return Err(SwapError::AlreadyInUse.into());
+        }
 
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
-            return Err(Error::InvalidProgramAddress.into());
+            return Err(SwapError::InvalidProgramAddress.into());
         }
         if !(*swap_source_info.key == token_swap.token_a
             || *swap_source_info.key == token_swap.token_b)
         {
-            return Err(Error::InvalidInput.into());
+            return Err(SwapError::InvalidInput.into());
         }
         if !(*swap_destination_info.key == token_swap.token_a
             || *swap_destination_info.key == token_swap.token_b)
         {
-            return Err(Error::InvalidOutput.into());
+            return Err(SwapError::InvalidOutput.into());
         }
         if *swap_source_info.key == *swap_destination_info.key {
-            return Err(Error::InvalidInput.into());
+            return Err(SwapError::InvalidInput.into());
         }
         let source_account = Self::token_account_deserialize(&swap_source_info.data.borrow())?;
         let dest_account = Self::token_account_deserialize(&swap_destination_info.data.borrow())?;
@@ -243,20 +255,22 @@ impl Processor {
             let mut invariant = Invariant {
                 token_a: source_account.amount,
                 token_b: dest_account.amount,
-                fee: token_swap.fee,
+                fee_numerator: token_swap.fee_numerator,
+                fee_denominator: token_swap.fee_denominator,
             };
             invariant
                 .swap_a_to_b(amount)
-                .ok_or(Error::CalculationFailure)?
+                .ok_or(SwapError::CalculationFailure)?
         } else {
             let mut invariant = Invariant {
                 token_a: dest_account.amount,
                 token_b: source_account.amount,
-                fee: token_swap.fee,
+                fee_numerator: token_swap.fee_numerator,
+                fee_denominator: token_swap.fee_denominator,
             };
             invariant
                 .swap_b_to_a(amount)
-                .ok_or(Error::CalculationFailure)?
+                .ok_or(SwapError::CalculationFailure)?
         };
         Self::token_transfer(
             swap_info.key,
@@ -296,18 +310,21 @@ impl Processor {
         let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let token_swap = State::deserialize(&swap_info.data.borrow())?.token_swap()?;
+        let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
+        if !token_swap.is_initialized {
+            return Err(SwapError::AlreadyInUse.into());
+        }
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
-            return Err(Error::InvalidProgramAddress.into());
+            return Err(SwapError::InvalidProgramAddress.into());
         }
         if *token_a_info.key != token_swap.token_a {
-            return Err(Error::InvalidInput.into());
+            return Err(SwapError::InvalidInput.into());
         }
         if *token_b_info.key != token_swap.token_b {
-            return Err(Error::InvalidInput.into());
+            return Err(SwapError::InvalidInput.into());
         }
         if *pool_info.key != token_swap.pool_mint {
-            return Err(Error::InvalidInput.into());
+            return Err(SwapError::InvalidInput.into());
         }
         let token_a = Self::token_account_deserialize(&token_a_info.data.borrow())?;
         let token_b = Self::token_account_deserialize(&token_b_info.data.borrow())?;
@@ -315,11 +332,12 @@ impl Processor {
         let invariant = Invariant {
             token_a: token_a.amount,
             token_b: token_b.amount,
-            fee: token_swap.fee,
+            fee_numerator: token_swap.fee_numerator,
+            fee_denominator: token_swap.fee_denominator,
         };
         let b_amount = invariant
             .exchange_rate(a_amount)
-            .ok_or(Error::CalculationFailure)?;
+            .ok_or(SwapError::CalculationFailure)?;
 
         // liquidity is measured in terms of token_a's value
         // since both sides of the pool are equal
@@ -373,15 +391,18 @@ impl Processor {
         let dest_token_b_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let token_swap = State::deserialize(&swap_info.data.borrow())?.token_swap()?;
+        let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
+        if !token_swap.is_initialized {
+            return Err(SwapError::AlreadyInUse.into());
+        }
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
-            return Err(Error::InvalidProgramAddress.into());
+            return Err(SwapError::InvalidProgramAddress.into());
         }
         if *token_a_info.key != token_swap.token_a {
-            return Err(Error::InvalidInput.into());
+            return Err(SwapError::InvalidInput.into());
         }
         if *token_b_info.key != token_swap.token_b {
-            return Err(Error::InvalidInput.into());
+            return Err(SwapError::InvalidInput.into());
         }
 
         let token_a = Self::token_account_deserialize(&token_a_info.data.borrow())?;
@@ -390,13 +411,14 @@ impl Processor {
         let invariant = Invariant {
             token_a: token_a.amount,
             token_b: token_b.amount,
-            fee: token_swap.fee,
+            fee_numerator: token_swap.fee_numerator,
+            fee_denominator: token_swap.fee_denominator,
         };
 
         let a_amount = amount;
         let b_amount = invariant
             .exchange_rate(a_amount)
-            .ok_or(Error::CalculationFailure)?;
+            .ok_or(SwapError::CalculationFailure)?;
 
         Self::token_transfer(
             swap_info.key,
@@ -430,25 +452,31 @@ impl Processor {
 
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
-        let instruction = SwapInstruction::deserialize(input)?;
+        let instruction = SwapInstruction::unpack(input)?;
         match instruction {
-            SwapInstruction::Initialize(init_data) => {
+            SwapInstruction::Initialize {
+                fee_numerator,
+                fee_denominator,
+                nonce,
+            } => {
                 info!("Instruction: Init");
-                let fee = Fee {
-                    numerator: init_data.fee_numerator,
-                    denominator: init_data.fee_denominator,
-                };
-                Self::process_initialize(program_id, init_data.nonce, fee, accounts)
+                Self::process_initialize(
+                    program_id,
+                    nonce,
+                    fee_numerator,
+                    fee_denominator,
+                    accounts,
+                )
             }
-            SwapInstruction::Swap(amount) => {
+            SwapInstruction::Swap { amount } => {
                 info!("Instruction: Swap");
                 Self::process_swap(program_id, amount, accounts)
             }
-            SwapInstruction::Deposit(amount) => {
+            SwapInstruction::Deposit { amount } => {
                 info!("Instruction: Deposit");
                 Self::process_deposit(program_id, amount, accounts)
             }
-            SwapInstruction::Withdraw(amount) => {
+            SwapInstruction::Withdraw { amount } => {
                 info!("Instruction: Withdraw");
                 Self::process_withdraw(program_id, amount, accounts)
             }
@@ -492,23 +520,24 @@ pub fn invoke_signed<'a>(
     )
 }
 
-impl PrintProgramError for Error {
+impl PrintProgramError for SwapError {
     fn print<E>(&self)
     where
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
         match self {
-            Error::AlreadyInUse => info!("Error: AlreadyInUse"),
-            Error::InvalidProgramAddress => info!("Error: InvalidProgramAddress"),
-            Error::InvalidOwner => info!("Error: InvalidOwner"),
-            Error::ExpectedToken => info!("Error: ExpectedToken"),
-            Error::ExpectedAccount => info!("Error: ExpectedAccount"),
-            Error::InvalidSupply => info!("Error: InvalidSupply"),
-            Error::InvalidDelegate => info!("Error: InvalidDelegate"),
-            Error::InvalidState => info!("Error: InvalidState"),
-            Error::InvalidInput => info!("Error: InvalidInput"),
-            Error::InvalidOutput => info!("Error: InvalidOutput"),
-            Error::CalculationFailure => info!("Error: CalculationFailure"),
+            SwapError::AlreadyInUse => info!("Error: AlreadyInUse"),
+            SwapError::InvalidProgramAddress => info!("Error: InvalidProgramAddress"),
+            SwapError::InvalidOwner => info!("Error: InvalidOwner"),
+            SwapError::ExpectedToken => info!("Error: ExpectedToken"),
+            SwapError::ExpectedAccount => info!("Error: ExpectedAccount"),
+            SwapError::InvalidSupply => info!("Error: InvalidSupply"),
+            SwapError::InvalidDelegate => info!("Error: InvalidDelegate"),
+            SwapError::InvalidState => info!("Error: InvalidState"),
+            SwapError::InvalidInput => info!("Error: InvalidInput"),
+            SwapError::InvalidOutput => info!("Error: InvalidOutput"),
+            SwapError::CalculationFailure => info!("Error: CalculationFailure"),
+            SwapError::InvalidInstruction => info!("Error: InvalidInstruction"),
         }
     }
 }
@@ -683,13 +712,13 @@ mod tests {
     }
 
     fn initialize_swap<'a>(
-        numerator: u64,
-        denominator: u64,
+        fee_numerator: u64,
+        fee_denominator: u64,
         token_a_amount: u64,
         token_b_amount: u64,
     ) -> SwapAccountInfo {
         let swap_key = pubkey_rand();
-        let mut swap_account = Account::new(0, size_of::<State>(), &SWAP_PROGRAM_ID);
+        let mut swap_account = Account::new(0, size_of::<SwapInfo>(), &SWAP_PROGRAM_ID);
         let (authority_key, nonce) =
             Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
@@ -732,10 +761,8 @@ mod tests {
                 &pool_mint_key,
                 &pool_token_key,
                 nonce,
-                Fee {
-                    denominator,
-                    numerator,
-                },
+                fee_numerator,
+                fee_denominator,
             )
             .unwrap(),
             vec![
@@ -770,25 +797,24 @@ mod tests {
 
     #[test]
     fn test_initialize() {
-        let numerator = 1;
-        let denominator = 2;
+        let fee_numerator = 1;
+        let fee_denominator = 2;
         let token_a_amount = 1000;
         let token_b_amount = 2000;
-        let swap_accounts = initialize_swap(numerator, denominator, token_a_amount, token_b_amount);
-        let state = State::deserialize(&swap_accounts.swap_account.data).unwrap();
-        match state {
-            State::Init(swap_info) => {
-                assert_eq!(swap_info.nonce, swap_accounts.nonce);
-                assert_eq!(swap_info.token_a, swap_accounts.token_a_key);
-                assert_eq!(swap_info.token_b, swap_accounts.token_b_key);
-                assert_eq!(swap_info.pool_mint, swap_accounts.pool_mint_key);
-                assert_eq!(swap_info.fee.denominator, denominator);
-                assert_eq!(swap_info.fee.numerator, numerator);
-            }
-            _ => {
-                panic!("Incorrect state");
-            }
-        }
+        let swap_accounts = initialize_swap(
+            fee_numerator,
+            fee_denominator,
+            token_a_amount,
+            token_b_amount,
+        );
+        let swap_info = SwapInfo::unpack(&swap_accounts.swap_account.data).unwrap();
+        assert_eq!(swap_info.is_initialized, true);
+        assert_eq!(swap_info.nonce, swap_accounts.nonce);
+        assert_eq!(swap_info.token_a, swap_accounts.token_a_key);
+        assert_eq!(swap_info.token_b, swap_accounts.token_b_key);
+        assert_eq!(swap_info.pool_mint, swap_accounts.pool_mint_key);
+        assert_eq!(swap_info.fee_denominator, fee_denominator);
+        assert_eq!(swap_info.fee_numerator, fee_numerator);
         let token_a =
             Processor::token_account_deserialize(&swap_accounts.token_a_account.data).unwrap();
         assert_eq!(token_a.amount, token_a_amount);
@@ -803,11 +829,16 @@ mod tests {
 
     #[test]
     fn test_deposit() {
-        let numerator = 1;
-        let denominator = 2;
+        let fee_numerator = 1;
+        let fee_denominator = 2;
         let token_a_amount = 1000;
         let token_b_amount = 8000;
-        let mut accounts = initialize_swap(numerator, denominator, token_a_amount, token_b_amount);
+        let mut accounts = initialize_swap(
+            fee_numerator,
+            fee_denominator,
+            token_a_amount,
+            token_b_amount,
+        );
         let seeds = [&accounts.swap_key.to_bytes()[..32], &[accounts.nonce]];
         let authority_key = Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
         let deposit_a = token_a_amount / 10;
@@ -886,11 +917,16 @@ mod tests {
 
     #[test]
     fn test_withdraw() {
-        let numerator = 1;
-        let denominator = 2;
+        let fee_numerator = 1;
+        let fee_denominator = 2;
         let token_a_amount = 1000;
         let token_b_amount = 2000;
-        let mut accounts = initialize_swap(numerator, denominator, token_a_amount, token_b_amount);
+        let mut accounts = initialize_swap(
+            fee_numerator,
+            fee_denominator,
+            token_a_amount,
+            token_b_amount,
+        );
         let seeds = [&accounts.swap_key.to_bytes()[..32], &[accounts.nonce]];
         let authority_key = Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
         let initial_a = token_a_amount / 10;
@@ -958,11 +994,16 @@ mod tests {
 
     #[test]
     fn test_swap() {
-        let numerator = 1;
-        let denominator = 10;
+        let fee_numerator = 1;
+        let fee_denominator = 10;
         let token_a_amount = 1000;
         let token_b_amount = 5000;
-        let mut accounts = initialize_swap(numerator, denominator, token_a_amount, token_b_amount);
+        let mut accounts = initialize_swap(
+            fee_numerator,
+            fee_denominator,
+            token_a_amount,
+            token_b_amount,
+        );
         let seeds = [&accounts.swap_key.to_bytes()[..32], &[accounts.nonce]];
         let authority_key = Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
 
@@ -1013,10 +1054,8 @@ mod tests {
             a_to_b_amount,
             token_a_amount,
             token_b_amount,
-            &Fee {
-                numerator,
-                denominator,
-            },
+            fee_numerator,
+            fee_denominator,
         )
         .unwrap();
 
@@ -1068,10 +1107,8 @@ mod tests {
             b_to_a_amount,
             token_b_amount,
             token_a_amount,
-            &Fee {
-                numerator,
-                denominator,
-            },
+            fee_numerator,
+            fee_denominator,
         )
         .unwrap();
 
