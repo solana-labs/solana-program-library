@@ -765,7 +765,7 @@ fn main() {
             verbose,
             owner,
             fee_payer,
-            commitment_config: CommitmentConfig::single(),
+            commitment_config: CommitmentConfig::single_gossip(),
         }
     };
 
@@ -856,9 +856,6 @@ fn main() {
     }
     .and_then(|transaction| {
         if let Some(transaction) = transaction {
-            // TODO: Upgrade to solana-client 1.3 and
-            // `send_and_confirm_transaction_with_spinner_and_commitment()` with single
-            // confirmation by default for better UX
             let signature = config
                 .rpc_client
                 .send_and_confirm_transaction_with_spinner_and_commitment(
