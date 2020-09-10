@@ -2291,6 +2291,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-v3"
+version = "3.0.0"
+dependencies = [
+ "arrayref",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "rand",
+ "remove_dir_all",
+ "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
 name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2392,6 +2406,7 @@ dependencies = [
  "spl-memo 1.0.7",
  "spl-token 2.0.4",
  "spl-token-swap",
+ "spl-token-v3",
 ]
 
 [[package]]
