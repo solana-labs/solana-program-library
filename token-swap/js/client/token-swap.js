@@ -196,13 +196,14 @@ export class TokenSwap {
     const balanceNeeded = await TokenSwap.getMinBalanceRentForExemptTokenSwap(
       connection,
     );
-    transaction = SystemProgram.createAccount({
+    transaction = new Transaction();
+    transaction.add(SystemProgram.createAccount({
       fromPubkey: payer.publicKey,
       newAccountPubkey: tokenSwapAccount.publicKey,
       lamports: balanceNeeded,
       space: TokenSwapLayout.span,
       programId,
-    });
+    }));
     await sendAndConfirmTransaction(
       'createAccount',
       connection,
