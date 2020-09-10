@@ -326,7 +326,7 @@ export class Token {
   }
 
   /**
-   * Creates and initializes a token.
+   * Create and initialize a token.
    *
    * @param connection The connection to use
    * @param payer Fee payer for transaction
@@ -358,13 +358,15 @@ export class Token {
     );
 
     const transaction = new Transaction();
-    transaction.add(SystemProgram.createAccount({
-      fromPubkey: payer.publicKey,
-      newAccountPubkey: mintAccount.publicKey,
-      lamports: balanceNeeded,
-      space: MintLayout.span,
-      programId,
-    }));
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: payer.publicKey,
+        newAccountPubkey: mintAccount.publicKey,
+        lamports: balanceNeeded,
+        space: MintLayout.span,
+        programId,
+      }),
+    );
 
     transaction.add(
       Token.createInitMintInstruction(
@@ -404,13 +406,15 @@ export class Token {
 
     const newAccount = new Account();
     const transaction = new Transaction();
-    transaction.add(SystemProgram.createAccount({
-      fromPubkey: this.payer.publicKey,
-      newAccountPubkey: newAccount.publicKey,
-      lamports: balanceNeeded,
-      space: AccountLayout.span,
-      programId: this.programId,
-    }));
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: this.payer.publicKey,
+        newAccountPubkey: newAccount.publicKey,
+        lamports: balanceNeeded,
+        space: AccountLayout.span,
+        programId: this.programId,
+      }),
+    );
 
     const mintPublicKey = this.publicKey;
     transaction.add(
@@ -435,9 +439,9 @@ export class Token {
   }
 
   /**
-   * Create an initialize a new account on the special native token mint.
+   * Create and initialize a new account on the special native token mint.
    *
-   * In order to wrap native tokens, the account must have a balance of native tokens
+   * In order to be wrapped, the account must have a balance of native tokens
    * when it is initialized with the token program.
    *
    * This function sends lamports to the new account before initializing it.
@@ -463,13 +467,16 @@ export class Token {
 
     // Create a new account
     const newAccount = new Account();
-    const transaction = SystemProgram.createAccount({
-      fromPubkey: payer.publicKey,
-      newAccountPubkey: newAccount.publicKey,
-      lamports: balanceNeeded,
-      space: AccountLayout.span,
-      programId,
-    });
+    const transaction = new Transaction();
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: payer.publicKey,
+        newAccountPubkey: newAccount.publicKey,
+        lamports: balanceNeeded,
+        space: AccountLayout.span,
+        programId,
+      }),
+    );
 
     // Send lamports to it (these will be wrapped into native tokens by the token program)
     transaction.add(
@@ -480,7 +487,7 @@ export class Token {
       }),
     );
 
-    // assign the new account to the native token mint.
+    // Assign the new account to the native token mint.
     // the account will be initialized with a balance equal to the native token balance.
     // (i.e. amount)
     transaction.add(
@@ -492,7 +499,7 @@ export class Token {
       ),
     );
 
-    // Send the two instructions
+    // Send the three instructions
     await sendAndConfirmTransaction(
       'createAccount, transfer, and initializeAccount',
       connection,
@@ -505,7 +512,7 @@ export class Token {
   }
 
   /**
-   * Create and initializes a new multisig.
+   * Create and initialize a new multisig.
    *
    * This account may then be used for multisignature verification
    *
@@ -524,13 +531,15 @@ export class Token {
       this.connection,
     );
     const transaction = new Transaction();
-    transaction.add(SystemProgram.createAccount({
-      fromPubkey: this.payer.publicKey,
-      newAccountPubkey: multisigAccount.publicKey,
-      lamports: balanceNeeded,
-      space: MultisigLayout.span,
-      programId: this.programId,
-    }));
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: this.payer.publicKey,
+        newAccountPubkey: multisigAccount.publicKey,
+        lamports: balanceNeeded,
+        space: MultisigLayout.span,
+        programId: this.programId,
+      }),
+    );
 
     // create the new account
     let keys = [
@@ -1245,7 +1254,7 @@ export class Token {
   }
 
   /**
-   * Construct an init mint instruction
+   * Construct an InitializeMint instruction
    *
    * @param programId SPL Token program account
    * @param mint Token mint account
@@ -1294,7 +1303,7 @@ export class Token {
   }
 
   /**
-   * Construct an init account instruction
+   * Construct an InitializeAccount instruction
    *
    * @param programId SPL Token program account
    * @param mint Token mint account
