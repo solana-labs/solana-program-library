@@ -2291,8 +2291,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-token2"
-version = "1.0.0"
+name = "spl-token-v3"
+version = "3.0.0"
 dependencies = [
  "arrayref",
  "num-derive",
@@ -2406,7 +2406,7 @@ dependencies = [
  "spl-memo 1.0.7",
  "spl-token 2.0.4",
  "spl-token-swap",
- "spl-token2",
+ "spl-token-v3",
 ]
 
 [[package]]
