@@ -145,7 +145,7 @@ impl Processor {
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
         let pool_info = next_account_info(account_info_iter)?;
-        let user_output_info = next_account_info(account_info_iter)?;
+        let user_destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         if State::Unallocated != State::deserialize(&swap_info.data.borrow())? {
@@ -187,7 +187,7 @@ impl Processor {
             swap_info.key,
             token_program_info.clone(),
             pool_info.clone(),
-            user_output_info.clone(),
+            user_destination_info.clone(),
             authority_info.clone(),
             nonce,
             amount,
@@ -214,8 +214,8 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let swap_source_info = next_account_info(account_info_iter)?;
-        let swap_output_info = next_account_info(account_info_iter)?;
-        let output_info = next_account_info(account_info_iter)?;
+        let swap_destination_info = next_account_info(account_info_iter)?;
+        let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = State::deserialize(&swap_info.data.borrow())?.token_swap()?;
@@ -228,16 +228,16 @@ impl Processor {
         {
             return Err(Error::InvalidInput.into());
         }
-        if !(*swap_output_info.key == token_swap.token_a
-            || *swap_output_info.key == token_swap.token_b)
+        if !(*swap_destination_info.key == token_swap.token_a
+            || *swap_destination_info.key == token_swap.token_b)
         {
             return Err(Error::InvalidOutput.into());
         }
-        if *swap_source_info.key == *swap_output_info.key {
+        if *swap_source_info.key == *swap_destination_info.key {
             return Err(Error::InvalidInput.into());
         }
         let source_account = Self::token_account_deserialize(&swap_source_info.data.borrow())?;
-        let dest_account = Self::token_account_deserialize(&swap_output_info.data.borrow())?;
+        let dest_account = Self::token_account_deserialize(&swap_destination_info.data.borrow())?;
 
         let output = if *swap_source_info.key == token_swap.token_a {
             let mut invariant = Invariant {
@@ -270,8 +270,8 @@ impl Processor {
         Self::token_transfer(
             swap_info.key,
             token_program_info.clone(),
-            swap_output_info.clone(),
-            output_info.clone(),
+            swap_destination_info.clone(),
+            destination_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
             output,
@@ -1031,7 +1031,7 @@ mod tests {
         let swap_token_b =
             Processor::token_account_deserialize(&accounts.token_b_account.data).unwrap();
         let token_b_amount = swap_token_b.amount;
-        assert_eq!(token_b_amount, results.new_dest);
+        assert_eq!(token_b_amount, results.new_destination);
         let user_token_b =
             Processor::token_account_deserialize(&user_token_b_account.data).unwrap();
         assert_eq!(user_token_b.amount, initial_b + results.amount_swapped);
@@ -1077,7 +1077,7 @@ mod tests {
 
         let swap_token_a =
             Processor::token_account_deserialize(&accounts.token_a_account.data).unwrap();
-        assert_eq!(swap_token_a.amount, results.new_dest);
+        assert_eq!(swap_token_a.amount, results.new_destination);
         let user_token_a =
             Processor::token_account_deserialize(&user_token_a_account.data).unwrap();
         assert_eq!(

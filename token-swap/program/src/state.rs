@@ -85,13 +85,13 @@ impl State {
     }
 }
 
-/// Encodes all results of swapping from a source token to a dest token
+/// Encodes all results of swapping from a source token to a destination token
 pub struct SwapResult {
     /// New amount of source token
     pub new_source: u64,
-    /// New amount of dest token
-    pub new_dest: u64,
-    /// Amount of dest token swapped
+    /// New amount of destination token
+    pub new_destination: u64,
+    /// Amount of destination token swapped
     pub amount_swapped: u64,
 }
 
@@ -106,16 +106,16 @@ impl SwapResult {
     ) -> Option<SwapResult> {
         let invariant = source_amount.checked_mul(dest_amount)?;
         let new_source = source_amount.checked_add(source)?;
-        let new_dest = invariant.checked_div(new_source)?;
-        let remove = dest_amount.checked_sub(new_dest)?;
+        let new_destination = invariant.checked_div(new_source)?;
+        let remove = dest_amount.checked_sub(new_destination)?;
         let fee = remove
             .checked_mul(fee.numerator)?
             .checked_div(fee.denominator)?;
-        let new_dest = new_dest.checked_add(fee)?;
+        let new_destination = new_destination.checked_add(fee)?;
         let amount_swapped = remove.checked_sub(fee)?;
         Some(SwapResult {
             new_source,
-            new_dest,
+            new_destination,
             amount_swapped,
         })
     }
@@ -136,7 +136,7 @@ impl Invariant {
     pub fn swap_a_to_b(&mut self, token_a: u64) -> Option<u64> {
         let result = SwapResult::swap_to(token_a, self.token_a, self.token_b, &self.fee)?;
         self.token_a = result.new_source;
-        self.token_b = result.new_dest;
+        self.token_b = result.new_destination;
         Some(result.amount_swapped)
     }
 
@@ -144,7 +144,7 @@ impl Invariant {
     pub fn swap_b_to_a(&mut self, token_b: u64) -> Option<u64> {
         let result = SwapResult::swap_to(token_b, self.token_b, self.token_a, &self.fee)?;
         self.token_b = result.new_source;
-        self.token_a = result.new_dest;
+        self.token_a = result.new_destination;
         Some(result.amount_swapped)
     }
 
