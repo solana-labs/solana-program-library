@@ -84,7 +84,7 @@ pub enum SwapInstruction {
 }
 
 impl SwapInstruction {
-    /// Unpacks a byte buffer into an [SwapInstruction](enum.SwapInstruction.html).
+    /// Unpacks a byte buffer into a [SwapInstruction](enum.SwapInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (&tag, rest) = input.split_first().ok_or(SwapError::InvalidInstruction)?;
         Ok(match tag {
@@ -125,7 +125,7 @@ impl SwapInstruction {
         }
     }
 
-    /// Serializes an [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
+    /// Packs a [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match *self {
@@ -321,17 +321,14 @@ mod tests {
             nonce,
         };
         let packed = check.pack();
-        println!("{:?}", packed);
-        let unpacked = SwapInstruction::unpack(&packed).unwrap();
-        assert_eq!(check, unpacked);
-
-        let mut data = vec![];
-        data.push(0 as u8);
-        data.extend_from_slice(&fee_numerator.to_le_bytes());
-        data.extend_from_slice(&fee_denominator.to_le_bytes());
-        data.push(nonce);
-        let unpacked = SwapInstruction::unpack(&data).unwrap();
-        assert_eq!(check, unpacked);
+        let mut expect = vec![];
+        expect.push(0 as u8);
+        expect.extend_from_slice(&fee_numerator.to_le_bytes());
+        expect.extend_from_slice(&fee_denominator.to_le_bytes());
+        expect.push(nonce);
+        assert_eq!(packed, expect);
+        let unpacked = SwapInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
 
         let amount = 2;
         let check = SwapInstruction::Swap { amount };

@@ -1,5 +1,6 @@
 //! State transition types
 
+use crate::error::SwapError;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_sdk::{program_error::ProgramError, pubkey::Pubkey};
 
@@ -35,8 +36,19 @@ impl SwapInfo {
         114
     }
 
-    /// Deserializes a byte buffer into a [SwapInfo](struct.SwapInfo.html).
+    /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html) and checks
+    /// that it is initialized.
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+        let value = Self::unpack_unchecked(input)?;
+        if value.is_initialized {
+            Ok(value)
+        } else {
+            Err(SwapError::InvalidState.into())
+        }
+    }
+
+    /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html).
+    pub fn unpack_unchecked(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, SwapInfo::get_packed_len()];
         #[allow(clippy::ptr_offset_with_cast)]
         let (is_initialized, nonce, token_a, token_b, pool_mint, fee_numerator, fee_denominator) =
@@ -56,7 +68,7 @@ impl SwapInfo {
         })
     }
 
-    /// Serializes [SwapInfo](struct.SwapInfo.html) into a byte buffer.
+    /// Packs [SwapInfo](struct.SwapInfo.html) into a byte buffer.
     pub fn pack(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, SwapInfo::get_packed_len()];
         let (is_initialized, nonce, token_a, token_b, pool_mint, fee_numerator, fee_denominator) =
@@ -198,5 +210,12 @@ mod tests {
         packed.extend_from_slice(&[0u8; 7]); // padding
         let unpacked = SwapInfo::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
+
+        let packed = [0u8; SwapInfo::get_packed_len()];
+        let swap_info: SwapInfo = Default::default();
+        let unpack_unchecked = SwapInfo::unpack_unchecked(&packed).unwrap();
+        assert_eq!(unpack_unchecked, swap_info);
+        let err = SwapInfo::unpack(&packed).unwrap_err();
+        assert_eq!(err, SwapError::InvalidState.into());
     }
 }

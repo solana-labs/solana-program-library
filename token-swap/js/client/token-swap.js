@@ -97,7 +97,7 @@ type TokenSwapInfo = {|
  * @private
  */
 const TokenSwapLayout = BufferLayout.struct([
-  BufferLayout.u8('is_initialized'),
+  BufferLayout.u8('isInitialized'),
   BufferLayout.u8('nonce'),
   Layout.publicKey('tokenAccountA'),
   Layout.publicKey('tokenAccountB'),
@@ -270,7 +270,7 @@ export class TokenSwap {
 
     const data = Buffer.from(accountInfo.data);
     const tokenSwapInfo = TokenSwapLayout.decode(data);
-    if (!tokenSwapInfo.is_initialized) {
+    if (!tokenSwapInfo.isInitialized) {
       throw new Error(`Invalid token swap state`);
     }
     // already properly filled in

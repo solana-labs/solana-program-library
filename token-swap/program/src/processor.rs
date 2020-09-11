@@ -33,13 +33,13 @@ const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
-    /// Deserializes a spl_token `Account`.
-    pub fn token_account_deserialize(data: &[u8]) -> Result<spl_token::state::Account, SwapError> {
+    /// Unpacks a spl_token `Account`.
+    pub fn unpack_token_account(data: &[u8]) -> Result<spl_token::state::Account, SwapError> {
         spl_token::state::Account::unpack(data).map_err(|_| SwapError::ExpectedAccount)
     }
 
-    /// Deserializes a spl_token `Mint`.
-    pub fn mint_deserialize(data: &[u8]) -> Result<spl_token::state::Mint, SwapError> {
+    /// Unpacks a spl_token `Mint`.
+    pub fn unpack_mint(data: &[u8]) -> Result<spl_token::state::Mint, SwapError> {
         spl_token::state::Mint::unpack(data).map_err(|_| SwapError::ExpectedAccount)
     }
 
@@ -153,7 +153,7 @@ impl Processor {
         let user_destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
+        let token_swap = SwapInfo::unpack_unchecked(&swap_info.data.borrow())?;
         if token_swap.is_initialized {
             return Err(SwapError::AlreadyInUse.into());
         }
@@ -161,9 +161,9 @@ impl Processor {
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
         }
-        let token_a = Self::token_account_deserialize(&token_a_info.data.borrow())?;
-        let token_b = Self::token_account_deserialize(&token_b_info.data.borrow())?;
-        let pool_mint = Self::mint_deserialize(&pool_info.data.borrow())?;
+        let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
+        let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
+        let pool_mint = Self::unpack_mint(&pool_info.data.borrow())?;
         if *authority_info.key != token_a.owner {
             return Err(SwapError::InvalidOwner.into());
         }
@@ -228,9 +228,6 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
-        if !token_swap.is_initialized {
-            return Err(SwapError::AlreadyInUse.into());
-        }
 
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
@@ -248,8 +245,8 @@ impl Processor {
         if *swap_source_info.key == *swap_destination_info.key {
             return Err(SwapError::InvalidInput.into());
         }
-        let source_account = Self::token_account_deserialize(&swap_source_info.data.borrow())?;
-        let dest_account = Self::token_account_deserialize(&swap_destination_info.data.borrow())?;
+        let source_account = Self::unpack_token_account(&swap_source_info.data.borrow())?;
+        let dest_account = Self::unpack_token_account(&swap_destination_info.data.borrow())?;
 
         let output = if *swap_source_info.key == token_swap.token_a {
             let mut invariant = Invariant {
@@ -311,9 +308,6 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
-        if !token_swap.is_initialized {
-            return Err(SwapError::AlreadyInUse.into());
-        }
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -326,8 +320,8 @@ impl Processor {
         if *pool_info.key != token_swap.pool_mint {
             return Err(SwapError::InvalidInput.into());
         }
-        let token_a = Self::token_account_deserialize(&token_a_info.data.borrow())?;
-        let token_b = Self::token_account_deserialize(&token_b_info.data.borrow())?;
+        let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
+        let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
 
         let invariant = Invariant {
             token_a: token_a.amount,
@@ -392,9 +386,6 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
-        if !token_swap.is_initialized {
-            return Err(SwapError::AlreadyInUse.into());
-        }
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -405,8 +396,8 @@ impl Processor {
             return Err(SwapError::InvalidInput.into());
         }
 
-        let token_a = Self::token_account_deserialize(&token_a_info.data.borrow())?;
-        let token_b = Self::token_account_deserialize(&token_b_info.data.borrow())?;
+        let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
+        let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
 
         let invariant = Invariant {
             token_a: token_a.amount,
@@ -815,15 +806,13 @@ mod tests {
         assert_eq!(swap_info.pool_mint, swap_accounts.pool_mint_key);
         assert_eq!(swap_info.fee_denominator, fee_denominator);
         assert_eq!(swap_info.fee_numerator, fee_numerator);
-        let token_a =
-            Processor::token_account_deserialize(&swap_accounts.token_a_account.data).unwrap();
+        let token_a = Processor::unpack_token_account(&swap_accounts.token_a_account.data).unwrap();
         assert_eq!(token_a.amount, token_a_amount);
-        let token_b =
-            Processor::token_account_deserialize(&swap_accounts.token_b_account.data).unwrap();
+        let token_b = Processor::unpack_token_account(&swap_accounts.token_b_account.data).unwrap();
         assert_eq!(token_b.amount, token_b_amount);
         let pool_account =
-            Processor::token_account_deserialize(&swap_accounts.pool_token_account.data).unwrap();
-        let pool_mint = Processor::mint_deserialize(&swap_accounts.pool_mint_account.data).unwrap();
+            Processor::unpack_token_account(&swap_accounts.pool_token_account.data).unwrap();
+        let pool_mint = Processor::unpack_mint(&swap_accounts.pool_mint_account.data).unwrap();
         assert_eq!(pool_mint.supply, pool_account.amount);
     }
 
@@ -894,21 +883,21 @@ mod tests {
             ],
         )
         .unwrap();
-        let token_a = Processor::token_account_deserialize(&accounts.token_a_account.data).unwrap();
+        let token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
         assert_eq!(token_a.amount, deposit_a + token_a_amount);
-        let token_b = Processor::token_account_deserialize(&accounts.token_b_account.data).unwrap();
+        let token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
         assert_eq!(token_b.amount, deposit_b + token_b_amount);
         let depositor_token_a =
-            Processor::token_account_deserialize(&depositor_token_a_account.data).unwrap();
+            Processor::unpack_token_account(&depositor_token_a_account.data).unwrap();
         assert_eq!(depositor_token_a.amount, 0);
         let depositor_token_b =
-            Processor::token_account_deserialize(&depositor_token_b_account.data).unwrap();
+            Processor::unpack_token_account(&depositor_token_b_account.data).unwrap();
         assert_eq!(depositor_token_b.amount, 0);
         let depositor_pool_account =
-            Processor::token_account_deserialize(&depositor_pool_account.data).unwrap();
+            Processor::unpack_token_account(&depositor_pool_account.data).unwrap();
         let pool_account =
-            Processor::token_account_deserialize(&accounts.pool_token_account.data).unwrap();
-        let pool_mint = Processor::mint_deserialize(&accounts.pool_mint_account.data).unwrap();
+            Processor::unpack_token_account(&accounts.pool_token_account.data).unwrap();
+        let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
         assert_eq!(
             pool_mint.supply,
             pool_account.amount + depositor_pool_account.amount
@@ -976,19 +965,19 @@ mod tests {
         )
         .unwrap();
 
-        let token_a = Processor::token_account_deserialize(&accounts.token_a_account.data).unwrap();
+        let token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
         assert_eq!(token_a.amount, token_a_amount - withdraw_amount);
-        let token_b = Processor::token_account_deserialize(&accounts.token_b_account.data).unwrap();
+        let token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
         assert_eq!(token_b.amount, token_b_amount - (withdraw_amount * 2));
         let withdraw_token_a =
-            Processor::token_account_deserialize(&withdraw_token_a_account.data).unwrap();
+            Processor::unpack_token_account(&withdraw_token_a_account.data).unwrap();
         assert_eq!(withdraw_token_a.amount, initial_a + withdraw_amount);
         let withdraw_token_b =
-            Processor::token_account_deserialize(&withdraw_token_b_account.data).unwrap();
+            Processor::unpack_token_account(&withdraw_token_b_account.data).unwrap();
         assert_eq!(withdraw_token_b.amount, initial_b + (withdraw_amount * 2));
         let pool_account =
-            Processor::token_account_deserialize(&accounts.pool_token_account.data).unwrap();
-        let pool_mint = Processor::mint_deserialize(&accounts.pool_mint_account.data).unwrap();
+            Processor::unpack_token_account(&accounts.pool_token_account.data).unwrap();
+        let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
         assert_eq!(pool_mint.supply, pool_account.amount);
     }
 
@@ -1059,20 +1048,16 @@ mod tests {
         )
         .unwrap();
 
-        let swap_token_a =
-            Processor::token_account_deserialize(&accounts.token_a_account.data).unwrap();
+        let swap_token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
         let token_a_amount = swap_token_a.amount;
         assert_eq!(token_a_amount, results.new_source);
-        let user_token_a =
-            Processor::token_account_deserialize(&user_token_a_account.data).unwrap();
+        let user_token_a = Processor::unpack_token_account(&user_token_a_account.data).unwrap();
         assert_eq!(user_token_a.amount, initial_a - a_to_b_amount);
 
-        let swap_token_b =
-            Processor::token_account_deserialize(&accounts.token_b_account.data).unwrap();
+        let swap_token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
         let token_b_amount = swap_token_b.amount;
         assert_eq!(token_b_amount, results.new_destination);
-        let user_token_b =
-            Processor::token_account_deserialize(&user_token_b_account.data).unwrap();
+        let user_token_b = Processor::unpack_token_account(&user_token_b_account.data).unwrap();
         assert_eq!(user_token_b.amount, initial_b + results.amount_swapped);
 
         let first_swap_amount = results.amount_swapped;
@@ -1112,21 +1097,17 @@ mod tests {
         )
         .unwrap();
 
-        let swap_token_a =
-            Processor::token_account_deserialize(&accounts.token_a_account.data).unwrap();
+        let swap_token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
         assert_eq!(swap_token_a.amount, results.new_destination);
-        let user_token_a =
-            Processor::token_account_deserialize(&user_token_a_account.data).unwrap();
+        let user_token_a = Processor::unpack_token_account(&user_token_a_account.data).unwrap();
         assert_eq!(
             user_token_a.amount,
             initial_a - a_to_b_amount + results.amount_swapped
         );
 
-        let swap_token_b =
-            Processor::token_account_deserialize(&accounts.token_b_account.data).unwrap();
+        let swap_token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
         assert_eq!(swap_token_b.amount, results.new_source);
-        let user_token_b =
-            Processor::token_account_deserialize(&user_token_b_account.data).unwrap();
+        let user_token_b = Processor::unpack_token_account(&user_token_b_account.data).unwrap();
         assert_eq!(
             user_token_b.amount,
             initial_b + first_swap_amount - b_to_a_amount
