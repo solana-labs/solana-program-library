@@ -257,35 +257,36 @@ impl Processor {
         let delegate_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
-            if source_account.is_frozen() {
-                return Err(TokenError::AccountFrozen.into());
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+
+        if source_account.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
+
+        if let Some((mint_info, expected_decimals)) = expected_mint_info {
+            if source_account.mint != *mint_info.key {
+                return Err(TokenError::MintMismatch.into());
             }
 
-            if let Some((mint_info, expected_decimals)) = expected_mint_info {
-                if source_account.mint != *mint_info.key {
-                    return Err(TokenError::MintMismatch.into());
-                }
-
-                let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
-                if expected_decimals != mint.decimals {
-                    return Err(TokenError::MintDecimalsMismatch.into());
-                }
+            let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
+            if expected_decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
             }
+        }
 
-            Self::validate_owner(
-                program_id,
-                &source_account.owner,
-                owner_info,
-                account_info_iter.as_slice(),
-            )?;
+        Self::validate_owner(
+            program_id,
+            &source_account.owner,
+            owner_info,
+            account_info_iter.as_slice(),
+        )?;
 
-            source_account.delegate = COption::Some(*delegate_info.key);
-            source_account.delegated_amount = amount;
+        source_account.delegate = COption::Some(*delegate_info.key);
+        source_account.delegated_amount = amount;
 
-            Ok(())
-        })
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+
+        Ok(())
     }
 
     /// Processes an [Revoke](enum.TokenInstruction.html) instruction.
