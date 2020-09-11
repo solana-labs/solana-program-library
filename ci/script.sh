@@ -37,13 +37,13 @@ js_token() {
   docker ps
   docker ps -q
   docker ps --filter "name=^solana-localnet$"
-  docker ps --filter "name=^solana-localnet$" -q
+  docker ps --filter "name=^/solana-localnet$" -q
   docker_id="$(docker ps --filter "name=^solana-localnet$" -q)"
   echo $docker_id
-  if [[ $(docker ps --filter "name=^solana-localnet$" -q) ]]; then
+  if [[ $(docker ps --filter "name=^/solana-localnet$" -q) ]]; then
     echo 'found container no -n'
   fi
-  if [[ -n "$(docker ps --filter "name=^solana-localnet$" -q)" ]]; then
+  if [[ -n "$(docker ps --filter "name=^/solana-localnet$" -q)" ]]; then
     echo 'found container with -n'
   fi
 
