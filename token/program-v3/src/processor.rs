@@ -2186,6 +2186,114 @@ mod tests {
     }
 
     #[test]
+    fn test_set_authority_dups() {
+        let program_id = pubkey_rand();
+        let account1_key = pubkey_rand();
+        let mut account1_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let mut account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
+        let owner_key = pubkey_rand();
+        let mint_key = pubkey_rand();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mint_info: AccountInfo = (&mint_key, false, &mut mint_account).into();
+        let rent_key = rent::id();
+        let mut rent_sysvar = rent_sysvar();
+        let rent_info: AccountInfo = (&rent_key, false, &mut rent_sysvar).into();
+
+        // create mint
+        do_process_instruction_dups(
+            initialize_mint(&program_id, &mint_key, &mint_key, Some(&mint_key), 2).unwrap(),
+            vec![mint_info.clone(), rent_info.clone()],
+        )
+        .unwrap();
+
+        // create account
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account1_key, &mint_key, &account1_key).unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // set mint_authority when currently self
+        do_process_instruction_dups(
+            set_authority(
+                &program_id,
+                &mint_key,
+                Some(&owner_key),
+                AuthorityType::MintTokens,
+                &mint_key,
+                &[],
+            )
+            .unwrap(),
+            vec![mint_info.clone(), mint_info.clone()],
+        )
+        .unwrap();
+
+        // set freeze_authority when currently self
+        do_process_instruction_dups(
+            set_authority(
+                &program_id,
+                &mint_key,
+                Some(&owner_key),
+                AuthorityType::FreezeAccount,
+                &mint_key,
+                &[],
+            )
+            .unwrap(),
+            vec![mint_info.clone(), mint_info.clone()],
+        )
+        .unwrap();
+
+        // set account owner when currently self
+        do_process_instruction_dups(
+            set_authority(
+                &program_id,
+                &account1_key,
+                Some(&owner_key),
+                AuthorityType::AccountOwner,
+                &account1_key,
+                &[],
+            )
+            .unwrap(),
+            vec![account1_info.clone(), account1_info.clone()],
+        )
+        .unwrap();
+
+        // set close_authority when currently self
+        Account::unpack_unchecked_mut(
+            &mut account1_info.data.borrow_mut(),
+            &mut |account: &mut Account| {
+                account.close_authority = COption::Some(account1_key);
+                Ok(())
+            },
+        )
+        .unwrap();
+
+        do_process_instruction_dups(
+            set_authority(
+                &program_id,
+                &account1_key,
+                Some(&owner_key),
+                AuthorityType::CloseAccount,
+                &account1_key,
+                &[],
+            )
+            .unwrap(),
+            vec![account1_info.clone(), account1_info.clone()],
+        )
+        .unwrap();
+    }
+
+    #[test]
     fn test_set_authority() {
         let program_id = pubkey_rand();
         let account_key = pubkey_rand();
