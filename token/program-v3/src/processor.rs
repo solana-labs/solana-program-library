@@ -552,32 +552,32 @@ impl Processor {
         let dest_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
-            if !source_account.is_native() && source_account.amount != 0 {
-                return Err(TokenError::NonNativeHasBalance.into());
-            }
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+        if !source_account.is_native() && source_account.amount != 0 {
+            return Err(TokenError::NonNativeHasBalance.into());
+        }
 
-            let authority = source_account
-                .close_authority
-                .unwrap_or(source_account.owner);
-            Self::validate_owner(
-                program_id,
-                &authority,
-                authority_info,
-                account_info_iter.as_slice(),
-            )?;
+        let authority = source_account
+            .close_authority
+            .unwrap_or(source_account.owner);
+        Self::validate_owner(
+            program_id,
+            &authority,
+            authority_info,
+            account_info_iter.as_slice(),
+        )?;
 
-            let dest_starting_lamports = dest_account_info.lamports();
-            **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
-                .checked_add(source_account_info.lamports())
-                .ok_or(TokenError::Overflow)?;
+        let dest_starting_lamports = dest_account_info.lamports();
+        **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
+            .checked_add(source_account_info.lamports())
+            .ok_or(TokenError::Overflow)?;
 
-            **source_account_info.lamports.borrow_mut() = 0;
-            source_account.amount = 0;
+        **source_account_info.lamports.borrow_mut() = 0;
+        source_account.amount = 0;
 
-            Ok(())
-        })
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+
+        Ok(())
     }
 
     /// Processes a [FreezeAccount](enum.TokenInstruction.html) or a
@@ -592,37 +592,37 @@ impl Processor {
         let mint_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
-            if source_account.is_native() {
-                return Err(TokenError::NativeNotSupported.into());
-            }
-            if mint_info.key != &source_account.mint {
-                return Err(TokenError::MintMismatch.into());
-            }
-            if freeze && source_account.is_frozen() || !freeze && !source_account.is_frozen() {
-                return Err(TokenError::InvalidState.into());
-            }
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+        if source_account.is_native() {
+            return Err(TokenError::NativeNotSupported.into());
+        }
+        if mint_info.key != &source_account.mint {
+            return Err(TokenError::MintMismatch.into());
+        }
+        if freeze && source_account.is_frozen() || !freeze && !source_account.is_frozen() {
+            return Err(TokenError::InvalidState.into());
+        }
 
-            let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
-            match mint.freeze_authority {
-                COption::Some(authority) => Self::validate_owner(
-                    program_id,
-                    &authority,
-                    authority_info,
-                    account_info_iter.as_slice(),
-                ),
-                COption::None => Err(TokenError::MintCannotFreeze.into()),
-            }?;
+        let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
+        match mint.freeze_authority {
+            COption::Some(authority) => Self::validate_owner(
+                program_id,
+                &authority,
+                authority_info,
+                account_info_iter.as_slice(),
+            ),
+            COption::None => Err(TokenError::MintCannotFreeze.into()),
+        }?;
 
-            source_account.state = if freeze {
-                AccountState::Frozen
-            } else {
-                AccountState::Initialized
-            };
+        source_account.state = if freeze {
+            AccountState::Frozen
+        } else {
+            AccountState::Initialized
+        };
 
-            Ok(())
-        })
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+
+        Ok(())
     }
 
     /// Processes an [Instruction](enum.Instruction.html).
