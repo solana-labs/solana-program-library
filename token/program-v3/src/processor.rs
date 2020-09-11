@@ -815,6 +815,13 @@ mod tests {
         Processor::process(&instruction.program_id, &account_infos, &instruction.data)
     }
 
+    fn do_process_instruction_dups(
+        instruction: Instruction,
+        account_infos: Vec<AccountInfo>,
+    ) -> ProgramResult {
+        Processor::process(&instruction.program_id, &account_infos, &instruction.data)
+    }
+
     fn return_token_error_as_program_error() -> ProgramError {
         TokenError::MintMismatch.into()
     }
@@ -1087,6 +1094,92 @@ mod tests {
                 ],
             )
         );
+    }
+
+    #[test]
+    fn test_transfer_dups() {
+        let program_id = pubkey_rand();
+        let account1_key = pubkey_rand();
+        let mut account1_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
+        let account2_key = pubkey_rand();
+        let mut account2_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account2_info: AccountInfo = (&account2_key, false, &mut account2_account).into();
+        let owner_key = pubkey_rand();
+        let mut owner_account = SolanaAccount::default();
+        let owner_info: AccountInfo = (&owner_key, true, &mut owner_account).into();
+        let mint_key = pubkey_rand();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mint_info: AccountInfo = (&mint_key, false, &mut mint_account).into();
+        let rent_key = rent::id();
+        let mut rent_sysvar = rent_sysvar();
+        let rent_info: AccountInfo = (&rent_key, false, &mut rent_sysvar).into();
+
+        // create mint
+        do_process_instruction_dups(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![mint_info.clone(), rent_info.clone()],
+        )
+        .unwrap();
+
+        // create account
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account1_key, &mint_key, &account1_key).unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // create another account
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account2_key, &mint_key, &owner_key).unwrap(),
+            vec![
+                account2_info.clone(),
+                mint_info.clone(),
+                owner_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // mint to account
+        do_process_instruction_dups(
+            mint_to(&program_id, &mint_key, &account1_key, &owner_key, &[], 1000).unwrap(),
+            vec![mint_info.clone(), account1_info.clone(), owner_info.clone()],
+        )
+        .unwrap();
+
+        // source is its own grandpa
+        do_process_instruction_dups(
+            transfer(
+                &program_id,
+                &account1_key,
+                &account2_key,
+                &account1_key,
+                &[],
+                1000,
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                account2_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap()
     }
 
     #[test]
