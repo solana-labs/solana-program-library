@@ -2102,6 +2102,13 @@ mod tests {
         )
         .unwrap();
 
+        // source-owner revoke
+        do_process_instruction_dups(
+            revoke(&program_id, &account1_key, &account1_key, &[]).unwrap(),
+            vec![account1_info.clone(), account1_info.clone()],
+        )
+        .unwrap();
+
         // test source-multisig signer
         do_process_instruction_dups(
             initialize_multisig(&program_id, &multisig_key, &[&account3_key], 1).unwrap(),
@@ -2167,6 +2174,17 @@ mod tests {
                 account3_info.clone(),
                 mint_info.clone(),
                 account2_info.clone(),
+                multisig_info.clone(),
+                account3_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-owner multisig-signer
+        do_process_instruction_dups(
+            revoke(&program_id, &account3_key, &multisig_key, &[&account3_key]).unwrap(),
+            vec![
+                account3_info.clone(),
                 multisig_info.clone(),
                 account3_info.clone(),
             ],
