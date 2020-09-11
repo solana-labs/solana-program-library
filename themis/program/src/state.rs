@@ -4,8 +4,8 @@ use bincode::{rustc_serialize::encode, SizeLimit::Infinite};
 use bn::{AffineG1, Fq, Fr, Group, G1};
 use primitive_types::U256;
 use sha3::{Digest, Keccak256};
-use std::collections::HashMap;
 
+#[derive(Default)]
 struct EncryptedAggregate {
     x0: U256,
     x1: U256,
@@ -261,48 +261,37 @@ fn check_proof(
 }
 
 #[derive(Default)]
-pub struct PolicyContract {
-    policies: Vec<U256>,
-    payment_requests: HashMap<Vec<u8>, Vec<PaymentRequests>>,
-    aggregate_storage: HashMap<Vec<u8>, EncryptedAggregate>,
-    proof_verification_storage: HashMap<Vec<u8>, bool>,
+pub struct Client {
+    encrypted_aggregate: EncryptedAggregate,
+    proof_verification: bool,
+    payment_requests: Vec<PaymentRequests>,
 }
 
-impl PolicyContract {
-    pub fn new(policies: Vec<U256>) -> Self {
-        Self {
-            policies,
-            ..Self::default()
-        }
-    }
-}
-
-impl PolicyContract {
-    pub fn fetch_encrypted_aggregate(&self, client_id: &[u8]) -> [U256; 4] {
-        let encrypted_aggregate = &self.aggregate_storage[client_id];
+impl Client {
+    pub fn fetch_encrypted_aggregate(&self) -> [U256; 4] {
         [
-            encrypted_aggregate.x0,
-            encrypted_aggregate.x1,
-            encrypted_aggregate.y0,
-            encrypted_aggregate.y1,
+            self.encrypted_aggregate.x0,
+            self.encrypted_aggregate.x1,
+            self.encrypted_aggregate.y0,
+            self.encrypted_aggregate.y1,
         ]
     }
 
-    pub fn fetch_public_key(&self, client_id: &[u8]) -> [U256; 2] {
-        self.aggregate_storage[client_id].public_key
+    pub fn fetch_public_key(&self) -> [U256; 2] {
+        self.encrypted_aggregate.public_key
     }
 
-    pub fn fetch_proof_verification(&self, client_id: &[u8]) -> bool {
-        self.proof_verification_storage[client_id]
+    pub fn fetch_proof_verification(&self) -> bool {
+        self.proof_verification
     }
 
     pub fn calculate_aggregate(
         &mut self,
         input: Vec<[U256; 4]>,
         public_key: [U256; 2],
-        client_id: Vec<u8>,
+        policies: &[U256],
     ) -> bool {
-        let aggregate = inner_product(input, &self.policies);
+        let aggregate = inner_product(input, policies);
         let enc_aggr = EncryptedAggregate {
             x0: aggregate[0],
             x1: aggregate[1],
@@ -310,19 +299,18 @@ impl PolicyContract {
             y1: aggregate[3],
             public_key,
         };
-        self.aggregate_storage.insert(client_id, enc_aggr);
+        self.encrypted_aggregate = enc_aggr;
         true
     }
 
-    pub fn submit_proof_decryption(&mut self, input: [U256; 7], client_id: Vec<u8>) -> bool {
-        let client_aggregate = self.fetch_encrypted_aggregate(&client_id);
-        let client_pk = self.fetch_public_key(&client_id);
-        dbg!(&client_pk);
+    pub fn submit_proof_decryption(&mut self, input: [U256; 7]) -> bool {
+        let client_aggregate = self.fetch_encrypted_aggregate();
+        let client_pk = self.fetch_public_key();
         let plaintext = [input[0], input[1]];
         let announcement_g = [input[2], input[3]];
         let announcement_ctx = [input[4], input[5]];
         let response = input[6];
-        let proof_verification = check_proof(
+        self.proof_verification = check_proof(
             client_aggregate,
             plaintext,
             client_pk,
@@ -330,8 +318,6 @@ impl PolicyContract {
             announcement_ctx,
             response,
         );
-        self.proof_verification_storage
-            .insert(client_id, proof_verification);
         true
     }
 
@@ -340,7 +326,6 @@ impl PolicyContract {
         encrypted_aggregate: [U256; 4],
         decrypted_aggregate: [U256; 2],
         proof_correct_decryption: [U256; 2],
-        client_id: &[u8],
     ) -> bool {
         // TODO: implement proof verification
         let proof_is_valid = true;
@@ -350,10 +335,7 @@ impl PolicyContract {
             proof_correct_decryption,
             proof_is_valid,
         );
-        self.payment_requests
-            .get_mut(client_id)
-            .unwrap()
-            .push(payment_request);
+        self.payment_requests.push(payment_request);
         proof_is_valid
     }
 }
@@ -374,22 +356,21 @@ mod tests {
         assert_eq!(pn, primtypes_u256(n));
     }
 
-    fn test_policy_contract(policies: Vec<U256>, expected_scalar_aggregate: Fr) {
+    fn test_policy_contract(policies: &[U256], expected_scalar_aggregate: Fr) {
         let (sk, pk) = utils::generate_keys();
         let interactions: Vec<_> = policies.iter().map(|_| pk.encrypt(&G1::one())).collect();
-        let client_id = vec![42];
-        let mut policy_contract = PolicyContract::new(policies);
+        let mut client = Client::default();
 
         let encoded_interactions = utils::encode_input_ciphertext(interactions).unwrap();
         let encoded_pk = utils::encode_public_key(pk).unwrap();
-        let tx_receipt = policy_contract.calculate_aggregate(
+        let tx_receipt = client.calculate_aggregate(
             encoded_interactions,
             encoded_pk,
-            client_id.clone(),
+            policies,
         );
         assert!(tx_receipt);
 
-        let encrypted_point = policy_contract.fetch_encrypted_aggregate(&client_id);
+        let encrypted_point = client.fetch_encrypted_aggregate();
         let encrypted_encoded = utils::decode_ciphertext(encrypted_point, pk).unwrap();
 
         let decrypted_aggregate = sk.decrypt(&encrypted_encoded);
@@ -402,17 +383,17 @@ mod tests {
 
         let encoded_proof_dec = utils::encode_proof_decryption(&proof_dec).unwrap();
         let tx_receipt_proof =
-            policy_contract.submit_proof_decryption(encoded_proof_dec, client_id.clone());
+            client.submit_proof_decryption(encoded_proof_dec);
         assert!(tx_receipt_proof);
 
-        let proof_result = policy_contract.fetch_proof_verification(&client_id);
+        let proof_result = client.fetch_proof_verification();
         assert!(proof_result);
     }
 
     #[test]
     fn test_policy_contract_2ads() {
         let policies = vec![U256::from(1), U256::from(2)];
-        test_policy_contract(policies, Fr::from_str("3").unwrap());
+        test_policy_contract(&policies, Fr::from_str("3").unwrap());
     }
 
     #[test]
@@ -519,6 +500,6 @@ mod tests {
             U256::from(0),
             U256::from(0),
         ];
-        test_policy_contract(policies, Fr::from_str("60").unwrap());
+        test_policy_contract(&policies, Fr::from_str("60").unwrap());
     }
 }
