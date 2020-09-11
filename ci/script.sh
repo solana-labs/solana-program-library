@@ -34,17 +34,22 @@ js_token() {
   npm run localnet:down
   npm run localnet:update || exit $?
   npm run localnet:up || exit $?
-  echo 'docker ps'
   docker ps
-  echo 'docker ps -q'
   docker ps -q
+  docker ps --filter "name=^solana-localnet$"
+  docker ps --filter "name=^solana-localnet$" -q
+  docker_id="$(docker ps --filter "name=^solana-localnet$" -q)"
+  echo $docker_id
+  if [[ $(docker ps --filter "name=^solana-localnet$" -q) ]]; then
+    echo 'found container no -n'
+  fi
+  if [[ -n "$(docker ps --filter "name=^solana-localnet$" -q)" ]]; then
+    echo 'found container with -n'
+  fi
+
   time npm run start || exit $?
   # time PROGRAM_VERSION=2.0.4 npm run start || exit $?
   npm run localnet:down
-  echo 'docker ps'
-  docker ps
-  echo 'docker ps -q'
-  docker ps -q
 }
 _ js_token
 
