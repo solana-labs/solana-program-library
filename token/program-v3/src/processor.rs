@@ -1162,7 +1162,7 @@ mod tests {
         )
         .unwrap();
 
-        // source is its own grandpa
+        // source-owner transfer
         do_process_instruction_dups(
             transfer(
                 &program_id,
@@ -1181,7 +1181,7 @@ mod tests {
         )
         .unwrap();
 
-        // transfer rest with explicit decimals
+        // source-owner transfer2
         do_process_instruction_dups(
             transfer2(
                 &program_id,
