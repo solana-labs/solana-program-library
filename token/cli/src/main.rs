@@ -35,7 +35,7 @@ struct Config {
 }
 
 type Error = Box<dyn std::error::Error>;
-type CommmandResult = Result<Option<Transaction>, Error>;
+type CommandResult = Result<Option<Transaction>, Error>;
 
 macro_rules! unique_signers {
     ($vec:ident) => {
@@ -74,7 +74,7 @@ fn check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Err
     }
 }
 
-fn command_create_token(config: &Config, decimals: u8) -> CommmandResult {
+fn command_create_token(config: &Config, decimals: u8) -> CommandResult {
     let token = Keypair::new();
     println!("Creating token {}", token.pubkey());
 
@@ -113,7 +113,7 @@ fn command_create_token(config: &Config, decimals: u8) -> CommmandResult {
     Ok(Some(transaction))
 }
 
-fn command_create_account(config: &Config, token: Pubkey) -> CommmandResult {
+fn command_create_account(config: &Config, token: Pubkey) -> CommandResult {
     let account = Keypair::new();
     println!("Creating account {}", account.pubkey());
 
@@ -151,7 +151,7 @@ fn command_create_account(config: &Config, token: Pubkey) -> CommmandResult {
     Ok(Some(transaction))
 }
 
-fn command_assign(config: &Config, account: Pubkey, new_owner: Pubkey) -> CommmandResult {
+fn command_assign(config: &Config, account: Pubkey, new_owner: Pubkey) -> CommandResult {
     println!(
         "Assigning {}\n  Current owner: {}\n  New owner: {}",
         account,
@@ -184,7 +184,7 @@ fn command_transfer(
     sender: Pubkey,
     ui_amount: f64,
     recipient: Pubkey,
-) -> CommmandResult {
+) -> CommandResult {
     println!(
         "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
         ui_amount, sender, recipient
@@ -225,7 +225,7 @@ fn command_transfer(
     Ok(Some(transaction))
 }
 
-fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommmandResult {
+fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommandResult {
     println!("Burn {} tokens\n  Source: {}", ui_amount, source);
 
     let source_token_balance = config
@@ -266,7 +266,7 @@ fn command_mint(
     token: Pubkey,
     ui_amount: f64,
     recipient: Pubkey,
-) -> CommmandResult {
+) -> CommandResult {
     println!(
         "Minting {} tokens\n  Token: {}\n  Recipient: {}",
         ui_amount, token, recipient
@@ -299,7 +299,7 @@ fn command_mint(
     Ok(Some(transaction))
 }
 
-fn command_wrap(config: &Config, sol: f64) -> CommmandResult {
+fn command_wrap(config: &Config, sol: f64) -> CommandResult {
     let account = Keypair::new();
     let lamports = sol_to_lamports(sol);
     println!("Wrapping {} SOL into {}", sol, account.pubkey());
@@ -332,7 +332,7 @@ fn command_wrap(config: &Config, sol: f64) -> CommmandResult {
     Ok(Some(transaction))
 }
 
-fn command_unwrap(config: &Config, address: Pubkey) -> CommmandResult {
+fn command_unwrap(config: &Config, address: Pubkey) -> CommandResult {
     println!("Unwrapping {}", address);
     println!(
         "  Amount: {} SOL\n  Recipient: {}",
@@ -364,7 +364,7 @@ fn command_unwrap(config: &Config, address: Pubkey) -> CommmandResult {
     Ok(Some(transaction))
 }
 
-fn command_balance(config: &Config, address: Pubkey) -> CommmandResult {
+fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
     let balance = config
         .rpc_client
         .get_token_account_balance_with_commitment(&address, config.commitment_config)?
@@ -380,7 +380,7 @@ fn command_balance(config: &Config, address: Pubkey) -> CommmandResult {
     Ok(None)
 }
 
-fn command_supply(config: &Config, address: Pubkey) -> CommmandResult {
+fn command_supply(config: &Config, address: Pubkey) -> CommandResult {
     let supply = config
         .rpc_client
         .get_token_supply_with_commitment(&address, config.commitment_config)?
@@ -390,7 +390,7 @@ fn command_supply(config: &Config, address: Pubkey) -> CommmandResult {
     Ok(None)
 }
 
-fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommmandResult {
+fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
     let accounts = config
         .rpc_client
         .get_token_accounts_by_owner_with_commitment(
