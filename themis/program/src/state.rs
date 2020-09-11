@@ -384,10 +384,8 @@ mod tests {
         assert_eq!(pn, primtypes_u256(n));
     }
 
-    #[test]
-    fn test_policy_contract() {
+    fn test_policy_contract(policies: Vec<U256>, expected_scalar_aggregate: Fr) {
         let (sk, pk) = utils::generate_keys();
-        let policies = vec![U256::from(1), U256::from(2)];
         let interactions: Vec<_> = policies.iter().map(|_| pk.encrypt(&G1::one())).collect();
         let client_id = vec![42];
         let mut policy_contract = PolicyContract::new(policies);
@@ -406,9 +404,7 @@ mod tests {
 
         let decrypted_aggregate = sk.decrypt(&encrypted_encoded);
         let scalar_aggregate = utils::recover_scalar(decrypted_aggregate, 16).unwrap();
-        assert_eq!(scalar_aggregate, Fr::from_str("3").unwrap()); // 2ads
-
-        //assert_eq!(scalar_aggregate, Fr::from_str("60").unwrap()); // 128 ads
+        assert_eq!(scalar_aggregate, expected_scalar_aggregate);
 
         let proof_dec = sk
             .proof_decryption_as_string(&encrypted_encoded, &decrypted_aggregate)
@@ -421,5 +417,118 @@ mod tests {
 
         let proof_result = policy_contract.fetch_proof_verification(&client_id);
         assert!(proof_result);
+    }
+
+    #[test]
+    fn test_policy_contract_2ads() {
+        let policies = vec![U256::from(1), U256::from(2)];
+        test_policy_contract(policies, Fr::from_str("3").unwrap());
+    }
+
+    #[test]
+    fn test_policy_contract_128ads() {
+        let policies = vec![
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1), //10
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2), // 2 * 10
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1),
+            U256::from(1), //10
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2),
+            U256::from(2), // 2 * 10
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+            U256::from(0),
+        ];
+        test_policy_contract(policies, Fr::from_str("60").unwrap());
     }
 }
