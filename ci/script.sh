@@ -22,6 +22,34 @@ _() {
 export RUSTFLAGS="-D warnings"
 export RUSTBACKTRACE=1
 
+# Test token js bindings
+js_token() {
+  cd token/js
+  time npm install || exit $?
+  #time npm run lint || exit $?
+  #time npm run flow || exit $?
+  #tsc module.d.ts || exit $?
+
+  npm run cluster:localnet || exit $?
+  npm run localnet:down
+  npm run localnet:update || exit $?
+  npm run localnet:up || exit $?
+  echo 'docker ps'
+  docker ps
+  echo 'docker ps -q'
+  docker ps -q
+  time npm run start || exit $?
+  # time PROGRAM_VERSION=2.0.4 npm run start || exit $?
+  npm run localnet:down
+  echo 'docker ps'
+  docker ps
+  echo 'docker ps -q'
+  docker ps -q
+}
+_ js_token
+
+exit 0
+
 _ cargo fmt --all -- --check
 _ cargo +nightly clippy --workspace --all-targets -- --deny=warnings
 
@@ -81,8 +109,6 @@ js_token_swap() {
   cd token-swap/js
   time npm install || exit $?
   time npm run lint || exit $?
-
-  # TODO: Restore flow
   # time npm run flow || exit $?
 
   # TODO re-enable after investigating CI issues
