@@ -294,26 +294,27 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
-            let owner_info = next_account_info(account_info_iter)?;
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
 
-            if source_account.is_frozen() {
-                return Err(TokenError::AccountFrozen.into());
-            }
+        let owner_info = next_account_info(account_info_iter)?;
 
-            Self::validate_owner(
-                program_id,
-                &source_account.owner,
-                owner_info,
-                account_info_iter.as_slice(),
-            )?;
+        if source_account.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
 
-            source_account.delegate = COption::None;
-            source_account.delegated_amount = 0;
+        Self::validate_owner(
+            program_id,
+            &source_account.owner,
+            owner_info,
+            account_info_iter.as_slice(),
+        )?;
 
-            Ok(())
-        })
+        source_account.delegate = COption::None;
+        source_account.delegated_amount = 0;
+
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+
+        Ok(())
     }
 
     /// Processes a [SetAuthority](enum.TokenInstruction.html) instruction.
