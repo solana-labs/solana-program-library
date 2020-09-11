@@ -421,50 +421,49 @@ impl Processor {
         let dest_account_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
 
-        let mut dest_account_data = dest_account_info.data.borrow_mut();
-        Account::unpack_mut(&mut dest_account_data, &mut |dest_account: &mut Account| {
-            if dest_account.is_frozen() {
-                return Err(TokenError::AccountFrozen.into());
+        let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
+        if dest_account.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
+
+        if dest_account.is_native() {
+            return Err(TokenError::NativeNotSupported.into());
+        }
+        if mint_info.key != &dest_account.mint {
+            return Err(TokenError::MintMismatch.into());
+        }
+
+        let mut mint = Mint::unpack(&mint_info.data.borrow())?;
+        if let Some(expected_decimals) = expected_decimals {
+            if expected_decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
             }
+        }
 
-            if dest_account.is_native() {
-                return Err(TokenError::NativeNotSupported.into());
-            }
-            if mint_info.key != &dest_account.mint {
-                return Err(TokenError::MintMismatch.into());
-            }
+        match mint.mint_authority {
+            COption::Some(mint_authority) => Self::validate_owner(
+                program_id,
+                &mint_authority,
+                owner_info,
+                account_info_iter.as_slice(),
+            )?,
+            COption::None => return Err(TokenError::FixedSupply.into()),
+        }
 
-            let mut mint_data = mint_info.data.borrow_mut();
-            Mint::unpack_mut(&mut mint_data, &mut |mint: &mut Mint| {
-                if let Some(expected_decimals) = expected_decimals {
-                    if expected_decimals != mint.decimals {
-                        return Err(TokenError::MintDecimalsMismatch.into());
-                    }
-                }
+        dest_account.amount = dest_account
+            .amount
+            .checked_add(amount)
+            .ok_or(TokenError::Overflow)?;
 
-                match mint.mint_authority {
-                    COption::Some(mint_authority) => Self::validate_owner(
-                        program_id,
-                        &mint_authority,
-                        owner_info,
-                        account_info_iter.as_slice(),
-                    )?,
-                    COption::None => return Err(TokenError::FixedSupply.into()),
-                }
+        mint.supply = mint
+            .supply
+            .checked_add(amount)
+            .ok_or(TokenError::Overflow)?;
 
-                dest_account.amount = dest_account
-                    .amount
-                    .checked_add(amount)
-                    .ok_or(TokenError::Overflow)?;
+        Account::pack(dest_account, &mut dest_account_info.data.borrow_mut())?;
+        Mint::pack(mint, &mut mint_info.data.borrow_mut())?;
 
-                mint.supply = mint
-                    .supply
-                    .checked_add(amount)
-                    .ok_or(TokenError::Overflow)?;
-
-                Ok(())
-            })
-        })
+        Ok(())
     }
 
     /// Processes a [Burn](enum.TokenInstruction.html) instruction.
