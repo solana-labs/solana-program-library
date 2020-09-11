@@ -1105,14 +1105,21 @@ mod tests {
             Account::get_packed_len(),
             &program_id,
         );
-        let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
+        let mut account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
         let account2_key = pubkey_rand();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_info: AccountInfo = (&account2_key, false, &mut account2_account).into();
+        let mut account2_info: AccountInfo = (&account2_key, false, &mut account2_account).into();
+        let account3_key = pubkey_rand();
+        let mut account3_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account3_info: AccountInfo = (&account3_key, false, &mut account3_account).into();
         let owner_key = pubkey_rand();
         let mut owner_account = SolanaAccount::default();
         let owner_info: AccountInfo = (&owner_key, true, &mut owner_account).into();
@@ -1252,6 +1259,65 @@ mod tests {
                 mint_info.clone(),
                 account2_info.clone(),
                 account1_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // test destination-owner transfer
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account3_key, &mint_key, &account2_key).unwrap(),
+            vec![
+                account3_info.clone(),
+                mint_info.clone(),
+                account2_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+        do_process_instruction_dups(
+            mint_to(&program_id, &mint_key, &account3_key, &owner_key, &[], 1000).unwrap(),
+            vec![mint_info.clone(), account3_info.clone(), owner_info.clone()],
+        )
+        .unwrap();
+
+        account1_info.is_signer = false;
+        account2_info.is_signer = true;
+        do_process_instruction_dups(
+            transfer(
+                &program_id,
+                &account3_key,
+                &account2_key,
+                &account2_key,
+                &[],
+                500,
+            )
+            .unwrap(),
+            vec![
+                account3_info.clone(),
+                account2_info.clone(),
+                account2_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // destination-owner transfer2
+        do_process_instruction_dups(
+            transfer2(
+                &program_id,
+                &account3_key,
+                &mint_key,
+                &account2_key,
+                &account2_key,
+                &[],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![
+                account3_info.clone(),
+                mint_info.clone(),
+                account2_info.clone(),
+                account2_info.clone(),
             ],
         )
         .unwrap();
