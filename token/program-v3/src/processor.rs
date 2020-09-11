@@ -1170,7 +1170,7 @@ mod tests {
                 &account2_key,
                 &account1_key,
                 &[],
-                1000,
+                500,
             )
             .unwrap(),
             vec![
@@ -1179,7 +1179,29 @@ mod tests {
                 account1_info.clone(),
             ],
         )
-        .unwrap()
+        .unwrap();
+
+        // transfer rest with explicit decimals
+        do_process_instruction_dups(
+            transfer2(
+                &program_id,
+                &account1_key,
+                &mint_key,
+                &account2_key,
+                &account1_key,
+                &[],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account2_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
     }
 
     #[test]
