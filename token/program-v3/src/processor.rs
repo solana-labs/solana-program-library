@@ -161,82 +161,82 @@ impl Processor {
             return Ok(());
         }
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        let mut dest_data = dest_account_info.data.borrow_mut();
-        Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
-            Account::unpack_mut(&mut dest_data, &mut |dest_account: &mut Account| {
-                if source_account.amount < amount {
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+        let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
+
+        if source_account.amount < amount {
+            return Err(TokenError::InsufficientFunds.into());
+        }
+        if source_account.is_frozen() || dest_account.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
+        if source_account.mint != dest_account.mint {
+            return Err(TokenError::MintMismatch.into());
+        }
+
+        if let Some((mint_info, expected_decimals)) = expected_mint_info {
+            if source_account.mint != *mint_info.key {
+                return Err(TokenError::MintMismatch.into());
+            }
+
+            let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
+            if expected_decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
+            }
+        }
+
+        match source_account.delegate {
+            COption::Some(ref delegate) if authority_info.key == delegate => {
+                Self::validate_owner(
+                    program_id,
+                    delegate,
+                    authority_info,
+                    account_info_iter.as_slice(),
+                )?;
+                if source_account.delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
                 }
-                if source_account.mint != dest_account.mint {
-                    return Err(TokenError::MintMismatch.into());
-                }
-                if source_account.is_frozen() || dest_account.is_frozen() {
-                    return Err(TokenError::AccountFrozen.into());
-                }
-
-                if let Some((mint_info, expected_decimals)) = expected_mint_info {
-                    if source_account.mint != *mint_info.key {
-                        return Err(TokenError::MintMismatch.into());
-                    }
-
-                    let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
-                    if expected_decimals != mint.decimals {
-                        return Err(TokenError::MintDecimalsMismatch.into());
-                    }
-                }
-
-                match source_account.delegate {
-                    COption::Some(ref delegate) if authority_info.key == delegate => {
-                        Self::validate_owner(
-                            program_id,
-                            delegate,
-                            authority_info,
-                            account_info_iter.as_slice(),
-                        )?;
-                        if source_account.delegated_amount < amount {
-                            return Err(TokenError::InsufficientFunds.into());
-                        }
-                        source_account.delegated_amount = source_account
-                            .delegated_amount
-                            .checked_sub(amount)
-                            .ok_or(TokenError::Overflow)?;
-                        if source_account.delegated_amount == 0 {
-                            source_account.delegate = COption::None;
-                        }
-                    }
-                    _ => Self::validate_owner(
-                        program_id,
-                        &source_account.owner,
-                        authority_info,
-                        account_info_iter.as_slice(),
-                    )?,
-                };
-
-                source_account.amount = source_account
-                    .amount
+                source_account.delegated_amount = source_account
+                    .delegated_amount
                     .checked_sub(amount)
                     .ok_or(TokenError::Overflow)?;
-                dest_account.amount = dest_account
-                    .amount
-                    .checked_add(amount)
-                    .ok_or(TokenError::Overflow)?;
-
-                if source_account.is_native() {
-                    let source_starting_lamports = source_account_info.lamports();
-                    **source_account_info.lamports.borrow_mut() = source_starting_lamports
-                        .checked_sub(amount)
-                        .ok_or(TokenError::Overflow)?;
-
-                    let dest_starting_lamports = dest_account_info.lamports();
-                    **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
-                        .checked_add(amount)
-                        .ok_or(TokenError::Overflow)?;
+                if source_account.delegated_amount == 0 {
+                    source_account.delegate = COption::None;
                 }
+            }
+            _ => Self::validate_owner(
+                program_id,
+                &source_account.owner,
+                authority_info,
+                account_info_iter.as_slice(),
+            )?,
+        };
 
-                Ok(())
-            })
-        })
+        source_account.amount = source_account
+            .amount
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
+        dest_account.amount = dest_account
+            .amount
+            .checked_add(amount)
+            .ok_or(TokenError::Overflow)?;
+
+        if source_account.is_native() {
+            let source_starting_lamports = source_account_info.lamports();
+            **source_account_info.lamports.borrow_mut() = source_starting_lamports
+                .checked_sub(amount)
+                .ok_or(TokenError::Overflow)?;
+
+            let dest_starting_lamports = dest_account_info.lamports();
+            **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
+                .checked_add(amount)
+                .ok_or(TokenError::Overflow)?;
+        }
+
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+        Account::pack(dest_account, &mut dest_account_info.data.borrow_mut())?;
+
+        Ok(())
     }
 
     /// Processes an [Approve](enum.TokenInstruction.html) instruction.
