@@ -480,69 +480,69 @@ impl Processor {
         let mint_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        let mut mint_data = mint_info.data.borrow_mut();
-        let mut source_data = source_account_info.data.borrow_mut();
-        Mint::unpack_mut(&mut mint_data, &mut |mint: &mut Mint| {
-            Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
-                if source_account.is_native() {
-                    return Err(TokenError::NativeNotSupported.into());
-                }
-                if mint_info.key != &source_account.mint {
-                    return Err(TokenError::MintMismatch.into());
-                }
-                if source_account.amount < amount {
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+        let mut mint = Mint::unpack(&mint_info.data.borrow())?;
+
+        if source_account.is_native() {
+            return Err(TokenError::NativeNotSupported.into());
+        }
+        if mint_info.key != &source_account.mint {
+            return Err(TokenError::MintMismatch.into());
+        }
+        if source_account.amount < amount {
+            return Err(TokenError::InsufficientFunds.into());
+        }
+        if source_account.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
+
+        if let Some(expected_decimals) = expected_decimals {
+            if expected_decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
+            }
+        }
+
+        match source_account.delegate {
+            COption::Some(ref delegate) if authority_info.key == delegate => {
+                Self::validate_owner(
+                    program_id,
+                    delegate,
+                    authority_info,
+                    account_info_iter.as_slice(),
+                )?;
+
+                if source_account.delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
                 }
-                if source_account.is_frozen() {
-                    return Err(TokenError::AccountFrozen.into());
-                }
-
-                if let Some(expected_decimals) = expected_decimals {
-                    if expected_decimals != mint.decimals {
-                        return Err(TokenError::MintDecimalsMismatch.into());
-                    }
-                }
-
-                match source_account.delegate {
-                    COption::Some(ref delegate) if authority_info.key == delegate => {
-                        Self::validate_owner(
-                            program_id,
-                            delegate,
-                            authority_info,
-                            account_info_iter.as_slice(),
-                        )?;
-
-                        if source_account.delegated_amount < amount {
-                            return Err(TokenError::InsufficientFunds.into());
-                        }
-                        source_account.delegated_amount = source_account
-                            .delegated_amount
-                            .checked_sub(amount)
-                            .ok_or(TokenError::Overflow)?;
-                        if source_account.delegated_amount == 0 {
-                            source_account.delegate = COption::None;
-                        }
-                    }
-                    _ => Self::validate_owner(
-                        program_id,
-                        &source_account.owner,
-                        authority_info,
-                        account_info_iter.as_slice(),
-                    )?,
-                }
-
-                source_account.amount = source_account
-                    .amount
+                source_account.delegated_amount = source_account
+                    .delegated_amount
                     .checked_sub(amount)
                     .ok_or(TokenError::Overflow)?;
-                mint.supply = mint
-                    .supply
-                    .checked_sub(amount)
-                    .ok_or(TokenError::Overflow)?;
+                if source_account.delegated_amount == 0 {
+                    source_account.delegate = COption::None;
+                }
+            }
+            _ => Self::validate_owner(
+                program_id,
+                &source_account.owner,
+                authority_info,
+                account_info_iter.as_slice(),
+            )?,
+        }
 
-                Ok(())
-            })
-        })
+        source_account.amount = source_account
+            .amount
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
+        mint.supply = mint
+            .supply
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
+
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+        Mint::pack(mint, &mut mint_info.data.borrow_mut())?;
+
+        Ok(())
     }
 
     /// Processes a [CloseAccount](enum.TokenInstruction.html) instruction.
