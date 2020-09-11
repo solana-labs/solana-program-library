@@ -1120,6 +1120,20 @@ mod tests {
             &program_id,
         );
         let account3_info: AccountInfo = (&account3_key, false, &mut account3_account).into();
+        let account4_key = pubkey_rand();
+        let mut account4_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account4_info: AccountInfo = (&account4_key, true, &mut account4_account).into();
+        let multisig_key = pubkey_rand();
+        let mut multisig_account = SolanaAccount::new(
+            multisig_minimum_balance(),
+            Multisig::get_packed_len(),
+            &program_id,
+        );
+        let multisig_info: AccountInfo = (&multisig_key, true, &mut multisig_account).into();
         let owner_key = pubkey_rand();
         let mut owner_account = SolanaAccount::default();
         let owner_info: AccountInfo = (&owner_key, true, &mut owner_account).into();
@@ -1318,6 +1332,77 @@ mod tests {
                 mint_info.clone(),
                 account2_info.clone(),
                 account2_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // test source-multisig signer
+        do_process_instruction_dups(
+            initialize_multisig(&program_id, &multisig_key, &[&account4_key], 1).unwrap(),
+            vec![
+                multisig_info.clone(),
+                rent_info.clone(),
+                account4_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account4_key, &mint_key, &multisig_key).unwrap(),
+            vec![
+                account4_info.clone(),
+                mint_info.clone(),
+                multisig_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        do_process_instruction_dups(
+            mint_to(&program_id, &mint_key, &account4_key, &owner_key, &[], 1000).unwrap(),
+            vec![mint_info.clone(), account4_info.clone(), owner_info.clone()],
+        )
+        .unwrap();
+
+        // source-multisig-signer transfer
+        do_process_instruction_dups(
+            transfer(
+                &program_id,
+                &account4_key,
+                &account2_key,
+                &multisig_key,
+                &[&account4_key],
+                500,
+            )
+            .unwrap(),
+            vec![
+                account4_info.clone(),
+                account2_info.clone(),
+                multisig_info.clone(),
+                account4_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-multisig-signer transfer2
+        do_process_instruction_dups(
+            transfer2(
+                &program_id,
+                &account4_key,
+                &mint_key,
+                &account2_key,
+                &multisig_key,
+                &[&account4_key],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![
+                account4_info.clone(),
+                mint_info.clone(),
+                account2_info.clone(),
+                multisig_info.clone(),
+                account4_info.clone(),
             ],
         )
         .unwrap();
