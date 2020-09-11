@@ -5,8 +5,7 @@
 
 pub mod entrypoint;
 pub mod errors;
-//pub mod instruction;
-//pub mod native_mint;
+pub mod instruction;
 //pub mod option;
 //pub mod pack;
 //pub mod processor;

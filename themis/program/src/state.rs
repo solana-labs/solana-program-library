@@ -278,17 +278,7 @@ impl PolicyContract {
 }
 
 impl PolicyContract {
-    pub fn fetch_encrypted_aggregate(&self, client_id: &[u8]) -> (U256, U256, U256, U256) {
-        let encrypted_aggregate = &self.aggregate_storage[client_id];
-        (
-            encrypted_aggregate.x0,
-            encrypted_aggregate.x1,
-            encrypted_aggregate.y0,
-            encrypted_aggregate.y1,
-        )
-    }
-
-    pub fn fetch_encrypted_aggregate_array(&self, client_id: &[u8]) -> [U256; 4] {
+    pub fn fetch_encrypted_aggregate(&self, client_id: &[u8]) -> [U256; 4] {
         let encrypted_aggregate = &self.aggregate_storage[client_id];
         [
             encrypted_aggregate.x0,
@@ -325,7 +315,7 @@ impl PolicyContract {
     }
 
     pub fn submit_proof_decryption(&mut self, input: [U256; 7], client_id: Vec<u8>) -> bool {
-        let client_aggregate = self.fetch_encrypted_aggregate_array(&client_id);
+        let client_aggregate = self.fetch_encrypted_aggregate(&client_id);
         let client_pk = self.fetch_public_key(&client_id);
         dbg!(&client_pk);
         let plaintext = [input[0], input[1]];
@@ -399,7 +389,7 @@ mod tests {
         );
         assert!(tx_receipt);
 
-        let encrypted_point = policy_contract.fetch_encrypted_aggregate_array(&client_id);
+        let encrypted_point = policy_contract.fetch_encrypted_aggregate(&client_id);
         let encrypted_encoded = utils::decode_ciphertext(encrypted_point, pk).unwrap();
 
         let decrypted_aggregate = sk.decrypt(&encrypted_encoded);
