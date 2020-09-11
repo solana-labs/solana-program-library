@@ -18,6 +18,7 @@ program = ["solana-sdk/program", "spl-token/program", "spl-token/no-entrypoint"]
 default = ["solana-sdk/default", "spl-token/default"]
 
 [dependencies]
+arrayref = "0.3.6"
 num-derive = "0.3"
 num-traits = "0.2"
 remove_dir_all = "=0.5.0"

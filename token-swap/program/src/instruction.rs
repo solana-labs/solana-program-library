@@ -2,34 +2,14 @@
 
 #![allow(clippy::too_many_arguments)]
 
+use crate::error::SwapError;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     pubkey::Pubkey,
 };
+use std::convert::TryInto;
 use std::mem::size_of;
-
-/// fee rate as a ratio
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Fee {
-    /// denominator of the fee ratio
-    pub denominator: u64,
-    /// numerator of the fee ratio
-    pub numerator: u64,
-}
-
-/// Swap initialization data
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct InitializationData {
-    /// swap pool fee numerator
-    pub fee_numerator: u64,
-    /// swap pool fee denominator
-    pub fee_denominator: u64,
-    /// nonce used to create valid program address
-    pub nonce: u8,
-}
 
 /// Instructions supported by the SwapInfo program.
 #[repr(C)]
@@ -44,8 +24,14 @@ pub enum SwapInstruction {
     ///   4. `[writable]` pool Token. Must be empty, owned by $authority.
     ///   5. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
     ///   6. '[]` Token program id
-    ///   userdata: nonce for program address, fee rate as a ratio (numerator and denominator separate)
-    Initialize(InitializationData),
+    Initialize {
+        /// swap pool fee numerator
+        fee_numerator: u64,
+        /// swap pool fee denominator
+        fee_denominator: u64,
+        /// nonce used to create valid program address
+        nonce: u8,
+    },
 
     ///   Swap the tokens in the pool.
     ///
@@ -56,8 +42,10 @@ pub enum SwapInstruction {
     ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
     ///   5. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   6. '[]` Token program id
-    ///   userdata: SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
-    Swap(u64),
+    Swap {
+        /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
+        amount: u64,
+    },
 
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
@@ -71,8 +59,11 @@ pub enum SwapInstruction {
     ///   6. `[writable]` Pool MINT account, $authority is the owner.
     ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
     ///   8. '[]` Token program id
-    ///   userdata: token_a amount to transfer.  token_b amount is set by the current exchange rate.
-    Deposit(u64),
+    Deposit {
+        /// Pool token amount to transfer. token_a and token_b amount are set by
+        /// the current exchange rate and size of the pool
+        amount: u64,
+    },
 
     ///   Withdraw the token from the pool at the current ratio.
     ///
@@ -85,69 +76,83 @@ pub enum SwapInstruction {
     ///   6. `[writable]` token_a user Account to credit.
     ///   7. `[writable]` token_b user Account to credit.
     ///   8. '[]` Token program id
-    ///   userdata: SOURCE amount of pool tokens to transfer. User receives an output based on the
-    ///   percentage of the pool tokens that are returned.
-    Withdraw(u64),
+    Withdraw {
+        /// Amount of pool tokens to burn. User receives an output of token a
+        /// and b based on the percentage of the pool tokens that are returned.
+        amount: u64,
+    },
 }
 
 impl SwapInstruction {
-    /// Deserializes a byte buffer into an [SwapInstruction](enum.SwapInstruction.html).
-    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < size_of::<u8>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        Ok(match input[0] {
+    /// Unpacks a byte buffer into a [SwapInstruction](enum.SwapInstruction.html).
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+        let (&tag, rest) = input.split_first().ok_or(SwapError::InvalidInstruction)?;
+        Ok(match tag {
             0 => {
-                let init_data: &InitializationData = unpack(input)?;
-                Self::Initialize(*init_data)
+                let (fee_numerator, rest) = Self::unpack_u64(rest)?;
+                let (fee_denominator, rest) = Self::unpack_u64(rest)?;
+                let (&nonce, _rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
+                Self::Initialize {
+                    fee_numerator,
+                    fee_denominator,
+                    nonce,
+                }
             }
-            1 => {
-                let fee: &u64 = unpack(input)?;
-                Self::Swap(*fee)
+            1 | 2 | 3 => {
+                let (amount, _rest) = Self::unpack_u64(rest)?;
+                match tag {
+                    1 => Self::Swap { amount },
+                    2 => Self::Deposit { amount },
+                    3 => Self::Withdraw { amount },
+                    _ => unreachable!(),
+                }
             }
-            2 => {
-                let fee: &u64 = unpack(input)?;
-                Self::Deposit(*fee)
-            }
-            3 => {
-                let fee: &u64 = unpack(input)?;
-                Self::Withdraw(*fee)
-            }
-            _ => return Err(ProgramError::InvalidAccountData),
+            _ => return Err(SwapError::InvalidInstruction.into()),
         })
     }
 
-    /// Serializes an [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
-    /// TODO Pack things better than standard memory layout.
-    pub fn serialize(&self) -> Result<Vec<u8>, ProgramError> {
-        let mut output = vec![0u8; size_of::<SwapInstruction>()];
-        match self {
-            Self::Initialize(init_data) => {
-                output[0] = 0;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut InitializationData) };
-                *value = *init_data;
+    fn unpack_u64(input: &[u8]) -> Result<(u64, &[u8]), ProgramError> {
+        if input.len() >= 8 {
+            let (amount, rest) = input.split_at(8);
+            let amount = amount
+                .get(..8)
+                .and_then(|slice| slice.try_into().ok())
+                .map(u64::from_le_bytes)
+                .ok_or(SwapError::InvalidInstruction)?;
+            Ok((amount, rest))
+        } else {
+            Err(SwapError::InvalidInstruction.into())
+        }
+    }
+
+    /// Packs a [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
+    pub fn pack(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(size_of::<Self>());
+        match *self {
+            Self::Initialize {
+                fee_numerator,
+                fee_denominator,
+                nonce,
+            } => {
+                buf.push(0);
+                buf.extend_from_slice(&fee_numerator.to_le_bytes());
+                buf.extend_from_slice(&fee_denominator.to_le_bytes());
+                buf.push(nonce);
             }
-            Self::Swap(amount) => {
-                output[0] = 1;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
-                *value = *amount;
+            Self::Swap { amount } => {
+                buf.push(1);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
-            Self::Deposit(amount) => {
-                output[0] = 2;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
-                *value = *amount;
+            Self::Deposit { amount } => {
+                buf.push(2);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
-            Self::Withdraw(amount) => {
-                output[0] = 3;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
-                *value = *amount;
+            Self::Withdraw { amount } => {
+                buf.push(3);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
         }
-        Ok(output)
+        buf
     }
 }
 
@@ -162,14 +167,15 @@ pub fn initialize(
     pool_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     nonce: u8,
-    fee: Fee,
+    fee_numerator: u64,
+    fee_denominator: u64,
 ) -> Result<Instruction, ProgramError> {
-    let init_data = InitializationData {
-        fee_numerator: fee.numerator,
-        fee_denominator: fee.denominator,
+    let init_data = SwapInstruction::Initialize {
+        fee_numerator,
+        fee_denominator,
         nonce,
     };
-    let data = SwapInstruction::Initialize(init_data).serialize()?;
+    let data = init_data.pack();
 
     let accounts = vec![
         AccountMeta::new(*swap_pubkey, true),
@@ -202,7 +208,7 @@ pub fn deposit(
     destination_pubkey: &Pubkey,
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Deposit(amount).serialize()?;
+    let data = SwapInstruction::Deposit { amount }.pack();
 
     let accounts = vec![
         AccountMeta::new(*swap_pubkey, false),
@@ -237,7 +243,7 @@ pub fn withdraw(
     destination_token_b_pubkey: &Pubkey,
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Withdraw(amount).serialize()?;
+    let data = SwapInstruction::Withdraw { amount }.pack();
 
     let accounts = vec![
         AccountMeta::new(*swap_pubkey, false),
@@ -270,7 +276,7 @@ pub fn swap(
     destination_pubkey: &Pubkey,
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Swap(amount).serialize()?;
+    let data = SwapInstruction::Swap { amount }.pack();
 
     let accounts = vec![
         AccountMeta::new(*swap_pubkey, false),
@@ -305,29 +311,50 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_instruction_deserialization() {
+    fn test_instruction_packing() {
         let fee_numerator: u64 = 1;
         let fee_denominator: u64 = 4;
         let nonce: u8 = 255;
-        let check = SwapInstruction::Initialize(InitializationData {
+        let check = SwapInstruction::Initialize {
             fee_numerator,
             fee_denominator,
             nonce,
-        });
-        let packed = check.serialize().unwrap();
-        let unpacked = SwapInstruction::deserialize(&packed).unwrap();
-        assert_eq!(check, unpacked);
+        };
+        let packed = check.pack();
+        let mut expect = vec![];
+        expect.push(0 as u8);
+        expect.extend_from_slice(&fee_numerator.to_le_bytes());
+        expect.extend_from_slice(&fee_denominator.to_le_bytes());
+        expect.push(nonce);
+        assert_eq!(packed, expect);
+        let unpacked = SwapInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
 
-        let mut data = vec![];
-        data.push(0 as u8);
-        data.push(fee_numerator as u8);
-        data.extend_from_slice(&[0u8; 7]); // padding
-        data.push(fee_denominator as u8);
-        data.extend_from_slice(&[0u8; 7]); // padding
-        data.push(nonce);
-        data.extend_from_slice(&[0u8; 14]); // padding
-        data.extend_from_slice(&[0u8; 7]); // padding
-        let unpacked = SwapInstruction::deserialize(&data).unwrap();
-        assert_eq!(check, unpacked);
+        let amount = 2;
+        let check = SwapInstruction::Swap { amount };
+        let packed = check.pack();
+        let mut expect = vec![1, 2];
+        expect.extend_from_slice(&[0u8; 7]);
+        assert_eq!(packed, expect);
+        let unpacked = SwapInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let amount = 5;
+        let check = SwapInstruction::Deposit { amount };
+        let packed = check.pack();
+        let mut expect = vec![2, 5];
+        expect.extend_from_slice(&[0u8; 7]);
+        assert_eq!(packed, expect);
+        let unpacked = SwapInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let amount: u64 = 1212438012089;
+        let check = SwapInstruction::Withdraw { amount };
+        let packed = check.pack();
+        let mut expect = vec![3];
+        expect.extend_from_slice(&amount.to_le_bytes());
+        assert_eq!(packed, expect);
+        let unpacked = SwapInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
     }
 }

@@ -2281,6 +2281,7 @@ dependencies = [
 name = "spl-token-swap"
 version = "0.1.0"
 dependencies = [
+ "arrayref",
  "num-derive",
  "num-traits",
  "rand",

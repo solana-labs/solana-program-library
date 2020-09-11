@@ -97,15 +97,13 @@ type TokenSwapInfo = {|
  * @private
  */
 const TokenSwapLayout = BufferLayout.struct([
-  BufferLayout.u8('state'),
+  BufferLayout.u8('isInitialized'),
   BufferLayout.u8('nonce'),
   Layout.publicKey('tokenAccountA'),
   Layout.publicKey('tokenAccountB'),
   Layout.publicKey('tokenPool'),
-  BufferLayout.blob(7, 'padding'),
-  Layout.uint64('feesDenominator'),
   Layout.uint64('feesNumerator'),
-  BufferLayout.blob(7, 'padding'),
+  Layout.uint64('feesDenominator'),
 ]);
 
 /**
@@ -226,7 +224,6 @@ export class TokenSwap {
       BufferLayout.nu64('feeNumerator'),
       BufferLayout.nu64('feeDenominator'),
       BufferLayout.u8('nonce'),
-      BufferLayout.blob(14, 'padding'),
     ]);
     let data = Buffer.alloc(1024);
     {
@@ -273,7 +270,7 @@ export class TokenSwap {
 
     const data = Buffer.from(accountInfo.data);
     const tokenSwapInfo = TokenSwapLayout.decode(data);
-    if (tokenSwapInfo.state !== 1) {
+    if (!tokenSwapInfo.isInitialized) {
       throw new Error(`Invalid token swap state`);
     }
     // already properly filled in

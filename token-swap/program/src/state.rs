@@ -1,16 +1,15 @@
 //! State transition types
 
-use crate::{
-    error::Error,
-    instruction::{unpack, Fee},
-};
-use solana_sdk::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
-use std::mem::size_of;
+use crate::error::SwapError;
+use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
+use solana_sdk::{program_error::ProgramError, pubkey::Pubkey};
 
-/// Initialized program details.
+/// Program states.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SwapInfo {
+    /// Initialized state.
+    pub is_initialized: bool,
     /// Nonce used in program address.
     /// The program address is created deterministically with the nonce,
     /// swap program id, and swap account pubkey.  This program address has
@@ -25,63 +24,62 @@ pub struct SwapInfo {
     /// Pool tokens are issued when A or B tokens are deposited.
     /// Pool tokens can be withdrawn back to the original A or B token.
     pub pool_mint: Pubkey,
-    /// Fee applied to the input token amount prior to output calculation.
-    pub fee: Fee,
+    /// Numerator of fee applied to the input token amount prior to output calculation.
+    pub fee_numerator: u64,
+    /// Denominator of fee applied to the input token amount prior to output calculation.
+    pub fee_denominator: u64,
 }
 
-/// Program states.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum State {
-    /// Unallocated state, may be initialized into another state.
-    Unallocated,
-    /// Initialized state.
-    Init(SwapInfo),
-}
+impl SwapInfo {
+    /// Helper function to get the more efficient packed size of the struct
+    const fn get_packed_len() -> usize {
+        114
+    }
 
-impl State {
-    /// Deserializes a byte buffer into a [State](struct.State.html).
-    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < size_of::<u8>() {
-            return Err(ProgramError::InvalidAccountData);
+    /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html) and checks
+    /// that it is initialized.
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+        let value = Self::unpack_unchecked(input)?;
+        if value.is_initialized {
+            Ok(value)
+        } else {
+            Err(SwapError::InvalidState.into())
         }
-        Ok(match input[0] {
-            0 => Self::Unallocated,
-            1 => {
-                let swap: &SwapInfo = unpack(input)?;
-                Self::Init(*swap)
-            }
-            _ => return Err(ProgramError::InvalidAccountData),
+    }
+
+    /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html).
+    pub fn unpack_unchecked(input: &[u8]) -> Result<Self, ProgramError> {
+        let input = array_ref![input, 0, SwapInfo::get_packed_len()];
+        #[allow(clippy::ptr_offset_with_cast)]
+        let (is_initialized, nonce, token_a, token_b, pool_mint, fee_numerator, fee_denominator) =
+            array_refs![input, 1, 1, 32, 32, 32, 8, 8];
+        Ok(Self {
+            is_initialized: match is_initialized {
+                [0] => false,
+                [1] => true,
+                _ => return Err(ProgramError::InvalidAccountData),
+            },
+            nonce: nonce[0],
+            token_a: Pubkey::new_from_array(*token_a),
+            token_b: Pubkey::new_from_array(*token_b),
+            pool_mint: Pubkey::new_from_array(*pool_mint),
+            fee_numerator: u64::from_le_bytes(*fee_numerator),
+            fee_denominator: u64::from_le_bytes(*fee_denominator),
         })
     }
 
-    /// Serializes [State](struct.State.html) into a byte buffer.
-    pub fn serialize(&self, output: &mut [u8]) -> ProgramResult {
-        if output.len() < size_of::<u8>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        match self {
-            Self::Unallocated => output[0] = 0,
-            Self::Init(swap) => {
-                if output.len() < size_of::<u8>() + size_of::<SwapInfo>() {
-                    return Err(ProgramError::InvalidAccountData);
-                }
-                output[0] = 1;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut SwapInfo) };
-                *value = *swap;
-            }
-        }
-        Ok(())
-    }
-
-    /// Gets the `SwapInfo` from `State`
-    pub fn token_swap(&self) -> Result<SwapInfo, ProgramError> {
-        if let State::Init(swap) = &self {
-            Ok(*swap)
-        } else {
-            Err(Error::InvalidState.into())
-        }
+    /// Packs [SwapInfo](struct.SwapInfo.html) into a byte buffer.
+    pub fn pack(&self, output: &mut [u8]) {
+        let output = array_mut_ref![output, 0, SwapInfo::get_packed_len()];
+        let (is_initialized, nonce, token_a, token_b, pool_mint, fee_numerator, fee_denominator) =
+            mut_array_refs![output, 1, 1, 32, 32, 32, 8, 8];
+        is_initialized[0] = self.is_initialized as u8;
+        nonce[0] = self.nonce;
+        token_a.copy_from_slice(self.token_a.as_ref());
+        token_b.copy_from_slice(self.token_b.as_ref());
+        pool_mint.copy_from_slice(self.pool_mint.as_ref());
+        *fee_numerator = self.fee_numerator.to_le_bytes();
+        *fee_denominator = self.fee_denominator.to_le_bytes();
     }
 }
 
@@ -102,15 +100,16 @@ impl SwapResult {
         source: u64,
         source_amount: u64,
         dest_amount: u64,
-        fee: &Fee,
+        fee_numerator: u64,
+        fee_denominator: u64,
     ) -> Option<SwapResult> {
         let invariant = source_amount.checked_mul(dest_amount)?;
         let new_source = source_amount.checked_add(source)?;
         let new_destination = invariant.checked_div(new_source)?;
         let remove = dest_amount.checked_sub(new_destination)?;
         let fee = remove
-            .checked_mul(fee.numerator)?
-            .checked_div(fee.denominator)?;
+            .checked_mul(fee_numerator)?
+            .checked_div(fee_denominator)?;
         let new_destination = new_destination.checked_add(fee)?;
         let amount_swapped = remove.checked_sub(fee)?;
         Some(SwapResult {
@@ -127,14 +126,22 @@ pub struct Invariant {
     pub token_a: u64,
     /// Token B
     pub token_b: u64,
-    /// Fee
-    pub fee: Fee,
+    /// Fee numerator
+    pub fee_numerator: u64,
+    /// Fee denominator
+    pub fee_denominator: u64,
 }
 
 impl Invariant {
     /// Swap token a to b
     pub fn swap_a_to_b(&mut self, token_a: u64) -> Option<u64> {
-        let result = SwapResult::swap_to(token_a, self.token_a, self.token_b, &self.fee)?;
+        let result = SwapResult::swap_to(
+            token_a,
+            self.token_a,
+            self.token_b,
+            self.fee_numerator,
+            self.fee_denominator,
+        )?;
         self.token_a = result.new_source;
         self.token_b = result.new_destination;
         Some(result.amount_swapped)
@@ -142,7 +149,13 @@ impl Invariant {
 
     /// Swap token b to a
     pub fn swap_b_to_a(&mut self, token_b: u64) -> Option<u64> {
-        let result = SwapResult::swap_to(token_b, self.token_b, self.token_a, &self.fee)?;
+        let result = SwapResult::swap_to(
+            token_b,
+            self.token_b,
+            self.token_a,
+            self.fee_numerator,
+            self.fee_denominator,
+        )?;
         self.token_b = result.new_source;
         self.token_a = result.new_destination;
         Some(result.amount_swapped)
@@ -157,10 +170,9 @@ impl Invariant {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::mem::size_of;
 
     #[test]
-    fn test_state_swap_info_deserialization() {
+    fn test_swap_info_packing() {
         let nonce = 255;
         let token_a_raw = [1u8; 32];
         let token_b_raw = [2u8; 32];
@@ -168,38 +180,42 @@ mod tests {
         let token_a = Pubkey::new_from_array(token_a_raw);
         let token_b = Pubkey::new_from_array(token_b_raw);
         let pool_mint = Pubkey::new_from_array(pool_mint_raw);
-        let numerator = 1;
-        let denominator = 4;
-        let fee = Fee {
-            numerator,
-            denominator,
-        };
-        let state = State::Init(SwapInfo {
+        let fee_numerator = 1;
+        let fee_denominator = 4;
+        let is_initialized = true;
+        let swap_info = SwapInfo {
+            is_initialized,
             nonce,
             token_a,
             token_b,
             pool_mint,
-            fee,
-        });
+            fee_numerator,
+            fee_denominator,
+        };
 
-        let mut data = [0u8; size_of::<State>()];
-        state.serialize(&mut data).unwrap();
-        let deserialized = State::deserialize(&data).unwrap();
-        assert_eq!(state, deserialized);
+        let mut packed = [0u8; SwapInfo::get_packed_len()];
+        swap_info.pack(&mut packed);
+        let unpacked = SwapInfo::unpack(&packed).unwrap();
+        assert_eq!(swap_info, unpacked);
 
-        let mut data = vec![];
-        data.push(1 as u8);
-        data.push(nonce);
-        data.extend_from_slice(&token_a_raw);
-        data.extend_from_slice(&token_b_raw);
-        data.extend_from_slice(&pool_mint_raw);
-        data.extend_from_slice(&[0u8; 7]); // padding
-        data.push(denominator as u8);
-        data.extend_from_slice(&[0u8; 7]); // padding
-        data.push(numerator as u8);
-        data.extend_from_slice(&[0u8; 7]); // padding
-        data.extend_from_slice(&[0u8; 7]); // padding
-        let deserialized = State::deserialize(&data).unwrap();
-        assert_eq!(state, deserialized);
+        let mut packed = vec![];
+        packed.push(1 as u8);
+        packed.push(nonce);
+        packed.extend_from_slice(&token_a_raw);
+        packed.extend_from_slice(&token_b_raw);
+        packed.extend_from_slice(&pool_mint_raw);
+        packed.push(fee_numerator as u8);
+        packed.extend_from_slice(&[0u8; 7]); // padding
+        packed.push(fee_denominator as u8);
+        packed.extend_from_slice(&[0u8; 7]); // padding
+        let unpacked = SwapInfo::unpack(&packed).unwrap();
+        assert_eq!(swap_info, unpacked);
+
+        let packed = [0u8; SwapInfo::get_packed_len()];
+        let swap_info: SwapInfo = Default::default();
+        let unpack_unchecked = SwapInfo::unpack_unchecked(&packed).unwrap();
+        assert_eq!(unpack_unchecked, swap_info);
+        let err = SwapInfo::unpack(&packed).unwrap_err();
+        assert_eq!(err, SwapError::InvalidState.into());
     }
 }
