@@ -1202,6 +1202,59 @@ mod tests {
             ],
         )
         .unwrap();
+
+        // source-delegate transfer
+        Account::unpack_unchecked_mut(
+            &mut account1_info.data.borrow_mut(),
+            &mut |account: &mut Account| {
+                account.amount = 1000;
+                account.delegated_amount = 1000;
+                account.delegate = COption::Some(account1_key);
+                account.owner = owner_key;
+                Ok(())
+            },
+        )
+        .unwrap();
+
+        do_process_instruction_dups(
+            transfer(
+                &program_id,
+                &account1_key,
+                &account2_key,
+                &account1_key,
+                &[],
+                500,
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                account2_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-delegate transfer2
+        do_process_instruction_dups(
+            transfer2(
+                &program_id,
+                &account1_key,
+                &mint_key,
+                &account2_key,
+                &account1_key,
+                &[],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account2_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
     }
 
     #[test]
