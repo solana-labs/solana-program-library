@@ -5,6 +5,7 @@ use bn::{Fr, Group, G1};
 use elgamal_bn::{ciphertext::Ciphertext, private::SecretKey, public::PublicKey};
 use primitive_types::U256;
 use rand::thread_rng;
+use std::str::FromStr;
 
 pub(crate) type CiphertextSolidity = [U256; 4];
 pub(crate) type Point = [U256; 2];
@@ -19,7 +20,8 @@ pub(crate) fn generate_keys() -> (SecretKey, PublicKey) {
 }
 
 fn u256_from_str(s: &str) -> U256 {
-    serde_json::from_str(&format![r#""{}""#, s]).unwrap()
+    let s = if &s[0..2] == "0x" { &s[2..] } else {s};
+    U256::from_str(s).unwrap()
 }
 
 pub(crate) fn encode_proof_decryption(input: &[String; 7]) -> Result<Proof, ()> {

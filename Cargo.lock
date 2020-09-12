@@ -2889,7 +2889,6 @@ dependencies = [
  "primitive-types",
  "rand 0.5.6",
  "remove_dir_all",
- "serde_json",
  "sha3 0.9.1",
  "solana-sdk",
  "thiserror",
