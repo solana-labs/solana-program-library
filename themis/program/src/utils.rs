@@ -18,39 +18,43 @@ pub(crate) fn generate_keys() -> (SecretKey, PublicKey) {
     (sk, pk)
 }
 
+fn u256_from_str(s: &str) -> U256 {
+    serde_json::from_str(&format![r#""{}""#, s]).unwrap()
+}
+
 pub(crate) fn encode_proof_decryption(input: &[String; 7]) -> Result<Proof, ()> {
-    let proof: Proof = [
-        serde_json::from_str(&format![r#""{}""#, input[0]]).unwrap(),
-        serde_json::from_str(&format![r#""{}""#, input[1]]).unwrap(),
-        serde_json::from_str(&format![r#""{}""#, input[2]]).unwrap(),
-        serde_json::from_str(&format![r#""{}""#, input[3]]).unwrap(),
-        serde_json::from_str(&format![r#""{}""#, input[4]]).unwrap(),
-        serde_json::from_str(&format![r#""{}""#, input[5]]).unwrap(),
-        serde_json::from_str(&format![r#""{}""#, input[6]]).unwrap(),
+    let proof = [
+        u256_from_str(&input[0]),
+        u256_from_str(&input[1]),
+        u256_from_str(&input[2]),
+        u256_from_str(&input[3]),
+        u256_from_str(&input[4]),
+        u256_from_str(&input[5]),
+        u256_from_str(&input[6]),
     ];
     Ok(proof)
 }
 
 pub(crate) fn encode_public_key(input: PublicKey) -> Result<Point, Error> {
     let (x, y) = input.get_point_hex_string().unwrap();
-    let pk_point: Point = [
-        serde_json::from_str(&format![r#""{}""#, x]).unwrap(),
-        serde_json::from_str(&format![r#""{}""#, y]).unwrap(),
+    let pk_point = [
+        u256_from_str(&x),
+        u256_from_str(&y),
     ];
     Ok(pk_point)
 }
 
 pub(crate) fn encode_input_ciphertext(input: Vec<Ciphertext>) -> Result<Vec<CiphertextSolidity>, Error> {
-    let encoded_input: Vec<CiphertextSolidity> = input
+    let encoded_input = input
         .into_iter()
         .map(|x| {
             // todo: handle these unwraps
             let ((x0, x1), (y0, y1)) = x.get_points_hex_string().unwrap();
-            let point: CiphertextSolidity = [
-                serde_json::from_str(&format![r#""{}""#, x0]).unwrap(),
-                serde_json::from_str(&format![r#""{}""#, x1]).unwrap(),
-                serde_json::from_str(&format![r#""{}""#, y0]).unwrap(),
-                serde_json::from_str(&format![r#""{}""#, y1]).unwrap(),
+            let point = [
+               u256_from_str(&x0),
+               u256_from_str(&x1),
+               u256_from_str(&y0),
+               u256_from_str(&y1),
             ];
             point
         })
@@ -70,11 +74,7 @@ pub(crate) fn decode_ciphertext(
         pk,
     );
 
-    let encrypted_encoded = match encrypted_encoded {
-        Ok(e) => e,
-        Err(_) => return Err(Error::ElGamalConversionError {}),
-    };
-    Ok(encrypted_encoded)
+    encrypted_encoded.map_err(|_| Error::ElGamalConversionError)
 }
 
 pub(crate) fn recover_scalar(point: G1, k: u32) -> Result<Fr, Error> {
