@@ -1,11 +1,9 @@
 #![allow(missing_docs)]
 
 use crate::errors::Error;
-use bn::{Fr, Group, G1};
-use elgamal_bn::{ciphertext::Ciphertext, private::SecretKey, public::PublicKey};
-use primitive_types::U256;
+use bn::{Fr, Group, G1, arith::U256};
+use elgamal_bn::{ciphertext::Ciphertext, private::SecretKey, public::{PublicKey, into_hex, from_hex}};
 use rand::thread_rng;
-use std::str::FromStr;
 
 pub(crate) type CiphertextSolidity = [U256; 4];
 pub(crate) type Point = [U256; 2];
@@ -21,7 +19,11 @@ pub(crate) fn generate_keys() -> (SecretKey, PublicKey) {
 
 fn u256_from_str(s: &str) -> U256 {
     let s = if &s[0..2] == "0x" { &s[2..] } else {s};
-    U256::from_str(s).unwrap()
+    from_hex(s).unwrap()
+}
+
+fn u256_to_string(x: bn::arith::U256) -> String {
+    format!("0x{}", into_hex(x).unwrap())
 }
 
 pub(crate) fn encode_proof_decryption(input: &[String; 7]) -> Result<Proof, ()> {
@@ -68,10 +70,10 @@ pub(crate) fn decode_ciphertext(
     raw_point: CiphertextSolidity,
     pk: PublicKey,
 ) -> Result<Ciphertext, Error> {
-    let encrypted_encoded = Ciphertext::from_dec_string(
+    let encrypted_encoded = Ciphertext::from_hex_string(
         (
-            (raw_point[0].to_string(), raw_point[1].to_string()),
-            (raw_point[2].to_string(), raw_point[3].to_string()),
+            (u256_to_string(raw_point[0]), u256_to_string(raw_point[1])),
+            (u256_to_string(raw_point[2]), u256_to_string(raw_point[3])),
         ),
         pk,
     );

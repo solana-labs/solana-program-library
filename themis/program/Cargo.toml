@@ -24,8 +24,6 @@ elgamal_bn = { git = "https://github.com/brave-experiments/elgamal_bn", rev = "9
 num-derive = "0.3"
 num_enum = "0.5.1"
 num-traits = "0.2"
-primitive-types = "0.7.2"
-rand = "0.5.0"
 remove_dir_all = "=0.5.0"
 sha3 = "0.9.1"
 solana-sdk = { version = "1.3.9", default-features = false, optional = true }
@@ -37,6 +35,7 @@ default-features = false
 features = ["rustc-serialize"]
 
 [dev-dependencies]
+rand = "0.5.0"
 
 [lib]
 crate-type = ["cdylib", "lib"]

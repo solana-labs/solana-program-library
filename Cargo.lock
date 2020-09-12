@@ -2629,7 +2629,6 @@ dependencies = [
  "num-derive",
  "num-traits 0.2.12",
  "num_enum",
- "primitive-types",
  "rand 0.5.6",
  "remove_dir_all",
  "sha3 0.9.1",
