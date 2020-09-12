@@ -1,17 +1,27 @@
 #![allow(missing_docs)]
 
 use bincode::{rustc_serialize::encode, SizeLimit::Infinite};
-use bn::{AffineG1, Fq, Fr, Group, G1};
-use primitive_types::U256;
+use bn::{AffineG1, Fq, Fr, Group, G1, arith::U256};
 use sha3::{Digest, Keccak256};
 
-#[derive(Default)]
 struct EncryptedAggregate {
     x0: U256,
     x1: U256,
     y0: U256,
     y1: U256,
     public_key: [U256; 2],
+}
+
+impl Default for EncryptedAggregate {
+    fn default() -> Self {
+        Self {
+            x0: U256::from(0),
+            x1: U256::from(0),
+            y0: U256::from(0),
+            y1: U256::from(0),
+            public_key: [U256::from(0), U256::from(0)],
+        }
+    }
 }
 
 pub struct PaymentRequests {
@@ -59,21 +69,9 @@ impl Ciphertext {
     }
 }
 
-fn primtypes_u256(n: bn::arith::U256) -> U256 {
-    let mut buf = [0u8; 32];
-    n.to_big_endian(&mut buf).unwrap();
-    U256::from_big_endian(&buf)
-}
-
-fn bn_u256(n: U256) -> bn::arith::U256 {
-    let mut buf = [0u8; 32];
-    n.to_big_endian(&mut buf);
-    bn::arith::U256::from_slice(&buf).unwrap()
-}
-
 fn read_point(input: &[U256]) -> ::bn::G1 {
-    let px = Fq::from_u256(bn_u256(input[0])).unwrap();
-    let py = Fq::from_u256(bn_u256(input[1])).unwrap();
+    let px = Fq::from_u256(input[0]).unwrap();
+    let py = Fq::from_u256(input[1]).unwrap();
     if px == Fq::zero() && py == Fq::zero() {
         G1::zero()
     } else {
@@ -89,8 +87,8 @@ fn bn128_add(input: [U256; 4]) -> [U256; 2] {
     if let Some(sum) = AffineG1::from_jacobian(p1 + p2) {
         // point not at infinity
         [
-            primtypes_u256(sum.x().into_u256()),
-            primtypes_u256(sum.y().into_u256()),
+            sum.x().into_u256(),
+            sum.y().into_u256(),
         ]
     } else {
         eprintln!("bn128_add: infinity");
@@ -101,13 +99,13 @@ fn bn128_add(input: [U256; 4]) -> [U256; 2] {
 // Can fail if first paramter (bn128 curve point) does not actually belong to the curve
 fn bn128_multiply(input: [U256; 3]) -> [U256; 2] {
     let p = read_point(&input[0..2]);
-    let fr = Fr::new_mul_factor(bn_u256(input[2]));
+    let fr = Fr::new_mul_factor(input[2]);
 
     if let Some(sum) = AffineG1::from_jacobian(p * fr) {
         // point not at infinity
         [
-            primtypes_u256(sum.x().into_u256()),
-            primtypes_u256(sum.y().into_u256()),
+            sum.x().into_u256(),
+            sum.y().into_u256(),
         ]
     } else {
         eprintln!("bn128_multiply: infinity");
@@ -220,23 +218,23 @@ fn keccak256(
     public_key: [U256; 2],
 ) -> U256 {
     let hasher = Keccak256::new()
-        .chain(encode(&bn_u256(plaintext[0]), Infinite).unwrap())
-        .chain(encode(&bn_u256(plaintext[1]), Infinite).unwrap())
-        .chain(encode(&bn_u256(ciphertext[0]), Infinite).unwrap())
-        .chain(encode(&bn_u256(ciphertext[1]), Infinite).unwrap())
-        .chain(encode(&bn_u256(ciphertext[2]), Infinite).unwrap())
-        .chain(encode(&bn_u256(ciphertext[3]), Infinite).unwrap())
-        .chain(encode(&bn_u256(announcement_g[0]), Infinite).unwrap())
-        .chain(encode(&bn_u256(announcement_g[1]), Infinite).unwrap())
-        .chain(encode(&bn_u256(announcement_ctx[0]), Infinite).unwrap())
-        .chain(encode(&bn_u256(announcement_ctx[1]), Infinite).unwrap())
-        .chain(encode(&bn_u256(generator[0]), Infinite).unwrap())
-        .chain(encode(&bn_u256(generator[1]), Infinite).unwrap())
-        .chain(encode(&bn_u256(public_key[0]), Infinite).unwrap())
-        .chain(encode(&bn_u256(public_key[1]), Infinite).unwrap());
+        .chain(encode(&plaintext[0], Infinite).unwrap())
+        .chain(encode(&plaintext[1], Infinite).unwrap())
+        .chain(encode(&ciphertext[0], Infinite).unwrap())
+        .chain(encode(&ciphertext[1], Infinite).unwrap())
+        .chain(encode(&ciphertext[2], Infinite).unwrap())
+        .chain(encode(&ciphertext[3], Infinite).unwrap())
+        .chain(encode(&announcement_g[0], Infinite).unwrap())
+        .chain(encode(&announcement_g[1], Infinite).unwrap())
+        .chain(encode(&announcement_ctx[0], Infinite).unwrap())
+        .chain(encode(&announcement_ctx[1], Infinite).unwrap())
+        .chain(encode(&generator[0], Infinite).unwrap())
+        .chain(encode(&generator[1], Infinite).unwrap())
+        .chain(encode(&public_key[0], Infinite).unwrap())
+        .chain(encode(&public_key[1], Infinite).unwrap());
 
     let result = hasher.finalize();
-    U256::from(result.as_slice())
+    U256::from_slice(result.as_slice()).unwrap()
 }
 
 fn check_proof(
@@ -344,17 +342,6 @@ impl Client {
 mod tests {
     use super::*;
     use crate::utils;
-
-    #[test]
-    fn test_u256_conversions() {
-        let n = bn::arith::U256::one();
-        let pn = primtypes_u256(n);
-        assert_eq!(bn_u256(pn), n);
-
-        let pn = U256::one();
-        let n = bn_u256(pn);
-        assert_eq!(pn, primtypes_u256(n));
-    }
 
     fn test_policy_contract(policies: &[U256], expected_scalar_aggregate: Fr) {
         let (sk, pk) = utils::generate_keys();
