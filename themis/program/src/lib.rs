@@ -10,7 +10,8 @@ pub mod instruction;
 //pub mod pack;
 //pub mod processor;
 pub mod state;
-pub mod utils;
+#[cfg(test)]
+mod utils;
 
 // Export current solana-sdk types for downstream users who may also be building with a different
 // solana-sdk version
