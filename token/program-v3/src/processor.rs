@@ -327,81 +327,78 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
 
         if account_info.data_len() == Account::get_packed_len() {
-            let mut account_data = account_info.data.borrow_mut();
-            Account::unpack_mut(&mut account_data, &mut |account: &mut Account| {
-                if account.is_frozen() {
-                    return Err(TokenError::AccountFrozen.into());
-                }
+            let mut account = Account::unpack(&account_info.data.borrow())?;
 
-                match authority_type {
-                    AuthorityType::AccountOwner => {
-                        Self::validate_owner(
-                            program_id,
-                            &account.owner,
-                            authority_info,
-                            account_info_iter.as_slice(),
-                        )?;
+            if account.is_frozen() {
+                return Err(TokenError::AccountFrozen.into());
+            }
 
-                        if let COption::Some(authority) = new_authority {
-                            account.owner = authority;
-                        } else {
-                            return Err(TokenError::InvalidInstruction.into());
-                        }
-                    }
-                    AuthorityType::CloseAccount => {
-                        let authority = account.close_authority.unwrap_or(account.owner);
-                        Self::validate_owner(
-                            program_id,
-                            &authority,
-                            authority_info,
-                            account_info_iter.as_slice(),
-                        )?;
-                        account.close_authority = new_authority;
-                    }
-                    _ => {
-                        return Err(TokenError::AuthorityTypeNotSupported.into());
+            match authority_type {
+                AuthorityType::AccountOwner => {
+                    Self::validate_owner(
+                        program_id,
+                        &account.owner,
+                        authority_info,
+                        account_info_iter.as_slice(),
+                    )?;
+
+                    if let COption::Some(authority) = new_authority {
+                        account.owner = authority;
+                    } else {
+                        return Err(TokenError::InvalidInstruction.into());
                     }
                 }
-                Ok(())
-            })?;
+                AuthorityType::CloseAccount => {
+                    let authority = account.close_authority.unwrap_or(account.owner);
+                    Self::validate_owner(
+                        program_id,
+                        &authority,
+                        authority_info,
+                        account_info_iter.as_slice(),
+                    )?;
+                    account.close_authority = new_authority;
+                }
+                _ => {
+                    return Err(TokenError::AuthorityTypeNotSupported.into());
+                }
+            }
+            Account::pack(account, &mut account_info.data.borrow_mut())?;
         } else if account_info.data_len() == Mint::get_packed_len() {
-            let mut mint_data = account_info.data.borrow_mut();
-            Mint::unpack_mut(&mut mint_data, &mut |mint: &mut Mint| {
-                match authority_type {
-                    AuthorityType::MintTokens => {
-                        // Once a mint's supply is fixed, it cannot be undone by setting a new
-                        // mint_authority
-                        let mint_authority = mint
-                            .mint_authority
-                            .ok_or(Into::<ProgramError>::into(TokenError::FixedSupply))?;
-                        Self::validate_owner(
-                            program_id,
-                            &mint_authority,
-                            authority_info,
-                            account_info_iter.as_slice(),
-                        )?;
-                        mint.mint_authority = new_authority;
-                    }
-                    AuthorityType::FreezeAccount => {
-                        // Once a mint's freeze authority is disabled, it cannot be re-enabled by
-                        // setting a new freeze_authority
-                        let freeze_authority = mint
-                            .freeze_authority
-                            .ok_or(Into::<ProgramError>::into(TokenError::MintCannotFreeze))?;
-                        Self::validate_owner(
-                            program_id,
-                            &freeze_authority,
-                            authority_info,
-                            account_info_iter.as_slice(),
-                        )?;
-                        mint.freeze_authority = new_authority;
-                    }
-                    _ => {
-                        return Err(TokenError::AuthorityTypeNotSupported.into());
-                    }
+            let mut mint = Mint::unpack(&account_info.data.borrow())?;
+            match authority_type {
+                AuthorityType::MintTokens => {
+                    // Once a mint's supply is fixed, it cannot be undone by setting a new
+                    // mint_authority
+                    let mint_authority = mint
+                        .mint_authority
+                        .ok_or(Into::<ProgramError>::into(TokenError::FixedSupply))?;
+                    Self::validate_owner(
+                        program_id,
+                        &mint_authority,
+                        authority_info,
+                        account_info_iter.as_slice(),
+                    )?;
+                    mint.mint_authority = new_authority;
                 }
-                Ok(())
-            })?;
+                AuthorityType::FreezeAccount => {
+                    // Once a mint's freeze authority is disabled, it cannot be re-enabled by
+                    // setting a new freeze_authority
+                    let freeze_authority = mint
+                        .freeze_authority
+                        .ok_or(Into::<ProgramError>::into(TokenError::MintCannotFreeze))?;
+                    Self::validate_owner(
+                        program_id,
+                        &freeze_authority,
+                        authority_info,
+                        account_info_iter.as_slice(),
+                    )?;
+                    mint.freeze_authority = new_authority;
+                }
+                _ => {
+                    return Err(TokenError::AuthorityTypeNotSupported.into());
+                }
+            }
+            Mint::pack(mint, &mut account_info.data.borrow_mut())?;
         } else {
             return Err(ProgramError::InvalidArgument);
         }
@@ -2180,6 +2177,114 @@ mod tests {
         do_process_instruction(
             revoke(&program_id, &account_key, &owner_key, &[]).unwrap(),
             vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_set_authority_dups() {
+        let program_id = pubkey_rand();
+        let account1_key = pubkey_rand();
+        let mut account1_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
+        let owner_key = pubkey_rand();
+        let mint_key = pubkey_rand();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mint_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
+        let rent_key = rent::id();
+        let mut rent_sysvar = rent_sysvar();
+        let rent_info: AccountInfo = (&rent_key, false, &mut rent_sysvar).into();
+
+        // create mint
+        do_process_instruction_dups(
+            initialize_mint(&program_id, &mint_key, &mint_key, Some(&mint_key), 2).unwrap(),
+            vec![mint_info.clone(), rent_info.clone()],
+        )
+        .unwrap();
+
+        // create account
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account1_key, &mint_key, &account1_key).unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // set mint_authority when currently self
+        do_process_instruction_dups(
+            set_authority(
+                &program_id,
+                &mint_key,
+                Some(&owner_key),
+                AuthorityType::MintTokens,
+                &mint_key,
+                &[],
+            )
+            .unwrap(),
+            vec![mint_info.clone(), mint_info.clone()],
+        )
+        .unwrap();
+
+        // set freeze_authority when currently self
+        do_process_instruction_dups(
+            set_authority(
+                &program_id,
+                &mint_key,
+                Some(&owner_key),
+                AuthorityType::FreezeAccount,
+                &mint_key,
+                &[],
+            )
+            .unwrap(),
+            vec![mint_info.clone(), mint_info.clone()],
+        )
+        .unwrap();
+
+        // set account owner when currently self
+        do_process_instruction_dups(
+            set_authority(
+                &program_id,
+                &account1_key,
+                Some(&owner_key),
+                AuthorityType::AccountOwner,
+                &account1_key,
+                &[],
+            )
+            .unwrap(),
+            vec![account1_info.clone(), account1_info.clone()],
+        )
+        .unwrap();
+
+        // set close_authority when currently self
+        Account::unpack_unchecked_mut(
+            &mut account1_info.data.borrow_mut(),
+            &mut |account: &mut Account| {
+                account.close_authority = COption::Some(account1_key);
+                Ok(())
+            },
+        )
+        .unwrap();
+
+        do_process_instruction_dups(
+            set_authority(
+                &program_id,
+                &account1_key,
+                Some(&owner_key),
+                AuthorityType::CloseAccount,
+                &account1_key,
+                &[],
+            )
+            .unwrap(),
+            vec![account1_info.clone(), account1_info.clone()],
         )
         .unwrap();
     }
