@@ -480,69 +480,69 @@ impl Processor {
         let mint_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        let mut mint_data = mint_info.data.borrow_mut();
-        let mut source_data = source_account_info.data.borrow_mut();
-        Mint::unpack_mut(&mut mint_data, &mut |mint: &mut Mint| {
-            Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
-                if source_account.is_native() {
-                    return Err(TokenError::NativeNotSupported.into());
-                }
-                if mint_info.key != &source_account.mint {
-                    return Err(TokenError::MintMismatch.into());
-                }
-                if source_account.amount < amount {
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+        let mut mint = Mint::unpack(&mint_info.data.borrow())?;
+
+        if source_account.is_native() {
+            return Err(TokenError::NativeNotSupported.into());
+        }
+        if mint_info.key != &source_account.mint {
+            return Err(TokenError::MintMismatch.into());
+        }
+        if source_account.amount < amount {
+            return Err(TokenError::InsufficientFunds.into());
+        }
+        if source_account.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
+
+        if let Some(expected_decimals) = expected_decimals {
+            if expected_decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
+            }
+        }
+
+        match source_account.delegate {
+            COption::Some(ref delegate) if authority_info.key == delegate => {
+                Self::validate_owner(
+                    program_id,
+                    delegate,
+                    authority_info,
+                    account_info_iter.as_slice(),
+                )?;
+
+                if source_account.delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
                 }
-                if source_account.is_frozen() {
-                    return Err(TokenError::AccountFrozen.into());
-                }
-
-                if let Some(expected_decimals) = expected_decimals {
-                    if expected_decimals != mint.decimals {
-                        return Err(TokenError::MintDecimalsMismatch.into());
-                    }
-                }
-
-                match source_account.delegate {
-                    COption::Some(ref delegate) if authority_info.key == delegate => {
-                        Self::validate_owner(
-                            program_id,
-                            delegate,
-                            authority_info,
-                            account_info_iter.as_slice(),
-                        )?;
-
-                        if source_account.delegated_amount < amount {
-                            return Err(TokenError::InsufficientFunds.into());
-                        }
-                        source_account.delegated_amount = source_account
-                            .delegated_amount
-                            .checked_sub(amount)
-                            .ok_or(TokenError::Overflow)?;
-                        if source_account.delegated_amount == 0 {
-                            source_account.delegate = COption::None;
-                        }
-                    }
-                    _ => Self::validate_owner(
-                        program_id,
-                        &source_account.owner,
-                        authority_info,
-                        account_info_iter.as_slice(),
-                    )?,
-                }
-
-                source_account.amount = source_account
-                    .amount
+                source_account.delegated_amount = source_account
+                    .delegated_amount
                     .checked_sub(amount)
                     .ok_or(TokenError::Overflow)?;
-                mint.supply = mint
-                    .supply
-                    .checked_sub(amount)
-                    .ok_or(TokenError::Overflow)?;
+                if source_account.delegated_amount == 0 {
+                    source_account.delegate = COption::None;
+                }
+            }
+            _ => Self::validate_owner(
+                program_id,
+                &source_account.owner,
+                authority_info,
+                account_info_iter.as_slice(),
+            )?,
+        }
 
-                Ok(())
-            })
-        })
+        source_account.amount = source_account
+            .amount
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
+        mint.supply = mint
+            .supply
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
+
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+        Mint::pack(mint, &mut mint_info.data.borrow_mut())?;
+
+        Ok(())
     }
 
     /// Processes a [CloseAccount](enum.TokenInstruction.html) instruction.
@@ -2739,6 +2739,221 @@ mod tests {
                 vec![&mut mint_account, &mut account2_account, &mut owner_account],
             )
         );
+    }
+
+    #[test]
+    fn test_burn_dups() {
+        let program_id = pubkey_rand();
+        let account1_key = pubkey_rand();
+        let mut account1_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
+        let owner_key = pubkey_rand();
+        let mut owner_account = SolanaAccount::default();
+        let owner_info: AccountInfo = (&owner_key, true, &mut owner_account).into();
+        let mint_key = pubkey_rand();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mint_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
+        let rent_key = rent::id();
+        let mut rent_sysvar = rent_sysvar();
+        let rent_info: AccountInfo = (&rent_key, false, &mut rent_sysvar).into();
+
+        // create mint
+        do_process_instruction_dups(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![mint_info.clone(), rent_info.clone()],
+        )
+        .unwrap();
+
+        // create account
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account1_key, &mint_key, &account1_key).unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // mint to account
+        do_process_instruction_dups(
+            mint_to(&program_id, &mint_key, &account1_key, &owner_key, &[], 1000).unwrap(),
+            vec![mint_info.clone(), account1_info.clone(), owner_info.clone()],
+        )
+        .unwrap();
+
+        // source-owner burn
+        do_process_instruction_dups(
+            burn(
+                &program_id,
+                &mint_key,
+                &account1_key,
+                &account1_key,
+                &[],
+                500,
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-owner burn2
+        do_process_instruction_dups(
+            burn2(
+                &program_id,
+                &account1_key,
+                &mint_key,
+                &account1_key,
+                &[],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // mint-owner burn
+        do_process_instruction_dups(
+            mint_to(&program_id, &mint_key, &account1_key, &owner_key, &[], 1000).unwrap(),
+            vec![mint_info.clone(), account1_info.clone(), owner_info.clone()],
+        )
+        .unwrap();
+        Account::unpack_unchecked_mut(
+            &mut account1_info.data.borrow_mut(),
+            &mut |account: &mut Account| {
+                account.owner = mint_key;
+                Ok(())
+            },
+        )
+        .unwrap();
+        do_process_instruction_dups(
+            burn(&program_id, &account1_key, &mint_key, &mint_key, &[], 500).unwrap(),
+            vec![account1_info.clone(), mint_info.clone(), mint_info.clone()],
+        )
+        .unwrap();
+
+        // mint-owner burn2
+        do_process_instruction_dups(
+            burn2(
+                &program_id,
+                &account1_key,
+                &mint_key,
+                &mint_key,
+                &[],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![account1_info.clone(), mint_info.clone(), mint_info.clone()],
+        )
+        .unwrap();
+
+        // source-delegate burn
+        do_process_instruction_dups(
+            mint_to(&program_id, &mint_key, &account1_key, &owner_key, &[], 1000).unwrap(),
+            vec![mint_info.clone(), account1_info.clone(), owner_info.clone()],
+        )
+        .unwrap();
+        Account::unpack_unchecked_mut(
+            &mut account1_info.data.borrow_mut(),
+            &mut |account: &mut Account| {
+                account.delegated_amount = 1000;
+                account.delegate = COption::Some(account1_key);
+                account.owner = owner_key;
+                Ok(())
+            },
+        )
+        .unwrap();
+        do_process_instruction_dups(
+            burn(
+                &program_id,
+                &account1_key,
+                &mint_key,
+                &account1_key,
+                &[],
+                500,
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-delegate burn2
+        do_process_instruction_dups(
+            burn2(
+                &program_id,
+                &account1_key,
+                &mint_key,
+                &account1_key,
+                &[],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // mint-delegate burn
+        do_process_instruction_dups(
+            mint_to(&program_id, &mint_key, &account1_key, &owner_key, &[], 1000).unwrap(),
+            vec![mint_info.clone(), account1_info.clone(), owner_info.clone()],
+        )
+        .unwrap();
+        Account::unpack_unchecked_mut(
+            &mut account1_info.data.borrow_mut(),
+            &mut |account: &mut Account| {
+                account.delegated_amount = 1000;
+                account.delegate = COption::Some(mint_key);
+                account.owner = owner_key;
+                Ok(())
+            },
+        )
+        .unwrap();
+        do_process_instruction_dups(
+            burn(&program_id, &account1_key, &mint_key, &mint_key, &[], 500).unwrap(),
+            vec![account1_info.clone(), mint_info.clone(), mint_info.clone()],
+        )
+        .unwrap();
+
+        // mint-delegate burn2
+        do_process_instruction_dups(
+            burn2(
+                &program_id,
+                &account1_key,
+                &mint_key,
+                &mint_key,
+                &[],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![account1_info.clone(), mint_info.clone(), mint_info.clone()],
+        )
+        .unwrap();
     }
 
     #[test]
