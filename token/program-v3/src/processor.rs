@@ -257,35 +257,36 @@ impl Processor {
         let delegate_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
-            if source_account.is_frozen() {
-                return Err(TokenError::AccountFrozen.into());
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+
+        if source_account.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
+
+        if let Some((mint_info, expected_decimals)) = expected_mint_info {
+            if source_account.mint != *mint_info.key {
+                return Err(TokenError::MintMismatch.into());
             }
 
-            if let Some((mint_info, expected_decimals)) = expected_mint_info {
-                if source_account.mint != *mint_info.key {
-                    return Err(TokenError::MintMismatch.into());
-                }
-
-                let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
-                if expected_decimals != mint.decimals {
-                    return Err(TokenError::MintDecimalsMismatch.into());
-                }
+            let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
+            if expected_decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
             }
+        }
 
-            Self::validate_owner(
-                program_id,
-                &source_account.owner,
-                owner_info,
-                account_info_iter.as_slice(),
-            )?;
+        Self::validate_owner(
+            program_id,
+            &source_account.owner,
+            owner_info,
+            account_info_iter.as_slice(),
+        )?;
 
-            source_account.delegate = COption::Some(*delegate_info.key);
-            source_account.delegated_amount = amount;
+        source_account.delegate = COption::Some(*delegate_info.key);
+        source_account.delegated_amount = amount;
 
-            Ok(())
-        })
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+
+        Ok(())
     }
 
     /// Processes an [Revoke](enum.TokenInstruction.html) instruction.
@@ -293,26 +294,27 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
-            let owner_info = next_account_info(account_info_iter)?;
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
 
-            if source_account.is_frozen() {
-                return Err(TokenError::AccountFrozen.into());
-            }
+        let owner_info = next_account_info(account_info_iter)?;
 
-            Self::validate_owner(
-                program_id,
-                &source_account.owner,
-                owner_info,
-                account_info_iter.as_slice(),
-            )?;
+        if source_account.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
 
-            source_account.delegate = COption::None;
-            source_account.delegated_amount = 0;
+        Self::validate_owner(
+            program_id,
+            &source_account.owner,
+            owner_info,
+            account_info_iter.as_slice(),
+        )?;
 
-            Ok(())
-        })
+        source_account.delegate = COption::None;
+        source_account.delegated_amount = 0;
+
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+
+        Ok(())
     }
 
     /// Processes a [SetAuthority](enum.TokenInstruction.html) instruction.
@@ -1973,6 +1975,217 @@ mod tests {
             assert_eq!(account.amount, 84);
             Ok(())
         })
+        .unwrap();
+    }
+
+    #[test]
+    fn test_approve_dups() {
+        let program_id = pubkey_rand();
+        let account1_key = pubkey_rand();
+        let mut account1_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
+        let account2_key = pubkey_rand();
+        let mut account2_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account2_info: AccountInfo = (&account2_key, false, &mut account2_account).into();
+        let account3_key = pubkey_rand();
+        let mut account3_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account3_info: AccountInfo = (&account3_key, true, &mut account3_account).into();
+        let multisig_key = pubkey_rand();
+        let mut multisig_account = SolanaAccount::new(
+            multisig_minimum_balance(),
+            Multisig::get_packed_len(),
+            &program_id,
+        );
+        let multisig_info: AccountInfo = (&multisig_key, true, &mut multisig_account).into();
+        let owner_key = pubkey_rand();
+        let mut owner_account = SolanaAccount::default();
+        let owner_info: AccountInfo = (&owner_key, true, &mut owner_account).into();
+        let mint_key = pubkey_rand();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mint_info: AccountInfo = (&mint_key, false, &mut mint_account).into();
+        let rent_key = rent::id();
+        let mut rent_sysvar = rent_sysvar();
+        let rent_info: AccountInfo = (&rent_key, false, &mut rent_sysvar).into();
+
+        // create mint
+        do_process_instruction_dups(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![mint_info.clone(), rent_info.clone()],
+        )
+        .unwrap();
+
+        // create account
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account1_key, &mint_key, &account1_key).unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // create another account
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account2_key, &mint_key, &owner_key).unwrap(),
+            vec![
+                account2_info.clone(),
+                mint_info.clone(),
+                owner_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // mint to account
+        do_process_instruction_dups(
+            mint_to(&program_id, &mint_key, &account1_key, &owner_key, &[], 1000).unwrap(),
+            vec![mint_info.clone(), account1_info.clone(), owner_info.clone()],
+        )
+        .unwrap();
+
+        // source-owner approve
+        do_process_instruction_dups(
+            approve(
+                &program_id,
+                &account1_key,
+                &account2_key,
+                &account1_key,
+                &[],
+                500,
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                account2_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-owner approve2
+        do_process_instruction_dups(
+            approve2(
+                &program_id,
+                &account1_key,
+                &mint_key,
+                &account2_key,
+                &account1_key,
+                &[],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account2_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-owner revoke
+        do_process_instruction_dups(
+            revoke(&program_id, &account1_key, &account1_key, &[]).unwrap(),
+            vec![account1_info.clone(), account1_info.clone()],
+        )
+        .unwrap();
+
+        // test source-multisig signer
+        do_process_instruction_dups(
+            initialize_multisig(&program_id, &multisig_key, &[&account3_key], 1).unwrap(),
+            vec![
+                multisig_info.clone(),
+                rent_info.clone(),
+                account3_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account3_key, &mint_key, &multisig_key).unwrap(),
+            vec![
+                account3_info.clone(),
+                mint_info.clone(),
+                multisig_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        do_process_instruction_dups(
+            mint_to(&program_id, &mint_key, &account3_key, &owner_key, &[], 1000).unwrap(),
+            vec![mint_info.clone(), account3_info.clone(), owner_info.clone()],
+        )
+        .unwrap();
+
+        // source-multisig-signer approve
+        do_process_instruction_dups(
+            approve(
+                &program_id,
+                &account3_key,
+                &account2_key,
+                &multisig_key,
+                &[&account3_key],
+                500,
+            )
+            .unwrap(),
+            vec![
+                account3_info.clone(),
+                account2_info.clone(),
+                multisig_info.clone(),
+                account3_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-multisig-signer approve2
+        do_process_instruction_dups(
+            approve2(
+                &program_id,
+                &account3_key,
+                &mint_key,
+                &account2_key,
+                &multisig_key,
+                &[&account3_key],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![
+                account3_info.clone(),
+                mint_info.clone(),
+                account2_info.clone(),
+                multisig_info.clone(),
+                account3_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-owner multisig-signer
+        do_process_instruction_dups(
+            revoke(&program_id, &account3_key, &multisig_key, &[&account3_key]).unwrap(),
+            vec![
+                account3_info.clone(),
+                multisig_info.clone(),
+                account3_info.clone(),
+            ],
+        )
         .unwrap();
     }
 
