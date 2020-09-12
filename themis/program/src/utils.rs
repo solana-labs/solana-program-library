@@ -6,20 +6,19 @@ use elgamal_bn::{ciphertext::Ciphertext, private::SecretKey, public::PublicKey};
 use primitive_types::U256;
 use rand::thread_rng;
 
-pub type CiphertextSolidity = [U256; 4];
-pub type Point = [U256; 2];
+pub(crate) type CiphertextSolidity = [U256; 4];
+pub(crate) type Point = [U256; 2];
 // two points and one scalar
-pub type Proof = [U256; 7];
-pub type EncryptedInteractions = Vec<Vec<String>>;
+pub(crate) type Proof = [U256; 7];
 
-pub fn generate_keys() -> (SecretKey, PublicKey) {
+pub(crate) fn generate_keys() -> (SecretKey, PublicKey) {
     let mut csprng = thread_rng();
     let sk = SecretKey::new(&mut csprng);
     let pk = PublicKey::from(&sk);
     (sk, pk)
 }
 
-pub fn encode_proof_decryption(input: &[String; 7]) -> Result<Proof, ()> {
+pub(crate) fn encode_proof_decryption(input: &[String; 7]) -> Result<Proof, ()> {
     let proof: Proof = [
         serde_json::from_str(&format![r#""{}""#, input[0]]).unwrap(),
         serde_json::from_str(&format![r#""{}""#, input[1]]).unwrap(),
@@ -32,7 +31,7 @@ pub fn encode_proof_decryption(input: &[String; 7]) -> Result<Proof, ()> {
     Ok(proof)
 }
 
-pub fn encode_public_key(input: PublicKey) -> Result<Point, Error> {
+pub(crate) fn encode_public_key(input: PublicKey) -> Result<Point, Error> {
     let (x, y) = input.get_point_hex_string().unwrap();
     let pk_point: Point = [
         serde_json::from_str(&format![r#""{}""#, x]).unwrap(),
@@ -41,7 +40,7 @@ pub fn encode_public_key(input: PublicKey) -> Result<Point, Error> {
     Ok(pk_point)
 }
 
-pub fn encode_input_ciphertext(input: Vec<Ciphertext>) -> Result<Vec<CiphertextSolidity>, Error> {
+pub(crate) fn encode_input_ciphertext(input: Vec<Ciphertext>) -> Result<Vec<CiphertextSolidity>, Error> {
     let encoded_input: Vec<CiphertextSolidity> = input
         .into_iter()
         .map(|x| {
@@ -59,7 +58,7 @@ pub fn encode_input_ciphertext(input: Vec<Ciphertext>) -> Result<Vec<CiphertextS
     Ok(encoded_input)
 }
 
-pub fn decode_ciphertext(
+pub(crate) fn decode_ciphertext(
     raw_point: CiphertextSolidity,
     pk: PublicKey,
 ) -> Result<Ciphertext, Error> {
@@ -78,20 +77,7 @@ pub fn decode_ciphertext(
     Ok(encrypted_encoded)
 }
 
-// TODO: Handle unwrap() embeeded in the map()
-pub fn encrypt_input(input: Vec<u8>, pk: PublicKey) -> Result<Vec<Ciphertext>, Error> {
-    let enc_input = input
-        .into_iter()
-        .map(|x| {
-            let string_input = x.to_string();
-            pk.encrypt(&(G1::one() * Fr::from_str(&string_input).unwrap()))
-        })
-        .collect();
-
-    Ok(enc_input)
-}
-
-pub fn recover_scalar(point: G1, k: u32) -> Result<Fr, Error> {
+pub(crate) fn recover_scalar(point: G1, k: u32) -> Result<Fr, Error> {
     for i in 0..2u64.pow(k) {
         let scalar = match Fr::from_str(&i.to_string()) {
             Some(s) => s,
