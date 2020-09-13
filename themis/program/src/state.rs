@@ -79,6 +79,19 @@ fn read_point(input: &[U256]) -> ::bn::G1 {
     }
 }
 
+fn encode_point(p: G1) -> [U256; 2] {
+    if let Some(p) = AffineG1::from_jacobian(p) {
+        // point not at infinity
+        [
+            p.x().into_u256(),
+            p.y().into_u256(),
+        ]
+    } else {
+        eprintln!("bn128_multiply: infinity");
+        [U256::from(0), U256::from(0)]
+    }
+}
+
 // Can fail if any of the 2 points does not belong the bn128 curve
 fn bn128_add(input: [U256; 4]) -> [U256; 2] {
     let p1 = read_point(&input[0..2]);
@@ -113,28 +126,26 @@ fn bn128_multiply(input: [U256; 3]) -> [U256; 2] {
     }
 }
 
-fn inner_product(ciphertext_vector: Vec<[U256; 4]>, scalar_vector: &[U256]) -> [U256; 4] {
-    let mut aggregate_1 = [U256::from(0), U256::from(0)];
-    let mut aggregate_2 = [U256::from(0), U256::from(0)];
+fn _inner_product(ciphertexts: &[(G1, G1)], scalars: &[Fr]) -> (G1, G1) {
+    let mut aggregate_x = G1::zero();
+    let mut aggregate_y = G1::zero();
 
-    for i in 0..scalar_vector.len() {
-        let ciphertext = ciphertext_vector[i];
-        let scalar = scalar_vector[i];
-        let result_mult_1 = bn128_multiply([ciphertext[0], ciphertext[1], scalar]);
-        let result_mult_2 = bn128_multiply([ciphertext[2], ciphertext[3], scalar]);
-        aggregate_1 = bn128_add([
-            result_mult_1[0],
-            result_mult_1[1],
-            aggregate_1[0],
-            aggregate_1[1],
-        ]);
-        aggregate_2 = bn128_add([
-            result_mult_2[0],
-            result_mult_2[1],
-            aggregate_2[0],
-            aggregate_2[1],
-        ]);
+    for (&(x, y), &scalar) in ciphertexts.iter().zip(scalars) {
+        aggregate_x = x * scalar + aggregate_x;
+        aggregate_y = y * scalar + aggregate_y;
     }
+
+    (aggregate_x, aggregate_y)
+}
+
+fn inner_product(ciphertext_vector: Vec<[U256; 4]>, scalar_vector: &[U256]) -> [U256; 4] {
+    let ciphertexts: Vec<_> = ciphertext_vector.into_iter().map(|xs| (read_point(&xs[0..2]), read_point(&xs[2..4]))).collect();
+    let scalars: Vec<_> = scalar_vector.iter().map(|x| Fr::new_mul_factor(*x)).collect();
+
+    let (p1, p2) = _inner_product(&ciphertexts, &scalars);
+
+    let aggregate_1 = encode_point(p1);
+    let aggregate_2 = encode_point(p2);
 
     [
         aggregate_1[0],
