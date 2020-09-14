@@ -43,7 +43,7 @@ impl SwapInfo {
         if value.is_initialized {
             Ok(value)
         } else {
-            Err(SwapError::InvalidState.into())
+            Err(SwapError::InvalidSwapInfo.into())
         }
     }
 
@@ -216,6 +216,6 @@ mod tests {
         let unpack_unchecked = SwapInfo::unpack_unchecked(&packed).unwrap();
         assert_eq!(unpack_unchecked, swap_info);
         let err = SwapInfo::unpack(&packed).unwrap_err();
-        assert_eq!(err, SwapError::InvalidState.into());
+        assert_eq!(err, SwapError::InvalidSwapInfo.into());
     }
 }
