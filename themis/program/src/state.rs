@@ -1,41 +1,37 @@
 #![allow(missing_docs)]
 
 use bincode::{rustc_serialize::encode, SizeLimit::Infinite};
-use bn::{AffineG1, Fq, Fr, Group, G1, arith::U256};
+use bn::{arith::U256, AffineG1, Fr, Group, G1};
 use sha3::{Digest, Keccak256};
 
+type Points = (G1, G1);
+
 struct EncryptedAggregate {
-    x0: U256,
-    x1: U256,
-    y0: U256,
-    y1: U256,
-    public_key: [U256; 2],
+    ciphertext: Points,
+    public_key: G1,
 }
 
 impl Default for EncryptedAggregate {
     fn default() -> Self {
         Self {
-            x0: U256::from(0),
-            x1: U256::from(0),
-            y0: U256::from(0),
-            y1: U256::from(0),
-            public_key: [U256::from(0), U256::from(0)],
+            ciphertext: (G1::zero(), G1::zero()),
+            public_key: G1::zero(),
         }
     }
 }
 
 pub struct PaymentRequests {
-    pub encrypted_aggregate: [U256; 4],
-    pub decrypted_aggregate: [U256; 2],
-    pub proof_correct_decryption: [U256; 2],
+    pub encrypted_aggregate: Points,
+    pub decrypted_aggregate: G1,
+    pub proof_correct_decryption: G1,
     pub valid: bool,
 }
 
 impl PaymentRequests {
     fn new(
-        encrypted_aggregate: [U256; 4],
-        decrypted_aggregate: [U256; 2],
-        proof_correct_decryption: [U256; 2],
+        encrypted_aggregate: Points,
+        decrypted_aggregate: G1,
+        proof_correct_decryption: G1,
         valid: bool,
     ) -> Self {
         Self {
@@ -47,86 +43,7 @@ impl PaymentRequests {
     }
 }
 
-struct EcPoint {
-    x_coord: U256,
-    y_coord: U256,
-}
-
-impl EcPoint {
-    fn new(x_coord: U256, y_coord: U256) -> Self {
-        Self { x_coord, y_coord }
-    }
-}
-
-struct Ciphertext {
-    point1: EcPoint,
-    point2: EcPoint,
-}
-
-impl Ciphertext {
-    fn new(point1: EcPoint, point2: EcPoint) -> Self {
-        Self { point1, point2 }
-    }
-}
-
-fn read_point(input: &[U256]) -> ::bn::G1 {
-    let px = Fq::from_u256(input[0]).unwrap();
-    let py = Fq::from_u256(input[1]).unwrap();
-    if px == Fq::zero() && py == Fq::zero() {
-        G1::zero()
-    } else {
-        AffineG1::new(px, py).unwrap().into()
-    }
-}
-
-fn encode_point(p: G1) -> [U256; 2] {
-    if let Some(p) = AffineG1::from_jacobian(p) {
-        // point not at infinity
-        [
-            p.x().into_u256(),
-            p.y().into_u256(),
-        ]
-    } else {
-        eprintln!("bn128_multiply: infinity");
-        [U256::from(0), U256::from(0)]
-    }
-}
-
-// Can fail if any of the 2 points does not belong the bn128 curve
-fn bn128_add(input: [U256; 4]) -> [U256; 2] {
-    let p1 = read_point(&input[0..2]);
-    let p2 = read_point(&input[2..4]);
-
-    if let Some(sum) = AffineG1::from_jacobian(p1 + p2) {
-        // point not at infinity
-        [
-            sum.x().into_u256(),
-            sum.y().into_u256(),
-        ]
-    } else {
-        eprintln!("bn128_add: infinity");
-        [U256::from(0), U256::from(0)]
-    }
-}
-
-// Can fail if first paramter (bn128 curve point) does not actually belong to the curve
-fn bn128_multiply(input: [U256; 3]) -> [U256; 2] {
-    let p = read_point(&input[0..2]);
-    let fr = Fr::new_mul_factor(input[2]);
-
-    if let Some(sum) = AffineG1::from_jacobian(p * fr) {
-        // point not at infinity
-        [
-            sum.x().into_u256(),
-            sum.y().into_u256(),
-        ]
-    } else {
-        eprintln!("bn128_multiply: infinity");
-        [U256::from(0), U256::from(0)]
-    }
-}
-
-fn _inner_product(ciphertexts: &[(G1, G1)], scalars: &[Fr]) -> (G1, G1) {
+fn inner_product(ciphertexts: &[Points], scalars: &[Fr]) -> Points {
     let mut aggregate_x = G1::zero();
     let mut aggregate_y = G1::zero();
 
@@ -138,155 +55,71 @@ fn _inner_product(ciphertexts: &[(G1, G1)], scalars: &[Fr]) -> (G1, G1) {
     (aggregate_x, aggregate_y)
 }
 
-fn inner_product(ciphertext_vector: Vec<[U256; 4]>, scalar_vector: &[U256]) -> [U256; 4] {
-    let ciphertexts: Vec<_> = ciphertext_vector.into_iter().map(|xs| (read_point(&xs[0..2]), read_point(&xs[2..4]))).collect();
-    let scalars: Vec<_> = scalar_vector.iter().map(|x| Fr::new_mul_factor(*x)).collect();
-
-    let (p1, p2) = _inner_product(&ciphertexts, &scalars);
-
-    let aggregate_1 = encode_point(p1);
-    let aggregate_2 = encode_point(p2);
-
-    [
-        aggregate_1[0],
-        aggregate_1[1],
-        aggregate_2[0],
-        aggregate_2[1],
-    ]
-}
-
-// TODO: only for checking
-pub fn add_points_and_check(input: &[&[U256]]) -> Vec<U256> {
-    let addition = bn128_add([input[0][0], input[0][1], input[1][0], input[1][1]]);
-
-    if !(addition[0] == input[2][0] && addition[1] == input[2][1]) {
-        panic!("equality failed");
-    }
-
-    vec![input[0][0], input[0][1]]
-}
-
-fn proof_check_1(
-    public_key: [U256; 2],
-    announcement_g: [U256; 2],
-    challenge: U256,
-    response: U256,
-) -> bool {
-    let pk = EcPoint::new(public_key[0], public_key[1]);
-    let generator = EcPoint::new(U256::from(1), U256::from(2));
-    let lhs_check_1 = bn128_multiply([generator.x_coord, generator.y_coord, response]);
-    let pk_times_challenge = bn128_multiply([pk.x_coord, pk.y_coord, challenge]);
-    let rhs_check_1 = bn128_add([
-        announcement_g[0],
-        announcement_g[1],
-        pk_times_challenge[0],
-        pk_times_challenge[1],
-    ]);
-    lhs_check_1[0] == rhs_check_1[0] && lhs_check_1[1] == rhs_check_1[1]
-}
-
-fn proof_check_2(
-    ciphertext: [U256; 4],
-    plaintext: [U256; 2],
-    announcement_ctx: [U256; 2],
-    challenge: U256,
-    response: U256,
-) -> bool {
-    let ctxt = Ciphertext::new(
-        EcPoint::new(ciphertext[0], ciphertext[1]),
-        EcPoint::new(ciphertext[2], ciphertext[3]),
-    );
-    let ptxt = EcPoint::new(plaintext[0], plaintext[1]);
-    let lhs_mult_1_check_2 = bn128_multiply([ctxt.point1.x_coord, ctxt.point1.y_coord, response]);
-
-    // the following, in the original check is computed in the rhs. We do it in the lhs for
-    // simplicity.
-    let lhs_mult_2_check_2 = bn128_multiply([ptxt.x_coord, ptxt.y_coord, challenge]);
-    let lhs_check_2 = bn128_add([
-        lhs_mult_1_check_2[0],
-        lhs_mult_1_check_2[1],
-        lhs_mult_2_check_2[0],
-        lhs_mult_2_check_2[1],
-    ]);
-
-    let rhs_mult_check_2 = bn128_multiply([ctxt.point2.x_coord, ctxt.point2.y_coord, challenge]);
-    let rhs_check_2 = bn128_add([
-        announcement_ctx[0],
-        announcement_ctx[1],
-        rhs_mult_check_2[0],
-        rhs_mult_check_2[1],
-    ]);
-
-    lhs_check_2[0] == rhs_check_2[0] && lhs_check_2[1] == rhs_check_2[1]
-}
-
 fn keccak256(
-    plaintext: [U256; 2],
-    ciphertext: [U256; 4],
-    announcement_g: [U256; 2],
-    announcement_ctx: [U256; 2],
-    generator: [U256; 2],
-    public_key: [U256; 2],
-) -> U256 {
+    plaintext: G1,
+    (ctxt_1, ctxt_2): Points,
+    announcement_g: G1,
+    announcement_ctx: G1,
+    generator: G1,
+    public_key: G1,
+) -> Fr {
+    let plaintext = AffineG1::from_jacobian(plaintext).unwrap();
+    let ctxt_1 = AffineG1::from_jacobian(ctxt_1).unwrap();
+    let ctxt_2 = AffineG1::from_jacobian(ctxt_2).unwrap();
+    let announcement_g = AffineG1::from_jacobian(announcement_g).unwrap();
+    let announcement_ctx = AffineG1::from_jacobian(announcement_ctx).unwrap();
+    let generator = AffineG1::from_jacobian(generator).unwrap();
+    let public_key = AffineG1::from_jacobian(public_key).unwrap();
     let hasher = Keccak256::new()
-        .chain(encode(&plaintext[0], Infinite).unwrap())
-        .chain(encode(&plaintext[1], Infinite).unwrap())
-        .chain(encode(&ciphertext[0], Infinite).unwrap())
-        .chain(encode(&ciphertext[1], Infinite).unwrap())
-        .chain(encode(&ciphertext[2], Infinite).unwrap())
-        .chain(encode(&ciphertext[3], Infinite).unwrap())
-        .chain(encode(&announcement_g[0], Infinite).unwrap())
-        .chain(encode(&announcement_g[1], Infinite).unwrap())
-        .chain(encode(&announcement_ctx[0], Infinite).unwrap())
-        .chain(encode(&announcement_ctx[1], Infinite).unwrap())
-        .chain(encode(&generator[0], Infinite).unwrap())
-        .chain(encode(&generator[1], Infinite).unwrap())
-        .chain(encode(&public_key[0], Infinite).unwrap())
-        .chain(encode(&public_key[1], Infinite).unwrap());
+        .chain(encode(&plaintext, Infinite).unwrap())
+        .chain(encode(&ctxt_1, Infinite).unwrap())
+        .chain(encode(&ctxt_2, Infinite).unwrap())
+        .chain(encode(&announcement_g, Infinite).unwrap())
+        .chain(encode(&announcement_ctx, Infinite).unwrap())
+        .chain(encode(&generator, Infinite).unwrap())
+        .chain(encode(&public_key, Infinite).unwrap());
 
     let result = hasher.finalize();
-    U256::from_slice(result.as_slice()).unwrap()
+    Fr::new_mul_factor(U256::from_slice(result.as_slice()).unwrap())
 }
 
 fn check_proof(
-    ciphertext: [U256; 4],
-    plaintext: [U256; 2],
-    public_key: [U256; 2],
-    announcement_g: [U256; 2],
-    announcement_ctx: [U256; 2],
-    response: U256,
+    (ctxt_1, ctxt_2): Points,
+    plaintext: G1,
+    public_key: G1,
+    announcement_g: G1,
+    announcement_ctx: G1,
+    response: Fr,
 ) -> bool {
+    let generator = G1::one();
     let challenge = keccak256(
         plaintext,
-        ciphertext,
+        (ctxt_1, ctxt_2),
         announcement_g,
         announcement_ctx,
-        [U256::from(1), U256::from(2)],
+        generator,
         public_key,
     );
-    let check_1 = proof_check_1(public_key, announcement_g, challenge, response);
-    let check_2 = proof_check_2(ciphertext, plaintext, announcement_ctx, challenge, response);
+
+    let check_1 = generator * response == announcement_g + public_key * challenge;
+    let check_2 =
+        ctxt_1 * response + plaintext * challenge == announcement_ctx + ctxt_2 * challenge;
     check_1 && check_2
 }
 
 #[derive(Default)]
-pub struct Client {
+pub struct User {
     encrypted_aggregate: EncryptedAggregate,
     proof_verification: bool,
     payment_requests: Vec<PaymentRequests>,
 }
 
-impl Client {
-    pub fn fetch_encrypted_aggregate(&self) -> [U256; 4] {
-        [
-            self.encrypted_aggregate.x0,
-            self.encrypted_aggregate.x1,
-            self.encrypted_aggregate.y0,
-            self.encrypted_aggregate.y1,
-        ]
+impl User {
+    pub fn fetch_encrypted_aggregate(&self) -> Points {
+        self.encrypted_aggregate.ciphertext
     }
 
-    pub fn fetch_public_key(&self) -> [U256; 2] {
+    pub fn fetch_public_key(&self) -> G1 {
         self.encrypted_aggregate.public_key
     }
 
@@ -296,31 +129,29 @@ impl Client {
 
     pub fn calculate_aggregate(
         &mut self,
-        input: Vec<[U256; 4]>,
-        public_key: [U256; 2],
-        policies: &[U256],
+        ciphertexts: Vec<Points>,
+        public_key: G1,
+        policies: &[Fr],
     ) -> bool {
-        let aggregate = inner_product(input, policies);
-        let enc_aggr = EncryptedAggregate {
-            x0: aggregate[0],
-            x1: aggregate[1],
-            y0: aggregate[2],
-            y1: aggregate[3],
+        let ciphertext = inner_product(&ciphertexts, &policies);
+        self.encrypted_aggregate = EncryptedAggregate {
+            ciphertext,
             public_key,
         };
-        self.encrypted_aggregate = enc_aggr;
         true
     }
 
-    pub fn submit_proof_decryption(&mut self, input: [U256; 7]) -> bool {
-        let client_aggregate = self.fetch_encrypted_aggregate();
+    pub fn submit_proof_decryption(
+        &mut self,
+        plaintext: G1,
+        announcement_g: G1,
+        announcement_ctx: G1,
+        response: Fr,
+    ) -> bool {
+        let ciphertext = self.fetch_encrypted_aggregate();
         let client_pk = self.fetch_public_key();
-        let plaintext = [input[0], input[1]];
-        let announcement_g = [input[2], input[3]];
-        let announcement_ctx = [input[4], input[5]];
-        let response = input[6];
         self.proof_verification = check_proof(
-            client_aggregate,
+            ciphertext,
             plaintext,
             client_pk,
             announcement_g,
@@ -332,9 +163,9 @@ impl Client {
 
     pub fn request_payment(
         &mut self,
-        encrypted_aggregate: [U256; 4],
-        decrypted_aggregate: [U256; 2],
-        proof_correct_decryption: [U256; 2],
+        encrypted_aggregate: Points,
+        decrypted_aggregate: G1,
+        proof_correct_decryption: G1,
     ) -> bool {
         // TODO: implement proof verification
         let proof_is_valid = true;
@@ -352,39 +183,65 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils;
+    use bn::{Fr, Group, G1};
+    use elgamal_bn::{ciphertext::Ciphertext, private::SecretKey, public::PublicKey};
+    use rand::thread_rng;
+
+    pub(crate) fn generate_keys() -> (SecretKey, PublicKey) {
+        let mut csprng = thread_rng();
+        let sk = SecretKey::new(&mut csprng);
+        let pk = PublicKey::from(&sk);
+        (sk, pk)
+    }
+
+    pub(crate) fn recover_scalar(point: G1, k: u32) -> Fr {
+        for i in 0..2u64.pow(k) {
+            let scalar = match Fr::from_str(&i.to_string()) {
+                Some(s) => s,
+                None => Fr::one(),
+            };
+            if (G1::one() * scalar) == point {
+                return scalar;
+            }
+        }
+        panic!("Encryped scalar too long");
+    }
 
     fn test_policy_contract(policies: &[U256], expected_scalar_aggregate: Fr) {
-        let (sk, pk) = utils::generate_keys();
-        let interactions: Vec<_> = policies.iter().map(|_| pk.encrypt(&G1::one())).collect();
-        let mut client = Client::default();
+        let (sk, pk) = generate_keys();
+        let interactions: Vec<_> = policies
+            .iter()
+            .map(|_| pk.encrypt(&G1::one()).points)
+            .collect();
+        let mut user = User::default();
 
-        let encoded_interactions = utils::encode_input_ciphertext(interactions).unwrap();
-        let encoded_pk = utils::encode_public_key(pk).unwrap();
-        let tx_receipt = client.calculate_aggregate(
-            encoded_interactions,
-            encoded_pk,
-            policies,
-        );
+        let policies: Vec<_> = policies.iter().map(|x| Fr::new_mul_factor(*x)).collect();
+        let tx_receipt = user.calculate_aggregate(interactions, pk.get_point(), &policies);
         assert!(tx_receipt);
 
-        let encrypted_point = client.fetch_encrypted_aggregate();
-        let encrypted_encoded = utils::decode_ciphertext(encrypted_point, pk).unwrap();
+        let encrypted_point = user.fetch_encrypted_aggregate();
+        let ciphertext = Ciphertext {
+            points: encrypted_point,
+            pk,
+        };
 
-        let decrypted_aggregate = sk.decrypt(&encrypted_encoded);
-        let scalar_aggregate = utils::recover_scalar(decrypted_aggregate, 16).unwrap();
+        let decrypted_aggregate = sk.decrypt(&ciphertext);
+        let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
         assert_eq!(scalar_aggregate, expected_scalar_aggregate);
 
-        let proof_dec = sk
-            .proof_decryption_as_string(&encrypted_encoded, &decrypted_aggregate)
+        let ((announcement_g, announcement_ctx), response) = sk
+            .prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate)
             .unwrap();
 
-        let encoded_proof_dec = utils::encode_proof_decryption(&proof_dec).unwrap();
-        let tx_receipt_proof =
-            client.submit_proof_decryption(encoded_proof_dec);
+        let tx_receipt_proof = user.submit_proof_decryption(
+            decrypted_aggregate,
+            announcement_g,
+            announcement_ctx,
+            response,
+        );
         assert!(tx_receipt_proof);
 
-        let proof_result = client.fetch_proof_verification();
+        let proof_result = user.fetch_proof_verification();
         assert!(proof_result);
     }
 
