@@ -74,8 +74,7 @@ fn check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Err
     }
 }
 
-fn command_create_token(config: &Config, decimals: u8) -> CommandResult {
-    let token = Keypair::new();
+fn command_create_token(config: &Config, decimals: u8, token: Box<dyn Signer>) -> CommandResult {
     println!("Creating token {}", token.pubkey());
 
     let minimum_balance_for_rent_exemption = config
@@ -107,14 +106,21 @@ fn command_create_token(config: &Config, decimals: u8) -> CommandResult {
         config,
         minimum_balance_for_rent_exemption + fee_calculator.calculate_fee(&transaction.message()),
     )?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref(), &token];
+    let mut signers = vec![
+        config.fee_payer.as_ref(),
+        config.owner.as_ref(),
+        token.as_ref(),
+    ];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
 }
 
-fn command_create_account(config: &Config, token: Pubkey) -> CommandResult {
-    let account = Keypair::new();
+fn command_create_account(
+    config: &Config,
+    token: Pubkey,
+    account: Box<dyn Signer>,
+) -> CommandResult {
     println!("Creating account {}", account.pubkey());
 
     let minimum_balance_for_rent_exemption = config
@@ -145,7 +151,11 @@ fn command_create_account(config: &Config, token: Pubkey) -> CommandResult {
         config,
         minimum_balance_for_rent_exemption + fee_calculator.calculate_fee(&transaction.message()),
     )?;
-    let mut signers = vec![config.fee_payer.as_ref(), &account, config.owner.as_ref()];
+    let mut signers = vec![
+        config.fee_payer.as_ref(),
+        account.as_ref(),
+        config.owner.as_ref(),
+    ];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
@@ -507,7 +517,19 @@ fn main() {
                         .default_value(&default_decimals)
                         .help("Number of base 10 digits to the right of the decimal place"),
                 )
-                    )
+                .arg(
+                    Arg::with_name("token_keypair")
+                        .value_name("KEYPAIR")
+                        .validator(is_keypair)
+                        .takes_value(true)
+                        .index(1)
+                        .help(
+                            "Specify the token keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             [default: randomly generated keypair]"
+                        ),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("create-account")
                 .about("Create a new token account")
@@ -519,6 +541,18 @@ fn main() {
                         .index(1)
                         .required(true)
                         .help("The token that the account will hold"),
+                )
+                .arg(
+                    Arg::with_name("account_keypair")
+                        .value_name("KEYPAIR")
+                        .validator(is_keypair)
+                        .takes_value(true)
+                        .index(2)
+                        .help(
+                            "Specify the account keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             [default: randomly generated keypair]"
+                        ),
                 ),
         )
         .subcommand(
@@ -693,6 +727,8 @@ fn main() {
         )
         .get_matches();
 
+    let mut wallet_manager = None;
+
     let config = {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
             solana_cli_config::Config::load(config_file).unwrap_or_default()
@@ -702,7 +738,6 @@ fn main() {
         let json_rpc_url = value_t!(matches, "json_rpc_url", String)
             .unwrap_or_else(|_| cli_config.json_rpc_url.clone());
 
-        let mut wallet_manager = None;
         let owner = signer_from_path(
             &matches,
             &cli_config.keypair_path,
@@ -739,11 +774,41 @@ fn main() {
     let _ = match matches.subcommand() {
         ("create-token", Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
-            command_create_token(&config, decimals)
+            let token = if arg_matches.is_present("token_keypair") {
+                signer_from_path(
+                    &matches,
+                    &value_t_or_exit!(arg_matches, "token_keypair", String),
+                    "token_keypair",
+                    &mut wallet_manager,
+                )
+                .unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    exit(1);
+                })
+            } else {
+                Box::new(Keypair::new())
+            };
+
+            command_create_token(&config, decimals, token)
         }
         ("create-account", Some(arg_matches)) => {
             let token = pubkey_of(arg_matches, "token").unwrap();
-            command_create_account(&config, token)
+            let account = if arg_matches.is_present("account_keypair") {
+                signer_from_path(
+                    &matches,
+                    &value_t_or_exit!(arg_matches, "account_keypair", String),
+                    "account_keypair",
+                    &mut wallet_manager,
+                )
+                .unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    exit(1);
+                })
+            } else {
+                Box::new(Keypair::new())
+            };
+
+            command_create_account(&config, token, account)
         }
         ("assign", Some(arg_matches)) => {
             let address = pubkey_of(arg_matches, "address").unwrap();
