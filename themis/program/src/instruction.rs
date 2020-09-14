@@ -1,6 +1,8 @@
 //! Instruction types
 
+use crate::error::ThemisError;
 use bn::arith::U256;
+use solana_sdk::program_error::ProgramError;
 
 /// Instructions supported by the Themis program.
 #[repr(C)]
@@ -80,4 +82,52 @@ pub enum ThemisInstruction {
         /// Proof correct decryption
         proof_correct_decryption: [U256; 2],
     },
+}
+
+fn unpack_u256(input: &[u8]) -> Result<(U256, &[u8]), ProgramError> {
+    use ThemisError::InvalidInstruction;
+
+    if input.len() >= 32 {
+        let (u256_slice, rest) = input.split_at(32);
+        let u256 = U256::from_slice(u256_slice).map_err(|_| InvalidInstruction)?;
+        Ok((u256, rest))
+    } else {
+        Err(InvalidInstruction.into())
+    }
+}
+
+impl ThemisInstruction {
+    /// Unpacks a byte buffer into a [ThemisInstruction](enum.ThemisInstruction.html).
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+        use ThemisError::InvalidInstruction;
+
+        let (&tag, _rest) = input.split_first().ok_or(InvalidInstruction)?;
+        Ok(match tag {
+            0 => ThemisInstruction::InitializeUserAccount,
+            1 => ThemisInstruction::InitializePoliciesAccount { policies: vec![] },
+            2 => {
+                let (pk1, input) = unpack_u256(input)?;
+                let (pk2, _input) = unpack_u256(input)?;
+                if !input.is_empty() {
+                    return Err(InvalidInstruction.into());
+                }
+                ThemisInstruction::CalculateAggregate {
+                    encrypted_interactions: vec![],
+                    public_key: [pk1, pk2],
+                }
+            },
+            3 => ThemisInstruction::SubmitProofDecryption {
+                plaintext: [U256::zero(), U256::zero()],
+                announcement_g: [U256::zero(), U256::zero()],
+                announcement_ctx: [U256::zero(), U256::zero()],
+                response: U256::zero(),
+            },
+            4 => ThemisInstruction::RequestPayment {
+                encrypted_aggregate: [U256::zero(), U256::zero(), U256::zero(), U256::zero()],
+                decrypted_aggregate: [U256::zero(), U256::zero()],
+                proof_correct_decryption: [U256::zero(), U256::zero()],
+            },
+            _ => return Err(InvalidInstruction.into()),
+        })
+    }
 }
