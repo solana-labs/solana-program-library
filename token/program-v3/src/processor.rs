@@ -715,22 +715,20 @@ impl Processor {
         if program_id == owner_account_info.owner
             && owner_account_info.data_len() == Multisig::get_packed_len()
         {
-            let mut owner_data = owner_account_info.data.borrow_mut();
-            Multisig::unpack_mut(&mut owner_data, &mut |multisig: &mut Multisig| {
-                let mut num_signers = 0;
-                for signer in signers.iter() {
-                    if multisig.signers[0..multisig.n as usize].contains(signer.key) {
-                        if !signer.is_signer {
-                            return Err(ProgramError::MissingRequiredSignature);
-                        }
-                        num_signers += 1;
+            let multisig = Multisig::unpack(&owner_account_info.data.borrow())?;
+            let mut num_signers = 0;
+            for signer in signers.iter() {
+                if multisig.signers[0..multisig.n as usize].contains(signer.key) {
+                    if !signer.is_signer {
+                        return Err(ProgramError::MissingRequiredSignature);
                     }
+                    num_signers += 1;
                 }
-                if num_signers < multisig.m {
-                    return Err(ProgramError::MissingRequiredSignature);
-                }
-                Ok(())
-            })?;
+            }
+            if num_signers < multisig.m {
+                return Err(ProgramError::MissingRequiredSignature);
+            }
+            return Ok(());
         } else if !owner_account_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
