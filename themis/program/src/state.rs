@@ -3,6 +3,8 @@
 use bincode::{rustc_serialize::encode, SizeLimit::Infinite};
 use bn::{arith::U256, AffineG1, Fr, Group, G1};
 use sha3::{Digest, Keccak256};
+use solana_sdk::program_error::ProgramError;
+use spl_token::pack::{IsInitialized, Pack, Sealed};
 
 type Points = (G1, G1);
 
@@ -110,11 +112,38 @@ fn check_proof(
 #[derive(Default)]
 pub struct User {
     encrypted_aggregate: EncryptedAggregate,
+    is_initialized: bool,
     proof_verification: bool,
     payment_requests: Vec<PaymentRequests>,
 }
 
+impl Sealed for User {}
+impl IsInitialized for User {
+    fn is_initialized(&self) -> bool {
+        self.is_initialized
+    }
+}
+
+impl Pack for User {
+    const LEN: usize = 42;
+    fn unpack_from_slice(_src: &[u8]) -> Result<Self, ProgramError> {
+        todo!()
+    }
+
+    fn pack_into_slice(&self, _dst: &mut [u8]) {
+        todo!();
+    }
+}
+
 impl User {
+    pub fn unpack(_input: &[u8]) -> Result<Self, ProgramError> {
+        Ok(Self::default())
+    }
+
+    pub fn pack(_input: &mut [u8]) -> Result<(), ProgramError> {
+        Ok(())
+    }
+
     pub fn fetch_encrypted_aggregate(&self) -> Points {
         self.encrypted_aggregate.ciphertext
     }
@@ -129,7 +158,7 @@ impl User {
 
     pub fn calculate_aggregate(
         &mut self,
-        ciphertexts: Vec<Points>,
+        ciphertexts: &[Points],
         public_key: G1,
         policies: &[Fr],
     ) -> bool {
@@ -180,6 +209,29 @@ impl User {
     }
 }
 
+#[derive(Default)]
+pub struct Policies {
+    pub policies: Vec<Fr>
+}
+
+impl Sealed for Policies {}
+impl IsInitialized for Policies {
+    fn is_initialized(&self) -> bool {
+        !self.policies.is_empty()
+    }
+}
+
+impl Pack for Policies {
+    const LEN: usize = 42;
+    fn unpack_from_slice(_src: &[u8]) -> Result<Self, ProgramError> {
+        todo!()
+    }
+
+    fn pack_into_slice(&self, _dst: &mut [u8]) {
+        todo!();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -213,7 +265,7 @@ mod tests {
         let mut user = User::default();
 
         let policies: Vec<_> = policies.iter().map(|x| Fr::new_mul_factor(*x)).collect();
-        let tx_receipt = user.calculate_aggregate(interactions, pk.get_point(), &policies);
+        let tx_receipt = user.calculate_aggregate(&interactions, pk.get_point(), &policies);
         assert!(tx_receipt);
 
         let encrypted_point = user.fetch_encrypted_aggregate();
