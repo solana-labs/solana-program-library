@@ -227,12 +227,13 @@ the same transaction.
 
 ### Freezing accounts
 
-The Mint may also contain a `freeze_authority` can be used to issue
+The Mint may also contain a `freeze_authority` which can be used to issue
 `FreezeAccount` instructions that will render an Account unusable.  Token
 instructions that include a frozen account will fail until the Account is thawed
 using the `ThawAccount` instruction.  The `SetAuthority` instruction can be used
 to change a Mint's `freeze_authority`.  If a Mint's `freeze_authority` is set to
-`None` then account freezing is permanently disabled
+`None` then account freezing and thawing is permanently disabled and all
+currently frozen accounts will also stay frozen permanently.
 
 ### Wrapping SOL
 
