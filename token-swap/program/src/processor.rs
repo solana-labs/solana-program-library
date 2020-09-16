@@ -21,10 +21,7 @@ use solana_sdk::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use spl_token::{
-    option::COption,
-    pack::Pack,
-};
+use spl_token::{option::COption, pack::Pack};
 
 // Test program id for the swap program.
 #[cfg(not(target_arch = "bpf"))]
@@ -581,9 +578,7 @@ mod tests {
     };
     use spl_token::{
         error::TokenError,
-        instruction::{
-            approve, initialize_account, initialize_mint, mint_to, revoke
-        },
+        instruction::{approve, initialize_account, initialize_mint, mint_to, revoke},
         pack::Pack,
         processor::Processor as SplProcessor,
         state::{Account as SplAccount, Mint as SplMint},
@@ -624,7 +619,8 @@ mod tests {
             let (authority_key, nonce) =
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
-            let (pool_mint_key, mut pool_mint_account) = create_mint(&TOKEN_PROGRAM_ID, &authority_key);
+            let (pool_mint_key, mut pool_mint_account) =
+                create_mint(&TOKEN_PROGRAM_ID, &authority_key);
             let (pool_token_key, pool_token_account) = mint_token(
                 &TOKEN_PROGRAM_ID,
                 &pool_mint_key,
@@ -736,7 +732,14 @@ mod tests {
                 &account_owner,
                 pool_amount,
             );
-            (token_a_key, token_a_account, token_b_key, token_b_account, pool_key, pool_account)
+            (
+                token_a_key,
+                token_a_account,
+                token_b_key,
+                token_b_account,
+                pool_key,
+                pool_account,
+            )
         }
 
         pub fn deposit(
@@ -968,7 +971,6 @@ mod tests {
         assert_eq!(err, ProgramError::InvalidAccountData);
     }
 
-
     #[test]
     fn test_initialize() {
         let user_key = pubkey_rand();
@@ -1142,7 +1144,8 @@ mod tests {
             let old_mint = accounts.pool_mint_account;
             let old_pool_account = accounts.pool_token_account;
 
-            let (_pool_mint_key, pool_mint_account) = create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key);
+            let (_pool_mint_key, pool_mint_account) =
+                create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key);
             accounts.pool_mint_account = pool_mint_account;
 
             let (_empty_pool_token_key, empty_pool_token_account) = mint_token(
@@ -1206,7 +1209,13 @@ mod tests {
             );
 
             do_process_instruction(
-                revoke(&TOKEN_PROGRAM_ID, &accounts.token_a_key, &accounts.authority_key, &[]).unwrap(),
+                revoke(
+                    &TOKEN_PROGRAM_ID,
+                    &accounts.token_a_key,
+                    &accounts.authority_key,
+                    &[],
+                )
+                .unwrap(),
                 vec![&mut accounts.token_a_account, &mut Account::default()],
             )
             .unwrap();
@@ -1237,7 +1246,13 @@ mod tests {
             );
 
             do_process_instruction(
-                revoke(&TOKEN_PROGRAM_ID, &accounts.token_b_key, &accounts.authority_key, &[]).unwrap(),
+                revoke(
+                    &TOKEN_PROGRAM_ID,
+                    &accounts.token_b_key,
+                    &accounts.authority_key,
+                    &[],
+                )
+                .unwrap(),
                 vec![&mut accounts.token_b_account, &mut Account::default()],
             )
             .unwrap();
@@ -1344,8 +1359,14 @@ mod tests {
 
         // swap not initialized
         {
-            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
-                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
                 Err(SwapError::InvalidSwapInfo.into()),
                 accounts.deposit(
@@ -1366,11 +1387,19 @@ mod tests {
 
         // wrong nonce for authority_key
         {
-            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
-                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let old_authority = accounts.authority_key;
-            let (bad_authority_key, _nonce) =
-                Pubkey::find_program_address(&[&accounts.swap_key.to_bytes()[..]], &TOKEN_PROGRAM_ID);
+            let (bad_authority_key, _nonce) = Pubkey::find_program_address(
+                &[&accounts.swap_key.to_bytes()[..]],
+                &TOKEN_PROGRAM_ID,
+            );
             accounts.authority_key = bad_authority_key;
             assert_eq!(
                 Err(SwapError::InvalidProgramAddress.into()),
@@ -1389,11 +1418,22 @@ mod tests {
             accounts.authority_key = old_authority;
         }
 
-
         // not enough token A
         {
-            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
-                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a / 2, deposit_b, 0);
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &depositor_key,
+                deposit_a / 2,
+                deposit_b,
+                0,
+            );
             assert_eq!(
                 Err(TokenError::InsufficientFunds.into()),
                 accounts.deposit(
@@ -1412,8 +1452,20 @@ mod tests {
 
         // not enough token B
         {
-            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
-                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b / 2, 0);
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &depositor_key,
+                deposit_a,
+                deposit_b / 2,
+                0,
+            );
             assert_eq!(
                 Err(TokenError::InsufficientFunds.into()),
                 accounts.deposit(
@@ -1432,8 +1484,14 @@ mod tests {
 
         // wrong swap token accounts
         {
-            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
-                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
                 Err(TokenError::MintMismatch.into()),
                 accounts.deposit(
@@ -1452,10 +1510,22 @@ mod tests {
 
         // wrong pool token account
         {
-            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, _pool_key, mut _pool_account) =
-                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
-            let (wrong_token_key, mut wrong_token_account, _token_b_key, mut _token_b_account, _pool_key, mut _pool_account) =
-                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                _pool_key,
+                mut _pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let (
+                wrong_token_key,
+                mut wrong_token_account,
+                _token_b_key,
+                mut _token_b_account,
+                _pool_key,
+                mut _pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
                 Err(TokenError::MintMismatch.into()),
                 accounts.deposit(
@@ -1474,8 +1544,14 @@ mod tests {
 
         // no approval
         {
-            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
-                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
@@ -1510,8 +1586,14 @@ mod tests {
 
         // wrong token program id
         {
-            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
-                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let wrong_key = pubkey_rand();
             assert_eq!(
                 Err(ProgramError::InvalidAccountData),
@@ -1547,32 +1629,39 @@ mod tests {
 
         // correctly deposit
         {
-            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
-                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
-            accounts.deposit(
-                &depositor_key,
-                &token_a_key,
-                &mut token_a_account,
-                &token_b_key,
-                &mut token_b_account,
-                &pool_key,
-                &mut pool_account,
-                deposit_a,
-                deposit_b,
-            ).unwrap();
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            accounts
+                .deposit(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    deposit_a,
+                    deposit_b,
+                )
+                .unwrap();
 
-            let swap_token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
+            let swap_token_a =
+                Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
             assert_eq!(swap_token_a.amount, deposit_a + token_a_amount);
-            let swap_token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
+            let swap_token_b =
+                Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
             assert_eq!(swap_token_b.amount, deposit_b + token_b_amount);
-            let token_a =
-                Processor::unpack_token_account(&token_a_account.data).unwrap();
+            let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
             assert_eq!(token_a.amount, 0);
-            let token_b =
-                Processor::unpack_token_account(&token_b_account.data).unwrap();
+            let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
             assert_eq!(token_b.amount, 0);
-            let pool_account =
-                Processor::unpack_token_account(&pool_account.data).unwrap();
+            let pool_account = Processor::unpack_token_account(&pool_account.data).unwrap();
             let swap_pool_account =
                 Processor::unpack_token_account(&accounts.pool_token_account.data).unwrap();
             let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
