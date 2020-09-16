@@ -21,7 +21,10 @@ use solana_sdk::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use spl_token::pack::Pack;
+use spl_token::{
+    option::COption,
+    pack::Pack,
+};
 
 // Test program id for the swap program.
 #[cfg(not(target_arch = "bpf"))]
@@ -174,7 +177,7 @@ impl Processor {
         if *authority_info.key == destination.owner {
             return Err(SwapError::InvalidOutputOwner.into());
         }
-        if spl_token::option::COption::Some(*authority_info.key) != pool_mint.mint_authority {
+        if COption::Some(*authority_info.key) != pool_mint.mint_authority {
             return Err(SwapError::InvalidOwner.into());
         }
         if token_a.mint == token_b.mint {
@@ -334,6 +337,7 @@ impl Processor {
         if *pool_info.key != token_swap.pool_mint {
             return Err(SwapError::InvalidInput.into());
         }
+
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
 
@@ -576,6 +580,7 @@ mod tests {
         rent::Rent, sysvar::rent,
     };
     use spl_token::{
+        error::TokenError,
         instruction::{
             approve, initialize_account, initialize_mint, mint_to, revoke
         },
@@ -698,6 +703,118 @@ mod tests {
                 ],
             )
         }
+
+        pub fn setup_token_accounts(
+            &mut self,
+            mint_owner: &Pubkey,
+            account_owner: &Pubkey,
+            a_amount: u64,
+            b_amount: u64,
+            pool_amount: u64,
+        ) -> (Pubkey, Account, Pubkey, Account, Pubkey, Account) {
+            let (token_a_key, token_a_account) = mint_token(
+                &TOKEN_PROGRAM_ID,
+                &self.token_a_mint_key,
+                &mut self.token_a_mint_account,
+                &mint_owner,
+                &account_owner,
+                a_amount,
+            );
+            let (token_b_key, token_b_account) = mint_token(
+                &TOKEN_PROGRAM_ID,
+                &self.token_b_mint_key,
+                &mut self.token_b_mint_account,
+                &mint_owner,
+                &account_owner,
+                b_amount,
+            );
+            let (pool_key, pool_account) = mint_token(
+                &TOKEN_PROGRAM_ID,
+                &self.pool_mint_key,
+                &mut self.pool_mint_account,
+                &self.authority_key,
+                &account_owner,
+                pool_amount,
+            );
+            (token_a_key, token_a_account, token_b_key, token_b_account, pool_key, pool_account)
+        }
+
+        pub fn deposit(
+            &mut self,
+            depositor_key: &Pubkey,
+            depositor_token_a_key: &Pubkey,
+            mut depositor_token_a_account: &mut Account,
+            depositor_token_b_key: &Pubkey,
+            mut depositor_token_b_account: &mut Account,
+            depositor_pool_key: &Pubkey,
+            mut depositor_pool_account: &mut Account,
+            amount_a: u64,
+            amount_b: u64,
+        ) -> ProgramResult {
+            do_process_instruction(
+                approve(
+                    &TOKEN_PROGRAM_ID,
+                    &depositor_token_a_key,
+                    &self.authority_key,
+                    &depositor_key,
+                    &[],
+                    amount_a,
+                )
+                .unwrap(),
+                vec![
+                    &mut depositor_token_a_account,
+                    &mut Account::default(),
+                    &mut Account::default(),
+                ],
+            )
+            .unwrap();
+
+            do_process_instruction(
+                approve(
+                    &TOKEN_PROGRAM_ID,
+                    &depositor_token_b_key,
+                    &self.authority_key,
+                    &depositor_key,
+                    &[],
+                    amount_b,
+                )
+                .unwrap(),
+                vec![
+                    &mut depositor_token_b_account,
+                    &mut Account::default(),
+                    &mut Account::default(),
+                ],
+            )
+            .unwrap();
+
+            do_process_instruction(
+                deposit(
+                    &SWAP_PROGRAM_ID,
+                    &TOKEN_PROGRAM_ID,
+                    &self.swap_key,
+                    &self.authority_key,
+                    &depositor_token_a_key,
+                    &depositor_token_b_key,
+                    &self.token_a_key,
+                    &self.token_b_key,
+                    &self.pool_mint_key,
+                    &depositor_pool_key,
+                    amount_a,
+                )
+                .unwrap(),
+                vec![
+                    &mut self.swap_account,
+                    &mut Account::default(),
+                    &mut depositor_token_a_account,
+                    &mut depositor_token_b_account,
+                    &mut self.token_a_account,
+                    &mut self.token_b_account,
+                    &mut self.pool_mint_account,
+                    &mut depositor_pool_account,
+                    &mut Account::default(),
+                ],
+            )
+        }
     }
 
     fn mint_minimum_balance() -> u64 {
@@ -716,19 +833,41 @@ mod tests {
         instruction: Instruction,
         accounts: Vec<&mut Account>,
     ) -> ProgramResult {
+        // approximate the logic in the actual runtime which runs the instruction
+        // and only updates accounts if the instruction is successful
+        let mut account_clones = accounts.iter().map(|x| (*x).clone()).collect::<Vec<_>>();
         let mut meta = instruction
             .accounts
             .iter()
-            .zip(accounts)
+            .zip(account_clones.iter_mut())
             .map(|(account_meta, account)| (&account_meta.pubkey, account_meta.is_signer, account))
             .collect::<Vec<_>>();
-
-        let account_infos = create_is_signer_account_infos(&mut meta);
-        if instruction.program_id == SWAP_PROGRAM_ID {
+        let mut account_infos = create_is_signer_account_infos(&mut meta);
+        let res = if instruction.program_id == SWAP_PROGRAM_ID {
             Processor::process(&instruction.program_id, &account_infos, &instruction.data)
         } else {
             SplProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
+        };
+
+        if res.is_ok() {
+            let mut account_metas = instruction
+                .accounts
+                .iter()
+                .zip(accounts)
+                .map(|(account_meta, account)| (&account_meta.pubkey, account))
+                .collect::<Vec<_>>();
+            for account_info in account_infos.iter_mut() {
+                for account_meta in account_metas.iter_mut() {
+                    if account_info.key == account_meta.0 {
+                        let account = &mut account_meta.1;
+                        account.owner = *account_info.owner;
+                        account.lamports = **account_info.lamports.borrow();
+                        account.data = account_info.data.borrow().to_vec();
+                    }
+                }
+            }
         }
+        res
     }
 
     fn mint_token(
@@ -1199,132 +1338,249 @@ mod tests {
             token_a_amount,
             token_b_amount,
         );
-        accounts.initialize_swap().unwrap();
-        let seeds = [&accounts.swap_key.to_bytes()[..32], &[accounts.nonce]];
-        let authority_key = Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
-
-        // swap not initialized
-        // not enough token A
-        // not enough token B
-        // wrong swap token accounts
-        // wrong pool token account
-        // wrong mint
-        // no approval
-        // wrong token program id
-        // deposit max into both
 
         let deposit_a = token_a_amount / 10;
-        let (depositor_token_a_key, mut depositor_token_a_account) = mint_token(
-            &TOKEN_PROGRAM_ID,
-            &accounts.token_a_mint_key,
-            &mut accounts.token_a_mint_account,
-            &user_key,
-            &depositor_key,
-            deposit_a,
-        );
         let deposit_b = token_b_amount / 10;
-        let (depositor_token_b_key, mut depositor_token_b_account) = mint_token(
-            &TOKEN_PROGRAM_ID,
-            &accounts.token_b_mint_key,
-            &mut accounts.token_b_mint_account,
-            &user_key,
-            &depositor_key,
-            deposit_b,
-        );
-        let initial_pool = 10;
-        let (depositor_pool_key, mut depositor_pool_account) = mint_token(
-            &TOKEN_PROGRAM_ID,
-            &accounts.pool_mint_key,
-            &mut accounts.pool_mint_account,
-            &authority_key,
-            &depositor_key,
-            initial_pool,
-        );
 
-        // approve swap program to take out a / b tokens
-        do_process_instruction(
-            approve(
-                &TOKEN_PROGRAM_ID,
-                &depositor_token_a_key,
-                &authority_key,
+        // swap not initialized
+        {
+            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
+                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            assert_eq!(
+                Err(SwapError::InvalidSwapInfo.into()),
+                accounts.deposit(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    deposit_a,
+                    deposit_b,
+                )
+            );
+        }
+
+        accounts.initialize_swap().unwrap();
+
+        // wrong nonce for authority_key
+        {
+            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
+                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let old_authority = accounts.authority_key;
+            let (bad_authority_key, _nonce) =
+                Pubkey::find_program_address(&[&accounts.swap_key.to_bytes()[..]], &TOKEN_PROGRAM_ID);
+            accounts.authority_key = bad_authority_key;
+            assert_eq!(
+                Err(SwapError::InvalidProgramAddress.into()),
+                accounts.deposit(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    deposit_a,
+                    deposit_b,
+                )
+            );
+            accounts.authority_key = old_authority;
+        }
+
+
+        // not enough token A
+        {
+            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
+                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a / 2, deposit_b, 0);
+            assert_eq!(
+                Err(TokenError::InsufficientFunds.into()),
+                accounts.deposit(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    deposit_a,
+                    deposit_b,
+                )
+            );
+        }
+
+        // not enough token B
+        {
+            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
+                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b / 2, 0);
+            assert_eq!(
+                Err(TokenError::InsufficientFunds.into()),
+                accounts.deposit(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    deposit_a,
+                    deposit_b,
+                )
+            );
+        }
+
+        // wrong swap token accounts
+        {
+            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
+                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            assert_eq!(
+                Err(TokenError::MintMismatch.into()),
+                accounts.deposit(
+                    &depositor_key,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &pool_key,
+                    &mut pool_account,
+                    deposit_a,
+                    deposit_b,
+                )
+            );
+        }
+
+        // wrong pool token account
+        {
+            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, _pool_key, mut _pool_account) =
+                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let (wrong_token_key, mut wrong_token_account, _token_b_key, mut _token_b_account, _pool_key, mut _pool_account) =
+                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            assert_eq!(
+                Err(TokenError::MintMismatch.into()),
+                accounts.deposit(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &wrong_token_key,
+                    &mut wrong_token_account,
+                    deposit_a,
+                    deposit_b,
+                )
+            );
+        }
+
+        // no approval
+        {
+            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
+                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            assert_eq!(
+                Err(TokenError::OwnerMismatch.into()),
+                do_process_instruction(
+                    deposit(
+                        &SWAP_PROGRAM_ID,
+                        &TOKEN_PROGRAM_ID,
+                        &accounts.swap_key,
+                        &accounts.authority_key,
+                        &token_a_key,
+                        &token_b_key,
+                        &accounts.token_a_key,
+                        &accounts.token_b_key,
+                        &accounts.pool_mint_key,
+                        &pool_key,
+                        deposit_a,
+                    )
+                    .unwrap(),
+                    vec![
+                        &mut accounts.swap_account,
+                        &mut Account::default(),
+                        &mut token_a_account,
+                        &mut token_b_account,
+                        &mut accounts.token_a_account,
+                        &mut accounts.token_b_account,
+                        &mut accounts.pool_mint_account,
+                        &mut pool_account,
+                        &mut Account::default(),
+                    ],
+                )
+            );
+        }
+
+        // wrong token program id
+        {
+            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
+                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let wrong_key = pubkey_rand();
+            assert_eq!(
+                Err(ProgramError::InvalidAccountData),
+                do_process_instruction(
+                    deposit(
+                        &SWAP_PROGRAM_ID,
+                        &wrong_key,
+                        &accounts.swap_key,
+                        &accounts.authority_key,
+                        &token_a_key,
+                        &token_b_key,
+                        &accounts.token_a_key,
+                        &accounts.token_b_key,
+                        &accounts.pool_mint_key,
+                        &pool_key,
+                        deposit_a,
+                    )
+                    .unwrap(),
+                    vec![
+                        &mut accounts.swap_account,
+                        &mut Account::default(),
+                        &mut token_a_account,
+                        &mut token_b_account,
+                        &mut accounts.token_a_account,
+                        &mut accounts.token_b_account,
+                        &mut accounts.pool_mint_account,
+                        &mut pool_account,
+                        &mut Account::default(),
+                    ],
+                )
+            );
+        }
+
+        // correctly deposit
+        {
+            let (token_a_key, mut token_a_account, token_b_key, mut token_b_account, pool_key, mut pool_account) =
+                accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            accounts.deposit(
                 &depositor_key,
-                &[],
+                &token_a_key,
+                &mut token_a_account,
+                &token_b_key,
+                &mut token_b_account,
+                &pool_key,
+                &mut pool_account,
                 deposit_a,
-            )
-            .unwrap(),
-            vec![
-                &mut depositor_token_a_account,
-                &mut Account::default(),
-                &mut Account::default(),
-            ],
-        )
-        .unwrap();
-        do_process_instruction(
-            approve(
-                &TOKEN_PROGRAM_ID,
-                &depositor_token_b_key,
-                &authority_key,
-                &depositor_key,
-                &[],
                 deposit_b,
-            )
-            .unwrap(),
-            vec![
-                &mut depositor_token_b_account,
-                &mut Account::default(),
-                &mut Account::default(),
-            ],
-        )
-        .unwrap();
+            ).unwrap();
 
-        // deposit token a and b correctly
-        do_process_instruction(
-            deposit(
-                &SWAP_PROGRAM_ID,
-                &TOKEN_PROGRAM_ID,
-                &accounts.swap_key,
-                &authority_key,
-                &depositor_token_a_key,
-                &depositor_token_b_key,
-                &accounts.token_a_key,
-                &accounts.token_b_key,
-                &accounts.pool_mint_key,
-                &depositor_pool_key,
-                deposit_a,
-            )
-            .unwrap(),
-            vec![
-                &mut accounts.swap_account,
-                &mut Account::default(),
-                &mut depositor_token_a_account,
-                &mut depositor_token_b_account,
-                &mut accounts.token_a_account,
-                &mut accounts.token_b_account,
-                &mut accounts.pool_mint_account,
-                &mut depositor_pool_account,
-                &mut Account::default(),
-            ],
-        )
-        .unwrap();
-        let token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
-        assert_eq!(token_a.amount, deposit_a + token_a_amount);
-        let token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
-        assert_eq!(token_b.amount, deposit_b + token_b_amount);
-        let depositor_token_a =
-            Processor::unpack_token_account(&depositor_token_a_account.data).unwrap();
-        assert_eq!(depositor_token_a.amount, 0);
-        let depositor_token_b =
-            Processor::unpack_token_account(&depositor_token_b_account.data).unwrap();
-        assert_eq!(depositor_token_b.amount, 0);
-        let depositor_pool_account =
-            Processor::unpack_token_account(&depositor_pool_account.data).unwrap();
-        let pool_account =
-            Processor::unpack_token_account(&accounts.pool_token_account.data).unwrap();
-        let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
-        assert_eq!(
-            pool_mint.supply,
-            pool_account.amount + depositor_pool_account.amount
-        );
+            let swap_token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
+            assert_eq!(swap_token_a.amount, deposit_a + token_a_amount);
+            let swap_token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
+            assert_eq!(swap_token_b.amount, deposit_b + token_b_amount);
+            let token_a =
+                Processor::unpack_token_account(&token_a_account.data).unwrap();
+            assert_eq!(token_a.amount, 0);
+            let token_b =
+                Processor::unpack_token_account(&token_b_account.data).unwrap();
+            assert_eq!(token_b.amount, 0);
+            let pool_account =
+                Processor::unpack_token_account(&pool_account.data).unwrap();
+            let swap_pool_account =
+                Processor::unpack_token_account(&accounts.pool_token_account.data).unwrap();
+            let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
+            assert_eq!(
+                pool_mint.supply,
+                pool_account.amount + swap_pool_account.amount
+            );
+        }
     }
 
     #[test]
@@ -1342,8 +1598,6 @@ mod tests {
             token_b_amount,
         );
         accounts.initialize_swap().unwrap();
-        let seeds = [&accounts.swap_key.to_bytes()[..32], &[accounts.nonce]];
-        let authority_key = Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
 
         // swap not initialized
         // wrong token a / b accounts
@@ -1380,7 +1634,7 @@ mod tests {
             approve(
                 &TOKEN_PROGRAM_ID,
                 &accounts.pool_token_key,
-                &authority_key,
+                &accounts.authority_key,
                 &user_key,
                 &[],
                 withdraw_amount,
@@ -1400,7 +1654,7 @@ mod tests {
                 &SWAP_PROGRAM_ID,
                 &TOKEN_PROGRAM_ID,
                 &accounts.swap_key,
-                &authority_key,
+                &accounts.authority_key,
                 &accounts.pool_mint_key,
                 &accounts.pool_token_key,
                 &accounts.token_a_key,
@@ -1455,8 +1709,6 @@ mod tests {
             token_b_amount,
         );
         accounts.initialize_swap().unwrap();
-        let seeds = [&accounts.swap_key.to_bytes()[..32], &[accounts.nonce]];
-        let authority_key = Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
 
         // swap not initialized
         // not enough token to swap
@@ -1491,7 +1743,7 @@ mod tests {
             approve(
                 &TOKEN_PROGRAM_ID,
                 &user_token_a_key,
-                &authority_key,
+                &accounts.authority_key,
                 &user_key,
                 &[],
                 a_to_b_amount,
@@ -1510,7 +1762,7 @@ mod tests {
                 &SWAP_PROGRAM_ID,
                 &TOKEN_PROGRAM_ID,
                 &accounts.swap_key,
-                &authority_key,
+                &accounts.authority_key,
                 &user_token_a_key,
                 &accounts.token_a_key,
                 &accounts.token_b_key,
@@ -1559,7 +1811,7 @@ mod tests {
             approve(
                 &TOKEN_PROGRAM_ID,
                 &user_token_b_key,
-                &authority_key,
+                &accounts.authority_key,
                 &user_key,
                 &[],
                 b_to_a_amount,
@@ -1578,7 +1830,7 @@ mod tests {
                 &SWAP_PROGRAM_ID,
                 &TOKEN_PROGRAM_ID,
                 &accounts.swap_key,
-                &authority_key,
+                &accounts.authority_key,
                 &user_token_b_key,
                 &accounts.token_b_key,
                 &accounts.token_a_key,
