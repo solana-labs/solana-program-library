@@ -1,8 +1,7 @@
 #![allow(missing_docs)]
 
-use bincode::{rustc_serialize::encode, SizeLimit::Infinite};
-use bn::{arith::U256, AffineG1, Fr, Group, G1};
-use sha3::{Digest, Keccak256};
+use bn::{Fr, Group, G1};
+use elgamal_bn::{ciphertext::Ciphertext, public::PublicKey};
 
 type Points = (G1, G1);
 
@@ -55,58 +54,6 @@ fn inner_product(ciphertexts: &[Points], scalars: &[Fr]) -> Points {
     (aggregate_x, aggregate_y)
 }
 
-fn keccak256(
-    plaintext: G1,
-    (ctxt_1, ctxt_2): Points,
-    announcement_g: G1,
-    announcement_ctx: G1,
-    generator: G1,
-    public_key: G1,
-) -> Fr {
-    let plaintext = AffineG1::from_jacobian(plaintext).unwrap();
-    let ctxt_1 = AffineG1::from_jacobian(ctxt_1).unwrap();
-    let ctxt_2 = AffineG1::from_jacobian(ctxt_2).unwrap();
-    let announcement_g = AffineG1::from_jacobian(announcement_g).unwrap();
-    let announcement_ctx = AffineG1::from_jacobian(announcement_ctx).unwrap();
-    let generator = AffineG1::from_jacobian(generator).unwrap();
-    let public_key = AffineG1::from_jacobian(public_key).unwrap();
-    let hasher = Keccak256::new()
-        .chain(encode(&plaintext, Infinite).unwrap())
-        .chain(encode(&ctxt_1, Infinite).unwrap())
-        .chain(encode(&ctxt_2, Infinite).unwrap())
-        .chain(encode(&announcement_g, Infinite).unwrap())
-        .chain(encode(&announcement_ctx, Infinite).unwrap())
-        .chain(encode(&generator, Infinite).unwrap())
-        .chain(encode(&public_key, Infinite).unwrap());
-
-    let result = hasher.finalize();
-    Fr::new_mul_factor(U256::from_slice(result.as_slice()).unwrap())
-}
-
-fn check_proof(
-    (ctxt_1, ctxt_2): Points,
-    plaintext: G1,
-    public_key: G1,
-    announcement_g: G1,
-    announcement_ctx: G1,
-    response: Fr,
-) -> bool {
-    let generator = G1::one();
-    let challenge = keccak256(
-        plaintext,
-        (ctxt_1, ctxt_2),
-        announcement_g,
-        announcement_ctx,
-        generator,
-        public_key,
-    );
-
-    let check_1 = generator * response == announcement_g + public_key * challenge;
-    let check_2 =
-        ctxt_1 * response + plaintext * challenge == announcement_ctx + ctxt_2 * challenge;
-    check_1 && check_2
-}
-
 #[derive(Default)]
 pub struct User {
     encrypted_aggregate: EncryptedAggregate,
@@ -148,16 +95,18 @@ impl User {
         announcement_ctx: G1,
         response: Fr,
     ) -> bool {
-        let ciphertext = self.fetch_encrypted_aggregate();
-        let client_pk = self.fetch_public_key();
-        self.proof_verification = check_proof(
-            ciphertext,
-            plaintext,
-            client_pk,
-            announcement_g,
-            announcement_ctx,
-            response,
-        );
+        let client_pk = PublicKey::from(self.fetch_public_key());
+        let ciphertext = Ciphertext {
+            points: self.fetch_encrypted_aggregate(),
+            pk: client_pk,
+        };
+        self.proof_verification = client_pk
+            .verify_correct_decryption_no_Merlin(
+                ((announcement_g, announcement_ctx), response),
+                ciphertext,
+                plaintext,
+            )
+            .is_ok();
         true
     }
 
@@ -183,8 +132,8 @@ impl User {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bn::{Fr, Group, G1};
-    use elgamal_bn::{ciphertext::Ciphertext, private::SecretKey, public::PublicKey};
+    use bn::arith::U256;
+    use elgamal_bn::private::SecretKey;
     use rand::thread_rng;
 
     pub(crate) fn generate_keys() -> (SecretKey, PublicKey) {
