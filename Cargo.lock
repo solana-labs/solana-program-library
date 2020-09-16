@@ -2890,7 +2890,6 @@ dependencies = [
  "remove_dir_all",
  "sha3 0.9.1",
  "solana-sdk",
- "spl-token 2.0.4",
  "thiserror",
 ]
 

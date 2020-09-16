@@ -115,7 +115,7 @@ impl ThemisInstruction {
                     encrypted_interactions: vec![],
                     public_key: [pk1, pk2],
                 }
-            }
+            },
             3 => ThemisInstruction::SubmitProofDecryption {
                 plaintext: [U256::zero(), U256::zero()],
                 announcement_g: [U256::zero(), U256::zero()],
