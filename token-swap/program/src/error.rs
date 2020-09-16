@@ -40,6 +40,12 @@ pub enum SwapError {
     /// The input token is invalid for swap.
     #[error("InvalidInput")]
     InvalidInput,
+    /// Address of the provided swap token account is incorrect.
+    #[error("Address of the provided swap token account is incorrect")]
+    IncorrectSwapAccount,
+    /// Address of the provided pool token mint is incorrect
+    #[error("Address of the provided pool token mint is incorrect")]
+    IncorrectPoolMint,
     /// The output token is invalid for swap.
     #[error("InvalidOutput")]
     InvalidOutput,
