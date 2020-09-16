@@ -135,7 +135,7 @@ pub enum TokenInstruction {
     ///
     ///   * Multisignature authority
     ///   0. `[writable]` The mint or account to change the authority of.
-    ///   1. `[]` The mint's or account's multisignature authority.
+    ///   1. `[]` The mint's or account's current multisignature authority.
     ///   2. ..2+M `[signer]` M signer accounts
     SetAuthority {
         /// The type of authority to update.
