@@ -40,16 +40,17 @@ fn run_program(
 ) -> Result<u64, InstructionError> {
     let mut program_account = SolanaAccount::default();
     program_account.data = load_program("spl_token");
+    let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
     let (mut vm, heap_region) = create_vm(
-        &bpf_loader::id(),
+        &loader_id,
         &program_account.data,
         parameter_accounts,
         &mut invoke_context,
     )
     .unwrap();
     let mut parameter_bytes = serialize_parameters(
-        &bpf_loader::id(),
+        &loader_id,
         program_id,
         parameter_accounts,
         &instruction_data,
@@ -60,7 +61,7 @@ fn run_program(
         vm.execute_program(parameter_bytes.as_mut_slice(), &[], &[heap_region])
             .unwrap()
     );
-    deserialize_parameters(&bpf_loader::id(), parameter_accounts, &parameter_bytes).unwrap();
+    deserialize_parameters(&loader_id, parameter_accounts, &parameter_bytes).unwrap();
     Ok(vm.get_total_instruction_count())
 }
 

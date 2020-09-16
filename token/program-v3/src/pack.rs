@@ -1,6 +1,5 @@
 //! State transition types
 
-use crate::error::TokenError;
 use solana_sdk::program_error::ProgramError;
 
 /// Check is a token state is initialized
@@ -35,7 +34,7 @@ pub trait Pack: Sealed {
         if value.is_initialized() {
             Ok(value)
         } else {
-            Err(TokenError::UninitializedState.into())
+            Err(ProgramError::UninitializedAccount)
         }
     }
 
