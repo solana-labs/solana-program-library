@@ -2880,7 +2880,6 @@ name = "spl-themis"
 version = "0.1.0"
 dependencies = [
  "arrayref",
- "bincode 0.6.1",
  "bn",
  "elgamal_bn",
  "num-derive",
