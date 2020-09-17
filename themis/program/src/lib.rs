@@ -1,7 +1,5 @@
-#![deny(missing_docs)]
-#![forbid(unsafe_code)]
-
 //! An implementation of Brave's THEMIS for the Solana blockchain
+#![forbid(unsafe_code)]
 
 pub mod entrypoint;
 pub mod error;
