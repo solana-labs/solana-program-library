@@ -10,6 +10,10 @@ pub enum ThemisError {
     /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
+
+    /// Account already in use
+    #[error("Account in use")]
+    AccountInUse,
 }
 impl From<ThemisError> for ProgramError {
     fn from(e: ThemisError) -> Self {

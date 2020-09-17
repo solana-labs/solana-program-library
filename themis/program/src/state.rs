@@ -27,6 +27,7 @@ impl Default for EncryptedAggregate {
 
 #[derive(Default, Serialize, Deserialize)]
 pub(crate) struct Policies {
+    pub is_initialized: bool,
     pub scalars: Vec<Scalar>,
 }
 
@@ -69,6 +70,7 @@ fn inner_product(ciphertexts: &[Points], scalars: &[Scalar]) -> Points {
 #[derive(Default, Serialize, Deserialize)]
 pub struct User {
     encrypted_aggregate: EncryptedAggregate,
+    pub is_initialized: bool,
     proof_verification: bool,
     payment_requests: Vec<PaymentRequests>,
 }
