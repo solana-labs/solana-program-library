@@ -195,10 +195,6 @@ impl Processor {
         if pool_mint.supply != 0 {
             return Err(SwapError::InvalidSupply.into());
         }
-        // double check to be totally sure -- TODO check if this is necessary
-        if destination.amount != 0 {
-            return Err(SwapError::InvalidSupply.into());
-        }
 
         // liquidity is measured in terms of token_a's value since both sides of
         // the pool are equal
