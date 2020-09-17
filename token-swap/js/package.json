@@ -1,11 +1,27 @@
 {
   "name": "@solana/spl-token-swap",
   "version": "0.0.1",
-  "description": "",
+  "description": "SPL Token Swap JavaScript API",
+  "license": "MIT",
+  "author": "Solana Maintainers <maintainers@solana.com>",
+  "homepage": "https://solana.com/",
   "repository": {
     "type": "git",
     "url": "https://github.com/solana-labs/solana-program-library"
   },
+  "bugs": {
+    "url": "https://github.com/solana-labs/solana-program-library/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.cjs.js",
+  "module": "lib/index.esm.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "/lib",
+    "/module.flow.js"
+  ],
   "testnetDefaultChannel": "v1.3.9",
   "scripts": {
     "build": "rollup -c",
@@ -26,8 +42,6 @@
     "pretty": "prettier --write '{,src/**/}*.js'"
   },
   "keywords": [],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
     "@babel/runtime": "^7.11.2",
     "@solana/web3.js": "^0.75.2",
