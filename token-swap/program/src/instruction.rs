@@ -21,8 +21,8 @@ pub enum SwapInstruction {
     ///   1. `[]` $authority derived from `create_program_address(&[Token-swap account])`
     ///   2. `[]` token_a Account. Must be non zero, owned by $authority.
     ///   3. `[]` token_b Account. Must be non zero, owned by $authority.
-    ///   4. `[writable]` pool Token. Must be empty, owned by $authority.
-    ///   5. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   4. `[writable]` Pool Token Mint. Must be empty, owned by $authority.
+    ///   5. `[writable]` Pool Token Account to deposit the minted tokens. Must be empty, owned by user.
     ///   6. '[]` Token program id
     Initialize {
         /// swap pool fee numerator
