@@ -1,36 +1,48 @@
 #![allow(missing_docs)]
 
-use bn::{Fr, Group, G1};
-use elgamal_bn::{ciphertext::Ciphertext, public::PublicKey};
+use curve25519_dalek::{
+    ristretto::{CompressedRistretto, RistrettoPoint},
+    scalar::Scalar,
+    traits::Identity,
+};
+use elgamal_ristretto::{ciphertext::Ciphertext, public::PublicKey};
+use serde::{Deserialize, Serialize};
 
-type Points = (G1, G1);
+type Points = (RistrettoPoint, RistrettoPoint);
 
+#[derive(Serialize, Deserialize)]
 struct EncryptedAggregate {
     ciphertext: Points,
-    public_key: G1,
+    public_key: RistrettoPoint,
 }
 
 impl Default for EncryptedAggregate {
     fn default() -> Self {
         Self {
-            ciphertext: (G1::zero(), G1::zero()),
-            public_key: G1::zero(),
+            ciphertext: (RistrettoPoint::identity(), RistrettoPoint::identity()),
+            public_key: RistrettoPoint::identity(),
         }
     }
 }
 
+#[derive(Default, Serialize, Deserialize)]
+pub(crate) struct Policies {
+    pub scalars: Vec<Scalar>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct PaymentRequests {
     pub encrypted_aggregate: Points,
-    pub decrypted_aggregate: G1,
-    pub proof_correct_decryption: G1,
+    pub decrypted_aggregate: RistrettoPoint,
+    pub proof_correct_decryption: RistrettoPoint,
     pub valid: bool,
 }
 
 impl PaymentRequests {
     fn new(
         encrypted_aggregate: Points,
-        decrypted_aggregate: G1,
-        proof_correct_decryption: G1,
+        decrypted_aggregate: RistrettoPoint,
+        proof_correct_decryption: RistrettoPoint,
         valid: bool,
     ) -> Self {
         Self {
@@ -42,9 +54,9 @@ impl PaymentRequests {
     }
 }
 
-fn inner_product(ciphertexts: &[Points], scalars: &[Fr]) -> Points {
-    let mut aggregate_x = G1::zero();
-    let mut aggregate_y = G1::zero();
+fn inner_product(ciphertexts: &[Points], scalars: &[Scalar]) -> Points {
+    let mut aggregate_x = RistrettoPoint::identity();
+    let mut aggregate_y = RistrettoPoint::identity();
 
     for (&(x, y), &scalar) in ciphertexts.iter().zip(scalars) {
         aggregate_x = x * scalar + aggregate_x;
@@ -54,7 +66,7 @@ fn inner_product(ciphertexts: &[Points], scalars: &[Fr]) -> Points {
     (aggregate_x, aggregate_y)
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct User {
     encrypted_aggregate: EncryptedAggregate,
     proof_verification: bool,
@@ -66,7 +78,7 @@ impl User {
         self.encrypted_aggregate.ciphertext
     }
 
-    pub fn fetch_public_key(&self) -> G1 {
+    pub fn fetch_public_key(&self) -> RistrettoPoint {
         self.encrypted_aggregate.public_key
     }
 
@@ -76,11 +88,11 @@ impl User {
 
     pub fn calculate_aggregate(
         &mut self,
-        ciphertexts: Vec<Points>,
-        public_key: G1,
-        policies: &[Fr],
+        ciphertexts: &[Points],
+        public_key: RistrettoPoint,
+        policies: &[Scalar],
     ) -> bool {
-        let ciphertext = inner_product(&ciphertexts, &policies);
+        let ciphertext = inner_product(ciphertexts, &policies);
         self.encrypted_aggregate = EncryptedAggregate {
             ciphertext,
             public_key,
@@ -90,31 +102,29 @@ impl User {
 
     pub fn submit_proof_decryption(
         &mut self,
-        plaintext: G1,
-        announcement_g: G1,
-        announcement_ctx: G1,
-        response: Fr,
+        plaintext: RistrettoPoint,
+        announcement_g: CompressedRistretto,
+        announcement_ctx: CompressedRistretto,
+        response: Scalar,
     ) -> bool {
         let client_pk = PublicKey::from(self.fetch_public_key());
         let ciphertext = Ciphertext {
             points: self.fetch_encrypted_aggregate(),
             pk: client_pk,
         };
-        self.proof_verification = client_pk
-            .verify_correct_decryption_no_Merlin(
-                ((announcement_g, announcement_ctx), response),
-                ciphertext,
-                plaintext,
-            )
-            .is_ok();
+        self.proof_verification = client_pk.verify_correct_decryption_no_Merlin(
+            &((announcement_g, announcement_ctx), response),
+            &ciphertext,
+            &plaintext,
+        );
         true
     }
 
     pub fn request_payment(
         &mut self,
         encrypted_aggregate: Points,
-        decrypted_aggregate: G1,
-        proof_correct_decryption: G1,
+        decrypted_aggregate: RistrettoPoint,
+        proof_correct_decryption: RistrettoPoint,
     ) -> bool {
         // TODO: implement proof verification
         let proof_is_valid = true;
@@ -132,8 +142,8 @@ impl User {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bn::arith::U256;
-    use elgamal_bn::private::SecretKey;
+    use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
+    use elgamal_ristretto::{ciphertext::Ciphertext, private::SecretKey};
     use rand::thread_rng;
 
     pub(crate) fn generate_keys() -> (SecretKey, PublicKey) {
@@ -143,26 +153,25 @@ mod tests {
         (sk, pk)
     }
 
-    pub(crate) fn recover_scalar(point: G1, k: u32) -> Fr {
+    pub(crate) fn recover_scalar(point: RistrettoPoint, k: u32) -> Scalar {
         for i in 0..2u64.pow(k) {
-            let scalar = Fr::new(i.into()).unwrap_or_else(Fr::one);
-            if G1::one() * scalar == point {
+            let scalar = i.into();
+            if RISTRETTO_BASEPOINT_POINT * scalar == point {
                 return scalar;
             }
         }
         panic!("Encryped scalar too long");
     }
 
-    fn test_policy_contract(policies: &[U256], expected_scalar_aggregate: Fr) {
+    fn test_policy_contract(policies: &[Scalar], expected_scalar_aggregate: Scalar) {
         let (sk, pk) = generate_keys();
         let interactions: Vec<_> = policies
             .iter()
-            .map(|_| pk.encrypt(&G1::one()).points)
+            .map(|_| pk.encrypt(&RISTRETTO_BASEPOINT_POINT).points)
             .collect();
         let mut user = User::default();
 
-        let policies: Vec<_> = policies.iter().map(|x| Fr::new_mul_factor(*x)).collect();
-        let tx_receipt = user.calculate_aggregate(interactions, pk.get_point(), &policies);
+        let tx_receipt = user.calculate_aggregate(&interactions, pk.get_point(), policies);
         assert!(tx_receipt);
 
         let encrypted_point = user.fetch_encrypted_aggregate();
@@ -175,9 +184,8 @@ mod tests {
         let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
         assert_eq!(scalar_aggregate, expected_scalar_aggregate);
 
-        let ((announcement_g, announcement_ctx), response) = sk
-            .prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate)
-            .unwrap();
+        let ((announcement_g, announcement_ctx), response) =
+            sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate);
 
         let tx_receipt_proof = user.submit_proof_decryption(
             decrypted_aggregate,
@@ -193,114 +201,114 @@ mod tests {
 
     #[test]
     fn test_policy_contract_2ads() {
-        let policies = vec![1.into(), 2.into()];
-        test_policy_contract(&policies, Fr::new(3.into()).unwrap());
+        let policies = vec![1u8.into(), 2u8.into()];
+        test_policy_contract(&policies, 3u8.into());
     }
 
     #[test]
     fn test_policy_contract_128ads() {
         let policies = vec![
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(), //10
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(), // 2 * 10
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(),
-            1.into(), //10
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(),
-            2.into(), // 2 * 10
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(), //10
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(), // 2 * 10
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(),
+            1u8.into(), //10
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(),
+            2u8.into(), // 2 * 10
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
+            0u8.into(),
         ];
-        test_policy_contract(&policies, Fr::new(60.into()).unwrap());
+        test_policy_contract(&policies, 60u8.into());
     }
 }
