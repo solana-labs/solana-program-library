@@ -1,5 +1,11 @@
 //! Themis program
-use crate::instruction::ThemisInstruction;
+use crate::{
+    instruction::ThemisInstruction,
+    state::{Policies, User},
+};
+use bincode::{deserialize, serialize_into};
+use curve25519_dalek::ristretto::RistrettoPoint;
+use elgamal_ristretto::public::PublicKey;
 use solana_sdk::{
     account_info::{next_account_info, AccountInfo},
     program_error::ProgramError,
@@ -7,11 +13,19 @@ use solana_sdk::{
 };
 
 fn process_calculate_aggregate(
-    _user_info: &AccountInfo,
-    _policies_info: &AccountInfo,
+    encrypted_interactions: &[(RistrettoPoint, RistrettoPoint)],
+    public_key: PublicKey,
+    user_info: &AccountInfo,
+    policies_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    //let user = User::unpack(&user_account.data.borrow_mut())?;
-    //let policies = Policies::unpack(&policies_account.data.borrow_mut())?;
+    let mut user: User = deserialize(&user_info.data.borrow()).unwrap();
+    let policies: Policies = deserialize(&policies_info.data.borrow()).unwrap();
+    user.calculate_aggregate(
+        encrypted_interactions,
+        public_key.get_point(),
+        &policies.scalars,
+    );
+    serialize_into(&mut *user_info.data.borrow_mut(), &user).unwrap();
     Ok(())
 }
 
@@ -22,7 +36,7 @@ pub fn process_instruction<'a>(
     input: &[u8],
 ) -> Result<(), ProgramError> {
     let account_infos_iter = &mut account_infos.iter();
-    let instruction = ThemisInstruction::unpack(input)?;
+    let instruction = deserialize(input).unwrap();
 
     match instruction {
         ThemisInstruction::InitializeUserAccount => {
@@ -36,12 +50,17 @@ pub fn process_instruction<'a>(
             Ok(())
         }
         ThemisInstruction::CalculateAggregate {
-            encrypted_interactions: _,
-            public_key: _,
+            encrypted_interactions,
+            public_key,
         } => {
             let user_info = next_account_info(account_infos_iter)?;
             let policies_info = next_account_info(account_infos_iter)?;
-            process_calculate_aggregate(&user_info, &policies_info)
+            process_calculate_aggregate(
+                &encrypted_interactions,
+                public_key,
+                &user_info,
+                &policies_info,
+            )
         }
         ThemisInstruction::SubmitProofDecryption {
             plaintext: _,
