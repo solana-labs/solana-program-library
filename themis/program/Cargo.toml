@@ -21,7 +21,7 @@ default = ["solana-sdk/default"]
 arrayref = "0.3.6"
 bincode = "1.3"
 curve25519-dalek = { version = "2.0.0", default-features = false, features = ["serde"] }
-elgamal_ristretto = { git = "https://github.com/iquerejeta/elgamal", rev = "fad7569a460b0418b19414e1817a370c69dacaca" }
+elgamal_ristretto = { git = "https://github.com/iquerejeta/elgamal", rev = "05e5481e5b7c5b596963ebe0465aab7879cd0b8b" }
 num-derive = "0.3"
 num_enum = "0.5.1"
 num-traits = "0.2"
