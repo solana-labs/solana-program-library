@@ -1,11 +1,14 @@
 //! Themis program
 use crate::{
+    error::ThemisError,
     instruction::ThemisInstruction,
     state::{Policies, User},
-    error::ThemisError,
 };
 use bincode::{deserialize, serialize_into};
-use curve25519_dalek::{ristretto::{CompressedRistretto, RistrettoPoint}, scalar::Scalar};
+use curve25519_dalek::{
+    ristretto::{CompressedRistretto, RistrettoPoint},
+    scalar::Scalar,
+};
 use elgamal_ristretto::public::PublicKey;
 use solana_sdk::{
     account_info::{next_account_info, AccountInfo},
@@ -13,15 +16,14 @@ use solana_sdk::{
     pubkey::Pubkey,
 };
 
-fn process_initialize_user_account(
-    user_info: &AccountInfo,
-) -> Result<(), ProgramError> {
+fn process_initialize_user_account(user_info: &AccountInfo) -> Result<(), ProgramError> {
     let mut user = deserialize::<User>(&user_info.data.borrow()).unwrap_or_default();
     if user.is_initialized {
         return Err(ThemisError::AccountInUse.into());
     }
     user.is_initialized = true;
-    serialize_into(&mut *user_info.data.borrow_mut(), &user).map_err(|_| ProgramError::AccountDataTooSmall)
+    serialize_into(&mut *user_info.data.borrow_mut(), &user)
+        .map_err(|_| ProgramError::AccountDataTooSmall)
 }
 
 fn process_initialize_policies_account(
@@ -34,7 +36,8 @@ fn process_initialize_policies_account(
     }
     policies.is_initialized = true;
     policies.scalars = scalars;
-    serialize_into(&mut *policies_info.data.borrow_mut(), &policies).map_err(|_| ProgramError::AccountDataTooSmall)
+    serialize_into(&mut *policies_info.data.borrow_mut(), &policies)
+        .map_err(|_| ProgramError::AccountDataTooSmall)
 }
 
 fn process_calculate_aggregate(
@@ -43,14 +46,17 @@ fn process_calculate_aggregate(
     user_info: &AccountInfo,
     policies_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    let mut user: User = deserialize(&user_info.data.borrow()).map_err(|_| ProgramError::InvalidAccountData)?;
-    let policies: Policies = deserialize(&policies_info.data.borrow()).map_err(|_| ProgramError::InvalidAccountData)?;
+    let mut user: User =
+        deserialize(&user_info.data.borrow()).map_err(|_| ProgramError::InvalidAccountData)?;
+    let policies: Policies =
+        deserialize(&policies_info.data.borrow()).map_err(|_| ProgramError::InvalidAccountData)?;
     user.calculate_aggregate(
         encrypted_interactions,
         public_key.get_point(),
         &policies.scalars,
     );
-    serialize_into(&mut *user_info.data.borrow_mut(), &user).map_err(|_| ProgramError::AccountDataTooSmall)
+    serialize_into(&mut *user_info.data.borrow_mut(), &user)
+        .map_err(|_| ProgramError::AccountDataTooSmall)
 }
 
 fn process_submit_proof_decryption(
@@ -60,29 +66,28 @@ fn process_submit_proof_decryption(
     response: Scalar,
     user_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    let mut user: User = deserialize(&user_info.data.borrow()).map_err(|_| ProgramError::InvalidAccountData)?;
-    user.submit_proof_decryption(
-        plaintext,
-        announcement_g,
-        announcement_ctx,
-        response,
-    );
-    serialize_into(&mut *user_info.data.borrow_mut(), &user).map_err(|_| ProgramError::AccountDataTooSmall)
+    let mut user: User =
+        deserialize(&user_info.data.borrow()).map_err(|_| ProgramError::InvalidAccountData)?;
+    user.submit_proof_decryption(plaintext, announcement_g, announcement_ctx, response);
+    serialize_into(&mut *user_info.data.borrow_mut(), &user)
+        .map_err(|_| ProgramError::AccountDataTooSmall)
 }
 
 fn process_request_payment(
-        encrypted_aggregate: (RistrettoPoint, RistrettoPoint),
-        decrypted_aggregate: RistrettoPoint,
-        proof_correct_decryption: RistrettoPoint,
-        user_info: &AccountInfo,
+    encrypted_aggregate: (RistrettoPoint, RistrettoPoint),
+    decrypted_aggregate: RistrettoPoint,
+    proof_correct_decryption: RistrettoPoint,
+    user_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    let mut user: User = deserialize(&user_info.data.borrow()).map_err(|_| ProgramError::InvalidAccountData)?;
+    let mut user: User =
+        deserialize(&user_info.data.borrow()).map_err(|_| ProgramError::InvalidAccountData)?;
     user.request_payment(
         encrypted_aggregate,
         decrypted_aggregate,
         proof_correct_decryption,
     );
-    serialize_into(&mut *user_info.data.borrow_mut(), &user).map_err(|_| ProgramError::AccountDataTooSmall)
+    serialize_into(&mut *user_info.data.borrow_mut(), &user)
+        .map_err(|_| ProgramError::AccountDataTooSmall)
 }
 
 /// Process the given transaction instruction
@@ -137,7 +142,12 @@ pub fn process_instruction<'a>(
             proof_correct_decryption,
         } => {
             let user_info = next_account_info(account_infos_iter)?;
-            process_request_payment(encrypted_aggregate, decrypted_aggregate, proof_correct_decryption, &user_info)
+            process_request_payment(
+                encrypted_aggregate,
+                decrypted_aggregate,
+                proof_correct_decryption,
+                &user_info,
+            )
         }
     }
 }
