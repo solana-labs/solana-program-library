@@ -23,7 +23,7 @@ declare module '@solana/spl-token-swap' {
   |};
 
   declare export class TokenSwap {
-    constructor(connection: Connection, tokenSwap: PublicKey, programId: PublicKey, payer: Account);
+    constructor(connection: Connection, tokenSwap: PublicKey, programId: PublicKey, payer: Account): TokenSwap;
 
     static getMinBalanceRentForExemptTokenSwap(
       connection: Connection,
@@ -43,9 +43,9 @@ declare module '@solana/spl-token-swap' {
       feeNumerator: number,
       feeDenominator: number,
       programId: PublicKey,
-    ): Promise<TokenSwap>
+    ): Promise<TokenSwap>;
 
-    getInfo(): Promise<TokenSwapInfo>
+    getInfo(): Promise<TokenSwapInfo>;
     swap(
       authority: PublicKey,
       source: PublicKey,
@@ -54,7 +54,7 @@ declare module '@solana/spl-token-swap' {
       destination: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): Promise<TransactionSignature>
+    ): Promise<TransactionSignature>;
 
     swapInstruction(
       authority: PublicKey,
@@ -64,7 +64,7 @@ declare module '@solana/spl-token-swap' {
       destination: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): TransactionInstruction
+    ): TransactionInstruction;
 
     deposit(
       authority: PublicKey,
@@ -76,7 +76,7 @@ declare module '@solana/spl-token-swap' {
       poolAccount: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): Promise<TransactionSignature>
+    ): Promise<TransactionSignature>;
 
     depositInstruction(
       authority: PublicKey,
@@ -88,7 +88,7 @@ declare module '@solana/spl-token-swap' {
       poolAccount: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): TransactionInstruction
+    ): TransactionInstruction;
 
     withdraw(
       authority: PublicKey,
@@ -100,7 +100,7 @@ declare module '@solana/spl-token-swap' {
       userAccountB: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): Promise<TransactionSignature>
+    ): Promise<TransactionSignature>;
 
     withdrawInstruction(
       authority: PublicKey,
@@ -112,6 +112,6 @@ declare module '@solana/spl-token-swap' {
       userAccountB: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): TransactionInstruction
+    ): TransactionInstruction;
   }
 }
