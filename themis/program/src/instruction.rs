@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 /// Instructions supported by the Themis program.
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum ThemisInstruction {
     /// Initialize a new user account
     ///
@@ -31,8 +32,8 @@ pub enum ThemisInstruction {
     ///
     ///   0. `[writable]` The account to initialize.
     InitializePoliciesAccount {
-        /// Number of policies to be added
-        policies: Vec<Scalar>,
+        /// Policies to be added
+        scalars: Vec<Scalar>,
     },
 
     /// Calculate aggregate. The length of the `input` vector must equal the
