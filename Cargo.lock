@@ -1936,9 +1936,9 @@ dependencies = [
 
 [[package]]
 name = "solana-client"
-version = "1.3.9"
+version = "1.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "167b4a8d98c797c494b2c7567d5cfc7d7870cc1c6d499ff4caa6be898ac30f17"
+checksum = "c2658ef06bd4c47aaf6d3f77df7157c6399a02fb4b7f993b45f2ae828b716de2"
 dependencies = [
  "bincode",
  "bs58",
@@ -2026,9 +2026,9 @@ dependencies = [
 
 [[package]]
 name = "solana-net-utils"
-version = "1.3.9"
+version = "1.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e21894da414ffca529a03b1252d625200b1955f5b49b66c04eef491ef09ac19"
+checksum = "cf614748a0b217521c8029cfc2c522b032f0ddd04c6bed84aeeb0f753abc28e5"
 dependencies = [
  "bincode",
  "bytes 0.4.12",
@@ -2155,9 +2155,9 @@ dependencies = [
 
 [[package]]
 name = "solana-transaction-status"
-version = "1.3.9"
+version = "1.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "201b7ac0160f41bb69b5152d052cbc7f1b80bb934da1daf9a316045b9a459512"
+checksum = "16eafda2259a5af36c3b504a7dbc1c656b11f6f149149698a91d1d1afadb2257"
 dependencies = [
  "Inflector",
  "base64 0.12.3",
@@ -2178,9 +2178,9 @@ dependencies = [
 
 [[package]]
 name = "solana-version"
-version = "1.3.9"
+version = "1.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66988f6bf074031e4e7c567fbc9c57d8fc88a5269d29edd297c1308f41231dda"
+checksum = "34a1e0cd6ea897f67cad2b7f0f2e7de71060bd336cdefd630b98c72085885f62"
 dependencies = [
  "log",
  "rustc_version",
