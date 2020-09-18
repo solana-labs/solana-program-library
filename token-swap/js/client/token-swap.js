@@ -82,15 +82,14 @@ type TokenSwapInfo = {|
   feesNumerator: Numberu64,
 
   /**
-  * Fee denominator
-  */
+   * Fee denominator
+   */
   feesDenominator: Numberu64,
 
-    /**
+  /**
    * Fee ratio applied to the input token amount prior to output calculation
    */
   feeRatio: number,
-
 |};
 
 /**
@@ -138,7 +137,12 @@ export class TokenSwap {
    * @param programId Optional token programId, uses the system programId by default
    * @param payer Payer of fees
    */
-  constructor(connection: Connection, tokenSwap: PublicKey, programId: PublicKey, payer: Account) {
+  constructor(
+    connection: Connection,
+    tokenSwap: PublicKey,
+    programId: PublicKey,
+    payer: Account,
+  ) {
     Object.assign(this, {connection, tokenSwap, programId, payer});
   }
 
@@ -188,26 +192,26 @@ export class TokenSwap {
     programId: PublicKey,
   ): Promise<TokenSwap> {
     let transaction;
-    const tokenSwap = new TokenSwap(connection, tokenSwapAccount.publicKey, programId, payer);
+    const tokenSwap = new TokenSwap(
+      connection,
+      tokenSwapAccount.publicKey,
+      programId,
+      payer,
+    );
 
     // Allocate memory for the account
     const balanceNeeded = await TokenSwap.getMinBalanceRentForExemptTokenSwap(
       connection,
     );
     transaction = new Transaction();
-    transaction.add(SystemProgram.createAccount({
-      fromPubkey: payer.publicKey,
-      newAccountPubkey: tokenSwapAccount.publicKey,
-      lamports: balanceNeeded,
-      space: TokenSwapLayout.span,
-      programId,
-    }));
-    await sendAndConfirmTransaction(
-      'createAccount',
-      connection,
-      transaction,
-      payer,
-      tokenSwapAccount,
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: payer.publicKey,
+        newAccountPubkey: tokenSwapAccount.publicKey,
+        lamports: balanceNeeded,
+        space: TokenSwapLayout.span,
+        programId,
+      }),
     );
 
     let keys = [
@@ -238,16 +242,17 @@ export class TokenSwap {
       );
       data = data.slice(0, encodeLength);
     }
-    transaction = new Transaction().add({
+    transaction.add({
       keys,
       programId,
       data,
     });
     await sendAndConfirmTransaction(
-      'InitializeSwap',
+      'createAccount and InitializeSwap',
       connection,
       transaction,
       payer,
+      tokenSwapAccount,
     );
 
     return tokenSwap;
@@ -277,9 +282,15 @@ export class TokenSwap {
     tokenSwapInfo.tokenAccountA = new PublicKey(tokenSwapInfo.tokenAccountA);
     tokenSwapInfo.tokenAccountB = new PublicKey(tokenSwapInfo.tokenAccountB);
     tokenSwapInfo.tokenPool = new PublicKey(tokenSwapInfo.tokenPool);
-    tokenSwapInfo.feesNumerator = Numberu64.fromBuffer(tokenSwapInfo.feesNumerator);
-    tokenSwapInfo.feesDenominator = Numberu64.fromBuffer(tokenSwapInfo.feesDenominator);
-    tokenSwapInfo.feeRatio = tokenSwapInfo.feesNumerator.toNumber() / tokenSwapInfo.feesDenominator.toNumber();
+    tokenSwapInfo.feesNumerator = Numberu64.fromBuffer(
+      tokenSwapInfo.feesNumerator,
+    );
+    tokenSwapInfo.feesDenominator = Numberu64.fromBuffer(
+      tokenSwapInfo.feesDenominator,
+    );
+    tokenSwapInfo.feeRatio =
+      tokenSwapInfo.feesNumerator.toNumber() /
+      tokenSwapInfo.feesDenominator.toNumber();
 
     return tokenSwapInfo;
   }
@@ -289,8 +300,8 @@ export class TokenSwap {
    *
    * @param authority Authority
    * @param source Source account
-   * @param swap_source Base account to swap into, must be a source token
-   * @param swap_destination Base account to swap from, must be a destination token
+   * @param swapSource Base account to swap into, must be a source token
+   * @param swapDestination Base account to swap from, must be a destination token
    * @param destination Destination token account
    * @param tokenProgramId Token program id
    * @param amount Amount to transfer from source account
@@ -298,8 +309,8 @@ export class TokenSwap {
   async swap(
     authority: PublicKey,
     source: PublicKey,
-    swap_source: PublicKey,
-    swap_destination: PublicKey,
+    swapSource: PublicKey,
+    swapDestination: PublicKey,
     destination: PublicKey,
     tokenProgramId: PublicKey,
     amount: number | Numberu64,
@@ -308,12 +319,14 @@ export class TokenSwap {
       'swap',
       this.connection,
       new Transaction().add(
-        this.swapInstruction(
+        TokenSwap.swapInstruction(
+          this.tokenSwap,
           authority,
           source,
-          swap_source,
-          swap_destination,
+          swapSource,
+          swapDestination,
           destination,
+          this.programId,
           tokenProgramId,
           amount,
         ),
@@ -322,12 +335,14 @@ export class TokenSwap {
     );
   }
 
-  swapInstruction(
+  static swapInstruction(
+    tokenSwap: PublicKey,
     authority: PublicKey,
     source: PublicKey,
-    swap_source: PublicKey,
-    swap_destination: PublicKey,
+    swapSource: PublicKey,
+    swapDestination: PublicKey,
     destination: PublicKey,
+    swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amount: number | Numberu64,
   ): TransactionInstruction {
@@ -346,17 +361,17 @@ export class TokenSwap {
     );
 
     const keys = [
-      {pubkey: this.tokenSwap, isSigner: false, isWritable: false},
+      {pubkey: tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
       {pubkey: source, isSigner: false, isWritable: true},
-      {pubkey: swap_source, isSigner: false, isWritable: true},
-      {pubkey: swap_destination, isSigner: false, isWritable: true},
+      {pubkey: swapSource, isSigner: false, isWritable: true},
+      {pubkey: swapDestination, isSigner: false, isWritable: true},
       {pubkey: destination, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
     return new TransactionInstruction({
       keys,
-      programId: this.programId,
+      programId: swapProgramId,
       data,
     });
   }
@@ -389,7 +404,8 @@ export class TokenSwap {
       'deposit',
       this.connection,
       new Transaction().add(
-        this.depositInstruction(
+        TokenSwap.depositInstruction(
+          this.tokenSwap,
           authority,
           sourceA,
           sourceB,
@@ -397,6 +413,7 @@ export class TokenSwap {
           intoB,
           poolToken,
           poolAccount,
+          this.programId,
           tokenProgramId,
           amount,
         ),
@@ -405,7 +422,8 @@ export class TokenSwap {
     );
   }
 
-  depositInstruction(
+  static depositInstruction(
+    tokenSwap: PublicKey,
     authority: PublicKey,
     sourceA: PublicKey,
     sourceB: PublicKey,
@@ -413,6 +431,7 @@ export class TokenSwap {
     intoB: PublicKey,
     poolToken: PublicKey,
     poolAccount: PublicKey,
+    swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amount: number | Numberu64,
   ): TransactionInstruction {
@@ -431,7 +450,7 @@ export class TokenSwap {
     );
 
     const keys = [
-      {pubkey: this.tokenSwap, isSigner: false, isWritable: false},
+      {pubkey: tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
       {pubkey: sourceA, isSigner: false, isWritable: true},
       {pubkey: sourceB, isSigner: false, isWritable: true},
@@ -443,7 +462,7 @@ export class TokenSwap {
     ];
     return new TransactionInstruction({
       keys,
-      programId: this.programId,
+      programId: swapProgramId,
       data,
     });
   }
@@ -476,7 +495,8 @@ export class TokenSwap {
       'withdraw',
       this.connection,
       new Transaction().add(
-        this.withdrawInstruction(
+        TokenSwap.withdrawInstruction(
+          this.tokenSwap,
           authority,
           poolMint,
           sourcePoolAccount,
@@ -484,6 +504,7 @@ export class TokenSwap {
           fromB,
           userAccountA,
           userAccountB,
+          this.programId,
           tokenProgramId,
           amount,
         ),
@@ -492,7 +513,8 @@ export class TokenSwap {
     );
   }
 
-  withdrawInstruction(
+  static withdrawInstruction(
+    tokenSwap: PublicKey,
     authority: PublicKey,
     poolMint: PublicKey,
     sourcePoolAccount: PublicKey,
@@ -500,6 +522,7 @@ export class TokenSwap {
     fromB: PublicKey,
     userAccountA: PublicKey,
     userAccountB: PublicKey,
+    swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amount: number | Numberu64,
   ): TransactionInstruction {
@@ -518,7 +541,7 @@ export class TokenSwap {
     );
 
     const keys = [
-      {pubkey: this.tokenSwap, isSigner: false, isWritable: false},
+      {pubkey: tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
       {pubkey: poolMint, isSigner: false, isWritable: true},
       {pubkey: sourcePoolAccount, isSigner: false, isWritable: true},
@@ -527,11 +550,10 @@ export class TokenSwap {
       {pubkey: userAccountA, isSigner: false, isWritable: true},
       {pubkey: userAccountB, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
-
     ];
     return new TransactionInstruction({
       keys,
-      programId: this.programId,
+      programId: swapProgramId,
       data,
     });
   }

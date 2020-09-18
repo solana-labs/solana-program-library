@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "SPL Token Swap JavaScript API",
   "license": "MIT",
-  "author": "Solana Maintainers <maintainers@solana.com>",
+  "author": "Solana Maintainers <maintainers@solana.foundation>",
   "homepage": "https://solana.com/",
   "repository": {
     "type": "git",
@@ -31,6 +31,7 @@
     "flow": "flow",
     "flow:watch": "watch 'flow' . --wait=1 --ignoreDirectoryPattern=/doc/",
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",
+    "build:program": "rm client/util/store/config.json; ../../do.sh build token-swap",
     "cluster:localnet": "rm -f .env",
     "cluster:devnet": "cp cluster-devnet.env .env",
     "cluster:testnet": "cp cluster-testnet.env .env",
@@ -39,7 +40,7 @@
     "localnet:up": "rm client/util/store/config.json; set -x; solana-localnet down; set -e; solana-localnet up",
     "localnet:down": "solana-localnet down",
     "localnet:logs": "solana-localnet logs -f",
-    "pretty": "prettier --write '{,src/**/}*.js'"
+    "pretty": "prettier --write '{,cli*/**/}*.js'"
   },
   "keywords": [],
   "dependencies": {
