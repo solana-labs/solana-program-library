@@ -2,14 +2,20 @@
 
 import fs from 'mz/fs';
 import semver from 'semver';
-import { Account, Connection, BpfLoader, PublicKey, BPF_LOADER_PROGRAM_ID } from '@solana/web3.js';
+import {
+  Account,
+  Connection,
+  BpfLoader,
+  PublicKey,
+  BPF_LOADER_PROGRAM_ID,
+} from '@solana/web3.js';
 
-import { Token } from '../../../token/js/client/token';
-import { TokenSwap } from '../client/token-swap';
-import { Store } from '../client/util/store';
-import { newAccountWithLamports } from '../client/util/new-account-with-lamports';
-import { url } from '../url';
-import { sleep } from '../client/util/sleep';
+import {Token} from '../../../token/js/client/token';
+import {TokenSwap} from '../client/token-swap';
+import {Store} from '../client/util/store';
+import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
+import {url} from '../url';
+import {sleep} from '../client/util/sleep';
 
 // The following globals are created by `createTokenSwap` and used by subsequent tests
 // Token swap
@@ -45,7 +51,7 @@ let connection;
 async function getConnection(): Promise<Connection> {
   if (connection) return connection;
 
-  let newConnection = new Connection(url, 'recent',);
+  let newConnection = new Connection(url, 'recent');
   const version = await newConnection.getVersion();
 
   // commitment params are only supported >= 0.21.0
@@ -60,39 +66,57 @@ async function getConnection(): Promise<Connection> {
   return newConnection;
 }
 
-async function loadProgram(connection: Connection, path: string): Promise<PublicKey> {
+async function loadProgram(
+  connection: Connection,
+  path: string,
+): Promise<PublicKey> {
   const NUM_RETRIES = 500; /* allow some number of retries */
-  const data = await fs.readFile(path
-  );
-  const { feeCalculator } = await connection.getRecentBlockhash();
+  const data = await fs.readFile(path);
+  const {feeCalculator} = await connection.getRecentBlockhash();
   const balanceNeeded =
     feeCalculator.lamportsPerSignature *
-    (BpfLoader.getMinNumSignatures(data.length) + NUM_RETRIES) +
+      (BpfLoader.getMinNumSignatures(data.length) + NUM_RETRIES) +
     (await connection.getMinimumBalanceForRentExemption(data.length));
 
   const from = await newAccountWithLamports(connection, balanceNeeded);
   const program_account = new Account();
   console.log('Loading program:', path);
-  await BpfLoader.load(connection, from, program_account, data, BPF_LOADER_PROGRAM_ID);
+  await BpfLoader.load(
+    connection,
+    from,
+    program_account,
+    data,
+    BPF_LOADER_PROGRAM_ID,
+  );
   return program_account.publicKey;
 }
 
-async function GetPrograms(connection: Connection): Promise<[PublicKey, PublicKey]> {
+async function GetPrograms(
+  connection: Connection,
+): Promise<[PublicKey, PublicKey]> {
   const store = new Store();
   let tokenProgramId = null;
   let tokenSwapProgramId = null;
   try {
     const config = await store.load('config.json');
     console.log('Using pre-loaded Token and Token-swap programs');
-    console.log('  Note: To reload programs remove client/util/store/config.json');
+    console.log(
+      '  Note: To reload programs remove client/util/store/config.json',
+    );
     tokenProgramId = new PublicKey(config.tokenProgramId);
     tokenSwapProgramId = new PublicKey(config.tokenSwapProgramId);
   } catch (err) {
-    tokenProgramId = await loadProgram(connection, '../../target/bpfel-unknown-unknown/release/spl_token.so');
-    tokenSwapProgramId = await loadProgram(connection, '../../target/bpfel-unknown-unknown/release/spl_token_swap.so');
+    tokenProgramId = await loadProgram(
+      connection,
+      '../../target/bpfel-unknown-unknown/release/spl_token.so',
+    );
+    tokenSwapProgramId = await loadProgram(
+      connection,
+      '../../target/bpfel-unknown-unknown/release/spl_token_swap.so',
+    );
     await store.save('config.json', {
       tokenProgramId: tokenProgramId.toString(),
-      tokenSwapProgramId: tokenSwapProgramId.toString()
+      tokenSwapProgramId: tokenSwapProgramId.toString(),
     });
   }
   return [tokenProgramId, tokenSwapProgramId];
@@ -109,13 +133,16 @@ export async function loadPrograms(): Promise<void> {
 export async function createTokenSwap(): Promise<void> {
   const connection = await getConnection();
   const [tokenProgramId, tokenSwapProgramId] = await GetPrograms(connection);
-  const payer = await newAccountWithLamports(connection, 100000000000 /* wag */);
+  const payer = await newAccountWithLamports(
+    connection,
+    100000000000 /* wag */,
+  );
   owner = await newAccountWithLamports(connection, 100000000000 /* wag */);
   const tokenSwapAccount = new Account();
 
   [authority, nonce] = await PublicKey.findProgramAddress(
     [tokenSwapAccount.publicKey.toBuffer()],
-    tokenSwapProgramId
+    tokenSwapProgramId,
   );
 
   console.log('creating pool mint');
@@ -162,7 +189,10 @@ export async function createTokenSwap(): Promise<void> {
   await mintB.mintTo(tokenAccountB, owner, [], BASE_AMOUNT);
 
   console.log('creating token swap');
-  const swapPayer = await newAccountWithLamports(connection, 100000000000 /* wag */);
+  const swapPayer = await newAccountWithLamports(
+    connection,
+    100000000000 /* wag */,
+  );
   tokenSwap = await TokenSwap.createTokenSwap(
     connection,
     swapPayer,
@@ -176,7 +206,7 @@ export async function createTokenSwap(): Promise<void> {
     nonce,
     1,
     4,
-    tokenSwapProgramId
+    tokenSwapProgramId,
   );
 
   console.log('getting token swap');
@@ -192,26 +222,14 @@ export async function deposit(): Promise<void> {
   console.log('Creating depositor token a account');
   let userAccountA = await mintA.createAccount(owner.publicKey);
   await mintA.mintTo(userAccountA, owner, [], USER_AMOUNT);
-  await mintA.approve(
-    userAccountA,
-    authority,
-    owner,
-    [],
-    USER_AMOUNT,
-  );
+  await mintA.approve(userAccountA, authority, owner, [], USER_AMOUNT);
   console.log('Creating depositor token b account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
   await mintB.mintTo(userAccountB, owner, [], USER_AMOUNT);
-  await mintB.approve(
-    userAccountB,
-    authority,
-    owner,
-    [],
-    USER_AMOUNT,
-  );
+  await mintB.approve(userAccountB, authority, owner, [], USER_AMOUNT);
   console.log('Creating depositor pool token account');
   let newAccountPool = await tokenPool.createAccount(owner.publicKey);
-  const [tokenProgramId,] = await GetPrograms(connection);
+  const [tokenProgramId] = await GetPrograms(connection);
 
   console.log('Depositing into swap');
   await tokenSwap.deposit(
@@ -246,14 +264,8 @@ export async function withdraw(): Promise<void> {
   let userAccountB = await mintB.createAccount(owner.publicKey);
 
   console.log('Approving withdrawal from pool account');
-  await tokenPool.approve(
-    tokenAccountPool,
-    authority,
-    owner,
-    [],
-    USER_AMOUNT,
-  );
-  const [tokenProgramId,] = await GetPrograms(connection);
+  await tokenPool.approve(tokenAccountPool, authority, owner, [], USER_AMOUNT);
+  const [tokenProgramId] = await GetPrograms(connection);
 
   console.log('Withdrawing pool tokens for A and B tokens');
   await tokenSwap.withdraw(
@@ -265,7 +277,7 @@ export async function withdraw(): Promise<void> {
     userAccountA,
     userAccountB,
     tokenProgramId,
-    USER_AMOUNT
+    USER_AMOUNT,
   );
 
   let info = await tokenPool.getAccountInfo(tokenAccountPool);
@@ -284,16 +296,10 @@ export async function swap(): Promise<void> {
   console.log('Creating swap token a account');
   let userAccountA = await mintA.createAccount(owner.publicKey);
   await mintA.mintTo(userAccountA, owner, [], USER_AMOUNT);
-  await mintA.approve(
-    userAccountA,
-    authority,
-    owner,
-    [],
-    USER_AMOUNT,
-  );
+  await mintA.approve(userAccountA, authority, owner, [], USER_AMOUNT);
   console.log('Creating swap token b account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
-  const [tokenProgramId,] = await GetPrograms(connection);
+  const [tokenProgramId] = await GetPrograms(connection);
 
   console.log('Swapping');
   await tokenSwap.swap(

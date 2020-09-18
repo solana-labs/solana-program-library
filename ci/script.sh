@@ -81,14 +81,14 @@ js_token_swap() {
   cd token-swap/js
   time npm install || exit $?
   time npm run lint || exit $?
-
   time npm run flow || exit $?
+  tsc module.d.ts || exit $?
 
   npm run cluster:localnet || exit $?
   npm run localnet:down
   npm run localnet:update || exit $?
   npm run localnet:up || exit $?
-  npm run start || exit $?
+  time npm run start || exit $?
   npm run localnet:down
 }
 _ js_token_swap
