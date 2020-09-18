@@ -1,13 +1,30 @@
 {
-  "name": "spl-token-swap",
+  "name": "@solana/spl-token-swap",
   "version": "0.0.1",
-  "description": "",
+  "description": "SPL Token Swap JavaScript API",
+  "license": "MIT",
+  "author": "Solana Maintainers <maintainers@solana.com>",
+  "homepage": "https://solana.com/",
   "repository": {
     "type": "git",
     "url": "https://github.com/solana-labs/solana-program-library"
   },
+  "bugs": {
+    "url": "https://github.com/solana-labs/solana-program-library/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.cjs.js",
+  "module": "lib/index.esm.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "/lib",
+    "/module.flow.js"
+  ],
   "testnetDefaultChannel": "v1.3.9",
   "scripts": {
+    "build": "rollup -c",
     "start": "babel-node --ignore node_modules cli/main.js",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run lint -- --fix",
@@ -25,8 +42,6 @@
     "pretty": "prettier --write '{,src/**/}*.js'"
   },
   "keywords": [],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
     "@babel/runtime": "^7.11.2",
     "@solana/web3.js": "^0.75.2",
@@ -44,6 +59,8 @@
     "@babel/plugin-transform-runtime": "^7.11.5",
     "@babel/preset-env": "^7.11.0",
     "@babel/preset-flow": "^7.10.4",
+    "@rollup/plugin-babel": "^5.2.1",
+    "@rollup/plugin-commonjs": "^15.0.0",
     "babel-eslint": "^10.1.0",
     "eslint": "^7.9.0",
     "eslint-plugin-import": "^2.22.0",
@@ -51,6 +68,8 @@
     "flow-typed": "^3.2.0",
     "mz": "^2.7.0",
     "prettier": "^2.1.2",
+    "rollup": "^2.27.1",
+    "rollup-plugin-copy": "^3.3.0",
     "semver": "^7.0.0",
     "watch": "^1.0.2"
   },
