@@ -44,8 +44,42 @@ tokens.  Once you have [Rust installed](https://rustup.rs/), run:
 $ cargo install spl-token-cli
 ```
 
-The `spl-token` configuration is shared with the `solana` command-line tool.
 Run `spl-token --help` for a full description of available commands.
+
+### Configuration
+The `spl-token` configuration is shared with the `solana` command-line tool.
+
+#### Current Configuration
+
+```
+solana config get
+```
+
+```
+Config File: ${HOME}/.config/solana/cli/config.yml
+RPC URL: https://api.mainnet-beta.solana.com
+WebSocket URL: wss://api.mainnet-beta.solana.com/ (computed)
+Keypair Path: ${HOME}/.config/solana/id.json
+```
+
+#### Cluster RPC URL
+See [Solana clusters](https://docs.solana.com/clusters) for cluster-specific RPC URLs
+
+```
+solana config set --url https://devnet.solana.com
+```
+
+#### Default Keypair
+
+Keypair File
+```
+solana config set --keypair ${HOME}/new-keypair.json
+```
+
+Hardware Wallet URL (See [URL spec](https://docs.solana.com/wallet-guide/hardware-wallets#specify-a-keypair-url))
+```
+solana config set --keypair usb://ledger/
+```
 
 ### Example: Creating your own Token
 
@@ -262,8 +296,8 @@ how much SOL is currently wrapped.
 
 To ensure a reliable calculation of supply, a consistency valid Mint, and
 consistently valid Multisig accounts all Solana accounts holding a Account,
-Mint, or Multisig must contain enough SOL to be considered (rent
-exempt)[https://docs.solana.com/implemented-proposals/rent]
+Mint, or Multisig must contain enough SOL to be considered [rent
+exempt](https://docs.solana.com/implemented-proposals/rent)
 
 ### Closing accounts
 
