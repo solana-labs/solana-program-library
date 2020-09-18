@@ -56,11 +56,14 @@ pub enum TokenInstruction {
     InitializeAccount,
     /// Initializes a multisignature account with N provided signers.
     ///
+    /// Warning, this instruction is compromised:
+    ///    https://github.com/solana-labs/solana-program-library/issues/477
+    ///
     /// Multisignature accounts can used in place of any single owner/delegate accounts in any
     /// token instruction that require an owner/delegate to be present.  The variant field represents the
     /// number of signers (M) required to validate this multisignature account.
     ///
-    /// The `InitializeMultisig` instruction requires no signers and MUST be included within
+    /// The `DangerInitializeMultisig` instruction requires no signers and MUST be included within
     /// the same Transaction as the system program's `CreateInstruction` that creates the account
     /// being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
     ///
@@ -69,7 +72,7 @@ pub enum TokenInstruction {
     ///   0. `[writable]` The multisignature account to initialize.
     ///   1. `[]` Rent sysvar
     ///   2. ..2+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
-    InitializeMultisig {
+    DangerInitializeMultisig {
         /// The number of signers (M) required to validate this multisignature account.
         m: u8,
     },
@@ -350,7 +353,7 @@ impl TokenInstruction {
             1 => Self::InitializeAccount,
             2 => {
                 let &m = rest.get(0).ok_or(InvalidInstruction)?;
-                Self::InitializeMultisig { m }
+                Self::DangerInitializeMultisig { m }
             }
             3 | 4 | 7 | 8 => {
                 let amount = rest
@@ -446,7 +449,7 @@ impl TokenInstruction {
                 Self::pack_pubkey_option(freeze_authority, &mut buf);
             }
             Self::InitializeAccount => buf.push(1),
-            &Self::InitializeMultisig { m } => {
+            &Self::DangerInitializeMultisig { m } => {
                 buf.push(2);
                 buf.push(m);
             }
@@ -621,8 +624,8 @@ pub fn initialize_account(
     })
 }
 
-/// Creates a `InitializeMultisig` instruction.
-pub fn initialize_multisig(
+/// Creates a `DangerInitializeMultisig` instruction.
+pub fn danger_initialize_multisig(
     token_program_id: &Pubkey,
     multisig_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
@@ -634,7 +637,7 @@ pub fn initialize_multisig(
     {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    let data = TokenInstruction::InitializeMultisig { m }.pack();
+    let data = TokenInstruction::DangerInitializeMultisig { m }.pack();
 
     let mut accounts = Vec::with_capacity(1 + 1 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*multisig_pubkey, false));
@@ -1080,7 +1083,7 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::InitializeMultisig { m: 1 };
+        let check = TokenInstruction::DangerInitializeMultisig { m: 1 };
         let packed = check.pack();
         let expect = Vec::from([2u8, 1]);
         assert_eq!(packed, expect);

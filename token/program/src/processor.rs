@@ -99,8 +99,8 @@ impl Processor {
         })
     }
 
-    /// Processes a [InitializeMultisig](enum.TokenInstruction.html) instruction.
-    pub fn process_initialize_multisig(accounts: &[AccountInfo], m: u8) -> ProgramResult {
+    /// Processes a [DangerInitializeMultisig](enum.TokenInstruction.html) instruction.
+    pub fn process_danger_initialize_multisig(accounts: &[AccountInfo], m: u8) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let multisig_info = next_account_info(account_info_iter)?;
         let multisig_info_data_len = multisig_info.data_len();
@@ -642,9 +642,9 @@ impl Processor {
                 info!("Instruction: InitializeAccount");
                 Self::process_initialize_account(accounts)
             }
-            TokenInstruction::InitializeMultisig { m } => {
-                info!("Instruction: InitializeMultisig");
-                Self::process_initialize_multisig(accounts, m)
+            TokenInstruction::DangerInitializeMultisig { m } => {
+                info!("Instruction: DangerInitializeMultisig");
+                Self::process_danger_initialize_multisig(accounts, m)
             }
             TokenInstruction::Transfer { amount } => {
                 info!("Instruction: Transfer");
@@ -2733,7 +2733,8 @@ mod tests {
         assert_eq!(
             Err(TokenError::NotRentExempt.into()),
             do_process_instruction(
-                initialize_multisig(&program_id, &multisig_key, &[&signer_keys[0]], 1).unwrap(),
+                danger_initialize_multisig(&program_id, &multisig_key, &[&signer_keys[0]], 1)
+                    .unwrap(),
                 vec![
                     &mut multisig_account,
                     &mut rent_sysvar,
@@ -2747,7 +2748,7 @@ mod tests {
         // single signer
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
-            initialize_multisig(&program_id, &multisig_key, &[&signer_keys[0]], 1).unwrap(),
+            danger_initialize_multisig(&program_id, &multisig_key, &[&signer_keys[0]], 1).unwrap(),
             vec![
                 &mut multisig_account,
                 &mut rent_sysvar,
@@ -2759,7 +2760,7 @@ mod tests {
         // multiple signer
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
-            initialize_multisig(
+            danger_initialize_multisig(
                 &program_id,
                 &multisig_delegate_key,
                 &signer_key_refs,
