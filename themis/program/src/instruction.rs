@@ -1,7 +1,7 @@
 //! Instruction types
 
 use crate::state::{Policies, User};
-use bincode::{serialize, serialized_size};
+use bincode::{serialize, serialized_size, deserialize};
 use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
@@ -10,6 +10,7 @@ use elgamal_ristretto::public::PublicKey;
 use serde::{Deserialize, Serialize};
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
+    program_error::ProgramError,
     pubkey::Pubkey,
     system_instruction,
 };
@@ -92,6 +93,12 @@ pub enum ThemisInstruction {
         /// Proof correct decryption
         proof_correct_decryption: RistrettoPoint,
     },
+}
+
+impl ThemisInstruction {
+    pub(crate) fn deserialize(data: &[u8]) -> Result<Self, ProgramError> {
+        deserialize(data).map_err(|_| ProgramError::InvalidInstructionData)
+    }
 }
 
 /// Return an `InitializeUserAccount` instruction.

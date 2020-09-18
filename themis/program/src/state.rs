@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 
+use bincode::{deserialize, serialize_into};
 use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
@@ -7,6 +8,7 @@ use curve25519_dalek::{
 };
 use elgamal_ristretto::{ciphertext::Ciphertext, public::PublicKey};
 use serde::{Deserialize, Serialize};
+use solana_sdk::program_error::ProgramError;
 
 type Points = (RistrettoPoint, RistrettoPoint);
 
@@ -29,6 +31,16 @@ impl Default for EncryptedAggregate {
 pub(crate) struct Policies {
     pub is_initialized: bool,
     pub scalars: Vec<Scalar>,
+}
+
+impl Policies {
+    pub fn serialize(&self, data: &mut [u8]) -> Result<(), ProgramError> {
+        serialize_into(data, &self).map_err(|_| ProgramError::AccountDataTooSmall)
+    }
+
+    pub fn deserialize(data: &[u8]) -> Result<Self, ProgramError> {
+        deserialize(data).map_err(|_| ProgramError::InvalidAccountData)
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -76,6 +88,14 @@ pub struct User {
 }
 
 impl User {
+    pub fn serialize(&self, data: &mut [u8]) -> Result<(), ProgramError> {
+        serialize_into(data, &self).map_err(|_| ProgramError::AccountDataTooSmall)
+    }
+
+    pub fn deserialize(data: &[u8]) -> Result<Self, ProgramError> {
+        deserialize(data).map_err(|_| ProgramError::InvalidAccountData)
+    }
+
     pub fn fetch_encrypted_aggregate(&self) -> Points {
         self.encrypted_aggregate.ciphertext
     }
@@ -142,7 +162,7 @@ impl User {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
     use elgamal_ristretto::{ciphertext::Ciphertext, private::SecretKey};
