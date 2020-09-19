@@ -2250,7 +2250,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token"
-version = "2.0.4"
+version = "2.0.5"
 dependencies = [
  "arrayref",
  "num-derive",
@@ -2274,7 +2274,7 @@ dependencies = [
  "solana-client",
  "solana-logger",
  "solana-sdk",
- "spl-token 2.0.4",
+ "spl-token 2.0.5",
 ]
 
 [[package]]
@@ -2287,7 +2287,7 @@ dependencies = [
  "rand",
  "remove_dir_all",
  "solana-sdk",
- "spl-token 2.0.4",
+ "spl-token 2.0.5",
  "thiserror",
 ]
 
@@ -2405,7 +2405,7 @@ version = "0.1.0"
 dependencies = [
  "solana-sdk",
  "spl-memo 1.0.7",
- "spl-token 2.0.4",
+ "spl-token 2.0.5",
  "spl-token-swap",
  "spl-token-v3",
 ]
