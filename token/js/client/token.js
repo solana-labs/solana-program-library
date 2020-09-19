@@ -520,6 +520,13 @@ export class Token {
    * @param signers Full set of signers
    * @return Public key of the new multisig account
    */
+  /*
+   SPL Token v2's multisignature validation is compromised and should not
+   be used.  Validation will erroneously pass a single valid signer signs m times.
+   For more information:
+      https://github.com/solana-labs/solana-program-library/issues/477*
+  */
+  /*
   async createMultisig(
     m: number,
     signers: Array<PublicKey>,
@@ -578,6 +585,7 @@ export class Token {
 
     return multisigAccount.publicKey;
   }
+  */
 
   /**
    * Retrieve mint information

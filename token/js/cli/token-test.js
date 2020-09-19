@@ -13,7 +13,7 @@ import semver from 'semver';
 import {Token, NATIVE_MINT} from '../client/token';
 import {url} from '../url';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
-import {sleep} from '../client/util/sleep';
+//import {sleep} from '../client/util/sleep';
 import {Store} from '../client/util/store';
 
 // Loaded token program's program id
@@ -455,6 +455,13 @@ export async function closeAccount(): Promise<void> {
   assert(destAccountInfo.amount.toNumber() === remaining);
 }
 
+/*
+ SPL Token v2's multisignature validation is compromised and should not
+ be used.  Validation will erroneously pass a single valid signer signs m times.
+ For more information:
+    https://github.com/solana-labs/solana-program-library/issues/477*
+*/
+/*
 export async function multisig(): Promise<void> {
   const m = 2;
   const n = 5;
@@ -524,6 +531,7 @@ export async function multisig(): Promise<void> {
     assert(accountInfo.owner.equals(newOwner));
   }
 }
+*/
 
 export async function nativeToken(): Promise<void> {
   const connection = await getConnection();

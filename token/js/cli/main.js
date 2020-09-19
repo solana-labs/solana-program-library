@@ -15,7 +15,7 @@ import {
   setAuthority,
   mintTo,
   mintTo2,
-  multisig,
+  //multisig,
   burn,
   burn2,
   freezeThawAccount,
@@ -52,8 +52,8 @@ async function main() {
   await freezeThawAccount();
   console.log('Run test: closeAccount');
   await closeAccount();
-  console.log('Run test: multisig');
-  await multisig();
+  //console.log('Run test: multisig');
+  //await multisig();
   console.log('Run test: nativeToken');
   await nativeToken();
   console.log('Success\n');
