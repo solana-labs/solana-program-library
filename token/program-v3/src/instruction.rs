@@ -1,9 +1,10 @@
 //! Instruction types
 
-use crate::{error::TokenError, option::COption};
+use crate::error::TokenError;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
+    program_option::COption,
     pubkey::Pubkey,
     sysvar,
 };
