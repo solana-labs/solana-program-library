@@ -552,8 +552,7 @@ impl Processor {
         let dest_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
             if !source_account.is_native() && source_account.amount != 0 {
                 return Err(TokenError::NonNativeHasBalance.into());
             }
@@ -576,8 +575,9 @@ impl Processor {
             **source_account_info.lamports.borrow_mut() = 0;
             source_account.amount = 0;
 
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+
             Ok(())
-        })
     }
 
     /// Processes a [FreezeAccount](enum.TokenInstruction.html) or a
@@ -592,8 +592,7 @@ impl Processor {
         let mint_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        let mut source_data = source_account_info.data.borrow_mut();
-        Account::unpack_mut(&mut source_data, &mut |source_account: &mut Account| {
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
             if source_account.is_native() {
                 return Err(TokenError::NativeNotSupported.into());
             }
@@ -621,8 +620,9 @@ impl Processor {
                 AccountState::Initialized
             };
 
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+
             Ok(())
-        })
     }
 
     /// Processes an [Instruction](enum.Instruction.html).
@@ -3568,6 +3568,97 @@ mod tests {
     }
 
     #[test]
+    fn test_close_account_dups() {
+        let program_id = pubkey_rand();
+        let account1_key = pubkey_rand();
+        let mut account1_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
+        let account2_key = pubkey_rand();
+        let mut account2_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account2_info: AccountInfo = (&account2_key, true, &mut account2_account).into();
+        let owner_key = pubkey_rand();
+        let mint_key = pubkey_rand();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mint_info: AccountInfo = (&mint_key, false, &mut mint_account).into();
+        let rent_key = rent::id();
+        let mut rent_sysvar = rent_sysvar();
+        let rent_info: AccountInfo = (&rent_key, false, &mut rent_sysvar).into();
+
+        // create mint
+        do_process_instruction_dups(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![mint_info.clone(), rent_info.clone()],
+        )
+        .unwrap();
+
+        // create account
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account1_key, &mint_key, &account1_key).unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-owner close
+        do_process_instruction_dups(
+            close_account(
+                &program_id,
+                &account1_key,
+                &account2_key,
+                &account1_key,
+                &[],
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                account2_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-close-authority close
+        Account::unpack_unchecked_mut(
+            &mut account1_info.data.borrow_mut(),
+            &mut |account: &mut Account| {
+                account.close_authority = COption::Some(account1_key);
+                account.owner = owner_key;
+                Ok(())
+            },
+        )
+        .unwrap();
+        do_process_instruction_dups(
+            close_account(
+                &program_id,
+                &account1_key,
+                &account2_key,
+                &account1_key,
+                &[],
+            )
+            .unwrap(),
+            vec![
+                account1_info.clone(),
+                account2_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
+    }
+
+    #[test]
     fn test_close_account() {
         let program_id = pubkey_rand();
         let mint_key = pubkey_rand();
@@ -4388,6 +4479,75 @@ mod tests {
                 vec![&mut account_account, &mut mint_account, &mut owner_account],
             )
         );
+    }
+
+    #[test]
+    fn test_freeze_thaw_dups() {
+        let program_id = pubkey_rand();
+        let account1_key = pubkey_rand();
+        let mut account1_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
+        let owner_key = pubkey_rand();
+        let mint_key = pubkey_rand();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mint_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
+        let rent_key = rent::id();
+        let mut rent_sysvar = rent_sysvar();
+        let rent_info: AccountInfo = (&rent_key, false, &mut rent_sysvar).into();
+
+        // create mint
+        do_process_instruction_dups(
+            initialize_mint(&program_id, &mint_key, &owner_key, Some(&account1_key), 2).unwrap(),
+            vec![mint_info.clone(), rent_info.clone()],
+        )
+        .unwrap();
+
+        // create account
+        do_process_instruction_dups(
+            initialize_account(&program_id, &account1_key, &mint_key, &account1_key).unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+                rent_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // freeze where mint freeze_authority is account
+        do_process_instruction_dups(
+            freeze_account(&program_id, &account1_key, &mint_key, &account1_key, &[]).unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // thaw where mint freeze_authority is account
+        Account::unpack_unchecked_mut(
+            &mut account1_info.data.borrow_mut(),
+            &mut |account: &mut Account| {
+                account.state = AccountState::Frozen;
+                Ok(())
+            },
+        )
+        .unwrap();
+        do_process_instruction_dups(
+            thaw_account(&program_id, &account1_key, &mint_key, &account1_key, &[]).unwrap(),
+            vec![
+                account1_info.clone(),
+                mint_info.clone(),
+                account1_info.clone(),
+            ],
+        )
+        .unwrap();
     }
 
     #[test]
