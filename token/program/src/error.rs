@@ -34,6 +34,9 @@ pub enum TokenError {
     /// Invalid number of required signers.
     #[error("Invalid number of required signers")]
     InvalidNumberOfRequiredSigners,
+    /// State is uninitialized.
+    #[error("State is unititialized")]
+    UninitializedState,
     /// Instruction does not support native tokens
     #[error("Instruction does not support native tokens")]
     NativeNotSupported,
