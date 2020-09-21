@@ -758,6 +758,7 @@ impl PrintProgramError for TokenError {
             TokenError::InvalidNumberOfRequiredSigners => {
                 info!("Error: Invalid number of required signers")
             }
+            TokenError::UninitializedState => info!("Error: State is uninitialized"),
             TokenError::NativeNotSupported => {
                 info!("Error: Instruction does not support native tokens")
             }
