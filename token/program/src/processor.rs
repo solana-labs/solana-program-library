@@ -4,7 +4,7 @@
 
 use crate::{
     error::TokenError,
-    instruction::{is_valid_signer_index, AuthorityType, TokenInstruction},
+    instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
     option::COption,
     pack::{IsInitialized, Pack},
     state::{Account, AccountState, Mint, Multisig},
@@ -99,8 +99,8 @@ impl Processor {
             Ok(())
     }
 
-    /// Processes a [DangerInitializeMultisig](enum.TokenInstruction.html) instruction.
-    pub fn process_danger_initialize_multisig(accounts: &[AccountInfo], m: u8) -> ProgramResult {
+    /// Processes a [InitializeMultisig](enum.TokenInstruction.html) instruction.
+    pub fn process_initialize_multisig(accounts: &[AccountInfo], m: u8) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let multisig_info = next_account_info(account_info_iter)?;
         let multisig_info_data_len = multisig_info.data_len();
@@ -637,9 +637,9 @@ impl Processor {
                 info!("Instruction: InitializeAccount");
                 Self::process_initialize_account(accounts)
             }
-            TokenInstruction::DangerInitializeMultisig { m } => {
-                info!("Instruction: DangerInitializeMultisig");
-                Self::process_danger_initialize_multisig(accounts, m)
+            TokenInstruction::InitializeMultisig { m } => {
+                info!("Instruction: InitializeMultisig");
+                Self::process_initialize_multisig(accounts, m)
             }
             TokenInstruction::Transfer { amount } => {
                 info!("Instruction: Transfer");
@@ -714,14 +714,18 @@ impl Processor {
         {
             let multisig = Multisig::unpack(&owner_account_info.data.borrow())?;
                 let mut num_signers = 0;
+            let mut matched = [false; MAX_SIGNERS];
                 for signer in signers.iter() {
-                    if multisig.signers[0..multisig.n as usize].contains(signer.key) {
+                for (position, key) in multisig.signers[0..multisig.n as usize].iter().enumerate() {
+                    if key == signer.key && !matched[position] {
                         if !signer.is_signer {
                             return Err(ProgramError::MissingRequiredSignature);
                         }
+                        matched[position] = true;
                         num_signers += 1;
                     }
                 }
+            }
                 if num_signers < multisig.m {
                     return Err(ProgramError::MissingRequiredSignature);
                 }
@@ -3600,8 +3604,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::NotRentExempt.into()),
             do_process_instruction(
-                danger_initialize_multisig(&program_id, &multisig_key, &[&signer_keys[0]], 1)
-                    .unwrap(),
+                initialize_multisig(&program_id, &multisig_key, &[&signer_keys[0]], 1).unwrap(),
                 vec![
                     &mut multisig_account,
                     &mut rent_sysvar,
@@ -3615,7 +3618,7 @@ mod tests {
         // single signer
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
-            danger_initialize_multisig(&program_id, &multisig_key, &[&signer_keys[0]], 1).unwrap(),
+            initialize_multisig(&program_id, &multisig_key, &[&signer_keys[0]], 1).unwrap(),
             vec![
                 &mut multisig_account,
                 &mut rent_sysvar,
@@ -3627,7 +3630,7 @@ mod tests {
         // multiple signer
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
-            danger_initialize_multisig(
+            initialize_multisig(
                 &program_id,
                 &multisig_delegate_key,
                 &signer_key_refs,
@@ -4087,7 +4090,7 @@ mod tests {
         {
             let mut multisig =
                 Multisig::unpack_unchecked(&owner_account_info.data.borrow()).unwrap();
-                multisig.m = 2; // TODO 11?
+            multisig.m = 11;
                 multisig.n = 11;
             Multisig::pack(multisig, &mut owner_account_info.data.borrow_mut()).unwrap();
         }
@@ -4097,6 +4100,34 @@ mod tests {
             Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &signers)
         );
         signers[5].is_signer = true;
+
+        // 11:11, single signer signs multiple times
+        {
+            let mut signer_lamports = 0;
+            let mut signer_data = vec![];
+            let signers = vec![
+                AccountInfo::new(
+                    &signer_keys[5],
+                    true,
+                    false,
+                    &mut signer_lamports,
+                    &mut signer_data,
+                    &program_id,
+                    false,
+                    Epoch::default(),
+                );
+                MAX_SIGNERS + 1
+            ];
+            let mut multisig =
+                Multisig::unpack_unchecked(&owner_account_info.data.borrow()).unwrap();
+            multisig.m = 11;
+            multisig.n = 11;
+            Multisig::pack(multisig, &mut owner_account_info.data.borrow_mut()).unwrap();
+            assert_eq!(
+                Err(ProgramError::MissingRequiredSignature),
+                Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &signers)
+            );
+        }
     }
 
     #[test]

@@ -247,11 +247,6 @@ Account's owner via the `Revoke` instruction.
 
 ### Multisignatures
 
-Warning: SPL Token v2's multisignature validation is compromised and should not
-be used.  Validation will erroneously pass a single valid signer signs m times.
-For more information:
-https://github.com/solana-labs/solana-program-library/issues/477
-
 M of N multisignatures are supported and can be used in place of Mint
 authorities or Account owners or delegates. Multisignature authorities must be
 initialized with the `InitializeMultisig` instruction. Initialization specifies
