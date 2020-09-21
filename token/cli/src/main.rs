@@ -12,6 +12,7 @@ use solana_client::{rpc_client::RpcClient, rpc_request::TokenAccountsFilter};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     native_token::*,
+    program_pack::Pack,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_instruction,
@@ -21,7 +22,6 @@ use spl_token::{
     self,
     instruction::*,
     native_mint,
-    pack::Pack,
     state::{Account, Mint},
 };
 use std::process::exit;

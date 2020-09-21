@@ -19,9 +19,10 @@ use solana_sdk::{
     info,
     program_error::PrintProgramError,
     program_error::ProgramError,
+    program_option::COption,
+    program_pack::Pack,
     pubkey::Pubkey,
 };
-use spl_token::{option::COption, pack::Pack};
 
 // Test program id for the swap program.
 #[cfg(not(target_arch = "bpf"))]
@@ -584,7 +585,6 @@ mod tests {
     use spl_token::{
         error::TokenError,
         instruction::{approve, initialize_account, initialize_mint, mint_to, revoke},
-        pack::Pack,
         processor::Processor as SplProcessor,
         state::{Account as SplAccount, Mint as SplMint},
     };
