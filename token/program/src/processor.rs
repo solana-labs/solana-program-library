@@ -754,7 +754,6 @@ impl PrintProgramError for TokenError {
             TokenError::InvalidNumberOfRequiredSigners => {
                 info!("Error: Invalid number of required signers")
             }
-            TokenError::UninitializedState => info!("Error: State is uninitialized"),
             TokenError::NativeNotSupported => {
                 info!("Error: Instruction does not support native tokens")
             }
@@ -2511,7 +2510,7 @@ mod tests {
 
         // invalid account
         assert_eq!(
-            Err(TokenError::UninitializedState.into()),
+            Err(ProgramError::UninitializedAccount),
             do_process_instruction(
                 set_authority(
                     &program_id,
@@ -3063,7 +3062,7 @@ mod tests {
 
         // uninitialized destination account
         assert_eq!(
-            Err(TokenError::UninitializedState.into()),
+            Err(ProgramError::UninitializedAccount),
             do_process_instruction(
                 mint_to(
                     &program_id,
@@ -4218,7 +4217,7 @@ mod tests {
 
         // uninitialized
         assert_eq!(
-            Err(TokenError::UninitializedState.into()),
+            Err(ProgramError::UninitializedAccount),
             do_process_instruction(
                 close_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
                 vec![
