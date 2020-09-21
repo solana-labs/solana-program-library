@@ -78,7 +78,7 @@ pub enum StakePoolInstruction {
 
 }
 
-impl SwapInstruction {
+impl StakePoolInstruction {
     /// Deserializes a byte buffer into an [SwapInstruction](enum.SwapInstruction.html).
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
@@ -86,17 +86,21 @@ impl SwapInstruction {
         }
         Ok(match input[0] {
             0 => {
-                let fee: &Fee = unpack(input)?;
-                Self::Initialize(*fee)
+                let val: &Init = unpack(input)?;
+                Self::Initialize(*val)
             }
             1 => {
                 Self::Deposit
             }
             2 => {
-                Self::Withdraw
+                let val: &u64 = unpack(input)?;
+                Self::Withraw(*val)
             }
-            2 => {
+            3 => {
                 Self::UpdateStakingAuthority
+            }
+            4 => {
+                Self::UpdateOwner
             }
             _ => return Err(ProgramError::InvalidAccountData),
         })
@@ -106,55 +110,30 @@ impl SwapInstruction {
     pub fn serialize(self: &Self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<SwapInstruction>()];
         match self {
-            Self::Initialize(fees) => {
+            Self::Initialize(init) => {
                 output[0] = 0;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Fee) };
-                *value = *fees;
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Init) };
+                *value = *init;
             }
             Self::Deposit => {
                 output[0] = 1;
             }
-            Self::Withdraw => {
+            Self::Withdraw(val) => {
                 output[0] = 2;
+                #[allow(clippy::cast_ptr_alignment)]
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
+                *value = *val;
             }
-            Self::UpdateStaking => {
+            Self::UpdateStakingAuthority => {
                 output[0] = 3;
+            }
+            Self::UpdateOwner => {
+                output[0] = 4;
             }
         }
         Ok(output)
     }
-}
-
-/// Creates an 'initialize' instruction.
-pub fn initialize(
-    program_id: &Pubkey,
-    token_program_id: &Pubkey,
-    swap_pubkey: &Pubkey,
-    authority_pubkey: &Pubkey,
-    token_a_pubkey: &Pubkey,
-    token_b_pubkey: &Pubkey,
-    pool_pubkey: &Pubkey,
-    user_output_pubkey: &Pubkey,
-    fee: Fee,
-) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Initialize(fee).serialize()?;
-
-    let accounts = vec![
-        AccountMeta::new(*swap_pubkey, true),
-        AccountMeta::new(*authority_pubkey, false),
-        AccountMeta::new(*token_a_pubkey, false),
-        AccountMeta::new(*token_b_pubkey, false),
-        AccountMeta::new(*pool_pubkey, false),
-        AccountMeta::new(*user_output_pubkey, false),
-        AccountMeta::new(*token_program_id, false),
-    ];
-
-    Ok(Instruction {
-        program_id: *program_id,
-        accounts,
-        data,
-    })
 }
 
 /// Unpacks a reference from a bytes buffer.
