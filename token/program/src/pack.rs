@@ -47,33 +47,6 @@ pub trait Pack: Sealed {
         Ok(Self::unpack_from_slice(input)?)
     }
 
-    /// Borrow `Self` from `input` for the duration of the call to `f`, but first check that `Self`
-    /// is initialized
-    #[inline(never)]
-    fn unpack_mut<F, U>(input: &mut [u8], f: &mut F) -> Result<U, ProgramError>
-    where
-        F: FnMut(&mut Self) -> Result<U, ProgramError>,
-        Self: IsInitialized,
-    {
-        let mut t = Self::unpack(input)?;
-        let u = f(&mut t)?;
-        Self::pack(t, input)?;
-        Ok(u)
-    }
-
-    /// Borrow `Self` from `input` for the duration of the call to `f`, without checking that
-    /// `Self` has been initialized
-    #[inline(never)]
-    fn unpack_unchecked_mut<F, U>(input: &mut [u8], f: &mut F) -> Result<U, ProgramError>
-    where
-        F: FnMut(&mut Self) -> Result<U, ProgramError>,
-    {
-        let mut t = Self::unpack_unchecked(input)?;
-        let u = f(&mut t)?;
-        Self::pack(t, input)?;
-        Ok(u)
-    }
-
     /// Pack into slice
     fn pack(src: Self, dst: &mut [u8]) -> Result<(), ProgramError> {
         if dst.len() != Self::LEN {
