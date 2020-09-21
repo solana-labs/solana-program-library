@@ -5,8 +5,6 @@
 use crate::{
     error::TokenError,
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
-    option::COption,
-    pack::{IsInitialized, Pack},
     state::{Account, AccountState, Mint, Multisig},
 };
 use num_traits::FromPrimitive;
@@ -16,6 +14,8 @@ use solana_sdk::{
     entrypoint::ProgramResult,
     info,
     program_error::{PrintProgramError, ProgramError},
+    program_option::COption,
+    program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
     sysvar::{rent::Rent, Sysvar},
 };
