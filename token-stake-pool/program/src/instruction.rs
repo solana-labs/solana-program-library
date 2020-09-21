@@ -12,67 +12,72 @@ use std::mem::size_of;
 /// fee rate as a ratio
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub Governance {
+pub Fee {
     /// denominator of the fee ratio
     pub denominator: u64,
     /// numerator of the fee ratio
     pub numerator: u64,
 }
 
+pub Init {
+    fee: Fee,
+    recv_nonce: u8,
+    withdraw_none: u8,
+}
+
 /// Instructions supported by the SwapInfo program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
-pub enum SwapInstruction {
-    ///   Initializes a new SwapInfo.
+pub enum StakePoolInstruction {
+    ///   Initializes a new StakePool.
     ///
-    ///   0. `[writable, signer]` New Token-gov to create.
-    ///   1. `[]` $authority derived from `create_program_address(&[Token-gov account])`
-    ///   2. `[]` token Account. Must be non zero, owned by $authority.
-    ///   6. '[]` Token program id
-    ///   userdata: fee rate as a ratio
-    Initialize,
+    ///   0. `[w, s]` New StakePool to create.
+    ///   1. `[]` Owner
+    ///   2. `[]` pool token Mint. Must be non zero, owned by $authority.
+    Initialize(Init),
 
-    ///   Swap the tokens in the pool.
-    ///
-    ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transferable by $authority,
-    ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
-    ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DEST token.
-    ///   6. `[writable]` token_(A|B) DEST Account assigned to USER as the owner.
-    ///   7. '[]` Token program id
-    ///   userdata: SOURCE amount to transfer, output to DEST is based on the exchange rate
-    Propose(u64),
-
-    ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
+    ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
     ///
-    ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` token_a $authority can transfer amount,
-    ///   4. `[writable]` token_b $authority can transfer amount,
-    ///   6. `[writable]` token_a Base Account to deposit into.
-    ///   7. `[writable]` token_b Base Account to deposit into.
-    ///   8. `[writable]` Pool MINT account, $authority is the owner.
-    ///   9. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   10. '[]` Token program id
-    ///   userdata: token_a amount to transfer.  token_b amount is set by the current exchange rate.
-    Deposit(u64),
+    ///   0. `[]` StakePool
+    ///   1. `[]` receive $authority
+    ///   2. `[]` withdraw  $authority
+    ///   3. `[w]` Stake, receive $authority is set as the withdrawal key
+    ///   4. `[w]` Pool MINT account, $authority is the owner.
+    ///   5. `[w]` Pool Account to deposit the generated tokens, user is the owner.
+    Deposit,
 
     ///   Withdraw the token from the pool at the current ratio.
+    ///   The amount withdrawn is the MIN(u64, stake size)
     ///   
-    ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   5. `[writable]` token_a Account to withdraw FROM.
-    ///   6. `[writable]` token_b Account to withdraw FROM.
-    ///   7. `[writable]` token_a user Account.
-    ///   8. `[writable]` token_b user Account.
-    ///   9. '[]` Token program id
-    ///   userdata: SOURCE amount of pool tokens to transfer. User receives an output based on the
-    ///   percentage of the pool tokens that are returned.
+    ///   0. `[]` StakePool
+    ///   1. `[]` withdraw  $authority
+    ///   2. `[w]` SOURCE Pool account, amount is transferable by $authority
+    ///   3. `[w]` Pool MINT account, $authority is the owner
+    ///   4. `[w]` Stake SOURCE owned by the withdraw $authority  
+    ///   5. `[w]` Stake destination, uninitialized, for owner fees
+    ///   6. `[w]` Stake destination, uninitialized, for the user stake
+    ///   userdata: amount to withdraw
     Withdraw(u64),
+
+    ///   Update the staking pubkey for a stake
+    ///
+    ///   0. `[w]` StakePool
+    ///   1. `[s]` Owner
+    ///   2. `[]` withdraw $authority
+    ///   3. '[]` Staking pubkey.
+    ///   4. `[w]` Stake to update the staking pubkey
+    UpdateStakingAuthority,
+
+    ///   Update owner
+    ///
+    ///   0. `[w]` StakePool
+    ///   1. `[s]` Owner
+    ///   2. '[]` New owner pubkey.
+    UpdateOwner,
+
 }
+
 impl SwapInstruction {
     /// Deserializes a byte buffer into an [SwapInstruction](enum.SwapInstruction.html).
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
@@ -85,16 +90,13 @@ impl SwapInstruction {
                 Self::Initialize(*fee)
             }
             1 => {
-                let fee: &u64 = unpack(input)?;
-                Self::Swap(*fee)
+                Self::Deposit
             }
             2 => {
-                let fee: &u64 = unpack(input)?;
-                Self::Deposit(*fee)
+                Self::Withdraw
             }
-            3 => {
-                let fee: &u64 = unpack(input)?;
-                Self::Withdraw(*fee)
+            2 => {
+                Self::UpdateStakingAuthority
             }
             _ => return Err(ProgramError::InvalidAccountData),
         })
@@ -110,23 +112,14 @@ impl SwapInstruction {
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Fee) };
                 *value = *fees;
             }
-            Self::Swap(amount) => {
+            Self::Deposit => {
                 output[0] = 1;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
-                *value = *amount;
             }
-            Self::Deposit(amount) => {
+            Self::Withdraw => {
                 output[0] = 2;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
-                *value = *amount;
             }
-            Self::Withdraw(amount) => {
+            Self::UpdateStaking => {
                 output[0] = 3;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
-                *value = *amount;
             }
         }
         Ok(output)
