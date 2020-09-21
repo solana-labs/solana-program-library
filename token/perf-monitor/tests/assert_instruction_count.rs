@@ -2,24 +2,26 @@ use solana_bpf_loader_program::{
     create_vm,
     serialization::{deserialize_parameters, serialize_parameters},
 };
-use solana_rbpf::InstructionMeter;
+use solana_rbpf::vm::{EbpfVm, InstructionMeter};
 use solana_sdk::{
     account::{Account as SolanaAccount, KeyedAccount},
     bpf_loader,
     entrypoint::SUCCESS,
-    entrypoint_native::{ComputeBudget, ComputeMeter, InvokeContext, Logger, ProcessInstruction},
+    entrypoint_native::{
+        ComputeBudget, ComputeMeter, Executor, InvokeContext, Logger, ProcessInstruction,
+    },
     instruction::{CompiledInstruction, InstructionError},
     message::Message,
+    program_option::COption,
+    program_pack::Pack,
     pubkey::Pubkey,
     sysvar::rent::{self, Rent},
 };
 use spl_token::{
     instruction::TokenInstruction,
-    option::COption,
-    pack::Pack,
     state::{Account, Mint},
 };
-use std::{cell::RefCell, fs::File, io::Read, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, fs::File, io::Read, path::PathBuf, rc::Rc, sync::Arc};
 
 fn load_program(name: &str) -> Vec<u8> {
     let mut path = PathBuf::new();
@@ -42,9 +44,14 @@ fn run_program(
     program_account.data = load_program("spl_token");
     let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
+    let executable = EbpfVm::<solana_bpf_loader_program::BPFError>::create_executable_from_elf(
+        &&program_account.data,
+        None,
+    )
+    .unwrap();
     let (mut vm, heap_region) = create_vm(
         &loader_id,
-        &program_account.data,
+        executable.as_ref(),
         parameter_accounts,
         &mut invoke_context,
     )
@@ -202,6 +209,10 @@ impl InvokeContext for MockInvokeContext {
     }
     fn get_compute_meter(&self) -> Rc<RefCell<dyn ComputeMeter>> {
         Rc::new(RefCell::new(self.compute_meter.clone()))
+    }
+    fn add_executor(&mut self, _pubkey: &Pubkey, _executor: Arc<dyn Executor>) {}
+    fn get_executor(&mut self, _pubkey: &Pubkey) -> Option<Arc<dyn Executor>> {
+        None
     }
 }
 
