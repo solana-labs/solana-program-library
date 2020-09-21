@@ -1,15 +1,14 @@
 //! State transition types
 
-use crate::{
-    instruction::MAX_SIGNERS,
-    option::COption,
-    pack::{IsInitialized, Pack, Sealed},
-};
+use crate::instruction::MAX_SIGNERS;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use num_enum::TryFromPrimitive;
-use solana_sdk::{program_error::ProgramError, pubkey::Pubkey};
-
-impl Sealed for Option<Pubkey> {}
+use solana_sdk::{
+    program_error::ProgramError,
+    program_option::COption,
+    program_pack::{IsInitialized, Pack, Sealed},
+    pubkey::Pubkey,
+};
 
 /// Mint data.
 #[repr(C)]
