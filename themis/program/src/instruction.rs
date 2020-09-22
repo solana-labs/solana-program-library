@@ -1,7 +1,7 @@
 //! Instruction types
 
 use crate::state::{Policies, User};
-use bincode::{serialize, serialized_size, deserialize};
+use bincode::{deserialize, serialize, serialized_size};
 use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
@@ -17,7 +17,6 @@ use solana_sdk::{
 
 /// Instructions supported by the Themis program.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[allow(clippy::large_enum_variant)]
 pub enum ThemisInstruction {
     /// Initialize a new user account
     ///
@@ -85,7 +84,7 @@ pub enum ThemisInstruction {
     ///   0. `[writable, signer]`  The user account
     RequestPayment {
         /// Encrypted aggregate
-        encrypted_aggregate: (RistrettoPoint, RistrettoPoint),
+        encrypted_aggregate: Box<(RistrettoPoint, RistrettoPoint)>,
 
         /// Decrypted aggregate
         decrypted_aggregate: RistrettoPoint,
@@ -204,7 +203,7 @@ pub fn request_payment(
     proof_correct_decryption: RistrettoPoint,
 ) -> Instruction {
     let data = ThemisInstruction::RequestPayment {
-        encrypted_aggregate,
+        encrypted_aggregate: Box::new(encrypted_aggregate),
         decrypted_aggregate,
         proof_correct_decryption,
     };

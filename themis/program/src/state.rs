@@ -7,7 +7,7 @@ use curve25519_dalek::{
     scalar::Scalar,
     traits::Identity,
 };
-use elgamal_ristretto::{ciphertext::Ciphertext, public::PublicKey, private::SecretKey};
+use elgamal_ristretto::{ciphertext::Ciphertext, private::SecretKey, public::PublicKey};
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use solana_sdk::program_error::ProgramError;
