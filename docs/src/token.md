@@ -47,6 +47,7 @@ $ cargo install spl-token-cli
 Run `spl-token --help` for a full description of available commands.
 
 ### Configuration
+
 The `spl-token` configuration is shared with the `solana` command-line tool.
 
 #### Current Configuration
@@ -63,13 +64,17 @@ Keypair Path: ${HOME}/.config/solana/id.json
 ```
 
 #### Cluster RPC URL
-See [Solana clusters](https://docs.solana.com/clusters) for cluster-specific RPC URLs
 
+See [Solana clusters](https://docs.solana.com/clusters) for cluster-specific RPC URLs
 ```
 solana config set --url https://devnet.solana.com
 ```
 
 #### Default Keypair
+
+See [Keypair conventions]
+(https://docs.solana.com/cli/conventions#keypair-conventions) for information on
+how to setup a keypair if you don't already have one.
 
 Keypair File
 ```
