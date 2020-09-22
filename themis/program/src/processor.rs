@@ -133,7 +133,7 @@ pub fn process_instruction<'a>(
         } => {
             let user_info = next_account_info(account_infos_iter)?;
             process_request_payment(
-                encrypted_aggregate,
+                *encrypted_aggregate,
                 decrypted_aggregate,
                 proof_correct_decryption,
                 &user_info,
