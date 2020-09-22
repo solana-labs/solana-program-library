@@ -2267,6 +2267,7 @@ name = "spl-token-cli"
 version = "2.0.1"
 dependencies = [
  "clap",
+ "console",
  "serde_json",
  "solana-account-decoder",
  "solana-clap-utils",

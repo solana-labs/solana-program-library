@@ -2,7 +2,11 @@ use clap::{
     crate_description, crate_name, crate_version, value_t_or_exit, App, AppSettings, Arg,
     SubCommand,
 };
-use solana_account_decoder::{parse_token::TokenAccountType, UiAccountData};
+use console::Emoji;
+use solana_account_decoder::{
+    parse_token::{TokenAccountType, UiAccountState},
+    UiAccountData,
+};
 use solana_clap_utils::{
     input_parsers::pubkey_of,
     input_validators::{is_amount, is_keypair, is_pubkey_or_keypair, is_url},
@@ -25,6 +29,8 @@ use spl_token::{
     state::{Account, Mint},
 };
 use std::process::exit;
+
+static WARNING: Emoji = Emoji("⚠️", "!");
 
 struct Config {
     rpc_client: RpcClient,
@@ -483,10 +489,20 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                 );
             } else {
                 match serde_json::from_value(parsed_account.parsed) {
-                    Ok(TokenAccountType::Account(ui_token_account)) => println!(
-                        "{:<44} {:<44} {}",
-                        address, ui_token_account.mint, ui_token_account.token_amount.ui_amount
-                    ),
+                    Ok(TokenAccountType::Account(ui_token_account)) => {
+                        let maybe_frozen = if let UiAccountState::Frozen = ui_token_account.state {
+                            format!(" {}  Frozen", WARNING)
+                        } else {
+                            "".to_string()
+                        };
+                        println!(
+                            "{:<44} {:<44} {}{}",
+                            address,
+                            ui_token_account.mint,
+                            ui_token_account.token_amount.ui_amount,
+                            maybe_frozen
+                        )
+                    }
                     Ok(_) => println!("{:<44} Unsupported token account", address),
                     Err(err) => println!("{:<44} Account parse failure: {}", address, err),
                 }
