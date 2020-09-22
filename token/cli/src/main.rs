@@ -319,6 +319,50 @@ fn command_mint(
     Ok(Some(transaction))
 }
 
+fn command_freeze(config: &Config, token: Pubkey, account: Pubkey) -> CommandResult {
+    println!("Freezing account: {}\n  Token: {}", account, token);
+
+    let mut transaction = Transaction::new_with_payer(
+        &[freeze_account(
+            &spl_token::id(),
+            &account,
+            &token,
+            &config.owner.pubkey(),
+            &[],
+        )?],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+    Ok(Some(transaction))
+}
+
+fn command_thaw(config: &Config, token: Pubkey, account: Pubkey) -> CommandResult {
+    println!("Freezing account: {}\n  Token: {}", account, token);
+
+    let mut transaction = Transaction::new_with_payer(
+        &[thaw_account(
+            &spl_token::id(),
+            &account,
+            &token,
+            &config.owner.pubkey(),
+            &[],
+        )?],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+    Ok(Some(transaction))
+}
+
 fn command_wrap(config: &Config, sol: f64) -> CommandResult {
     let account = Keypair::new();
     let lamports = sol_to_lamports(sol);
@@ -683,6 +727,50 @@ fn main() {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("freeze")
+                .about("Freeze a token account")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token mint"),
+                )
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("The address of the token account to freeze"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("thaw")
+                .about("Thaw a token account")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token mint"),
+                )
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("The address of the token account to thaw"),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("balance")
                 .about("Get token account balance")
                 .arg(
@@ -863,6 +951,16 @@ fn main() {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             let recipient = pubkey_of(arg_matches, "recipient").unwrap();
             command_mint(&config, token, amount, recipient)
+        }
+        ("freeze", Some(arg_matches)) => {
+            let token = pubkey_of(arg_matches, "token").unwrap();
+            let account = pubkey_of(arg_matches, "account").unwrap();
+            command_freeze(&config, token, account)
+        }
+        ("thaw", Some(arg_matches)) => {
+            let token = pubkey_of(arg_matches, "token").unwrap();
+            let account = pubkey_of(arg_matches, "account").unwrap();
+            command_thaw(&config, token, account)
         }
         ("wrap", Some(arg_matches)) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
