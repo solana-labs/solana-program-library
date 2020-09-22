@@ -6,4 +6,4 @@ publish = false
 edition = "2018"
 
 [dependencies]
-cbindgen = "=0.14.5"
+cbindgen = "=0.14.6"
