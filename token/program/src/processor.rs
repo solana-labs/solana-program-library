@@ -680,20 +680,20 @@ impl Processor {
                 info!("Instruction: FreezeAccount");
                 Self::process_toggle_freeze_account(program_id, accounts, false)
             }
-            TokenInstruction::Transfer2 { amount, decimals } => {
-                info!("Instruction: Transfer");
+            TokenInstruction::TransferChecked { amount, decimals } => {
+                info!("Instruction: TransferChecked");
                 Self::process_transfer(program_id, accounts, amount, Some(decimals))
             }
-            TokenInstruction::Approve2 { amount, decimals } => {
-                info!("Instruction: Approve");
+            TokenInstruction::ApproveChecked { amount, decimals } => {
+                info!("Instruction: ApproveChecked");
                 Self::process_approve(program_id, accounts, amount, Some(decimals))
             }
-            TokenInstruction::MintTo2 { amount, decimals } => {
-                info!("Instruction: MintTo");
+            TokenInstruction::MintToChecked { amount, decimals } => {
+                info!("Instruction: MintToChecked");
                 Self::process_mint_to(program_id, accounts, amount, Some(decimals))
             }
-            TokenInstruction::Burn2 { amount, decimals } => {
-                info!("Instruction: Burn");
+            TokenInstruction::BurnChecked { amount, decimals } => {
+                info!("Instruction: BurnChecked");
                 Self::process_burn(program_id, accounts, amount, Some(decimals))
             }
         }
@@ -1196,9 +1196,9 @@ mod tests {
         )
         .unwrap();
 
-        // source-owner transfer2
+        // source-owner TransferChecked
         do_process_instruction_dups(
-            transfer2(
+            transfer_checked(
                 &program_id,
                 &account1_key,
                 &mint_key,
@@ -1244,9 +1244,9 @@ mod tests {
         )
         .unwrap();
 
-        // source-delegate transfer2
+        // source-delegate TransferChecked
         do_process_instruction_dups(
-            transfer2(
+            transfer_checked(
                 &program_id,
                 &account1_key,
                 &mint_key,
@@ -1303,9 +1303,9 @@ mod tests {
         )
         .unwrap();
 
-        // destination-owner transfer2
+        // destination-owner TransferChecked
         do_process_instruction_dups(
-            transfer2(
+            transfer_checked(
                 &program_id,
                 &account3_key,
                 &mint_key,
@@ -1373,9 +1373,9 @@ mod tests {
         )
         .unwrap();
 
-        // source-multisig-signer transfer2
+        // source-multisig-signer TransferChecked
         do_process_instruction_dups(
-            transfer2(
+            transfer_checked(
                 &program_id,
                 &account4_key,
                 &mint_key,
@@ -1621,7 +1621,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::MintDecimalsMismatch.into()),
             do_process_instruction(
-                transfer2(
+                transfer_checked(
                     &program_id,
                     &account2_key,
                     &mint_key,
@@ -1645,7 +1645,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::MintMismatch.into()),
             do_process_instruction(
-                transfer2(
+                transfer_checked(
                     &program_id,
                     &account2_key,
                     &account3_key, // <-- incorrect mint
@@ -1666,7 +1666,7 @@ mod tests {
         );
         // transfer rest with explicit decimals
         do_process_instruction(
-            transfer2(
+            transfer_checked(
                 &program_id,
                 &account2_key,
                 &mint_key,
@@ -1914,7 +1914,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::MintDecimalsMismatch.into()),
             do_process_instruction(
-                mint_to2(
+                mint_to_checked(
                     &program_id,
                     &mint_key,
                     &account_key,
@@ -1934,7 +1934,7 @@ mod tests {
 
         // mint to 2
         do_process_instruction(
-            mint_to2(
+            mint_to_checked(
                 &program_id,
                 &mint_key,
                 &account_key,
@@ -2051,9 +2051,9 @@ mod tests {
         )
         .unwrap();
 
-        // source-owner approve2
+        // source-owner approve_checked
         do_process_instruction_dups(
-            approve2(
+            approve_checked(
                 &program_id,
                 &account1_key,
                 &mint_key,
@@ -2128,9 +2128,9 @@ mod tests {
         )
         .unwrap();
 
-        // source-multisig-signer approve2
+        // source-multisig-signer approve_checked
         do_process_instruction_dups(
-            approve2(
+            approve_checked(
                 &program_id,
                 &account3_key,
                 &mint_key,
@@ -2294,7 +2294,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::MintDecimalsMismatch.into()),
             do_process_instruction(
-                approve2(
+                approve_checked(
                     &program_id,
                     &account_key,
                     &mint_key,
@@ -2318,7 +2318,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::MintMismatch.into()),
             do_process_instruction(
-                approve2(
+                approve_checked(
                     &program_id,
                     &account_key,
                     &account2_key, // <-- bad mint
@@ -2340,7 +2340,7 @@ mod tests {
 
         // approve delegate 2
         do_process_instruction(
-            approve2(
+            approve_checked(
                 &program_id,
                 &account_key,
                 &mint_key,
@@ -2857,9 +2857,9 @@ mod tests {
         )
         .unwrap();
 
-        // mint_to2 when mint_authority is self
+        // mint_to_checked when mint_authority is self
         do_process_instruction_dups(
-            mint_to2(&program_id, &mint_key, &account1_key, &mint_key, &[], 42, 2).unwrap(),
+            mint_to_checked(&program_id, &mint_key, &account1_key, &mint_key, &[], 42, 2).unwrap(),
             vec![mint_info.clone(), account1_info.clone(), mint_info.clone()],
         )
         .unwrap();
@@ -2886,7 +2886,7 @@ mod tests {
         )
         .unwrap();
 
-        // mint_to2 when mint_authority is account owner
+        // mint_to_checked when mint_authority is account owner
         do_process_instruction_dups(
             mint_to(
                 &program_id,
@@ -3175,9 +3175,9 @@ mod tests {
         )
         .unwrap();
 
-        // source-owner burn2
+        // source-owner burn_checked
         do_process_instruction_dups(
-            burn2(
+            burn_checked(
                 &program_id,
                 &account1_key,
                 &mint_key,
@@ -3210,9 +3210,9 @@ mod tests {
         )
         .unwrap();
 
-        // mint-owner burn2
+        // mint-owner burn_checked
         do_process_instruction_dups(
-            burn2(
+            burn_checked(
                 &program_id,
                 &account1_key,
                 &mint_key,
@@ -3255,9 +3255,9 @@ mod tests {
         )
         .unwrap();
 
-        // source-delegate burn2
+        // source-delegate burn_checked
         do_process_instruction_dups(
-            burn2(
+            burn_checked(
                 &program_id,
                 &account1_key,
                 &mint_key,
@@ -3292,9 +3292,9 @@ mod tests {
         )
         .unwrap();
 
-        // mint-delegate burn2
+        // mint-delegate burn_checked
         do_process_instruction_dups(
-            burn2(
+            burn_checked(
                 &program_id,
                 &account1_key,
                 &mint_key,
@@ -3461,18 +3461,18 @@ mod tests {
         )
         .unwrap();
 
-        // burn2, with incorrect decimals
+        // burn_checked, with incorrect decimals
         assert_eq!(
             Err(TokenError::MintDecimalsMismatch.into()),
             do_process_instruction(
-                burn2(&program_id, &account_key, &mint_key, &owner_key, &[], 21, 3).unwrap(),
+                burn_checked(&program_id, &account_key, &mint_key, &owner_key, &[], 21, 3).unwrap(),
                 vec![&mut account_account, &mut mint_account, &mut owner_account],
             )
         );
 
-        // burn2
+        // burn_checked
         do_process_instruction(
-            burn2(&program_id, &account_key, &mint_key, &owner_key, &[], 21, 2).unwrap(),
+            burn_checked(&program_id, &account_key, &mint_key, &owner_key, &[], 21, 2).unwrap(),
             vec![&mut account_account, &mut mint_account, &mut owner_account],
         )
         .unwrap();

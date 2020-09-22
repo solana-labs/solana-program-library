@@ -233,7 +233,7 @@ pub enum TokenInstruction {
     /// transferred to the destination account.
     ///
     /// This instruction differs from Transfer in that the token mint and decimals value is
-    /// asserted by the caller.  This may be useful when creating transactions offline or within a
+    /// checked by the caller.  This may be useful when creating transactions offline or within a
     /// hardware wallet.
     ///
     /// Accounts expected by this instruction:
@@ -250,7 +250,7 @@ pub enum TokenInstruction {
     ///   2. `[writable]` The destination account.
     ///   3. `[]` The source account's multisignature owner/delegate.
     ///   4. ..4+M `[signer]` M signer accounts.
-    Transfer2 {
+    TransferChecked {
         /// The amount of tokens to transfer.
         amount: u64,
         /// Expected number of base 10 digits to the right of the decimal place.
@@ -259,7 +259,7 @@ pub enum TokenInstruction {
     /// Approves a delegate.  A delegate is given the authority over
     /// tokens on behalf of the source account's owner.
     ///
-    /// This instruction differs from Approve in that the token mint and decimals value is asserted
+    /// This instruction differs from Approve in that the token mint and decimals value is checked
     /// by the caller.  This may be useful when creating transactions offline or within a hardware
     /// wallet.
     ///
@@ -277,7 +277,7 @@ pub enum TokenInstruction {
     ///   2. `[]` The delegate.
     ///   3. `[]` The source account's multisignature owner.
     ///   4. ..4+M `[signer]` M signer accounts
-    Approve2 {
+    ApproveChecked {
         /// The amount of tokens the delegate is approved for.
         amount: u64,
         /// Expected number of base 10 digits to the right of the decimal place.
@@ -285,7 +285,7 @@ pub enum TokenInstruction {
     },
     /// Mints new tokens to an account.  The native mint does not support minting.
     ///
-    /// This instruction differs from MintTo in that the decimals value is asserted by the
+    /// This instruction differs from MintTo in that the decimals value is checked by the
     /// caller.  This may be useful when creating transactions offline or within a hardware wallet.
     ///
     /// Accounts expected by this instruction:
@@ -300,16 +300,16 @@ pub enum TokenInstruction {
     ///   1. `[writable]` The account to mint tokens to.
     ///   2. `[]` The mint's multisignature mint-tokens authority.
     ///   3. ..3+M `[signer]` M signer accounts.
-    MintTo2 {
+    MintToChecked {
         /// The amount of new tokens to mint.
         amount: u64,
         /// Expected number of base 10 digits to the right of the decimal place.
         decimals: u8,
     },
-    /// Burns tokens by removing them from an account.  `Burn2` does not support accounts
+    /// Burns tokens by removing them from an account.  `BurnChecked` does not support accounts
     /// associated with the native mint, use `CloseAccount` instead.
     ///
-    /// This instruction differs from Burn in that the decimals value is asserted by the caller.
+    /// This instruction differs from Burn in that the decimals value is checked by the caller.
     /// This may be useful when creating transactions offline or within a hardware wallet.
     ///
     /// Accounts expected by this instruction:
@@ -324,7 +324,7 @@ pub enum TokenInstruction {
     ///   1. `[writable]` The token mint.
     ///   2. `[]` The account's multisignature owner/delegate.
     ///   3. ..3+M `[signer]` M signer accounts.
-    Burn2 {
+    BurnChecked {
         /// The amount of tokens to burn.
         amount: u64,
         /// Expected number of base 10 digits to the right of the decimal place.
@@ -392,7 +392,7 @@ impl TokenInstruction {
                     .ok_or(InvalidInstruction)?;
                 let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
 
-                Self::Transfer2 { amount, decimals }
+                Self::TransferChecked { amount, decimals }
             }
             13 => {
                 let (amount, rest) = rest.split_at(8);
@@ -403,7 +403,7 @@ impl TokenInstruction {
                     .ok_or(InvalidInstruction)?;
                 let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
 
-                Self::Approve2 { amount, decimals }
+                Self::ApproveChecked { amount, decimals }
             }
             14 => {
                 let (amount, rest) = rest.split_at(8);
@@ -414,7 +414,7 @@ impl TokenInstruction {
                     .ok_or(InvalidInstruction)?;
                 let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
 
-                Self::MintTo2 { amount, decimals }
+                Self::MintToChecked { amount, decimals }
             }
             15 => {
                 let (amount, rest) = rest.split_at(8);
@@ -425,7 +425,7 @@ impl TokenInstruction {
                     .ok_or(InvalidInstruction)?;
                 let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
 
-                Self::Burn2 { amount, decimals }
+                Self::BurnChecked { amount, decimals }
             }
 
             _ => return Err(TokenError::InvalidInstruction.into()),
@@ -479,22 +479,22 @@ impl TokenInstruction {
             Self::CloseAccount => buf.push(9),
             Self::FreezeAccount => buf.push(10),
             Self::ThawAccount => buf.push(11),
-            &Self::Transfer2 { amount, decimals } => {
+            &Self::TransferChecked { amount, decimals } => {
                 buf.push(12);
                 buf.extend_from_slice(&amount.to_le_bytes());
                 buf.push(decimals);
             }
-            &Self::Approve2 { amount, decimals } => {
+            &Self::ApproveChecked { amount, decimals } => {
                 buf.push(13);
                 buf.extend_from_slice(&amount.to_le_bytes());
                 buf.push(decimals);
             }
-            &Self::MintTo2 { amount, decimals } => {
+            &Self::MintToChecked { amount, decimals } => {
                 buf.push(14);
                 buf.extend_from_slice(&amount.to_le_bytes());
                 buf.push(decimals);
             }
-            &Self::Burn2 { amount, decimals } => {
+            &Self::BurnChecked { amount, decimals } => {
                 buf.push(15);
                 buf.extend_from_slice(&amount.to_le_bytes());
                 buf.push(decimals);
@@ -910,9 +910,9 @@ pub fn thaw_account(
     })
 }
 
-/// Creates a `Transfer2` instruction.
+/// Creates a `TransferChecked` instruction.
 #[allow(clippy::too_many_arguments)]
-pub fn transfer2(
+pub fn transfer_checked(
     token_program_id: &Pubkey,
     source_pubkey: &Pubkey,
     mint_pubkey: &Pubkey,
@@ -922,7 +922,7 @@ pub fn transfer2(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Transfer2 { amount, decimals }.pack();
+    let data = TokenInstruction::TransferChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*source_pubkey, false));
@@ -943,9 +943,9 @@ pub fn transfer2(
     })
 }
 
-/// Creates an `Approve2` instruction.
+/// Creates an `ApproveChecked` instruction.
 #[allow(clippy::too_many_arguments)]
-pub fn approve2(
+pub fn approve_checked(
     token_program_id: &Pubkey,
     source_pubkey: &Pubkey,
     mint_pubkey: &Pubkey,
@@ -955,7 +955,7 @@ pub fn approve2(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Approve2 { amount, decimals }.pack();
+    let data = TokenInstruction::ApproveChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*source_pubkey, false));
@@ -976,8 +976,8 @@ pub fn approve2(
     })
 }
 
-/// Creates a `MintTo2` instruction.
-pub fn mint_to2(
+/// Creates a `MintToChecked` instruction.
+pub fn mint_to_checked(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
     account_pubkey: &Pubkey,
@@ -986,7 +986,7 @@ pub fn mint_to2(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::MintTo2 { amount, decimals }.pack();
+    let data = TokenInstruction::MintToChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*mint_pubkey, false));
@@ -1006,8 +1006,8 @@ pub fn mint_to2(
     })
 }
 
-/// Creates a `Burn2` instruction.
-pub fn burn2(
+/// Creates a `BurnChecked` instruction.
+pub fn burn_checked(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
     mint_pubkey: &Pubkey,
@@ -1016,7 +1016,7 @@ pub fn burn2(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::Burn2 { amount, decimals }.pack();
+    let data = TokenInstruction::BurnChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*account_pubkey, false));
@@ -1156,7 +1156,7 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::Transfer2 {
+        let check = TokenInstruction::TransferChecked {
             amount: 1,
             decimals: 2,
         };
@@ -1166,7 +1166,7 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::Approve2 {
+        let check = TokenInstruction::ApproveChecked {
             amount: 1,
             decimals: 2,
         };
@@ -1176,7 +1176,7 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::MintTo2 {
+        let check = TokenInstruction::MintToChecked {
             amount: 1,
             decimals: 2,
         };
@@ -1186,7 +1186,7 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::Burn2 {
+        let check = TokenInstruction::BurnChecked {
             amount: 1,
             decimals: 2,
         };

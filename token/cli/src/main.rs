@@ -214,7 +214,7 @@ fn command_transfer(
     let amount = spl_token::ui_amount_to_amount(ui_amount, sender_token_balance.decimals);
 
     let mut transaction = Transaction::new_with_payer(
-        &[transfer2(
+        &[transfer_checked(
             &spl_token::id(),
             &sender,
             &mint_pubkey,
@@ -251,7 +251,7 @@ fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommandResul
     let mint_pubkey = Account::unpack_from_slice(&data)?.mint;
     let amount = spl_token::ui_amount_to_amount(ui_amount, source_token_balance.decimals);
     let mut transaction = Transaction::new_with_payer(
-        &[burn2(
+        &[burn_checked(
             &spl_token::id(),
             &source,
             &mint_pubkey,
@@ -289,7 +289,7 @@ fn command_mint(
     let amount = spl_token::ui_amount_to_amount(ui_amount, recipient_token_balance.decimals);
 
     let mut transaction = Transaction::new_with_payer(
-        &[mint_to2(
+        &[mint_to_checked(
             &spl_token::id(),
             &token,
             &recipient,
