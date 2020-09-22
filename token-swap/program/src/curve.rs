@@ -5,9 +5,9 @@ use crate::math;
 /// Encodes all results of swapping from a source token to a destination token
 pub struct SwapResult {
     /// New amount of source token
-    pub new_source: u64,
+    pub new_source_amount: u64,
     /// New amount of destination token
-    pub new_destination: u64,
+    pub new_destination_amount: u64,
     /// Amount of destination token swapped
     pub amount_swapped: u64,
 }
@@ -16,24 +16,24 @@ impl SwapResult {
     /// SwapResult for swap from one currency into another, given pool information
     /// and fee
     pub fn swap_to(
-        source: u64,
         source_amount: u64,
-        dest_amount: u64,
+        swap_source_amount: u64,
+        swap_destination_amount: u64,
         fee_numerator: u64,
         fee_denominator: u64,
     ) -> Option<SwapResult> {
-        let invariant = source_amount.checked_mul(dest_amount)?;
-        let new_source = source_amount.checked_add(source)?;
-        let new_destination = invariant.checked_div(new_source)?;
-        let remove = dest_amount.checked_sub(new_destination)?;
+        let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
+        let new_source_amount = swap_source_amount.checked_add(source_amount)?;
+        let new_destination_amount = invariant.checked_div(new_source_amount)?;
+        let remove = swap_destination_amount.checked_sub(new_destination_amount)?;
         let fee = remove
             .checked_mul(fee_numerator)?
             .checked_div(fee_denominator)?;
-        let new_destination = new_destination.checked_add(fee)?;
+        let new_destination_amount = new_destination_amount.checked_add(fee)?;
         let amount_swapped = remove.checked_sub(fee)?;
         Some(SwapResult {
-            new_source,
-            new_destination,
+            new_source_amount,
+            new_destination_amount,
             amount_swapped,
         })
     }
@@ -61,8 +61,8 @@ impl ConstantProduct {
             self.fee_numerator,
             self.fee_denominator,
         )?;
-        self.token_a = result.new_source;
-        self.token_b = result.new_destination;
+        self.token_a = result.new_source_amount;
+        self.token_b = result.new_destination_amount;
         Some(result.amount_swapped)
     }
 
@@ -75,8 +75,8 @@ impl ConstantProduct {
             self.fee_numerator,
             self.fee_denominator,
         )?;
-        self.token_b = result.new_source;
-        self.token_a = result.new_destination;
+        self.token_b = result.new_source_amount;
+        self.token_a = result.new_destination_amount;
         Some(result.amount_swapped)
     }
 }

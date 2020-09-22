@@ -2675,14 +2675,14 @@ mod tests {
             let swap_token_a =
                 Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
             let token_a_amount = swap_token_a.amount;
-            assert_eq!(token_a_amount, results.new_source);
+            assert_eq!(token_a_amount, results.new_source_amount);
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
             assert_eq!(token_a.amount, initial_a - a_to_b_amount);
 
             let swap_token_b =
                 Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
             let token_b_amount = swap_token_b.amount;
-            assert_eq!(token_b_amount, results.new_destination);
+            assert_eq!(token_b_amount, results.new_destination_amount);
             let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
             assert_eq!(token_b.amount, initial_b + results.amount_swapped);
 
@@ -2714,7 +2714,7 @@ mod tests {
 
             let swap_token_a =
                 Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
-            assert_eq!(swap_token_a.amount, results.new_destination);
+            assert_eq!(swap_token_a.amount, results.new_destination_amount);
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
             assert_eq!(
                 token_a.amount,
@@ -2723,7 +2723,7 @@ mod tests {
 
             let swap_token_b =
                 Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
-            assert_eq!(swap_token_b.amount, results.new_source);
+            assert_eq!(swap_token_b.amount, results.new_source_amount);
             let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
             assert_eq!(
                 token_b.amount,
