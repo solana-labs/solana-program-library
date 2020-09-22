@@ -74,12 +74,22 @@ fn check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Err
     }
 }
 
-fn command_create_token(config: &Config, decimals: u8, token: Box<dyn Signer>) -> CommandResult {
+fn command_create_token(
+    config: &Config,
+    decimals: u8,
+    token: Box<dyn Signer>,
+    enable_freeze: bool,
+) -> CommandResult {
     println!("Creating token {}", token.pubkey());
 
     let minimum_balance_for_rent_exemption = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(Mint::LEN)?;
+    let freeze_authority_pubkey = if enable_freeze {
+        Some(config.owner.pubkey())
+    } else {
+        None
+    };
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -94,7 +104,7 @@ fn command_create_token(config: &Config, decimals: u8, token: Box<dyn Signer>) -
                 &spl_token::id(),
                 &token.pubkey(),
                 &config.owner.pubkey(),
-                None,
+                freeze_authority_pubkey.as_ref(),
                 decimals,
             )?,
         ],
@@ -531,6 +541,14 @@ fn main() {
                              This may be a keypair file or the ASK keyword. \
                              [default: randomly generated keypair]"
                         ),
+                )
+                .arg(
+                    Arg::with_name("enable_freeze")
+                        .long("enable-freeze")
+                        .takes_value(false)
+                        .help(
+                            "Enable the mint authority to freeze associated token accounts."
+                        ),
                 ),
         )
         .subcommand(
@@ -798,7 +816,12 @@ fn main() {
                 Box::new(Keypair::new())
             };
 
-            command_create_token(&config, decimals, token)
+            command_create_token(
+                &config,
+                decimals,
+                token,
+                arg_matches.is_present("enable_freeze"),
+            )
         }
         ("create-account", Some(arg_matches)) => {
             let token = pubkey_of(arg_matches, "token").unwrap();
