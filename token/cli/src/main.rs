@@ -2,7 +2,11 @@ use clap::{
     crate_description, crate_name, crate_version, value_t_or_exit, App, AppSettings, Arg,
     SubCommand,
 };
-use solana_account_decoder::{parse_token::TokenAccountType, UiAccountData};
+use console::Emoji;
+use solana_account_decoder::{
+    parse_token::{TokenAccountType, UiAccountState},
+    UiAccountData,
+};
 use solana_clap_utils::{
     input_parsers::pubkey_of,
     input_validators::{is_amount, is_keypair, is_pubkey_or_keypair, is_url},
@@ -25,6 +29,8 @@ use spl_token::{
     state::{Account, Mint},
 };
 use std::process::exit;
+
+static WARNING: Emoji = Emoji("⚠️", "!");
 
 struct Config {
     rpc_client: RpcClient,
@@ -74,12 +80,22 @@ fn check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Err
     }
 }
 
-fn command_create_token(config: &Config, decimals: u8, token: Box<dyn Signer>) -> CommandResult {
+fn command_create_token(
+    config: &Config,
+    decimals: u8,
+    token: Box<dyn Signer>,
+    enable_freeze: bool,
+) -> CommandResult {
     println!("Creating token {}", token.pubkey());
 
     let minimum_balance_for_rent_exemption = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(Mint::LEN)?;
+    let freeze_authority_pubkey = if enable_freeze {
+        Some(config.owner.pubkey())
+    } else {
+        None
+    };
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -94,7 +110,7 @@ fn command_create_token(config: &Config, decimals: u8, token: Box<dyn Signer>) -
                 &spl_token::id(),
                 &token.pubkey(),
                 &config.owner.pubkey(),
-                None,
+                freeze_authority_pubkey.as_ref(),
                 decimals,
             )?,
         ],
@@ -309,6 +325,50 @@ fn command_mint(
     Ok(Some(transaction))
 }
 
+fn command_freeze(config: &Config, token: Pubkey, account: Pubkey) -> CommandResult {
+    println!("Freezing account: {}\n  Token: {}", account, token);
+
+    let mut transaction = Transaction::new_with_payer(
+        &[freeze_account(
+            &spl_token::id(),
+            &account,
+            &token,
+            &config.owner.pubkey(),
+            &[],
+        )?],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+    Ok(Some(transaction))
+}
+
+fn command_thaw(config: &Config, token: Pubkey, account: Pubkey) -> CommandResult {
+    println!("Freezing account: {}\n  Token: {}", account, token);
+
+    let mut transaction = Transaction::new_with_payer(
+        &[thaw_account(
+            &spl_token::id(),
+            &account,
+            &token,
+            &config.owner.pubkey(),
+            &[],
+        )?],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+    Ok(Some(transaction))
+}
+
 fn command_wrap(config: &Config, sol: f64) -> CommandResult {
     let account = Keypair::new();
     let lamports = sol_to_lamports(sol);
@@ -429,10 +489,20 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                 );
             } else {
                 match serde_json::from_value(parsed_account.parsed) {
-                    Ok(TokenAccountType::Account(ui_token_account)) => println!(
-                        "{:<44} {:<44} {}",
-                        address, ui_token_account.mint, ui_token_account.token_amount.ui_amount
-                    ),
+                    Ok(TokenAccountType::Account(ui_token_account)) => {
+                        let maybe_frozen = if let UiAccountState::Frozen = ui_token_account.state {
+                            format!(" {}  Frozen", WARNING)
+                        } else {
+                            "".to_string()
+                        };
+                        println!(
+                            "{:<44} {:<44} {}{}",
+                            address,
+                            ui_token_account.mint,
+                            ui_token_account.token_amount.ui_amount,
+                            maybe_frozen
+                        )
+                    }
                     Ok(_) => println!("{:<44} Unsupported token account", address),
                     Err(err) => println!("{:<44} Account parse failure: {}", address, err),
                 }
@@ -530,6 +600,14 @@ fn main() {
                             "Specify the token keypair. \
                              This may be a keypair file or the ASK keyword. \
                              [default: randomly generated keypair]"
+                        ),
+                )
+                .arg(
+                    Arg::with_name("enable_freeze")
+                        .long("enable-freeze")
+                        .takes_value(false)
+                        .help(
+                            "Enable the mint authority to freeze associated token accounts."
                         ),
                 ),
         )
@@ -662,6 +740,50 @@ fn main() {
                         .index(3)
                         .required(true)
                         .help("The token account address of recipient"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("freeze")
+                .about("Freeze a token account")
+                .arg(
+                    Arg::with_name("token") // TODO: remove this arg when solana-client v1.3.12+ is published; grab mint from token account state
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token mint"),
+                )
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("The address of the token account to freeze"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("thaw")
+                .about("Thaw a token account")
+                .arg(
+                    Arg::with_name("token") // TODO: remove this arg when solana-client v1.3.12+ is published; grab mint from token account state
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token mint"),
+                )
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("The address of the token account to thaw"),
                 ),
         )
         .subcommand(
@@ -798,7 +920,12 @@ fn main() {
                 Box::new(Keypair::new())
             };
 
-            command_create_token(&config, decimals, token)
+            command_create_token(
+                &config,
+                decimals,
+                token,
+                arg_matches.is_present("enable_freeze"),
+            )
         }
         ("create-account", Some(arg_matches)) => {
             let token = pubkey_of(arg_matches, "token").unwrap();
@@ -840,6 +967,16 @@ fn main() {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             let recipient = pubkey_of(arg_matches, "recipient").unwrap();
             command_mint(&config, token, amount, recipient)
+        }
+        ("freeze", Some(arg_matches)) => {
+            let token = pubkey_of(arg_matches, "token").unwrap();
+            let account = pubkey_of(arg_matches, "account").unwrap();
+            command_freeze(&config, token, account)
+        }
+        ("thaw", Some(arg_matches)) => {
+            let token = pubkey_of(arg_matches, "token").unwrap();
+            let account = pubkey_of(arg_matches, "account").unwrap();
+            command_thaw(&config, token, account)
         }
         ("wrap", Some(arg_matches)) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
