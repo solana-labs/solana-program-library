@@ -161,11 +161,11 @@ impl Processor {
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
         let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
 
-        if source_account.amount < amount {
-            return Err(TokenError::InsufficientFunds.into());
-        }
         if source_account.is_frozen() || dest_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
+        }
+        if source_account.amount < amount {
+            return Err(TokenError::InsufficientFunds.into());
         }
         if source_account.mint != dest_account.mint {
             return Err(TokenError::MintMismatch.into());
@@ -478,17 +478,17 @@ impl Processor {
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
         let mut mint = Mint::unpack(&mint_info.data.borrow())?;
 
+        if source_account.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
         if source_account.is_native() {
             return Err(TokenError::NativeNotSupported.into());
-        }
-        if mint_info.key != &source_account.mint {
-            return Err(TokenError::MintMismatch.into());
         }
         if source_account.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
-        if source_account.is_frozen() {
-            return Err(TokenError::AccountFrozen.into());
+        if mint_info.key != &source_account.mint {
+            return Err(TokenError::MintMismatch.into());
         }
 
         if let Some(expected_decimals) = expected_decimals {
@@ -588,14 +588,14 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
 
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+        if freeze && source_account.is_frozen() || !freeze && !source_account.is_frozen() {
+            return Err(TokenError::InvalidState.into());
+        }
         if source_account.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
         if mint_info.key != &source_account.mint {
             return Err(TokenError::MintMismatch.into());
-        }
-        if freeze && source_account.is_frozen() || !freeze && !source_account.is_frozen() {
-            return Err(TokenError::InvalidState.into());
         }
 
         let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
@@ -3402,9 +3402,6 @@ mod tests {
             ],
         )
         .unwrap();
-        let mut account = Account::unpack_unchecked(&mismatch_account.data).unwrap();
-        account.mint = mint2_key;
-        Account::pack(account, &mut mismatch_account.data).unwrap();
 
         // mint to account
         do_process_instruction(
@@ -3412,6 +3409,16 @@ mod tests {
             vec![&mut mint_account, &mut account_account, &mut owner_account],
         )
         .unwrap();
+
+        // mint to mismatch account and change mint key
+        do_process_instruction(
+            mint_to(&program_id, &mint_key, &mismatch_key, &owner_key, &[], 1000).unwrap(),
+            vec![&mut mint_account, &mut mismatch_account, &mut owner_account],
+        )
+        .unwrap();
+        let mut account = Account::unpack_unchecked(&mismatch_account.data).unwrap();
+        account.mint = mint2_key;
+        Account::pack(account, &mut mismatch_account.data).unwrap();
 
         // missing signer
         let mut instruction =
@@ -3471,7 +3478,7 @@ mod tests {
         .unwrap();
 
         let mint = Mint::unpack_unchecked(&mint_account.data).unwrap();
-        assert_eq!(mint.supply, 1000 - 42);
+        assert_eq!(mint.supply, 2000 - 42);
         let account = Account::unpack_unchecked(&account_account.data).unwrap();
         assert_eq!(account.amount, 1000 - 42);
 
@@ -3541,7 +3548,7 @@ mod tests {
 
         // match
         let mint = Mint::unpack_unchecked(&mint_account.data).unwrap();
-        assert_eq!(mint.supply, 1000 - 42 - 84);
+        assert_eq!(mint.supply, 2000 - 42 - 84);
         let account = Account::unpack_unchecked(&account_account.data).unwrap();
         assert_eq!(account.amount, 1000 - 42 - 84);
 

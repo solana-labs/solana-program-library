@@ -2086,7 +2086,7 @@ mod tests {
             ) = accounts.setup_token_accounts(
                 &user_key,
                 &withdrawer_key,
-                initial_a,
+                withdraw_amount,
                 initial_b,
                 withdraw_amount,
             );
