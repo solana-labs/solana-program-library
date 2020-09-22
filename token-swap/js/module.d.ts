@@ -1,5 +1,6 @@
 declare module '@solana/spl-token-swap' {
   import { Buffer } from 'buffer';
+  import { Layout } from 'buffer-layout';
   import { PublicKey, TransactionInstruction, TransactionSignature, Connection, Account } from "@solana/web3.js";
   import BN from 'bn.js';
 
@@ -19,12 +20,28 @@ declare module '@solana/spl-token-swap' {
     feeRatio: number,
   };
 
+  export const TokenSwapLayout: Layout;
+
   export class TokenSwap {
     constructor(connection: Connection, tokenSwap: PublicKey, programId: PublicKey, payer: Account);
 
     static getMinBalanceRentForExemptTokenSwap(
       connection: Connection,
     ): Promise<number>;
+
+    static createInitSwapInstruction(
+      tokenSwapAccount: Account,
+      authority: PublicKey,
+      nonce: number,
+      tokenAccountA: PublicKey,
+      tokenAccountB: PublicKey,
+      tokenPool: PublicKey,
+      tokenAccountPool: PublicKey,
+      tokenProgramId: PublicKey,
+      swapProgramId: PublicKey,
+      feeNumerator: number,
+      feeDenominator: number
+    ): TransactionInstruction;
 
     static createTokenSwap(
       connection: Connection,
@@ -39,7 +56,7 @@ declare module '@solana/spl-token-swap' {
       nonce: number,
       feeNumerator: number,
       feeDenominator: number,
-      programId: PublicKey,
+      swapProgramId: PublicKey,
     ): Promise<TokenSwap>
 
     getInfo(): Promise<TokenSwapInfo>

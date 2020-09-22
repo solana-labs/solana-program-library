@@ -1,6 +1,7 @@
 declare module '@solana/spl-token' {
   import { Buffer } from 'buffer';
-  import { PublicKey, TransactionInstruction, TransactionSignature, Connection, Account } from "@solana/web3.js";
+  import { Layout } from 'buffer-layout';
+  import { PublicKey, TransactionInstruction, TransactionSignature, Connection, Account } from '@solana/web3.js';
   import BN from 'bn.js';
 
   // === client/token.js ===
@@ -15,7 +16,7 @@ declare module '@solana/spl-token' {
   | 'CloseAccount';
 
   export const NATIVE_MINT: PublicKey;
-
+  export const MintLayout: Layout;
   export type MintInfo = {
     mintAuthority: null | PublicKey,
     supply: u64,
@@ -23,6 +24,8 @@ declare module '@solana/spl-token' {
     isInitialized: boolean,
     freezeAuthority: null | PublicKey,
   };
+
+  export const AccountLayout: Layout;
   export type AccountInfo = {
     mint: PublicKey,
     owner: PublicKey,

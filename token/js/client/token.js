@@ -13,7 +13,7 @@ import {
   TransactionInstruction,
   SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
-import type {Connection, TransactionSignature} from '@solana/web3.js';
+import type {Connection, Commitment, TransactionSignature} from '@solana/web3.js';
 
 import * as Layout from './layout';
 import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
@@ -107,7 +107,7 @@ type MintInfo = {|
   freezeAuthority: null | PublicKey,
 |};
 
-const MintLayout = BufferLayout.struct([
+export const MintLayout = BufferLayout.struct([
   BufferLayout.u32('mintAuthorityOption'),
   Layout.publicKey('mintAuthority'),
   Layout.uint64('supply'),
@@ -177,7 +177,7 @@ type AccountInfo = {|
 /**
  * @private
  */
-const AccountLayout = BufferLayout.struct([
+export const AccountLayout = BufferLayout.struct([
   Layout.publicKey('mint'),
   Layout.publicKey('owner'),
   Layout.uint64('amount'),
@@ -619,8 +619,8 @@ export class Token {
    *
    * @param account Public key of the account
    */
-  async getAccountInfo(account: PublicKey): Promise<AccountInfo> {
-    const info = await this.connection.getAccountInfo(account);
+  async getAccountInfo(account: PublicKey, commitment?: Commitment): Promise<AccountInfo> {
+    const info = await this.connection.getAccountInfo(account, commitment);
     if (info === null) {
       throw new Error('Failed to find account');
     }
