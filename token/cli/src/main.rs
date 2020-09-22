@@ -1,5 +1,5 @@
 use clap::{
-    crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
+    crate_description, crate_name, crate_version, value_t_or_exit, App, AppSettings, Arg,
     SubCommand,
 };
 use solana_account_decoder::{parse_token::TokenAccountType, UiAccountData};
@@ -477,6 +477,7 @@ fn main() {
                 .long("url")
                 .value_name("URL")
                 .takes_value(true)
+                .global(true)
                 .validator(is_url)
                 .help("JSON RPC URL for the cluster.  Default from the configuration file."),
         )
@@ -486,6 +487,7 @@ fn main() {
                 .value_name("KEYPAIR")
                 .validator(is_keypair)
                 .takes_value(true)
+                .global(true)
                 .help(
                     "Specify the token owner account. \
                      This may be a keypair file, the ASK keyword. \
@@ -498,6 +500,7 @@ fn main() {
                 .value_name("KEYPAIR")
                 .validator(is_keypair)
                 .takes_value(true)
+                .global(true)
                 .help(
                     "Specify the fee-payer account. \
                      This may be a keypair file, the ASK keyword. \
@@ -735,12 +738,16 @@ fn main() {
         } else {
             solana_cli_config::Config::default()
         };
-        let json_rpc_url = value_t!(matches, "json_rpc_url", String)
-            .unwrap_or_else(|_| cli_config.json_rpc_url.clone());
+        let json_rpc_url = matches
+            .value_of("json_rpc_url")
+            .unwrap_or(&cli_config.json_rpc_url)
+            .to_string();
 
         let owner = signer_from_path(
             &matches,
-            &cli_config.keypair_path,
+            matches
+                .value_of("owner")
+                .unwrap_or(&cli_config.keypair_path),
             "owner",
             &mut wallet_manager,
         )
@@ -750,7 +757,9 @@ fn main() {
         });
         let fee_payer = signer_from_path(
             &matches,
-            &cli_config.keypair_path,
+            matches
+                .value_of("fee_payer")
+                .unwrap_or(&cli_config.keypair_path),
             "fee_payer",
             &mut wallet_manager,
         )
