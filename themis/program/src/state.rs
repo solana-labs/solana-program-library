@@ -2,11 +2,13 @@
 
 use bincode::{deserialize, serialize_into};
 use curve25519_dalek::{
+    constants::RISTRETTO_BASEPOINT_POINT,
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
     traits::Identity,
 };
-use elgamal_ristretto::{ciphertext::Ciphertext, public::PublicKey};
+use elgamal_ristretto::{ciphertext::Ciphertext, public::PublicKey, private::SecretKey};
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use solana_sdk::program_error::ProgramError;
 
@@ -28,7 +30,7 @@ impl Default for EncryptedAggregate {
 }
 
 #[derive(Default, Serialize, Deserialize)]
-pub(crate) struct Policies {
+pub struct Policies {
     pub is_initialized: bool,
     pub scalars: Vec<Scalar>,
 }
@@ -161,29 +163,26 @@ impl User {
     }
 }
 
+pub fn generate_keys() -> (SecretKey, PublicKey) {
+    let mut csprng = thread_rng();
+    let sk = SecretKey::new(&mut csprng);
+    let pk = PublicKey::from(&sk);
+    (sk, pk)
+}
+
+pub fn recover_scalar(point: RistrettoPoint, k: u32) -> Scalar {
+    for i in 0..2u64.pow(k) {
+        let scalar = i.into();
+        if RISTRETTO_BASEPOINT_POINT * scalar == point {
+            return scalar;
+        }
+    }
+    panic!("Encryped scalar too long");
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
-    use elgamal_ristretto::{ciphertext::Ciphertext, private::SecretKey};
-    use rand::thread_rng;
-
-    pub(crate) fn generate_keys() -> (SecretKey, PublicKey) {
-        let mut csprng = thread_rng();
-        let sk = SecretKey::new(&mut csprng);
-        let pk = PublicKey::from(&sk);
-        (sk, pk)
-    }
-
-    pub(crate) fn recover_scalar(point: RistrettoPoint, k: u32) -> Scalar {
-        for i in 0..2u64.pow(k) {
-            let scalar = i.into();
-            if RISTRETTO_BASEPOINT_POINT * scalar == point {
-                return scalar;
-            }
-        }
-        panic!("Encryped scalar too long");
-    }
 
     fn test_policy_contract(policies: &[Scalar], expected_scalar_aggregate: Scalar) {
         let (sk, pk) = generate_keys();

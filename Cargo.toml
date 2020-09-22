@@ -3,6 +3,7 @@ members = [
   "utils/cgen",
   "utils/test-client",
   "memo/program",
+  "themis/client",
   "themis/program",
   "token-swap/program",
   "token/cli",
