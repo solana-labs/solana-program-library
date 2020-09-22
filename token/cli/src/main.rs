@@ -746,7 +746,7 @@ fn main() {
             SubCommand::with_name("freeze")
                 .about("Freeze a token account")
                 .arg(
-                    Arg::with_name("token")
+                    Arg::with_name("token") // TODO: remove this arg when solana-client v1.3.12+ is published; grab mint from token account state
                         .validator(is_pubkey_or_keypair)
                         .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
@@ -768,7 +768,7 @@ fn main() {
             SubCommand::with_name("thaw")
                 .about("Thaw a token account")
                 .arg(
-                    Arg::with_name("token")
+                    Arg::with_name("token") // TODO: remove this arg when solana-client v1.3.12+ is published; grab mint from token account state
                         .validator(is_pubkey_or_keypair)
                         .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
