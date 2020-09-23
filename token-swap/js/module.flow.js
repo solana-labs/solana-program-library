@@ -22,6 +22,8 @@ declare module '@solana/spl-token-swap' {
     feeRatio: number,
   |};
 
+  declare export var TokenSwapLayout: Layout;
+
   declare export class TokenSwap {
     constructor(
       connection: Connection,
@@ -33,6 +35,20 @@ declare module '@solana/spl-token-swap' {
     static getMinBalanceRentForExemptTokenSwap(
       connection: Connection,
     ): Promise<number>;
+
+    static createInitSwapInstruction(
+      programId: PublicKey,
+      tokenSwapAccount: Account,
+      authority: PublicKey,
+      nonce: number,
+      tokenAccountA: PublicKey,
+      tokenAccountB: PublicKey,
+      tokenPool: PublicKey,
+      tokenAccountPool: PublicKey,
+      tokenProgramId: PublicKey,
+      feeNumerator: number,
+      feeDenominator: number
+    ): TransactionInstruction;
 
     static createTokenSwap(
       connection: Connection,

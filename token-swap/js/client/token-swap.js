@@ -5,17 +5,11 @@
 import assert from 'assert';
 import BN from 'bn.js';
 import * as BufferLayout from 'buffer-layout';
-import {
-  Account,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-  TransactionInstruction,
-} from '@solana/web3.js';
-import type {Connection, TransactionSignature} from '@solana/web3.js';
+import type { Connection, TransactionSignature } from '@solana/web3.js';
+import { Account, PublicKey, SystemProgram, Transaction, TransactionInstruction, } from '@solana/web3.js';
 
 import * as Layout from './layout';
-import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
+import { sendAndConfirmTransaction } from './util/send-and-confirm-transaction';
 
 /**
  * Some amount of tokens
@@ -95,7 +89,7 @@ type TokenSwapInfo = {|
 /**
  * @private
  */
-const TokenSwapLayout = BufferLayout.struct([
+export const TokenSwapLayout = BufferLayout.struct([
   BufferLayout.u8('isInitialized'),
   BufferLayout.u8('nonce'),
   Layout.publicKey('tokenAccountA'),
@@ -159,69 +153,28 @@ export class TokenSwap {
     );
   }
 
-  /**
-   * Create a new Token Swap
-   *
-   * @param connection The connection to use
-   * @param payer Pays for the transaction
-   * @param tokenSwapAccount The token swap account
-   * @param authority The authority over the swap and accounts
-   * @param tokenAccountA: The Swap's Token A account
-   * @param tokenAccountB: The Swap's Token B account
-   * @param tokenPool The pool token
-   * @param tokenAccountPool The pool token account
-   * @param tokenProgramId The program id of the token program
-   * @param feeNumerator Numerator of the fee ratio
-   * @param feeDenominator Denominator of the fee ratio
-   * @param programId Program ID of the token-swap program
-   * @return Token object for the newly minted token, Public key of the account holding the total supply of new tokens
-   */
-  static async createTokenSwap(
-    connection: Connection,
-    payer: Account,
+
+  static createInitSwapInstruction(
     tokenSwapAccount: Account,
     authority: PublicKey,
+    nonce: number,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
     tokenPool: PublicKey,
     tokenAccountPool: PublicKey,
     tokenProgramId: PublicKey,
-    nonce: number,
+    swapProgramId: PublicKey,
     feeNumerator: number,
-    feeDenominator: number,
-    programId: PublicKey,
-  ): Promise<TokenSwap> {
-    let transaction;
-    const tokenSwap = new TokenSwap(
-      connection,
-      tokenSwapAccount.publicKey,
-      programId,
-      payer,
-    );
-
-    // Allocate memory for the account
-    const balanceNeeded = await TokenSwap.getMinBalanceRentForExemptTokenSwap(
-      connection,
-    );
-    transaction = new Transaction();
-    transaction.add(
-      SystemProgram.createAccount({
-        fromPubkey: payer.publicKey,
-        newAccountPubkey: tokenSwapAccount.publicKey,
-        lamports: balanceNeeded,
-        space: TokenSwapLayout.span,
-        programId,
-      }),
-    );
-
-    let keys = [
-      {pubkey: tokenSwapAccount.publicKey, isSigner: false, isWritable: true},
-      {pubkey: authority, isSigner: false, isWritable: false},
-      {pubkey: tokenAccountA, isSigner: false, isWritable: false},
-      {pubkey: tokenAccountB, isSigner: false, isWritable: false},
-      {pubkey: tokenPool, isSigner: false, isWritable: true},
-      {pubkey: tokenAccountPool, isSigner: false, isWritable: true},
-      {pubkey: tokenProgramId, isSigner: false, isWritable: false},
+    feeDenominator: number
+  ):TransactionInstruction {
+    const keys = [
+      { pubkey: tokenSwapAccount.publicKey, isSigner: false, isWritable: true },
+      { pubkey: authority, isSigner: false, isWritable: false },
+      { pubkey: tokenAccountA, isSigner: false, isWritable: false },
+      { pubkey: tokenAccountB, isSigner: false, isWritable: false },
+      { pubkey: tokenPool, isSigner: false, isWritable: true },
+      { pubkey: tokenAccountPool, isSigner: false, isWritable: true },
+      { pubkey: tokenProgramId, isSigner: false, isWritable: false },
     ];
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
@@ -242,11 +195,71 @@ export class TokenSwap {
       );
       data = data.slice(0, encodeLength);
     }
-    transaction.add({
+    return new TransactionInstruction({
       keys,
-      programId,
+      programId: swapProgramId,
       data,
     });
+  }
+
+  /**
+   * Create a new Token Swap
+   *
+   * @param connection The connection to use
+   * @param payer Pays for the transaction
+   * @param tokenSwapAccount The token swap account
+   * @param authority The authority over the swap and accounts
+   * @param tokenAccountA: The Swap's Token A account
+   * @param tokenAccountB: The Swap's Token B account
+   * @param tokenPool The pool token
+   * @param tokenAccountPool The pool token account
+   * @param tokenProgramId The program id of the token program
+   * @param feeNumerator Numerator of the fee ratio
+   * @param feeDenominator Denominator of the fee ratio
+   * @param swapProgramId Program ID of the token-swap program
+   * @return Token object for the newly minted token, Public key of the account holding the total supply of new tokens
+   */
+  static async createTokenSwap(
+    connection: Connection,
+    payer: Account,
+    tokenSwapAccount: Account,
+    authority: PublicKey,
+    tokenAccountA: PublicKey,
+    tokenAccountB: PublicKey,
+    tokenPool: PublicKey,
+    tokenAccountPool: PublicKey,
+    tokenProgramId: PublicKey,
+    nonce: number,
+    feeNumerator: number,
+    feeDenominator: number,
+    swapProgramId: PublicKey,
+  ): Promise<TokenSwap> {
+    let transaction;
+    const tokenSwap = new TokenSwap(
+      connection,
+      tokenSwapAccount.publicKey,
+      swapProgramId,
+      payer,
+    );
+
+    // Allocate memory for the account
+    const balanceNeeded = await TokenSwap.getMinBalanceRentForExemptTokenSwap(
+      connection,
+    );
+    transaction = new Transaction();
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: payer.publicKey,
+        newAccountPubkey: tokenSwapAccount.publicKey,
+        lamports: balanceNeeded,
+        space: TokenSwapLayout.span,
+        programId: swapProgramId,
+      }),
+    );
+
+    const instruction = TokenSwap.createInitSwapInstruction(tokenSwapAccount, authority, nonce, tokenAccountA, tokenAccountB, tokenPool, tokenAccountPool, tokenProgramId, swapProgramId, feeNumerator, feeDenominator);
+
+    transaction.add(instruction);
     await sendAndConfirmTransaction(
       'createAccount and InitializeSwap',
       connection,
@@ -257,6 +270,7 @@ export class TokenSwap {
 
     return tokenSwap;
   }
+
 
   /**
    * Retrieve tokenSwap information

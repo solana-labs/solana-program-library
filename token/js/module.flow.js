@@ -6,7 +6,6 @@
  */
 
 declare module '@solana/spl-token' {
-  // === client/token.js ===
   declare export class u64 extends BN {
     toBuffer(): Buffer;
     static fromBuffer(buffer: Buffer): u64;
@@ -17,6 +16,7 @@ declare module '@solana/spl-token' {
     | 'AccountOwner'
     | 'CloseAccount';
   declare export var NATIVE_MINT: PublicKey;
+  declare export var MintLayout: Layout;
   declare export type MintInfo = {|
     mintAuthority: null | PublicKey,
     supply: u64,
@@ -24,6 +24,7 @@ declare module '@solana/spl-token' {
     isInitialized: boolean,
     freezeAuthority: null | PublicKey,
   |};
+  declare export var AccountLayout: Layout;
   declare export type AccountInfo = {|
     mint: PublicKey,
     owner: PublicKey,
