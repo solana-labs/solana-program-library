@@ -27,7 +27,7 @@
     "build": "rollup -c",
     "start": "babel-node cli/main.js",
     "lint": "npm run pretty && eslint .",
-    "lint:fix": "npm run lint -- --fix",
+    "lint:fix": "npm run pretty:fix && eslint . --fix",
     "flow": "flow",
     "flow:watch": "watch 'flow' . --wait=1 --ignoreDirectoryPattern=/doc/",
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",
@@ -40,7 +40,8 @@
     "localnet:up": "rm client/util/store/config.json; set -x; solana-localnet down; set -e; solana-localnet up",
     "localnet:down": "solana-localnet down",
     "localnet:logs": "solana-localnet logs -f",
-    "pretty": "prettier --write '{,cli*/**/}*.js'"
+    "pretty": "prettier --check '{,cli*/**/}*.[jt]s'",
+    "pretty:fix": "prettier --write '{,cli*/**/}*.[jt]s'"
   },
   "dependencies": {
     "@babel/runtime": "^7.10.5",
@@ -63,7 +64,7 @@
     "babel-eslint": "^10.1.0",
     "eslint": "^7.4.0",
     "eslint-plugin-import": "^2.22.0",
-    "flow-bin": "0.131.0",
+    "flow-bin": "0.134.0",
     "flow-typed": "^3.2.0",
     "mz": "^2.7.0",
     "prettier": "^2.0.5",

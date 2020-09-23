@@ -19,7 +19,7 @@ export const uint64 = (property: string = 'uint64'): Object => {
 /**
  * Layout for a Rust String type
  */
-export const rustString = (property: string = 'string') => {
+export const rustString = (property: string = 'string'): Object => {
   const rsl = BufferLayout.struct(
     [
       BufferLayout.u32('length'),

@@ -47,7 +47,7 @@ declare module '@solana/spl-token-swap' {
       tokenAccountPool: PublicKey,
       tokenProgramId: PublicKey,
       feeNumerator: number,
-      feeDenominator: number
+      feeDenominator: number,
     ): TransactionInstruction;
 
     static createTokenSwap(

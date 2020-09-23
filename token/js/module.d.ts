@@ -1,7 +1,13 @@
 declare module '@solana/spl-token' {
-  import { Buffer } from 'buffer';
-  import { Layout } from 'buffer-layout';
-  import { PublicKey, TransactionInstruction, TransactionSignature, Connection, Account } from '@solana/web3.js';
+  import {Buffer} from 'buffer';
+  import {Layout} from 'buffer-layout';
+  import {
+    PublicKey,
+    TransactionInstruction,
+    TransactionSignature,
+    Connection,
+    Account,
+  } from '@solana/web3.js';
   import BN from 'bn.js';
 
   // === client/token.js ===
@@ -10,49 +16,49 @@ declare module '@solana/spl-token' {
     static fromBuffer(buffer: Buffer): u64;
   }
   export type AuthorityType =
-  | 'MintTokens'
-  | 'FreezeAccount'
-  | 'AccountOwner'
-  | 'CloseAccount';
+    | 'MintTokens'
+    | 'FreezeAccount'
+    | 'AccountOwner'
+    | 'CloseAccount';
 
   export const NATIVE_MINT: PublicKey;
   export const MintLayout: Layout;
   export type MintInfo = {
-    mintAuthority: null | PublicKey,
-    supply: u64,
-    decimals: number,
-    isInitialized: boolean,
-    freezeAuthority: null | PublicKey,
+    mintAuthority: null | PublicKey;
+    supply: u64;
+    decimals: number;
+    isInitialized: boolean;
+    freezeAuthority: null | PublicKey;
   };
 
   export const AccountLayout: Layout;
   export type AccountInfo = {
-    mint: PublicKey,
-    owner: PublicKey,
-    amount: u64,
-    delegate: null | PublicKey,
-    delegatedAmount: u64,
-    isInitialized: boolean,
-    isFrozen: boolean,
-    isNative: boolean,
-    rentExemptReserve: null | u64,
-    closeAuthority: null | PublicKey,
+    mint: PublicKey;
+    owner: PublicKey;
+    amount: u64;
+    delegate: null | PublicKey;
+    delegatedAmount: u64;
+    isInitialized: boolean;
+    isFrozen: boolean;
+    isNative: boolean;
+    rentExemptReserve: null | u64;
+    closeAuthority: null | PublicKey;
   };
   export type MultisigInfo = {
-    m: number,
-    n: number,
-    initialized: boolean,
-    signer1: PublicKey,
-    signer2: PublicKey,
-    signer3: PublicKey,
-    signer4: PublicKey,
-    signer5: PublicKey,
-    signer6: PublicKey,
-    signer7: PublicKey,
-    signer8: PublicKey,
-    signer9: PublicKey,
-    signer10: PublicKey,
-    signer11: PublicKey,
+    m: number;
+    n: number;
+    initialized: boolean;
+    signer1: PublicKey;
+    signer2: PublicKey;
+    signer3: PublicKey;
+    signer4: PublicKey;
+    signer5: PublicKey;
+    signer6: PublicKey;
+    signer7: PublicKey;
+    signer8: PublicKey;
+    signer9: PublicKey;
+    signer10: PublicKey;
+    signer11: PublicKey;
   };
   export class Token {
     constructor(
@@ -72,11 +78,11 @@ declare module '@solana/spl-token' {
     static getAccount(connection: Connection): Promise<Account>;
     createAccount(owner: PublicKey): Promise<PublicKey>;
     static createWrappedNativeAccount(
-        connection: Connection,
-        programId: PublicKey,
-        owner: PublicKey,
-        payer: Account,
-        amount: number,
+      connection: Connection,
+      programId: PublicKey,
+      owner: PublicKey,
+      payer: Account,
+      amount: number,
     ): Promise<PublicKey>;
     createMultisig(m: number, signers: Array<PublicKey>): Promise<PublicKey>;
     getMintInfo(): Promise<MintInfo>;

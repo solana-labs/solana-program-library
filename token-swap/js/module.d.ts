@@ -1,7 +1,13 @@
 declare module '@solana/spl-token-swap' {
-  import { Buffer } from 'buffer';
-  import { Layout } from 'buffer-layout';
-  import { PublicKey, TransactionInstruction, TransactionSignature, Connection, Account } from "@solana/web3.js";
+  import {Buffer} from 'buffer';
+  import {Layout} from 'buffer-layout';
+  import {
+    PublicKey,
+    TransactionInstruction,
+    TransactionSignature,
+    Connection,
+    Account,
+  } from '@solana/web3.js';
   import BN from 'bn.js';
 
   // === client/token-swap.js ===
@@ -11,19 +17,24 @@ declare module '@solana/spl-token-swap' {
   }
 
   export type TokenSwapInfo = {
-    nonce: number,
-    tokenAccountA: PublicKey,
-    tokenAccountB: PublicKey,
-    tokenPool: PublicKey,
-    feesNumerator: Numberu64,
-    feesDenominator: Numberu64,
-    feeRatio: number,
+    nonce: number;
+    tokenAccountA: PublicKey;
+    tokenAccountB: PublicKey;
+    tokenPool: PublicKey;
+    feesNumerator: Numberu64;
+    feesDenominator: Numberu64;
+    feeRatio: number;
   };
 
   export const TokenSwapLayout: Layout;
 
   export class TokenSwap {
-    constructor(connection: Connection, tokenSwap: PublicKey, programId: PublicKey, payer: Account);
+    constructor(
+      connection: Connection,
+      tokenSwap: PublicKey,
+      programId: PublicKey,
+      payer: Account,
+    );
 
     static getMinBalanceRentForExemptTokenSwap(
       connection: Connection,
@@ -40,7 +51,7 @@ declare module '@solana/spl-token-swap' {
       tokenProgramId: PublicKey,
       swapProgramId: PublicKey,
       feeNumerator: number,
-      feeDenominator: number
+      feeDenominator: number,
     ): TransactionInstruction;
 
     static createTokenSwap(
@@ -57,9 +68,9 @@ declare module '@solana/spl-token-swap' {
       feeNumerator: number,
       feeDenominator: number,
       swapProgramId: PublicKey,
-    ): Promise<TokenSwap>
+    ): Promise<TokenSwap>;
 
-    getInfo(): Promise<TokenSwapInfo>
+    getInfo(): Promise<TokenSwapInfo>;
     swap(
       authority: PublicKey,
       source: PublicKey,
@@ -68,7 +79,7 @@ declare module '@solana/spl-token-swap' {
       destination: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): Promise<TransactionSignature>
+    ): Promise<TransactionSignature>;
 
     static swapInstruction(
       tokenSwap: PublicKey,
@@ -80,7 +91,7 @@ declare module '@solana/spl-token-swap' {
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): TransactionInstruction
+    ): TransactionInstruction;
 
     deposit(
       authority: PublicKey,
@@ -92,7 +103,7 @@ declare module '@solana/spl-token-swap' {
       poolAccount: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): Promise<TransactionSignature>
+    ): Promise<TransactionSignature>;
 
     static depositInstruction(
       tokenSwap: PublicKey,
@@ -106,7 +117,7 @@ declare module '@solana/spl-token-swap' {
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): TransactionInstruction
+    ): TransactionInstruction;
 
     withdraw(
       authority: PublicKey,
@@ -118,7 +129,7 @@ declare module '@solana/spl-token-swap' {
       userAccountB: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): Promise<TransactionSignature>
+    ): Promise<TransactionSignature>;
 
     static withdrawInstruction(
       tokenSwap: PublicKey,
@@ -132,6 +143,6 @@ declare module '@solana/spl-token-swap' {
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       amount: number | Numberu64,
-    ): TransactionInstruction
+    ): TransactionInstruction;
   }
 }
