@@ -65,10 +65,7 @@ mod tests {
             .collect();
 
         // Create shared references to each account's lamports/data/owner
-        let account_refs: HashMap<
-            Pubkey,
-            (Rc<RefCell<&mut u64>>, Rc<RefCell<&mut [u8]>>, &Pubkey),
-        > = accounts
+        let account_refs: HashMap<_, _> = accounts
             .iter_mut()
             .map(|(key, account)| {
                 (
