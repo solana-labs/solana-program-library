@@ -572,7 +572,7 @@ solana_sdk::program_stubs!();
 mod tests {
     use super::*;
     use crate::{
-        curve::{INITIAL_SWAP_POOL_AMOUNT, SwapResult},
+        curve::{SwapResult, INITIAL_SWAP_POOL_AMOUNT},
         instruction::{deposit, initialize, swap, withdraw},
     };
     use solana_sdk::{
