@@ -419,7 +419,7 @@ export class TokenSwap {
    * @param poolToken Pool token
    * @param poolAccount Pool account to deposit the generated tokens
    * @param tokenProgramId Token program id
-   * @param amount Amount of token A to transfer, token B amount is set by the exchange rate
+   * @param amount Amount of pool token to deposit, token A and B amount are set by the exchange rate relative to the total pool token supply
    */
   async deposit(
     authority: PublicKey,
@@ -510,7 +510,7 @@ export class TokenSwap {
    * @param userAccountA Token A user account
    * @param userAccountB token B user account
    * @param tokenProgramId Token program id
-   * @param amount Amount of token A to transfer, token B amount is set by the exchange rate
+   * @param amount Amount of pool token to withdraw, token A and B amount are set by the exchange rate relative to the total pool token supply
    */
   async withdraw(
     authority: PublicKey,

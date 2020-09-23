@@ -2,6 +2,7 @@
 
 //! An Uniswap-like program for the Solana blockchain.
 
+pub mod curve;
 pub mod entrypoint;
 pub mod error;
 pub mod instruction;

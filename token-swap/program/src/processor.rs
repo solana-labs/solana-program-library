@@ -3,9 +3,10 @@
 #![cfg(feature = "program")]
 
 use crate::{
+    curve::{ConstantProduct, PoolTokenConverter},
     error::SwapError,
     instruction::SwapInstruction,
-    state::{Invariant, SwapInfo},
+    state::SwapInfo,
 };
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
@@ -150,7 +151,7 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
-        let pool_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
@@ -165,7 +166,7 @@ impl Processor {
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
         let destination = Self::unpack_token_account(&destination_info.data.borrow())?;
-        let pool_mint = Self::unpack_mint(&pool_info.data.borrow())?;
+        let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
         if *authority_info.key != token_a.owner {
             return Err(SwapError::InvalidOwner.into());
         }
@@ -197,17 +198,17 @@ impl Processor {
             return Err(SwapError::InvalidSupply.into());
         }
 
-        // liquidity is measured in terms of token_a's value since both sides of
-        // the pool are equal
-        let amount = token_a.amount;
+        let converter = PoolTokenConverter::new_pool(token_a.amount, token_b.amount);
+        let initial_amount = converter.supply;
+
         Self::token_mint_to(
             swap_info.key,
             token_program_info.clone(),
-            pool_info.clone(),
+            pool_mint_info.clone(),
             destination_info.clone(),
             authority_info.clone(),
             nonce,
-            amount,
+            initial_amount,
         )?;
 
         let obj = SwapInfo {
@@ -215,7 +216,7 @@ impl Processor {
             nonce,
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
-            pool_mint: *pool_info.key,
+            pool_mint: *pool_mint_info.key,
             fee_numerator,
             fee_denominator,
         };
@@ -260,7 +261,7 @@ impl Processor {
         let dest_account = Self::unpack_token_account(&swap_destination_info.data.borrow())?;
 
         let output = if *swap_source_info.key == token_swap.token_a {
-            let mut invariant = Invariant {
+            let mut invariant = ConstantProduct {
                 token_a: source_account.amount,
                 token_b: dest_account.amount,
                 fee_numerator: token_swap.fee_numerator,
@@ -270,7 +271,7 @@ impl Processor {
                 .swap_a_to_b(amount)
                 .ok_or(SwapError::CalculationFailure)?
         } else {
-            let mut invariant = Invariant {
+            let mut invariant = ConstantProduct {
                 token_a: dest_account.amount,
                 token_b: source_account.amount,
                 fee_numerator: token_swap.fee_numerator,
@@ -304,7 +305,7 @@ impl Processor {
     /// Processes an [Deposit](enum.Instruction.html).
     pub fn process_deposit(
         program_id: &Pubkey,
-        a_amount: u64,
+        pool_amount: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -314,7 +315,7 @@ impl Processor {
         let source_b_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
-        let pool_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
         let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
@@ -328,26 +329,23 @@ impl Processor {
         if *token_b_info.key != token_swap.token_b {
             return Err(SwapError::IncorrectSwapAccount.into());
         }
-        if *pool_info.key != token_swap.pool_mint {
+        if *pool_mint_info.key != token_swap.pool_mint {
             return Err(SwapError::IncorrectPoolMint.into());
         }
 
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
+        let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
 
-        let invariant = Invariant {
-            token_a: token_a.amount,
-            token_b: token_b.amount,
-            fee_numerator: token_swap.fee_numerator,
-            fee_denominator: token_swap.fee_denominator,
-        };
-        let b_amount = invariant
-            .exchange_rate(a_amount)
+        let converter =
+            PoolTokenConverter::new_existing(pool_mint.supply, token_a.amount, token_b.amount);
+
+        let a_amount = converter
+            .token_a_rate(pool_amount)
             .ok_or(SwapError::CalculationFailure)?;
-
-        // liquidity is measured in terms of token_a's value
-        // since both sides of the pool are equal
-        let output = a_amount;
+        let b_amount = converter
+            .token_b_rate(pool_amount)
+            .ok_or(SwapError::CalculationFailure)?;
 
         Self::token_transfer(
             swap_info.key,
@@ -370,11 +368,11 @@ impl Processor {
         Self::token_mint_to(
             swap_info.key,
             token_program_info.clone(),
-            pool_info.clone(),
+            pool_mint_info.clone(),
             dest_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            output,
+            pool_amount,
         )?;
 
         Ok(())
@@ -383,7 +381,7 @@ impl Processor {
     /// Processes an [Withdraw](enum.Instruction.html).
     pub fn process_withdraw(
         program_id: &Pubkey,
-        amount: u64,
+        pool_amount: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -413,17 +411,16 @@ impl Processor {
 
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
+        let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
 
-        let invariant = Invariant {
-            token_a: token_a.amount,
-            token_b: token_b.amount,
-            fee_numerator: token_swap.fee_numerator,
-            fee_denominator: token_swap.fee_denominator,
-        };
+        let converter =
+            PoolTokenConverter::new_existing(pool_mint.supply, token_a.amount, token_b.amount);
 
-        let a_amount = amount;
-        let b_amount = invariant
-            .exchange_rate(a_amount)
+        let a_amount = converter
+            .token_a_rate(pool_amount)
+            .ok_or(SwapError::CalculationFailure)?;
+        let b_amount = converter
+            .token_b_rate(pool_amount)
             .ok_or(SwapError::CalculationFailure)?;
 
         Self::token_transfer(
@@ -451,7 +448,7 @@ impl Processor {
             pool_mint_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            amount,
+            pool_amount,
         )?;
         Ok(())
     }
@@ -575,8 +572,8 @@ solana_sdk::program_stubs!();
 mod tests {
     use super::*;
     use crate::{
+        curve::{SwapResult, INITIAL_SWAP_POOL_AMOUNT},
         instruction::{deposit, initialize, swap, withdraw},
-        state::SwapResult,
     };
     use solana_sdk::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
@@ -840,6 +837,7 @@ mod tests {
             mut depositor_token_b_account: &mut Account,
             depositor_pool_key: &Pubkey,
             mut depositor_pool_account: &mut Account,
+            pool_amount: u64,
             amount_a: u64,
             amount_b: u64,
         ) -> ProgramResult {
@@ -891,7 +889,7 @@ mod tests {
                     &self.token_b_key,
                     &self.pool_mint_key,
                     &depositor_pool_key,
-                    amount_a,
+                    pool_amount,
                 )
                 .unwrap(),
                 vec![
@@ -917,7 +915,7 @@ mod tests {
             mut token_a_account: &mut Account,
             token_b_key: &Pubkey,
             mut token_b_account: &mut Account,
-            amount: u64,
+            pool_amount: u64,
         ) -> ProgramResult {
             // approve swap program to take out pool tokens
             do_process_instruction(
@@ -927,7 +925,7 @@ mod tests {
                     &self.authority_key,
                     &user_key,
                     &[],
-                    amount,
+                    pool_amount,
                 )
                 .unwrap(),
                 vec![
@@ -951,7 +949,7 @@ mod tests {
                     &self.token_b_key,
                     &token_a_key,
                     &token_b_key,
-                    amount,
+                    pool_amount,
                 )
                 .unwrap(),
                 vec![
@@ -1494,7 +1492,7 @@ mod tests {
         let fee_numerator = 1;
         let fee_denominator = 2;
         let token_a_amount = 1000;
-        let token_b_amount = 8000;
+        let token_b_amount = 9000;
         let mut accounts = SwapAccountInfo::new(
             &user_key,
             fee_numerator,
@@ -1505,6 +1503,7 @@ mod tests {
 
         let deposit_a = token_a_amount / 10;
         let deposit_b = token_b_amount / 10;
+        let pool_amount = INITIAL_SWAP_POOL_AMOUNT / 10;
 
         // swap not initialized
         {
@@ -1526,6 +1525,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
+                    pool_amount,
                     deposit_a,
                     deposit_b,
                 )
@@ -1560,6 +1560,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
+                    pool_amount,
                     deposit_a,
                     deposit_b,
                 )
@@ -1593,6 +1594,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
+                    pool_amount,
                     deposit_a,
                     deposit_b,
                 )
@@ -1625,6 +1627,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
+                    pool_amount,
                     deposit_a,
                     deposit_b,
                 )
@@ -1651,6 +1654,7 @@ mod tests {
                     &mut token_a_account,
                     &pool_key,
                     &mut pool_account,
+                    pool_amount,
                     deposit_a,
                     deposit_b,
                 )
@@ -1685,6 +1689,7 @@ mod tests {
                     &mut token_b_account,
                     &wrong_token_key,
                     &mut wrong_token_account,
+                    pool_amount,
                     deposit_a,
                     deposit_b,
                 )
@@ -1715,7 +1720,7 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
-                        deposit_a,
+                        pool_amount,
                     )
                     .unwrap(),
                     vec![
@@ -1758,7 +1763,7 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
-                        deposit_a,
+                        pool_amount,
                     )
                     .unwrap(),
                     vec![
@@ -1804,6 +1809,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
+                    pool_amount,
                     deposit_a,
                     deposit_b,
                 )
@@ -1829,6 +1835,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
+                    pool_amount,
                     deposit_a,
                     deposit_b,
                 )
@@ -1865,6 +1872,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
+                    pool_amount,
                     deposit_a,
                     deposit_b,
                 )
@@ -1893,6 +1901,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
+                    pool_amount,
                     deposit_a,
                     deposit_b,
                 )
@@ -1934,10 +1943,11 @@ mod tests {
             token_b_amount,
         );
         let withdrawer_key = pubkey_rand();
+        let pool_converter = PoolTokenConverter::new_pool(token_a_amount, token_b_amount);
         let initial_a = token_a_amount / 10;
         let initial_b = token_b_amount / 10;
-        let initial_pool = token_a_amount;
-        let withdraw_amount = token_a_amount / 4;
+        let initial_pool = pool_converter.supply / 10;
+        let withdraw_amount = initial_pool / 4;
 
         // swap not initialized
         {
@@ -2335,14 +2345,23 @@ mod tests {
 
             let swap_token_a =
                 Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
-            assert_eq!(swap_token_a.amount, token_a_amount - withdraw_amount);
             let swap_token_b =
                 Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
-            assert_eq!(swap_token_b.amount, token_b_amount - (withdraw_amount * 2));
+            let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
+            let pool_converter = PoolTokenConverter::new_existing(
+                pool_mint.supply,
+                swap_token_a.amount,
+                swap_token_b.amount,
+            );
+
+            let withdrawn_a = pool_converter.token_a_rate(withdraw_amount).unwrap();
+            assert_eq!(swap_token_a.amount, token_a_amount - withdrawn_a);
+            let withdrawn_b = pool_converter.token_b_rate(withdraw_amount).unwrap();
+            assert_eq!(swap_token_b.amount, token_b_amount - withdrawn_b);
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
-            assert_eq!(token_a.amount, initial_a + withdraw_amount);
+            assert_eq!(token_a.amount, initial_a + withdrawn_a);
             let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
-            assert_eq!(token_b.amount, initial_b + (withdraw_amount * 2));
+            assert_eq!(token_b.amount, initial_b + withdrawn_b);
             let pool_account = Processor::unpack_token_account(&pool_account.data).unwrap();
             assert_eq!(pool_account.amount, initial_pool - withdraw_amount);
         }
@@ -2655,14 +2674,14 @@ mod tests {
             let swap_token_a =
                 Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
             let token_a_amount = swap_token_a.amount;
-            assert_eq!(token_a_amount, results.new_source);
+            assert_eq!(token_a_amount, results.new_source_amount);
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
             assert_eq!(token_a.amount, initial_a - a_to_b_amount);
 
             let swap_token_b =
                 Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
             let token_b_amount = swap_token_b.amount;
-            assert_eq!(token_b_amount, results.new_destination);
+            assert_eq!(token_b_amount, results.new_destination_amount);
             let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
             assert_eq!(token_b.amount, initial_b + results.amount_swapped);
 
@@ -2694,7 +2713,7 @@ mod tests {
 
             let swap_token_a =
                 Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
-            assert_eq!(swap_token_a.amount, results.new_destination);
+            assert_eq!(swap_token_a.amount, results.new_destination_amount);
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
             assert_eq!(
                 token_a.amount,
@@ -2703,7 +2722,7 @@ mod tests {
 
             let swap_token_b =
                 Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
-            assert_eq!(swap_token_b.amount, results.new_source);
+            assert_eq!(swap_token_b.amount, results.new_source_amount);
             let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
             assert_eq!(
                 token_b.amount,
