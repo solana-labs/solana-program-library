@@ -3,7 +3,9 @@
 /// Approximate the nth root of a number using Newton's method
 /// https://en.wikipedia.org/wiki/Newton%27s_method
 pub fn nth_root_approximation(num: u64, root: u32, mut guess: u64, iterations: u32) -> Option<u64> {
-    assert_ne!(root, 0);
+    if root == 0 {
+        return None;
+    }
     let wide_root = root as u64;
     let root_minus_1 = wide_root.checked_sub(1)?;
     for _ in 0..iterations {

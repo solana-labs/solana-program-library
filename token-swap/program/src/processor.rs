@@ -198,8 +198,7 @@ impl Processor {
             return Err(SwapError::InvalidSupply.into());
         }
 
-        let converter = PoolTokenConverter::new_pool(token_a.amount, token_b.amount)
-            .ok_or(SwapError::CalculationFailure)?;
+        let converter = PoolTokenConverter::new_pool(token_a.amount, token_b.amount);
         let initial_amount = converter.supply;
 
         Self::token_mint_to(
@@ -573,7 +572,7 @@ solana_sdk::program_stubs!();
 mod tests {
     use super::*;
     use crate::{
-        curve::SwapResult,
+        curve::{INITIAL_SWAP_POOL_AMOUNT, SwapResult},
         instruction::{deposit, initialize, swap, withdraw},
     };
     use solana_sdk::{
@@ -1504,7 +1503,7 @@ mod tests {
 
         let deposit_a = token_a_amount / 10;
         let deposit_b = token_b_amount / 10;
-        let pool_amount = (deposit_a as f64 * deposit_b as f64).sqrt() as u64;
+        let pool_amount = INITIAL_SWAP_POOL_AMOUNT / 10;
 
         // swap not initialized
         {
@@ -1944,7 +1943,7 @@ mod tests {
             token_b_amount,
         );
         let withdrawer_key = pubkey_rand();
-        let pool_converter = PoolTokenConverter::new_pool(token_a_amount, token_b_amount).unwrap();
+        let pool_converter = PoolTokenConverter::new_pool(token_a_amount, token_b_amount);
         let initial_a = token_a_amount / 10;
         let initial_b = token_b_amount / 10;
         let initial_pool = pool_converter.supply / 10;

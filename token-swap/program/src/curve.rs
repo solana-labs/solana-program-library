@@ -1,6 +1,10 @@
 //! Swap calculations and curve implementations
 
-use crate::math;
+/// Initial amount of pool tokens for swap contract, hard-coded to something
+/// "sensible" given a maximum of u64.
+/// Note that on Ethereum, Uniswap uses the geometric mean of all provided
+/// input amounts, and Balancer uses 100 * 10 ^ 18.
+pub const INITIAL_SWAP_POOL_AMOUNT: u64 = 1_000_000_000;
 
 /// Encodes all results of swapping from a source token to a destination token
 pub struct SwapResult {
@@ -105,13 +109,13 @@ impl PoolTokenConverter {
     /// Create a converter for a new pool token, no supply present yet.
     /// According to Uniswap, the geometric mean protects the pool creator
     /// in case the initial ratio is off the market.
-    pub fn new_pool(token_a: u64, token_b: u64) -> Option<Self> {
-        let supply = math::geometric_mean(&[token_a, token_b])?;
-        Some(Self {
+    pub fn new_pool(token_a: u64, token_b: u64) -> Self {
+        let supply = INITIAL_SWAP_POOL_AMOUNT;
+        Self {
             supply,
             token_a,
             token_b,
-        })
+        }
     }
 
     /// A tokens for pool tokens
@@ -132,20 +136,11 @@ impl PoolTokenConverter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn check_initial_pool_amount(token_a: u64, token_b: u64, expected: Option<u64>) {
-        match PoolTokenConverter::new_pool(token_a, token_b) {
-            None => assert_eq!(expected, None),
-            Some(converter) => assert_eq!(converter.supply, expected.unwrap()),
-        };
-    }
 
     #[test]
     fn initial_pool_amount() {
-        check_initial_pool_amount(1, 4, Some(2));
-        check_initial_pool_amount(1, 5, Some(2));
-        check_initial_pool_amount(100, 1000, Some(316));
-        check_initial_pool_amount(u64::MAX, u64::MAX, None);
-        check_initial_pool_amount(u64::MIN, u64::MAX, Some(0));
+        let token_converter = PoolTokenConverter::new_pool(1, 5);
+        assert_eq!(token_converter.supply, INITIAL_SWAP_POOL_AMOUNT);
     }
 
     fn check_pool_token_a_rate(
