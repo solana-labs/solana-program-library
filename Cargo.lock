@@ -2207,9 +2207,9 @@ dependencies = [
 
 [[package]]
 name = "solana-banks-client"
-version = "1.3.11"
+version = "1.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "daf93bc36ff92d6fe8da9774e520dfcc369dfeb22cb9e9f8c8f61380af88b8d8"
+checksum = "3adbe6be32d80a10a296ad2448ddf472c1cb711614ca47b2b775fac388730cc2"
 dependencies = [
  "async-trait",
  "bincode",
@@ -2223,9 +2223,9 @@ dependencies = [
 
 [[package]]
 name = "solana-banks-interface"
-version = "1.3.11"
+version = "1.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00811bed6ddc013f8969320c494d3d5e6d7b4909e7281fe2f08a1e818ec1866e"
+checksum = "4d23d626c10dccb39ad0993d163f12f293de7341807e2e5f3c5c116272bc1cbb"
 dependencies = [
  "serde",
  "solana-sdk",
@@ -2234,9 +2234,9 @@ dependencies = [
 
 [[package]]
 name = "solana-banks-server"
-version = "1.3.11"
+version = "1.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5cb37d0a095132c1027f7c5d601554e87d32ca2ef5695cca16f799d83566112"
+checksum = "14fc9a2f7f14fb4f7b640cdbb23a07f2d424f21643edb47e3578045f8dfee21d"
 dependencies = [
  "bincode",
  "futures 0.3.5",
@@ -2360,9 +2360,9 @@ dependencies = [
 
 [[package]]
 name = "solana-measure"
-version = "1.3.11"
+version = "1.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72e19c7896b73e9fbf6bb2443efee42f7ff02f2db3428fc8729e978bcf7f2227"
+checksum = "603e2072559207b71e5c9d6abbbfbbe08785be1328bd1cf4b12d3fd5a563cc57"
 dependencies = [
  "jemalloc-ctl",
  "jemallocator",
@@ -2410,9 +2410,9 @@ dependencies = [
 
 [[package]]
 name = "solana-rayon-threadlimit"
-version = "1.3.11"
+version = "1.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b439562dbd378945c491122d79f156946c6ba9ad1f7ca7ac33a76a69497eb91d"
+checksum = "74dd54ee484b9536f486f2c692872c27bc55e19d48014199d8311aade27a0efd"
 dependencies = [
  "lazy_static",
  "num_cpus",
@@ -2440,9 +2440,9 @@ dependencies = [
 
 [[package]]
 name = "solana-runtime"
-version = "1.3.11"
+version = "1.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53860f38267978ba11aa9c026ceddac1daa8e39a7e4fdeffa322b856937cdf90"
+checksum = "5b8e6dcb65e3b899bf9f307d28d3303e683193dcedbbadf2199069a3b131a193"
 dependencies = [
  "bincode",
  "blake3",
