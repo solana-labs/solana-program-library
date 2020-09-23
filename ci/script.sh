@@ -62,7 +62,7 @@ cargo test --manifest-path=token/perf-monitor/Cargo.toml -- --nocapture
 js_token() {
   cd token/js
   time npm install || exit $?
-  time npm run lint || exit $?
+  time npm run lint:check || exit $?
   time npm run flow || exit $?
   tsc module.d.ts || exit $?
 
@@ -80,7 +80,7 @@ _ js_token
 js_token_swap() {
   cd token-swap/js
   time npm install || exit $?
-  time npm run lint || exit $?
+  time npm run lint:check || exit $?
   time npm run flow || exit $?
   tsc module.d.ts || exit $?
 

@@ -13,7 +13,11 @@ import {
   TransactionInstruction,
   SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
-import type {Connection, Commitment, TransactionSignature} from '@solana/web3.js';
+import type {
+  Connection,
+  Commitment,
+  TransactionSignature,
+} from '@solana/web3.js';
 
 import * as Layout from './layout';
 import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
@@ -25,7 +29,7 @@ export class u64 extends BN {
   /**
    * Convert to Buffer representation
    */
-  toBuffer(): Buffer {
+  toBuffer(): typeof Buffer {
     const a = super.toArray().reverse();
     const b = Buffer.from(a);
     if (b.length === 8) {
@@ -41,7 +45,7 @@ export class u64 extends BN {
   /**
    * Construct a u64 from Buffer representation
    */
-  static fromBuffer(buffer: Buffer): u64 {
+  static fromBuffer(buffer: typeof Buffer): u64 {
     assert(buffer.length === 8, `Invalid buffer length: ${buffer.length}`);
     return new BN(
       [...buffer]
@@ -71,7 +75,7 @@ const AuthorityTypeCodes = {
 };
 
 // The address of the special mint for wrapped native token.
-export const NATIVE_MINT = new PublicKey(
+export const NATIVE_MINT: PublicKey = new PublicKey(
   'So11111111111111111111111111111111111111112',
 );
 
@@ -107,7 +111,7 @@ type MintInfo = {|
   freezeAuthority: null | PublicKey,
 |};
 
-export const MintLayout = BufferLayout.struct([
+export const MintLayout: typeof BufferLayout.Structure = BufferLayout.struct([
   BufferLayout.u32('mintAuthorityOption'),
   Layout.publicKey('mintAuthority'),
   Layout.uint64('supply'),
@@ -177,19 +181,21 @@ type AccountInfo = {|
 /**
  * @private
  */
-export const AccountLayout = BufferLayout.struct([
-  Layout.publicKey('mint'),
-  Layout.publicKey('owner'),
-  Layout.uint64('amount'),
-  BufferLayout.u32('delegateOption'),
-  Layout.publicKey('delegate'),
-  BufferLayout.u8('state'),
-  BufferLayout.u32('isNativeOption'),
-  Layout.uint64('isNative'),
-  Layout.uint64('delegatedAmount'),
-  BufferLayout.u32('closeAuthorityOption'),
-  Layout.publicKey('closeAuthority'),
-]);
+export const AccountLayout: typeof BufferLayout.Structure = BufferLayout.struct(
+  [
+    Layout.publicKey('mint'),
+    Layout.publicKey('owner'),
+    Layout.uint64('amount'),
+    BufferLayout.u32('delegateOption'),
+    Layout.publicKey('delegate'),
+    BufferLayout.u8('state'),
+    BufferLayout.u32('isNativeOption'),
+    Layout.uint64('isNative'),
+    Layout.uint64('delegatedAmount'),
+    BufferLayout.u32('closeAuthorityOption'),
+    Layout.publicKey('closeAuthority'),
+  ],
+);
 
 /**
  * Information about an multisig
@@ -619,7 +625,10 @@ export class Token {
    *
    * @param account Public key of the account
    */
-  async getAccountInfo(account: PublicKey, commitment?: Commitment): Promise<AccountInfo> {
+  async getAccountInfo(
+    account: PublicKey,
+    commitment?: Commitment,
+  ): Promise<AccountInfo> {
     const info = await this.connection.getAccountInfo(account, commitment);
     if (info === null) {
       throw new Error('Failed to find account');

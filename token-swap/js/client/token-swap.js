@@ -5,11 +5,17 @@
 import assert from 'assert';
 import BN from 'bn.js';
 import * as BufferLayout from 'buffer-layout';
-import type { Connection, TransactionSignature } from '@solana/web3.js';
-import { Account, PublicKey, SystemProgram, Transaction, TransactionInstruction, } from '@solana/web3.js';
+import type {Connection, TransactionSignature} from '@solana/web3.js';
+import {
+  Account,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  TransactionInstruction,
+} from '@solana/web3.js';
 
 import * as Layout from './layout';
-import { sendAndConfirmTransaction } from './util/send-and-confirm-transaction';
+import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 
 /**
  * Some amount of tokens
@@ -18,7 +24,7 @@ export class Numberu64 extends BN {
   /**
    * Convert to Buffer representation
    */
-  toBuffer(): Buffer {
+  toBuffer(): typeof Buffer {
     const a = super.toArray().reverse();
     const b = Buffer.from(a);
     if (b.length === 8) {
@@ -34,7 +40,7 @@ export class Numberu64 extends BN {
   /**
    * Construct a Numberu64 from Buffer representation
    */
-  static fromBuffer(buffer: Buffer): Numberu64 {
+  static fromBuffer(buffer: typeof Buffer): Numberu64 {
     assert(buffer.length === 8, `Invalid buffer length: ${buffer.length}`);
     return new BN(
       [...buffer]
@@ -89,15 +95,17 @@ type TokenSwapInfo = {|
 /**
  * @private
  */
-export const TokenSwapLayout = BufferLayout.struct([
-  BufferLayout.u8('isInitialized'),
-  BufferLayout.u8('nonce'),
-  Layout.publicKey('tokenAccountA'),
-  Layout.publicKey('tokenAccountB'),
-  Layout.publicKey('tokenPool'),
-  Layout.uint64('feesNumerator'),
-  Layout.uint64('feesDenominator'),
-]);
+export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struct(
+  [
+    BufferLayout.u8('isInitialized'),
+    BufferLayout.u8('nonce'),
+    Layout.publicKey('tokenAccountA'),
+    Layout.publicKey('tokenAccountB'),
+    Layout.publicKey('tokenPool'),
+    Layout.uint64('feesNumerator'),
+    Layout.uint64('feesDenominator'),
+  ],
+);
 
 /**
  * An ERC20-like Token
@@ -153,7 +161,6 @@ export class TokenSwap {
     );
   }
 
-
   static createInitSwapInstruction(
     tokenSwapAccount: Account,
     authority: PublicKey,
@@ -165,16 +172,16 @@ export class TokenSwap {
     tokenProgramId: PublicKey,
     swapProgramId: PublicKey,
     feeNumerator: number,
-    feeDenominator: number
-  ):TransactionInstruction {
+    feeDenominator: number,
+  ): TransactionInstruction {
     const keys = [
-      { pubkey: tokenSwapAccount.publicKey, isSigner: false, isWritable: true },
-      { pubkey: authority, isSigner: false, isWritable: false },
-      { pubkey: tokenAccountA, isSigner: false, isWritable: false },
-      { pubkey: tokenAccountB, isSigner: false, isWritable: false },
-      { pubkey: tokenPool, isSigner: false, isWritable: true },
-      { pubkey: tokenAccountPool, isSigner: false, isWritable: true },
-      { pubkey: tokenProgramId, isSigner: false, isWritable: false },
+      {pubkey: tokenSwapAccount.publicKey, isSigner: false, isWritable: true},
+      {pubkey: authority, isSigner: false, isWritable: false},
+      {pubkey: tokenAccountA, isSigner: false, isWritable: false},
+      {pubkey: tokenAccountB, isSigner: false, isWritable: false},
+      {pubkey: tokenPool, isSigner: false, isWritable: true},
+      {pubkey: tokenAccountPool, isSigner: false, isWritable: true},
+      {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
@@ -257,7 +264,19 @@ export class TokenSwap {
       }),
     );
 
-    const instruction = TokenSwap.createInitSwapInstruction(tokenSwapAccount, authority, nonce, tokenAccountA, tokenAccountB, tokenPool, tokenAccountPool, tokenProgramId, swapProgramId, feeNumerator, feeDenominator);
+    const instruction = TokenSwap.createInitSwapInstruction(
+      tokenSwapAccount,
+      authority,
+      nonce,
+      tokenAccountA,
+      tokenAccountB,
+      tokenPool,
+      tokenAccountPool,
+      tokenProgramId,
+      swapProgramId,
+      feeNumerator,
+      feeDenominator,
+    );
 
     transaction.add(instruction);
     await sendAndConfirmTransaction(
@@ -270,7 +289,6 @@ export class TokenSwap {
 
     return tokenSwap;
   }
-
 
   /**
    * Retrieve tokenSwap information
