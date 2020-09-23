@@ -224,10 +224,11 @@ export async function createTokenSwap(): Promise<void> {
 
 export async function deposit(): Promise<void> {
   const poolMintInfo = await tokenPool.getMintInfo();
+  const supply = poolMintInfo.supply.toNumber();
   const swapTokenA = await mintA.getAccountInfo(tokenAccountA);
-  const tokenA = (swapTokenA.amount * POOL_TOKEN_AMOUNT) / poolMintInfo.supply;
+  const tokenA = (swapTokenA.amount.toNumber() * POOL_TOKEN_AMOUNT) / supply;
   const swapTokenB = await mintB.getAccountInfo(tokenAccountB);
-  const tokenB = (swapTokenB.amount * POOL_TOKEN_AMOUNT) / poolMintInfo.supply;
+  const tokenB = (swapTokenB.amount.toNumber() * POOL_TOKEN_AMOUNT) / supply;
 
   console.log('Creating depositor token a account');
   const userAccountA = await mintA.createAccount(owner.publicKey);
@@ -269,10 +270,11 @@ export async function deposit(): Promise<void> {
 
 export async function withdraw(): Promise<void> {
   const poolMintInfo = await tokenPool.getMintInfo();
+  const supply = poolMintInfo.supply.toNumber();
   let swapTokenA = await mintA.getAccountInfo(tokenAccountA);
   let swapTokenB = await mintB.getAccountInfo(tokenAccountB);
-  const tokenA = (swapTokenA.amount * POOL_TOKEN_AMOUNT) / poolMintInfo.supply;
-  const tokenB = (swapTokenB.amount * POOL_TOKEN_AMOUNT) / poolMintInfo.supply;
+  const tokenA = (swapTokenA.amount.toNumber() * POOL_TOKEN_AMOUNT) / supply;
+  const tokenB = (swapTokenB.amount.toNumber() * POOL_TOKEN_AMOUNT) / supply;
 
   console.log('Creating withdraw token A account');
   let userAccountA = await mintA.createAccount(owner.publicKey);
