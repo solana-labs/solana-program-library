@@ -123,11 +123,7 @@ fn command_create_token(
         minimum_balance_for_rent_exemption
             + fee_calculator.calculate_fee(&transaction.message(), None),
     )?;
-    let mut signers = vec![
-        config.fee_payer.as_ref(),
-        config.owner.as_ref(),
-        token.as_ref(),
-    ];
+    let mut signers = vec![config.fee_payer.as_ref(), token.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
@@ -169,11 +165,7 @@ fn command_create_account(
         minimum_balance_for_rent_exemption
             + fee_calculator.calculate_fee(&transaction.message(), None),
     )?;
-    let mut signers = vec![
-        config.fee_payer.as_ref(),
-        account.as_ref(),
-        config.owner.as_ref(),
-    ];
+    let mut signers = vec![config.fee_payer.as_ref(), account.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
     Ok(Some(transaction))
