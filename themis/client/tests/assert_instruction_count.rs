@@ -180,7 +180,7 @@ fn assert_instruction_count() {
     //        0u8.into(),
     //        0u8.into(),
     //];
-    dbg!(scalars.len());
+    let num_scalars = scalars.len();
 
     let (_sk, pk) = generate_keys();
     let encrypted_interactions: Vec<_> = scalars
@@ -232,20 +232,20 @@ fn assert_instruction_count() {
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
 
     const BASELINE_NEW_POLICIES_COUNT: u64 = 80_000; // last known 75796
-    const BASELINE_INITIALIZE_USER_COUNT: u64 = 20_000; // last known 17090
+    const BASELINE_INITIALIZE_USER_COUNT: u64 = 22_000; // last known 17090
     const BASELINE_CALCULATE_AGGREGATE_COUNT: u64 = 15_000_000; // last known 13,051,825
 
     println!("BPF instructions executed");
     println!(
-        "  InitializePolicies   : {:?} ({:?})",
-        initialize_policies_count, BASELINE_NEW_POLICIES_COUNT
+        "  InitializePolicies({}): {:?} ({:?})",
+        num_scalars, initialize_policies_count, BASELINE_NEW_POLICIES_COUNT
     );
     println!(
         "  InitializeUserAccount: {:?} ({:?})",
         initialize_user_count, BASELINE_INITIALIZE_USER_COUNT
     );
     println!(
-        "  CalculateAggregate: {:?} ({:?})",
+        "  CalculateAggregate:    {:?} ({:?})",
         calculate_aggregate_count, BASELINE_CALCULATE_AGGREGATE_COUNT
     );
 
