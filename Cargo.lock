@@ -1369,16 +1369,10 @@ dependencies = [
 name = "libsecp256k1"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fc1e2c808481a63dc6da2074752fdd4336a3c8fcc68b83db6f1fd5224ae7962"
+checksum = "2443d8f0478b16759158b2f66d525991a05491138bc05814ef52a250148ef4f9"
 dependencies = [
- "arrayref",
- "crunchy",
- "digest 0.8.1",
- "hmac-drbg",
- "rand 0.7.3",
- "sha2",
- "subtle 2.2.3",
- "typenum",
+ "cfg-if",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -2727,7 +2721,7 @@ dependencies = [
  "bv",
  "byteorder",
  "chrono",
- "curve25519-dalek",
+ "curve25519-dalek 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.9.0",
  "ed25519-dalek",
  "generic-array 0.14.3",
@@ -2749,7 +2743,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha2",
- "sha3 0.9.1",
+ "sha3",
  "solana-crate-features",
  "solana-logger",
  "solana-sdk-macro",
