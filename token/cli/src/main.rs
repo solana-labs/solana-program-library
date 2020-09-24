@@ -28,7 +28,7 @@ use spl_token::{
     native_mint,
     state::{Account, Mint},
 };
-use std::process::exit;
+use std::{process::exit, str::FromStr};
 
 static WARNING: Emoji = Emoji("⚠️", "!");
 
@@ -339,7 +339,14 @@ fn command_mint(
     Ok(Some(transaction))
 }
 
-fn command_freeze(config: &Config, token: Pubkey, account: Pubkey) -> CommandResult {
+fn command_freeze(config: &Config, account: Pubkey) -> CommandResult {
+    let token_account = config
+        .rpc_client
+        .get_token_account_with_commitment(&account, config.commitment_config)?
+        .value
+        .ok_or_else(|| format!("Could not find token account {}", account))?;
+    let token = Pubkey::from_str(&token_account.mint)?;
+
     println!("Freezing account: {}\n  Token: {}", account, token);
 
     let mut transaction = Transaction::new_with_payer(
@@ -364,7 +371,14 @@ fn command_freeze(config: &Config, token: Pubkey, account: Pubkey) -> CommandRes
     Ok(Some(transaction))
 }
 
-fn command_thaw(config: &Config, token: Pubkey, account: Pubkey) -> CommandResult {
+fn command_thaw(config: &Config, account: Pubkey) -> CommandResult {
+    let token_account = config
+        .rpc_client
+        .get_token_account_with_commitment(&account, config.commitment_config)?
+        .value
+        .ok_or_else(|| format!("Could not find token account {}", account))?;
+    let token = Pubkey::from_str(&token_account.mint)?;
+
     println!("Freezing account: {}\n  Token: {}", account, token);
 
     let mut transaction = Transaction::new_with_payer(
@@ -772,20 +786,11 @@ fn main() {
             SubCommand::with_name("freeze")
                 .about("Freeze a token account")
                 .arg(
-                    Arg::with_name("token") // TODO: remove this arg when solana-client v1.3.12+ is published; grab mint from token account state
-                        .validator(is_pubkey_or_keypair)
-                        .value_name("TOKEN_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .required(true)
-                        .help("The token mint"),
-                )
-                .arg(
                     Arg::with_name("account")
                         .validator(is_pubkey_or_keypair)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
-                        .index(2)
+                        .index(1)
                         .required(true)
                         .help("The address of the token account to freeze"),
                 ),
@@ -794,20 +799,11 @@ fn main() {
             SubCommand::with_name("thaw")
                 .about("Thaw a token account")
                 .arg(
-                    Arg::with_name("token") // TODO: remove this arg when solana-client v1.3.12+ is published; grab mint from token account state
-                        .validator(is_pubkey_or_keypair)
-                        .value_name("TOKEN_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .required(true)
-                        .help("The token mint"),
-                )
-                .arg(
                     Arg::with_name("account")
                         .validator(is_pubkey_or_keypair)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
-                        .index(2)
+                        .index(1)
                         .required(true)
                         .help("The address of the token account to thaw"),
                 ),
@@ -995,14 +991,12 @@ fn main() {
             command_mint(&config, token, amount, recipient)
         }
         ("freeze", Some(arg_matches)) => {
-            let token = pubkey_of(arg_matches, "token").unwrap();
             let account = pubkey_of(arg_matches, "account").unwrap();
-            command_freeze(&config, token, account)
+            command_freeze(&config, account)
         }
         ("thaw", Some(arg_matches)) => {
-            let token = pubkey_of(arg_matches, "token").unwrap();
             let account = pubkey_of(arg_matches, "account").unwrap();
-            command_thaw(&config, token, account)
+            command_thaw(&config, account)
         }
         ("wrap", Some(arg_matches)) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
