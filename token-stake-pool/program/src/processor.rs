@@ -214,29 +214,27 @@ impl State {
         obj.serialize(&mut swap_info.data.borrow_mut())
     }
 
-    /// Processes an [StakePool](enum.Instruction.html).
-    pub fn process_swap(
+    /// Processes an [Withdraw](enum.Instruction.html).
+    pub fn process_withdraw(
         program_id: &Pubkey,
         amount: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let swap_info = next_account_info(account_info_iter)?;
-        let authority_info = next_account_info(account_info_iter)?;
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let withdraw_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
-        let into_info = next_account_info(account_info_iter)?;
-        let from_info = next_account_info(account_info_iter)?;
-        let dest_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let stake_info = next_account_info(account_info_iter)?;
+        let stake_dest_owner_info = next_account_info(account_info_iter)?;
+        let stake_dest_user_info = next_account_info(account_info_iter)?;
 
-        let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
+        let stake_pool = Self::deserialize(&stake_info_info.data.borrow())?.stake_pool()?;
 
-        if *authority_info.key != Self::authority_id(program_id, swap_info.key)? {
+        if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
             return Err(Error::InvalidProgramAddress.into());
         }
-        if !(*into_info.key == token_swap.token_a || *into_info.key == token_swap.token_b) {
-            return Err(Error::InvalidInput.into());
-        }
+
         if !(*from_info.key == token_swap.token_a || *from_info.key == token_swap.token_b) {
             return Err(Error::InvalidOutput.into());
         }
@@ -273,7 +271,7 @@ impl State {
         )?;
         Ok(())
     }
-    /// Processes an [Deposit](enum.Instruction.html).
+    /// Processes an [UpdateStakeAuthority](enum.Instruction.html).
     pub fn process_update_stake_auth(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -287,66 +285,26 @@ impl State {
 
         let stake_pool = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
 
+        if *owner_info.key != stake_pool.owner {
+            return Err(Error::InvalidInput.into());
+        }
+        if !*owner_info.is_signer {
+            return Err(Error::InvalidInput.into());
+        }
+
         if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
             return Err(Error::InvalidProgramAddress.into());
         }
-        if *token_a_info.key != token_swap.token_a {
-            return Err(Error::InvalidInput.into());
-        }
-        if *token_b_info.key != token_swap.token_b {
-            return Err(Error::InvalidInput.into());
-        }
-        if *pool_info.key != token_swap.pool_mint {
-            return Err(Error::InvalidInput.into());
-        }
-        let token_a = Self::token_account_deserialize(token_a_info)?;
-        let token_b = Self::token_account_deserialize(token_b_info)?;
-
-        let invariant = Invariant {
-            token_a: token_a.amount,
-            token_b: token_b.amount,
-            fee: token_swap.fee,
-        };
-        let b_amount = invariant
-            .exchange_rate(a_amount)
-            .ok_or_else(|| Error::CalculationFailure)?;
-
-        // liquidity is measured in terms of token_a's value
-        // since both sides of the pool are equal
-        let output = a_amount;
-
-        Self::token_transfer(
+        Self::update_stake_auth(
             accounts,
-            token_program_info.key,
-            swap_info.key,
-            source_a_info.key,
-            token_a_info.key,
-            authority_info.key,
-            a_amount,
+            stake_info.key,
+            withdraw_info.key,
+            staking_info.key,
         )?;
-        Self::token_transfer(
-            accounts,
-            token_program_info.key,
-            swap_info.key,
-            source_b_info.key,
-            token_b_info.key,
-            authority_info.key,
-            b_amount,
-        )?;
-        Self::token_mint_to(
-            accounts,
-            token_program_info.key,
-            swap_info.key,
-            pool_info.key,
-            dest_info.key,
-            authority_info.key,
-            output,
-        )?;
-
         Ok(())
     }
 
-    /// Processes an [UpdateStakingAuthority](enum.Instruction.html).
+    /// Processes an [UpdateOwner](enum.Instruction.html).
     pub fn process_update_owner(
         program_id: &Pubkey,
         accounts: &[AccountInfo],

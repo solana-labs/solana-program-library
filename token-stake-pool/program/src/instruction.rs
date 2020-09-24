@@ -9,7 +9,8 @@ use solana_sdk::{
 };
 use std::mem::size_of;
 
-/// fee rate as a ratio
+/// Fee rate as a ratio
+/// Fee is paid on deposit and withdraw
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub Fee {
@@ -45,6 +46,7 @@ pub enum StakePoolInstruction {
     ///   3. `[w]` Stake, receive $authority is set as the withdrawal key
     ///   4. `[w]` Pool MINT account, $authority is the owner.
     ///   5. `[w]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   6. `[w]` Stake destination, uninitialized, for owner fees
     Deposit,
 
     ///   Withdraw the token from the pool at the current ratio.
