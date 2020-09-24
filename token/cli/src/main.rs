@@ -120,7 +120,8 @@ fn command_create_token(
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(
         config,
-        minimum_balance_for_rent_exemption + fee_calculator.calculate_fee(&transaction.message()),
+        minimum_balance_for_rent_exemption
+            + fee_calculator.calculate_fee(&transaction.message(), None),
     )?;
     let mut signers = vec![
         config.fee_payer.as_ref(),
@@ -165,7 +166,8 @@ fn command_create_account(
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(
         config,
-        minimum_balance_for_rent_exemption + fee_calculator.calculate_fee(&transaction.message()),
+        minimum_balance_for_rent_exemption
+            + fee_calculator.calculate_fee(&transaction.message(), None),
     )?;
     let mut signers = vec![
         config.fee_payer.as_ref(),
@@ -198,7 +200,10 @@ fn command_assign(config: &Config, account: Pubkey, new_owner: Pubkey) -> Comman
     );
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
@@ -244,7 +249,10 @@ fn command_transfer(
     );
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
@@ -280,7 +288,10 @@ fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommandResul
     );
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
@@ -318,7 +329,10 @@ fn command_mint(
     );
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
@@ -340,7 +354,10 @@ fn command_freeze(config: &Config, token: Pubkey, account: Pubkey) -> CommandRes
     );
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
@@ -362,7 +379,10 @@ fn command_thaw(config: &Config, token: Pubkey, account: Pubkey) -> CommandResul
     );
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
@@ -395,7 +415,10 @@ fn command_wrap(config: &Config, sol: f64) -> CommandResult {
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_owner_balance(config, lamports)?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref(), &account];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
@@ -427,7 +450,10 @@ fn command_unwrap(config: &Config, address: Pubkey) -> CommandResult {
     );
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
