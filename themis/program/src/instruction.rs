@@ -1,7 +1,7 @@
 //! Instruction types
 
 use crate::state::{Policies, User};
-use borsh::{BorshSerialize, BorshDeserialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
@@ -95,7 +95,8 @@ pub enum ThemisInstruction {
 
 impl ThemisInstruction {
     pub fn serialize(&self) -> Result<Vec<u8>, ProgramError> {
-        self.try_to_vec().map_err(|_| ProgramError::AccountDataTooSmall)
+        self.try_to_vec()
+            .map_err(|_| ProgramError::AccountDataTooSmall)
     }
 
     pub(crate) fn deserialize(data: &[u8]) -> Result<Self, ProgramError> {
@@ -146,7 +147,10 @@ pub fn create_policies_account(
     let space = Policies {
         scalars: scalars.clone(),
         ..Policies::default()
-    }.try_to_vec().unwrap().len() as u64;
+    }
+    .try_to_vec()
+    .unwrap()
+    .len() as u64;
     vec![
         system_instruction::create_account(from, policies_pubkey, lamports, space, &crate::id()),
         initialize_policies_account(policies_pubkey, scalars),
