@@ -1,13 +1,12 @@
 //! Instruction types
 
 use crate::state::{Policies, User};
-use bincode::{deserialize, serialize, serialized_size};
+use borsh::{BorshSerialize, BorshDeserialize};
 use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
 };
 use elgamal_ristretto::public::PublicKey;
-use serde::{Deserialize, Serialize};
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
@@ -16,7 +15,7 @@ use solana_sdk::{
 };
 
 /// Instructions supported by the Themis program.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
 pub enum ThemisInstruction {
     /// Initialize a new user account
     ///
@@ -95,8 +94,12 @@ pub enum ThemisInstruction {
 }
 
 impl ThemisInstruction {
+    pub fn serialize(&self) -> Result<Vec<u8>, ProgramError> {
+        self.try_to_vec().map_err(|_| ProgramError::AccountDataTooSmall)
+    }
+
     pub(crate) fn deserialize(data: &[u8]) -> Result<Self, ProgramError> {
-        deserialize(data).map_err(|_| ProgramError::InvalidInstructionData)
+        Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidInstructionData)
     }
 }
 
@@ -109,13 +112,13 @@ fn initialize_user_account(user_pubkey: &Pubkey) -> Instruction {
     Instruction {
         program_id: crate::id(),
         accounts,
-        data: serialize(&data).unwrap(),
+        data: data.serialize().unwrap(),
     }
 }
 
 /// Return two instructions that create and initialize a user account.
 pub fn create_user_account(from: &Pubkey, user_pubkey: &Pubkey, lamports: u64) -> Vec<Instruction> {
-    let space = serialized_size(&User::default()).unwrap();
+    let space = User::default().try_to_vec().unwrap().len() as u64;
     vec![
         system_instruction::create_account(from, user_pubkey, lamports, space, &crate::id()),
         initialize_user_account(user_pubkey),
@@ -129,7 +132,7 @@ fn initialize_policies_account(policies_pubkey: &Pubkey, scalars: Vec<Scalar>) -
     Instruction {
         program_id: crate::id(),
         accounts,
-        data: serialize(&data).unwrap(),
+        data: data.serialize().unwrap(),
     }
 }
 
@@ -140,11 +143,10 @@ pub fn create_policies_account(
     lamports: u64,
     scalars: Vec<Scalar>,
 ) -> Vec<Instruction> {
-    let space = serialized_size(&Policies {
+    let space = Policies {
         scalars: scalars.clone(),
         ..Policies::default()
-    })
-    .unwrap();
+    }.try_to_vec().unwrap().len() as u64;
     vec![
         system_instruction::create_account(from, policies_pubkey, lamports, space, &crate::id()),
         initialize_policies_account(policies_pubkey, scalars),
@@ -169,7 +171,7 @@ pub fn calculate_aggregate(
     Instruction {
         program_id: crate::id(),
         accounts,
-        data: serialize(&data).unwrap(),
+        data: data.serialize().unwrap(),
     }
 }
 
@@ -191,7 +193,7 @@ pub fn submit_proof_decryption(
     Instruction {
         program_id: crate::id(),
         accounts,
-        data: serialize(&data).unwrap(),
+        data: data.serialize().unwrap(),
     }
 }
 
@@ -211,6 +213,6 @@ pub fn request_payment(
     Instruction {
         program_id: crate::id(),
         accounts,
-        data: serialize(&data).unwrap(),
+        data: data.serialize().unwrap(),
     }
 }

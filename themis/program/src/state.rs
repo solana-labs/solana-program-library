@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use bincode::{deserialize, serialize_into};
+use borsh::{BorshSerialize, BorshDeserialize};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT,
     ristretto::{CompressedRistretto, RistrettoPoint},
@@ -9,13 +9,12 @@ use curve25519_dalek::{
 };
 use elgamal_ristretto::{ciphertext::Ciphertext, private::SecretKey, public::PublicKey};
 use rand::thread_rng;
-use serde::{Deserialize, Serialize};
 use solana_sdk::program_error::ProgramError;
 
 type Points = (RistrettoPoint, RistrettoPoint);
 
-#[derive(Serialize, Deserialize)]
-struct EncryptedAggregate {
+#[derive(BorshSerialize, BorshDeserialize)]
+pub struct EncryptedAggregate {
     ciphertext: Points,
     public_key: RistrettoPoint,
 }
@@ -29,23 +28,23 @@ impl Default for EncryptedAggregate {
     }
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, BorshSerialize, BorshDeserialize)]
 pub struct Policies {
     pub is_initialized: bool,
     pub scalars: Vec<Scalar>,
 }
 
 impl Policies {
-    pub fn serialize(&self, data: &mut [u8]) -> Result<(), ProgramError> {
-        serialize_into(data, &self).map_err(|_| ProgramError::AccountDataTooSmall)
+    pub fn serialize(&self, mut data: &mut [u8]) -> Result<(), ProgramError> {
+        BorshSerialize::serialize(self, &mut data).map_err(|_| ProgramError::AccountDataTooSmall)
     }
 
     pub fn deserialize(data: &[u8]) -> Result<Self, ProgramError> {
-        deserialize(data).map_err(|_| ProgramError::InvalidAccountData)
+        Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidAccountData)
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct PaymentRequests {
     pub encrypted_aggregate: Points,
     pub decrypted_aggregate: RistrettoPoint,
@@ -81,7 +80,7 @@ fn inner_product(ciphertexts: &[Points], scalars: &[Scalar]) -> Points {
     (aggregate_x, aggregate_y)
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, BorshSerialize, BorshDeserialize)]
 pub struct User {
     encrypted_aggregate: EncryptedAggregate,
     pub is_initialized: bool,
@@ -90,12 +89,12 @@ pub struct User {
 }
 
 impl User {
-    pub fn serialize(&self, data: &mut [u8]) -> Result<(), ProgramError> {
-        serialize_into(data, &self).map_err(|_| ProgramError::AccountDataTooSmall)
+    pub fn serialize(&self, mut data: &mut [u8]) -> Result<(), ProgramError> {
+        BorshSerialize::serialize(self, &mut data).map_err(|_| ProgramError::AccountDataTooSmall)
     }
 
     pub fn deserialize(data: &[u8]) -> Result<Self, ProgramError> {
-        deserialize(data).map_err(|_| ProgramError::InvalidAccountData)
+        Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidAccountData)
     }
 
     pub fn fetch_encrypted_aggregate(&self) -> Points {

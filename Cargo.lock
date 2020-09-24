@@ -198,6 +198,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "borsh"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30f3fd65922359a7c6e791bc9b2bba1b977ea0c0b96a528ac48007f535fb4184"
+dependencies = [
+ "borsh-derive",
+]
+
+[[package]]
+name = "borsh-derive"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2d74755d937d261d5e9bdef87e0addfbc1ace0214f7776f21532d6e97325356"
+dependencies = [
+ "borsh-derive-internal",
+ "borsh-schema-derive-internal",
+ "syn 1.0.40",
+]
+
+[[package]]
+name = "borsh-derive-internal"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c9f966cb7a42c8ed83546ef481bc1d1dec888fe5f84a4737d5c2094a483e41e"
+dependencies = [
+ "proc-macro2 1.0.19",
+ "quote 1.0.7",
+ "syn 1.0.40",
+]
+
+[[package]]
+name = "borsh-schema-derive-internal"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5df2543b56ebc2b4493e70d024ebde2cbb48d97bf7b1a16318eff30bd02669b8"
+dependencies = [
+ "proc-macro2 1.0.19",
+ "quote 1.0.7",
+ "syn 1.0.40",
+]
+
+[[package]]
 name = "bs58"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -511,13 +553,26 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "2.1.0"
+source = "git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff#60efef3553d6bf3d7f3b09b5f97acd54d72529ff"
+dependencies = [
+ "borsh",
+ "byteorder",
+ "digest 0.8.1",
+ "rand_core",
+ "serde",
+ "subtle 2.2.3",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
 dependencies = [
  "byteorder",
  "digest 0.8.1",
  "rand_core",
- "serde",
  "subtle 2.2.3",
  "zeroize",
 ]
@@ -614,7 +669,7 @@ version = "1.0.0-pre.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21a8a37f4e8b35af971e6db5e3897e7a6344caa3f92f6544f88125a1f5f0035a"
 dependencies = [
- "curve25519-dalek",
+ "curve25519-dalek 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519",
  "rand",
  "serde",
@@ -631,11 +686,12 @@ checksum = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
 [[package]]
 name = "elgamal_ristretto"
 version = "0.2.4"
-source = "git+https://github.com/iquerejeta/elgamal?rev=05e5481e5b7c5b596963ebe0465aab7879cd0b8b#05e5481e5b7c5b596963ebe0465aab7879cd0b8b"
+source = "git+https://github.com/garious/elgamal?rev=b0a2f5b2cbba052096aed56c26e3047c03fdbe70#b0a2f5b2cbba052096aed56c26e3047c03fdbe70"
 dependencies = [
  "bincode",
+ "borsh",
  "clear_on_drop",
- "curve25519-dalek",
+ "curve25519-dalek 2.1.0 (git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff)",
  "rand_core",
  "serde",
  "sha2",
@@ -2448,7 +2504,7 @@ dependencies = [
  "backtrace",
  "bytes 0.4.12",
  "cc",
- "curve25519-dalek",
+ "curve25519-dalek 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519-dalek",
  "either",
  "failure",
@@ -2811,13 +2867,13 @@ name = "spl-themis"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "curve25519-dalek",
+ "borsh",
+ "curve25519-dalek 2.1.0 (git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff)",
  "elgamal_ristretto",
  "getrandom",
  "num-derive",
  "num-traits",
  "rand",
- "serde",
  "solana-sdk",
  "thiserror",
 ]
@@ -2826,8 +2882,8 @@ dependencies = [
 name = "spl-themis-client"
 version = "0.1.0"
 dependencies = [
- "bincode",
- "curve25519-dalek",
+ "borsh",
+ "curve25519-dalek 2.1.0 (git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff)",
  "elgamal_ristretto",
  "solana-banks-client",
  "solana-banks-server",
