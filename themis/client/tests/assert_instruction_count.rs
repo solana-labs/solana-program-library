@@ -1,4 +1,5 @@
-use bincode::{serialize, serialized_size};
+use borsh::BorshSerialize;
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use solana_bpf_loader_program::{
     create_vm,
     serialization::{deserialize_parameters, serialize_parameters},
@@ -17,8 +18,7 @@ use solana_sdk::{
 };
 use spl_themis::{
     instruction::ThemisInstruction,
-    state::Policies,
-    //state::{Policies, User},
+    state::{generate_keys, Policies, User},
 };
 use std::{cell::RefCell, fs::File, io::Read, path::PathBuf, rc::Rc, sync::Arc};
 
@@ -77,43 +77,181 @@ fn assert_instruction_count() {
 
     // Create new policies
     let policies_key = Pubkey::new_rand();
-    let scalars = vec![];
-    //let scalars = vec![0u8.into()]; // TODO: Only works if MAX_CALL_DEPTH doubled in the BPF VM
-    let policies_account = SolanaAccount::new_ref(0, serialized_size(&Policies {is_initialized: true, scalars: scalars.clone() }).unwrap() as usize, &program_id);
-    let instruction_data = serialize(&ThemisInstruction::InitializePoliciesAccount {
-        scalars
-    }).unwrap();
-    let parameter_accounts = vec![
-        KeyedAccount::new(&policies_key, false, &policies_account),
-    ];
+    let scalars = vec![0u8.into(), 1u8.into()];
+    //let scalars = vec![
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(), //10
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(), // 2 * 10
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(),
+    //        1u8.into(), //10
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(),
+    //        2u8.into(), // 2 * 10
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //        0u8.into(),
+    //];
+    dbg!(scalars.len());
+
+    let (_sk, pk) = generate_keys();
+    let encrypted_interactions: Vec<_> = scalars
+        .iter()
+        .map(|_| pk.encrypt(&RISTRETTO_BASEPOINT_POINT).points)
+        .collect();
+
+    let policies_account = SolanaAccount::new_ref(
+        0,
+        Policies {
+            is_initialized: true,
+            scalars: scalars.clone(),
+        }
+        .try_to_vec()
+        .unwrap()
+        .len(),
+        &program_id,
+    );
+    let instruction_data = ThemisInstruction::InitializePoliciesAccount { scalars }
+        .serialize()
+        .unwrap();
+    let parameter_accounts = vec![KeyedAccount::new(&policies_key, false, &policies_account)];
     let initialize_policies_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
 
     // Create user account
-    //let user_key = Pubkey::new_rand();
-    //let user_account = SolanaAccount::new_ref(0, serialized_size(&User::default()).unwrap() as usize, &program_id);
-    //let instruction_data = serialize(&ThemisInstruction::InitializeUserAccount).unwrap();
-    //let parameter_accounts = vec![
-    //    KeyedAccount::new(&user_key, false, &user_account),
-    //];
-    //let initialize_user_account =
-    //    run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+    let user_key = Pubkey::new_rand();
+    let user_account =
+        SolanaAccount::new_ref(0, User::default().try_to_vec().unwrap().len(), &program_id);
+    let instruction_data = ThemisInstruction::InitializeUserAccount
+        .serialize()
+        .unwrap();
+    let parameter_accounts = vec![KeyedAccount::new(&user_key, false, &user_account)];
+    let initialize_user_count =
+        run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
 
-    const BASELINE_NEW_POLICIES_COUNT: u64 = 100_000; // last known 3107
-    //const BASELINE_INITIALIZE_ACCOUNT_COUNT: u64 = 6500; // last known 6445
+    // Calculate Aggregate
+    let instruction_data = ThemisInstruction::CalculateAggregate {
+        encrypted_interactions,
+        public_key: pk,
+    }
+    .serialize()
+    .unwrap();
+    let parameter_accounts = vec![
+        KeyedAccount::new(&user_key, true, &user_account),
+        KeyedAccount::new(&policies_key, false, &policies_account),
+    ];
+    let calculate_aggregate_count =
+        run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+
+    const BASELINE_NEW_POLICIES_COUNT: u64 = 80_000; // last known 75796
+    const BASELINE_INITIALIZE_USER_COUNT: u64 = 20_000; // last known 17090
+    const BASELINE_CALCULATE_AGGREGATE_COUNT: u64 = 15_000_000; // last known 13,051,825
 
     println!("BPF instructions executed");
     println!(
         "  InitializePolicies   : {:?} ({:?})",
         initialize_policies_count, BASELINE_NEW_POLICIES_COUNT
     );
-    //println!(
-    //    "  InitializeUserAccount: {:?} ({:?})",
-    //    initialize_user_account, BASELINE_INITIALIZE_ACCOUNT_COUNT
-    //);
+    println!(
+        "  InitializeUserAccount: {:?} ({:?})",
+        initialize_user_count, BASELINE_INITIALIZE_USER_COUNT
+    );
+    println!(
+        "  CalculateAggregate: {:?} ({:?})",
+        calculate_aggregate_count, BASELINE_CALCULATE_AGGREGATE_COUNT
+    );
 
     assert!(initialize_policies_count <= BASELINE_NEW_POLICIES_COUNT);
-    //assert!(initialize_user_account <= BASELINE_INITIALIZE_ACCOUNT_COUNT);
+    assert!(initialize_user_count <= BASELINE_INITIALIZE_USER_COUNT);
+    assert!(calculate_aggregate_count <= BASELINE_CALCULATE_AGGREGATE_COUNT);
 }
 
 // Mock InvokeContext
@@ -150,7 +288,10 @@ impl InvokeContext for MockInvokeContext {
         true
     }
     fn get_compute_budget(&self) -> ComputeBudget {
-        ComputeBudget { max_invoke_depth: 10, .. ComputeBudget::default() }
+        ComputeBudget {
+            max_invoke_depth: 10,
+            ..ComputeBudget::default()
+        }
     }
     fn get_compute_meter(&self) -> Rc<RefCell<dyn ComputeMeter>> {
         Rc::new(RefCell::new(self.compute_meter.clone()))
