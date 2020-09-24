@@ -4,8 +4,8 @@
 
 use crate::{
     error::Error,
-    instruction::{unpack, Fee, SwapInstruction},
-    state::{Invariant, State, SwapInfo},
+    instruction::{unpack, Fee, StakePoolInstruction},
+    state::{Invariant, State, StakePool},
 };
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
@@ -28,7 +28,7 @@ impl State {
         Ok(match input[0] {
             0 => Self::Unallocated,
             1 => {
-                let swap: &SwapInfo = unpack(input)?;
+                let swap: &StakePool = unpack(input)?;
                 Self::Init(*swap)
             }
             _ => return Err(ProgramError::InvalidAccountData),
@@ -43,20 +43,20 @@ impl State {
         match self {
             Self::Unallocated => output[0] = 0,
             Self::Init(swap) => {
-                if output.len() < size_of::<u8>() + size_of::<SwapInfo>() {
+                if output.len() < size_of::<u8>() + size_of::<StakePool>() {
                     return Err(ProgramError::InvalidAccountData);
                 }
                 output[0] = 1;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut SwapInfo) };
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut StakePool) };
                 *value = *swap;
             }
         }
         Ok(())
     }
 
-    /// Gets the `SwapInfo` from `State`
-    fn token_swap(&self) -> Result<SwapInfo, ProgramError> {
+    /// Gets the `StakePool` from `State`
+    fn token_swap(&self) -> Result<StakePool, ProgramError> {
         if let State::Init(swap) = &self {
             Ok(*swap)
         } else {
@@ -205,7 +205,7 @@ impl State {
             amount,
         )?;
 
-        let obj = State::Init(SwapInfo {
+        let obj = State::Init(StakePool {
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
             pool_mint: *pool_info.key,
@@ -214,7 +214,7 @@ impl State {
         obj.serialize(&mut swap_info.data.borrow_mut())
     }
 
-    /// Processes an [Swap](enum.Instruction.html).
+    /// Processes an [StakePool](enum.Instruction.html).
     pub fn process_swap(
         program_id: &Pubkey,
         amount: u64,
@@ -274,24 +274,20 @@ impl State {
         Ok(())
     }
     /// Processes an [Deposit](enum.Instruction.html).
-    pub fn process_deposit(
+    pub fn process_update_stake_auth(
         program_id: &Pubkey,
-        a_amount: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let swap_info = next_account_info(account_info_iter)?;
-        let authority_info = next_account_info(account_info_iter)?;
-        let source_a_info = next_account_info(account_info_iter)?;
-        let source_b_info = next_account_info(account_info_iter)?;
-        let token_a_info = next_account_info(account_info_iter)?;
-        let token_b_info = next_account_info(account_info_iter)?;
-        let pool_info = next_account_info(account_info_iter)?;
-        let dest_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let owner_info = next_account_info(account_info_iter)?;
+        let withdraw_info = next_account_info(account_info_iter)?;
+        let staking_info = next_account_info(account_info_iter)?;
+        let stake_info = next_account_info(account_info_iter)?;
 
-        let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
-        if *authority_info.key != Self::authority_id(program_id, swap_info.key)? {
+        let stake_pool = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
+
+        if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
             return Err(Error::InvalidProgramAddress.into());
         }
         if *token_a_info.key != token_swap.token_a {
@@ -350,95 +346,55 @@ impl State {
         Ok(())
     }
 
-    /// Processes an [Withdraw](enum.Instruction.html).
-    pub fn process_withdraw(
+    /// Processes an [UpdateStakingAuthority](enum.Instruction.html).
+    pub fn process_update_owner(
         program_id: &Pubkey,
-        amount: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let swap_info = next_account_info(account_info_iter)?;
-        let authority_info = next_account_info(account_info_iter)?;
-        let source_info = next_account_info(account_info_iter)?;
-        let token_a_info = next_account_info(account_info_iter)?;
-        let token_b_info = next_account_info(account_info_iter)?;
-        let dest_token_a_info = next_account_info(account_info_iter)?;
-        let dest_token_b_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let owner_info = next_account_info(account_info_iter)?;
+        let new_owner_info = next_account_info(account_info_iter)?;
 
-        let token_swap = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
-        if *authority_info.key != Self::authority_id(program_id, swap_info.key)? {
-            return Err(Error::InvalidProgramAddress.into());
-        }
-        if *token_a_info.key != token_swap.token_a {
+        let mut stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+
+        if *owner_info.key != stake_pool.owner {
             return Err(Error::InvalidInput.into());
         }
-        if *token_b_info.key != token_swap.token_b {
+        if !*owner_info.is_signer {
             return Err(Error::InvalidInput.into());
         }
 
-        let token_a = Self::token_account_deserialize(token_a_info)?;
-        let token_b = Self::token_account_deserialize(token_b_info)?;
-
-        let invariant = Invariant {
-            token_a: token_a.amount,
-            token_b: token_b.amount,
-            fee: token_swap.fee,
-        };
-
-        let a_amount = amount;
-        let b_amount = invariant
-            .exchange_rate(a_amount)
-            .ok_or_else(|| Error::CalculationFailure)?;
-
-        Self::token_transfer(
-            accounts,
-            token_program_info.key,
-            swap_info.key,
-            token_a_info.key,
-            dest_token_a_info.key,
-            authority_info.key,
-            a_amount,
         )?;
-        Self::token_transfer(
-            accounts,
-            token_program_info.key,
-            swap_info.key,
-            token_b_info.key,
-            dest_token_b_info.key,
-            authority_info.key,
-            b_amount,
-        )?;
-        Self::token_burn(
-            accounts,
-            token_program_info.key,
-            swap_info.key,
-            source_info.key,
-            authority_info.key,
-            amount,
-        )?;
+        stake_pool.owner = new_owner_info.key;
+        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
         Ok(())
     }
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
-        let instruction = SwapInstruction::deserialize(input)?;
+        let instruction = StakePoolInstruction::deserialize(input)?;
         match instruction {
-            SwapInstruction::Initialize(fee) => {
+            StakePoolInstruction::Initialize(init) => {
                 info!("Instruction: Init");
-                Self::process_initialize(program_id, fee, accounts)
+                Self::process_initialize(program_id, init, accounts)
             }
-            SwapInstruction::Swap(amount) => {
-                info!("Instruction: Swap");
-                Self::process_swap(program_id, amount, accounts)
-            }
-            SwapInstruction::Deposit(amount) => {
+            StakePoolInstruction::Deposit => {
                 info!("Instruction: Deposit");
                 Self::process_deposit(program_id, amount, accounts)
             }
-            SwapInstruction::Withdraw(amount) => {
+            StakePoolInstruction::Withdraw(amount) => {
                 info!("Instruction: Withdraw");
                 Self::process_withdraw(program_id, amount, accounts)
             }
+            StakePoolInstruction::UpdateStakingAuthority => {
+                info!("Instruction: UpdateStakingAuthority");
+                Self::process_update_staking_auth(program_id, accounts)
+            }
+            StakePoolInstruction::UpdateOwner => {
+                info!("Instruction: UpdateOwner");
+                Self::process_update_owner(program_id, accounts)
+            }
+
         }
     }
 }
@@ -619,7 +575,7 @@ mod tests {
         let ((_token_b_mint_key, mut _token_b_mint_account), (token_b_key, mut token_b_account)) =
             mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000);
 
-        // Swap Init
+        // StakePool Init
         do_process_instruction(
             initialize(
                 &SWAP_PROGRAM_ID,
