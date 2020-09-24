@@ -1,6 +1,6 @@
 use borsh::BorshSerialize;
-use elgamal_ristretto::ciphertext::Ciphertext;
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
+use elgamal_ristretto::ciphertext::Ciphertext;
 use solana_bpf_loader_program::{
     create_vm,
     serialization::{deserialize_parameters, serialize_parameters},
@@ -249,16 +249,14 @@ fn assert_instruction_count() {
         sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate);
 
     let instruction_data = ThemisInstruction::SubmitProofDecryption {
-            plaintext: decrypted_aggregate,
-            announcement_g,
-            announcement_ctx,
-            response,
+        plaintext: decrypted_aggregate,
+        announcement_g,
+        announcement_ctx,
+        response,
     }
     .serialize()
     .unwrap();
-    let parameter_accounts = vec![
-        KeyedAccount::new(&user_key, true, &user_account),
-    ];
+    let parameter_accounts = vec![KeyedAccount::new(&user_key, true, &user_account)];
     let proof_decryption_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
 
