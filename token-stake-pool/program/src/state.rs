@@ -18,6 +18,10 @@ pub struct StakePool {
     pub withdrawal_nonce: u8,
     /// Pool Mint 
     pub pool_mint: Pubkey,
+    /// total stake under management
+    pub stake_total: u64,
+    /// total pool
+    pub pool_total: u64,
     /// Fee applied to withdrawals
     pub fee: Fee,
 }

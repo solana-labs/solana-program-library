@@ -229,41 +229,26 @@ impl State {
         let stake_dest_owner_info = next_account_info(account_info_iter)?;
         let stake_dest_user_info = next_account_info(account_info_iter)?;
 
-        let stake_pool = Self::deserialize(&stake_info_info.data.borrow())?.stake_pool()?;
+        let stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
         if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
             return Err(Error::InvalidProgramAddress.into());
         }
 
-        if !(*from_info.key == token_swap.token_a || *from_info.key == token_swap.token_b) {
-            return Err(Error::InvalidOutput.into());
-        }
-        if *into_info.key == *from_info.key {
-            return Err(Error::InvalidInput.into());
-        }
-        let into_token = Self::token_account_deserialize(into_info)?;
-        let from_token = Self::token_account_deserialize(from_info)?;
-        let mut invariant = Invariant {
-            token_a: into_token.amount,
-            token_b: from_token.amount,
-            fee: token_swap.fee,
-        };
-        let output = invariant
-            .swap(amount)
-            .ok_or_else(|| Error::CalculationFailure)?;
-        Self::token_transfer(
+        let stake = Self::stake_account_deserialize(stake_info)?;
+        let amount = stake.amount;
+
+        Self::token_burn(
             accounts,
             token_program_info.key,
             swap_info.key,
             source_info.key,
-            into_info.key,
-            authority_info.key,
+            withdraw_info.key,
             amount,
         )?;
-        Self::token_transfer(
+        Self::stake_split(
             accounts,
-            token_program_info.key,
-            swap_info.key,
+            withdraw_i.key,
             from_info.key,
             dest_info.key,
             authority_info.key,
@@ -352,7 +337,10 @@ impl State {
                 info!("Instruction: UpdateOwner");
                 Self::process_update_owner(program_id, accounts)
             }
-
+            StakePoolInstruction::UpdateRewads => {
+                info!("Instruction: UpdateRewads");
+                Self::process_update_rewards(program_id, accounts)
+            }
         }
     }
 }

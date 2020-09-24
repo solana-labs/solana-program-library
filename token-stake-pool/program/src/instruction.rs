@@ -41,12 +41,11 @@ pub enum StakePoolInstruction {
     ///   into the pool. Inputs are converted to the current ratio.
     ///
     ///   0. `[]` StakePool
-    ///   1. `[]` receive $authority
+    ///   1. `[]` deposit $authority
     ///   2. `[]` withdraw  $authority
-    ///   3. `[w]` Stake, receive $authority is set as the withdrawal key
+    ///   3. `[w]` Stake, deposit $authority is set as the withdrawal key
     ///   4. `[w]` Pool MINT account, $authority is the owner.
-    ///   5. `[w]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   6. `[w]` Stake destination, uninitialized, for owner fees
+    ///   5. `[w]` Pool Account to deposit the generated tokens.
     Deposit,
 
     ///   Withdraw the token from the pool at the current ratio.
@@ -57,7 +56,6 @@ pub enum StakePoolInstruction {
     ///   2. `[w]` SOURCE Pool account, amount is transferable by $authority
     ///   3. `[w]` Pool MINT account, $authority is the owner
     ///   4. `[w]` Stake SOURCE owned by the withdraw $authority  
-    ///   5. `[w]` Stake destination, uninitialized, for owner fees
     ///   6. `[w]` Stake destination, uninitialized, for the user stake
     ///   userdata: amount to withdraw
     Withdraw(u64),
@@ -78,6 +76,14 @@ pub enum StakePoolInstruction {
     ///   2. '[]` New owner pubkey.
     UpdateOwner,
 
+    ///   Update Rewards
+    ///
+    ///   0. `[w]` StakePool
+    ///   1. `[]` withdraw $authority
+    ///   2. `[w]` Stake SOURCE owned by the withdraw $authority  
+    ///   3. `[w]` Pool MINT account, $authority is the owner.
+    ///   4. `[w]` Pool Account to deposit the generated tokens for the operator fee owned by pool `owner`.
+    UpdateRewards,
 }
 
 impl StakePoolInstruction {
@@ -103,6 +109,9 @@ impl StakePoolInstruction {
             }
             4 => {
                 Self::UpdateOwner
+            }
+            5 => {
+                Self::UpdateRewards
             }
             _ => return Err(ProgramError::InvalidAccountData),
         })
@@ -132,6 +141,9 @@ impl StakePoolInstruction {
             }
             Self::UpdateOwner => {
                 output[0] = 4;
+            }
+            Self::UpdateRewards => {
+                output[0] = 5;
             }
         }
         Ok(output)
