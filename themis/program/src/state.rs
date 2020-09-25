@@ -3,7 +3,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT,
-    ristretto::{CompressedRistretto, RistrettoPoint},
+    ristretto::RistrettoPoint,
     scalar::Scalar,
     traits::Identity,
 };
@@ -13,7 +13,7 @@ use solana_sdk::program_error::ProgramError;
 
 type Points = (RistrettoPoint, RistrettoPoint);
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(Clone, BorshSerialize, BorshDeserialize)]
 pub struct EncryptedAggregate {
     ciphertext: Points,
     public_key: RistrettoPoint,
@@ -82,7 +82,7 @@ fn inner_product(ciphertexts: &[Points], scalars: &[Scalar]) -> Points {
 
 #[derive(Default, BorshSerialize, BorshDeserialize)]
 pub struct User {
-    encrypted_aggregate: EncryptedAggregate,
+    encrypted_aggregate: Box<EncryptedAggregate>,
     pub is_initialized: bool,
     proof_verification: bool,
     payment_requests: Vec<PaymentRequests>,
@@ -116,18 +116,18 @@ impl User {
         policies: &[Scalar],
     ) -> bool {
         let ciphertext = inner_product(ciphertexts, &policies);
-        self.encrypted_aggregate = EncryptedAggregate {
+        self.encrypted_aggregate = Box::new(EncryptedAggregate {
             ciphertext,
             public_key,
-        };
+        });
         true
     }
 
     pub fn submit_proof_decryption(
         &mut self,
         plaintext: RistrettoPoint,
-        announcement_g: CompressedRistretto,
-        announcement_ctx: CompressedRistretto,
+        announcement_g: RistrettoPoint,
+        announcement_ctx: RistrettoPoint,
         response: Scalar,
     ) -> bool {
         let client_pk = PublicKey::from(self.fetch_public_key());
