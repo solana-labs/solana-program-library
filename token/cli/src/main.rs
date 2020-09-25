@@ -17,7 +17,6 @@ use solana_client::{rpc_client::RpcClient, rpc_request::TokenAccountsFilter};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     native_token::*,
-    program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
@@ -230,18 +229,13 @@ fn command_transfer(
         ui_amount, sender, recipient
     );
 
-    let sender_token_balance = config
-        .rpc_client
-        .get_token_account_balance_with_commitment(&sender, config.commitment_config)?
-        .value;
     let source_account = config
         .rpc_client
-        .get_account_with_commitment(&sender, config.commitment_config)?
+        .get_token_account_with_commitment(&sender, config.commitment_config)?
         .value
-        .unwrap_or_default();
-    let data = source_account.data.to_vec();
-    let mint_pubkey = Account::unpack_from_slice(&data)?.mint;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, sender_token_balance.decimals);
+        .ok_or_else(|| format!("Could not find token account {}", sender))?;
+    let mint_pubkey = Pubkey::from_str(&source_account.mint)?;
+    let amount = spl_token::ui_amount_to_amount(ui_amount, source_account.token_amount.decimals);
 
     let mut transaction = Transaction::new_with_payer(
         &[transfer_checked(
@@ -252,7 +246,7 @@ fn command_transfer(
             &config.owner.pubkey(),
             &[],
             amount,
-            sender_token_balance.decimals,
+            source_account.token_amount.decimals,
         )?],
         Some(&config.fee_payer.pubkey()),
     );
@@ -271,18 +265,14 @@ fn command_transfer(
 fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommandResult {
     println!("Burn {} tokens\n  Source: {}", ui_amount, source);
 
-    let source_token_balance = config
-        .rpc_client
-        .get_token_account_balance_with_commitment(&source, config.commitment_config)?
-        .value;
     let source_account = config
         .rpc_client
-        .get_account_with_commitment(&source, config.commitment_config)?
+        .get_token_account_with_commitment(&source, config.commitment_config)?
         .value
-        .unwrap_or_default();
-    let data = source_account.data.to_vec();
-    let mint_pubkey = Account::unpack_from_slice(&data)?.mint;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, source_token_balance.decimals);
+        .ok_or_else(|| format!("Could not find token account {}", source))?;
+    let mint_pubkey = Pubkey::from_str(&source_account.mint)?;
+    let amount = spl_token::ui_amount_to_amount(ui_amount, source_account.token_amount.decimals);
+
     let mut transaction = Transaction::new_with_payer(
         &[burn_checked(
             &spl_token::id(),
@@ -291,7 +281,7 @@ fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommandResul
             &config.owner.pubkey(),
             &[],
             amount,
-            source_token_balance.decimals,
+            source_account.token_amount.decimals,
         )?],
         Some(&config.fee_payer.pubkey()),
     );
@@ -494,18 +484,13 @@ fn command_approve(
         ui_amount, account, delegate
     );
 
-    let source_account_balance = config
-        .rpc_client
-        .get_token_account_balance_with_commitment(&account, config.commitment_config)?
-        .value;
     let source_account = config
         .rpc_client
-        .get_account_with_commitment(&account, config.commitment_config)?
+        .get_token_account_with_commitment(&account, config.commitment_config)?
         .value
-        .unwrap_or_default();
-    let data = source_account.data.to_vec();
-    let mint_pubkey = Account::unpack_from_slice(&data)?.mint;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, source_account_balance.decimals);
+        .ok_or_else(|| format!("Could not find token account {}", account))?;
+    let mint_pubkey = Pubkey::from_str(&source_account.mint)?;
+    let amount = spl_token::ui_amount_to_amount(ui_amount, source_account.token_amount.decimals);
 
     let mut transaction = Transaction::new_with_payer(
         &[approve_checked(
@@ -516,7 +501,7 @@ fn command_approve(
             &config.owner.pubkey(),
             &[],
             amount,
-            source_account_balance.decimals,
+            source_account.token_amount.decimals,
         )?],
         Some(&config.fee_payer.pubkey()),
     );
@@ -535,13 +520,12 @@ fn command_approve(
 fn command_revoke(config: &Config, account: Pubkey) -> CommandResult {
     let source_account = config
         .rpc_client
-        .get_account_with_commitment(&account, config.commitment_config)?
+        .get_token_account_with_commitment(&account, config.commitment_config)?
         .value
-        .unwrap_or_default();
-    let data = source_account.data.to_vec();
-    let delegate = Account::unpack_from_slice(&data)?.delegate;
+        .ok_or_else(|| format!("Could not find token account {}", account))?;
+    let delegate = source_account.delegate;
 
-    if let COption::Some(delegate) = delegate {
+    if let Some(delegate) = delegate {
         println!(
             "Revoking approval\n  Account: {}\n  Delegate: {}",
             account, delegate
