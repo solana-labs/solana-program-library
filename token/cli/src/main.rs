@@ -4,7 +4,7 @@ use clap::{
 };
 use console::Emoji;
 use solana_account_decoder::{
-    parse_token::{TokenAccountType, UiAccountState},
+    parse_token::{TokenAccountType, UiAccountState, UiTokenAmount},
     UiAccountData,
 };
 use solana_clap_utils::{
@@ -12,6 +12,7 @@ use solana_clap_utils::{
     input_validators::{is_amount, is_keypair, is_pubkey_or_keypair, is_url},
     keypair::signer_from_path,
 };
+use solana_cli_output::display::println_name_value;
 use solana_client::{rpc_client::RpcClient, rpc_request::TokenAccountsFilter};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
@@ -546,6 +547,67 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
     Ok(None)
 }
 
+fn stringify_ui_token_amount(amount: &UiTokenAmount) -> String {
+    let decimals = amount.decimals as usize;
+    if decimals > 0 {
+        let amount = u64::from_str(&amount.amount).unwrap();
+
+        // Left-pad zeros to decimals + 1, so we at least have an integer zero
+        let mut s = format!("{:01$}", amount, decimals + 1);
+
+        // Add the decimal point (Sorry, "," locales!)
+        s.insert(s.len() - decimals, '.');
+        s
+    } else {
+        amount.amount.clone()
+    }
+}
+
+fn stringify_ui_token_amount_trimmed(amount: &UiTokenAmount) -> String {
+    let s = stringify_ui_token_amount(amount);
+    let zeros_trimmed = s.trim_end_matches('0');
+    let decimal_trimmed = zeros_trimmed.trim_end_matches('.');
+    decimal_trimmed.to_string()
+}
+
+fn command_account(config: &Config, address: Pubkey) -> CommandResult {
+    let account = config
+        .rpc_client
+        .get_token_account_with_commitment(&address, config.commitment_config)?
+        .value
+        .unwrap();
+    println!();
+    println_name_value("Address:", &address.to_string());
+    println_name_value(
+        "Balance:",
+        &stringify_ui_token_amount_trimmed(&account.token_amount),
+    );
+    let mint = format!(
+        "{}{}",
+        account.mint,
+        if account.is_native { " (native)" } else { "" }
+    );
+    println_name_value("Mint:", &mint);
+    println_name_value("Owner:", &account.owner);
+    println_name_value("State:", &format!("{:?}", account.state));
+    if let Some(delegate) = &account.delegate {
+        println!("Delegation:");
+        println_name_value("  Delegate:", delegate);
+        let allowance = account.delegated_amount.as_ref().unwrap();
+        println_name_value(
+            "  Allowance:",
+            &stringify_ui_token_amount_trimmed(&allowance),
+        );
+    } else {
+        println_name_value("Delegation:", "");
+    }
+    println_name_value(
+        "Close authority:",
+        &account.close_authority.as_ref().unwrap_or(&String::new()),
+    );
+    Ok(None)
+}
+
 fn main() {
     let default_decimals = &format!("{}", native_mint::DECIMALS);
     let matches = App::new(crate_name!())
@@ -864,6 +926,19 @@ fn main() {
                         .help("The address of the token account to unwrap"),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("account-info")
+                .about("Query details of an SPL Token account by address")
+                .arg(
+                    Arg::with_name("address")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the SPL Token account to query"),
+                ),
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -1009,6 +1084,10 @@ fn main() {
         ("accounts", Some(arg_matches)) => {
             let token = pubkey_of(arg_matches, "token");
             command_accounts(&config, token)
+        }
+        ("account-info", Some(arg_matches)) => {
+            let address = pubkey_of(arg_matches, "address").unwrap();
+            command_account(&config, address)
         }
         _ => unreachable!(),
     }
