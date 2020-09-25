@@ -172,20 +172,35 @@ fn command_create_account(
     Ok(Some(transaction))
 }
 
-fn command_assign(config: &Config, account: Pubkey, new_owner: Pubkey) -> CommandResult {
+fn command_authorize(
+    config: &Config,
+    account: Pubkey,
+    authority_type: AuthorityType,
+    new_owner: Option<Pubkey>,
+) -> CommandResult {
+    let auth_str = match authority_type {
+        AuthorityType::MintTokens => "mint authority",
+        AuthorityType::FreezeAccount => "freeze authority",
+        AuthorityType::AccountOwner => "owner",
+        AuthorityType::CloseAccount => "close authority",
+    };
     println!(
-        "Assigning {}\n  Current owner: {}\n  New owner: {}",
+        "Updating {}\n  Current {}: {}\n  New {}: {}",
         account,
+        auth_str,
         config.owner.pubkey(),
+        auth_str,
         new_owner
+            .map(|pubkey| pubkey.to_string())
+            .unwrap_or_else(|| "disabled".to_string())
     );
 
     let mut transaction = Transaction::new_with_payer(
         &[set_authority(
             &spl_token::id(),
             &account,
-            Some(&new_owner),
-            AuthorityType::AccountOwner,
+            new_owner.as_ref(),
+            authority_type,
             &config.owner.pubkey(),
             &[],
         )?],
@@ -731,8 +746,8 @@ fn main() {
                 ),
         )
         .subcommand(
-            SubCommand::with_name("assign")
-                .about("Assign a token or token account to a new owner")
+            SubCommand::with_name("authorize")
+                .about("Authorize a new signing keypair to a token or token account")
                 .arg(
                     Arg::with_name("address")
                         .validator(is_pubkey_or_keypair)
@@ -743,13 +758,31 @@ fn main() {
                         .help("The address of the token account"),
                 )
                 .arg(
-                    Arg::with_name("new_owner")
-                        .validator(is_pubkey_or_keypair)
-                        .value_name("OWNER_ADDRESS")
+                    Arg::with_name("authority_type")
+                        .value_name("AUTHORITY_TYPE")
                         .takes_value(true)
+                        .possible_values(&["mint", "freeze", "owner", "close"])
                         .index(2)
                         .required(true)
-                        .help("The address of the new owner"),
+                        .help("The new authority type. \
+                            Token mints support `mint` and `freeze` authorities;\
+                            Token accounts support `owner` and `close` authorities."),
+                )
+                .arg(
+                    Arg::with_name("new_authority")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("AUTHORITY_ADDRESS")
+                        .takes_value(true)
+                        .index(3)
+                        .required_unless("disable")
+                        .help("The address of the new authority"),
+                )
+                .arg(
+                    Arg::with_name("disable")
+                        .long("disable")
+                        .takes_value(false)
+                        .conflicts_with("new_authority")
+                        .help("Disable mint, freeze, or close functionality by setting authority to None.")
                 ),
         )
         .subcommand(
@@ -1035,10 +1068,18 @@ fn main() {
 
             command_create_account(&config, token, account)
         }
-        ("assign", Some(arg_matches)) => {
+        ("authorize", Some(arg_matches)) => {
             let address = pubkey_of(arg_matches, "address").unwrap();
-            let new_owner = pubkey_of(arg_matches, "new_owner").unwrap();
-            command_assign(&config, address, new_owner)
+            let authority_type = arg_matches.value_of("authority_type").unwrap();
+            let authority_type = match authority_type {
+                "mint" => AuthorityType::MintTokens,
+                "freeze" => AuthorityType::FreezeAccount,
+                "owner" => AuthorityType::AccountOwner,
+                "close" => AuthorityType::CloseAccount,
+                _ => unreachable!(),
+            };
+            let new_authority = pubkey_of(arg_matches, "new_authority");
+            command_authorize(&config, address, authority_type, new_authority)
         }
         ("transfer", Some(arg_matches)) => {
             let sender = pubkey_of(arg_matches, "sender").unwrap();
