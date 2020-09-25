@@ -149,6 +149,8 @@ mod tests {
             msg,
             recent_blockhash,
         );
+        let tx_size = bincode::serialize(&tx).unwrap().len();
+        assert!(tx_size <= 1500, "transaction over 1500 bytes: {} bytes", tx_size);
         client
             .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
             .await
@@ -158,6 +160,8 @@ mod tests {
         let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
         let recent_blockhash = client.get_recent_blockhash().await?;
         let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
+        let tx_size = bincode::serialize(&tx).unwrap().len();
+        assert!(tx_size <= 1500, "transaction over 1500 bytes: {} bytes", tx_size);
         client
             .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
             .await
@@ -187,6 +191,8 @@ mod tests {
         let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
         let recent_blockhash = client.get_recent_blockhash().await?;
         let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
+        let tx_size = bincode::serialize(&tx).unwrap().len();
+        assert!(tx_size <= 1500, "transaction over 1500 bytes: {} bytes", tx_size);
         client
             .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
             .await

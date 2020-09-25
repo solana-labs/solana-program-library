@@ -259,10 +259,10 @@ fn assert_instruction_count() {
     let proof_decryption_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
 
-    const BASELINE_NEW_POLICIES_COUNT: u64 = 80_000; // last known 75796
-    const BASELINE_INITIALIZE_USER_COUNT: u64 = 22_000; // last known 17090
-    const BASELINE_CALCULATE_AGGREGATE_COUNT: u64 = 15_000_000; // last known 13,051,825
-    const BASELINE_PROOF_DECRYPTION_COUNT: u64 = 15_000_000; // last known 14,725,657
+    const BASELINE_NEW_POLICIES_COUNT: u64 = 80_000; // last known 75,796 @ 128, 4,675 @ 2
+    const BASELINE_INITIALIZE_USER_COUNT: u64 = 22_000; // last known 19,868
+    const BASELINE_CALCULATE_AGGREGATE_COUNT: u64 = 15_000_000; // last known 13,061,884
+    const BASELINE_PROOF_DECRYPTION_COUNT: u64 = 15_000_000; // last known 13,167,140
 
     println!("BPF instructions executed");
     println!(
