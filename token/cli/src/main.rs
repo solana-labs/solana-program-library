@@ -229,18 +229,13 @@ fn command_transfer(
         ui_amount, sender, recipient
     );
 
-    let sender_token_balance = config
-        .rpc_client
-        .get_token_account_balance_with_commitment(&sender, config.commitment_config)?
-        .value;
     let source_account = config
         .rpc_client
-        .get_account_with_commitment(&sender, config.commitment_config)?
+        .get_token_account_with_commitment(&sender, config.commitment_config)?
         .value
-        .unwrap_or_default();
-    let data = source_account.data.to_vec();
-    let mint_pubkey = Account::unpack_from_slice(&data)?.mint;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, sender_token_balance.decimals);
+        .ok_or_else(|| format!("Could not find token account {}", sender))?;
+    let mint_pubkey = Pubkey::from_str(&source_account.mint)?;
+    let amount = spl_token::ui_amount_to_amount(ui_amount, source_account.token_amount.decimals);
 
     let mut transaction = Transaction::new_with_payer(
         &[transfer_checked(
@@ -251,7 +246,7 @@ fn command_transfer(
             &config.owner.pubkey(),
             &[],
             amount,
-            sender_token_balance.decimals,
+            source_account.token_amount.decimals,
         )?],
         Some(&config.fee_payer.pubkey()),
     );
@@ -270,18 +265,14 @@ fn command_transfer(
 fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommandResult {
     println!("Burn {} tokens\n  Source: {}", ui_amount, source);
 
-    let source_token_balance = config
-        .rpc_client
-        .get_token_account_balance_with_commitment(&source, config.commitment_config)?
-        .value;
     let source_account = config
         .rpc_client
-        .get_account_with_commitment(&source, config.commitment_config)?
+        .get_token_account_with_commitment(&source, config.commitment_config)?
         .value
-        .unwrap_or_default();
-    let data = source_account.data.to_vec();
-    let mint_pubkey = Account::unpack_from_slice(&data)?.mint;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, source_token_balance.decimals);
+        .ok_or_else(|| format!("Could not find token account {}", source))?;
+    let mint_pubkey = Pubkey::from_str(&source_account.mint)?;
+    let amount = spl_token::ui_amount_to_amount(ui_amount, source_account.token_amount.decimals);
+
     let mut transaction = Transaction::new_with_payer(
         &[burn_checked(
             &spl_token::id(),
@@ -290,7 +281,7 @@ fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommandResul
             &config.owner.pubkey(),
             &[],
             amount,
-            source_token_balance.decimals,
+            source_account.token_amount.decimals,
         )?],
         Some(&config.fee_payer.pubkey()),
     );
@@ -465,6 +456,88 @@ fn command_unwrap(config: &Config, address: Pubkey) -> CommandResult {
             &spl_token::id(),
             &address,
             &config.owner.pubkey(),
+            &config.owner.pubkey(),
+            &[],
+        )?],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+    Ok(Some(transaction))
+}
+
+fn command_approve(
+    config: &Config,
+    account: Pubkey,
+    ui_amount: f64,
+    delegate: Pubkey,
+) -> CommandResult {
+    println!(
+        "Approve {} tokens\n  Account: {}\n  Delegate: {}",
+        ui_amount, account, delegate
+    );
+
+    let source_account = config
+        .rpc_client
+        .get_token_account_with_commitment(&account, config.commitment_config)?
+        .value
+        .ok_or_else(|| format!("Could not find token account {}", account))?;
+    let mint_pubkey = Pubkey::from_str(&source_account.mint)?;
+    let amount = spl_token::ui_amount_to_amount(ui_amount, source_account.token_amount.decimals);
+
+    let mut transaction = Transaction::new_with_payer(
+        &[approve_checked(
+            &spl_token::id(),
+            &account,
+            &mint_pubkey,
+            &delegate,
+            &config.owner.pubkey(),
+            &[],
+            amount,
+            source_account.token_amount.decimals,
+        )?],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+    Ok(Some(transaction))
+}
+
+fn command_revoke(config: &Config, account: Pubkey) -> CommandResult {
+    let source_account = config
+        .rpc_client
+        .get_token_account_with_commitment(&account, config.commitment_config)?
+        .value
+        .ok_or_else(|| format!("Could not find token account {}", account))?;
+    let delegate = source_account.delegate;
+
+    if let Some(delegate) = delegate {
+        println!(
+            "Revoking approval\n  Account: {}\n  Delegate: {}",
+            account, delegate
+        );
+    } else {
+        return Err(format!("No delegate on account {}", account).into());
+    }
+
+    let mut transaction = Transaction::new_with_payer(
+        &[revoke(
+            &spl_token::id(),
+            &account,
             &config.owner.pubkey(),
             &[],
         )?],
@@ -964,12 +1037,56 @@ fn main() {
                 .about("Query details of an SPL Token account by address")
                 .arg(
                     Arg::with_name("address")
+                    .validator(is_pubkey_or_keypair)
+                    .value_name("TOKEN_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .index(1)
+                    .required(true)
+                    .help("The address of the SPL Token account to query"),
+                ),
+            )
+        .subcommand(
+            SubCommand::with_name("approve")
+                .about("Approve a delegate for a token account")
+                .arg(
+                    Arg::with_name("account")
                         .validator(is_pubkey_or_keypair)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required(true)
-                        .help("The address of the SPL Token account to query"),
+                        .help("The address of the token account to delegate"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .validator(is_amount)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("Amount to approve, in tokens"),
+                )
+                .arg(
+                    Arg::with_name("delegate")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("DELEGATE_TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(3)
+                        .required(true)
+                        .help("The token account address of delegate"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("revoke")
+                .about("Revoke a delegate's authority")
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token account"),
                 ),
         )
         .get_matches();
@@ -1113,6 +1230,16 @@ fn main() {
         ("unwrap", Some(arg_matches)) => {
             let address = pubkey_of(arg_matches, "address").unwrap();
             command_unwrap(&config, address)
+        }
+        ("approve", Some(arg_matches)) => {
+            let account = pubkey_of(arg_matches, "account").unwrap();
+            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let delegate = pubkey_of(arg_matches, "delegate").unwrap();
+            command_approve(&config, account, amount, delegate)
+        }
+        ("revoke", Some(arg_matches)) => {
+            let account = pubkey_of(arg_matches, "account").unwrap();
+            command_revoke(&config, account)
         }
         ("balance", Some(arg_matches)) => {
             let address = pubkey_of(arg_matches, "address").unwrap();
