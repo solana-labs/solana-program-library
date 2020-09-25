@@ -8,8 +8,8 @@ use solana_account_decoder::{
     UiAccountData,
 };
 use solana_clap_utils::{
-    input_parsers::pubkey_of,
-    input_validators::{is_amount, is_keypair, is_pubkey_or_keypair, is_url},
+    input_parsers::pubkey_of_signer,
+    input_validators::{is_amount, is_url, is_valid_pubkey, is_valid_signer},
     keypair::signer_from_path,
 };
 use solana_cli_output::display::println_name_value;
@@ -739,7 +739,7 @@ fn main() {
             Arg::with_name("owner")
                 .long("owner")
                 .value_name("KEYPAIR")
-                .validator(is_keypair)
+                .validator(is_valid_signer)
                 .takes_value(true)
                 .global(true)
                 .help(
@@ -752,7 +752,7 @@ fn main() {
             Arg::with_name("fee_payer")
                 .long("fee-payer")
                 .value_name("KEYPAIR")
-                .validator(is_keypair)
+                .validator(is_valid_signer)
                 .takes_value(true)
                 .global(true)
                 .help(
@@ -777,7 +777,7 @@ fn main() {
                 .arg(
                     Arg::with_name("token_keypair")
                         .value_name("KEYPAIR")
-                        .validator(is_keypair)
+                        .validator(is_valid_signer)
                         .takes_value(true)
                         .index(1)
                         .help(
@@ -800,7 +800,7 @@ fn main() {
                 .about("Create a new token account")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -810,7 +810,7 @@ fn main() {
                 .arg(
                     Arg::with_name("account_keypair")
                         .value_name("KEYPAIR")
-                        .validator(is_keypair)
+                        .validator(is_valid_signer)
                         .takes_value(true)
                         .index(2)
                         .help(
@@ -825,7 +825,7 @@ fn main() {
                 .about("Authorize a new signing keypair to a token or token account")
                 .arg(
                     Arg::with_name("address")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -845,7 +845,7 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("new_authority")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("AUTHORITY_ADDRESS")
                         .takes_value(true)
                         .index(3)
@@ -865,7 +865,7 @@ fn main() {
                 .about("Transfer tokens between accounts")
                 .arg(
                     Arg::with_name("sender")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("SENDER_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -883,7 +883,7 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("recipient")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
@@ -896,7 +896,7 @@ fn main() {
                 .about("Burn tokens from an account")
                 .arg(
                     Arg::with_name("source")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("SOURCE_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -918,7 +918,7 @@ fn main() {
                 .about("Mint new tokens")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -936,7 +936,7 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("recipient")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
@@ -949,7 +949,7 @@ fn main() {
                 .about("Freeze a token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -962,7 +962,7 @@ fn main() {
                 .about("Thaw a token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -975,7 +975,7 @@ fn main() {
                 .about("Get token account balance")
                 .arg(
                     Arg::with_name("address")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -988,7 +988,7 @@ fn main() {
                 .about("Get token supply")
                 .arg(
                     Arg::with_name("address")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1001,7 +1001,7 @@ fn main() {
                 .about("List all token accounts by owner")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1026,7 +1026,7 @@ fn main() {
                 .about("Unwrap a SOL token account")
                 .arg(
                     Arg::with_name("address")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1039,7 +1039,7 @@ fn main() {
                 .about("Query details of an SPL Token account by address")
                 .arg(
                     Arg::with_name("address")
-                    .validator(is_pubkey_or_keypair)
+                    .validator(is_valid_pubkey)
                     .value_name("TOKEN_ACCOUNT_ADDRESS")
                     .takes_value(true)
                     .index(1)
@@ -1052,7 +1052,7 @@ fn main() {
                 .about("Approve a delegate for a token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1070,7 +1070,7 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("delegate")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("DELEGATE_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
@@ -1083,7 +1083,7 @@ fn main() {
                 .about("Revoke a delegate's authority")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1096,7 +1096,7 @@ fn main() {
                 .about("Close a token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1105,7 +1105,7 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("destination")
-                        .validator(is_pubkey_or_keypair)
+                        .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(2)
@@ -1191,7 +1191,9 @@ fn main() {
             )
         }
         ("create-account", Some(arg_matches)) => {
-            let token = pubkey_of(arg_matches, "token").unwrap();
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             let account = if arg_matches.is_present("account_keypair") {
                 signer_from_path(
                     &matches,
@@ -1210,7 +1212,9 @@ fn main() {
             command_create_account(&config, token, account)
         }
         ("authorize", Some(arg_matches)) => {
-            let address = pubkey_of(arg_matches, "address").unwrap();
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             let authority_type = arg_matches.value_of("authority_type").unwrap();
             let authority_type = match authority_type {
                 "mint" => AuthorityType::MintTokens,
@@ -1219,32 +1223,47 @@ fn main() {
                 "close" => AuthorityType::CloseAccount,
                 _ => unreachable!(),
             };
-            let new_authority = pubkey_of(arg_matches, "new_authority");
+            let new_authority =
+                pubkey_of_signer(arg_matches, "new_authority", &mut wallet_manager).unwrap();
             command_authorize(&config, address, authority_type, new_authority)
         }
         ("transfer", Some(arg_matches)) => {
-            let sender = pubkey_of(arg_matches, "sender").unwrap();
+            let sender = pubkey_of_signer(arg_matches, "sender", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            let recipient = pubkey_of(arg_matches, "recipient").unwrap();
+            let recipient = pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_transfer(&config, sender, amount, recipient)
         }
         ("burn", Some(arg_matches)) => {
-            let source = pubkey_of(arg_matches, "source").unwrap();
+            let source = pubkey_of_signer(arg_matches, "source", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             command_burn(&config, source, amount)
         }
         ("mint", Some(arg_matches)) => {
-            let token = pubkey_of(arg_matches, "token").unwrap();
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            let recipient = pubkey_of(arg_matches, "recipient").unwrap();
+            let recipient = pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_mint(&config, token, amount, recipient)
         }
         ("freeze", Some(arg_matches)) => {
-            let account = pubkey_of(arg_matches, "account").unwrap();
+            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_freeze(&config, account)
         }
         ("thaw", Some(arg_matches)) => {
-            let account = pubkey_of(arg_matches, "account").unwrap();
+            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_thaw(&config, account)
         }
         ("wrap", Some(arg_matches)) => {
@@ -1252,38 +1271,56 @@ fn main() {
             command_wrap(&config, amount)
         }
         ("unwrap", Some(arg_matches)) => {
-            let address = pubkey_of(arg_matches, "address").unwrap();
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_unwrap(&config, address)
         }
         ("approve", Some(arg_matches)) => {
-            let account = pubkey_of(arg_matches, "account").unwrap();
+            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            let delegate = pubkey_of(arg_matches, "delegate").unwrap();
+            let delegate = pubkey_of_signer(arg_matches, "delegate", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_approve(&config, account, amount, delegate)
         }
         ("revoke", Some(arg_matches)) => {
-            let account = pubkey_of(arg_matches, "account").unwrap();
+            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_revoke(&config, account)
         }
         ("close", Some(arg_matches)) => {
-            let account = pubkey_of(arg_matches, "account").unwrap();
-            let destination = pubkey_of(arg_matches, "destination").unwrap();
+            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let destination = pubkey_of_signer(arg_matches, "destination", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_close(&config, account, destination)
         }
         ("balance", Some(arg_matches)) => {
-            let address = pubkey_of(arg_matches, "address").unwrap();
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_balance(&config, address)
         }
         ("supply", Some(arg_matches)) => {
-            let address = pubkey_of(arg_matches, "address").unwrap();
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_supply(&config, address)
         }
         ("accounts", Some(arg_matches)) => {
-            let token = pubkey_of(arg_matches, "token");
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
             command_accounts(&config, token)
         }
         ("account-info", Some(arg_matches)) => {
-            let address = pubkey_of(arg_matches, "address").unwrap();
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             command_account(&config, address)
         }
         _ => unreachable!(),
