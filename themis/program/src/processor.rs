@@ -5,7 +5,7 @@ use crate::{
     state::{Policies, User},
 };
 use curve25519_dalek::{
-    ristretto::{CompressedRistretto, RistrettoPoint},
+    ristretto::RistrettoPoint,
     scalar::Scalar,
 };
 use elgamal_ristretto::public::PublicKey;
@@ -55,13 +55,12 @@ fn process_calculate_aggregate(
 
 fn process_submit_proof_decryption(
     plaintext: RistrettoPoint,
-    announcement_g: CompressedRistretto,
-    announcement_ctx: CompressedRistretto,
+    announcement: Box<(RistrettoPoint, RistrettoPoint)>,
     response: Scalar,
     user_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
     let mut user = User::deserialize(&user_info.data.borrow())?;
-    user.submit_proof_decryption(plaintext, announcement_g, announcement_ctx, response);
+    user.submit_proof_decryption(plaintext, announcement.0, announcement.1, response);
     user.serialize(&mut user_info.data.borrow_mut())
 }
 
@@ -113,15 +112,13 @@ pub fn process_instruction<'a>(
         }
         ThemisInstruction::SubmitProofDecryption {
             plaintext,
-            announcement_g,
-            announcement_ctx,
+            announcement,
             response,
         } => {
             let user_info = next_account_info(account_infos_iter)?;
             process_submit_proof_decryption(
                 plaintext,
-                announcement_g,
-                announcement_ctx,
+                announcement,
                 response,
                 &user_info,
             )

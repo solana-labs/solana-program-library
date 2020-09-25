@@ -708,7 +708,7 @@ checksum = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
 [[package]]
 name = "elgamal_ristretto"
 version = "0.2.4"
-source = "git+https://github.com/garious/elgamal?rev=b0a2f5b2cbba052096aed56c26e3047c03fdbe70#b0a2f5b2cbba052096aed56c26e3047c03fdbe70"
+source = "git+https://github.com/garious/elgamal?rev=260763fb67c34debe3915b39d95b6e7b3e1461d0#260763fb67c34debe3915b39d95b6e7b3e1461d0"
 dependencies = [
  "bincode",
  "borsh",

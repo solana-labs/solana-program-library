@@ -245,13 +245,12 @@ fn assert_instruction_count() {
     let expected_scalar_aggregate = 3u8.into();
     assert_eq!(scalar_aggregate, expected_scalar_aggregate);
 
-    let ((announcement_g, announcement_ctx), response) =
+    let (announcement, response) =
         sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate);
 
     let instruction_data = ThemisInstruction::SubmitProofDecryption {
         plaintext: decrypted_aggregate,
-        announcement_g,
-        announcement_ctx,
+        announcement: Box::new(announcement),
         response,
     }
     .serialize()

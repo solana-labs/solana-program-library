@@ -3,7 +3,7 @@
 use crate::state::{Policies, User};
 use borsh::{BorshDeserialize, BorshSerialize};
 use curve25519_dalek::{
-    ristretto::{CompressedRistretto, RistrettoPoint},
+    ristretto::RistrettoPoint,
     scalar::Scalar,
 };
 use elgamal_ristretto::public::PublicKey;
@@ -66,11 +66,8 @@ pub enum ThemisInstruction {
         /// plaintext
         plaintext: RistrettoPoint,
 
-        /// announcement_g
-        announcement_g: CompressedRistretto,
-
-        /// announcement_ctx
-        announcement_ctx: CompressedRistretto,
+        /// (announcement_g, announcement_ctx)
+        announcement: Box<(RistrettoPoint, RistrettoPoint)>,
 
         /// response
         response: Scalar,
@@ -183,14 +180,13 @@ pub fn calculate_aggregate(
 pub fn submit_proof_decryption(
     user_pubkey: &Pubkey,
     plaintext: RistrettoPoint,
-    announcement_g: CompressedRistretto,
-    announcement_ctx: CompressedRistretto,
+    announcement_g: RistrettoPoint,
+    announcement_ctx: RistrettoPoint,
     response: Scalar,
 ) -> Instruction {
     let data = ThemisInstruction::SubmitProofDecryption {
         plaintext,
-        announcement_g,
-        announcement_ctx,
+        announcement: Box::new((announcement_g, announcement_ctx)),
         response,
     };
     let accounts = vec![AccountMeta::new(*user_pubkey, true)];
