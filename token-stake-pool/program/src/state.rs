@@ -15,9 +15,11 @@ pub struct StakePool {
     pub deposit_nonce: u8,
     /// Withdrawal authority nonce
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
-    pub withdrawal_nonce: u8,
+    pub withdraw_nonce: u8,
     /// Pool Mint 
     pub pool_mint: Pubkey,
+    /// Owner fee account
+    pub owner_fee_account: Pubkey,
     /// total stake under management
     pub stake_total: u64,
     /// total pool

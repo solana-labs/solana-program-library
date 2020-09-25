@@ -35,6 +35,7 @@ pub enum StakePoolInstruction {
     ///   0. `[w, s]` New StakePool to create.
     ///   1. `[]` Owner
     ///   2. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
+    ///   3. `[w]` Pool Account to deposit the generated fee for owner.
     Initialize(Init),
 
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
@@ -46,6 +47,7 @@ pub enum StakePoolInstruction {
     ///   3. `[w]` Stake, deposit authority is set as the withdrawal key
     ///   4. `[w]` Pool MINT account, authority is the owner.
     ///   5. `[w]` Pool Account to deposit the generated tokens.
+    ///   6. `[w]` Pool Account to deposit the generated fee for owner.
     Deposit,
 
     ///   Withdraw the token from the pool at the current ratio.
@@ -73,17 +75,9 @@ pub enum StakePoolInstruction {
     ///
     ///   0. `[w]` StakePool
     ///   1. `[s]` Owner
-    ///   2. '[]` New owner pubkey.
+    ///   2. '[]` New owner pubkey
+    ///   3. '[]` New owner fee account
     UpdateOwner,
-
-    ///   Update Rewards
-    ///
-    ///   0. `[w]` StakePool
-    ///   1. `[]` withdraw authority
-    ///   2. `[w]` Stake SOURCE owned by the withdraw authority  
-    ///   3. `[w]` Pool MINT account, withdraw authority is the owner.
-    ///   4. `[w]` Pool Account to deposit the generated tokens for the operator fee owned by pool `owner`.
-    UpdateRewards,
 }
 
 impl StakePoolInstruction {
@@ -109,9 +103,6 @@ impl StakePoolInstruction {
             }
             4 => {
                 Self::UpdateOwner
-            }
-            5 => {
-                Self::UpdateRewards
             }
             _ => return Err(ProgramError::InvalidAccountData),
         })
@@ -141,9 +132,6 @@ impl StakePoolInstruction {
             }
             Self::UpdateOwner => {
                 output[0] = 4;
-            }
-            Self::UpdateRewards => {
-                output[0] = 5;
             }
         }
         Ok(output)

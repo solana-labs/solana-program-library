@@ -152,64 +152,24 @@ impl State {
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let swap_info = next_account_info(account_info_iter)?;
-        let authority_info = next_account_info(account_info_iter)?;
-        let token_a_info = next_account_info(account_info_iter)?;
-        let token_b_info = next_account_info(account_info_iter)?;
-        let pool_info = next_account_info(account_info_iter)?;
-        let user_output_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let owner_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let owner_fee_info = next_account_info(account_info_iter)?;
 
-        if State::Unallocated != State::deserialize(&swap_info.data.borrow())? {
+        if State::Unallocated != State::deserialize(&stake_pool_info.data.borrow())? {
             return Err(Error::AlreadyInUse.into());
         }
 
-        if *authority_info.key != Self::authority_id(program_id, swap_info.key)? {
-            return Err(Error::InvalidProgramAddress.into());
-        }
-        let token_a = Self::token_account_deserialize(token_a_info)?;
-        let token_b = Self::token_account_deserialize(token_b_info)?;
-        let pool_mint = Self::mint_deserialize(pool_info)?;
-        if *authority_info.key != token_a.owner {
-            return Err(Error::InvalidOwner.into());
-        }
-        if *authority_info.key != token_b.owner {
-            return Err(Error::InvalidOwner.into());
-        }
-        if spl_token::option::COption::Some(*authority_info.key) != pool_mint.owner {
-            return Err(Error::InvalidOwner.into());
-        }
-        if token_b.amount == 0 {
-            return Err(Error::InvalidSupply.into());
-        }
-        if token_a.amount == 0 {
-            return Err(Error::InvalidSupply.into());
-        }
-        if token_a.delegate.is_some() {
-            return Err(Error::InvalidDelegate.into());
-        }
-        if token_b.delegate.is_some() {
-            return Err(Error::InvalidDelegate.into());
-        }
-
-        // liquidity is measured in terms of token_a's value since both sides of
-        // the pool are equal
-        let amount = token_a.amount;
-        Self::token_mint_to(
-            accounts,
-            token_program_info.key,
-            swap_info.key,
-            pool_info.key,
-            user_output_info.key,
-            authority_info.key,
-            amount,
-        )?;
-
-        let obj = State::Init(StakePool {
-            token_a: *token_a_info.key,
-            token_b: *token_b_info.key,
-            pool_mint: *pool_info.key,
-            fee,
+        let swap_info = State::Init(SwapInfo {
+            owner: owner_info.key,
+            deposit_nonce: init.deposit_nonce,
+            withdraw_nonce: init.deposit_nonce,
+            pool_mint: pool_mint_info.key,
+            owner_fee_account: owner_fee_info.key,
+            stake_total: 0,
+            pool_total: 0,
+            fee: init.fee,
         });
         obj.serialize(&mut swap_info.data.borrow_mut())
     }
@@ -228,6 +188,7 @@ impl State {
         let stake_info = next_account_info(account_info_iter)?;
         let stake_dest_user_info = next_account_info(account_info_iter)?;
         let dest_user_info = next_account_info(account_info_iter)?;
+        let owner_fee_info = next_account_info(account_info_iter)?;
 
         let stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
@@ -239,7 +200,13 @@ impl State {
             return Err(Error::InvalidProgramAddress.into());
         }
 
+        let stake_pool.owner_fee_account != owner_fee_info.key {
+            return Err(Error::InvalidInput.into());
+        }
+
         let pool_amount = stake_info.amount as u128 * stake_pool.pool_total as u128 / stake_pool.stake_total as u128;
+        let fee = pool_amount * stake_pool.fee.numerator as u128 / stake_pool.fee.denominator. as u128;
+        let user_pool = pool_amount.checked_sub(fee);
 
         Self::stake_set_owner(
             accounts,
@@ -255,8 +222,18 @@ impl State {
             pool_mint_info.key,
             dest_user_info.key,
             withdraw_info.key,
-            pool_amount,
+            user_amount,
         )?;
+        Self::token_mint_to(
+            accounts,
+            stake_pool.token_program_id,
+            stake_pool_info.key,
+            pool_mint_info.key,
+            owner_fee_info.key,
+            withdraw_info.key,
+            fee_amount,
+        )?;
+
         stake_pool.pool_total += pool_amount;
         stake_pool.stake_total += stake_amount;
         stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
@@ -357,6 +334,7 @@ impl State {
         let stake_pool_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
         let new_owner_info = next_account_info(account_info_iter)?;
+        let new_owner_fee_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
@@ -369,6 +347,7 @@ impl State {
 
         )?;
         stake_pool.owner = new_owner_info.key;
+        stake_pool.owner_fee_account = new_owner_fee_info.key;
         stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
         Ok(())
     }
@@ -395,10 +374,6 @@ impl State {
             StakePoolInstruction::UpdateOwner => {
                 info!("Instruction: UpdateOwner");
                 Self::process_update_owner(program_id, accounts)
-            }
-            StakePoolInstruction::UpdateRewads => {
-                info!("Instruction: UpdateRewads");
-                Self::process_update_rewards(program_id, accounts)
             }
         }
     }
