@@ -122,29 +122,6 @@ impl State {
         invoke_signed(&ix, accounts, signers)
     }
 
-    /// Issue a spl_token `Transfer` instruction.
-    pub fn token_transfer(
-        accounts: &[AccountInfo],
-        token_program_id: &Pubkey,
-        swap: &Pubkey,
-        source: &Pubkey,
-        destination: &Pubkey,
-        authority: &Pubkey,
-        amount: u64,
-    ) -> Result<(), ProgramError> {
-        let swap_bytes = swap.to_bytes();
-        let signers = &[&[&swap_bytes[..32]][..]];
-        let ix = spl_token::instruction::transfer(
-            token_program_id,
-            source,
-            destination,
-            authority,
-            &[],
-            amount,
-        )?;
-        invoke_signed(&ix, accounts, signers)
-    }
-
     /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize(
         program_id: &Pubkey,
@@ -174,209 +151,209 @@ impl State {
         obj.serialize(&mut swap_info.data.borrow_mut())
     }
 
-    /// Processes an [Withdraw](enum.Instruction.html).
-    pub fn process_deposit(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let deposit_info = next_account_info(account_info_iter)?;
-        let withdraw_info = next_account_info(account_info_iter)?;
-        let source_info = next_account_info(account_info_iter)?;
-        let pool_mint_info = next_account_info(account_info_iter)?;
-        let stake_info = next_account_info(account_info_iter)?;
-        let stake_dest_user_info = next_account_info(account_info_iter)?;
-        let dest_user_info = next_account_info(account_info_iter)?;
-        let owner_fee_info = next_account_info(account_info_iter)?;
-
-        let stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
-
-        if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
-            return Err(Error::InvalidProgramAddress.into());
-        }
-
-        if *deposit_info.key != Self::deposit_id(program_id, stake_pool_info.key)? {
-            return Err(Error::InvalidProgramAddress.into());
-        }
-
-        let stake_pool.owner_fee_account != owner_fee_info.key {
-            return Err(Error::InvalidInput.into());
-        }
-
-        let pool_amount = stake_info.amount as u128 * stake_pool.pool_total as u128 / stake_pool.stake_total as u128;
-        let fee = pool_amount * stake_pool.fee.numerator as u128 / stake_pool.fee.denominator. as u128;
-        let user_pool = pool_amount.checked_sub(fee);
-
-        Self::stake_set_owner(
-            accounts,
-            stake_info.key,
-            deposit_info.key,
-            withdraw_info.key,
-        )?;
-
-        Self::token_mint_to(
-            accounts,
-            stake_pool.token_program_id,
-            stake_pool_info.key,
-            pool_mint_info.key,
-            dest_user_info.key,
-            withdraw_info.key,
-            user_amount,
-        )?;
-        Self::token_mint_to(
-            accounts,
-            stake_pool.token_program_id,
-            stake_pool_info.key,
-            pool_mint_info.key,
-            owner_fee_info.key,
-            withdraw_info.key,
-            fee_amount,
-        )?;
-
-        stake_pool.pool_total += pool_amount;
-        stake_pool.stake_total += stake_amount;
-        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
-        Ok(())
-    }
-
-    /// Processes an [Withdraw](enum.Instruction.html).
-    pub fn process_withdraw(
-        program_id: &Pubkey,
-        stake_amount: u64,
-        accounts: &[AccountInfo],
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let withdraw_info = next_account_info(account_info_iter)?;
-        let source_info = next_account_info(account_info_iter)?;
-        let pool_mint_info = next_account_info(account_info_iter)?;
-        let stake_info = next_account_info(account_info_iter)?;
-        let stake_dest_user_info = next_account_info(account_info_iter)?;
-        let dest_user_info = next_account_info(account_info_iter)?;
-
-        let stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
-
-        if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
-            return Err(Error::InvalidProgramAddress.into());
-        }
-
-        let pool_amount = stake_amount as u128 * stake_pool.pool_total as u128 / stake_pool.stake_total as u128;
-
-        Self::stake_split(
-            accounts,
-            stake_info.key,
-            withdraw_info.key,
-            stake_dest_user_info.key,
-            stake_amount,
-        )?;
-
-        Self::stake_set_owner(
-            accounts,
-            stake_info.key,
-            withdraw_info.key,
-            dest_user_info.key,
-        )?;
-
-        Self::token_burn(
-            accounts,
-            stake_pool.token_program_id,
-            stake_pool_info.key,
-            withdraw_info.key,
-            dest_user_info.key,
-            stake_amount,
-        )?;
-
-        stake_pool.pool_total -= pool_amount;
-        stake_pool.stake_total -= stake_amount;
-        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
-        Ok(())
-    }
-    /// Processes an [UpdateStakeAuthority](enum.Instruction.html).
-    pub fn process_update_stake_auth(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let owner_info = next_account_info(account_info_iter)?;
-        let withdraw_info = next_account_info(account_info_iter)?;
-        let staking_info = next_account_info(account_info_iter)?;
-        let stake_info = next_account_info(account_info_iter)?;
-
-        let stake_pool = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
-
-        if *owner_info.key != stake_pool.owner {
-            return Err(Error::InvalidInput.into());
-        }
-        if !*owner_info.is_signer {
-            return Err(Error::InvalidInput.into());
-        }
-
-        if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
-            return Err(Error::InvalidProgramAddress.into());
-        }
-        Self::update_stake_auth(
-            accounts,
-            stake_info.key,
-            withdraw_info.key,
-            staking_info.key,
-        )?;
-        Ok(())
-    }
-
-    /// Processes an [UpdateOwner](enum.Instruction.html).
-    pub fn process_update_owner(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let owner_info = next_account_info(account_info_iter)?;
-        let new_owner_info = next_account_info(account_info_iter)?;
-        let new_owner_fee_info = next_account_info(account_info_iter)?;
-
-        let mut stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
-
-        if *owner_info.key != stake_pool.owner {
-            return Err(Error::InvalidInput.into());
-        }
-        if !*owner_info.is_signer {
-            return Err(Error::InvalidInput.into());
-        }
-
-        )?;
-        stake_pool.owner = new_owner_info.key;
-        stake_pool.owner_fee_account = new_owner_fee_info.key;
-        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
-        Ok(())
-    }
-    /// Processes an [Instruction](enum.Instruction.html).
-    pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
-        let instruction = StakePoolInstruction::deserialize(input)?;
-        match instruction {
-            StakePoolInstruction::Initialize(init) => {
-                info!("Instruction: Init");
-                Self::process_initialize(program_id, init, accounts)
-            }
-            StakePoolInstruction::Deposit => {
-                info!("Instruction: Deposit");
-                Self::process_deposit(program_id, amount, accounts)
-            }
-            StakePoolInstruction::Withdraw(amount) => {
-                info!("Instruction: Withdraw");
-                Self::process_withdraw(program_id, amount, accounts)
-            }
-            StakePoolInstruction::UpdateStakingAuthority => {
-                info!("Instruction: UpdateStakingAuthority");
-                Self::process_update_staking_auth(program_id, accounts)
-            }
-            StakePoolInstruction::UpdateOwner => {
-                info!("Instruction: UpdateOwner");
-                Self::process_update_owner(program_id, accounts)
-            }
-        }
-    }
+//    /// Processes an [Withdraw](enum.Instruction.html).
+//    pub fn process_deposit(
+//        program_id: &Pubkey,
+//        accounts: &[AccountInfo],
+//    ) -> ProgramResult {
+//        let account_info_iter = &mut accounts.iter();
+//        let stake_pool_info = next_account_info(account_info_iter)?;
+//        let deposit_info = next_account_info(account_info_iter)?;
+//        let withdraw_info = next_account_info(account_info_iter)?;
+//        let source_info = next_account_info(account_info_iter)?;
+//        let pool_mint_info = next_account_info(account_info_iter)?;
+//        let stake_info = next_account_info(account_info_iter)?;
+//        let stake_dest_user_info = next_account_info(account_info_iter)?;
+//        let dest_user_info = next_account_info(account_info_iter)?;
+//        let owner_fee_info = next_account_info(account_info_iter)?;
+//
+//        let stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+//
+//        if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
+//            return Err(Error::InvalidProgramAddress.into());
+//        }
+//
+//        if *deposit_info.key != Self::deposit_id(program_id, stake_pool_info.key)? {
+//            return Err(Error::InvalidProgramAddress.into());
+//        }
+//
+//        let stake_pool.owner_fee_account != owner_fee_info.key {
+//            return Err(Error::InvalidInput.into());
+//        }
+//
+//        let pool_amount = stake_info.amount as u128 * stake_pool.pool_total as u128 / stake_pool.stake_total as u128;
+//        let fee = pool_amount * stake_pool.fee.numerator as u128 / stake_pool.fee.denominator. as u128;
+//        let user_pool = pool_amount.checked_sub(fee);
+//
+//        Self::stake_set_owner(
+//            accounts,
+//            stake_info.key,
+//            deposit_info.key,
+//            withdraw_info.key,
+//        )?;
+//
+//        Self::token_mint_to(
+//            accounts,
+//            stake_pool.token_program_id,
+//            stake_pool_info.key,
+//            pool_mint_info.key,
+//            dest_user_info.key,
+//            withdraw_info.key,
+//            user_amount,
+//        )?;
+//        Self::token_mint_to(
+//            accounts,
+//            stake_pool.token_program_id,
+//            stake_pool_info.key,
+//            pool_mint_info.key,
+//            owner_fee_info.key,
+//            withdraw_info.key,
+//            fee_amount,
+//        )?;
+//
+//        stake_pool.pool_total += pool_amount;
+//        stake_pool.stake_total += stake_amount;
+//        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
+//        Ok(())
+//    }
+//
+//    /// Processes an [Withdraw](enum.Instruction.html).
+//    pub fn process_withdraw(
+//        program_id: &Pubkey,
+//        stake_amount: u64,
+//        accounts: &[AccountInfo],
+//    ) -> ProgramResult {
+//        let account_info_iter = &mut accounts.iter();
+//        let stake_pool_info = next_account_info(account_info_iter)?;
+//        let withdraw_info = next_account_info(account_info_iter)?;
+//        let source_info = next_account_info(account_info_iter)?;
+//        let pool_mint_info = next_account_info(account_info_iter)?;
+//        let stake_info = next_account_info(account_info_iter)?;
+//        let stake_dest_user_info = next_account_info(account_info_iter)?;
+//        let dest_user_info = next_account_info(account_info_iter)?;
+//
+//        let stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+//
+//        if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
+//            return Err(Error::InvalidProgramAddress.into());
+//        }
+//
+//        let pool_amount = stake_amount as u128 * stake_pool.pool_total as u128 / stake_pool.stake_total as u128;
+//
+//        Self::stake_split(
+//            accounts,
+//            stake_info.key,
+//            withdraw_info.key,
+//            stake_dest_user_info.key,
+//            stake_amount,
+//        )?;
+//
+//        Self::stake_set_owner(
+//            accounts,
+//            stake_info.key,
+//            withdraw_info.key,
+//            dest_user_info.key,
+//        )?;
+//
+//        Self::token_burn(
+//            accounts,
+//            stake_pool.token_program_id,
+//            stake_pool_info.key,
+//            withdraw_info.key,
+//            dest_user_info.key,
+//            stake_amount,
+//        )?;
+//
+//        stake_pool.pool_total -= pool_amount;
+//        stake_pool.stake_total -= stake_amount;
+//        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
+//        Ok(())
+//    }
+//    /// Processes an [UpdateStakeAuthority](enum.Instruction.html).
+//    pub fn process_update_stake_auth(
+//        program_id: &Pubkey,
+//        accounts: &[AccountInfo],
+//    ) -> ProgramResult {
+//        let account_info_iter = &mut accounts.iter();
+//        let stake_pool_info = next_account_info(account_info_iter)?;
+//        let owner_info = next_account_info(account_info_iter)?;
+//        let withdraw_info = next_account_info(account_info_iter)?;
+//        let staking_info = next_account_info(account_info_iter)?;
+//        let stake_info = next_account_info(account_info_iter)?;
+//
+//        let stake_pool = Self::deserialize(&swap_info.data.borrow())?.token_swap()?;
+//
+//        if *owner_info.key != stake_pool.owner {
+//            return Err(Error::InvalidInput.into());
+//        }
+//        if !*owner_info.is_signer {
+//            return Err(Error::InvalidInput.into());
+//        }
+//
+//        if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
+//            return Err(Error::InvalidProgramAddress.into());
+//        }
+//        Self::update_stake_auth(
+//            accounts,
+//            stake_info.key,
+//            withdraw_info.key,
+//            staking_info.key,
+//        )?;
+//        Ok(())
+//    }
+//
+//    /// Processes an [UpdateOwner](enum.Instruction.html).
+//    pub fn process_update_owner(
+//        program_id: &Pubkey,
+//        accounts: &[AccountInfo],
+//    ) -> ProgramResult {
+//        let account_info_iter = &mut accounts.iter();
+//        let stake_pool_info = next_account_info(account_info_iter)?;
+//        let owner_info = next_account_info(account_info_iter)?;
+//        let new_owner_info = next_account_info(account_info_iter)?;
+//        let new_owner_fee_info = next_account_info(account_info_iter)?;
+//
+//        let mut stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+//
+//        if *owner_info.key != stake_pool.owner {
+//            return Err(Error::InvalidInput.into());
+//        }
+//        if !*owner_info.is_signer {
+//            return Err(Error::InvalidInput.into());
+//        }
+//
+//        )?;
+//        stake_pool.owner = new_owner_info.key;
+//        stake_pool.owner_fee_account = new_owner_fee_info.key;
+//        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
+//        Ok(())
+//    }
+//    /// Processes an [Instruction](enum.Instruction.html).
+//    pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
+//        let instruction = StakePoolInstruction::deserialize(input)?;
+//        match instruction {
+//            StakePoolInstruction::Initialize(init) => {
+//                info!("Instruction: Init");
+//                Self::process_initialize(program_id, init, accounts)
+//            }
+//            StakePoolInstruction::Deposit => {
+//                info!("Instruction: Deposit");
+//                Self::process_deposit(program_id, amount, accounts)
+//            }
+//            StakePoolInstruction::Withdraw(amount) => {
+//                info!("Instruction: Withdraw");
+//                Self::process_withdraw(program_id, amount, accounts)
+//            }
+//            StakePoolInstruction::UpdateStakingAuthority => {
+//                info!("Instruction: UpdateStakingAuthority");
+//                Self::process_update_staking_auth(program_id, accounts)
+//            }
+//            StakePoolInstruction::UpdateOwner => {
+//                info!("Instruction: UpdateOwner");
+//                Self::process_update_owner(program_id, accounts)
+//            }
+//        }
+//    }
 }
 
 // Test program id for the swap program.

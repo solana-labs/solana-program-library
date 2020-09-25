@@ -24,7 +24,7 @@ pub struct StakePool {
     pub stake_total: u64,
     /// total pool
     pub pool_total: u64,
-    /// Fee applied to withdrawals
+    /// Fee applied to deposits
     pub fee: Fee,
 }
 

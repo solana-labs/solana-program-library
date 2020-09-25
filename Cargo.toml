@@ -8,6 +8,7 @@ members = [
   "themis/program_ristretto",
   "token-lending/program",
   "token-swap/program",
+  "token-stake-pool/program",
   "token/cli",
   "token/program",
   "token/program-v3",
