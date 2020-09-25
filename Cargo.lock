@@ -2892,6 +2892,7 @@ dependencies = [
 name = "spl-themis-client"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "borsh",
  "curve25519-dalek 2.1.0 (git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff)",
  "elgamal_ristretto",
