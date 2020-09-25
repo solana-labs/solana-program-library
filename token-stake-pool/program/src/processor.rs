@@ -148,7 +148,7 @@ impl State {
     /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize(
         program_id: &Pubkey,
-        fee: Fee,
+        init: Init,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -215,9 +215,58 @@ impl State {
     }
 
     /// Processes an [Withdraw](enum.Instruction.html).
+    pub fn process_deposit(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let deposit_info = next_account_info(account_info_iter)?;
+        let withdraw_info = next_account_info(account_info_iter)?;
+        let source_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let stake_info = next_account_info(account_info_iter)?;
+        let stake_dest_user_info = next_account_info(account_info_iter)?;
+        let dest_user_info = next_account_info(account_info_iter)?;
+
+        let stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+
+        if *withdraw_info.key != Self::withdraw_id(program_id, stake_pool_info.key)? {
+            return Err(Error::InvalidProgramAddress.into());
+        }
+
+        if *deposit_info.key != Self::deposit_id(program_id, stake_pool_info.key)? {
+            return Err(Error::InvalidProgramAddress.into());
+        }
+
+        let pool_amount = stake_info.amount as u128 * stake_pool.pool_total as u128 / stake_pool.stake_total as u128;
+
+        Self::stake_set_owner(
+            accounts,
+            stake_info.key,
+            deposit_info.key,
+            withdraw_info.key,
+        )?;
+
+        Self::token_mint_to(
+            accounts,
+            stake_pool.token_program_id,
+            stake_pool_info.key,
+            pool_mint_info.key,
+            dest_user_info.key,
+            withdraw_info.key,
+            pool_amount,
+        )?;
+        stake_pool.pool_total += pool_amount;
+        stake_pool.stake_total += stake_amount;
+        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
+        Ok(())
+    }
+
+    /// Processes an [Withdraw](enum.Instruction.html).
     pub fn process_withdraw(
         program_id: &Pubkey,
-        amount: u64,
+        stake_amount: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -226,8 +275,8 @@ impl State {
         let source_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let stake_info = next_account_info(account_info_iter)?;
-        let stake_dest_owner_info = next_account_info(account_info_iter)?;
         let stake_dest_user_info = next_account_info(account_info_iter)?;
+        let dest_user_info = next_account_info(account_info_iter)?;
 
         let stake_pool = Self::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
@@ -235,25 +284,35 @@ impl State {
             return Err(Error::InvalidProgramAddress.into());
         }
 
-        let stake = Self::stake_account_deserialize(stake_info)?;
-        let amount = stake.amount;
+        let pool_amount = stake_amount as u128 * stake_pool.pool_total as u128 / stake_pool.stake_total as u128;
+
+        Self::stake_split(
+            accounts,
+            stake_info.key,
+            withdraw_info.key,
+            stake_dest_user_info.key,
+            stake_amount,
+        )?;
+
+        Self::stake_set_owner(
+            accounts,
+            stake_info.key,
+            withdraw_info.key,
+            dest_user_info.key,
+        )?;
 
         Self::token_burn(
             accounts,
-            token_program_info.key,
-            swap_info.key,
-            source_info.key,
+            stake_pool.token_program_id,
+            stake_pool_info.key,
             withdraw_info.key,
-            amount,
+            dest_user_info.key,
+            stake_amount,
         )?;
-        Self::stake_split(
-            accounts,
-            withdraw_i.key,
-            from_info.key,
-            dest_info.key,
-            authority_info.key,
-            output,
-        )?;
+
+        stake_pool.pool_total -= pool_amount;
+        stake_pool.stake_total -= stake_amount;
+        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
         Ok(())
     }
     /// Processes an [UpdateStakeAuthority](enum.Instruction.html).

@@ -34,17 +34,17 @@ pub enum StakePoolInstruction {
     ///
     ///   0. `[w, s]` New StakePool to create.
     ///   1. `[]` Owner
-    ///   2. `[]` pool token Mint. Must be non zero, owned by $authority.
+    ///   2. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
     Initialize(Init),
 
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
     ///
     ///   0. `[]` StakePool
-    ///   1. `[]` deposit $authority
-    ///   2. `[]` withdraw  $authority
-    ///   3. `[w]` Stake, deposit $authority is set as the withdrawal key
-    ///   4. `[w]` Pool MINT account, $authority is the owner.
+    ///   1. `[]` deposit authority
+    ///   2. `[]` withdraw  authority
+    ///   3. `[w]` Stake, deposit authority is set as the withdrawal key
+    ///   4. `[w]` Pool MINT account, authority is the owner.
     ///   5. `[w]` Pool Account to deposit the generated tokens.
     Deposit,
 
@@ -52,10 +52,10 @@ pub enum StakePoolInstruction {
     ///   The amount withdrawn is the MIN(u64, stake size)
     ///   
     ///   0. `[]` StakePool
-    ///   1. `[]` withdraw  $authority
-    ///   2. `[w]` SOURCE Pool account, amount is transferable by $authority
-    ///   3. `[w]` Pool MINT account, $authority is the owner
-    ///   4. `[w]` Stake SOURCE owned by the withdraw $authority  
+    ///   1. `[]` withdraw  authority
+    ///   2. `[w]` SOURCE Pool account, amount is transferable by authority
+    ///   3. `[w]` Pool MINT account, authority is the owner
+    ///   4. `[w]` Stake SOURCE owned by the withdraw authority  
     ///   6. `[w]` Stake destination, uninitialized, for the user stake
     ///   userdata: amount to withdraw
     Withdraw(u64),
@@ -64,7 +64,7 @@ pub enum StakePoolInstruction {
     ///
     ///   0. `[w]` StakePool
     ///   1. `[s]` Owner
-    ///   2. `[]` withdraw $authority
+    ///   2. `[]` withdraw authority
     ///   3. '[]` Staking pubkey.
     ///   4. `[w]` Stake to update the staking pubkey
     UpdateStakingAuthority,
@@ -79,9 +79,9 @@ pub enum StakePoolInstruction {
     ///   Update Rewards
     ///
     ///   0. `[w]` StakePool
-    ///   1. `[]` withdraw $authority
-    ///   2. `[w]` Stake SOURCE owned by the withdraw $authority  
-    ///   3. `[w]` Pool MINT account, $authority is the owner.
+    ///   1. `[]` withdraw authority
+    ///   2. `[w]` Stake SOURCE owned by the withdraw authority  
+    ///   3. `[w]` Pool MINT account, withdraw authority is the owner.
     ///   4. `[w]` Pool Account to deposit the generated tokens for the operator fee owned by pool `owner`.
     UpdateRewards,
 }
