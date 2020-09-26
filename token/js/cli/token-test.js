@@ -128,10 +128,7 @@ export async function loadTokenProgram(): Promise<void> {
 
 export async function createMint(): Promise<void> {
   const connection = await getConnection();
-  const payer = await newAccountWithLamports(
-    connection,
-    100000000000 /* wag */,
-  );
+  const payer = await newAccountWithLamports(connection, 1000000000 /* wag */);
   testMintAuthority = new Account();
   testToken = await Token.createMint(
     connection,
@@ -529,11 +526,8 @@ export async function nativeToken(): Promise<void> {
   const connection = await getConnection();
   // this user both pays for the creation of the new token account
   // and provides the lamports to wrap
-  const payer = await newAccountWithLamports(
-    connection,
-    100000000000 /* wag */,
-  );
-  const lamportsToWrap = 50000000000;
+  const payer = await newAccountWithLamports(connection, 2000000000 /* wag */);
+  const lamportsToWrap = 1000000000;
 
   const token = new Token(connection, NATIVE_MINT, programId, payer);
   const owner = new Account();
