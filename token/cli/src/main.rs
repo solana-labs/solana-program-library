@@ -8,14 +8,15 @@ use solana_account_decoder::{
     UiAccountData,
 };
 use solana_clap_utils::{
-    input_parsers::pubkey_of_signer,
+    input_parsers::{pubkey_of_signer, signer_of},
     input_validators::{is_amount, is_url, is_valid_pubkey, is_valid_signer},
-    keypair::signer_from_path,
+    keypair::DefaultSigner,
 };
 use solana_cli_output::display::println_name_value;
 use solana_client::{rpc_client::RpcClient, rpc_request::TokenAccountsFilter};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
+    instruction::Instruction,
     native_token::*,
     program_pack::Pack,
     pubkey::Pubkey,
@@ -36,27 +37,27 @@ static WARNING: Emoji = Emoji("⚠️", "!");
 struct Config {
     rpc_client: RpcClient,
     verbose: bool,
-    owner: Box<dyn Signer>,
-    fee_payer: Box<dyn Signer>,
+    owner: Pubkey,
+    fee_payer: Pubkey,
     commitment_config: CommitmentConfig,
+    default_signer: DefaultSigner,
 }
 
 type Error = Box<dyn std::error::Error>;
-type CommandResult = Result<Option<Transaction>, Error>;
+type CommandResult = Result<Option<(u64, Vec<Instruction>)>, Error>;
 
-macro_rules! unique_signers {
-    ($vec:ident) => {
-        $vec.sort_by_key(|l| l.pubkey());
-        $vec.dedup();
-    };
+fn new_throwaway_signer() -> (Option<Box<dyn Signer>>, Option<Pubkey>) {
+    let keypair = Keypair::new();
+    let pubkey = keypair.pubkey();
+    (Some(Box::new(keypair) as Box<dyn Signer>), Some(pubkey))
 }
 
 fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
-    let balance = config.rpc_client.get_balance(&config.fee_payer.pubkey())?;
+    let balance = config.rpc_client.get_balance(&config.fee_payer)?;
     if balance < required_balance {
         Err(format!(
             "Fee payer, {}, has insufficient balance: {} required, {} available",
-            config.fee_payer.pubkey(),
+            config.fee_payer,
             lamports_to_sol(required_balance),
             lamports_to_sol(balance)
         )
@@ -67,11 +68,11 @@ fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(),
 }
 
 fn check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
-    let balance = config.rpc_client.get_balance(&config.owner.pubkey())?;
+    let balance = config.rpc_client.get_balance(&config.owner)?;
     if balance < required_balance {
         Err(format!(
             "Owner, {}, has insufficient balance: {} required, {} available",
-            config.owner.pubkey(),
+            config.owner,
             lamports_to_sol(required_balance),
             lamports_to_sol(balance)
         )
@@ -84,90 +85,57 @@ fn check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Err
 fn command_create_token(
     config: &Config,
     decimals: u8,
-    token: Box<dyn Signer>,
+    token: Pubkey,
     enable_freeze: bool,
 ) -> CommandResult {
-    println!("Creating token {}", token.pubkey());
+    println!("Creating token {}", token);
 
     let minimum_balance_for_rent_exemption = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(Mint::LEN)?;
     let freeze_authority_pubkey = if enable_freeze {
-        Some(config.owner.pubkey())
+        Some(config.owner)
     } else {
         None
     };
 
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            system_instruction::create_account(
-                &config.fee_payer.pubkey(),
-                &token.pubkey(),
-                minimum_balance_for_rent_exemption,
-                Mint::LEN as u64,
-                &spl_token::id(),
-            ),
-            initialize_mint(
-                &spl_token::id(),
-                &token.pubkey(),
-                &config.owner.pubkey(),
-                freeze_authority_pubkey.as_ref(),
-                decimals,
-            )?,
-        ],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(
-        config,
-        minimum_balance_for_rent_exemption + fee_calculator.calculate_fee(&transaction.message()),
-    )?;
-    let mut signers = vec![config.fee_payer.as_ref(), token.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![
+        system_instruction::create_account(
+            &config.fee_payer,
+            &token,
+            minimum_balance_for_rent_exemption,
+            Mint::LEN as u64,
+            &spl_token::id(),
+        ),
+        initialize_mint(
+            &spl_token::id(),
+            &token,
+            &config.owner,
+            freeze_authority_pubkey.as_ref(),
+            decimals,
+        )?,
+    ];
+    Ok(Some((minimum_balance_for_rent_exemption, instructions)))
 }
 
-fn command_create_account(
-    config: &Config,
-    token: Pubkey,
-    account: Box<dyn Signer>,
-) -> CommandResult {
-    println!("Creating account {}", account.pubkey());
+fn command_create_account(config: &Config, token: Pubkey, account: Pubkey) -> CommandResult {
+    println!("Creating account {}", account);
 
     let minimum_balance_for_rent_exemption = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(Account::LEN)?;
 
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            system_instruction::create_account(
-                &config.fee_payer.pubkey(),
-                &account.pubkey(),
-                minimum_balance_for_rent_exemption,
-                Account::LEN as u64,
-                &spl_token::id(),
-            ),
-            initialize_account(
-                &spl_token::id(),
-                &account.pubkey(),
-                &token,
-                &config.owner.pubkey(),
-            )?,
-        ],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(
-        config,
-        minimum_balance_for_rent_exemption + fee_calculator.calculate_fee(&transaction.message()),
-    )?;
-    let mut signers = vec![config.fee_payer.as_ref(), account.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![
+        system_instruction::create_account(
+            &config.fee_payer,
+            &account,
+            minimum_balance_for_rent_exemption,
+            Account::LEN as u64,
+            &spl_token::id(),
+        ),
+        initialize_account(&spl_token::id(), &account, &token, &config.owner)?,
+    ];
+    Ok(Some((minimum_balance_for_rent_exemption, instructions)))
 }
 
 fn command_authorize(
@@ -186,31 +154,22 @@ fn command_authorize(
         "Updating {}\n  Current {}: {}\n  New {}: {}",
         account,
         auth_str,
-        config.owner.pubkey(),
+        config.owner,
         auth_str,
         new_owner
             .map(|pubkey| pubkey.to_string())
             .unwrap_or_else(|| "disabled".to_string())
     );
 
-    let mut transaction = Transaction::new_with_payer(
-        &[set_authority(
-            &spl_token::id(),
-            &account,
-            new_owner.as_ref(),
-            authority_type,
-            &config.owner.pubkey(),
-            &[],
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![set_authority(
+        &spl_token::id(),
+        &account,
+        new_owner.as_ref(),
+        authority_type,
+        &config.owner,
+        &[],
+    )?];
+    Ok(Some((0, instructions)))
 }
 
 fn command_transfer(
@@ -232,26 +191,17 @@ fn command_transfer(
     let mint_pubkey = Pubkey::from_str(&source_account.mint)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, source_account.token_amount.decimals);
 
-    let mut transaction = Transaction::new_with_payer(
-        &[transfer_checked(
-            &spl_token::id(),
-            &sender,
-            &mint_pubkey,
-            &recipient,
-            &config.owner.pubkey(),
-            &[],
-            amount,
-            source_account.token_amount.decimals,
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![transfer_checked(
+        &spl_token::id(),
+        &sender,
+        &mint_pubkey,
+        &recipient,
+        &config.owner,
+        &[],
+        amount,
+        source_account.token_amount.decimals,
+    )?];
+    Ok(Some((0, instructions)))
 }
 
 fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommandResult {
@@ -265,25 +215,16 @@ fn command_burn(config: &Config, source: Pubkey, ui_amount: f64) -> CommandResul
     let mint_pubkey = Pubkey::from_str(&source_account.mint)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, source_account.token_amount.decimals);
 
-    let mut transaction = Transaction::new_with_payer(
-        &[burn_checked(
-            &spl_token::id(),
-            &source,
-            &mint_pubkey,
-            &config.owner.pubkey(),
-            &[],
-            amount,
-            source_account.token_amount.decimals,
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![burn_checked(
+        &spl_token::id(),
+        &source,
+        &mint_pubkey,
+        &config.owner,
+        &[],
+        amount,
+        source_account.token_amount.decimals,
+    )?];
+    Ok(Some((0, instructions)))
 }
 
 fn command_mint(
@@ -303,25 +244,16 @@ fn command_mint(
         .value;
     let amount = spl_token::ui_amount_to_amount(ui_amount, recipient_token_balance.decimals);
 
-    let mut transaction = Transaction::new_with_payer(
-        &[mint_to_checked(
-            &spl_token::id(),
-            &token,
-            &recipient,
-            &config.owner.pubkey(),
-            &[],
-            amount,
-            recipient_token_balance.decimals,
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![mint_to_checked(
+        &spl_token::id(),
+        &token,
+        &recipient,
+        &config.owner,
+        &[],
+        amount,
+        recipient_token_balance.decimals,
+    )?];
+    Ok(Some((0, instructions)))
 }
 
 fn command_freeze(config: &Config, account: Pubkey) -> CommandResult {
@@ -334,23 +266,14 @@ fn command_freeze(config: &Config, account: Pubkey) -> CommandResult {
 
     println!("Freezing account: {}\n  Token: {}", account, token);
 
-    let mut transaction = Transaction::new_with_payer(
-        &[freeze_account(
-            &spl_token::id(),
-            &account,
-            &token,
-            &config.owner.pubkey(),
-            &[],
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![freeze_account(
+        &spl_token::id(),
+        &account,
+        &token,
+        &config.owner,
+        &[],
+    )?];
+    Ok(Some((0, instructions)))
 }
 
 fn command_thaw(config: &Config, account: Pubkey) -> CommandResult {
@@ -363,56 +286,37 @@ fn command_thaw(config: &Config, account: Pubkey) -> CommandResult {
 
     println!("Freezing account: {}\n  Token: {}", account, token);
 
-    let mut transaction = Transaction::new_with_payer(
-        &[thaw_account(
-            &spl_token::id(),
-            &account,
-            &token,
-            &config.owner.pubkey(),
-            &[],
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![thaw_account(
+        &spl_token::id(),
+        &account,
+        &token,
+        &config.owner,
+        &[],
+    )?];
+    Ok(Some((0, instructions)))
 }
 
-fn command_wrap(config: &Config, sol: f64) -> CommandResult {
-    let account = Keypair::new();
+fn command_wrap(config: &Config, sol: f64, account: Pubkey) -> CommandResult {
     let lamports = sol_to_lamports(sol);
-    println!("Wrapping {} SOL into {}", sol, account.pubkey());
+    println!("Wrapping {} SOL into {}", sol, account);
 
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            system_instruction::create_account(
-                &config.owner.pubkey(),
-                &account.pubkey(),
-                lamports,
-                Account::LEN as u64,
-                &spl_token::id(),
-            ),
-            initialize_account(
-                &spl_token::id(),
-                &account.pubkey(),
-                &native_mint::id(),
-                &config.owner.pubkey(),
-            )?,
-        ],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let instructions = vec![
+        system_instruction::create_account(
+            &config.owner,
+            &account,
+            lamports,
+            Account::LEN as u64,
+            &spl_token::id(),
+        ),
+        initialize_account(
+            &spl_token::id(),
+            &account,
+            &native_mint::id(),
+            &config.owner,
+        )?,
+    ];
     check_owner_balance(config, lamports)?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref(), &account];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    Ok(Some((0, instructions)))
 }
 
 fn command_unwrap(config: &Config, address: Pubkey) -> CommandResult {
@@ -425,26 +329,17 @@ fn command_unwrap(config: &Config, address: Pubkey) -> CommandResult {
                 .get_balance_with_commitment(&address, config.commitment_config)?
                 .value
         ),
-        config.owner.pubkey()
+        &config.owner,
     );
 
-    let mut transaction = Transaction::new_with_payer(
-        &[close_account(
-            &spl_token::id(),
-            &address,
-            &config.owner.pubkey(),
-            &config.owner.pubkey(),
-            &[],
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![close_account(
+        &spl_token::id(),
+        &address,
+        &config.owner,
+        &config.owner,
+        &[],
+    )?];
+    Ok(Some((0, instructions)))
 }
 
 fn command_approve(
@@ -466,26 +361,17 @@ fn command_approve(
     let mint_pubkey = Pubkey::from_str(&source_account.mint)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, source_account.token_amount.decimals);
 
-    let mut transaction = Transaction::new_with_payer(
-        &[approve_checked(
-            &spl_token::id(),
-            &account,
-            &mint_pubkey,
-            &delegate,
-            &config.owner.pubkey(),
-            &[],
-            amount,
-            source_account.token_amount.decimals,
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![approve_checked(
+        &spl_token::id(),
+        &account,
+        &mint_pubkey,
+        &delegate,
+        &config.owner,
+        &[],
+        amount,
+        source_account.token_amount.decimals,
+    )?];
+    Ok(Some((0, instructions)))
 }
 
 fn command_revoke(config: &Config, account: Pubkey) -> CommandResult {
@@ -505,22 +391,8 @@ fn command_revoke(config: &Config, account: Pubkey) -> CommandResult {
         return Err(format!("No delegate on account {}", account).into());
     }
 
-    let mut transaction = Transaction::new_with_payer(
-        &[revoke(
-            &spl_token::id(),
-            &account,
-            &config.owner.pubkey(),
-            &[],
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![revoke(&spl_token::id(), &account, &config.owner, &[])?];
+    Ok(Some((0, instructions)))
 }
 
 fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> CommandResult {
@@ -538,23 +410,14 @@ fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> Comma
         .into());
     }
 
-    let mut transaction = Transaction::new_with_payer(
-        &[close_account(
-            &spl_token::id(),
-            &account,
-            &destination,
-            &config.owner.pubkey(),
-            &[],
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    let instructions = vec![close_account(
+        &spl_token::id(),
+        &account,
+        &destination,
+        &config.owner,
+        &[],
+    )?];
+    Ok(Some((0, instructions)))
 }
 
 fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
@@ -587,7 +450,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
     let accounts = config
         .rpc_client
         .get_token_accounts_by_owner_with_commitment(
-            &config.owner.pubkey(),
+            &config.owner,
             match token {
                 Some(token) => TokenAccountsFilter::Mint(token),
                 None => TokenAccountsFilter::ProgramId(spl_token::id()),
@@ -1116,6 +979,7 @@ fn main() {
         .get_matches();
 
     let mut wallet_manager = None;
+    let mut bulk_signers: Vec<Option<Box<dyn Signer>>> = Vec::new();
 
     let config = {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
@@ -1128,30 +992,31 @@ fn main() {
             .unwrap_or(&cli_config.json_rpc_url)
             .to_string();
 
-        let owner = signer_from_path(
-            &matches,
-            matches
-                .value_of("owner")
-                .unwrap_or(&cli_config.keypair_path),
-            "owner",
-            &mut wallet_manager,
-        )
-        .unwrap_or_else(|e| {
-            eprintln!("error: {}", e);
-            exit(1);
-        });
-        let fee_payer = signer_from_path(
-            &matches,
-            matches
-                .value_of("fee_payer")
-                .unwrap_or(&cli_config.keypair_path),
-            "fee_payer",
-            &mut wallet_manager,
-        )
-        .unwrap_or_else(|e| {
-            eprintln!("error: {}", e);
-            exit(1);
-        });
+        let default_signer_arg_name = "owner".to_string();
+        let default_signer_path = matches
+            .value_of(&default_signer_arg_name)
+            .map(|s| s.to_string())
+            .unwrap_or(cli_config.keypair_path);
+        let default_signer = DefaultSigner {
+            path: default_signer_path,
+            arg_name: default_signer_arg_name,
+        };
+        let owner = default_signer
+            .signer_from_path(&matches, &mut wallet_manager)
+            .unwrap_or_else(|e| {
+                eprintln!("error: {}", e);
+                exit(1);
+            })
+            .pubkey();
+        bulk_signers.push(None);
+        let (signer, fee_payer) = signer_of(&matches, "fee_payer", &mut wallet_manager)
+            .unwrap_or_else(|e| {
+                eprintln!("error: {}", e);
+                exit(1);
+            });
+        let fee_payer = fee_payer.unwrap_or(owner);
+        bulk_signers.push(signer);
+
         let verbose = matches.is_present("verbose");
 
         Config {
@@ -1160,6 +1025,7 @@ fn main() {
             owner,
             fee_payer,
             commitment_config: CommitmentConfig::single_gossip(),
+            default_signer,
         }
     };
 
@@ -1168,20 +1034,16 @@ fn main() {
     let _ = match matches.subcommand() {
         ("create-token", Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
-            let token = if arg_matches.is_present("token_keypair") {
-                signer_from_path(
-                    &matches,
-                    &value_t_or_exit!(arg_matches, "token_keypair", String),
-                    "token_keypair",
-                    &mut wallet_manager,
-                )
-                .unwrap_or_else(|e| {
+            let (signer, token) = if arg_matches.is_present("token_keypair") {
+                signer_of(&arg_matches, "token_keypair", &mut wallet_manager).unwrap_or_else(|e| {
                     eprintln!("error: {}", e);
                     exit(1);
                 })
             } else {
-                Box::new(Keypair::new())
+                new_throwaway_signer()
             };
+            let token = token.unwrap();
+            bulk_signers.push(signer);
 
             command_create_token(
                 &config,
@@ -1194,20 +1056,18 @@ fn main() {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let account = if arg_matches.is_present("account_keypair") {
-                signer_from_path(
-                    &matches,
-                    &value_t_or_exit!(arg_matches, "account_keypair", String),
-                    "account_keypair",
-                    &mut wallet_manager,
+            let (signer, account) = if arg_matches.is_present("account_keypair") {
+                signer_of(&arg_matches, "account_keypair", &mut wallet_manager).unwrap_or_else(
+                    |e| {
+                        eprintln!("error: {}", e);
+                        exit(1);
+                    },
                 )
-                .unwrap_or_else(|e| {
-                    eprintln!("error: {}", e);
-                    exit(1);
-                })
             } else {
-                Box::new(Keypair::new())
+                new_throwaway_signer()
             };
+            let account = account.unwrap();
+            bulk_signers.push(signer);
 
             command_create_account(&config, token, account)
         }
@@ -1268,7 +1128,10 @@ fn main() {
         }
         ("wrap", Some(arg_matches)) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            command_wrap(&config, amount)
+            let (signer, account) = new_throwaway_signer();
+            let account = account.unwrap();
+            bulk_signers.push(signer);
+            command_wrap(&config, amount, account)
         }
         ("unwrap", Some(arg_matches)) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
@@ -1325,8 +1188,31 @@ fn main() {
         }
         _ => unreachable!(),
     }
-    .and_then(|transaction| {
-        if let Some(transaction) = transaction {
+    .and_then(|transaction_info| {
+        if let Some((minimum_balance_for_rent_exemption, instructions)) = transaction_info {
+            let mut transaction =
+                Transaction::new_with_payer(&instructions, Some(&config.fee_payer));
+            let (recent_blockhash, fee_calculator) = config
+                .rpc_client
+                .get_recent_blockhash()
+                .unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    exit(1);
+                });
+            check_fee_payer_balance(
+                &config,
+                minimum_balance_for_rent_exemption
+                    + fee_calculator.calculate_fee(&transaction.message()),
+            )?;
+            let signer_info = config
+                .default_signer
+                .generate_unique_signers(bulk_signers, &matches, &mut wallet_manager)
+                .unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    exit(1);
+                });
+            transaction.sign(&signer_info.signers, recent_blockhash);
+
             let signature = config
                 .rpc_client
                 .send_and_confirm_transaction_with_spinner_and_commitment(
