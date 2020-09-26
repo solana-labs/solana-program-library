@@ -3,14 +3,14 @@ use solana_bpf_loader_program::{
     serialization::{deserialize_parameters, serialize_parameters},
 };
 use solana_rbpf::vm::{EbpfVm, InstructionMeter};
+use solana_runtime::process_instruction::{
+    ComputeBudget, ComputeMeter, Executor, InvokeContext, Logger, ProcessInstruction,
+};
 use solana_sdk::{
     account::{Account as SolanaAccount, KeyedAccount},
     bpf_loader,
     entrypoint::SUCCESS,
-    entrypoint_native::{
-        ComputeBudget, ComputeMeter, Executor, InvokeContext, Logger, ProcessInstruction,
-    },
-    instruction::{CompiledInstruction, InstructionError},
+    instruction::{CompiledInstruction, Instruction, InstructionError},
     message::Message,
     program_option::COption,
     program_pack::Pack,
@@ -214,6 +214,7 @@ impl InvokeContext for MockInvokeContext {
     fn get_executor(&mut self, _pubkey: &Pubkey) -> Option<Arc<dyn Executor>> {
         None
     }
+    fn record_instruction(&self, _instruction: &Instruction) {}
 }
 
 #[derive(Debug, Default, Clone)]
