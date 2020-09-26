@@ -555,6 +555,43 @@ fn command_revoke(config: &Config, account: Pubkey) -> CommandResult {
     Ok(Some(transaction))
 }
 
+fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> CommandResult {
+    let source_account = config
+        .rpc_client
+        .get_token_account_with_commitment(&account, config.commitment_config)?
+        .value
+        .ok_or_else(|| format!("Could not find token account {}", account))?;
+
+    if !source_account.is_native && source_account.token_amount.ui_amount > 0.0 {
+        return Err(format!(
+            "Account {} still has {} tokens; empty the account in order to close it.",
+            account, source_account.token_amount.ui_amount
+        )
+        .into());
+    }
+
+    let mut transaction = Transaction::new_with_payer(
+        &[close_account(
+            &spl_token::id(),
+            &account,
+            &destination,
+            &config.owner.pubkey(),
+            &[],
+        )?],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(
+        config,
+        fee_calculator.calculate_fee(&transaction.message(), None),
+    )?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+    Ok(Some(transaction))
+}
+
 fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
     let balance = config
         .rpc_client
@@ -1089,6 +1126,28 @@ fn main() {
                         .help("The address of the token account"),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("close")
+                .about("Close a token account")
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token account to close"),
+                )
+                .arg(
+                    Arg::with_name("destination")
+                        .validator(is_pubkey_or_keypair)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("The address of the account to receive remaining SOL"),
+                ),
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -1240,6 +1299,11 @@ fn main() {
         ("revoke", Some(arg_matches)) => {
             let account = pubkey_of(arg_matches, "account").unwrap();
             command_revoke(&config, account)
+        }
+        ("close", Some(arg_matches)) => {
+            let account = pubkey_of(arg_matches, "account").unwrap();
+            let destination = pubkey_of(arg_matches, "destination").unwrap();
+            command_close(&config, account, destination)
         }
         ("balance", Some(arg_matches)) => {
             let address = pubkey_of(arg_matches, "address").unwrap();
