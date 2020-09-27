@@ -2,9 +2,7 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use solana_sdk::{
-    program_error::ProgramError,
-};
+use solana_sdk::program_error::ProgramError;
 use std::mem::size_of;
 
 /// Fee rate as a ratio
@@ -22,9 +20,13 @@ pub struct Fee {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct InitArgs {
-    fee: Fee,
-    deposit_nonce: u8,
-    withdraw_none: u8,
+    /// Fee paid to the owner in pool tokens
+    pub fee: Fee,
+    /// Nonce used for the deposit program address
+    pub deposit_nonce: u8,
+    /// Nonce used for the withdraw program address
+    /// This program address is used as the stake withdraw key as well
+    pub withdraw_none: u8,
 }
 
 /// Instructions supported by the StakePool program.
@@ -92,19 +94,13 @@ impl StakePoolInstruction {
                 let val: &InitArgs = unpack(input)?;
                 Self::Initialize(*val)
             }
-            1 => {
-                Self::Deposit
-            }
+            1 => Self::Deposit,
             2 => {
                 let val: &u64 = unpack(input)?;
                 Self::Withdraw(*val)
             }
-            3 => {
-                Self::UpdateStakingAuthority
-            }
-            4 => {
-                Self::UpdateOwner
-            }
+            3 => Self::UpdateStakingAuthority,
+            4 => Self::UpdateOwner,
             _ => return Err(ProgramError::InvalidAccountData),
         })
     }
