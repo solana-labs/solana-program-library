@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-//! An governance program for the Solana spl-token program.
+//! A program for creating pools of Solana stakes managed by a Stake-o-Matic
 
 pub mod entrypoint;
 pub mod error;
@@ -12,4 +12,4 @@ pub mod state;
 // solana-sdk version
 pub use solana_sdk;
 
-solana_sdk::declare_id!("STAKEPQQLfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+solana_sdk::declare_id!("STAKEPQQL1111111111111111111111111111111111");

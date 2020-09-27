@@ -2927,6 +2927,7 @@ dependencies = [
  "rand",
  "remove_dir_all",
  "solana-sdk",
+ "spl-token 2.0.4",
  "thiserror",
 ]
 

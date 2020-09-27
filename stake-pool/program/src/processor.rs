@@ -5,7 +5,7 @@
 use crate::{
     error::Error,
     instruction::{unpack, Fee, StakePoolInstruction},
-    state::{Invariant, State, StakePool},
+    state::{State, StakePool},
 };
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
@@ -19,7 +19,9 @@ use solana_sdk::{
 };
 use std::mem::size_of;
 
-impl State {
+/// Program state handler.
+pub struct Processor {}
+impl Processor {
     /// Deserializes a byte buffer into a [State](struct.State.html).
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
@@ -177,12 +179,12 @@ impl State {
 //            return Err(Error::InvalidProgramAddress.into());
 //        }
 //
-//        let stake_pool.owner_fee_account != owner_fee_info.key {
+//        if stake_pool.owner_fee_account != owner_fee_info.key {
 //            return Err(Error::InvalidInput.into());
 //        }
 //
 //        let pool_amount = stake_info.amount as u128 * stake_pool.pool_total as u128 / stake_pool.stake_total as u128;
-//        let fee = pool_amount * stake_pool.fee.numerator as u128 / stake_pool.fee.denominator. as u128;
+//        let fee = pool_amount * stake_pool.fee.numerator as u128 / stake_pool.fee.denominator as u128;
 //        let user_pool = pool_amount.checked_sub(fee);
 //
 //        Self::stake_set_owner(
@@ -213,10 +215,10 @@ impl State {
 //
 //        stake_pool.pool_total += pool_amount;
 //        stake_pool.stake_total += stake_amount;
-//        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
+//        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut());
 //        Ok(())
 //    }
-//
+
 //    /// Processes an [Withdraw](enum.Instruction.html).
 //    pub fn process_withdraw(
 //        program_id: &Pubkey,
@@ -266,7 +268,7 @@ impl State {
 //
 //        stake_pool.pool_total -= pool_amount;
 //        stake_pool.stake_total -= stake_amount;
-//        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
+//        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut());
 //        Ok(())
 //    }
 //    /// Processes an [UpdateStakeAuthority](enum.Instruction.html).
