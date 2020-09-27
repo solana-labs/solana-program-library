@@ -2976,6 +2976,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-stake-pool"
+version = "0.1.0"
+dependencies = [
+ "num-derive",
+ "num-traits",
+ "rand",
+ "remove_dir_all",
+ "solana-sdk",
+ "spl-token 2.0.4",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-token-swap"
 version = "0.1.0"
 dependencies = [
