@@ -2,7 +2,7 @@
 # Note: This crate must be built using do.sh
 
 [package]
-name = "spl-token-stake-pool"
+name = "spl-stake-pool"
 version = "0.1.0"
 description = "Solana Program Library Stake Pool"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]

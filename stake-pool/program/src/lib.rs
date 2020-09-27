@@ -12,4 +12,4 @@ pub mod state;
 // solana-sdk version
 pub use solana_sdk;
 
-solana_sdk::declare_id!("TokenGov1111111111111111111111111111111111");
+solana_sdk::declare_id!("StakePool1111111111111111111111111111111111");

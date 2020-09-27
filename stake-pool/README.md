@@ -1,4 +1,4 @@
-# token-stake-pool program
+# stake-pool program
 
 A program for pooling together SOL to be staked by an of-chain agent
 running SoM (Stake-o-Matic).
