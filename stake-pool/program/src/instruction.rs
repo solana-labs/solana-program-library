@@ -21,7 +21,7 @@ pub struct Fee {
 /// Inital values for the Stake Pool
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Init {
+pub struct InitArgs {
     fee: Fee,
     deposit_nonce: u8,
     withdraw_none: u8,
@@ -37,7 +37,7 @@ pub enum StakePoolInstruction {
     ///   1. `[]` Owner
     ///   2. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
     ///   3. `[w]` Pool Account to deposit the generated fee for owner.
-    Initialize(Init),
+    Initialize(InitArgs),
 
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
@@ -89,7 +89,7 @@ impl StakePoolInstruction {
         }
         Ok(match input[0] {
             0 => {
-                let val: &Init = unpack(input)?;
+                let val: &InitArgs = unpack(input)?;
                 Self::Initialize(*val)
             }
             1 => {
@@ -110,13 +110,13 @@ impl StakePoolInstruction {
     }
 
     /// Serializes an [StakePoolInstruction](enum.StakePoolInstruction.html) into a byte buffer.
-    pub fn serialize(self: &Self) -> Result<Vec<u8>, ProgramError> {
+    pub fn serialize(&self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<StakePoolInstruction>()];
         match self {
             Self::Initialize(init) => {
                 output[0] = 0;
                 #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut Init) };
+                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut InitArgs) };
                 *value = *init;
             }
             Self::Deposit => {

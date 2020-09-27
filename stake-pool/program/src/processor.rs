@@ -4,7 +4,7 @@
 
 use crate::{
     error::Error,
-    instruction::{unpack, Fee, StakePoolInstruction},
+    instruction::{unpack, InitArgs},
     state::{State, StakePool},
 };
 use num_traits::FromPrimitive;
@@ -38,7 +38,7 @@ impl Processor {
     }
 
     /// Serializes [State](struct.State.html) into a byte buffer.
-    pub fn serialize(self: &Self, output: &mut [u8]) -> ProgramResult {
+    pub fn serialize(&self, output: &mut [u8]) -> ProgramResult {
         if output.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
         }
@@ -64,20 +64,6 @@ impl Processor {
         } else {
             Err(Error::InvalidState.into())
         }
-    }
-
-    /// Deserializes a spl_token `Account`.
-    pub fn token_account_deserialize(
-        info: &AccountInfo,
-    ) -> Result<spl_token::state::Account, Error> {
-        Ok(*spl_token::state::unpack(&mut info.data.borrow_mut())
-            .map_err(|_| Error::ExpectedAccount)?)
-    }
-
-    /// Deserializes a spl_token `Mint`.
-    pub fn mint_deserialize(info: &AccountInfo) -> Result<spl_token::state::Mint, Error> {
-        Ok(*spl_token::state::unpack(&mut info.data.borrow_mut())
-            .map_err(|_| Error::ExpectedToken)?)
     }
 
     /// Calculates the authority id by generating a program address.
@@ -127,7 +113,7 @@ impl Processor {
     /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize(
         program_id: &Pubkey,
-        init: Init,
+        init: InitArgs,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -140,7 +126,7 @@ impl Processor {
             return Err(Error::AlreadyInUse.into());
         }
 
-        let swap_info = State::Init(SwapInfo {
+        let swap_info = State::Init(StakePool {
             owner: owner_info.key,
             deposit_nonce: init.deposit_nonce,
             withdraw_nonce: init.deposit_nonce,
@@ -150,7 +136,7 @@ impl Processor {
             pool_total: 0,
             fee: init.fee,
         });
-        obj.serialize(&mut swap_info.data.borrow_mut())
+        swap_info.serialize(&mut swap_info.data.borrow_mut())
     }
 
 //    /// Processes an [Withdraw](enum.Instruction.html).
