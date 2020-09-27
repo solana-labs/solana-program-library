@@ -3,30 +3,31 @@
 #![allow(clippy::too_many_arguments)]
 
 use solana_sdk::{
-    instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
-    pubkey::Pubkey,
 };
 use std::mem::size_of;
 
 /// Fee rate as a ratio
-/// Fee is paid on deposit and withdraw
+/// Fee is minted on deposit
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub Fee {
+pub struct Fee {
     /// denominator of the fee ratio
     pub denominator: u64,
     /// numerator of the fee ratio
     pub numerator: u64,
 }
 
-pub Init {
+/// Inital values for the Stake Pool
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Init {
     fee: Fee,
-    recv_nonce: u8,
+    deposit_nonce: u8,
     withdraw_none: u8,
 }
 
-/// Instructions supported by the SwapInfo program.
+/// Instructions supported by the StakePool program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum StakePoolInstruction {
@@ -81,7 +82,7 @@ pub enum StakePoolInstruction {
 }
 
 impl StakePoolInstruction {
-    /// Deserializes a byte buffer into an [SwapInstruction](enum.SwapInstruction.html).
+    /// Deserializes a byte buffer into an [StakePoolInstruction](enum.StakePoolInstruction.html).
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -96,7 +97,7 @@ impl StakePoolInstruction {
             }
             2 => {
                 let val: &u64 = unpack(input)?;
-                Self::Withraw(*val)
+                Self::Withdraw(*val)
             }
             3 => {
                 Self::UpdateStakingAuthority
@@ -108,9 +109,9 @@ impl StakePoolInstruction {
         })
     }
 
-    /// Serializes an [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
+    /// Serializes an [StakePoolInstruction](enum.StakePoolInstruction.html) into a byte buffer.
     pub fn serialize(self: &Self) -> Result<Vec<u8>, ProgramError> {
-        let mut output = vec![0u8; size_of::<SwapInstruction>()];
+        let mut output = vec![0u8; size_of::<StakePoolInstruction>()];
         match self {
             Self::Initialize(init) => {
                 output[0] = 0;
