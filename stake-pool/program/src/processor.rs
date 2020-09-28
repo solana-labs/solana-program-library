@@ -87,8 +87,9 @@ impl Processor {
         authority: &Pubkey,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let swap_bytes = swap.to_bytes();
-        let signers = &[&[&swap_bytes[..32]][..]];
+        let my_info = my_info.to_bytes();
+        let authority_signature_seeds = [&my_info[..32], &[nonce]];
+        let signers = &[&authority_signature_seeds[..]];
         let ix = spl_token::instruction::mint_to(
             token_program_id,
             mint,
