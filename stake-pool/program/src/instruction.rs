@@ -71,9 +71,9 @@ pub enum StakePoolInstruction {
     ///   0. `[w]` StakePool
     ///   1. `[s]` Owner
     ///   2. `[]` withdraw authority
-    ///   3. '[]` Staking pubkey.
-    ///   4. `[w]` Stake to update the staking pubkey
-    UpdateStakingAuthority,
+    ///   3. `[w]` Stake to update the staking pubkey
+    ///   4. '[]` Staking pubkey.
+    SetStakingAuthority,
 
     ///   Update owner
     ///
@@ -81,7 +81,7 @@ pub enum StakePoolInstruction {
     ///   1. `[s]` Owner
     ///   2. '[]` New owner pubkey
     ///   3. '[]` New owner fee account
-    UpdateOwner,
+    SetOwner,
 }
 
 impl StakePoolInstruction {
@@ -100,8 +100,8 @@ impl StakePoolInstruction {
                 let val: &u64 = unpack(input)?;
                 Self::Withdraw(*val)
             }
-            3 => Self::UpdateStakingAuthority,
-            4 => Self::UpdateOwner,
+            3 => Self::SetStakingAuthority,
+            4 => Self::SetOwner,
             _ => return Err(ProgramError::InvalidAccountData),
         })
     }
@@ -125,10 +125,10 @@ impl StakePoolInstruction {
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
                 *value = *val;
             }
-            Self::UpdateStakingAuthority => {
+            Self::SetStakingAuthority => {
                 output[0] = 3;
             }
-            Self::UpdateOwner => {
+            Self::SetOwner => {
                 output[0] = 4;
             }
         }
