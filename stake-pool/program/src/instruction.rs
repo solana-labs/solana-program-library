@@ -39,6 +39,7 @@ pub enum StakePoolInstruction {
     ///   1. `[]` Owner
     ///   2. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
     ///   3. `[w]` Pool Account to deposit the generated fee for owner.
+    ///   4. `[]` Token program id
     Initialize(InitArgs),
 
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership

@@ -26,12 +26,28 @@ pub struct StakePool {
     pub pool_mint: Pubkey,
     /// Owner fee account
     pub owner_fee_account: Pubkey,
+    /// Pool token program id
+    pub token_program_id: Pubkey,
     /// total stake under management
     pub stake_total: u64,
     /// total pool
     pub pool_total: u64,
     /// Fee applied to deposits
     pub fee: Fee,
+}
+impl StakePool {
+    /// calculate the pool tokens that should be minted
+    pub fn calc_pool_amount(&self, stake_lamports: u64) -> Option<u128> {
+        (stake_lamports as u128)
+            .checked_mul((self.pool_total as u128).checked_add(1)?)?
+            .checked_div((self.stake_total as u128).checked_add(1)?)
+    }
+    /// calculate the fee in pool tokens that goes to the owner
+    pub fn calc_fee_amount(&self, pool_amount: u128) -> Option<u128> {
+        pool_amount
+            .checked_mul((self.fee.numerator as u128).checked_add(1)?)?
+            .checked_div((self.fee.denominator as u128).checked_add(1)?)
+    }
 }
 
 /// Program states.

@@ -17,6 +17,7 @@ use solana_sdk::{
     entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
     pubkey::Pubkey,
 };
+use std::convert::TryFrom;
 
 /// Program state handler.
 pub struct Processor {}
@@ -26,6 +27,19 @@ impl Processor {
         create_program_address(&[&my_info.to_bytes()[..32], &[nonce]], program_id)
             .or(Err(Error::InvalidProgramAddress))
     }
+
+    /// Issue a spl_token `Burn` instruction.
+    pub fn stake_set_owner(
+        accounts: &[AccountInfo],
+        my_info: &Pubkey,
+        authority: &Pubkey,
+        nonce: u8,
+        stake: &Pubkey,
+        owner: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        unimplemented!();
+    }
+
     /// Issue a spl_token `Burn` instruction.
     pub fn token_burn(
         accounts: &[AccountInfo],
@@ -85,6 +99,7 @@ impl Processor {
         let owner_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let owner_fee_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
         if State::Unallocated != State::deserialize(&stake_pool_info.data.borrow())? {
             return Err(Error::AlreadyInUse.into());
@@ -96,6 +111,7 @@ impl Processor {
             withdraw_nonce: init.deposit_nonce,
             pool_mint: *pool_mint_info.key,
             owner_fee_account: *owner_fee_info.key,
+            token_program_id: *token_program_info.key,
             stake_total: 0,
             pool_total: 0,
             fee: init.fee,
@@ -134,49 +150,52 @@ impl Processor {
             return Err(Error::InvalidInput.into());
         }
 
-        let pool_amount = (stake_info.lamports as u128)
-            .checked_mul(stake_pool.pool_total as u128 + 1)
-            .ok_or(Error::CalculationFailure.into())?
-            .checked_div(stake_pool.stake_total as u128 + 1)
-            .ok_or(Error::CalculationFailure.into())?;
-        let fee_amount = pool_amount
-            .checked_mul(stake_pool.fee.numerator as u128 + 1)
-            .ok_or(Error::CalculationFailure.into())?
-            .checked_div(stake_pool.fee.denominator as u128 + 1)
-            .ok_or(Error::CalculationFailure.into())?;
+        let stake_lamports = **stake_info.lamports.borrow();
+        let pool_amount = stake_pool
+            .calc_pool_amount(stake_lamports)
+            .ok_or(Error::CalculationFailure)?;
+
+        let fee_amount = stake_pool
+            .calc_fee_amount(pool_amount)
+            .ok_or(Error::CalculationFailure)?;
+
         let user_amount = pool_amount
             .checked_sub(fee_amount)
-            .ok_or(Error::CalculationFailure.into())?;
+            .ok_or(Error::CalculationFailure)?;
 
         Self::stake_set_owner(
             accounts,
-            stake_info.key,
+            stake_pool_info.key,
             deposit_info.key,
+            stake_pool.deposit_nonce,
+            stake_info.key,
             withdraw_info.key,
         )?;
 
+        let user_amount = <u64>::try_from(user_amount).or(Err(Error::CalculationFailure))?;
         Self::token_mint_to(
             accounts,
-            stake_pool.token_program_id,
+            &stake_pool.token_program_id,
             stake_pool_info.key,
             pool_mint_info.key,
             dest_user_info.key,
             withdraw_info.key,
             user_amount,
         )?;
+        let fee_amount = <u64>::try_from(fee_amount).or(Err(Error::CalculationFailure))?;
         Self::token_mint_to(
             accounts,
-            stake_pool.token_program_id,
+            &stake_pool.token_program_id,
             stake_pool_info.key,
             pool_mint_info.key,
             owner_fee_info.key,
             withdraw_info.key,
-            fee_amount,
+            fee_amount as u64,
         )?;
-
+        let pool_amount = <u64>::try_from(pool_amount).or(Err(Error::CalculationFailure))?;
         stake_pool.pool_total += pool_amount;
-        stake_pool.stake_total += stake_info.lamports;
-        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut());
+        stake_pool.stake_total += stake_lamports;
+        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut());
         Ok(())
     }
 
