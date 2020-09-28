@@ -2,11 +2,8 @@
 
 use crate::state::{Policies, User};
 use borsh::{BorshDeserialize, BorshSerialize};
-use curve25519_dalek::{
-    ristretto::RistrettoPoint,
-    scalar::Scalar,
-};
-use elgamal_ristretto::public::PublicKey;
+use bn::{G1, Fr};
+use elgamal_bn::public::PublicKey;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
@@ -39,7 +36,7 @@ pub enum ThemisInstruction {
     ///   0. `[writable]` The account to initialize.
     InitializePoliciesAccount {
         /// Policies to be added
-        scalars: Vec<Scalar>,
+        scalars: Vec<Fr>,
     },
 
     /// Calculate aggregate. The length of the `input` vector must equal the
@@ -51,7 +48,7 @@ pub enum ThemisInstruction {
     ///   1. `[]`  The policies account
     CalculateAggregate {
         /// Encrypted interactions
-        encrypted_interactions: Vec<(RistrettoPoint, RistrettoPoint)>,
+        encrypted_interactions: Vec<(G1, G1)>,
 
         /// Public key for all encrypted interations
         public_key: PublicKey,
@@ -64,13 +61,13 @@ pub enum ThemisInstruction {
     ///   0. `[writable, signer]`  The user account
     SubmitProofDecryption {
         /// plaintext
-        plaintext: RistrettoPoint,
+        plaintext: G1,
 
         /// (announcement_g, announcement_ctx)
-        announcement: Box<(RistrettoPoint, RistrettoPoint)>,
+        announcement: Box<(G1, G1)>,
 
         /// response
-        response: Scalar,
+        response: Fr,
     },
 
     /// Request a payment
@@ -80,13 +77,13 @@ pub enum ThemisInstruction {
     ///   0. `[writable, signer]`  The user account
     RequestPayment {
         /// Encrypted aggregate
-        encrypted_aggregate: Box<(RistrettoPoint, RistrettoPoint)>,
+        encrypted_aggregate: Box<(G1, G1)>,
 
         /// Decrypted aggregate
-        decrypted_aggregate: RistrettoPoint,
+        decrypted_aggregate: G1,
 
         /// Proof correct decryption
-        proof_correct_decryption: RistrettoPoint,
+        proof_correct_decryption: G1,
     },
 }
 
@@ -124,7 +121,7 @@ pub fn create_user_account(from: &Pubkey, user_pubkey: &Pubkey, lamports: u64) -
 }
 
 /// Return an `InitializePoliciesAccount` instruction.
-fn initialize_policies_account(policies_pubkey: &Pubkey, scalars: Vec<Scalar>) -> Instruction {
+fn initialize_policies_account(policies_pubkey: &Pubkey, scalars: Vec<Fr>) -> Instruction {
     let data = ThemisInstruction::InitializePoliciesAccount { scalars };
     let accounts = vec![AccountMeta::new(*policies_pubkey, false)];
     Instruction {
@@ -139,7 +136,7 @@ pub fn create_policies_account(
     from: &Pubkey,
     policies_pubkey: &Pubkey,
     lamports: u64,
-    scalars: Vec<Scalar>,
+    scalars: Vec<Fr>,
 ) -> Vec<Instruction> {
     let space = Policies {
         scalars: scalars.clone(),
@@ -158,7 +155,7 @@ pub fn create_policies_account(
 pub fn calculate_aggregate(
     user_pubkey: &Pubkey,
     policies_pubkey: &Pubkey,
-    encrypted_interactions: Vec<(RistrettoPoint, RistrettoPoint)>,
+    encrypted_interactions: Vec<(G1, G1)>,
     public_key: PublicKey,
 ) -> Instruction {
     let data = ThemisInstruction::CalculateAggregate {
@@ -179,10 +176,10 @@ pub fn calculate_aggregate(
 /// Return a `SubmitProofDecryption` instruction.
 pub fn submit_proof_decryption(
     user_pubkey: &Pubkey,
-    plaintext: RistrettoPoint,
-    announcement_g: RistrettoPoint,
-    announcement_ctx: RistrettoPoint,
-    response: Scalar,
+    plaintext: G1,
+    announcement_g: G1,
+    announcement_ctx: G1,
+    response: Fr,
 ) -> Instruction {
     let data = ThemisInstruction::SubmitProofDecryption {
         plaintext,
@@ -200,9 +197,9 @@ pub fn submit_proof_decryption(
 /// Return a `RequestPayment` instruction.
 pub fn request_payment(
     user_pubkey: &Pubkey,
-    encrypted_aggregate: (RistrettoPoint, RistrettoPoint),
-    decrypted_aggregate: RistrettoPoint,
-    proof_correct_decryption: RistrettoPoint,
+    encrypted_aggregate: (G1, G1),
+    decrypted_aggregate: G1,
+    proof_correct_decryption: G1,
 ) -> Instruction {
     let data = ThemisInstruction::RequestPayment {
         encrypted_aggregate: Box::new(encrypted_aggregate),

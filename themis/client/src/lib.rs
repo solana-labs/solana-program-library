@@ -2,8 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
-    use elgamal_ristretto::ciphertext::Ciphertext;
+    use bn::{G1, Group, Fr};
+    use elgamal_bn::ciphertext::Ciphertext;
     use solana_banks_client::{start_client, BanksClient, BanksClientExt};
     use solana_banks_server::banks_server::start_local_server;
     use solana_runtime::{bank::Bank, bank_forks::BankForks};
@@ -116,13 +116,13 @@ mod tests {
     async fn test_e2e(
         client: &mut BanksClient,
         sender_keypair: Keypair,
-        policies: Vec<Scalar>,
-        expected_scalar_aggregate: Scalar,
+        policies: Vec<Fr>,
+        expected_scalar_aggregate: Fr,
     ) -> io::Result<()> {
         let (sk, pk) = generate_keys();
         let interactions: Vec<_> = policies
             .iter()
-            .map(|_| pk.encrypt(&RISTRETTO_BASEPOINT_POINT).points)
+            .map(|_| pk.encrypt(&G1::one()).points)
             .collect();
 
         let sender_pubkey = sender_keypair.pubkey();
@@ -150,7 +150,7 @@ mod tests {
             recent_blockhash,
         );
         let tx_size = bincode::serialize(&tx).unwrap().len();
-        assert!(tx_size <= 1500, "transaction over 1500 bytes: {} bytes", tx_size);
+        assert!(tx_size <= 1200, "transaction over 1200 bytes: {} bytes", tx_size);
         client
             .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
             .await
@@ -161,7 +161,7 @@ mod tests {
         let recent_blockhash = client.get_recent_blockhash().await?;
         let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
         let tx_size = bincode::serialize(&tx).unwrap().len();
-        assert!(tx_size <= 1500, "transaction over 1500 bytes: {} bytes", tx_size);
+        assert!(tx_size <= 1200, "transaction over 1200 bytes: {} bytes", tx_size);
         client
             .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
             .await
@@ -179,7 +179,7 @@ mod tests {
         assert_eq!(scalar_aggregate, expected_scalar_aggregate);
 
         let ((announcement_g, announcement_ctx), response) =
-            sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate);
+            sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
 
         let ix = instruction::submit_proof_decryption(
             &user_pubkey,
@@ -192,7 +192,7 @@ mod tests {
         let recent_blockhash = client.get_recent_blockhash().await?;
         let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
         let tx_size = bincode::serialize(&tx).unwrap().len();
-        assert!(tx_size <= 1500, "transaction over 1500 bytes: {} bytes", tx_size);
+        assert!(tx_size <= 1200, "transaction over 1200 bytes: {} bytes", tx_size);
         client
             .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
             .await
@@ -213,8 +213,8 @@ mod tests {
         Runtime::new().unwrap().block_on(async {
             let transport = start_local_server(&bank_forks).await;
             let mut banks_client = start_client(transport).await.unwrap();
-            let policies = vec![1u8.into(), 2u8.into()];
-            test_e2e(&mut banks_client, sender_keypair, policies, 3u8.into())
+            let policies = vec![Fr::new(1u64.into()).unwrap(), Fr::new(2u64.into()).unwrap()];
+            test_e2e(&mut banks_client, sender_keypair, policies, Fr::new(3u64.into()).unwrap())
                 .await
                 .unwrap();
         });

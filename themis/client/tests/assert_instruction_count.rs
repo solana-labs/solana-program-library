@@ -1,6 +1,6 @@
 use borsh::BorshSerialize;
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
-use elgamal_ristretto::ciphertext::Ciphertext;
+use bn::{G1, Group, Fr};
+use elgamal_bn::ciphertext::Ciphertext;
 use solana_bpf_loader_program::{
     create_vm,
     serialization::{deserialize_parameters, serialize_parameters},
@@ -78,115 +78,115 @@ fn assert_instruction_count() {
 
     // Create new policies
     let policies_key = Pubkey::new_rand();
-    let scalars = vec![1u8.into(), 2u8.into()];
+    let scalars = vec![Fr::new(1u64.into()).unwrap(), Fr::new(2u64.into()).unwrap()];
     //let scalars = vec![
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(), //10
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(), // 2 * 10
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(),
-    //        1u8.into(), //10
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(),
-    //        2u8.into(), // 2 * 10
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
-    //        0u8.into(),
+    //        Fr::new(1u64.into()).unwrap(),
+    //        Fr::new(1u64.into()).unwrap(),
+    //        Fr::new(1u64.into()).unwrap(),
+    //        Fr::new(1u64.into()).unwrap(),
+    //        Fr::new(1u64.into()).unwrap(),
+    //        Fr::new(1u64.into()).unwrap(),
+    //        Fr::new(1u64.into()).unwrap(),
+    //        Fr::new(1u64.into()).unwrap(),
+    //        Fr::new(1u64.into()).unwrap(),
+    //        Fr::new(1u64.into()).unwrap(), //10
+    //        Fr::new(2u64.into()).unwrap(),
+    //        Fr::new(2u64.into()).unwrap(),
+    //        Fr::new(2u64.into()).unwrap(),
+    //        Fr::new(2u64.into()).unwrap(),
+    //        Fr::new(2u64.into()).unwrap(),
+    //        Fr::new(2u64.into()).unwrap(),
+    //        Fr::new(2u64.into()).unwrap(),
+    //        Fr::new(2u64.into()).unwrap(),
+    //        Fr::new(2u64.into()).unwrap(),
+    //        Fr::new(2u64.into()).unwrap(), // 2 * 10
+        //    Fr::new(1u64.into()).unwrap(),
+        //    Fr::new(1u64.into()).unwrap(),
+        //    Fr::new(1u64.into()).unwrap(),
+        //    Fr::new(1u64.into()).unwrap(),
+        //    Fr::new(1u64.into()).unwrap(),
+        //    Fr::new(1u64.into()).unwrap(),
+        //    Fr::new(1u64.into()).unwrap(),
+        //    Fr::new(1u64.into()).unwrap(),
+        //    Fr::new(1u64.into()).unwrap(),
+        //    Fr::new(1u64.into()).unwrap(), //10
+        //    Fr::new(2u64.into()).unwrap(),
+        //    Fr::new(2u64.into()).unwrap(),
+        //    Fr::new(2u64.into()).unwrap(),
+        //    Fr::new(2u64.into()).unwrap(),
+        //    Fr::new(2u64.into()).unwrap(),
+        //    Fr::new(2u64.into()).unwrap(),
+        //    Fr::new(2u64.into()).unwrap(),
+        //    Fr::new(2u64.into()).unwrap(),
+        //    Fr::new(2u64.into()).unwrap(),
+        //    Fr::new(2u64.into()).unwrap(), // 2 * 10
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
+        //    Fr::new(0u64.into()).unwrap(),
     //];
     let num_scalars = scalars.len();
 
     let (sk, pk) = generate_keys();
     let encrypted_interactions: Vec<_> = scalars
         .iter()
-        .map(|_| pk.encrypt(&RISTRETTO_BASEPOINT_POINT).points)
+        .map(|_| pk.encrypt(&G1::one()).points)
         .collect();
 
     let policies_account = SolanaAccount::new_ref(
@@ -242,11 +242,11 @@ fn assert_instruction_count() {
 
     let decrypted_aggregate = sk.decrypt(&ciphertext);
     let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
-    let expected_scalar_aggregate = 3u8.into();
+    let expected_scalar_aggregate = Fr::new(3u64.into()).unwrap();
     assert_eq!(scalar_aggregate, expected_scalar_aggregate);
 
     let (announcement, response) =
-        sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate);
+        sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
 
     let instruction_data = ThemisInstruction::SubmitProofDecryption {
         plaintext: decrypted_aggregate,
@@ -262,7 +262,7 @@ fn assert_instruction_count() {
     const BASELINE_NEW_POLICIES_COUNT: u64 = 80_000; // last known 75,796 @ 128, 4,675 @ 2
     const BASELINE_INITIALIZE_USER_COUNT: u64 = 22_000; // last known 19,868
     const BASELINE_CALCULATE_AGGREGATE_COUNT: u64 = 15_000_000; // last known 13,061,884
-    const BASELINE_PROOF_DECRYPTION_COUNT: u64 = 15_000_000; // last known 13,167,140
+    const BASELINE_PROOF_DECRYPTION_COUNT: u64 = 50_000_000; // last known 13,167,140
 
     println!("BPF instructions executed");
     println!(

@@ -4,11 +4,8 @@ use crate::{
     instruction::ThemisInstruction,
     state::{Policies, User},
 };
-use curve25519_dalek::{
-    ristretto::RistrettoPoint,
-    scalar::Scalar,
-};
-use elgamal_ristretto::public::PublicKey;
+use bn::{G1, Fr};
+use elgamal_bn::public::PublicKey;
 use solana_sdk::{
     account_info::{next_account_info, AccountInfo},
     program_error::ProgramError,
@@ -25,7 +22,7 @@ fn process_initialize_user_account(user_info: &AccountInfo) -> Result<(), Progra
 }
 
 fn process_initialize_policies_account(
-    scalars: Vec<Scalar>,
+    scalars: Vec<Fr>,
     policies_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
     let mut policies = Policies::deserialize(&policies_info.data.borrow()).unwrap_or_default();
@@ -38,7 +35,7 @@ fn process_initialize_policies_account(
 }
 
 fn process_calculate_aggregate(
-    encrypted_interactions: &[(RistrettoPoint, RistrettoPoint)],
+    encrypted_interactions: &[(G1, G1)],
     public_key: PublicKey,
     user_info: &AccountInfo,
     policies_info: &AccountInfo,
@@ -54,9 +51,9 @@ fn process_calculate_aggregate(
 }
 
 fn process_submit_proof_decryption(
-    plaintext: RistrettoPoint,
-    announcement: Box<(RistrettoPoint, RistrettoPoint)>,
-    response: Scalar,
+    plaintext: G1,
+    announcement: Box<(G1, G1)>,
+    response: Fr,
     user_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
     let mut user = User::deserialize(&user_info.data.borrow())?;
@@ -65,9 +62,9 @@ fn process_submit_proof_decryption(
 }
 
 fn process_request_payment(
-    encrypted_aggregate: (RistrettoPoint, RistrettoPoint),
-    decrypted_aggregate: RistrettoPoint,
-    proof_correct_decryption: RistrettoPoint,
+    encrypted_aggregate: (G1, G1),
+    decrypted_aggregate: G1,
+    proof_correct_decryption: G1,
     user_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
     let mut user = User::deserialize(&user_info.data.borrow())?;
