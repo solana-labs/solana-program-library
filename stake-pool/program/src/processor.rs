@@ -30,36 +30,36 @@ impl Processor {
 
     /// Issue a stake_split instruction.
     pub fn stake_split(
-        accounts: &[AccountInfo],
-        my_info: &Pubkey,
-        authority: &Pubkey,
-        nonce: u8,
-        stake: &Pubkey,
-        amount: u64,
+        _accounts: &[AccountInfo],
+        _my_info: &Pubkey,
+        _authority: &Pubkey,
+        _nonce: u8,
+        _stake: &Pubkey,
+        _amount: u64,
     ) -> Result<(), ProgramError> {
         unimplemented!();
     }
 
     /// Issue a stake_set_owner instruction.
     pub fn stake_set_owner(
-        accounts: &[AccountInfo],
-        my_info: &Pubkey,
-        authority: &Pubkey,
-        nonce: u8,
-        stake: &Pubkey,
-        owner: &Pubkey,
+        _accounts: &[AccountInfo],
+        _my_info: &Pubkey,
+        _authority: &Pubkey,
+        _nonce: u8,
+        _stake: &Pubkey,
+        _owner: &Pubkey,
     ) -> Result<(), ProgramError> {
         unimplemented!();
     }
 
     /// Issue a stake_set_owner instruction.
     pub fn stake_set_stake_auth(
-        accounts: &[AccountInfo],
-        my_info: &Pubkey,
-        authority: &Pubkey,
-        nonce: u8,
-        stake: &Pubkey,
-        owner: &Pubkey,
+        _accounts: &[AccountInfo],
+        _my_info: &Pubkey,
+        _authority: &Pubkey,
+        _nonce: u8,
+        _stake: &Pubkey,
+        _owner: &Pubkey,
     ) -> Result<(), ProgramError> {
         unimplemented!();
     }
@@ -151,10 +151,8 @@ impl Processor {
         let stake_pool_info = next_account_info(account_info_iter)?;
         let deposit_info = next_account_info(account_info_iter)?;
         let withdraw_info = next_account_info(account_info_iter)?;
-        let source_info = next_account_info(account_info_iter)?;
-        let pool_mint_info = next_account_info(account_info_iter)?;
         let stake_info = next_account_info(account_info_iter)?;
-        let stake_dest_user_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
         let dest_user_info = next_account_info(account_info_iter)?;
         let owner_fee_info = next_account_info(account_info_iter)?;
 
@@ -223,7 +221,7 @@ impl Processor {
         let pool_amount = <u64>::try_from(pool_amount).or(Err(Error::CalculationFailure))?;
         stake_pool.pool_total += pool_amount;
         stake_pool.stake_total += stake_lamports;
-        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut());
+        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
 
@@ -239,7 +237,6 @@ impl Processor {
         let source_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let stake_info = next_account_info(account_info_iter)?;
-        let stake_dest_user_info = next_account_info(account_info_iter)?;
         let dest_user_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
@@ -277,8 +274,8 @@ impl Processor {
             accounts,
             stake_info.key,
             &stake_pool.token_program_id,
-            dest_user_info.key,
-            stake_pool_info.key,
+            source_info.key,
+            pool_mint_info.key,
             withdraw_info.key,
             stake_pool.withdraw_nonce,
             pool_amount,
@@ -286,7 +283,7 @@ impl Processor {
 
         stake_pool.pool_total -= pool_amount;
         stake_pool.stake_total -= stake_amount;
-        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut());
+        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
     /// Processes an [SetStakeAuthority](enum.Instruction.html).
@@ -324,7 +321,7 @@ impl Processor {
     }
 
     /// Processes an [SetOwner](enum.Instruction.html).
-    pub fn process_set_owner(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    pub fn process_set_owner(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
@@ -341,7 +338,7 @@ impl Processor {
         }
         stake_pool.owner = *new_owner_info.key;
         stake_pool.owner_fee_account = *new_owner_fee_info.key;
-        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut());
+        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
     /// Processes an [Instruction](enum.Instruction.html).
