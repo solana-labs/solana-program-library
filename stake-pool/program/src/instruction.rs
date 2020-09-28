@@ -38,7 +38,7 @@ pub enum StakePoolInstruction {
     ///   0. `[w, s]` New StakePool to create.
     ///   1. `[]` Owner
     ///   2. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
-    ///   3. `[w]` Pool Account to deposit the generated fee for owner.
+    ///   3. `[]` Pool Account to deposit the generated fee for owner.
     ///   4. `[]` Token program id
     Initialize(InitArgs),
 
@@ -145,3 +145,31 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
     let val: &T = unsafe { &*(&input[1] as *const u8 as *const T) };
     Ok(val)
 }
+
+/// Creates an 'initialize' instruction.
+pub fn initialize(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    owner: &Pubkey,
+    pool_mint: &Pubkey,
+    owner_pool_account: &Pubkey,
+    token_program_id: &Pubkey,
+    init_args: InitArgs,
+) -> Result<Instruction, ProgramError> {
+    let init_data = SwapInstruction::Initialize(init_args);
+    let data = init_data.pack();
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, true),
+        AccountMeta::new(*owner, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new(*owner_pool_account, false),
+        AccountMeta::new(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+
