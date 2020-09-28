@@ -260,16 +260,17 @@ impl Processor {
         Self::token_burn(
             accounts,
             stake_info.key,
-            stake_pool.token_program_id,
+            &stake_pool.token_program_id,
+            dest_user_info.key,
             stake_pool_info.key,
             withdraw_info.key,
-            dest_user_info.key,
+            stake_pool.withdraw_nonce,
             pool_amount,
         )?;
 
         stake_pool.pool_total -= pool_amount;
         stake_pool.stake_total -= stake_amount;
-        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut());
+        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut());
         Ok(())
     }
     //    /// Processes an [UpdateStakeAuthority](enum.Instruction.html).
