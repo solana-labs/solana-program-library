@@ -12,6 +12,7 @@ use solana_clap_utils::{
     input_parsers::{pubkey_of_signer, signer_of},
     input_validators::{is_amount, is_url, is_valid_pubkey, is_valid_signer},
     keypair::DefaultSigner,
+    nonce::*,
 };
 use solana_cli_output::display::println_name_value;
 use solana_client::{
@@ -20,6 +21,7 @@ use solana_client::{
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     instruction::Instruction,
+    message::Message,
     native_token::*,
     program_pack::Pack,
     pubkey::Pubkey,
@@ -44,6 +46,8 @@ struct Config {
     fee_payer: Pubkey,
     commitment_config: CommitmentConfig,
     default_signer: DefaultSigner,
+    nonce_account: Option<Pubkey>,
+    nonce_authority: Option<Pubkey>,
 }
 
 type Error = Box<dyn std::error::Error>;
@@ -647,7 +651,8 @@ fn main() {
                         .help(
                             "Enable the mint authority to freeze associated token accounts."
                         ),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("create-account")
@@ -672,7 +677,8 @@ fn main() {
                              This may be a keypair file or the ASK keyword. \
                              [default: randomly generated keypair]"
                         ),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("authorize")
@@ -712,7 +718,8 @@ fn main() {
                         .takes_value(false)
                         .conflicts_with("new_authority")
                         .help("Disable mint, freeze, or close functionality by setting authority to None.")
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("transfer")
@@ -743,7 +750,8 @@ fn main() {
                         .index(3)
                         .required(true)
                         .help("The token account address of recipient"),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("burn")
@@ -765,7 +773,8 @@ fn main() {
                         .index(2)
                         .required(true)
                         .help("Amount to burn, in tokens"),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("mint")
@@ -796,7 +805,8 @@ fn main() {
                         .index(3)
                         .required(true)
                         .help("The token account address of recipient"),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("freeze")
@@ -809,7 +819,8 @@ fn main() {
                         .index(1)
                         .required(true)
                         .help("The address of the token account to freeze"),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("thaw")
@@ -822,7 +833,8 @@ fn main() {
                         .index(1)
                         .required(true)
                         .help("The address of the token account to thaw"),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("balance")
@@ -873,7 +885,8 @@ fn main() {
                         .index(1)
                         .required(true)
                         .help("Amount of SOL to wrap"),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("unwrap")
@@ -886,7 +899,8 @@ fn main() {
                         .index(1)
                         .required(true)
                         .help("The address of the token account to unwrap"),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("account-info")
@@ -930,7 +944,8 @@ fn main() {
                         .index(3)
                         .required(true)
                         .help("The token account address of delegate"),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("revoke")
@@ -943,7 +958,8 @@ fn main() {
                         .index(1)
                         .required(true)
                         .help("The address of the token account"),
-                ),
+                )
+                .nonce_args(true),
         )
         .subcommand(
             SubCommand::with_name("close")
@@ -965,7 +981,8 @@ fn main() {
                         .index(2)
                         .required(true)
                         .help("The address of the account to receive remaining SOL"),
-                ),
+                )
+                .nonce_args(true)
         )
         .get_matches();
 
@@ -1013,6 +1030,22 @@ fn main() {
 
         let verbose = matches.is_present("verbose");
 
+        let nonce_account = pubkey_of_signer(&matches, NONCE_ARG.name, &mut wallet_manager)
+            .unwrap_or_else(|e| {
+                eprintln!("error: {}", e);
+                exit(1);
+            });
+        let (signer, nonce_authority) =
+            signer_of(&matches, NONCE_AUTHORITY_ARG.name, &mut wallet_manager).unwrap_or_else(
+                |e| {
+                    eprintln!("error: {}", e);
+                    exit(1);
+                },
+            );
+        if signer.is_some() {
+            bulk_signers.push(signer);
+        }
+
         Config {
             rpc_client: RpcClient::new(json_rpc_url),
             verbose,
@@ -1020,6 +1053,8 @@ fn main() {
             fee_payer,
             commitment_config: CommitmentConfig::single_gossip(),
             default_signer,
+            nonce_account,
+            nonce_authority,
         }
     };
 
@@ -1184,8 +1219,18 @@ fn main() {
     }
     .and_then(|transaction_info| {
         if let Some((minimum_balance_for_rent_exemption, instructions)) = transaction_info {
-            let mut transaction =
-                Transaction::new_with_payer(&instructions, Some(&config.fee_payer));
+            let fee_payer = Some(&config.fee_payer);
+            let message = if let Some(nonce_account) = config.nonce_account.as_ref() {
+                Message::new_with_nonce(
+                    instructions,
+                    fee_payer,
+                    nonce_account,
+                    config.nonce_authority.as_ref().unwrap(),
+                )
+            } else {
+                Message::new(&instructions, fee_payer)
+            };
+            let mut transaction = Transaction::new_unsigned(message);
             let (recent_blockhash, fee_calculator) = config
                 .rpc_client
                 .get_recent_blockhash()
