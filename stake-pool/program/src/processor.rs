@@ -11,7 +11,7 @@ use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
 use solana_sdk::instruction::Instruction;
 #[cfg(target_arch = "bpf")]
-use solana_sdk::program::{invoke_signed};
+use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
     entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
@@ -134,7 +134,7 @@ impl Processor {
         let stake_pool = State::Init(StakePool {
             owner: *owner_info.key,
             deposit_nonce: init.deposit_nonce,
-            withdraw_nonce: init.deposit_nonce,
+            withdraw_nonce: init.withdraw_nonce,
             pool_mint: *pool_mint_info.key,
             owner_fee_account: *owner_fee_info.key,
             token_program_id: *token_program_info.key,
@@ -287,7 +287,10 @@ impl Processor {
         Ok(())
     }
     /// Processes an [SetStakeAuthority](enum.Instruction.html).
-    pub fn process_set_staking_auth(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    pub fn process_set_staking_auth(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
@@ -371,7 +374,7 @@ impl Processor {
 
 // Test program id for the swap program.
 #[cfg(not(target_arch = "bpf"))]
-const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
+const MY_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
 
 /// Routes invokes to the token program, used for testing.
 #[cfg(not(target_arch = "bpf"))]
@@ -386,7 +389,7 @@ pub fn invoke_signed<'a>(
             if meta.pubkey == *account_info.key {
                 let mut new_account_info = account_info.clone();
                 for seeds in signers_seeds.iter() {
-                    let signer = Pubkey::create_program_address(seeds, &SWAP_PROGRAM_ID).unwrap();
+                    let signer = Pubkey::create_program_address(seeds, &MY_PROGRAM_ID).unwrap();
                     if *account_info.key == signer {
                         new_account_info.is_signer = true;
                     }
@@ -431,9 +434,14 @@ solana_sdk::program_stubs!();
 mod tests {
     use super::*;
     use crate::instruction::initialize;
+    use crate::instruction::Fee;
+    use crate::instruction::InitArgs;
+    use core::mem::size_of;
     use solana_sdk::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
+        rent::Rent, sysvar::rent,
     };
+    use spl_token::pack::Pack;
     use spl_token::{
         instruction::{initialize_account, initialize_mint},
         processor::Processor as SplProcessor,
@@ -458,96 +466,129 @@ mod tests {
             .collect::<Vec<_>>();
 
         let account_infos = create_is_signer_account_infos(&mut meta);
-        if instruction.program_id == SWAP_PROGRAM_ID {
-            State::process(&instruction.program_id, &account_infos, &instruction.data)
+        if instruction.program_id == MY_PROGRAM_ID {
+            Processor::process(&instruction.program_id, &account_infos, &instruction.data)
         } else {
             SplProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
         }
     }
 
+    fn account_minimum_balance() -> u64 {
+        Rent::default().minimum_balance(SplAccount::get_packed_len())
+    }
+
+    fn mint_minimum_balance() -> u64 {
+        Rent::default().minimum_balance(SplMint::get_packed_len())
+    }
+
     fn mint_token(
         program_id: &Pubkey,
+        mint_key: &Pubkey,
+        mut mint_account: &mut Account,
         authority_key: &Pubkey,
         amount: u64,
-    ) -> ((Pubkey, Account), (Pubkey, Account)) {
-        let token_key = pubkey_rand();
-        let mut token_account = Account::new(0, size_of::<SplMint>(), &program_id);
+    ) -> (Pubkey, Account) {
         let account_key = pubkey_rand();
-        let mut account_account = Account::new(0, size_of::<SplAccount>(), &program_id);
+        let mut account_account = Account::new(
+            account_minimum_balance(),
+            SplAccount::get_packed_len(),
+            &program_id,
+        );
+        let mut authority_account = Account::default();
+        let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
 
-        // create pool and pool account
+        // create account
         do_process_instruction(
-            initialize_account(&program_id, &account_key, &token_key, &authority_key).unwrap(),
+            initialize_account(&program_id, &account_key, &mint_key, authority_key).unwrap(),
             vec![
                 &mut account_account,
-                &mut Account::default(),
-                &mut token_account,
+                &mut mint_account,
+                &mut authority_account,
+                &mut rent_sysvar_account,
             ],
         )
         .unwrap();
-        let mut authority_account = Account::default();
+
         do_process_instruction(
-            initialize_mint(
+            spl_token::instruction::mint_to(
                 &program_id,
-                &token_key,
-                Some(&account_key),
-                Some(&authority_key),
+                &mint_key,
+                &account_key,
+                &authority_key,
+                &[],
                 amount,
-                2,
             )
             .unwrap(),
-            if amount == 0 {
-                vec![&mut token_account, &mut authority_account]
-            } else {
-                vec![
-                    &mut token_account,
-                    &mut account_account,
-                    &mut authority_account,
-                ]
-            },
+            vec![
+                &mut mint_account,
+                &mut account_account,
+                &mut authority_account,
+            ],
         )
         .unwrap();
 
-        return ((token_key, token_account), (account_key, account_account));
+        (account_key, account_account)
+    }
+
+    fn create_mint(program_id: &Pubkey, authority_key: &Pubkey) -> (Pubkey, Account) {
+        let mint_key = pubkey_rand();
+        let mut mint_account = Account::new(
+            mint_minimum_balance(),
+            SplMint::get_packed_len(),
+            &program_id,
+        );
+        let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
+
+        // create token mint
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, authority_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar_account],
+        )
+        .unwrap();
+
+        (mint_key, mint_account)
     }
 
     #[test]
     fn test_initialize() {
-        let swap_key = pubkey_rand();
-        let mut swap_account = Account::new(0, size_of::<State>(), &SWAP_PROGRAM_ID);
-        let authority_key = State::authority_id(&SWAP_PROGRAM_ID, &swap_key).unwrap();
-        let mut authority_account = Account::default();
+        let stake_pool_key = pubkey_rand();
+        let mut stake_pool_account = Account::new(0, size_of::<State>(), &MY_PROGRAM_ID);
+        let owner_key = pubkey_rand();
+        let mut owner_account = Account::default();
+        let authority_key = pubkey_rand();
 
-        let ((pool_key, mut pool_account), (pool_token_key, mut pool_token_account)) =
-            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 0);
-        let ((_token_a_mint_key, mut _token_a_mint_account), (token_a_key, mut token_a_account)) =
-            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000);
-        let ((_token_b_mint_key, mut _token_b_mint_account), (token_b_key, mut token_b_account)) =
-            mint_token(&TOKEN_PROGRAM_ID, &authority_key, 1000);
+        let (pool_mint_key, mut pool_mint_account) = create_mint(&TOKEN_PROGRAM_ID, &authority_key);
+        let (pool_token_key, mut pool_token_account) = mint_token(
+            &TOKEN_PROGRAM_ID,
+            &pool_mint_key,
+            &mut pool_mint_account,
+            &authority_key,
+            0,
+        );
 
         // StakePool Init
         do_process_instruction(
             initialize(
-                &SWAP_PROGRAM_ID,
-                &TOKEN_PROGRAM_ID,
-                &swap_key,
-                &authority_key,
-                &token_a_key,
-                &token_b_key,
-                &pool_key,
+                &MY_PROGRAM_ID,
+                &stake_pool_key,
+                &owner_key,
+                &pool_mint_key,
                 &pool_token_key,
-                Fee {
-                    denominator: 1,
-                    numerator: 2,
+                &TOKEN_PROGRAM_ID,
+                InitArgs {
+                    deposit_nonce: 0,
+                    withdraw_nonce: 0,
+                    fee: Fee {
+                        denominator: 1,
+                        numerator: 2,
+                    },
                 },
             )
             .unwrap(),
             vec![
-                &mut swap_account,
-                &mut authority_account,
-                &mut token_a_account,
-                &mut token_b_account,
-                &mut pool_account,
+                &mut stake_pool_account,
+                &mut owner_account,
+                &mut pool_mint_account,
                 &mut pool_token_account,
                 &mut Account::default(),
             ],

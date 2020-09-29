@@ -2,7 +2,10 @@
 
 #![allow(clippy::too_many_arguments)]
 
+use solana_sdk::instruction::AccountMeta;
+use solana_sdk::instruction::Instruction;
 use solana_sdk::program_error::ProgramError;
+use solana_sdk::pubkey::Pubkey;
 use std::mem::size_of;
 
 /// Fee rate as a ratio
@@ -26,7 +29,7 @@ pub struct InitArgs {
     pub deposit_nonce: u8,
     /// Nonce used for the withdraw program address
     /// This program address is used as the stake withdraw key as well
-    pub withdraw_none: u8,
+    pub withdraw_nonce: u8,
 }
 
 /// Instructions supported by the StakePool program.
@@ -156,8 +159,8 @@ pub fn initialize(
     token_program_id: &Pubkey,
     init_args: InitArgs,
 ) -> Result<Instruction, ProgramError> {
-    let init_data = SwapInstruction::Initialize(init_args);
-    let data = init_data.pack();
+    let init_data = StakePoolInstruction::Initialize(init_args);
+    let data = init_data.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, true),
         AccountMeta::new(*owner, false),
@@ -171,5 +174,3 @@ pub fn initialize(
         data,
     })
 }
-
-
