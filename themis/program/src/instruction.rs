@@ -64,7 +64,7 @@ pub enum ThemisInstruction {
         plaintext: G1,
 
         /// (announcement_g, announcement_ctx)
-        announcement: Box<(G1, G1)>,
+        announcement: (G1, G1),
 
         /// response
         response: Fr,
@@ -183,7 +183,7 @@ pub fn submit_proof_decryption(
 ) -> Instruction {
     let data = ThemisInstruction::SubmitProofDecryption {
         plaintext,
-        announcement: Box::new((announcement_g, announcement_ctx)),
+        announcement: (announcement_g, announcement_ctx),
         response,
     };
     let accounts = vec![AccountMeta::new(*user_pubkey, true)];

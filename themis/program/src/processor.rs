@@ -52,7 +52,7 @@ fn process_calculate_aggregate(
 
 fn process_submit_proof_decryption(
     plaintext: G1,
-    announcement: Box<(G1, G1)>,
+    announcement: (G1, G1),
     response: Fr,
     user_info: &AccountInfo,
 ) -> Result<(), ProgramError> {

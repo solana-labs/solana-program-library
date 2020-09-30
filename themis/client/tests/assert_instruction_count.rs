@@ -19,7 +19,7 @@ use solana_sdk::{
 };
 use spl_themis::{
     instruction::ThemisInstruction,
-    state::{generate_keys, recover_scalar, Policies, User},
+    state::{generate_keys, /*recover_scalar,*/ Policies, User},
 };
 use std::{cell::RefCell, fs::File, io::Read, path::PathBuf, rc::Rc, sync::Arc};
 
@@ -241,7 +241,7 @@ fn assert_instruction_count() {
     };
 
     let decrypted_aggregate = sk.decrypt(&ciphertext);
-    let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
+    //let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
     //let expected_scalar_aggregate = Fr::new(3u64.into()).unwrap();
     //assert_eq!(scalar_aggregate, expected_scalar_aggregate);
 
@@ -251,7 +251,7 @@ fn assert_instruction_count() {
 
     let instruction_data = ThemisInstruction::SubmitProofDecryption {
         plaintext: decrypted_aggregate,
-        announcement: Box::new(announcement),
+        announcement,
         response,
     }
     .serialize()

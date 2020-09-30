@@ -1,18 +1,12 @@
 //! Themis client
 use bn::{Fr, Group, G1};
-use elgamal_bn::ciphertext::Ciphertext;
-use elgamal_bn::{private::SecretKey, public::PublicKey};
+use elgamal_bn::{/*ciphertext::Ciphertext,*/ private::SecretKey, public::PublicKey};
 use futures::future::join_all;
 use solana_banks_client::{BanksClient, BanksClientExt};
-use solana_sdk::message::Message;
 use solana_sdk::{
-    account::{Account, KeyedAccount},
-    account_info::AccountInfo,
     commitment_config::CommitmentLevel,
-    genesis_config::create_genesis_config,
-    instruction::InstructionError,
+    message::Message,
     native_token::sol_to_lamports,
-    program_error::ProgramError,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_instruction,
@@ -20,27 +14,19 @@ use solana_sdk::{
 };
 use spl_themis::{
     instruction,
-    processor::process_instruction,
-    state::{generate_keys, recover_scalar, User},
+    state::generate_keys, // recover_scalar, User},
 };
-use std::{
-    collections::HashMap,
-    io,
-    sync::{Arc, RwLock},
-    time::Instant,
-    {cell::RefCell, rc::Rc},
-};
-use tarpc::context;
+use std::{io, time::Instant};
+//use tarpc::context;
 
 /// For a single user, create interactions, calculate the aggregate, submit a proof, and verify it.
 async fn run_user_workflow(
     mut client: BanksClient,
     sender_keypair: Keypair,
-    (sk, pk): (SecretKey, PublicKey),
+    (_sk, pk): (SecretKey, PublicKey),
     interactions: Vec<(G1, G1)>,
-    policies_len: usize,
     policies_pubkey: Pubkey,
-    expected_scalar_aggregate: Fr,
+    _expected_scalar_aggregate: Fr,
 ) -> io::Result<u64> {
     let sender_pubkey = sender_keypair.pubkey();
     let mut num_transactions = 0;
@@ -81,20 +67,20 @@ async fn run_user_workflow(
         .unwrap();
     num_transactions += 1;
 
-    let user_account = client
-        .get_account_with_commitment_and_context(
-            context::current(),
-            user_pubkey,
-            CommitmentLevel::Recent,
-        )
-        .await
-        .unwrap()
-        .unwrap();
-    let user = User::deserialize(&user_account.data).unwrap();
-    let ciphertext = Ciphertext {
-        points: user.fetch_encrypted_aggregate(),
-        pk,
-    };
+    //let user_account = client
+    //    .get_account_with_commitment_and_context(
+    //        context::current(),
+    //        user_pubkey,
+    //        CommitmentLevel::Recent,
+    //    )
+    //    .await
+    //    .unwrap()
+    //    .unwrap();
+    //let user = User::deserialize(&user_account.data).unwrap();
+    //let ciphertext = Ciphertext {
+    //    points: user.fetch_encrypted_aggregate(),
+    //    pk,
+    //};
 
     //let decrypted_aggregate = sk.decrypt(&ciphertext);
     let decrypted_aggregate = G1::one();
@@ -207,9 +193,8 @@ pub async fn test_e2e(
             run_user_workflow(
                 client.clone(),
                 feepayer_keypair,
-                (sk.clone(), pk.clone()),
+                (sk.clone(), pk),
                 interactions.clone(),
-                policies_len,
                 policies_pubkey,
                 expected_scalar_aggregate,
             )
@@ -239,6 +224,19 @@ mod tests {
     use solana_banks_client::start_client;
     use solana_banks_server::banks_server::start_local_server;
     use solana_runtime::{bank::Bank, bank_forks::BankForks};
+    use solana_sdk::{
+        account::{Account, KeyedAccount},
+        account_info::AccountInfo,
+        genesis_config::create_genesis_config,
+        instruction::InstructionError,
+        program_error::ProgramError,
+    };
+    use spl_themis::processor::process_instruction;
+    use std::{
+        collections::HashMap,
+        sync::{Arc, RwLock},
+        {cell::RefCell, rc::Rc},
+    };
     use tokio::runtime::Runtime;
 
     fn to_instruction_error(error: ProgramError) -> InstructionError {
