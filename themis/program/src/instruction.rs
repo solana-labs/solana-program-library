@@ -1,8 +1,8 @@
 //! Instruction types
 
 use crate::state::{Policies, User};
+use bn::{Fr, G1};
 use borsh::{BorshDeserialize, BorshSerialize};
-use bn::{G1, Fr};
 use elgamal_bn::public::PublicKey;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},

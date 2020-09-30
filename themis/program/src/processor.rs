@@ -4,7 +4,7 @@ use crate::{
     instruction::ThemisInstruction,
     state::{Policies, User},
 };
-use bn::{G1, Fr};
+use bn::{Fr, G1};
 use elgamal_bn::public::PublicKey;
 use solana_sdk::{
     account_info::{next_account_info, AccountInfo},
@@ -113,12 +113,7 @@ pub fn process_instruction<'a>(
             response,
         } => {
             let user_info = next_account_info(account_infos_iter)?;
-            process_submit_proof_decryption(
-                plaintext,
-                announcement,
-                response,
-                &user_info,
-            )
+            process_submit_proof_decryption(plaintext, announcement, response, &user_info)
         }
         ThemisInstruction::RequestPayment {
             encrypted_aggregate,

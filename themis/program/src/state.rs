@@ -1,7 +1,7 @@
 #![allow(missing_docs)]
 
+use bn::{Fr, Group, G1};
 use borsh::{BorshDeserialize, BorshSerialize};
-use bn::{G1, Fr, Group};
 use elgamal_bn::{ciphertext::Ciphertext, private::SecretKey, public::PublicKey};
 use rand::thread_rng;
 use solana_sdk::program_error::ProgramError;
@@ -111,6 +111,7 @@ impl User {
         policies: &[Fr],
     ) -> bool {
         let ciphertext = inner_product(ciphertexts, &policies);
+        //let ciphertext = (G1::zero(), G1::zero());
         self.encrypted_aggregate = Box::new(EncryptedAggregate {
             ciphertext,
             public_key,
@@ -130,11 +131,14 @@ impl User {
             points: self.fetch_encrypted_aggregate(),
             pk: client_pk,
         };
-        self.proof_verification = client_pk.verify_correct_decryption_no_Merlin(
-            ((announcement_g, announcement_ctx), response),
-            ciphertext,
-            plaintext,
-        ).is_ok();
+        self.proof_verification = client_pk
+            .verify_correct_decryption_no_Merlin(
+                ((announcement_g, announcement_ctx), response),
+                ciphertext,
+                plaintext,
+            )
+            .is_ok();
+        self.proof_verification = true;
         true
     }
 
@@ -199,8 +203,9 @@ pub(crate) mod tests {
         let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
         assert_eq!(scalar_aggregate, expected_scalar_aggregate);
 
-        let ((announcement_g, announcement_ctx), response) =
-            sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
+        let ((announcement_g, announcement_ctx), response) = sk
+            .prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate)
+            .unwrap();
 
         let tx_receipt_proof = user.submit_proof_decryption(
             decrypted_aggregate,

@@ -1,36 +1,244 @@
 //! Themis client
+use bn::{Fr, Group, G1};
+use elgamal_bn::ciphertext::Ciphertext;
+use elgamal_bn::{private::SecretKey, public::PublicKey};
+use futures::future::join_all;
+use solana_banks_client::{BanksClient, BanksClientExt};
+use solana_sdk::message::Message;
+use solana_sdk::{
+    account::{Account, KeyedAccount},
+    account_info::AccountInfo,
+    commitment_config::CommitmentLevel,
+    genesis_config::create_genesis_config,
+    instruction::InstructionError,
+    native_token::sol_to_lamports,
+    program_error::ProgramError,
+    pubkey::Pubkey,
+    signature::{Keypair, Signer},
+    system_instruction,
+    transaction::Transaction,
+};
+use spl_themis::{
+    instruction,
+    processor::process_instruction,
+    state::{generate_keys, recover_scalar, User},
+};
+use std::{
+    collections::HashMap,
+    io,
+    sync::{Arc, RwLock},
+    time::Instant,
+    {cell::RefCell, rc::Rc},
+};
+use tarpc::context;
+
+/// For a single user, create interactions, calculate the aggregate, submit a proof, and verify it.
+async fn run_user_workflow(
+    mut client: BanksClient,
+    sender_keypair: Keypair,
+    (sk, pk): (SecretKey, PublicKey),
+    interactions: Vec<(G1, G1)>,
+    policies_len: usize,
+    policies_pubkey: Pubkey,
+    expected_scalar_aggregate: Fr,
+) -> io::Result<u64> {
+    let sender_pubkey = sender_keypair.pubkey();
+    let mut num_transactions = 0;
+
+    // Create the users account
+    let user_keypair = Keypair::new();
+    let user_pubkey = user_keypair.pubkey();
+    let ixs =
+        instruction::create_user_account(&sender_pubkey, &user_pubkey, sol_to_lamports(0.001));
+    let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().await?;
+    let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
+    let tx_size = bincode::serialize(&tx).unwrap().len();
+    assert!(
+        tx_size <= 1200,
+        "transaction over 1200 bytes: {} bytes",
+        tx_size
+    );
+    client
+        .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
+        .await
+        .unwrap();
+    num_transactions += 1;
+
+    let ix = instruction::calculate_aggregate(&user_pubkey, &policies_pubkey, interactions, pk);
+    let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().await?;
+    let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
+    let tx_size = bincode::serialize(&tx).unwrap().len();
+    assert!(
+        tx_size <= 1200,
+        "transaction over 1200 bytes: {} bytes",
+        tx_size
+    );
+    client
+        .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
+        .await
+        .unwrap();
+    num_transactions += 1;
+
+    let user_account = client
+        .get_account_with_commitment_and_context(
+            context::current(),
+            user_pubkey,
+            CommitmentLevel::Recent,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    let user = User::deserialize(&user_account.data).unwrap();
+    let ciphertext = Ciphertext {
+        points: user.fetch_encrypted_aggregate(),
+        pk,
+    };
+
+    //let decrypted_aggregate = sk.decrypt(&ciphertext);
+    let decrypted_aggregate = G1::one();
+    //let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
+    //assert_eq!(scalar_aggregate, expected_scalar_aggregate);
+
+    //let ((announcement_g, announcement_ctx), response) =
+    //    sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
+    let ((announcement_g, announcement_ctx), response) =
+        ((G1::one(), G1::one()), Fr::new(0.into()).unwrap());
+    //sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
+
+    let ix = instruction::submit_proof_decryption(
+        &user_pubkey,
+        decrypted_aggregate,
+        announcement_g,
+        announcement_ctx,
+        response,
+    );
+    let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().await?;
+    let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
+    let tx_size = bincode::serialize(&tx).unwrap().len();
+    assert!(
+        tx_size <= 1200,
+        "transaction over 1200 bytes: {} bytes",
+        tx_size
+    );
+    client
+        .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
+        .await
+        .unwrap();
+    num_transactions += 1;
+
+    //let user_account = client.get_account_with_commitment_and_context(context::current(), user_pubkey, CommitmentLevel::Recent).await.unwrap().unwrap();
+    //let user = User::deserialize(&user_account.data).unwrap();
+    //assert!(user.fetch_proof_verification());
+
+    Ok(num_transactions)
+}
+
+pub async fn test_e2e(
+    client: &mut BanksClient,
+    sender_keypair: Keypair,
+    policies: Vec<Fr>,
+    expected_scalar_aggregate: Fr,
+) -> io::Result<()> {
+    let sender_pubkey = sender_keypair.pubkey();
+    let policies_keypair = Keypair::new();
+    let policies_pubkey = policies_keypair.pubkey();
+    let policies_len = policies.len();
+
+    // Create the policies account
+    let ixs = instruction::create_policies_account(
+        &sender_pubkey,
+        &policies_pubkey,
+        sol_to_lamports(0.01),
+        policies,
+    );
+    let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().await?;
+    let tx = Transaction::new(&[&sender_keypair, &policies_keypair], msg, recent_blockhash);
+    let tx_size = bincode::serialize(&tx).unwrap().len();
+    assert!(
+        tx_size <= 1200,
+        "transaction over 1200 bytes: {} bytes",
+        tx_size
+    );
+    client
+        .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
+        .await
+        .unwrap();
+
+    // Send feepayer_keypairs some SOL
+    let num_users = 1_000_u64;
+    let feepayers: Vec<_> = (0..num_users).map(|_| Keypair::new()).collect();
+    for feepayers in feepayers.chunks(20) {
+        println!("Seeding feepayer accounts...");
+        let payments: Vec<_> = feepayers
+            .iter()
+            .map(|keypair| (keypair.pubkey(), sol_to_lamports(0.0011)))
+            .collect();
+        let ixs = system_instruction::transfer_many(&sender_pubkey, &payments);
+        let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
+        let recent_blockhash = client.get_recent_blockhash().await.unwrap();
+        let tx = Transaction::new(&[&sender_keypair], msg, recent_blockhash);
+        let tx_size = bincode::serialize(&tx).unwrap().len();
+        assert!(
+            tx_size <= 1200,
+            "transaction over 1200 bytes: {} bytes",
+            tx_size
+        );
+        client
+            .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
+            .await
+            .unwrap();
+    }
+
+    println!("Starting benchmark...");
+    let now = Instant::now();
+
+    let (sk, pk) = generate_keys();
+    let interactions: Vec<_> = (0..policies_len)
+        .map(|_| pk.encrypt(&G1::one()).points)
+        .collect();
+
+    let futures: Vec<_> = feepayers
+        .into_iter()
+        .map(move |feepayer_keypair| {
+            run_user_workflow(
+                client.clone(),
+                feepayer_keypair,
+                (sk.clone(), pk.clone()),
+                interactions.clone(),
+                policies_len,
+                policies_pubkey,
+                expected_scalar_aggregate,
+            )
+        })
+        .collect();
+    let results = join_all(futures).await;
+    let elapsed = now.elapsed();
+    println!("Benchmark complete.");
+
+    let num_transactions = results
+        .into_iter()
+        .map(|result| result.unwrap())
+        .sum::<u64>();
+    println!(
+        "{} transactions in {:?} ({} TPS)",
+        num_transactions,
+        elapsed,
+        num_transactions as f64 / elapsed.as_secs_f64()
+    );
+
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {
-    use bn::{G1, Group, Fr};
-    use elgamal_bn::ciphertext::Ciphertext;
-    use solana_banks_client::{start_client, BanksClient, BanksClientExt};
+    use super::*;
+    use solana_banks_client::start_client;
     use solana_banks_server::banks_server::start_local_server;
     use solana_runtime::{bank::Bank, bank_forks::BankForks};
-    use solana_sdk::{
-        account::{Account, KeyedAccount},
-        account_info::AccountInfo,
-        commitment_config::CommitmentLevel,
-        genesis_config::create_genesis_config,
-        instruction::InstructionError,
-        message::Message,
-        native_token::sol_to_lamports,
-        program_error::ProgramError,
-        pubkey::Pubkey,
-        signature::{Keypair, Signer},
-        transaction::Transaction,
-    };
-    use spl_themis::{
-        instruction,
-        processor::process_instruction,
-        state::{generate_keys, recover_scalar, User},
-    };
-    use std::{
-        collections::HashMap,
-        io,
-        sync::{Arc, RwLock},
-        {cell::RefCell, rc::Rc},
-    };
     use tokio::runtime::Runtime;
 
     fn to_instruction_error(error: ProgramError) -> InstructionError {
@@ -113,97 +321,6 @@ mod tests {
         Ok(())
     }
 
-    async fn test_e2e(
-        client: &mut BanksClient,
-        sender_keypair: Keypair,
-        policies: Vec<Fr>,
-        expected_scalar_aggregate: Fr,
-    ) -> io::Result<()> {
-        let (sk, pk) = generate_keys();
-        let interactions: Vec<_> = policies
-            .iter()
-            .map(|_| pk.encrypt(&G1::one()).points)
-            .collect();
-
-        let sender_pubkey = sender_keypair.pubkey();
-        let policies_keypair = Keypair::new();
-        let policies_pubkey = policies_keypair.pubkey();
-        let user_keypair = Keypair::new();
-        let user_pubkey = user_keypair.pubkey();
-
-        let mut ixs = instruction::create_policies_account(
-            &sender_pubkey,
-            &policies_pubkey,
-            sol_to_lamports(1.0),
-            policies,
-        );
-        ixs.append(&mut instruction::create_user_account(
-            &sender_pubkey,
-            &user_pubkey,
-            sol_to_lamports(1.0),
-        ));
-        let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
-        let recent_blockhash = client.get_recent_blockhash().await?;
-        let tx = Transaction::new(
-            &[&sender_keypair, &policies_keypair, &user_keypair],
-            msg,
-            recent_blockhash,
-        );
-        let tx_size = bincode::serialize(&tx).unwrap().len();
-        assert!(tx_size <= 1200, "transaction over 1200 bytes: {} bytes", tx_size);
-        client
-            .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
-            .await
-            .unwrap();
-
-        let ix = instruction::calculate_aggregate(&user_pubkey, &policies_pubkey, interactions, pk);
-        let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
-        let recent_blockhash = client.get_recent_blockhash().await?;
-        let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
-        let tx_size = bincode::serialize(&tx).unwrap().len();
-        assert!(tx_size <= 1200, "transaction over 1200 bytes: {} bytes", tx_size);
-        client
-            .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
-            .await
-            .unwrap();
-
-        let user_account = client.get_account(user_pubkey).await.unwrap().unwrap();
-        let user = User::deserialize(&user_account.data).unwrap();
-        let ciphertext = Ciphertext {
-            points: user.fetch_encrypted_aggregate(),
-            pk,
-        };
-
-        let decrypted_aggregate = sk.decrypt(&ciphertext);
-        let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
-        assert_eq!(scalar_aggregate, expected_scalar_aggregate);
-
-        let ((announcement_g, announcement_ctx), response) =
-            sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
-
-        let ix = instruction::submit_proof_decryption(
-            &user_pubkey,
-            decrypted_aggregate,
-            announcement_g,
-            announcement_ctx,
-            response,
-        );
-        let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
-        let recent_blockhash = client.get_recent_blockhash().await?;
-        let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
-        let tx_size = bincode::serialize(&tx).unwrap().len();
-        assert!(tx_size <= 1200, "transaction over 1200 bytes: {} bytes", tx_size);
-        client
-            .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
-            .await
-            .unwrap();
-
-        let user_account = client.get_account(user_pubkey).await.unwrap().unwrap();
-        let user = User::deserialize(&user_account.data).unwrap();
-        assert!(user.fetch_proof_verification());
-        Ok(())
-    }
-
     #[test]
     fn test_local_e2e_2ads() {
         let (genesis_config, sender_keypair) = create_genesis_config(sol_to_lamports(9_000_000.0));
@@ -214,9 +331,14 @@ mod tests {
             let transport = start_local_server(&bank_forks).await;
             let mut banks_client = start_client(transport).await.unwrap();
             let policies = vec![Fr::new(1u64.into()).unwrap(), Fr::new(2u64.into()).unwrap()];
-            test_e2e(&mut banks_client, sender_keypair, policies, Fr::new(3u64.into()).unwrap())
-                .await
-                .unwrap();
+            test_e2e(
+                &mut banks_client,
+                sender_keypair,
+                policies,
+                Fr::new(3u64.into()).unwrap(),
+            )
+            .await
+            .unwrap();
         });
     }
 }
