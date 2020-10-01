@@ -5,7 +5,7 @@ members = [
   "memo/program",
   "themis/program",
   "token-swap/program",
-  #"token/cli",
+  "token/cli",
   "token/program",
   "token/program-v3",
 ]
