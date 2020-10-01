@@ -4,19 +4,30 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+travis_cmd_prelude() {
+  if [[ -n "$TRAVIS" ]]; then
+    echo "travis_fold:start:_"
+  fi
+}
+
+travis_cmd_postlude() {
+  declare elapsed_seconds=$1
+  if [[ -n "$TRAVIS" ]]; then
+    echo "travis_fold:end:_"
+    # TODO: Use "travis_time" annotations instead of this fold hack:
+    echo "travis_fold:start:${elapsed_seconds}s"
+    echo "travis_fold:end:${elapsed_seconds}s"
+  fi
+}
+
 _() {
-  echo "travis_fold:start:_"
+  travis_cmd_prelude
   SECONDS=
   (
     set -x
     "$@"
   ) || exit 1
-  echo "travis_fold:end:_"
-  declare elapsed_seconds=$SECONDS
-
-  # TODO: Use "travis_time" annotations instead of this fold hack:
-  echo "travis_fold:start:${elapsed_seconds}s"
-  echo "travis_fold:end:${elapsed_seconds}s"
+  travis_cmd_postlude $SECONDS
 }
 
 export RUSTFLAGS="-D warnings"
@@ -55,7 +66,7 @@ for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
 done
 
 # Run SPL Token's performance monitor
-cargo test --manifest-path=token/perf-monitor/Cargo.toml -- --nocapture
+_ cargo test --manifest-path=token/perf-monitor/Cargo.toml -- --nocapture
 
 
 # Test token js bindings
