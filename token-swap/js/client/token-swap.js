@@ -345,8 +345,8 @@ export class TokenSwap {
     swapDestination: PublicKey,
     destination: PublicKey,
     tokenProgramId: PublicKey,
-    amount_in: number | Numberu64,
-    minimum_amount_out: number | Numberu64,
+    amountIn: number | Numberu64,
+    minimumAmountOut: number | Numberu64,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'swap',
@@ -361,8 +361,8 @@ export class TokenSwap {
           destination,
           this.programId,
           tokenProgramId,
-          amount_in,
-          minimum_amount_out,
+          amountIn,
+          minimumAmountOut,
         ),
       ),
       this.payer,
@@ -378,21 +378,21 @@ export class TokenSwap {
     destination: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
-    amount_in: number | Numberu64,
-    minimum_amount_out: number | Numberu64,
+    amountIn: number | Numberu64,
+    minimumAmountOut: number | Numberu64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount_in'),
-      Layout.uint64('minimum_amount_out'),
+      Layout.uint64('amountIn'),
+      Layout.uint64('minimumAmountOut'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 1, // Swap instruction
-        amount_in: new Numberu64(amount_in).toBuffer(),
-        minimum_amount_out: new Numberu64(minimum_amount_out).toBuffer(),
+        amountIn: new Numberu64(amountIn).toBuffer(),
+        minimumAmountOut: new Numberu64(minimumAmountOut).toBuffer(),
       },
       data,
     );
@@ -435,9 +435,9 @@ export class TokenSwap {
     poolToken: PublicKey,
     poolAccount: PublicKey,
     tokenProgramId: PublicKey,
-    pool_token_amount: number | Numberu64,
-    maximum_token_a_amount: number | Numberu64,
-    maximum_token_b_amount: number | Numberu64,
+    poolTokenAmount: number | Numberu64,
+    maximumTokenA: number | Numberu64,
+    maximumTokenB: number | Numberu64,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'deposit',
@@ -454,9 +454,9 @@ export class TokenSwap {
           poolAccount,
           this.programId,
           tokenProgramId,
-          pool_token_amount,
-          maximum_token_a_amount,
-          maximum_token_b_amount,
+          poolTokenAmount,
+          maximumTokenA,
+          maximumTokenB,
         ),
       ),
       this.payer,
@@ -474,28 +474,24 @@ export class TokenSwap {
     poolAccount: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
-    pool_token_amount: number | Numberu64,
-    maximum_token_a_amount: number | Numberu64,
-    maximum_token_b_amount: number | Numberu64,
+    poolTokenAmount: number | Numberu64,
+    maximumTokenA: number | Numberu64,
+    maximumTokenB: number | Numberu64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('pool_token_amount'),
-      Layout.uint64('maximum_token_a_amount'),
-      Layout.uint64('maximum_token_b_amount'),
+      Layout.uint64('poolTokenAmount'),
+      Layout.uint64('maximumTokenA'),
+      Layout.uint64('maximumTokenB'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 2, // Deposit instruction
-        pool_token_amount: new Numberu64(pool_token_amount).toBuffer(),
-        maximum_token_a_amount: new Numberu64(
-          maximum_token_a_amount,
-        ).toBuffer(),
-        maximum_token_b_amount: new Numberu64(
-          maximum_token_b_amount,
-        ).toBuffer(),
+        poolTokenAmount: new Numberu64(poolTokenAmount).toBuffer(),
+        maximumTokenA: new Numberu64(maximumTokenA).toBuffer(),
+        maximumTokenB: new Numberu64(maximumTokenB).toBuffer(),
       },
       data,
     );
@@ -540,9 +536,9 @@ export class TokenSwap {
     userAccountA: PublicKey,
     userAccountB: PublicKey,
     tokenProgramId: PublicKey,
-    pool_token_amount: number | Numberu64,
-    minimum_token_a_amount: number | Numberu64,
-    minimum_token_b_amount: number | Numberu64,
+    poolTokenAmount: number | Numberu64,
+    minimumTokenA: number | Numberu64,
+    minimumTokenB: number | Numberu64,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'withdraw',
@@ -559,9 +555,9 @@ export class TokenSwap {
           userAccountB,
           this.programId,
           tokenProgramId,
-          pool_token_amount,
-          minimum_token_a_amount,
-          minimum_token_b_amount,
+          poolTokenAmount,
+          minimumTokenA,
+          minimumTokenB,
         ),
       ),
       this.payer,
@@ -579,27 +575,27 @@ export class TokenSwap {
     userAccountB: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
-    pool_token_amount: number | Numberu64,
-    minimum_token_a_amount: number | Numberu64,
-    minimum_token_b_amount: number | Numberu64,
+    poolTokenAmount: number | Numberu64,
+    minimumTokenA: number | Numberu64,
+    minimumTokenB: number | Numberu64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('pool_token_amount'),
-      Layout.uint64('minimum_token_a_amount'),
-      Layout.uint64('minimum_token_b_amount'),
+      Layout.uint64('poolTokenAmount'),
+      Layout.uint64('minimumTokenA'),
+      Layout.uint64('minimumTokenB'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 3, // Withdraw instruction
-        pool_token_amount: new Numberu64(pool_token_amount).toBuffer(),
-        minimum_token_a_amount: new Numberu64(
-          minimum_token_a_amount,
+        poolTokenAmount: new Numberu64(poolTokenAmount).toBuffer(),
+        minimumTokenA: new Numberu64(
+          minimumTokenA,
         ).toBuffer(),
-        minimum_token_b_amount: new Numberu64(
-          minimum_token_b_amount,
+        minimumTokenB: new Numberu64(
+          minimumTokenB,
         ).toBuffer(),
       },
       data,
