@@ -220,7 +220,7 @@ impl Processor {
             fee_numerator,
             fee_denominator,
         };
-        obj.pack(&mut swap_info.data.borrow_mut());
+        SwapInfo::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
     }
 
@@ -549,7 +549,6 @@ impl PrintProgramError for SwapError {
             SwapError::InvalidSupply => info!("Error: Pool token mint has a non-zero supply"),
             SwapError::RepeatedMint => info!("Error: Swap input token accounts have the same mint"),
             SwapError::InvalidDelegate => info!("Error: Token account has a delegate"),
-            SwapError::InvalidSwapInfo => info!("Error: Swap info invalid"),
             SwapError::InvalidInput => info!("Error: InvalidInput"),
             SwapError::IncorrectSwapAccount => {
                 info!("Error: Address of the provided swap token account is incorrect")
@@ -585,7 +584,6 @@ mod tests {
         processor::Processor as SplProcessor,
         state::{Account as SplAccount, Mint as SplMint},
     };
-    use std::mem::size_of;
 
     struct SwapAccountInfo {
         nonce: u8,
@@ -617,7 +615,7 @@ mod tests {
             token_b_amount: u64,
         ) -> Self {
             let swap_key = pubkey_rand();
-            let swap_account = Account::new(0, size_of::<SwapInfo>(), &SWAP_PROGRAM_ID);
+            let swap_account = Account::new(0, SwapInfo::get_packed_len(), &SWAP_PROGRAM_ID);
             let (authority_key, nonce) =
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
@@ -1516,7 +1514,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
-                Err(SwapError::InvalidSwapInfo.into()),
+                Err(ProgramError::UninitializedAccount),
                 accounts.deposit(
                     &depositor_key,
                     &token_a_key,
@@ -1960,7 +1958,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, initial_a, initial_b, 0);
             assert_eq!(
-                Err(SwapError::InvalidSwapInfo.into()),
+                Err(ProgramError::UninitializedAccount),
                 accounts.withdraw(
                     &withdrawer_key,
                     &pool_key,
@@ -2399,7 +2397,7 @@ mod tests {
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             assert_eq!(
-                Err(SwapError::InvalidSwapInfo.into()),
+                Err(ProgramError::UninitializedAccount),
                 accounts.swap(
                     &swapper_key,
                     &token_a_key,

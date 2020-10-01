@@ -34,9 +34,6 @@ pub enum SwapError {
     /// The provided token account has a delegate.
     #[error("Token account has a delegate")]
     InvalidDelegate,
-    /// The swap info is invalid.
-    #[error("Swap info invalid")]
-    InvalidSwapInfo,
     /// The input token is invalid for swap.
     #[error("InvalidInput")]
     InvalidInput,
