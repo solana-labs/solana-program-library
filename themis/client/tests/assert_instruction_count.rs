@@ -263,7 +263,7 @@ fn assert_instruction_count() {
     const BASELINE_NEW_POLICIES_COUNT: u64 = 80_000; // last known 75,796 @ 128, 4,675 @ 2
     const BASELINE_INITIALIZE_USER_COUNT: u64 = 22_000; // last known 19,868
     const BASELINE_CALCULATE_AGGREGATE_COUNT: u64 = 15_000_000; // last known 13,061,884
-    const BASELINE_PROOF_DECRYPTION_COUNT: u64 = 50_000_000; // last known 13,167,140
+    const BASELINE_PROOF_DECRYPTION_COUNT: u64 = 60_000_000; // last known 13,167,140
 
     println!("BPF instructions executed");
     println!(
