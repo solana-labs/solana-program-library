@@ -3,7 +3,6 @@ members = [
   "utils/cgen",
   "utils/test-client",
   "memo/program",
-  "themis/client",
   "themis/program",
   "token-swap/program",
   #"token/cli",
@@ -11,6 +10,7 @@ members = [
   "token/program-v3",
 ]
 exclude = [
+  "themis/client",
   "token/perf-monitor",
 ]
 
