@@ -78,7 +78,8 @@ declare module '@solana/spl-token-swap' {
       swapDestination: PublicKey,
       destination: PublicKey,
       tokenProgramId: PublicKey,
-      amount: number | Numberu64,
+      amount_in: number | Numberu64,
+      minimum_amount_out: number | Numberu64,
     ): Promise<TransactionSignature>;
 
     static swapInstruction(
@@ -90,7 +91,8 @@ declare module '@solana/spl-token-swap' {
       destination: PublicKey,
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
-      amount: number | Numberu64,
+      amount_in: number | Numberu64,
+      minimum_amount_out: number | Numberu64,
     ): TransactionInstruction;
 
     deposit(
@@ -102,7 +104,9 @@ declare module '@solana/spl-token-swap' {
       poolToken: PublicKey,
       poolAccount: PublicKey,
       tokenProgramId: PublicKey,
-      amount: number | Numberu64,
+      pool_token_amount: number | Numberu64,
+      maximum_token_a_amount: number | Numberu64,
+      maximum_token_b_amount: number | Numberu64,
     ): Promise<TransactionSignature>;
 
     static depositInstruction(
@@ -116,7 +120,9 @@ declare module '@solana/spl-token-swap' {
       poolAccount: PublicKey,
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
-      amount: number | Numberu64,
+      pool_token_amount: number | Numberu64,
+      maximum_token_a_amount: number | Numberu64,
+      maximum_token_b_amount: number | Numberu64,
     ): TransactionInstruction;
 
     withdraw(
@@ -128,7 +134,9 @@ declare module '@solana/spl-token-swap' {
       userAccountA: PublicKey,
       userAccountB: PublicKey,
       tokenProgramId: PublicKey,
-      amount: number | Numberu64,
+      pool_token_amount: number | Numberu64,
+      minimum_token_a_amount: number | Numberu64,
+      minimum_token_b_amount: number | Numberu64,
     ): Promise<TransactionSignature>;
 
     static withdrawInstruction(
@@ -142,7 +150,9 @@ declare module '@solana/spl-token-swap' {
       userAccountB: PublicKey,
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
-      amount: number | Numberu64,
+      pool_token_amount: number | Numberu64,
+      minimum_token_a_amount: number | Numberu64,
+      minimum_token_b_amount: number | Numberu64,
     ): TransactionInstruction;
   }
 }

@@ -44,7 +44,9 @@ pub enum SwapInstruction {
     ///   6. '[]` Token program id
     Swap {
         /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
-        amount: u64,
+        amount_in: u64,
+        /// Minimum amount of DESTINATION token to output, prevents excessive slippage
+        minimum_amount_out: u64,
     },
 
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
@@ -62,7 +64,11 @@ pub enum SwapInstruction {
     Deposit {
         /// Pool token amount to transfer. token_a and token_b amount are set by
         /// the current exchange rate and size of the pool
-        amount: u64,
+        pool_token_amount: u64,
+        /// Maximum token A amount to deposit, prevents excessive slippage
+        maximum_token_a_amount: u64,
+        /// Maximum token B amount to deposit, prevents excessive slippage
+        maximum_token_b_amount: u64,
     },
 
     ///   Withdraw the token from the pool at the current ratio.
@@ -79,7 +85,11 @@ pub enum SwapInstruction {
     Withdraw {
         /// Amount of pool tokens to burn. User receives an output of token a
         /// and b based on the percentage of the pool tokens that are returned.
-        amount: u64,
+        pool_token_amount: u64,
+        /// Minimum amount of token A to receive, prevents excessive slippage
+        minimum_token_a_amount: u64,
+        /// Minimum amount of token B to receive, prevents excessive slippage
+        minimum_token_b_amount: u64,
     },
 }
 
@@ -98,13 +108,32 @@ impl SwapInstruction {
                     nonce,
                 }
             }
-            1 | 2 | 3 => {
-                let (amount, _rest) = Self::unpack_u64(rest)?;
-                match tag {
-                    1 => Self::Swap { amount },
-                    2 => Self::Deposit { amount },
-                    3 => Self::Withdraw { amount },
-                    _ => unreachable!(),
+            1 => {
+                let (amount_in, rest) = Self::unpack_u64(rest)?;
+                let (minimum_amount_out, _rest) = Self::unpack_u64(rest)?;
+                Self::Swap {
+                    amount_in,
+                    minimum_amount_out,
+                }
+            }
+            2 => {
+                let (pool_token_amount, rest) = Self::unpack_u64(rest)?;
+                let (maximum_token_a_amount, rest) = Self::unpack_u64(rest)?;
+                let (maximum_token_b_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::Deposit {
+                    pool_token_amount,
+                    maximum_token_a_amount,
+                    maximum_token_b_amount,
+                }
+            }
+            3 => {
+                let (pool_token_amount, rest) = Self::unpack_u64(rest)?;
+                let (minimum_token_a_amount, rest) = Self::unpack_u64(rest)?;
+                let (minimum_token_b_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::Withdraw {
+                    pool_token_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 }
             }
             _ => return Err(SwapError::InvalidInstruction.into()),
@@ -139,17 +168,33 @@ impl SwapInstruction {
                 buf.extend_from_slice(&fee_denominator.to_le_bytes());
                 buf.push(nonce);
             }
-            Self::Swap { amount } => {
+            Self::Swap {
+                amount_in,
+                minimum_amount_out,
+            } => {
                 buf.push(1);
-                buf.extend_from_slice(&amount.to_le_bytes());
+                buf.extend_from_slice(&amount_in.to_le_bytes());
+                buf.extend_from_slice(&minimum_amount_out.to_le_bytes());
             }
-            Self::Deposit { amount } => {
+            Self::Deposit {
+                pool_token_amount,
+                maximum_token_a_amount,
+                maximum_token_b_amount,
+            } => {
                 buf.push(2);
-                buf.extend_from_slice(&amount.to_le_bytes());
+                buf.extend_from_slice(&pool_token_amount.to_le_bytes());
+                buf.extend_from_slice(&maximum_token_a_amount.to_le_bytes());
+                buf.extend_from_slice(&maximum_token_b_amount.to_le_bytes());
             }
-            Self::Withdraw { amount } => {
+            Self::Withdraw {
+                pool_token_amount,
+                minimum_token_a_amount,
+                minimum_token_b_amount,
+            } => {
                 buf.push(3);
-                buf.extend_from_slice(&amount.to_le_bytes());
+                buf.extend_from_slice(&pool_token_amount.to_le_bytes());
+                buf.extend_from_slice(&minimum_token_a_amount.to_le_bytes());
+                buf.extend_from_slice(&minimum_token_b_amount.to_le_bytes());
             }
         }
         buf
@@ -206,9 +251,16 @@ pub fn deposit(
     swap_token_b_pubkey: &Pubkey,
     pool_mint_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
-    amount: u64,
+    pool_token_amount: u64,
+    maximum_token_a_amount: u64,
+    maximum_token_b_amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Deposit { amount }.pack();
+    let data = SwapInstruction::Deposit {
+        pool_token_amount,
+        maximum_token_a_amount,
+        maximum_token_b_amount,
+    }
+    .pack();
 
     let accounts = vec![
         AccountMeta::new(*swap_pubkey, false),
@@ -241,9 +293,16 @@ pub fn withdraw(
     swap_token_b_pubkey: &Pubkey,
     destination_token_a_pubkey: &Pubkey,
     destination_token_b_pubkey: &Pubkey,
-    amount: u64,
+    pool_token_amount: u64,
+    minimum_token_a_amount: u64,
+    minimum_token_b_amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Withdraw { amount }.pack();
+    let data = SwapInstruction::Withdraw {
+        pool_token_amount,
+        minimum_token_a_amount,
+        minimum_token_b_amount,
+    }
+    .pack();
 
     let accounts = vec![
         AccountMeta::new(*swap_pubkey, false),
@@ -274,9 +333,14 @@ pub fn swap(
     swap_source_pubkey: &Pubkey,
     swap_destination_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
-    amount: u64,
+    amount_in: u64,
+    minimum_amount_out: u64,
 ) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Swap { amount }.pack();
+    let data = SwapInstruction::Swap {
+        amount_in,
+        minimum_amount_out,
+    }
+    .pack();
 
     let accounts = vec![
         AccountMeta::new(*swap_pubkey, false),
@@ -330,29 +394,50 @@ mod tests {
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let amount = 2;
-        let check = SwapInstruction::Swap { amount };
+        let amount_in: u64 = 2;
+        let minimum_amount_out: u64 = 10;
+        let check = SwapInstruction::Swap {
+            amount_in,
+            minimum_amount_out,
+        };
         let packed = check.pack();
-        let mut expect = vec![1, 2];
-        expect.extend_from_slice(&[0u8; 7]);
+        let mut expect = vec![1];
+        expect.extend_from_slice(&amount_in.to_le_bytes());
+        expect.extend_from_slice(&minimum_amount_out.to_le_bytes());
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let amount = 5;
-        let check = SwapInstruction::Deposit { amount };
+        let pool_token_amount: u64 = 5;
+        let maximum_token_a_amount: u64 = 10;
+        let maximum_token_b_amount: u64 = 20;
+        let check = SwapInstruction::Deposit {
+            pool_token_amount,
+            maximum_token_a_amount,
+            maximum_token_b_amount,
+        };
         let packed = check.pack();
-        let mut expect = vec![2, 5];
-        expect.extend_from_slice(&[0u8; 7]);
+        let mut expect = vec![2];
+        expect.extend_from_slice(&pool_token_amount.to_le_bytes());
+        expect.extend_from_slice(&maximum_token_a_amount.to_le_bytes());
+        expect.extend_from_slice(&maximum_token_b_amount.to_le_bytes());
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let amount: u64 = 1212438012089;
-        let check = SwapInstruction::Withdraw { amount };
+        let pool_token_amount: u64 = 1212438012089;
+        let minimum_token_a_amount: u64 = 102198761982612;
+        let minimum_token_b_amount: u64 = 2011239855213;
+        let check = SwapInstruction::Withdraw {
+            pool_token_amount,
+            minimum_token_a_amount,
+            minimum_token_b_amount,
+        };
         let packed = check.pack();
         let mut expect = vec![3];
-        expect.extend_from_slice(&amount.to_le_bytes());
+        expect.extend_from_slice(&pool_token_amount.to_le_bytes());
+        expect.extend_from_slice(&minimum_token_a_amount.to_le_bytes());
+        expect.extend_from_slice(&minimum_token_b_amount.to_le_bytes());
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

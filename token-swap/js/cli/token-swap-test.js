@@ -37,8 +37,9 @@ let tokenAccountB: PublicKey;
 
 // Initial amount in each swap token
 const BASE_AMOUNT = 1000;
-// Amount passed to instructions
-const USER_AMOUNT = 100;
+// Amount passed to swap instruction
+const SWAP_AMOUNT_IN = 100;
+const SWAP_AMOUNT_OUT = 69;
 // Pool token amount minted on init
 const DEFAULT_POOL_TOKEN_AMOUNT = 1000000000;
 // Pool token amount to withdraw / deposit
@@ -253,6 +254,8 @@ export async function deposit(): Promise<void> {
     newAccountPool,
     tokenProgramId,
     POOL_TOKEN_AMOUNT,
+    tokenA,
+    tokenB,
   );
 
   let info;
@@ -302,6 +305,8 @@ export async function withdraw(): Promise<void> {
     userAccountB,
     tokenProgramId,
     POOL_TOKEN_AMOUNT,
+    tokenA,
+    tokenB,
   );
 
   //const poolMintInfo = await tokenPool.getMintInfo();
@@ -323,8 +328,8 @@ export async function withdraw(): Promise<void> {
 export async function swap(): Promise<void> {
   console.log('Creating swap token a account');
   let userAccountA = await mintA.createAccount(owner.publicKey);
-  await mintA.mintTo(userAccountA, owner, [], USER_AMOUNT);
-  await mintA.approve(userAccountA, authority, owner, [], USER_AMOUNT);
+  await mintA.mintTo(userAccountA, owner, [], SWAP_AMOUNT_IN);
+  await mintA.approve(userAccountA, authority, owner, [], SWAP_AMOUNT_IN);
   console.log('Creating swap token b account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
   const [tokenProgramId] = await GetPrograms(connection);
@@ -337,18 +342,19 @@ export async function swap(): Promise<void> {
     tokenAccountB,
     userAccountB,
     tokenProgramId,
-    USER_AMOUNT,
+    SWAP_AMOUNT_IN,
+    SWAP_AMOUNT_OUT,
   );
   await sleep(500);
   let info;
   info = await mintA.getAccountInfo(userAccountA);
   assert(info.amount.toNumber() == 0);
   info = await mintA.getAccountInfo(tokenAccountA);
-  assert(info.amount.toNumber() == BASE_AMOUNT + USER_AMOUNT);
+  assert(info.amount.toNumber() == BASE_AMOUNT + SWAP_AMOUNT_IN);
   info = await mintB.getAccountInfo(tokenAccountB);
-  assert(info.amount.toNumber() == 931);
+  assert(info.amount.toNumber() == BASE_AMOUNT - SWAP_AMOUNT_OUT);
   info = await mintB.getAccountInfo(userAccountB);
-  assert(info.amount.toNumber() == 69);
+  assert(info.amount.toNumber() == SWAP_AMOUNT_OUT);
   info = await tokenPool.getAccountInfo(tokenAccountPool);
   assert(
     info.amount.toNumber() == DEFAULT_POOL_TOKEN_AMOUNT - POOL_TOKEN_AMOUNT,
