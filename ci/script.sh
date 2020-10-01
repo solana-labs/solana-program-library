@@ -67,6 +67,7 @@ done
 
 # Run SPL Token's performance monitor
 _ cargo test --manifest-path=token/perf-monitor/Cargo.toml -- --nocapture
+_ cargo test --manifest-path=themis/client/Cargo.toml -- --nocapture
 
 
 # Test token js bindings
