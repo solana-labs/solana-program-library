@@ -126,6 +126,7 @@ pub async fn test_e2e(
     client: &mut BanksClient,
     sender_keypair: Keypair,
     policies: Vec<Fr>,
+    num_users: u64,
     expected_scalar_aggregate: Fr,
 ) -> io::Result<()> {
     let sender_pubkey = sender_keypair.pubkey();
@@ -155,7 +156,6 @@ pub async fn test_e2e(
         .unwrap();
 
     // Send feepayer_keypairs some SOL
-    let num_users = 1_000_u64;
     let feepayers: Vec<_> = (0..num_users).map(|_| Keypair::new()).collect();
     for feepayers in feepayers.chunks(20) {
         println!("Seeding feepayer accounts...");
@@ -333,6 +333,7 @@ mod tests {
                 &mut banks_client,
                 sender_keypair,
                 policies,
+                10,
                 Fr::new(3u64.into()).unwrap(),
             )
             .await
