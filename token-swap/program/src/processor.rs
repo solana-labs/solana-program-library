@@ -615,7 +615,7 @@ mod tests {
             token_b_amount: u64,
         ) -> Self {
             let swap_key = pubkey_rand();
-            let swap_account = Account::new(0, SwapInfo::LEN, &SWAP_PROGRAM_ID);
+            let swap_account = Account::new(0, SwapInfo::get_packed_len(), &SWAP_PROGRAM_ID);
             let (authority_key, nonce) =
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
