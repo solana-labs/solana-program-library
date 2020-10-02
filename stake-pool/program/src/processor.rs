@@ -65,54 +65,60 @@ impl Processor {
     }
 
     /// Issue a spl_token `Burn` instruction.
-    pub fn token_burn(
-        accounts: &[AccountInfo],
-        my_info: &Pubkey,
-        token_program_id: &Pubkey,
-        burn_account: &Pubkey,
-        mint: &Pubkey,
-        authority: &Pubkey,
+    pub fn token_burn<'a>(
+        me: &Pubkey,
+        token_program: AccountInfo<'a>,
+        burn_account: AccountInfo<'a>,
+        mint: AccountInfo<'a>,
+        authority: AccountInfo<'a>,
         nonce: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let my_info = my_info.to_bytes();
-        let authority_signature_seeds = [&my_info[..32], &[nonce]];
+        let swap_bytes = me.to_bytes();
+        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
+
         let ix = spl_token::instruction::burn(
-            token_program_id,
-            burn_account,
-            mint,
-            authority,
+            token_program.key,
+            burn_account.key,
+            mint.key,
+            authority.key,
             &[],
             amount,
         )?;
-        invoke_signed(&ix, accounts, signers)
+
+        invoke_signed(
+            &ix,
+            &[burn_account, mint, authority, token_program],
+            signers,
+        )
     }
 
     /// Issue a spl_token `MintTo` instruction.
-    pub fn token_mint_to(
-        accounts: &[AccountInfo],
-        my_info: &Pubkey,
-        token_program_id: &Pubkey,
-        mint: &Pubkey,
-        destination: &Pubkey,
-        authority: &Pubkey,
+    pub fn token_mint_to<'a>(
+        me: &Pubkey,
+        token_program: AccountInfo<'a>,
+        mint: AccountInfo<'a>,
+        destination: AccountInfo<'a>,
+        authority: AccountInfo<'a>,
         nonce: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let my_info = my_info.to_bytes();
-        let authority_signature_seeds = [&my_info[..32], &[nonce]];
+        let swap_bytes = me.to_bytes();
+        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
         let ix = spl_token::instruction::mint_to(
-            token_program_id,
-            mint,
-            destination,
-            authority,
+            token_program.key,
+            mint.key,
+            destination.key,
+            authority.key,
             &[],
             amount,
         )?;
-        invoke_signed(&ix, accounts, signers)
+
+        invoke_signed(&ix, &[mint, destination, authority, token_program], signers)
     }
+
 
     /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize(
@@ -155,6 +161,7 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let dest_user_info = next_account_info(account_info_iter)?;
         let owner_fee_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
@@ -171,6 +178,9 @@ impl Processor {
         }
 
         if stake_pool.owner_fee_account != *owner_fee_info.key {
+            return Err(Error::InvalidInput.into());
+        }
+        if stake_pool.token_program_id != *token_program_info.key {
             return Err(Error::InvalidInput.into());
         }
 
@@ -198,23 +208,21 @@ impl Processor {
 
         let user_amount = <u64>::try_from(user_amount).or(Err(Error::CalculationFailure))?;
         Self::token_mint_to(
-            accounts,
-            &stake_pool.token_program_id,
             stake_pool_info.key,
-            pool_mint_info.key,
-            dest_user_info.key,
-            withdraw_info.key,
+            token_program_info.clone(),
+            pool_mint_info.clone(),
+            dest_user_info.clone(),
+            withdraw_info.clone(),
             stake_pool.withdraw_nonce,
             user_amount,
         )?;
         let fee_amount = <u64>::try_from(fee_amount).or(Err(Error::CalculationFailure))?;
         Self::token_mint_to(
-            accounts,
-            &stake_pool.token_program_id,
             stake_pool_info.key,
-            pool_mint_info.key,
-            owner_fee_info.key,
-            withdraw_info.key,
+            token_program_info.clone(),
+            pool_mint_info.clone(),
+            owner_fee_info.clone(),
+            withdraw_info.clone(),
             stake_pool.withdraw_nonce,
             fee_amount as u64,
         )?;
@@ -238,6 +246,7 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let stake_info = next_account_info(account_info_iter)?;
         let dest_user_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
@@ -245,6 +254,9 @@ impl Processor {
             != Self::authority_id(program_id, stake_pool_info.key, stake_pool.withdraw_nonce)?
         {
             return Err(Error::InvalidProgramAddress.into());
+        }
+        if stake_pool.token_program_id != *token_program_info.key {
+            return Err(Error::InvalidInput.into());
         }
 
         let pool_amount = stake_pool
@@ -271,12 +283,11 @@ impl Processor {
         )?;
 
         Self::token_burn(
-            accounts,
             stake_info.key,
-            &stake_pool.token_program_id,
-            source_info.key,
-            pool_mint_info.key,
-            withdraw_info.key,
+            token_program_info.clone(),
+            source_info.clone(),
+            pool_mint_info.clone(),
+            withdraw_info.clone(),
             stake_pool.withdraw_nonce,
             pool_amount,
         )?;
@@ -372,7 +383,7 @@ impl Processor {
     }
 }
 
-// Test program id for the swap program.
+// Test program id for the stake-pool program.
 #[cfg(not(target_arch = "bpf"))]
 const MY_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
 
