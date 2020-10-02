@@ -11,4 +11,4 @@ pub mod state;
 // solana-sdk version
 pub use solana_sdk;
 
-solana_sdk::declare_id!("6q92wS9neZdex1jT72zqeWEPJ6YYNSqYjF6PKrqbVUwJ");
+solana_sdk::declare_id!("F3FWeYPjD1jeR6UykMj1GRbCcmoxtJnDiPuFdTLRGvb6");
