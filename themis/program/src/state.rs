@@ -150,7 +150,6 @@ impl User {
                 plaintext,
             )
             .is_ok();
-        self.proof_verification = true;
         true
     }
 
@@ -199,7 +198,7 @@ pub(crate) mod tests {
         let interactions: Vec<_> = (0..policies.len())
             .map(|i| (i as u8, pk.encrypt(&G1::one()).points))
             .collect();
-        let mut user = User::default();
+        let mut user = User::new(pk);
 
         let tx_receipt = user.submit_interactions(&interactions, policies);
         assert!(tx_receipt);

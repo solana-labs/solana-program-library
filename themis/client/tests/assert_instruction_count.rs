@@ -1,6 +1,7 @@
 use bn::{Fr, Group, G1};
 use borsh::BorshSerialize;
 use elgamal_bn::ciphertext::Ciphertext;
+use separator::Separatable;
 use solana_bpf_loader_program::{
     create_vm,
     serialization::{deserialize_parameters, serialize_parameters},
@@ -266,20 +267,20 @@ fn assert_instruction_count() {
 
     println!("BPF instructions executed");
     println!(
-        "  InitializePolicies({}): {:?} ({:?})",
-        num_scalars, initialize_policies_count, BASELINE_NEW_POLICIES_COUNT
+        "  InitializePolicies({}): {} ({:?})",
+        num_scalars, initialize_policies_count.separated_string(), BASELINE_NEW_POLICIES_COUNT
     );
     println!(
-        "  InitializeUserAccount: {:?} ({:?})",
-        initialize_user_count, BASELINE_INITIALIZE_USER_COUNT
+        "  InitializeUserAccount: {} ({:?})",
+        initialize_user_count.separated_string(), BASELINE_INITIALIZE_USER_COUNT
     );
     println!(
-        "  CalculateAggregate:    {:?} ({:?})",
-        calculate_aggregate_count, BASELINE_CALCULATE_AGGREGATE_COUNT
+        "  CalculateAggregate:    {} ({:?})",
+        calculate_aggregate_count.separated_string(), BASELINE_CALCULATE_AGGREGATE_COUNT
     );
     println!(
-        "  SubmitProofDecryption: {:?} ({:?})",
-        proof_decryption_count, BASELINE_PROOF_DECRYPTION_COUNT
+        "  SubmitProofDecryption: {} ({:?})",
+        proof_decryption_count.separated_string(), BASELINE_PROOF_DECRYPTION_COUNT
     );
 
     assert!(initialize_policies_count <= BASELINE_NEW_POLICIES_COUNT);

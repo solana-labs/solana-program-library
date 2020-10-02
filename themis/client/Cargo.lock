@@ -1832,6 +1832,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
+name = "separator"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f97841a747eef040fcd2e7b3b9a220a7205926e60488e673d9e4926d27772ce5"
+
+[[package]]
 name = "serde"
 version = "1.0.116"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2348,6 +2354,7 @@ dependencies = [
  "borsh",
  "elgamal_bn",
  "futures 0.3.5",
+ "separator",
  "solana-banks-client",
  "solana-banks-server",
  "solana-bpf-loader-program",
