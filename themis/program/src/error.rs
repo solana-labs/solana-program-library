@@ -1,6 +1,8 @@
 //! Error types
 
 use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
+use solana_sdk::program_error::PrintProgramError;
 use solana_sdk::{decode_error::DecodeError, program_error::ProgramError};
 use thiserror::Error;
 
@@ -23,5 +25,17 @@ impl From<ThemisError> for ProgramError {
 impl<T> DecodeError<T> for ThemisError {
     fn type_of() -> &'static str {
         "ThemisError"
+    }
+}
+
+impl PrintProgramError for ThemisError {
+    fn print<E>(&self)
+    where
+        E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
+    {
+        match self {
+            ThemisError::InvalidInstruction => println!("Error: Invalid instruction"),
+            ThemisError::AccountInUse => println!("Error: Account in use"),
+        }
     }
 }

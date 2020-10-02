@@ -124,7 +124,12 @@ fn initialize_user_account(user_pubkey: &Pubkey, public_key: PublicKey) -> Instr
 }
 
 /// Return two instructions that create and initialize a user account.
-pub fn create_user_account(from: &Pubkey, user_pubkey: &Pubkey, lamports: u64, public_key: PublicKey) -> Vec<Instruction> {
+pub fn create_user_account(
+    from: &Pubkey,
+    user_pubkey: &Pubkey,
+    lamports: u64,
+    public_key: PublicKey,
+) -> Vec<Instruction> {
     let space = User::default().try_to_vec().unwrap().len() as u64;
     vec![
         system_instruction::create_account(from, user_pubkey, lamports, space, &crate::id()),

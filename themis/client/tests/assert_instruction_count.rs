@@ -201,9 +201,11 @@ fn assert_instruction_count() {
         .len(),
         &program_id,
     );
-    let instruction_data = ThemisInstruction::InitializePoliciesAccount { num_scalars: num_scalars as u8 }
-        .serialize()
-        .unwrap();
+    let instruction_data = ThemisInstruction::InitializePoliciesAccount {
+        num_scalars: num_scalars as u8,
+    }
+    .serialize()
+    .unwrap();
     let parameter_accounts = vec![KeyedAccount::new(&policies_key, false, &policies_account)];
     let initialize_policies_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
@@ -268,19 +270,24 @@ fn assert_instruction_count() {
     println!("BPF instructions executed");
     println!(
         "  InitializePolicies({}): {} ({:?})",
-        num_scalars, initialize_policies_count.separated_string(), BASELINE_NEW_POLICIES_COUNT
+        num_scalars,
+        initialize_policies_count.separated_string(),
+        BASELINE_NEW_POLICIES_COUNT
     );
     println!(
         "  InitializeUserAccount: {} ({:?})",
-        initialize_user_count.separated_string(), BASELINE_INITIALIZE_USER_COUNT
+        initialize_user_count.separated_string(),
+        BASELINE_INITIALIZE_USER_COUNT
     );
     println!(
         "  CalculateAggregate:    {} ({:?})",
-        calculate_aggregate_count.separated_string(), BASELINE_CALCULATE_AGGREGATE_COUNT
+        calculate_aggregate_count.separated_string(),
+        BASELINE_CALCULATE_AGGREGATE_COUNT
     );
     println!(
         "  SubmitProofDecryption: {} ({:?})",
-        proof_decryption_count.separated_string(), BASELINE_PROOF_DECRYPTION_COUNT
+        proof_decryption_count.separated_string(),
+        BASELINE_PROOF_DECRYPTION_COUNT
     );
 
     assert!(initialize_policies_count <= BASELINE_NEW_POLICIES_COUNT);

@@ -64,7 +64,11 @@ impl PaymentRequest {
     }
 }
 
-fn inner_product((mut aggregate_x, mut aggregate_y): Points, ciphertexts: &[(u8, Points)], scalars: &[Fr]) -> Points {
+fn inner_product(
+    (mut aggregate_x, mut aggregate_y): Points,
+    ciphertexts: &[(u8, Points)],
+    scalars: &[Fr],
+) -> Points {
     for &(i, (x, y)) in ciphertexts {
         aggregate_x = x * scalars[i as usize] + aggregate_x;
         aggregate_y = y * scalars[i as usize] + aggregate_y;
@@ -106,7 +110,7 @@ impl User {
     pub fn new(public_key: PublicKey) -> Self {
         Self {
             public_key,
-            .. Self::default()
+            ..Self::default()
         }
     }
 
@@ -122,11 +126,7 @@ impl User {
         self.proof_verification
     }
 
-    pub fn submit_interactions(
-        &mut self,
-        interactions: &[(u8, Points)],
-        policies: &[Fr],
-    ) -> bool {
+    pub fn submit_interactions(&mut self, interactions: &[(u8, Points)], policies: &[Fr]) -> bool {
         self.encrypted_aggregate = inner_product(self.encrypted_aggregate, interactions, &policies);
         true
     }

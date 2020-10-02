@@ -12,7 +12,10 @@ use solana_sdk::{
     pubkey::Pubkey,
 };
 
-fn process_initialize_user_account(user_info: &AccountInfo, public_key: PublicKey) -> Result<(), ProgramError> {
+fn process_initialize_user_account(
+    user_info: &AccountInfo,
+    public_key: PublicKey,
+) -> Result<(), ProgramError> {
     // TODO: verify the program ID
     if let Ok(user) = User::deserialize(&user_info.data.borrow()) {
         if user.is_initialized {
@@ -54,10 +57,7 @@ fn process_submit_interactions(
 ) -> Result<(), ProgramError> {
     let mut user = User::deserialize(&user_info.data.borrow())?;
     let policies = Policies::deserialize(&policies_info.data.borrow())?;
-    user.submit_interactions(
-        encrypted_interactions,
-        &policies.scalars,
-    );
+    user.submit_interactions(encrypted_interactions, &policies.scalars);
     user.serialize(&mut user_info.data.borrow_mut())
 }
 
@@ -114,11 +114,7 @@ pub fn process_instruction<'a>(
         } => {
             let user_info = next_account_info(account_infos_iter)?;
             let policies_info = next_account_info(account_infos_iter)?;
-            process_submit_interactions(
-                &encrypted_interactions,
-                &user_info,
-                &policies_info,
-            )
+            process_submit_interactions(&encrypted_interactions, &user_info, &policies_info)
         }
         ThemisInstruction::SubmitProofDecryption {
             plaintext,
