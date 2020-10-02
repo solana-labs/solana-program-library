@@ -35,7 +35,7 @@ impl SwapResult {
         let new_source_amount_less_fee = swap_source_amount
             .checked_add(source_amount)?
             .checked_sub(fee)?;
-        let new_destination_amount = invariant.checked_div(new_source_amount)?;
+        let new_destination_amount = invariant.checked_div(new_source_amount_less_fee)?;
         let amount_swapped = swap_destination_amount.checked_sub(new_destination_amount)?;
 
         // actually add the whole amount coming in
