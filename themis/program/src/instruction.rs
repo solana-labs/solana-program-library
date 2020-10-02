@@ -51,7 +51,7 @@ pub enum ThemisInstruction {
     ///   1. `[]`  The policies account
     CalculateAggregate {
         /// Encrypted interactions
-        encrypted_interactions: Vec<(G1, G1)>,
+        encrypted_interactions: Vec<(u8, (G1, G1))>,
     },
 
     /// Submit proof decryption
@@ -155,7 +155,7 @@ pub fn create_policies_account(
 pub fn calculate_aggregate(
     user_pubkey: &Pubkey,
     policies_pubkey: &Pubkey,
-    encrypted_interactions: Vec<(G1, G1)>,
+    encrypted_interactions: Vec<(u8, (G1, G1))>,
 ) -> Instruction {
     let data = ThemisInstruction::CalculateAggregate {
         encrypted_interactions,

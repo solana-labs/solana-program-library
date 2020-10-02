@@ -184,9 +184,8 @@ fn assert_instruction_count() {
     let num_scalars = scalars.len();
 
     let (sk, pk) = generate_keys();
-    let encrypted_interactions: Vec<_> = scalars
-        .iter()
-        .map(|_| pk.encrypt(&G1::one()).points)
+    let encrypted_interactions: Vec<_> = (0..num_scalars)
+        .map(|i| (i as u8, pk.encrypt(&G1::one()).points))
         .collect();
 
     let policies_account = SolanaAccount::new_ref(

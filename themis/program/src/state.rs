@@ -55,13 +55,10 @@ impl PaymentRequest {
     }
 }
 
-fn inner_product(ciphertexts: &[Points], scalars: &[Fr]) -> Points {
-    let mut aggregate_x = G1::zero();
-    let mut aggregate_y = G1::zero();
-
-    for (&(x, y), &scalar) in ciphertexts.iter().zip(scalars) {
-        aggregate_x = x * scalar + aggregate_x;
-        aggregate_y = y * scalar + aggregate_y;
+fn inner_product((mut aggregate_x, mut aggregate_y): Points, ciphertexts: &[(u8, Points)], scalars: &[Fr]) -> Points {
+    for &(i, (x, y)) in ciphertexts {
+        aggregate_x = x * scalars[i as usize] + aggregate_x;
+        aggregate_y = y * scalars[i as usize] + aggregate_y;
     }
 
     (aggregate_x, aggregate_y)
@@ -118,10 +115,10 @@ impl User {
 
     pub fn calculate_aggregate(
         &mut self,
-        ciphertexts: &[Points],
+        ciphertexts: &[(u8, Points)],
         policies: &[Fr],
     ) -> bool {
-        self.encrypted_aggregate = inner_product(ciphertexts, &policies);
+        self.encrypted_aggregate = inner_product(self.encrypted_aggregate, ciphertexts, &policies);
         true
     }
 
@@ -190,9 +187,8 @@ pub(crate) mod tests {
 
     fn test_policy_contract(policies: &[Fr], expected_scalar_aggregate: Fr) {
         let (sk, pk) = generate_keys();
-        let interactions: Vec<_> = policies
-            .iter()
-            .map(|_| pk.encrypt(&G1::one()).points)
+        let interactions: Vec<_> = (0..policies.len())
+            .map(|i| (i as u8, pk.encrypt(&G1::one()).points))
             .collect();
         let mut user = User::default();
 

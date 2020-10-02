@@ -51,6 +51,7 @@ async fn run_user_workflow(
         .unwrap();
     num_transactions += 1;
 
+    let interactions: Vec<_> = interactions.into_iter().enumerate().map(|(i, x)| (i as u8, x)).collect();
     let ix = instruction::calculate_aggregate(&user_pubkey, &policies_pubkey, interactions);
     let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().await?;

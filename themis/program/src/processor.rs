@@ -37,7 +37,7 @@ fn process_initialize_policies_account(
 }
 
 fn process_calculate_aggregate(
-    encrypted_interactions: &[(G1, G1)],
+    encrypted_interactions: &[(u8, (G1, G1))],
     user_info: &AccountInfo,
     policies_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
