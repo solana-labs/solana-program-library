@@ -38,8 +38,20 @@ pub enum ThemisInstruction {
     ///
     ///   0. `[writable]` The account to initialize.
     InitializePoliciesAccount {
+        /// Number of policies to be added
+        num_scalars: u8,
+    },
+
+    /// Store policies
+    ///
+    /// The `StorePolices` instruction is used to set individual policies.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable, signer]` The policies account.
+    StorePolicies {
         /// Policies to be added
-        scalars: Vec<Fr>,
+        scalars: Vec<(u8, Fr)>,
     },
 
     /// Calculate aggregate. The length of the `input` vector must equal the
@@ -49,7 +61,7 @@ pub enum ThemisInstruction {
     ///
     ///   0. `[writable, signer]`  The user account
     ///   1. `[]`  The policies account
-    CalculateAggregate {
+    SubmitInteractions {
         /// Encrypted interactions
         encrypted_interactions: Vec<(u8, (G1, G1))>,
     },
@@ -121,8 +133,8 @@ pub fn create_user_account(from: &Pubkey, user_pubkey: &Pubkey, lamports: u64, p
 }
 
 /// Return an `InitializePoliciesAccount` instruction.
-fn initialize_policies_account(policies_pubkey: &Pubkey, scalars: Vec<Fr>) -> Instruction {
-    let data = ThemisInstruction::InitializePoliciesAccount { scalars };
+fn initialize_policies_account(policies_pubkey: &Pubkey, num_scalars: u8) -> Instruction {
+    let data = ThemisInstruction::InitializePoliciesAccount { num_scalars };
     let accounts = vec![AccountMeta::new(*policies_pubkey, false)];
     Instruction {
         program_id: crate::id(),
@@ -136,28 +148,33 @@ pub fn create_policies_account(
     from: &Pubkey,
     policies_pubkey: &Pubkey,
     lamports: u64,
-    scalars: Vec<Fr>,
+    num_scalars: u8,
 ) -> Vec<Instruction> {
-    let space = Policies {
-        scalars: scalars.clone(),
-        ..Policies::default()
-    }
-    .try_to_vec()
-    .unwrap()
-    .len() as u64;
+    let space = Policies::new(num_scalars).try_to_vec().unwrap().len() as u64;
     vec![
         system_instruction::create_account(from, policies_pubkey, lamports, space, &crate::id()),
-        initialize_policies_account(policies_pubkey, scalars),
+        initialize_policies_account(policies_pubkey, num_scalars),
     ]
 }
 
-/// Return a `CalculateAggregate` instruction.
-pub fn calculate_aggregate(
+/// Return an `InitializePoliciesAccount` instruction.
+pub fn store_policies(policies_pubkey: &Pubkey, scalars: Vec<(u8, Fr)>) -> Instruction {
+    let data = ThemisInstruction::StorePolicies { scalars };
+    let accounts = vec![AccountMeta::new(*policies_pubkey, true)];
+    Instruction {
+        program_id: crate::id(),
+        accounts,
+        data: data.serialize().unwrap(),
+    }
+}
+
+/// Return a `SubmitInteractions` instruction.
+pub fn submit_interactions(
     user_pubkey: &Pubkey,
     policies_pubkey: &Pubkey,
     encrypted_interactions: Vec<(u8, (G1, G1))>,
 ) -> Instruction {
-    let data = ThemisInstruction::CalculateAggregate {
+    let data = ThemisInstruction::SubmitInteractions {
         encrypted_interactions,
     };
     let accounts = vec![

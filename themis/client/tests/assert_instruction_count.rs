@@ -192,6 +192,7 @@ fn assert_instruction_count() {
         0,
         Policies {
             is_initialized: true,
+            num_scalars: num_scalars as u8,
             scalars: scalars.clone(),
         }
         .try_to_vec()
@@ -199,7 +200,7 @@ fn assert_instruction_count() {
         .len(),
         &program_id,
     );
-    let instruction_data = ThemisInstruction::InitializePoliciesAccount { scalars }
+    let instruction_data = ThemisInstruction::InitializePoliciesAccount { num_scalars: num_scalars as u8 }
         .serialize()
         .unwrap();
     let parameter_accounts = vec![KeyedAccount::new(&policies_key, false, &policies_account)];
@@ -218,7 +219,7 @@ fn assert_instruction_count() {
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
 
     // Calculate Aggregate
-    let instruction_data = ThemisInstruction::CalculateAggregate {
+    let instruction_data = ThemisInstruction::SubmitInteractions {
         encrypted_interactions,
     }
     .serialize()

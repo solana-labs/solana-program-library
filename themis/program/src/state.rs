@@ -11,6 +11,7 @@ type Points = (G1, G1);
 #[derive(Default, BorshSerialize, BorshDeserialize)]
 pub struct Policies {
     pub is_initialized: bool,
+    pub num_scalars: u8,
     pub scalars: Vec<Fr>,
 }
 
@@ -23,11 +24,19 @@ impl Policies {
         Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidAccountData)
     }
 
-    pub fn new(scalars: Vec<Fr>) -> Self {
+    pub fn new(num_scalars: u8) -> Self {
         Self {
             is_initialized: true,
-            scalars,
+            num_scalars,
+            scalars: vec![Fr::zero(); num_scalars as usize],
         }
+    }
+
+    /// Useful for testing
+    pub fn new_with_scalars(scalars: Vec<Fr>) -> Self {
+        let mut policies = Self::new(scalars.len() as u8);
+        policies.scalars = scalars;
+        policies
     }
 }
 
@@ -113,12 +122,12 @@ impl User {
         self.proof_verification
     }
 
-    pub fn calculate_aggregate(
+    pub fn submit_interactions(
         &mut self,
-        ciphertexts: &[(u8, Points)],
+        interactions: &[(u8, Points)],
         policies: &[Fr],
     ) -> bool {
-        self.encrypted_aggregate = inner_product(self.encrypted_aggregate, ciphertexts, &policies);
+        self.encrypted_aggregate = inner_product(self.encrypted_aggregate, interactions, &policies);
         true
     }
 
@@ -192,7 +201,7 @@ pub(crate) mod tests {
             .collect();
         let mut user = User::default();
 
-        let tx_receipt = user.calculate_aggregate(&interactions, policies);
+        let tx_receipt = user.submit_interactions(&interactions, policies);
         assert!(tx_receipt);
 
         let encrypted_point = user.fetch_encrypted_aggregate();

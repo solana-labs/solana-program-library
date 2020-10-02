@@ -24,7 +24,7 @@ fn process_initialize_user_account(user_info: &AccountInfo, public_key: PublicKe
 }
 
 fn process_initialize_policies_account(
-    scalars: Vec<Fr>,
+    num_scalars: u8,
     policies_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
     if let Ok(policies) = Policies::deserialize(&policies_info.data.borrow()) {
@@ -32,18 +32,29 @@ fn process_initialize_policies_account(
             return Err(ThemisError::AccountInUse.into());
         }
     }
-    let policies = Policies::new(scalars);
+    let policies = Policies::new(num_scalars);
     policies.serialize(&mut policies_info.data.borrow_mut())
 }
 
-fn process_calculate_aggregate(
+fn process_store_policies(
+    scalars: Vec<(u8, Fr)>,
+    policies_info: &AccountInfo,
+) -> Result<(), ProgramError> {
+    let mut policies = Policies::deserialize(&policies_info.data.borrow())?;
+    for (i, scalar) in scalars {
+        policies.scalars[i as usize] = scalar;
+    }
+    policies.serialize(&mut policies_info.data.borrow_mut())
+}
+
+fn process_submit_interactions(
     encrypted_interactions: &[(u8, (G1, G1))],
     user_info: &AccountInfo,
     policies_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
     let mut user = User::deserialize(&user_info.data.borrow())?;
     let policies = Policies::deserialize(&policies_info.data.borrow())?;
-    user.calculate_aggregate(
+    user.submit_interactions(
         encrypted_interactions,
         &policies.scalars,
     );
@@ -90,16 +101,20 @@ pub fn process_instruction<'a>(
             let user_info = next_account_info(account_infos_iter)?;
             process_initialize_user_account(&user_info, public_key)
         }
-        ThemisInstruction::InitializePoliciesAccount { scalars } => {
+        ThemisInstruction::InitializePoliciesAccount { num_scalars } => {
             let policies_info = next_account_info(account_infos_iter)?;
-            process_initialize_policies_account(scalars, &policies_info)
+            process_initialize_policies_account(num_scalars, &policies_info)
         }
-        ThemisInstruction::CalculateAggregate {
+        ThemisInstruction::StorePolicies { scalars } => {
+            let policies_info = next_account_info(account_infos_iter)?;
+            process_store_policies(scalars, &policies_info)
+        }
+        ThemisInstruction::SubmitInteractions {
             encrypted_interactions,
         } => {
             let user_info = next_account_info(account_infos_iter)?;
             let policies_info = next_account_info(account_infos_iter)?;
-            process_calculate_aggregate(
+            process_submit_interactions(
                 &encrypted_interactions,
                 &user_info,
                 &policies_info,

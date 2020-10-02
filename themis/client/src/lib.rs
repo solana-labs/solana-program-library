@@ -52,7 +52,7 @@ async fn run_user_workflow(
     num_transactions += 1;
 
     let interactions: Vec<_> = interactions.into_iter().enumerate().map(|(i, x)| (i as u8, x)).collect();
-    let ix = instruction::calculate_aggregate(&user_pubkey, &policies_pubkey, interactions);
+    let ix = instruction::submit_interactions(&user_pubkey, &policies_pubkey, interactions);
     let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().await?;
     let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
@@ -136,12 +136,15 @@ pub async fn test_e2e(
     let policies_len = policies.len();
 
     // Create the policies account
-    let ixs = instruction::create_policies_account(
+    let mut ixs = instruction::create_policies_account(
         &sender_pubkey,
         &policies_pubkey,
         sol_to_lamports(0.01),
-        policies,
+        policies.len() as u8,
     );
+    let policies: Vec<_> = policies.into_iter().enumerate().map(|(i, x)| (i as u8, x)).collect();
+    ixs.push(instruction::store_policies(&policies_pubkey, policies));
+
     let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().await?;
     let tx = Transaction::new(&[&sender_keypair, &policies_keypair], msg, recent_blockhash);
