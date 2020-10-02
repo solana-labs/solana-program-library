@@ -32,7 +32,7 @@ impl SwapResult {
         let fee = source_amount
             .checked_mul(fee_numerator)?
             .checked_div(fee_denominator)?;
-        let new_source_amount = swap_source_amount
+        let new_source_amount_less_fee = swap_source_amount
             .checked_add(source_amount)?
             .checked_sub(fee)?;
         let new_destination_amount = invariant.checked_div(new_source_amount)?;
