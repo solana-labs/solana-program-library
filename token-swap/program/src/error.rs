@@ -55,6 +55,9 @@ pub enum SwapError {
     /// Swap input token accounts have the same mint
     #[error("Swap input token accounts have the same mint")]
     RepeatedMint,
+    /// Swap instruction exceeds desired slippage limit
+    #[error("Swap instruction exceeds desired slippage limit")]
+    ExceededSlippage,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

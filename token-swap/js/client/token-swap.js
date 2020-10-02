@@ -345,7 +345,8 @@ export class TokenSwap {
     swapDestination: PublicKey,
     destination: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    amountIn: number | Numberu64,
+    minimumAmountOut: number | Numberu64,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'swap',
@@ -360,7 +361,8 @@ export class TokenSwap {
           destination,
           this.programId,
           tokenProgramId,
-          amount,
+          amountIn,
+          minimumAmountOut,
         ),
       ),
       this.payer,
@@ -376,18 +378,21 @@ export class TokenSwap {
     destination: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    amountIn: number | Numberu64,
+    minimumAmountOut: number | Numberu64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount'),
+      Layout.uint64('amountIn'),
+      Layout.uint64('minimumAmountOut'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 1, // Swap instruction
-        amount: new Numberu64(amount).toBuffer(),
+        amountIn: new Numberu64(amountIn).toBuffer(),
+        minimumAmountOut: new Numberu64(minimumAmountOut).toBuffer(),
       },
       data,
     );
@@ -430,7 +435,9 @@ export class TokenSwap {
     poolToken: PublicKey,
     poolAccount: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    poolTokenAmount: number | Numberu64,
+    maximumTokenA: number | Numberu64,
+    maximumTokenB: number | Numberu64,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'deposit',
@@ -447,7 +454,9 @@ export class TokenSwap {
           poolAccount,
           this.programId,
           tokenProgramId,
-          amount,
+          poolTokenAmount,
+          maximumTokenA,
+          maximumTokenB,
         ),
       ),
       this.payer,
@@ -465,18 +474,24 @@ export class TokenSwap {
     poolAccount: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    poolTokenAmount: number | Numberu64,
+    maximumTokenA: number | Numberu64,
+    maximumTokenB: number | Numberu64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount'),
+      Layout.uint64('poolTokenAmount'),
+      Layout.uint64('maximumTokenA'),
+      Layout.uint64('maximumTokenB'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 2, // Deposit instruction
-        amount: new Numberu64(amount).toBuffer(),
+        poolTokenAmount: new Numberu64(poolTokenAmount).toBuffer(),
+        maximumTokenA: new Numberu64(maximumTokenA).toBuffer(),
+        maximumTokenB: new Numberu64(maximumTokenB).toBuffer(),
       },
       data,
     );
@@ -521,7 +536,9 @@ export class TokenSwap {
     userAccountA: PublicKey,
     userAccountB: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    poolTokenAmount: number | Numberu64,
+    minimumTokenA: number | Numberu64,
+    minimumTokenB: number | Numberu64,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'withdraw',
@@ -538,7 +555,9 @@ export class TokenSwap {
           userAccountB,
           this.programId,
           tokenProgramId,
-          amount,
+          poolTokenAmount,
+          minimumTokenA,
+          minimumTokenB,
         ),
       ),
       this.payer,
@@ -556,18 +575,24 @@ export class TokenSwap {
     userAccountB: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
-    amount: number | Numberu64,
+    poolTokenAmount: number | Numberu64,
+    minimumTokenA: number | Numberu64,
+    minimumTokenB: number | Numberu64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      Layout.uint64('amount'),
+      Layout.uint64('poolTokenAmount'),
+      Layout.uint64('minimumTokenA'),
+      Layout.uint64('minimumTokenB'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
         instruction: 3, // Withdraw instruction
-        amount: new Numberu64(amount).toBuffer(),
+        poolTokenAmount: new Numberu64(poolTokenAmount).toBuffer(),
+        minimumTokenA: new Numberu64(minimumTokenA).toBuffer(),
+        minimumTokenB: new Numberu64(minimumTokenB).toBuffer(),
       },
       data,
     );
