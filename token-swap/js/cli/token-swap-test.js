@@ -39,7 +39,7 @@ let tokenAccountB: PublicKey;
 const BASE_AMOUNT = 1000;
 // Amount passed to swap instruction
 const SWAP_AMOUNT_IN = 100;
-const SWAP_AMOUNT_OUT = 69;
+const SWAP_AMOUNT_OUT = 70;
 // Pool token amount minted on init
 const DEFAULT_POOL_TOKEN_AMOUNT = 1000000000;
 // Pool token amount to withdraw / deposit

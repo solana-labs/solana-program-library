@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-channel=${1:-v1.3.13}
+channel=${1:-v1.3.14}
 installDir="$(dirname "$0")"/bin
 cacheDir=~/.cache/solana-bpf-sdk/"$channel"
 
