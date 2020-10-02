@@ -35,7 +35,7 @@ async fn run_user_workflow(
     let user_keypair = Keypair::new();
     let user_pubkey = user_keypair.pubkey();
     let ixs =
-        instruction::create_user_account(&sender_pubkey, &user_pubkey, sol_to_lamports(0.001));
+        instruction::create_user_account(&sender_pubkey, &user_pubkey, sol_to_lamports(0.001), pk);
     let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().await?;
     let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
@@ -51,7 +51,7 @@ async fn run_user_workflow(
         .unwrap();
     num_transactions += 1;
 
-    let ix = instruction::calculate_aggregate(&user_pubkey, &policies_pubkey, interactions, pk);
+    let ix = instruction::calculate_aggregate(&user_pubkey, &policies_pubkey, interactions);
     let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().await?;
     let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);

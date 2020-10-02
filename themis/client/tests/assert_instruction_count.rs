@@ -211,7 +211,7 @@ fn assert_instruction_count() {
     let user_key = Pubkey::new_rand();
     let user_account =
         SolanaAccount::new_ref(0, User::default().try_to_vec().unwrap().len(), &program_id);
-    let instruction_data = ThemisInstruction::InitializeUserAccount
+    let instruction_data = ThemisInstruction::InitializeUserAccount { public_key: pk }
         .serialize()
         .unwrap();
     let parameter_accounts = vec![KeyedAccount::new(&user_key, false, &user_account)];
@@ -221,7 +221,6 @@ fn assert_instruction_count() {
     // Calculate Aggregate
     let instruction_data = ThemisInstruction::CalculateAggregate {
         encrypted_interactions,
-        public_key: pk,
     }
     .serialize()
     .unwrap();

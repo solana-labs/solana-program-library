@@ -23,7 +23,10 @@ pub enum ThemisInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The account to initialize.
-    InitializeUserAccount,
+    InitializeUserAccount {
+        /// Public key for all encrypted interations
+        public_key: PublicKey,
+    },
 
     /// Initialize a new policies account
     ///
@@ -49,9 +52,6 @@ pub enum ThemisInstruction {
     CalculateAggregate {
         /// Encrypted interactions
         encrypted_interactions: Vec<(G1, G1)>,
-
-        /// Public key for all encrypted interations
-        public_key: PublicKey,
     },
 
     /// Submit proof decryption
@@ -99,8 +99,8 @@ impl ThemisInstruction {
 }
 
 /// Return an `InitializeUserAccount` instruction.
-fn initialize_user_account(user_pubkey: &Pubkey) -> Instruction {
-    let data = ThemisInstruction::InitializeUserAccount;
+fn initialize_user_account(user_pubkey: &Pubkey, public_key: PublicKey) -> Instruction {
+    let data = ThemisInstruction::InitializeUserAccount { public_key };
 
     let accounts = vec![AccountMeta::new(*user_pubkey, false)];
 
@@ -112,11 +112,11 @@ fn initialize_user_account(user_pubkey: &Pubkey) -> Instruction {
 }
 
 /// Return two instructions that create and initialize a user account.
-pub fn create_user_account(from: &Pubkey, user_pubkey: &Pubkey, lamports: u64) -> Vec<Instruction> {
+pub fn create_user_account(from: &Pubkey, user_pubkey: &Pubkey, lamports: u64, public_key: PublicKey) -> Vec<Instruction> {
     let space = User::default().try_to_vec().unwrap().len() as u64;
     vec![
         system_instruction::create_account(from, user_pubkey, lamports, space, &crate::id()),
-        initialize_user_account(user_pubkey),
+        initialize_user_account(user_pubkey, public_key),
     ]
 }
 
@@ -156,11 +156,9 @@ pub fn calculate_aggregate(
     user_pubkey: &Pubkey,
     policies_pubkey: &Pubkey,
     encrypted_interactions: Vec<(G1, G1)>,
-    public_key: PublicKey,
 ) -> Instruction {
     let data = ThemisInstruction::CalculateAggregate {
         encrypted_interactions,
-        public_key,
     };
     let accounts = vec![
         AccountMeta::new(*user_pubkey, true),
