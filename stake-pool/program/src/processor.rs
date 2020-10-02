@@ -15,7 +15,7 @@ use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
     entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
-    pubkey::Pubkey,
+    pubkey::Pubkey, stake::state::StakeAuthorize,
 };
 use std::convert::TryFrom;
 
@@ -29,39 +29,59 @@ impl Processor {
     }
 
     /// Issue a stake_split instruction.
-    pub fn stake_split(
-        _accounts: &[AccountInfo],
-        _my_info: &Pubkey,
-        _authority: &Pubkey,
-        _nonce: u8,
-        _stake: &Pubkey,
-        _amount: u64,
+    pub fn stake_split<'a>(
+        me: &Pubkey,
+        stake_account: AccountInfo<'a>,
+        authority: &AccountInfo<'a>,
+        nonce: u8,
+        amount: u64,
+        split_stake: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
-        unimplemented!();
+        let me_bytes = me.to_bytes();
+        let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
+        let signers = &[&authority_signature_seeds[..]];
+
+        let ix = solana_sdk::stake::instruction::split_only(
+            stake_account.key,
+            authority.key,
+            lamports, 
+            split_stake.key,
+        )?;
+
+        invoke_signed(
+            &ix,
+            &[stake_accounts, authority, split_stake],
+            signers,
+        )
+
     }
 
     /// Issue a stake_set_owner instruction.
-    pub fn stake_set_owner(
-        _accounts: &[AccountInfo],
-        _my_info: &Pubkey,
-        _authority: &Pubkey,
-        _nonce: u8,
-        _stake: &Pubkey,
-        _owner: &Pubkey,
+    pub fn stake_authorize<'a>(
+        me: &Pubkey,
+        stake_account: AccountInfo<'a>,
+        authority: AccountInfo<'a>,
+        new_staker: AccountInfo<'a>,
+        nonce: u8,
+        staker_auth: StakeAuthorize,
     ) -> Result<(), ProgramError> {
-        unimplemented!();
-    }
+        let me_bytes = me.to_bytes();
+        let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
+        let signers = &[&authority_signature_seeds[..]];
 
-    /// Issue a stake_set_owner instruction.
-    pub fn stake_set_stake_auth(
-        _accounts: &[AccountInfo],
-        _my_info: &Pubkey,
-        _authority: &Pubkey,
-        _nonce: u8,
-        _stake: &Pubkey,
-        _owner: &Pubkey,
-    ) -> Result<(), ProgramError> {
-        unimplemented!();
+        let ix = solana_sdk::stake::instruction::authorize(
+            stake_account.key,
+            authority.key,
+            new_staker.key,
+            StakeAuthorize::Staker,
+        )?;
+
+        invoke_signed(
+            &ix,
+            &[stake_accounts, authority, new_staker],
+            signers,
+        )
+
     }
 
     /// Issue a spl_token `Burn` instruction.
@@ -74,8 +94,8 @@ impl Processor {
         nonce: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let swap_bytes = me.to_bytes();
-        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
+        let me_bytes = me.to_bytes();
+        let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
 
         let ix = spl_token::instruction::burn(
@@ -104,8 +124,8 @@ impl Processor {
         nonce: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let swap_bytes = me.to_bytes();
-        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
+        let me_bytes = me.to_bytes();
+        let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
         let ix = spl_token::instruction::mint_to(
             token_program.key,
@@ -323,13 +343,14 @@ impl Processor {
         {
             return Err(Error::InvalidProgramAddress.into());
         }
-        Self::stake_set_stake_auth(
+        Self::stake_authorize(
             accounts,
             stake_info.key,
             withdraw_info.key,
             stake_pool.withdraw_nonce,
             stake_info.key,
             staking_info.key,
+            StakeAuthorize::Staker,
         )?;
         Ok(())
     }

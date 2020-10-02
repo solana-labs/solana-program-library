@@ -55,6 +55,7 @@ pub enum StakePoolInstruction {
     ///   4. `[w]` Pool MINT account, authority is the owner.
     ///   5. `[w]` Pool Account to deposit the generated tokens.
     ///   6. `[w]` Pool Account to deposit the generated fee for owner.
+    ///   7. `[]` Token program id
     Deposit,
 
     ///   Withdraw the token from the pool at the current ratio.
@@ -66,6 +67,7 @@ pub enum StakePoolInstruction {
     ///   3. `[w]` Pool MINT account, authority is the owner
     ///   4. `[w]` Stake SOURCE owned by the withdraw authority  
     ///   6. `[w]` Stake destination, uninitialized, for the user stake
+    ///   7. `[]` Token program id
     ///   userdata: amount to withdraw
     Withdraw(u64),
 
