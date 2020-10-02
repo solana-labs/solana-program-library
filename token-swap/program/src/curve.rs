@@ -28,7 +28,7 @@ impl SwapResult {
     ) -> Option<SwapResult> {
         let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
 
-        // assess the fee to calculate the amount swapped
+        // debit the fee to calculate the amount swapped
         let fee = source_amount
             .checked_mul(fee_numerator)?
             .checked_div(fee_denominator)?;
