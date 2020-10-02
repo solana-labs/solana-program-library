@@ -27,14 +27,19 @@ impl SwapResult {
         fee_denominator: u64,
     ) -> Option<SwapResult> {
         let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
-        let new_source_amount = swap_source_amount.checked_add(source_amount)?;
-        let new_destination_amount = invariant.checked_div(new_source_amount)?;
-        let remove = swap_destination_amount.checked_sub(new_destination_amount)?;
-        let fee = remove
+
+        // debit the fee to calculate the amount swapped
+        let fee = source_amount
             .checked_mul(fee_numerator)?
             .checked_div(fee_denominator)?;
-        let new_destination_amount = new_destination_amount.checked_add(fee)?;
-        let amount_swapped = remove.checked_sub(fee)?;
+        let new_source_amount_less_fee = swap_source_amount
+            .checked_add(source_amount)?
+            .checked_sub(fee)?;
+        let new_destination_amount = invariant.checked_div(new_source_amount_less_fee)?;
+        let amount_swapped = swap_destination_amount.checked_sub(new_destination_amount)?;
+
+        // actually add the whole amount coming in
+        let new_source_amount = swap_source_amount.checked_add(source_amount)?;
         Some(SwapResult {
             new_source_amount,
             new_destination_amount,
@@ -161,5 +166,26 @@ mod tests {
         check_pool_token_a_rate(5, 100, 5, 10, Some(2));
         check_pool_token_a_rate(5, u64::MAX, 5, 10, Some(2));
         check_pool_token_a_rate(u64::MAX, u64::MAX, 5, 10, None);
+    }
+
+    #[test]
+    fn swap_calculation() {
+        // calculation on https://github.com/solana-labs/solana-program-library/issues/341
+        let swap_source_amount: u64 = 1000;
+        let swap_destination_amount: u64 = 50000;
+        let fee_numerator: u64 = 1;
+        let fee_denominator: u64 = 100;
+        let source_amount: u64 = 100;
+        let result = SwapResult::swap_to(
+            source_amount,
+            swap_source_amount,
+            swap_destination_amount,
+            fee_numerator,
+            fee_denominator,
+        )
+        .unwrap();
+        assert_eq!(result.new_source_amount, 1100);
+        assert_eq!(result.amount_swapped, 4505);
+        assert_eq!(result.new_destination_amount, 45495);
     }
 }
