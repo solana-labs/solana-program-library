@@ -591,12 +591,8 @@ export class TokenSwap {
       {
         instruction: 3, // Withdraw instruction
         poolTokenAmount: new Numberu64(poolTokenAmount).toBuffer(),
-        minimumTokenA: new Numberu64(
-          minimumTokenA,
-        ).toBuffer(),
-        minimumTokenB: new Numberu64(
-          minimumTokenB,
-        ).toBuffer(),
+        minimumTokenA: new Numberu64(minimumTokenA).toBuffer(),
+        minimumTokenB: new Numberu64(minimumTokenB).toBuffer(),
       },
       data,
     );
