@@ -8,24 +8,10 @@ use solana_sdk::program_error::ProgramError;
 
 type Points = (G1, G1);
 
-#[derive(Clone, BorshSerialize, BorshDeserialize)]
-pub struct EncryptedAggregate {
-    ciphertext: Points,
-    public_key: G1,
-}
-
-impl Default for EncryptedAggregate {
-    fn default() -> Self {
-        Self {
-            ciphertext: (G1::zero(), G1::zero()),
-            public_key: G1::zero(),
-        }
-    }
-}
-
 #[derive(Default, BorshSerialize, BorshDeserialize)]
 pub struct Policies {
     pub is_initialized: bool,
+    pub num_scalars: u8,
     pub scalars: Vec<Fr>,
 }
 
@@ -37,17 +23,32 @@ impl Policies {
     pub fn deserialize(data: &[u8]) -> Result<Self, ProgramError> {
         Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidAccountData)
     }
+
+    pub fn new(num_scalars: u8) -> Self {
+        Self {
+            is_initialized: true,
+            num_scalars,
+            scalars: vec![Fr::zero(); num_scalars as usize],
+        }
+    }
+
+    /// Useful for testing
+    pub fn new_with_scalars(scalars: Vec<Fr>) -> Self {
+        let mut policies = Self::new(scalars.len() as u8);
+        policies.scalars = scalars;
+        policies
+    }
 }
 
 #[derive(BorshSerialize, BorshDeserialize)]
-pub struct PaymentRequests {
+pub struct PaymentRequest {
     pub encrypted_aggregate: Points,
     pub decrypted_aggregate: G1,
     pub proof_correct_decryption: G1,
     pub valid: bool,
 }
 
-impl PaymentRequests {
+impl PaymentRequest {
     fn new(
         encrypted_aggregate: Points,
         decrypted_aggregate: G1,
@@ -63,24 +64,38 @@ impl PaymentRequests {
     }
 }
 
-fn inner_product(ciphertexts: &[Points], scalars: &[Fr]) -> Points {
-    let mut aggregate_x = G1::zero();
-    let mut aggregate_y = G1::zero();
-
-    for (&(x, y), &scalar) in ciphertexts.iter().zip(scalars) {
-        aggregate_x = x * scalar + aggregate_x;
-        aggregate_y = y * scalar + aggregate_y;
+fn inner_product(
+    (mut aggregate_x, mut aggregate_y): Points,
+    ciphertexts: &[(u8, Points)],
+    scalars: &[Fr],
+) -> Points {
+    for &(i, (x, y)) in ciphertexts {
+        aggregate_x = x * scalars[i as usize] + aggregate_x;
+        aggregate_y = y * scalars[i as usize] + aggregate_y;
     }
 
     (aggregate_x, aggregate_y)
 }
 
-#[derive(Default, BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct User {
-    encrypted_aggregate: Box<EncryptedAggregate>,
+    encrypted_aggregate: Points,
+    public_key: PublicKey,
     pub is_initialized: bool,
     proof_verification: bool,
-    payment_requests: Vec<PaymentRequests>,
+    payment_requests: Vec<PaymentRequest>,
+}
+
+impl Default for User {
+    fn default() -> Self {
+        Self {
+            encrypted_aggregate: (G1::zero(), G1::zero()),
+            public_key: PublicKey::from(G1::zero()),
+            is_initialized: false,
+            proof_verification: false,
+            payment_requests: vec![],
+        }
+    }
 }
 
 impl User {
@@ -92,30 +107,27 @@ impl User {
         Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidAccountData)
     }
 
-    pub fn fetch_encrypted_aggregate(&self) -> Points {
-        self.encrypted_aggregate.ciphertext
+    pub fn new(public_key: PublicKey) -> Self {
+        Self {
+            public_key,
+            ..Self::default()
+        }
     }
 
-    pub fn fetch_public_key(&self) -> G1 {
-        self.encrypted_aggregate.public_key
+    pub fn fetch_encrypted_aggregate(&self) -> Points {
+        self.encrypted_aggregate
+    }
+
+    pub fn fetch_public_key(&self) -> PublicKey {
+        self.public_key
     }
 
     pub fn fetch_proof_verification(&self) -> bool {
         self.proof_verification
     }
 
-    pub fn calculate_aggregate(
-        &mut self,
-        ciphertexts: &[Points],
-        public_key: G1,
-        policies: &[Fr],
-    ) -> bool {
-        let ciphertext = inner_product(ciphertexts, &policies);
-        //let ciphertext = (G1::zero(), G1::zero());
-        self.encrypted_aggregate = Box::new(EncryptedAggregate {
-            ciphertext,
-            public_key,
-        });
+    pub fn submit_interactions(&mut self, interactions: &[(u8, Points)], policies: &[Fr]) -> bool {
+        self.encrypted_aggregate = inner_product(self.encrypted_aggregate, interactions, &policies);
         true
     }
 
@@ -126,7 +138,7 @@ impl User {
         announcement_ctx: G1,
         response: Fr,
     ) -> bool {
-        let client_pk = PublicKey::from(self.fetch_public_key());
+        let client_pk = self.fetch_public_key();
         let ciphertext = Ciphertext {
             points: self.fetch_encrypted_aggregate(),
             pk: client_pk,
@@ -138,7 +150,6 @@ impl User {
                 plaintext,
             )
             .is_ok();
-        self.proof_verification = true;
         true
     }
 
@@ -150,7 +161,7 @@ impl User {
     ) -> bool {
         // TODO: implement proof verification
         let proof_is_valid = true;
-        let payment_request = PaymentRequests::new(
+        let payment_request = PaymentRequest::new(
             encrypted_aggregate,
             decrypted_aggregate,
             proof_correct_decryption,
@@ -175,7 +186,7 @@ pub fn recover_scalar(point: G1, k: u32) -> Fr {
             return scalar;
         }
     }
-    panic!("Encryped scalar too long");
+    panic!("Encrypted scalar too long");
 }
 
 #[cfg(test)]
@@ -184,13 +195,12 @@ pub(crate) mod tests {
 
     fn test_policy_contract(policies: &[Fr], expected_scalar_aggregate: Fr) {
         let (sk, pk) = generate_keys();
-        let interactions: Vec<_> = policies
-            .iter()
-            .map(|_| pk.encrypt(&G1::one()).points)
+        let interactions: Vec<_> = (0..policies.len())
+            .map(|i| (i as u8, pk.encrypt(&G1::one()).points))
             .collect();
-        let mut user = User::default();
+        let mut user = User::new(pk);
 
-        let tx_receipt = user.calculate_aggregate(&interactions, pk.get_point(), policies);
+        let tx_receipt = user.submit_interactions(&interactions, policies);
         assert!(tx_receipt);
 
         let encrypted_point = user.fetch_encrypted_aggregate();

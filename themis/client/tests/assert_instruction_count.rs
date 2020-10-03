@@ -1,6 +1,7 @@
 use bn::{Fr, Group, G1};
 use borsh::BorshSerialize;
 use elgamal_bn::ciphertext::Ciphertext;
+use separator::Separatable;
 use solana_bpf_loader_program::{
     create_vm,
     serialization::{deserialize_parameters, serialize_parameters},
@@ -184,15 +185,15 @@ fn assert_instruction_count() {
     let num_scalars = scalars.len();
 
     let (sk, pk) = generate_keys();
-    let encrypted_interactions: Vec<_> = scalars
-        .iter()
-        .map(|_| pk.encrypt(&G1::one()).points)
+    let encrypted_interactions: Vec<_> = (0..num_scalars)
+        .map(|i| (i as u8, pk.encrypt(&G1::one()).points))
         .collect();
 
     let policies_account = SolanaAccount::new_ref(
         0,
         Policies {
             is_initialized: true,
+            num_scalars: num_scalars as u8,
             scalars: scalars.clone(),
         }
         .try_to_vec()
@@ -200,9 +201,11 @@ fn assert_instruction_count() {
         .len(),
         &program_id,
     );
-    let instruction_data = ThemisInstruction::InitializePoliciesAccount { scalars }
-        .serialize()
-        .unwrap();
+    let instruction_data = ThemisInstruction::InitializePoliciesAccount {
+        num_scalars: num_scalars as u8,
+    }
+    .serialize()
+    .unwrap();
     let parameter_accounts = vec![KeyedAccount::new(&policies_key, false, &policies_account)];
     let initialize_policies_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
@@ -211,7 +214,7 @@ fn assert_instruction_count() {
     let user_key = Pubkey::new_rand();
     let user_account =
         SolanaAccount::new_ref(0, User::default().try_to_vec().unwrap().len(), &program_id);
-    let instruction_data = ThemisInstruction::InitializeUserAccount
+    let instruction_data = ThemisInstruction::InitializeUserAccount { public_key: pk }
         .serialize()
         .unwrap();
     let parameter_accounts = vec![KeyedAccount::new(&user_key, false, &user_account)];
@@ -219,9 +222,8 @@ fn assert_instruction_count() {
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
 
     // Calculate Aggregate
-    let instruction_data = ThemisInstruction::CalculateAggregate {
+    let instruction_data = ThemisInstruction::SubmitInteractions {
         encrypted_interactions,
-        public_key: pk,
     }
     .serialize()
     .unwrap();
@@ -251,7 +253,7 @@ fn assert_instruction_count() {
 
     let instruction_data = ThemisInstruction::SubmitProofDecryption {
         plaintext: decrypted_aggregate,
-        announcement,
+        announcement: Box::new(announcement),
         response,
     }
     .serialize()
@@ -267,20 +269,25 @@ fn assert_instruction_count() {
 
     println!("BPF instructions executed");
     println!(
-        "  InitializePolicies({}): {:?} ({:?})",
-        num_scalars, initialize_policies_count, BASELINE_NEW_POLICIES_COUNT
+        "  InitializePolicies({}): {} ({:?})",
+        num_scalars,
+        initialize_policies_count.separated_string(),
+        BASELINE_NEW_POLICIES_COUNT
     );
     println!(
-        "  InitializeUserAccount: {:?} ({:?})",
-        initialize_user_count, BASELINE_INITIALIZE_USER_COUNT
+        "  InitializeUserAccount: {} ({:?})",
+        initialize_user_count.separated_string(),
+        BASELINE_INITIALIZE_USER_COUNT
     );
     println!(
-        "  CalculateAggregate:    {:?} ({:?})",
-        calculate_aggregate_count, BASELINE_CALCULATE_AGGREGATE_COUNT
+        "  CalculateAggregate:    {} ({:?})",
+        calculate_aggregate_count.separated_string(),
+        BASELINE_CALCULATE_AGGREGATE_COUNT
     );
     println!(
-        "  SubmitProofDecryption: {:?} ({:?})",
-        proof_decryption_count, BASELINE_PROOF_DECRYPTION_COUNT
+        "  SubmitProofDecryption: {} ({:?})",
+        proof_decryption_count.separated_string(),
+        BASELINE_PROOF_DECRYPTION_COUNT
     );
 
     assert!(initialize_policies_count <= BASELINE_NEW_POLICIES_COUNT);

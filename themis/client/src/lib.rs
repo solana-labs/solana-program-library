@@ -35,7 +35,7 @@ async fn run_user_workflow(
     let user_keypair = Keypair::new();
     let user_pubkey = user_keypair.pubkey();
     let ixs =
-        instruction::create_user_account(&sender_pubkey, &user_pubkey, sol_to_lamports(0.001));
+        instruction::create_user_account(&sender_pubkey, &user_pubkey, sol_to_lamports(0.001), pk);
     let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().await?;
     let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
@@ -51,21 +51,25 @@ async fn run_user_workflow(
         .unwrap();
     num_transactions += 1;
 
-    let ix = instruction::calculate_aggregate(&user_pubkey, &policies_pubkey, interactions, pk);
-    let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
-    let recent_blockhash = client.get_recent_blockhash().await?;
-    let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
-    let tx_size = bincode::serialize(&tx).unwrap().len();
-    assert!(
-        tx_size <= 1200,
-        "transaction over 1200 bytes: {} bytes",
-        tx_size
-    );
-    client
-        .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
-        .await
-        .unwrap();
-    num_transactions += 1;
+    // Send one interaction at a time to stay under the BPF instruction limit
+    for (i, interaction) in interactions.into_iter().enumerate() {
+        let interactions = vec![(i as u8, interaction)];
+        let ix = instruction::submit_interactions(&user_pubkey, &policies_pubkey, interactions);
+        let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
+        let recent_blockhash = client.get_recent_blockhash().await?;
+        let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
+        let tx_size = bincode::serialize(&tx).unwrap().len();
+        assert!(
+            tx_size <= 1200,
+            "transaction over 1200 bytes: {} bytes",
+            tx_size
+        );
+        client
+            .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
+            .await
+            .unwrap();
+        num_transactions += 1;
+    }
 
     //let user_account = client
     //    .get_account_with_commitment_and_context(
@@ -135,12 +139,22 @@ pub async fn test_e2e(
     let policies_len = policies.len();
 
     // Create the policies account
-    let ixs = instruction::create_policies_account(
+    let mut ixs = instruction::create_policies_account(
         &sender_pubkey,
         &policies_pubkey,
         sol_to_lamports(0.01),
-        policies,
+        policies.len() as u8,
     );
+    let policies_slice: Vec<_> = policies
+        .iter()
+        .enumerate()
+        .map(|(i, x)| (i as u8, *x))
+        .collect();
+    ixs.push(instruction::store_policies(
+        &policies_pubkey,
+        policies_slice,
+    ));
+
     let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().await?;
     let tx = Transaction::new(&[&sender_keypair, &policies_keypair], msg, recent_blockhash);

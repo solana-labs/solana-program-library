@@ -12,41 +12,52 @@ use solana_sdk::{
     pubkey::Pubkey,
 };
 
-fn process_initialize_user_account(user_info: &AccountInfo) -> Result<(), ProgramError> {
-    let mut user = User::deserialize(&user_info.data.borrow()).unwrap_or_default();
-    if user.is_initialized {
-        return Err(ThemisError::AccountInUse.into());
+fn process_initialize_user_account(
+    user_info: &AccountInfo,
+    public_key: PublicKey,
+) -> Result<(), ProgramError> {
+    // TODO: verify the program ID
+    if let Ok(user) = User::deserialize(&user_info.data.borrow()) {
+        if user.is_initialized {
+            return Err(ThemisError::AccountInUse.into());
+        }
     }
-    user.is_initialized = true;
+    let user = User::new(public_key);
     user.serialize(&mut user_info.data.borrow_mut())
 }
 
 fn process_initialize_policies_account(
-    scalars: Vec<Fr>,
+    num_scalars: u8,
     policies_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    let mut policies = Policies::deserialize(&policies_info.data.borrow()).unwrap_or_default();
-    if policies.is_initialized {
-        return Err(ThemisError::AccountInUse.into());
+    if let Ok(policies) = Policies::deserialize(&policies_info.data.borrow()) {
+        if policies.is_initialized {
+            return Err(ThemisError::AccountInUse.into());
+        }
     }
-    policies.is_initialized = true;
-    policies.scalars = scalars;
+    let policies = Policies::new(num_scalars);
     policies.serialize(&mut policies_info.data.borrow_mut())
 }
 
-fn process_calculate_aggregate(
-    encrypted_interactions: &[(G1, G1)],
-    public_key: PublicKey,
+fn process_store_policies(
+    scalars: Vec<(u8, Fr)>,
+    policies_info: &AccountInfo,
+) -> Result<(), ProgramError> {
+    let mut policies = Policies::deserialize(&policies_info.data.borrow())?;
+    for (i, scalar) in scalars {
+        policies.scalars[i as usize] = scalar;
+    }
+    policies.serialize(&mut policies_info.data.borrow_mut())
+}
+
+fn process_submit_interactions(
+    encrypted_interactions: &[(u8, (G1, G1))],
     user_info: &AccountInfo,
     policies_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
     let mut user = User::deserialize(&user_info.data.borrow())?;
     let policies = Policies::deserialize(&policies_info.data.borrow())?;
-    user.calculate_aggregate(
-        encrypted_interactions,
-        public_key.get_point(),
-        &policies.scalars,
-    );
+    user.submit_interactions(encrypted_interactions, &policies.scalars);
     user.serialize(&mut user_info.data.borrow_mut())
 }
 
@@ -86,26 +97,24 @@ pub fn process_instruction<'a>(
     let instruction = ThemisInstruction::deserialize(input)?;
 
     match instruction {
-        ThemisInstruction::InitializeUserAccount => {
+        ThemisInstruction::InitializeUserAccount { public_key } => {
             let user_info = next_account_info(account_infos_iter)?;
-            process_initialize_user_account(&user_info)
+            process_initialize_user_account(&user_info, public_key)
         }
-        ThemisInstruction::InitializePoliciesAccount { scalars } => {
+        ThemisInstruction::InitializePoliciesAccount { num_scalars } => {
             let policies_info = next_account_info(account_infos_iter)?;
-            process_initialize_policies_account(scalars, &policies_info)
+            process_initialize_policies_account(num_scalars, &policies_info)
         }
-        ThemisInstruction::CalculateAggregate {
+        ThemisInstruction::StorePolicies { scalars } => {
+            let policies_info = next_account_info(account_infos_iter)?;
+            process_store_policies(scalars, &policies_info)
+        }
+        ThemisInstruction::SubmitInteractions {
             encrypted_interactions,
-            public_key,
         } => {
             let user_info = next_account_info(account_infos_iter)?;
             let policies_info = next_account_info(account_infos_iter)?;
-            process_calculate_aggregate(
-                &encrypted_interactions,
-                public_key,
-                &user_info,
-                &policies_info,
-            )
+            process_submit_interactions(&encrypted_interactions, &user_info, &policies_info)
         }
         ThemisInstruction::SubmitProofDecryption {
             plaintext,
@@ -113,7 +122,7 @@ pub fn process_instruction<'a>(
             response,
         } => {
             let user_info = next_account_info(account_infos_iter)?;
-            process_submit_proof_decryption(plaintext, announcement, response, &user_info)
+            process_submit_proof_decryption(plaintext, *announcement, response, &user_info)
         }
         ThemisInstruction::RequestPayment {
             encrypted_aggregate,
