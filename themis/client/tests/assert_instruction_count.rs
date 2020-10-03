@@ -253,7 +253,7 @@ fn assert_instruction_count() {
 
     let instruction_data = ThemisInstruction::SubmitProofDecryption {
         plaintext: decrypted_aggregate,
-        announcement,
+        announcement: Box::new(announcement),
         response,
     }
     .serialize()
