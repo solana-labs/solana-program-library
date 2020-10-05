@@ -5,7 +5,7 @@ fn main() {
     Command::new(canonicalize("../../do.sh").unwrap())
         .current_dir("../..")
         .arg("build")
-        .arg("themis/program")
+        .arg("themis/program_bn")
         .status()
         .expect("Failed to build themis program")
         .success();

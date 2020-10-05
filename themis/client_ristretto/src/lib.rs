@@ -1,6 +1,8 @@
 //! Themis client
-use bn::{Fr, Group, G1};
-use elgamal_bn::{/*ciphertext::Ciphertext,*/ private::SecretKey, public::PublicKey};
+use curve25519_dalek::{
+    constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
+};
+use elgamal_ristretto::{/*ciphertext::Ciphertext,*/ private::SecretKey, public::PublicKey};
 use futures::future::join_all;
 use solana_banks_client::{BanksClient, BanksClientExt};
 use solana_sdk::{
@@ -12,7 +14,7 @@ use solana_sdk::{
     system_instruction,
     transaction::Transaction,
 };
-use spl_themis::{
+use spl_themis_ristretto::{
     instruction,
     state::generate_keys, // recover_scalar, User},
 };
@@ -24,9 +26,9 @@ async fn run_user_workflow(
     mut client: BanksClient,
     sender_keypair: Keypair,
     (_sk, pk): (SecretKey, PublicKey),
-    interactions: Vec<(G1, G1)>,
+    interactions: Vec<(RistrettoPoint, RistrettoPoint)>,
     policies_pubkey: Pubkey,
-    _expected_scalar_aggregate: Fr,
+    _expected_scalar_aggregate: Scalar,
 ) -> io::Result<u64> {
     let sender_pubkey = sender_keypair.pubkey();
     let mut num_transactions = 0;
@@ -87,14 +89,16 @@ async fn run_user_workflow(
     //};
 
     //let decrypted_aggregate = sk.decrypt(&ciphertext);
-    let decrypted_aggregate = G1::one();
+    let decrypted_aggregate = RISTRETTO_BASEPOINT_POINT;
     //let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
     //assert_eq!(scalar_aggregate, expected_scalar_aggregate);
 
     //let ((announcement_g, announcement_ctx), response) =
     //    sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
-    let ((announcement_g, announcement_ctx), response) =
-        ((G1::one(), G1::one()), Fr::new(0.into()).unwrap());
+    let ((announcement_g, announcement_ctx), response) = (
+        (RISTRETTO_BASEPOINT_POINT, RISTRETTO_BASEPOINT_POINT),
+        0u64.into(),
+    );
     //sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
 
     let ix = instruction::submit_proof_decryption(
@@ -129,9 +133,9 @@ async fn run_user_workflow(
 pub async fn test_e2e(
     client: &mut BanksClient,
     sender_keypair: Keypair,
-    policies: Vec<Fr>,
+    policies: Vec<Scalar>,
     num_users: u64,
-    expected_scalar_aggregate: Fr,
+    expected_scalar_aggregate: Scalar,
 ) -> io::Result<()> {
     let sender_pubkey = sender_keypair.pubkey();
     let policies_keypair = Keypair::new();
@@ -198,7 +202,7 @@ pub async fn test_e2e(
 
     let (sk, pk) = generate_keys();
     let interactions: Vec<_> = (0..policies_len)
-        .map(|_| pk.encrypt(&G1::one()).points)
+        .map(|_| pk.encrypt(&RISTRETTO_BASEPOINT_POINT).points)
         .collect();
 
     let futures: Vec<_> = feepayers
@@ -245,7 +249,7 @@ mod tests {
         instruction::InstructionError,
         program_error::ProgramError,
     };
-    use spl_themis::processor::process_instruction;
+    use spl_themis_ristretto::processor::process_instruction;
     use std::{
         collections::HashMap,
         sync::{Arc, RwLock},
@@ -337,21 +341,19 @@ mod tests {
     fn test_local_e2e_2ads() {
         let (genesis_config, sender_keypair) = create_genesis_config(sol_to_lamports(9_000_000.0));
         let mut bank = Bank::new(&genesis_config);
-        bank.add_builtin_program("Themis", spl_themis::id(), process_instruction_native);
+        bank.add_builtin_program(
+            "Themis",
+            spl_themis_ristretto::id(),
+            process_instruction_native,
+        );
         let bank_forks = Arc::new(RwLock::new(BankForks::new(bank)));
         Runtime::new().unwrap().block_on(async {
             let transport = start_local_server(&bank_forks).await;
             let mut banks_client = start_client(transport).await.unwrap();
-            let policies = vec![Fr::new(1u64.into()).unwrap(), Fr::new(2u64.into()).unwrap()];
-            test_e2e(
-                &mut banks_client,
-                sender_keypair,
-                policies,
-                10,
-                Fr::new(3u64.into()).unwrap(),
-            )
-            .await
-            .unwrap();
+            let policies = vec![1u64.into(), 2u64.into()];
+            test_e2e(&mut banks_client, sender_keypair, policies, 10, 3u64.into())
+                .await
+                .unwrap();
         });
     }
 }

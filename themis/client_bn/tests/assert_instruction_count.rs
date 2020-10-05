@@ -18,7 +18,7 @@ use solana_sdk::{
     message::Message,
     pubkey::Pubkey,
 };
-use spl_themis::{
+use spl_themis_bn::{
     instruction::ThemisInstruction,
     state::{generate_keys, /*recover_scalar,*/ Policies, User},
 };
@@ -42,7 +42,7 @@ fn run_program(
     instruction_data: &[u8],
 ) -> Result<u64, InstructionError> {
     let mut program_account = SolanaAccount::default();
-    program_account.data = load_program("spl_themis");
+    program_account.data = load_program("spl_themis_bn");
     let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
     let executable = EbpfVm::<solana_bpf_loader_program::BPFError>::create_executable_from_elf(
