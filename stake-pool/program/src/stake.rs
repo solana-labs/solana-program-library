@@ -111,7 +111,6 @@ pub enum StakeAuthorize {
     Withdrawer,
 }
 
-
 /// FIXME copied from the stake program
 pub fn split_only(
     stake_pubkey: &Pubkey,

@@ -47,6 +47,9 @@ impl StakePool {
     }
     /// calculate the fee in pool tokens that goes to the owner
     pub fn calc_fee_amount(&self, pool_amount: u128) -> Option<u128> {
+        if self.fee.denominator == 0 {
+            return Some(0);
+        }
         pool_amount
             .checked_mul(self.fee.numerator as u128)?
             .checked_div(self.fee.denominator as u128)

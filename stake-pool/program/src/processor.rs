@@ -5,8 +5,8 @@
 use crate::{
     error::Error,
     instruction::{InitArgs, StakePoolInstruction},
-    state::{StakePool, State},
     stake,
+    state::{StakePool, State},
 };
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
@@ -16,7 +16,7 @@ use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
     entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
-    pubkey::Pubkey, 
+    pubkey::Pubkey,
 };
 use std::convert::TryFrom;
 
@@ -42,19 +42,9 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = stake::split_only(
-            stake_account.key,
-            authority.key,
-            amount, 
-            split_stake.key,
-        );
+        let ix = stake::split_only(stake_account.key, authority.key, amount, split_stake.key);
 
-        invoke_signed(
-            &ix,
-            &[stake_account, authority, split_stake],
-            signers,
-        )
-
+        invoke_signed(&ix, &[stake_account, authority, split_stake], signers)
     }
 
     /// Issue a stake_set_owner instruction.
@@ -70,19 +60,9 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = stake::authorize(
-            stake_account.key,
-            authority.key,
-            new_staker,
-            staker_auth,
-        );
+        let ix = stake::authorize(stake_account.key, authority.key, new_staker, staker_auth);
 
-        invoke_signed(
-            &ix,
-            &[stake_account, authority],
-            signers,
-        )
-
+        invoke_signed(&ix, &[stake_account, authority], signers)
     }
 
     /// Issue a spl_token `Burn` instruction.
@@ -139,7 +119,6 @@ impl Processor {
 
         invoke_signed(&ix, &[mint, destination, authority, token_program], signers)
     }
-
 
     /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize(
