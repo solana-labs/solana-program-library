@@ -8,6 +8,7 @@ use solana_sdk::program_error::ProgramError;
 use solana_sdk::pubkey::Pubkey;
 use std::mem::size_of;
 
+
 /// Fee rate as a ratio
 /// Fee is minted on deposit
 #[repr(C)]

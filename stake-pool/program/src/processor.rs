@@ -6,6 +6,7 @@ use crate::{
     error::Error,
     instruction::{InitArgs, StakePoolInstruction},
     state::{StakePool, State},
+    stake,
 };
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
@@ -15,7 +16,7 @@ use solana_sdk::program::invoke_signed;
 use solana_sdk::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
     entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
-    pubkey::Pubkey, stake::state::StakeAuthorize,
+    pubkey::Pubkey, 
 };
 use std::convert::TryFrom;
 
@@ -32,7 +33,7 @@ impl Processor {
     pub fn stake_split<'a>(
         me: &Pubkey,
         stake_account: AccountInfo<'a>,
-        authority: &AccountInfo<'a>,
+        authority: AccountInfo<'a>,
         nonce: u8,
         amount: u64,
         split_stake: AccountInfo<'a>,
@@ -41,16 +42,16 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = solana_sdk::stake::instruction::split_only(
+        let ix = stake::split_only(
             stake_account.key,
             authority.key,
-            lamports, 
+            amount, 
             split_stake.key,
-        )?;
+        );
 
         invoke_signed(
             &ix,
-            &[stake_accounts, authority, split_stake],
+            &[stake_account, authority, split_stake],
             signers,
         )
 
@@ -61,24 +62,24 @@ impl Processor {
         me: &Pubkey,
         stake_account: AccountInfo<'a>,
         authority: AccountInfo<'a>,
-        new_staker: AccountInfo<'a>,
         nonce: u8,
-        staker_auth: StakeAuthorize,
+        new_staker: &Pubkey,
+        staker_auth: stake::StakeAuthorize,
     ) -> Result<(), ProgramError> {
         let me_bytes = me.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = solana_sdk::stake::instruction::authorize(
+        let ix = stake::authorize(
             stake_account.key,
             authority.key,
-            new_staker.key,
-            StakeAuthorize::Staker,
-        )?;
+            new_staker,
+            stake::StakeAuthorize::Staker,
+        );
 
         invoke_signed(
             &ix,
-            &[stake_accounts, authority, new_staker],
+            &[stake_account, authority],
             signers,
         )
 
@@ -217,13 +218,13 @@ impl Processor {
             .checked_sub(fee_amount)
             .ok_or(Error::CalculationFailure)?;
 
-        Self::stake_set_owner(
-            accounts,
+        Self::stake_authorize(
             stake_pool_info.key,
-            deposit_info.key,
+            stake_info.clone(),
+            deposit_info.clone(),
             stake_pool.deposit_nonce,
-            stake_info.key,
             withdraw_info.key,
+            stake::StakeAuthorize::Withdrawer,
         )?;
 
         let user_amount = <u64>::try_from(user_amount).or(Err(Error::CalculationFailure))?;
@@ -285,25 +286,25 @@ impl Processor {
         let pool_amount = <u64>::try_from(pool_amount).or(Err(Error::CalculationFailure))?;
 
         Self::stake_split(
-            accounts,
             stake_pool_info.key,
-            withdraw_info.key,
+            source_info.clone(),
+            withdraw_info.clone(),
             stake_pool.withdraw_nonce,
-            stake_info.key,
             stake_amount,
+            stake_info.clone(),
         )?;
 
-        Self::stake_set_owner(
-            accounts,
+        Self::stake_authorize(
             stake_pool_info.key,
-            withdraw_info.key,
+            stake_info.clone(),
+            withdraw_info.clone(),
             stake_pool.withdraw_nonce,
-            stake_info.key,
             dest_user_info.key,
+            stake::StakeAuthorize::Withdrawer,
         )?;
 
         Self::token_burn(
-            stake_info.key,
+            stake_pool_info.key,
             token_program_info.clone(),
             source_info.clone(),
             pool_mint_info.clone(),
@@ -327,7 +328,7 @@ impl Processor {
         let owner_info = next_account_info(account_info_iter)?;
         let withdraw_info = next_account_info(account_info_iter)?;
         let stake_info = next_account_info(account_info_iter)?;
-        let staking_info = next_account_info(account_info_iter)?;
+        let staker_info = next_account_info(account_info_iter)?;
 
         let stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
@@ -344,13 +345,12 @@ impl Processor {
             return Err(Error::InvalidProgramAddress.into());
         }
         Self::stake_authorize(
-            accounts,
             stake_info.key,
-            withdraw_info.key,
+            stake_info.clone(),
+            withdraw_info.clone(),
             stake_pool.withdraw_nonce,
-            stake_info.key,
-            staking_info.key,
-            StakeAuthorize::Staker,
+            staker_info.key,
+            stake::StakeAuthorize::Staker,
         )?;
         Ok(())
     }

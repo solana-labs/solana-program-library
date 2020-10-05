@@ -2926,6 +2926,8 @@ dependencies = [
  "num_enum",
  "rand",
  "remove_dir_all",
+ "serde",
+ "serde_derive",
  "solana-sdk",
  "spl-token 2.0.4",
  "thiserror",
