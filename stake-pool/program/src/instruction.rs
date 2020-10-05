@@ -38,7 +38,7 @@ pub struct InitArgs {
 pub enum StakePoolInstruction {
     ///   Initializes a new StakePool.
     ///
-    ///   0. `[w, s]` New StakePool to create.
+    ///   0. `[w]` New StakePool to create.
     ///   1. `[]` Owner
     ///   2. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
     ///   3. `[]` Pool Account to deposit the generated fee for owner.
