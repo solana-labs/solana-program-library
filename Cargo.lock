@@ -2404,9 +2404,9 @@ dependencies = [
 
 [[package]]
 name = "solana-logger"
-version = "1.3.14"
+version = "1.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "927e5a0509529c1940a684d4aba08fd2e6de3fa67ca4858e57c2eb8846ca2b9d"
+checksum = "d2a5735685cdfabd2f9e78590d078ffdd8db89e90f2f22136ad37cb3d4c89dfc"
 dependencies = [
  "env_logger",
  "lazy_static",
