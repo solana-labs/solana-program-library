@@ -4,7 +4,7 @@ use num_derive::FromPrimitive;
 use solana_sdk::{decode_error::DecodeError, program_error::ProgramError};
 use thiserror::Error;
 
-/// Errors that may be returned by the TokenSwap program.
+/// Errors that may be returned by the StakePool program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum Error {
     /// The account cannot be initialized because it is already being used.
@@ -48,6 +48,6 @@ impl From<Error> for ProgramError {
 }
 impl<T> DecodeError<T> for Error {
     fn type_of() -> &'static str {
-        "Swap Error"
+        "Stake Pool Error"
     }
 }
