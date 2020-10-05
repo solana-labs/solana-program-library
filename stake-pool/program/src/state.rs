@@ -33,16 +33,23 @@ pub struct StakePool {
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted
-    pub fn calc_pool_amount(&self, stake_lamports: u64) -> Option<u128> {
+    pub fn calc_pool_deposit_amount(&self, stake_lamports: u64) -> Option<u128> {
+        if self.stake_total == 0 {
+            return Some(stake_lamports as u128);
+        }
+        self.calc_pool_withdraw_amount(stake_lamports)
+    }
+    /// calculate the pool tokens that should be withdrawn
+    pub fn calc_pool_withdraw_amount(&self, stake_lamports: u64) -> Option<u128> {
         (stake_lamports as u128)
-            .checked_mul((self.pool_total as u128).checked_add(1)?)?
-            .checked_div((self.stake_total as u128).checked_add(1)?)
+            .checked_mul(self.pool_total as u128)?
+            .checked_div(self.stake_total as u128)
     }
     /// calculate the fee in pool tokens that goes to the owner
     pub fn calc_fee_amount(&self, pool_amount: u128) -> Option<u128> {
         pool_amount
-            .checked_mul((self.fee.numerator as u128).checked_add(1)?)?
-            .checked_div((self.fee.denominator as u128).checked_add(1)?)
+            .checked_mul(self.fee.numerator as u128)?
+            .checked_div(self.fee.denominator as u128)
     }
 }
 

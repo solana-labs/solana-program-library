@@ -74,7 +74,7 @@ impl Processor {
             stake_account.key,
             authority.key,
             new_staker,
-            stake::StakeAuthorize::Staker,
+            staker_auth,
         );
 
         invoke_signed(
@@ -207,7 +207,7 @@ impl Processor {
 
         let stake_lamports = **stake_info.lamports.borrow();
         let pool_amount = stake_pool
-            .calc_pool_amount(stake_lamports)
+            .calc_pool_deposit_amount(stake_lamports)
             .ok_or(Error::CalculationFailure)?;
 
         let fee_amount = stake_pool
@@ -281,7 +281,7 @@ impl Processor {
         }
 
         let pool_amount = stake_pool
-            .calc_pool_amount(stake_amount)
+            .calc_pool_withdraw_amount(stake_amount)
             .ok_or(Error::CalculationFailure)?;
         let pool_amount = <u64>::try_from(pool_amount).or(Err(Error::CalculationFailure))?;
 
