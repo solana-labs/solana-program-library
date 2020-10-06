@@ -12,7 +12,7 @@ edition = "2018"
 
 [features]
 no-entrypoint = []
-skip-no-mangle = ["solana-sdk/skip-no-mangle"]
+skip-no-mangle = []
 program = ["solana-sdk/program"]
 default = ["solana-sdk/default"]
 
