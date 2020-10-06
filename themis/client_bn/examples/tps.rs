@@ -4,7 +4,7 @@ use bn::Fr;
 use solana_banks_client::start_tcp_client;
 use solana_cli_config::{Config, CONFIG_FILE};
 use solana_sdk::signature::read_keypair_file;
-use spl_themis_client::test_e2e;
+use spl_themis_bn_client::test_e2e;
 use std::path::Path;
 use tokio::runtime::Runtime;
 use url::Url;

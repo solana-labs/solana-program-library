@@ -561,6 +561,20 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "2.1.0"
+source = "git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff#60efef3553d6bf3d7f3b09b5f97acd54d72529ff"
+dependencies = [
+ "borsh",
+ "byteorder",
+ "digest 0.8.1",
+ "rand_core",
+ "serde",
+ "subtle 2.2.3",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
 dependencies = [
@@ -663,7 +677,7 @@ version = "1.0.0-pre.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21a8a37f4e8b35af971e6db5e3897e7a6344caa3f92f6544f88125a1f5f0035a"
 dependencies = [
- "curve25519-dalek",
+ "curve25519-dalek 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519",
  "rand",
  "serde",
@@ -689,6 +703,21 @@ dependencies = [
  "rand_core",
  "rustc-hex",
  "sha2 0.9.1",
+]
+
+[[package]]
+name = "elgamal_ristretto"
+version = "0.2.4"
+source = "git+https://github.com/garious/elgamal?rev=260763fb67c34debe3915b39d95b6e7b3e1461d0#260763fb67c34debe3915b39d95b6e7b3e1461d0"
+dependencies = [
+ "bincode",
+ "borsh",
+ "clear_on_drop",
+ "curve25519-dalek 2.1.0 (git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff)",
+ "rand_core",
+ "serde",
+ "sha2 0.8.2",
+ "zkp",
 ]
 
 [[package]]
@@ -1362,6 +1391,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c198b026e1bbf08a937e94c6c60f9ec4a2267f5b0d2eec9c1b21b061ce2be55f"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "merlin"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6feca46f4fa3443a01769d768727f10c10a20fdb65e52dc16a81f0c8269bb78"
+dependencies = [
+ "byteorder",
+ "keccak",
+ "rand_core",
+ "zeroize",
 ]
 
 [[package]]
@@ -2386,7 +2427,7 @@ dependencies = [
  "backtrace",
  "bytes 0.4.12",
  "cc",
- "curve25519-dalek",
+ "curve25519-dalek 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519-dalek",
  "either",
  "failure",
@@ -2553,7 +2594,7 @@ dependencies = [
  "bv",
  "byteorder",
  "chrono",
- "curve25519-dalek",
+ "curve25519-dalek 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.9.0",
  "ed25519-dalek",
  "generic-array 0.14.3",
@@ -2727,13 +2768,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-themis"
+name = "spl-themis-bn"
 version = "0.1.0"
 dependencies = [
  "bincode",
  "bn",
  "borsh",
  "elgamal_bn",
+ "getrandom",
+ "num-derive",
+ "num-traits",
+ "rand",
+ "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-themis-ristretto"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "borsh",
+ "curve25519-dalek 2.1.0 (git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff)",
+ "elgamal_ristretto",
  "getrandom",
  "num-derive",
  "num-traits",
@@ -3623,6 +3680,19 @@ dependencies = [
  "quote 1.0.7",
  "syn 1.0.41",
  "synstructure",
+]
+
+[[package]]
+name = "zkp"
+version = "0.7.0"
+source = "git+https://github.com/garious/zkp?rev=ed9eba6de4214fe67466b662b0d8017c3645c3f8#ed9eba6de4214fe67466b662b0d8017c3645c3f8"
+dependencies = [
+ "curve25519-dalek 2.1.0 (git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff)",
+ "merlin",
+ "rand",
+ "serde",
+ "serde_derive",
+ "thiserror",
 ]
 
 [[package]]

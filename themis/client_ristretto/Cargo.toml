@@ -1,0 +1,40 @@
+
+[package]
+name = "spl-themis-ristretto-client"
+version = "0.1.0"
+description = "SPL THEMIS client"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+exclude = ["js/**"]
+
+[features]
+no-entrypoint = []
+skip-no-mangle = ["solana-sdk/skip-no-mangle"]
+program = ["solana-sdk/program"]
+default = ["solana-sdk/default"]
+
+[dependencies]
+bincode = "1.3"
+borsh = "0.7.1"
+curve25519-dalek = {git = "https://github.com/garious/curve25519-dalek", rev = "60efef3553d6bf3d7f3b09b5f97acd54d72529ff", default-features = false, features = ["borsh"]}
+elgamal_ristretto = { git = "https://github.com/garious/elgamal", rev = "260763fb67c34debe3915b39d95b6e7b3e1461d0" }
+futures = "0.3"
+solana-banks-client = "1.3.14"
+solana-cli-config = "1.3.14"
+solana-sdk = "1.3.14"
+spl-themis-ristretto = { version = "0.1.0", path = "../program_ristretto" }
+tarpc = { version = "0.21.1", features = ["full"] }
+tokio = "0.2"
+url = "2.1"
+
+[dev-dependencies]
+separator = "0.4.1"
+solana-banks-server = "1.3.14"
+solana-bpf-loader-program = "1.3.14"
+solana_rbpf = "=0.1.31"
+solana-runtime = "1.3.14"
+
+[lib]
+crate-type = ["cdylib", "lib"]
