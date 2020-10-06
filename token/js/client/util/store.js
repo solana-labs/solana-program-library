@@ -6,7 +6,7 @@
 
 import path from 'path';
 import fs from 'mz/fs';
-import mkdirp from 'mkdirp-promise';
+import mkdirp from 'mkdirp';
 
 export class Store {
   static getDir(): string {
