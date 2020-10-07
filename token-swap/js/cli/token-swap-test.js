@@ -408,7 +408,7 @@ export async function swapOneTransaction(): Promise<void> {
   const transaction = new Transaction();
   transaction.add(
     SystemProgram.createAccount({
-      fromPubkey: mintB.payer.publicKey,
+      fromPubkey: owner.publicKey,
       newAccountPubkey: newAccount.publicKey,
       lamports: balanceNeeded,
       space: AccountLayout.span,
@@ -462,8 +462,6 @@ export async function swapOneTransaction(): Promise<void> {
     transaction,
     owner,
     newAccount,
-    mintA.payer,
-    mintB.payer,
   );
 }
 
