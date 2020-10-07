@@ -5,6 +5,7 @@ members = [
   "memo/program",
   "themis/program_bn",
   "themis/program_ristretto",
+  "token-lending/program",
   "token-swap/program",
   "token/cli",
   "token/program",

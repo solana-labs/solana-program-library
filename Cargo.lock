@@ -2847,6 +2847,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-lending"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "rand",
+ "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-token-swap"
 version = "0.1.0"
 dependencies = [
