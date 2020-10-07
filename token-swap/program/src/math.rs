@@ -147,6 +147,8 @@ impl PreciseNumber {
     ///
     /// where a = 1, n = power, x = precise_num
     pub fn checked_pow_approximation(&self, exponent: &Self, max_iterations: u64) -> Option<Self> {
+        assert!(self.value >= Self::MIN_POW_BASE);
+        assert!(self.value <= Self::MAX_POW_BASE);
         if exponent.value == 0 {
             return Some(Self::ONE);
         }
@@ -240,5 +242,6 @@ mod tests {
         check_pow_fraction(ONE * 2, ONE * 2, ONE * 4);
         check_pow_fraction(ONE * 2, ONE * 50 / 3, 1040319153417880);
         check_pow_fraction(ONE * 2 / 7, ONE * 49 / 4, 2163);
+        check_pow_fraction(ONE * 5000 / 5100, ONE / 9, 9978021269); // 0.99780212695
     }
 }
