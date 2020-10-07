@@ -10,7 +10,7 @@ updates:
   labels:
     - "automerge"
 - package-ecosystem: npm
-  directory: "/token-lending/web3"
+  directory: "/token-lending/js"
   schedule:
     interval: daily
     time: "02:00"
