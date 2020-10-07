@@ -5,20 +5,18 @@ const PRECISION: u128 = 100;
 const ROUNDING_CORRECTION: u128 = ONE / 2;
 const APPROXIMATION_ITERATIONS: u32 = 30;
 
-/// Approximate the nth root of a number using Newton's method
-/// https://en.wikipedia.org/wiki/Newton%27s_method
-/// Perform successive calculations on your guess:
+/// Approximate the nth root of a number using a Taylor Series on x ^ n, where
+/// 0 < n < 1, expressed as a precise number.
+/// Refine the guess for each term, using
 ///                  x_k ^ n - A
 /// x_k+1 = x_k - -----------------
 ///               n * x_k ^ (n - 1)
 /// num = A, root = n, guess = x_k, iterations = k
-pub fn nth_root_approximation(num: u64, root: u32, guess: u64, iterations: u32) -> Option<u64> {
+pub fn nth_root_approximation(precise_num: u128, root: u32, mut precise_guess: u128, iterations: u32) -> Option<u128> {
     if root == 0 {
         return None;
     }
-    let mut precise_guess = precise_number(guess)?;
     let precise_root = precise_number(root as u64)?;
-    let precise_num = precise_number(num)?;
     for _ in 0..iterations {
         let raised = precise_pow(precise_guess, root)?;
         let (numerator, negative) = unsigned_difference(raised, precise_num);
@@ -34,7 +32,7 @@ pub fn nth_root_approximation(num: u64, root: u32, guess: u64, iterations: u32) 
             precise_guess = precise_guess.checked_sub(update)?;
         }
     }
-    imprecise_number(precise_guess)
+    Some(precise_guess)
 }
 
 /// Converts a u64 to a "precise" number, artifically making it bigger to do
@@ -85,22 +83,26 @@ pub fn precise_div(a: u128, b: u128) -> Option<u128> {
 }
 
 /// Performs pow on a "precise" unsigned integers
-pub fn precise_pow(mut base: u128, mut exponent: u32) -> Option<u128> {
+pub fn precise_pow(mut base: u128, exponent: u32) -> Option<u128> {
     let mut result = if exponent.checked_rem_euclid(2)? == 0 {
         ONE
     } else {
         base
     };
 
-    exponent = exponent.checked_div(2)?;
-    while exponent != 0 {
-
+    // To minimize the number of operations, we halve the exponent at each
+    // iteration and keep squaring the base.
+    let mut doubling_exponent = exponent.checked_div(2)?;
+    while doubling_exponent != 0 {
         base = precise_mul(base, base)?;
 
-        if exponent.checked_rem_euclid(2)? != 0 {
+        // For odd exponents, "push" the base onto the result
+        if doubling_exponent.checked_rem_euclid(2)? != 0 {
             result = precise_mul(result, base)?;
         }
-        exponent = exponent.checked_div(2)?;
+
+        // Prepare next iteration
+        doubling_exponent = doubling_exponent.checked_div(2)?;
     }
     Some(result)
 }
@@ -122,40 +124,51 @@ pub fn precise_pow_fraction(base: u128, exponent_numerator: u32, exponent_denomi
     if remainder_exponent_numerator == 0 {
         return Some(whole_power);
     }
-    None
-    //let remainder_power = precise_pow(base, remainder_exponent_numerator)?;
-    //let remainder_power = nth_root_approximation(remainder_power, exponent_denominator, base, APPROXIMATION_ITERATIONS)?;
-    //let remainder_power = remainder_power.checked_pow(remainder_exponent_numerator)?;
-    //whole_power.checked_mul(remainder_power)
+    println!("base {} numerator {} denominator {}", base, exponent_numerator, exponent_denominator);
+    println!("whole {}", whole_power);
+    let precise_guess = precise_number(exponent_denominator as u64)?;
+    let remainder_power = nth_root_approximation(base, exponent_denominator, precise_guess, APPROXIMATION_ITERATIONS)?;
+    println!("remainder root {}", remainder_power);
+    let remainder_power = precise_pow(remainder_power, remainder_exponent_numerator)?;
+    println!("remainder power {}", remainder_power);
+    precise_mul(whole_power, remainder_power)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn check_root_approximation(num: u64, root: u32, expected: u64) {
+        let precise_num = precise_number(num).unwrap();
+        let precise_guess = precise_number(root as u64).unwrap();
+        let root = nth_root_approximation(precise_num, root, precise_guess, APPROXIMATION_ITERATIONS).unwrap();
+        assert_eq!(imprecise_number(root).unwrap(), expected);
+    }
+
     #[test]
     fn test_root_approximation() {
         // square root
-        let root = nth_root_approximation(9, 2, 5, 20).unwrap();
-        assert_eq!(root, 3); // actually 3
-        let root = nth_root_approximation(101, 2, 5, 20).unwrap();
-        assert_eq!(root, 10); // actually 10.049875
+        check_root_approximation(9, 2, 3); // actually 3
+        check_root_approximation(101, 2, 10); // actually 10.049875
 
         // 5th root
-        let root = nth_root_approximation(500, 5, 5, 20).unwrap();
-        assert_eq!(root, 3); // actually 3.46572422
+        check_root_approximation(500, 5, 3); // actually 3.46572422
 
         // 10th root
-        let root = nth_root_approximation(1000000000, 10, 5, 50).unwrap();
-        assert_eq!(root, 8); // actually 7.943282347242816
+        check_root_approximation(1000000000, 10, 8); // actually 7.943282347242816
+    }
+
+    fn check_pow_fraction(base: u64, numerator: u32, denominator: u32, expected: u64) {
+        let precise_base = precise_number(base).unwrap();
+        let power = precise_pow_fraction(precise_base, numerator, denominator).unwrap();
+        assert_eq!(imprecise_number(power).unwrap(), expected);
     }
 
     #[test]
     fn test_pow_fraction() {
-        assert_eq!(precise_pow_fraction(1, 1, 1).unwrap(), 1);
-        assert_eq!(precise_pow_fraction(2, 2, 1).unwrap(), 4);
-        assert_eq!(precise_pow_fraction(4, 1, 2).unwrap(), 2);
-        assert_eq!(precise_pow_fraction(27, 1, 3).unwrap(), 3);
-        assert_eq!(precise_pow_fraction(120458712, 23, 50).unwrap(), 0);
+        check_pow_fraction(1, 1, 1, 1);
+        check_pow_fraction(2, 2, 1, 4);
+        check_pow_fraction(4, 1, 2, 2);
+        check_pow_fraction(1_204, 24, 50, 2);
     }
 }
