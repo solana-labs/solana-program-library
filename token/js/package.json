@@ -70,7 +70,6 @@
     "prettier": "^2.0.5",
     "rollup": "^2.23.0",
     "rollup-plugin-copy": "^3.3.0",
-    "semver": "^7.0.0",
     "watch": "^1.0.2"
   },
   "engines": {

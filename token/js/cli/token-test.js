@@ -8,7 +8,6 @@ import {
   PublicKey,
   BPF_LOADER_PROGRAM_ID,
 } from '@solana/web3.js';
-import semver from 'semver';
 
 import {Token, NATIVE_MINT} from '../client/token';
 import {url} from '../url';
@@ -47,17 +46,9 @@ let connection;
 async function getConnection(): Promise<Connection> {
   if (connection) return connection;
 
-  let newConnection = new Connection(url, 'recent');
-  const version = await newConnection.getVersion();
+  connection = new Connection(url, 'recent');
+  const version = await connection.getVersion();
 
-  // commitment params are only supported >= 0.21.0
-  const solanaCoreVersion = version['solana-core'].split(' ')[0];
-  if (semver.gte(solanaCoreVersion, '0.21.0')) {
-    newConnection = new Connection(url, 'recent');
-  }
-
-  // eslint-disable-next-line require-atomic-updates
-  connection = newConnection;
   console.log('Connection to cluster established:', url, version);
   return connection;
 }

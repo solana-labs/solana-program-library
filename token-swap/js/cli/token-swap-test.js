@@ -1,7 +1,6 @@
 // @flow
 
 import fs from 'mz/fs';
-import semver from 'semver';
 import {
   Account,
   Connection,
@@ -56,19 +55,11 @@ let connection;
 async function getConnection(): Promise<Connection> {
   if (connection) return connection;
 
-  let newConnection = new Connection(url, 'recent');
-  const version = await newConnection.getVersion();
+  connection = new Connection(url, 'recent');
+  const version = await connection.getVersion();
 
-  // commitment params are only supported >= 0.21.0
-  const solanaCoreVersion = version['solana-core'].split(' ')[0];
-  if (semver.gte(solanaCoreVersion, '0.21.0')) {
-    newConnection = new Connection(url, 'recent');
-  }
-
-  // eslint-disable-next-line require-atomic-updates
-  connection = newConnection;
   console.log('Connection to cluster established:', url, version);
-  return newConnection;
+  return connection;
 }
 
 async function loadProgram(
