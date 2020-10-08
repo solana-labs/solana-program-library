@@ -6,6 +6,7 @@ use crate::{
     curve::{ConstantProduct, PoolTokenConverter},
     error::SwapError,
     instruction::SwapInstruction,
+    math,
     state::SwapInfo,
 };
 use num_traits::FromPrimitive;
@@ -141,6 +142,8 @@ impl Processor {
     /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize(
         program_id: &Pubkey,
+        weight_a: u8,
+        weight_b: u8,
         nonce: u8,
         fee_numerator: u64,
         fee_denominator: u64,
@@ -162,6 +165,12 @@ impl Processor {
 
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
+        }
+        if weight_a < math::MIN_WEIGHT || weight_a > math::MAX_WEIGHT {
+            return Err(SwapError::InvalidWeight.into());
+        }
+        if weight_b < math::MIN_WEIGHT || weight_b > math::MAX_WEIGHT {
+            return Err(SwapError::InvalidWeight.into());
         }
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
@@ -217,6 +226,8 @@ impl Processor {
             token_program_id: *token_program_info.key,
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
+            weight_a,
+            weight_b,
             pool_mint: *pool_mint_info.key,
             fee_numerator,
             fee_denominator,
@@ -266,6 +277,8 @@ impl Processor {
             let mut invariant = ConstantProduct {
                 token_a: source_account.amount,
                 token_b: dest_account.amount,
+                weight_a: token_swap.weight_a,
+                weight_b: token_swap.weight_b,
                 fee_numerator: token_swap.fee_numerator,
                 fee_denominator: token_swap.fee_denominator,
             };
@@ -276,6 +289,8 @@ impl Processor {
             let mut invariant = ConstantProduct {
                 token_a: dest_account.amount,
                 token_b: source_account.amount,
+                weight_a: token_swap.weight_a,
+                weight_b: token_swap.weight_b,
                 fee_numerator: token_swap.fee_numerator,
                 fee_denominator: token_swap.fee_denominator,
             };
@@ -479,6 +494,8 @@ impl Processor {
         let instruction = SwapInstruction::unpack(input)?;
         match instruction {
             SwapInstruction::Initialize {
+                weight_a,
+                weight_b,
                 fee_numerator,
                 fee_denominator,
                 nonce,
@@ -486,6 +503,8 @@ impl Processor {
                 info!("Instruction: Init");
                 Self::process_initialize(
                     program_id,
+                    weight_a,
+                    weight_b,
                     nonce,
                     fee_numerator,
                     fee_denominator,
@@ -606,6 +625,7 @@ impl PrintProgramError for SwapError {
             SwapError::ExceededSlippage => {
                 info!("Error: Swap instruction exceeds desired slippage limit")
             }
+            SwapError::InvalidWeight => info!("Provided weight outside of valid range (1-99)"),
         }
     }
 }
@@ -643,6 +663,8 @@ mod tests {
         pool_mint_account: Account,
         pool_token_key: Pubkey,
         pool_token_account: Account,
+        weight_a: u8,
+        weight_b: u8,
         token_a_key: Pubkey,
         token_a_account: Account,
         token_a_mint_key: Pubkey,
@@ -656,6 +678,8 @@ mod tests {
     impl SwapAccountInfo {
         pub fn new(
             user_key: &Pubkey,
+            weight_a: u8,
+            weight_b: u8,
             fee_numerator: u64,
             fee_denominator: u64,
             token_a_amount: u64,
@@ -700,6 +724,8 @@ mod tests {
             SwapAccountInfo {
                 nonce,
                 authority_key,
+                weight_a,
+                weight_b,
                 fee_numerator,
                 fee_denominator,
                 swap_key,
@@ -731,6 +757,8 @@ mod tests {
                     &self.pool_mint_key,
                     &self.pool_token_key,
                     self.nonce,
+                    self.weight_a,
+                    self.weight_b,
                     self.fee_numerator,
                     self.fee_denominator,
                 )
@@ -1174,6 +1202,8 @@ mod tests {
     #[test]
     fn test_initialize() {
         let user_key = pubkey_rand();
+        let weight_a = 1;
+        let weight_b = 2;
         let fee_numerator = 1;
         let fee_denominator = 2;
         let token_a_amount = 1000;
@@ -1182,6 +1212,8 @@ mod tests {
 
         let mut accounts = SwapAccountInfo::new(
             &user_key,
+            weight_a,
+            weight_b,
             fee_numerator,
             fee_denominator,
             token_a_amount,
@@ -1197,6 +1229,38 @@ mod tests {
                 accounts.initialize_swap()
             );
             accounts.nonce = old_nonce;
+        }
+
+        // invalid weight a
+        {
+            let old_weight = accounts.weight_a;
+            accounts.weight_a = math::MIN_WEIGHT - 1;
+            assert_eq!(
+                Err(SwapError::InvalidWeight.into()),
+                accounts.initialize_swap()
+            );
+            accounts.weight_a = math::MAX_WEIGHT + 1;
+            assert_eq!(
+                Err(SwapError::InvalidWeight.into()),
+                accounts.initialize_swap()
+            );
+            accounts.weight_a = old_weight;
+        }
+
+        // invalid weight b
+        {
+            let old_weight = accounts.weight_b;
+            accounts.weight_b = math::MIN_WEIGHT - 1;
+            assert_eq!(
+                Err(SwapError::InvalidWeight.into()),
+                accounts.initialize_swap()
+            );
+            accounts.weight_b = math::MAX_WEIGHT + 1;
+            assert_eq!(
+                Err(SwapError::InvalidWeight.into()),
+                accounts.initialize_swap()
+            );
+            accounts.weight_b = old_weight;
         }
 
         // uninitialized token a account
@@ -1474,6 +1538,8 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_token_key,
                         accounts.nonce,
+                        accounts.weight_a,
+                        accounts.weight_b,
                         accounts.fee_numerator,
                         accounts.fee_denominator,
                     )
@@ -1542,12 +1608,16 @@ mod tests {
     fn test_deposit() {
         let user_key = pubkey_rand();
         let depositor_key = pubkey_rand();
+        let weight_a = 1;
+        let weight_b = 5;
         let fee_numerator = 1;
         let fee_denominator = 2;
         let token_a_amount = 1000;
         let token_b_amount = 9000;
         let mut accounts = SwapAccountInfo::new(
             &user_key,
+            weight_a,
+            weight_b,
             fee_numerator,
             fee_denominator,
             token_a_amount,
@@ -2059,12 +2129,16 @@ mod tests {
     #[test]
     fn test_withdraw() {
         let user_key = pubkey_rand();
+        let weight_a = 1;
+        let weight_b = 2;
         let fee_numerator = 1;
         let fee_denominator = 2;
         let token_a_amount = 1000;
         let token_b_amount = 2000;
         let mut accounts = SwapAccountInfo::new(
             &user_key,
+            weight_a,
+            weight_b,
             fee_numerator,
             fee_denominator,
             token_a_amount,
@@ -2606,18 +2680,22 @@ mod tests {
     fn test_swap() {
         let user_key = pubkey_rand();
         let swapper_key = pubkey_rand();
+        let weight_a = 1;
+        let weight_b = 2;
         let fee_numerator = 1;
         let fee_denominator = 10;
         let token_a_amount = 1000;
         let token_b_amount = 5000;
         let mut accounts = SwapAccountInfo::new(
             &user_key,
+            weight_a,
+            weight_b,
             fee_numerator,
             fee_denominator,
             token_a_amount,
             token_b_amount,
         );
-        let initial_a = token_a_amount / 5;
+        let initial_a = token_a_amount / 5 * (weight_b as u64) / (weight_a as u64);
         let initial_b = token_b_amount / 5;
         let minimum_b_amount = initial_b / 2;
 
@@ -2964,6 +3042,8 @@ mod tests {
                 a_to_b_amount,
                 token_a_amount,
                 token_b_amount,
+                weight_a,
+                weight_b,
                 fee_numerator,
                 fee_denominator,
             )
@@ -3006,6 +3086,8 @@ mod tests {
                 b_to_a_amount,
                 token_b_amount,
                 token_a_amount,
+                weight_b,
+                weight_a,
                 fee_numerator,
                 fee_denominator,
             )

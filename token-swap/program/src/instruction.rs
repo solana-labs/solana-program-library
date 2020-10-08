@@ -25,6 +25,10 @@ pub enum SwapInstruction {
     ///   5. `[writable]` Pool Token Account to deposit the minted tokens. Must be empty, owned by user.
     ///   6. '[]` Token program id
     Initialize {
+        /// weight for token a
+        weight_a: u8,
+        /// weight for token b
+        weight_b: u8,
         /// swap pool fee numerator
         fee_numerator: u64,
         /// swap pool fee denominator
@@ -99,10 +103,14 @@ impl SwapInstruction {
         let (&tag, rest) = input.split_first().ok_or(SwapError::InvalidInstruction)?;
         Ok(match tag {
             0 => {
+                let (&weight_a, rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
+                let (&weight_b, rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
                 let (fee_numerator, rest) = Self::unpack_u64(rest)?;
                 let (fee_denominator, rest) = Self::unpack_u64(rest)?;
                 let (&nonce, _rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
                 Self::Initialize {
+                    weight_a,
+                    weight_b,
                     fee_numerator,
                     fee_denominator,
                     nonce,
@@ -159,11 +167,15 @@ impl SwapInstruction {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match *self {
             Self::Initialize {
+                weight_a,
+                weight_b,
                 fee_numerator,
                 fee_denominator,
                 nonce,
             } => {
                 buf.push(0);
+                buf.push(weight_a);
+                buf.push(weight_b);
                 buf.extend_from_slice(&fee_numerator.to_le_bytes());
                 buf.extend_from_slice(&fee_denominator.to_le_bytes());
                 buf.push(nonce);
@@ -212,10 +224,14 @@ pub fn initialize(
     pool_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     nonce: u8,
+    weight_a: u8,
+    weight_b: u8,
     fee_numerator: u64,
     fee_denominator: u64,
 ) -> Result<Instruction, ProgramError> {
     let init_data = SwapInstruction::Initialize {
+        weight_a,
+        weight_b,
         fee_numerator,
         fee_denominator,
         nonce,
@@ -378,8 +394,12 @@ mod tests {
     fn test_instruction_packing() {
         let fee_numerator: u64 = 1;
         let fee_denominator: u64 = 4;
-        let nonce: u8 = 255;
+        let weight_a = 2;
+        let weight_b = 99;
+        let nonce = 255;
         let check = SwapInstruction::Initialize {
+            weight_a,
+            weight_b,
             fee_numerator,
             fee_denominator,
             nonce,
@@ -387,6 +407,8 @@ mod tests {
         let packed = check.pack();
         let mut expect = vec![];
         expect.push(0 as u8);
+        expect.push(weight_a);
+        expect.push(weight_b);
         expect.extend_from_slice(&fee_numerator.to_le_bytes());
         expect.extend_from_slice(&fee_denominator.to_le_bytes());
         expect.push(nonce);

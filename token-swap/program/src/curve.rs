@@ -1,5 +1,7 @@
 //! Swap calculations and curve implementations
 
+use crate::math::PreciseNumber;
+
 /// Initial amount of pool tokens for swap contract, hard-coded to something
 /// "sensible" given a maximum of u64.
 /// Note that on Ethereum, Uniswap uses the geometric mean of all provided
@@ -18,16 +20,24 @@ pub struct SwapResult {
 
 impl SwapResult {
     /// SwapResult for swap from one currency into another, given pool information
-    /// and fee
+    /// and fee.
+    ///              /          B_i       W_i / W_o \
+    /// A_o = B_o * | 1 - ---------------            |
+    ///              \    B_i + A_i - fee           /
+    ///
+    /// A_o = amount out, A_i = source amount in,
+    /// B_o = destination amount, B_i = source amount,
+    /// W_i = weight source token, W_o = weight destination token
+    ///
     pub fn swap_to(
         source_amount: u64,
         swap_source_amount: u64,
         swap_destination_amount: u64,
+        source_weight: u8,
+        destination_weight: u8,
         fee_numerator: u64,
         fee_denominator: u64,
     ) -> Option<SwapResult> {
-        let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
-
         // debit the fee to calculate the amount swapped
         let mut fee = source_amount
             .checked_mul(fee_numerator)?
@@ -38,8 +48,26 @@ impl SwapResult {
         let new_source_amount_less_fee = swap_source_amount
             .checked_add(source_amount)?
             .checked_sub(fee)?;
-        let new_destination_amount = invariant.checked_div(new_source_amount_less_fee)?;
-        let amount_swapped = swap_destination_amount.checked_sub(new_destination_amount)?;
+
+        // Calculate the base of the exponential term
+        let precise_swap_source_amount = PreciseNumber::new(swap_source_amount)?;
+        let new_source_amount_less_fee = PreciseNumber::new(new_source_amount_less_fee)?;
+        let base = precise_swap_source_amount.checked_div(&new_source_amount_less_fee)?;
+
+        // Calculate the exponent
+        let exponent_numerator = PreciseNumber::new(source_weight as u64)?;
+        let exponent_denominator = PreciseNumber::new(destination_weight as u64)?;
+        let exponent = exponent_numerator.checked_div(&exponent_denominator)?;
+
+        // Calculate the change factor
+        let factor = PreciseNumber::new(1)?.checked_sub(&base.checked_pow_fraction(&exponent)?)?;
+
+        // Calculate the output values
+        let precise_swap_destination_amount = PreciseNumber::new(swap_destination_amount)?;
+        let amount_swapped = precise_swap_destination_amount
+            .checked_mul(&factor)?
+            .to_imprecise()?;
+        let new_destination_amount = swap_destination_amount.checked_sub(amount_swapped)?;
 
         // actually add the whole amount coming in
         let new_source_amount = swap_source_amount.checked_add(source_amount)?;
@@ -65,6 +93,10 @@ pub struct ConstantProduct {
     pub token_a: u64,
     /// Token B
     pub token_b: u64,
+    /// Weight of token A
+    pub weight_a: u8,
+    /// Weight of token B
+    pub weight_b: u8,
     /// Fee numerator
     pub fee_numerator: u64,
     /// Fee denominator
@@ -78,6 +110,8 @@ impl ConstantProduct {
             token_a,
             self.token_a,
             self.token_b,
+            self.weight_a,
+            self.weight_b,
             self.fee_numerator,
             self.fee_denominator,
         )?;
@@ -92,6 +126,8 @@ impl ConstantProduct {
             token_b,
             self.token_b,
             self.token_a,
+            self.weight_b,
+            self.weight_a,
             self.fee_numerator,
             self.fee_denominator,
         )?;
@@ -184,21 +220,51 @@ mod tests {
     #[test]
     fn swap_calculation() {
         // calculation on https://github.com/solana-labs/solana-program-library/issues/341
-        let swap_source_amount: u64 = 1000;
-        let swap_destination_amount: u64 = 50000;
-        let fee_numerator: u64 = 1;
-        let fee_denominator: u64 = 100;
-        let source_amount: u64 = 100;
+        let swap_source_amount = 1_000;
+        let swap_destination_amount = 50_000;
+        let source_weight = 1;
+        let destination_weight = 1;
+        let fee_numerator = 1;
+        let fee_denominator = 100;
+        let source_amount = 100;
         let result = SwapResult::swap_to(
             source_amount,
             swap_source_amount,
             swap_destination_amount,
+            source_weight,
+            destination_weight,
             fee_numerator,
             fee_denominator,
         )
         .unwrap();
-        assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 4505);
-        assert_eq!(result.new_destination_amount, 45495);
+        assert_eq!(result.new_source_amount, 1_100);
+        assert_eq!(result.amount_swapped, 4_504);
+        assert_eq!(result.new_destination_amount, 45_496);
+    }
+
+    #[test]
+    fn weighted_swap_calculation() {
+        // calculation on https://github.com/solana-labs/solana-program-library/pull/574
+        // 5000 * (1 - ( 5000 / (5000 + 100) ) ^ (1 / 9)) = 10.989
+        let swap_source_amount = 5_000_000;
+        let swap_destination_amount = 5_000_000;
+        let source_weight = 1;
+        let destination_weight = 9;
+        let fee_numerator = 0;
+        let fee_denominator = 100;
+        let source_amount = 100_000;
+        let result = SwapResult::swap_to(
+            source_amount,
+            swap_source_amount,
+            swap_destination_amount,
+            source_weight,
+            destination_weight,
+            fee_numerator,
+            fee_denominator,
+        )
+        .unwrap();
+        assert_eq!(result.amount_swapped, 10_989);
+        assert_eq!(result.new_source_amount, 5_100_000);
+        assert_eq!(result.new_destination_amount, 4_989_011);
     }
 }

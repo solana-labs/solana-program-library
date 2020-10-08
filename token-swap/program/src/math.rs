@@ -1,6 +1,12 @@
 //! Math utilities for swap calculations
 
-const ONE: u128 = 10_000_000_000;
+/// The representation of the number one as a precise number
+pub const ONE: u128 = 10_000_000_000;
+
+/// Maximum weight for token in swap
+pub const MAX_WEIGHT: u8 = 100;
+/// Minimum weight for token in swap
+pub const MIN_WEIGHT: u8 = 1;
 
 /// Struct encapsulating a fixed-point number that allows for decimal calculations
 #[derive(Clone)]
@@ -10,10 +16,12 @@ pub struct PreciseNumber {
 }
 
 impl PreciseNumber {
-    const POW_PRECISION: u128 = 100;
     const ONE: Self = Self { value: ONE };
+
     const ROUNDING_CORRECTION: u128 = ONE / 2;
+    const POW_PRECISION: u128 = 100;
     const APPROXIMATION_ITERATIONS: u64 = 100_000;
+
     const MIN_POW_BASE: u128 = 1;
     const MAX_POW_BASE: u128 = 2 * ONE;
 
@@ -25,7 +33,11 @@ impl PreciseNumber {
 
     /// Convert a precise number back to u64
     pub fn to_imprecise(&self) -> Option<u64> {
-        match self.value.checked_add(Self::ROUNDING_CORRECTION)?.checked_div(ONE) {
+        match self
+            .value
+            .checked_add(Self::ROUNDING_CORRECTION)?
+            .checked_div(ONE)
+        {
             Some(v) => Some(v as u64),
             None => None,
         }
@@ -50,13 +62,19 @@ impl PreciseNumber {
         }
         match self.value.checked_mul(ONE) {
             Some(v) => {
-                let value = v.checked_add(Self::ROUNDING_CORRECTION)?.checked_div(rhs.value)?;
+                let value = v
+                    .checked_add(Self::ROUNDING_CORRECTION)?
+                    .checked_div(rhs.value)?;
                 Some(Self { value })
-            },
+            }
             None => {
-                let value = self.value.checked_add(Self::ROUNDING_CORRECTION)?.checked_div(rhs.value)?.checked_mul(ONE)?;
+                let value = self
+                    .value
+                    .checked_add(Self::ROUNDING_CORRECTION)?
+                    .checked_div(rhs.value)?
+                    .checked_mul(ONE)?;
                 Some(Self { value })
-            },
+            }
         }
     }
 
@@ -66,7 +84,7 @@ impl PreciseNumber {
             Some(v) => {
                 let value = v.checked_add(Self::ROUNDING_CORRECTION)?.checked_div(ONE)?;
                 Some(Self { value })
-            },
+            }
             None => {
                 let value = if self.value >= rhs.value {
                     self.value.checked_div(ONE)?.checked_mul(rhs.value)?
@@ -96,7 +114,7 @@ impl PreciseNumber {
             None => {
                 let value = rhs.value.checked_sub(self.value).unwrap();
                 (Self { value }, true)
-            },
+            }
             Some(value) => (Self { value }, false),
         }
     }
@@ -158,13 +176,11 @@ impl PreciseNumber {
         let exponent_plus_one = exponent.checked_add(&Self::ONE)?;
         let mut negative = false;
         for k in 1..max_iterations {
-            println!("{} iteration", k);
             let k = Self::new(k)?;
             let (current_exponent, current_exponent_negative) = exponent_plus_one.unsigned_sub(&k);
             term = term.checked_mul(&current_exponent)?;
             term = term.checked_mul(&x_minus_a)?;
             term = term.checked_div(&k)?;
-            println!("term {}", term.value);
             if term.value < Self::POW_PRECISION {
                 break;
             }
@@ -195,7 +211,8 @@ impl PreciseNumber {
         if remainder_exponent.value == 0 {
             return Some(precise_whole);
         }
-        let precise_remainder = self.checked_pow_approximation(&remainder_exponent, Self::APPROXIMATION_ITERATIONS)?;
+        let precise_remainder =
+            self.checked_pow_approximation(&remainder_exponent, Self::APPROXIMATION_ITERATIONS)?;
         precise_whole.checked_mul(&precise_remainder)
     }
 }
@@ -209,7 +226,9 @@ mod tests {
     fn check_pow_approximation(base: u128, exponent: u128, expected: u128) {
         let base = PreciseNumber { value: base };
         let exponent = PreciseNumber { value: exponent };
-        let root = base.checked_pow_approximation(&exponent, PreciseNumber::APPROXIMATION_ITERATIONS).unwrap();
+        let root = base
+            .checked_pow_approximation(&exponent, PreciseNumber::APPROXIMATION_ITERATIONS)
+            .unwrap();
         let expected = PreciseNumber { value: expected };
         assert!(root.almost_eq(&expected, POW_TEST_PRECISION));
     }
@@ -232,7 +251,6 @@ mod tests {
         let exponent = PreciseNumber { value: exponent };
         let power = base.checked_pow_fraction(&exponent).unwrap();
         let expected = PreciseNumber { value: expected };
-        println!("power {} expected {}", power.value, expected.value);
         assert!(power.almost_eq(&expected, POW_TEST_PRECISION));
     }
 
@@ -240,8 +258,8 @@ mod tests {
     fn test_pow_fraction() {
         check_pow_fraction(ONE, ONE, ONE);
         check_pow_fraction(ONE * 2, ONE * 2, ONE * 4);
-        check_pow_fraction(ONE * 2, ONE * 50 / 3, 1040319153417880);
-        check_pow_fraction(ONE * 2 / 7, ONE * 49 / 4, 2163);
+        check_pow_fraction(ONE * 2, ONE * 50 / 3, 104031_9153417880);
+        check_pow_fraction(ONE * 2 / 7, ONE * 49 / 4, 0000002163);
         check_pow_fraction(ONE * 5000 / 5100, ONE / 9, 9978021269); // 0.99780212695
     }
 }

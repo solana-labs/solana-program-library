@@ -19,15 +19,18 @@ pub struct SwapInfo {
     /// authority over the swap's token A account, token B account, and pool
     /// token mint.
     pub nonce: u8,
-
+    
     /// Program ID of the tokens being exchanged.
     pub token_program_id: Pubkey,
 
-    /// Token A
-    /// The Liquidity token is issued against this value.
+    /// Token A liquidity account
     pub token_a: Pubkey,
-    /// Token B
+    /// Token B liquidity account
     pub token_b: Pubkey,
+    /// Weight for token A, minimum of 1, maximum of 100
+    pub weight_a: u8,
+    /// Weight for token B, minimum of 1, maximum of 100
+    pub weight_b: u8,
     /// Pool tokens are issued when A or B tokens are deposited.
     /// Pool tokens can be withdrawn back to the original A or B token.
     pub pool_mint: Pubkey,
@@ -46,11 +49,11 @@ impl IsInitialized for SwapInfo {
 }
 
 impl Pack for SwapInfo {
-    const LEN: usize = 146;
+    const LEN: usize = 148;
 
     /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 146];
+        let input = array_ref![input, 0, 148];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
@@ -58,10 +61,12 @@ impl Pack for SwapInfo {
             token_program_id,
             token_a,
             token_b,
+            weight_a,
+            weight_b,
             pool_mint,
             fee_numerator,
             fee_denominator,
-        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 8, 8];
+        ) = array_refs![input, 1, 1, 32, 32, 32, 1, 1, 32, 8, 8];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -72,6 +77,8 @@ impl Pack for SwapInfo {
             token_program_id: Pubkey::new_from_array(*token_program_id),
             token_a: Pubkey::new_from_array(*token_a),
             token_b: Pubkey::new_from_array(*token_b),
+            weight_a: weight_a[0],
+            weight_b: weight_b[0],
             pool_mint: Pubkey::new_from_array(*pool_mint),
             fee_numerator: u64::from_le_bytes(*fee_numerator),
             fee_denominator: u64::from_le_bytes(*fee_denominator),
@@ -86,15 +93,19 @@ impl Pack for SwapInfo {
             token_program_id,
             token_a,
             token_b,
+            weight_a,
+            weight_b,
             pool_mint,
             fee_numerator,
             fee_denominator,
-        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 8, 8];
+        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 1, 1, 32, 8, 8];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
         token_a.copy_from_slice(self.token_a.as_ref());
         token_b.copy_from_slice(self.token_b.as_ref());
+        weight_a[0] = self.weight_a;
+        weight_b[0] = self.weight_b;
         pool_mint.copy_from_slice(self.pool_mint.as_ref());
         *fee_numerator = self.fee_numerator.to_le_bytes();
         *fee_denominator = self.fee_denominator.to_le_bytes();
@@ -115,6 +126,8 @@ mod tests {
         let token_program_id = Pubkey::new_from_array(token_program_id_raw);
         let token_a = Pubkey::new_from_array(token_a_raw);
         let token_b = Pubkey::new_from_array(token_b_raw);
+        let weight_a = 2;
+        let weight_b = 90;
         let pool_mint = Pubkey::new_from_array(pool_mint_raw);
         let fee_numerator = 1;
         let fee_denominator = 4;
@@ -125,6 +138,8 @@ mod tests {
             token_program_id,
             token_a,
             token_b,
+            weight_a,
+            weight_b,
             pool_mint,
             fee_numerator,
             fee_denominator,
@@ -141,6 +156,8 @@ mod tests {
         packed.extend_from_slice(&token_program_id_raw);
         packed.extend_from_slice(&token_a_raw);
         packed.extend_from_slice(&token_b_raw);
+        packed.push(weight_a);
+        packed.push(weight_b);
         packed.extend_from_slice(&pool_mint_raw);
         packed.push(fee_numerator as u8);
         packed.extend_from_slice(&[0u8; 7]); // padding

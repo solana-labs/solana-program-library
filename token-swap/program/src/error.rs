@@ -58,6 +58,9 @@ pub enum SwapError {
     /// Swap instruction exceeds desired slippage limit
     #[error("Swap instruction exceeds desired slippage limit")]
     ExceededSlippage,
+    /// Provided weight is outside of valid range (1-100)
+    #[error("Provided weight outside of valid range (1-100)")]
+    InvalidWeight,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

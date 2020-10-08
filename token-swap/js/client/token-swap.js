@@ -63,6 +63,8 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     Layout.publicKey('tokenProgramId'),
     Layout.publicKey('tokenAccountA'),
     Layout.publicKey('tokenAccountB'),
+    BufferLayout.u8('weightA'),
+    BufferLayout.u8('weightB'),
     Layout.publicKey('tokenPool'),
     Layout.uint64('feeNumerator'),
     Layout.uint64('feeDenominator'),
@@ -112,6 +114,16 @@ export class TokenSwap {
    * The public key for the second token account of the trading pair
    */
   tokenAccountB: PublicKey;
+  
+  /**
+   * Weight of token A
+   */
+  weightA: number,
+
+  /**
+   * Weight of token B
+   */
+  weightB: number,
 
   /**
    * Fee numerator
@@ -150,6 +162,8 @@ export class TokenSwap {
     authority: PublicKey,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
+    weightA: number,
+    weightB: number,
     feeNumerator: Numberu64,
     feeDenominator: Numberu64,
     payer: Account,
@@ -163,6 +177,8 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      weightA,
+      weightB,
       feeNumerator,
       feeDenominator,
       payer,
@@ -188,6 +204,8 @@ export class TokenSwap {
     nonce: number,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
+    weightA: number,
+    weightB: number,
     tokenPool: PublicKey,
     tokenAccountPool: PublicKey,
     tokenProgramId: PublicKey,
@@ -206,6 +224,8 @@ export class TokenSwap {
     ];
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
+      BufferLayout.u8('weightA'),
+      BufferLayout.u8('weightB'),
       BufferLayout.nu64('feeNumerator'),
       BufferLayout.nu64('feeDenominator'),
       BufferLayout.u8('nonce'),
@@ -215,6 +235,8 @@ export class TokenSwap {
       const encodeLength = commandDataLayout.encode(
         {
           instruction: 0, // InitializeSwap instruction
+          weightA,
+          weightB,
           feeNumerator,
           feeDenominator,
           nonce,
@@ -249,7 +271,8 @@ export class TokenSwap {
 
     const poolToken = new PublicKey(tokenSwapData.tokenPool);
     const tokenAccountA = new PublicKey(tokenSwapData.tokenAccountA);
-    const tokenAccountB = new PublicKey(tokenSwapData.tokenAccountB);
+    const tokenAccountB = new PublicKey(tokenSwapData.tokenAccountB); 
+    
     const tokenProgramId = new PublicKey(tokenSwapData.tokenProgramId);
 
     const feeNumerator = Numberu64.fromBuffer(tokenSwapData.feeNumerator);
@@ -264,6 +287,8 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      tokenSwapData.weightA,
+      tokenSwapData.weightB,
       feeNumerator,
       feeDenominator,
       payer,
@@ -280,6 +305,8 @@ export class TokenSwap {
    * @param nonce The nonce used to generate the authority
    * @param tokenAccountA: The token swap's Token A account
    * @param tokenAccountB: The token swap's Token B account
+   * @param weightA: Weight of token A in swap
+   * @param weightB: Weight of token B in swap
    * @param poolToken The pool token
    * @param tokenAccountPool The token swap's pool token account
    * @param tokenProgramId The program ID of the token program
@@ -313,6 +340,8 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      weightA,
+      weightB,
       new Numberu64(feeNumerator),
       new Numberu64(feeDenominator),
       payer,
@@ -339,6 +368,8 @@ export class TokenSwap {
       nonce,
       tokenAccountA,
       tokenAccountB,
+      weightA,
+      weightB,
       poolToken,
       tokenAccountPool,
       tokenProgramId,
