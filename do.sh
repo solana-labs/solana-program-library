@@ -40,7 +40,12 @@ readCargoVariable() {
 
 perform_action() {
     set -e
-    projectDir="$CALLER_PWD"/$2
+    # Use relative path if arg starts with "."
+    if [[ $2 == .* ]]; then
+        projectDir="$CALLER_PWD"/$2
+    else
+        projectDir="$PWD"/$2
+    fi
     targetDir="$PWD"/target
     features=
 
