@@ -259,7 +259,7 @@ mod tests {
         check_pow_fraction(ONE, ONE, ONE);
         check_pow_fraction(ONE * 2, ONE * 2, ONE * 4);
         check_pow_fraction(ONE * 2, ONE * 50 / 3, 104031_9153417880);
-        check_pow_fraction(ONE * 2 / 7, ONE * 49 / 4, 0000002163);
+        check_pow_fraction(ONE * 2 / 7, ONE * 49 / 4, 2163);
         check_pow_fraction(ONE * 5000 / 5100, ONE / 9, 9978021269); // 0.99780212695
     }
 }
