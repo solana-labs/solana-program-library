@@ -194,7 +194,7 @@ fn assert_instruction_count() {
         Policies {
             is_initialized: true,
             num_scalars: num_scalars as u8,
-            scalars: scalars.clone(),
+            scalars,
         }
         .try_to_vec()
         .unwrap()

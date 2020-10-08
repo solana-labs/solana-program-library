@@ -32,6 +32,7 @@ url = "2.1"
 separator = "0.4.1"
 solana-banks-server = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
 solana-bpf-loader-program = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
+solana-core = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
 solana_rbpf = "=0.1.31"
 solana-runtime = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
 
