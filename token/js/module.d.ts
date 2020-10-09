@@ -118,13 +118,13 @@ declare module '@solana/spl-token' {
       dest: PublicKey,
       authority: Account | PublicKey,
       multiSigners: Array<Account>,
-      amount: number,
+      amount: number | u64,
     ): Promise<void>;
     burn(
       account: PublicKey,
       owner: Account | PublicKey,
       multiSigners: Array<Account>,
-      amount: number,
+      amount: number | u64,
     ): Promise<void>;
     closeAccount(
       account: PublicKey,
@@ -180,7 +180,7 @@ declare module '@solana/spl-token' {
       dest: PublicKey,
       authority: PublicKey,
       multiSigners: Array<Account>,
-      amount: number,
+      amount: number | u64,
     ): TransactionInstruction;
     static createBurnInstruction(
       programId: PublicKey,
@@ -188,7 +188,7 @@ declare module '@solana/spl-token' {
       account: PublicKey,
       owner: PublicKey,
       multiSigners: Array<Account>,
-      amount: number,
+      amount: number | u64,
     ): TransactionInstruction;
     static createCloseAccountInstruction(
       programId: PublicKey,
