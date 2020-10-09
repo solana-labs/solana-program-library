@@ -893,7 +893,7 @@ export class Token {
     dest: PublicKey,
     authority: any,
     multiSigners: Array<Account>,
-    amount: number,
+    amount: number | u64,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
@@ -934,7 +934,7 @@ export class Token {
     account: PublicKey,
     owner: any,
     multiSigners: Array<Account>,
-    amount: number,
+    amount: number | u64,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
@@ -1187,7 +1187,7 @@ export class Token {
     dest: PublicKey,
     authority: any,
     multiSigners: Array<Account>,
-    amount: number,
+    amount: number | u64,
     decimals: number,
   ): Promise<void> {
     let ownerPublicKey;
@@ -1231,7 +1231,7 @@ export class Token {
     account: PublicKey,
     owner: any,
     multiSigners: Array<Account>,
-    amount: number,
+    amount: number | u64,
     decimals: number,
   ): Promise<void> {
     let ownerPublicKey;
@@ -1583,7 +1583,7 @@ export class Token {
     dest: PublicKey,
     authority: PublicKey,
     multiSigners: Array<Account>,
-    amount: number,
+    amount: number | u64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
@@ -1643,7 +1643,7 @@ export class Token {
     account: PublicKey,
     owner: PublicKey,
     multiSigners: Array<Account>,
-    amount: number,
+    amount: number | u64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
@@ -1980,7 +1980,7 @@ export class Token {
     dest: PublicKey,
     authority: PublicKey,
     multiSigners: Array<Account>,
-    amount: number,
+    amount: number | u64,
     decimals: number,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -2043,7 +2043,7 @@ export class Token {
     account: PublicKey,
     owner: PublicKey,
     multiSigners: Array<Account>,
-    amount: number,
+    amount: number | u64,
     decimals: number,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
