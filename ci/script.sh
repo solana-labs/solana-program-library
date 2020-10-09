@@ -106,4 +106,20 @@ js_token_swap() {
 }
 _ js_token_swap
 
+# Test token-lending js bindings
+js_token_lending() {
+  cd token-lending/js
+  time npm install || exit $?
+  time npm run lint || exit $?
+  time npm run build || exit $?
+
+  npm run cluster:localnet || exit $?
+  npm run localnet:down
+  npm run localnet:update || exit $?
+  npm run localnet:up || exit $?
+  time npm run start || exit $?
+  npm run localnet:down
+}
+_ js_token_lending
+
 exit 0

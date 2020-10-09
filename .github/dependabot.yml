@@ -10,10 +10,19 @@ updates:
   labels:
     - "automerge"
 - package-ecosystem: npm
+  directory: "/token-lending/js"
+  schedule:
+    interval: daily
+    time: "02:00"
+    timezone: America/Los_Angeles
+  open-pull-requests-limit: 3
+  labels:
+    - "automerge"
+- package-ecosystem: npm
   directory: "/token-swap/js"
   schedule:
     interval: daily
-    time: "01:00"
+    time: "03:00"
     timezone: America/Los_Angeles
   open-pull-requests-limit: 3
   labels:
@@ -22,7 +31,7 @@ updates:
   directory: "/"
   schedule:
     interval: daily
-    time: "01:00"
+    time: "04:00"
     timezone: America/Los_Angeles
   labels:
     - "automerge"
