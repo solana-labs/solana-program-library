@@ -1938,6 +1938,33 @@ mod tests {
             accounts.pool_mint_account = old_pool_account;
         }
 
+        // deposit 1 pool token fails beacuse it equates to 0 swap tokens
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            assert_eq!(
+                Err(SwapError::CalculationFailure.into()),
+                accounts.deposit(
+                    &depositor_key,
+                    &pool_key,
+                    &mut pool_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    1,
+                    deposit_a,
+                    deposit_b / 10,
+                )
+            );
+        }
+
         // slippage exceeeded
         {
             let (
@@ -2435,6 +2462,39 @@ mod tests {
             accounts.pool_mint_account = old_pool_account;
         }
 
+        // withdrawing 1 pool token fails because it equates to 0 output tokens
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &withdrawer_key,
+                initial_a,
+                initial_b,
+                initial_pool,
+            );
+            assert_eq!(
+                Err(SwapError::CalculationFailure.into()),
+                accounts.withdraw(
+                    &withdrawer_key,
+                    &pool_key,
+                    &mut pool_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    1,
+                    minimum_a_amount * 10,
+                    minimum_b_amount,
+                )
+            );
+        }
+
         // slippage exceeeded
         {
             let (
@@ -2817,6 +2877,32 @@ mod tests {
                         &mut Account::default(),
                     ],
                 ),
+            );
+        }
+
+        // output token value 0
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                _pool_key,
+                _pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+            assert_eq!(
+                Err(SwapError::CalculationFailure.into()),
+                accounts.swap(
+                    &swapper_key,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &swap_token_b_key,
+                    &swap_token_a_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    1,
+                    1,
+                )
             );
         }
 

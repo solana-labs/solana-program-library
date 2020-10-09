@@ -29,9 +29,12 @@ impl SwapResult {
         let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
 
         // debit the fee to calculate the amount swapped
-        let fee = source_amount
+        let mut fee = source_amount
             .checked_mul(fee_numerator)?
             .checked_div(fee_denominator)?;
+        if fee == 0 {
+            fee = 1; // minimum fee of one token
+        }
         let new_source_amount_less_fee = swap_source_amount
             .checked_add(source_amount)?
             .checked_sub(fee)?;
@@ -45,6 +48,14 @@ impl SwapResult {
             new_destination_amount,
             amount_swapped,
         })
+    }
+}
+
+fn map_zero_to_none(x: u64) -> Option<u64> {
+    if x == 0 {
+        None
+    } else {
+        Some(x)
     }
 }
 
@@ -72,7 +83,7 @@ impl ConstantProduct {
         )?;
         self.token_a = result.new_source_amount;
         self.token_b = result.new_destination_amount;
-        Some(result.amount_swapped)
+        map_zero_to_none(result.amount_swapped)
     }
 
     /// Swap token b to a
@@ -86,7 +97,7 @@ impl ConstantProduct {
         )?;
         self.token_b = result.new_source_amount;
         self.token_a = result.new_destination_amount;
-        Some(result.amount_swapped)
+        map_zero_to_none(result.amount_swapped)
     }
 }
 
@@ -123,18 +134,20 @@ impl PoolTokenConverter {
         }
     }
 
-    /// A tokens for pool tokens
+    /// A tokens for pool tokens, returns None if output is less than 0
     pub fn token_a_rate(&self, pool_tokens: u64) -> Option<u64> {
         pool_tokens
             .checked_mul(self.token_a)?
             .checked_div(self.supply)
+            .and_then(map_zero_to_none)
     }
 
-    /// B tokens for pool tokens
+    /// B tokens for pool tokens, returns None is output is less than 0
     pub fn token_b_rate(&self, pool_tokens: u64) -> Option<u64> {
         pool_tokens
             .checked_mul(self.token_b)?
             .checked_div(self.supply)
+            .and_then(map_zero_to_none)
     }
 }
 
