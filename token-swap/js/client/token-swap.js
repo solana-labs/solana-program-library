@@ -70,6 +70,7 @@ type TokenSwapInfo = {|
    * Token B
    */
   tokenAccountB: PublicKey,
+
   /**
    * Pool tokens are issued when A or B tokens are deposited
    * Pool tokens can be withdrawn back to the original A or B token
@@ -108,7 +109,7 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
 );
 
 /**
- * An ERC20-like Token
+ * A program to exchange tokens against a pool of liquidity
  */
 export class TokenSwap {
   /**
@@ -117,14 +118,39 @@ export class TokenSwap {
   connection: Connection;
 
   /**
-   * The public key identifying this token
+   * Program Identifier for the Swap program
+   */
+  swapProgramId: PublicKey;
+
+  /**
+   * Program Identifier for the Token program
+   */
+  tokenProgramId: PublicKey;
+
+  /**
+   * The public key identifying this swap program
    */
   tokenSwap: PublicKey;
 
   /**
-   * Program Identifier for the Token Swap program
+   * The public key for the liquidity pool token
    */
-  programId: PublicKey;
+  poolToken: PublicKey;
+
+  /**
+   * Authority
+   */
+  authority: PublicKey;
+
+  /**
+   * The public key for the first token of the trading pair
+   */
+  tokenAccountA: PublicKey;
+
+  /**
+   * The public key for the second token of the trading pair
+   */
+  tokenAccountB: PublicKey;
 
   /**
    * Fee payer
@@ -135,17 +161,37 @@ export class TokenSwap {
    * Create a Token object attached to the specific token
    *
    * @param connection The connection to use
-   * @param token Public key of the token
-   * @param programId Optional token programId, uses the system programId by default
-   * @param payer Payer of fees
+   * @param tokenSwap The token swap account
+   * @param swapProgramId The program ID of the token-swap program
+   * @param tokenProgramId The program ID of the token program
+   * @param poolToken The pool token
+   * @param authority The authority over the swap and accounts
+   * @param tokenAccountA: The token swap's Token A account
+   * @param tokenAccountB: The token swap's Token B account
+   * @param payer Pays for the transaction
    */
   constructor(
     connection: Connection,
     tokenSwap: PublicKey,
-    programId: PublicKey,
+    swapProgramId: PublicKey,
+    tokenProgramId: PublicKey,
+    poolToken: PublicKey,
+    authority: PublicKey,
+    tokenAccountA: PublicKey,
+    tokenAccountB: PublicKey,
     payer: Account,
   ) {
-    Object.assign(this, {connection, tokenSwap, programId, payer});
+    Object.assign(this, {
+      connection,
+      tokenSwap,
+      swapProgramId,
+      tokenProgramId,
+      poolToken,
+      authority,
+      tokenAccountA,
+      tokenAccountB,
+      payer,
+    });
   }
 
   /**
@@ -216,14 +262,15 @@ export class TokenSwap {
    * @param payer Pays for the transaction
    * @param tokenSwapAccount The token swap account
    * @param authority The authority over the swap and accounts
-   * @param tokenAccountA: The Swap's Token A account
-   * @param tokenAccountB: The Swap's Token B account
-   * @param tokenPool The pool token
-   * @param tokenAccountPool The pool token account
-   * @param tokenProgramId The program id of the token program
+   * @param nonce The nonce used to generate the authority
+   * @param tokenAccountA: The token swap's Token A account
+   * @param tokenAccountB: The token swap's Token B account
+   * @param poolToken The pool token
+   * @param tokenAccountPool The token swap's pool token account
+   * @param tokenProgramId The program ID of the token program
+   * @param swapProgramId The program ID of the token-swap program
    * @param feeNumerator Numerator of the fee ratio
    * @param feeDenominator Denominator of the fee ratio
-   * @param swapProgramId Program ID of the token-swap program
    * @return Token object for the newly minted token, Public key of the account holding the total supply of new tokens
    */
   static async createTokenSwap(
@@ -231,21 +278,26 @@ export class TokenSwap {
     payer: Account,
     tokenSwapAccount: Account,
     authority: PublicKey,
+    nonce: number,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
-    tokenPool: PublicKey,
+    poolToken: PublicKey,
     tokenAccountPool: PublicKey,
+    swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
-    nonce: number,
     feeNumerator: number,
     feeDenominator: number,
-    swapProgramId: PublicKey,
   ): Promise<TokenSwap> {
     let transaction;
     const tokenSwap = new TokenSwap(
       connection,
       tokenSwapAccount.publicKey,
       swapProgramId,
+      tokenProgramId,
+      poolToken,
+      authority,
+      tokenAccountA,
+      tokenAccountB,
       payer,
     );
 
@@ -270,7 +322,7 @@ export class TokenSwap {
       nonce,
       tokenAccountA,
       tokenAccountB,
-      tokenPool,
+      poolToken,
       tokenAccountPool,
       tokenProgramId,
       swapProgramId,
@@ -298,7 +350,7 @@ export class TokenSwap {
     if (accountInfo === null) {
       throw new Error('Failed to find token swap account');
     }
-    if (!accountInfo.owner.equals(this.programId)) {
+    if (!accountInfo.owner.equals(this.swapProgramId)) {
       throw new Error(
         `Invalid token swap owner: ${JSON.stringify(accountInfo.owner)}`,
       );
@@ -328,23 +380,16 @@ export class TokenSwap {
   }
 
   /**
-   * Swap the tokens in the pool
+   * Swap token A for token B
    *
-   * @param authority Authority
-   * @param source Source account
-   * @param swapSource Base account to swap into, must be a source token
-   * @param swapDestination Base account to swap from, must be a destination token
+   * @param source Source token account
    * @param destination Destination token account
-   * @param tokenProgramId Token program id
-   * @param amount Amount to transfer from source account
+   * @param amountIn Amount to transfer from source account
+   * @param minimumAmountOut Minimum amount to send
    */
   async swap(
-    authority: PublicKey,
     source: PublicKey,
-    swapSource: PublicKey,
-    swapDestination: PublicKey,
     destination: PublicKey,
-    tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
   ): Promise<TransactionSignature> {
@@ -354,13 +399,48 @@ export class TokenSwap {
       new Transaction().add(
         TokenSwap.swapInstruction(
           this.tokenSwap,
-          authority,
+          this.authority,
           source,
-          swapSource,
-          swapDestination,
+          this.tokenAccountA,
+          this.tokenAccountB,
           destination,
-          this.programId,
-          tokenProgramId,
+          this.swapProgramId,
+          this.tokenProgramId,
+          amountIn,
+          minimumAmountOut,
+        ),
+      ),
+      this.payer,
+    );
+  }
+
+  /**
+   * Swap token B for token A
+   *
+   * @param source Source token account
+   * @param destination Destination token account
+   * @param amountIn Amount to transfer from source account
+   * @param minimumAmountOut Minimum amount to send
+   */
+  async swapInverse(
+    source: PublicKey,
+    destination: PublicKey,
+    amountIn: number | Numberu64,
+    minimumAmountOut: number | Numberu64,
+  ): Promise<TransactionSignature> {
+    return await sendAndConfirmTransaction(
+      'swap',
+      this.connection,
+      new Transaction().add(
+        TokenSwap.swapInstruction(
+          this.tokenSwap,
+          this.authority,
+          source,
+          this.tokenAccountB,
+          this.tokenAccountA,
+          destination,
+          this.swapProgramId,
+          this.tokenProgramId,
           amountIn,
           minimumAmountOut,
         ),
@@ -414,27 +494,18 @@ export class TokenSwap {
   }
 
   /**
-   * Deposit some tokens into the pool
-   *
-   * @param authority Authority
-   * @param sourceA Source account A
-   * @param sourceB Source account B
-   * @param intoA Base account A to deposit into
-   * @param intoB Base account B to deposit into
-   * @param poolToken Pool token
-   * @param poolAccount Pool account to deposit the generated tokens
-   * @param tokenProgramId Token program id
-   * @param amount Amount of pool token to deposit, token A and B amount are set by the exchange rate relative to the total pool token supply
+   * Deposit tokens into the pool
+   * @param userAccountA User account for token A
+   * @param userAccountB User account for token B
+   * @param poolAccount User account for pool token
+   * @param poolTokenAmount Amount of pool tokens to mint
+   * @param maximumTokenA The maximum amount of token A to deposit
+   * @param maximumTokenB The maximum amount of token B to deposit
    */
   async deposit(
-    authority: PublicKey,
-    sourceA: PublicKey,
-    sourceB: PublicKey,
-    intoA: PublicKey,
-    intoB: PublicKey,
-    poolToken: PublicKey,
+    userAccountA: PublicKey,
+    userAccountB: PublicKey,
     poolAccount: PublicKey,
-    tokenProgramId: PublicKey,
     poolTokenAmount: number | Numberu64,
     maximumTokenA: number | Numberu64,
     maximumTokenB: number | Numberu64,
@@ -445,15 +516,15 @@ export class TokenSwap {
       new Transaction().add(
         TokenSwap.depositInstruction(
           this.tokenSwap,
-          authority,
-          sourceA,
-          sourceB,
-          intoA,
-          intoB,
-          poolToken,
+          this.authority,
+          userAccountA,
+          userAccountB,
+          this.tokenAccountA,
+          this.tokenAccountB,
+          this.poolToken,
           poolAccount,
-          this.programId,
-          tokenProgramId,
+          this.swapProgramId,
+          this.tokenProgramId,
           poolTokenAmount,
           maximumTokenA,
           maximumTokenB,
@@ -515,27 +586,19 @@ export class TokenSwap {
   }
 
   /**
-   * Withdraw the token from the pool at the current ratio
+   * Withdraw tokens from the pool
    *
-   * @param authority Authority
-   * @param sourcePoolAccount Source pool account
-   * @param poolToken Pool token
-   * @param fromA Base account A to withdraw from
-   * @param fromB Base account B to withdraw from
-   * @param userAccountA Token A user account
-   * @param userAccountB token B user account
-   * @param tokenProgramId Token program id
-   * @param amount Amount of pool token to withdraw, token A and B amount are set by the exchange rate relative to the total pool token supply
+   * @param userAccountA User account for token A
+   * @param userAccountB User account for token B
+   * @param poolAccount User account for pool token
+   * @param poolTokenAmount Amount of pool tokens to burn
+   * @param minimumTokenA The minimum amount of token A to withdraw
+   * @param minimumTokenB The minimum amount of token B to withdraw
    */
   async withdraw(
-    authority: PublicKey,
-    poolMint: PublicKey,
-    sourcePoolAccount: PublicKey,
-    fromA: PublicKey,
-    fromB: PublicKey,
     userAccountA: PublicKey,
     userAccountB: PublicKey,
-    tokenProgramId: PublicKey,
+    poolAccount: PublicKey,
     poolTokenAmount: number | Numberu64,
     minimumTokenA: number | Numberu64,
     minimumTokenB: number | Numberu64,
@@ -546,15 +609,15 @@ export class TokenSwap {
       new Transaction().add(
         TokenSwap.withdrawInstruction(
           this.tokenSwap,
-          authority,
-          poolMint,
-          sourcePoolAccount,
-          fromA,
-          fromB,
+          this.authority,
+          this.poolToken,
+          poolAccount,
+          this.tokenAccountA,
+          this.tokenAccountB,
           userAccountA,
           userAccountB,
-          this.programId,
-          tokenProgramId,
+          this.swapProgramId,
+          this.tokenProgramId,
           poolTokenAmount,
           minimumTokenA,
           minimumTokenB,

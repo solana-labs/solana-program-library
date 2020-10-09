@@ -203,15 +203,15 @@ export async function createTokenSwap(): Promise<void> {
     swapPayer,
     tokenSwapAccount,
     authority,
+    nonce,
     tokenAccountA,
     tokenAccountB,
     tokenPool.publicKey,
     tokenAccountPool,
+    tokenSwapProgramId,
     tokenProgramId,
-    nonce,
     1,
     4,
-    tokenSwapProgramId,
   );
 
   console.log('getting token swap');
@@ -245,14 +245,9 @@ export async function deposit(): Promise<void> {
 
   console.log('Depositing into swap');
   await tokenSwap.deposit(
-    authority,
     userAccountA,
     userAccountB,
-    tokenAccountA,
-    tokenAccountB,
-    tokenPool.publicKey,
     newAccountPool,
-    tokenProgramId,
     POOL_TOKEN_AMOUNT,
     tokenA,
     tokenB,
@@ -296,14 +291,9 @@ export async function withdraw(): Promise<void> {
 
   console.log('Withdrawing pool tokens for A and B tokens');
   await tokenSwap.withdraw(
-    authority,
-    tokenPool.publicKey,
-    tokenAccountPool,
-    tokenAccountA,
-    tokenAccountB,
     userAccountA,
     userAccountB,
-    tokenProgramId,
+    tokenAccountPool,
     POOL_TOKEN_AMOUNT,
     tokenA,
     tokenB,
@@ -336,12 +326,8 @@ export async function swap(): Promise<void> {
 
   console.log('Swapping');
   await tokenSwap.swap(
-    authority,
     userAccountA,
-    tokenAccountA,
-    tokenAccountB,
     userAccountB,
-    tokenProgramId,
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,
   );
