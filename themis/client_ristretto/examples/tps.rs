@@ -25,6 +25,7 @@ fn main() {
         let sender_keypair = read_keypair_file(&config.keypair_path).unwrap();
         test_e2e(
             &mut banks_client,
+            &spl_themis_ristretto::id(),
             sender_keypair,
             policies,
             1_000,

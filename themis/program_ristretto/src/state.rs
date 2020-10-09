@@ -5,7 +5,9 @@ use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
     traits::Identity,
 };
-use elgamal_ristretto::{ciphertext::Ciphertext, private::SecretKey, public::PublicKey};
+use elgamal_ristretto::{
+    ciphertext::Ciphertext, multiply::ristretto_mul, private::SecretKey, public::PublicKey,
+};
 use rand::thread_rng;
 use solana_sdk::program_error::ProgramError;
 
@@ -73,8 +75,8 @@ fn inner_product(
     scalars: &[Scalar],
 ) -> Points {
     for &(i, (x, y)) in ciphertexts {
-        aggregate_x = x * scalars[i as usize] + aggregate_x;
-        aggregate_y = y * scalars[i as usize] + aggregate_y;
+        aggregate_x = ristretto_mul(&x, &scalars[i as usize]).unwrap() + aggregate_x;
+        aggregate_y = ristretto_mul(&y, &scalars[i as usize]).unwrap() + aggregate_y;
     }
 
     (aggregate_x, aggregate_y)

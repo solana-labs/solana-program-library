@@ -24,6 +24,7 @@ use std::{io, time::Instant};
 /// For a single user, create interactions, calculate the aggregate, submit a proof, and verify it.
 async fn run_user_workflow(
     mut client: BanksClient,
+    program_id: &Pubkey,
     sender_keypair: Keypair,
     (_sk, pk): (SecretKey, PublicKey),
     interactions: Vec<(RistrettoPoint, RistrettoPoint)>,
@@ -36,8 +37,13 @@ async fn run_user_workflow(
     // Create the users account
     let user_keypair = Keypair::new();
     let user_pubkey = user_keypair.pubkey();
-    let ixs =
-        instruction::create_user_account(&sender_pubkey, &user_pubkey, sol_to_lamports(0.001), pk);
+    let ixs = instruction::create_user_account(
+        program_id,
+        &sender_pubkey,
+        &user_pubkey,
+        sol_to_lamports(0.001),
+        pk,
+    );
     let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().await?;
     let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
@@ -56,7 +62,12 @@ async fn run_user_workflow(
     // Send one interaction at a time to stay under the BPF instruction limit
     for (i, interaction) in interactions.into_iter().enumerate() {
         let interactions = vec![(i as u8, interaction)];
-        let ix = instruction::submit_interactions(&user_pubkey, &policies_pubkey, interactions);
+        let ix = instruction::submit_interactions(
+            program_id,
+            &user_pubkey,
+            &policies_pubkey,
+            interactions,
+        );
         let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
         let recent_blockhash = client.get_recent_blockhash().await?;
         let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
@@ -102,6 +113,7 @@ async fn run_user_workflow(
     //sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
 
     let ix = instruction::submit_proof_decryption(
+        program_id,
         &user_pubkey,
         decrypted_aggregate,
         announcement_g,
@@ -132,6 +144,7 @@ async fn run_user_workflow(
 
 pub async fn test_e2e(
     client: &mut BanksClient,
+    program_id: &Pubkey,
     sender_keypair: Keypair,
     policies: Vec<Scalar>,
     num_users: u64,
@@ -144,6 +157,7 @@ pub async fn test_e2e(
 
     // Create the policies account
     let mut ixs = instruction::create_policies_account(
+        program_id,
         &sender_pubkey,
         &policies_pubkey,
         sol_to_lamports(0.01),
@@ -155,6 +169,7 @@ pub async fn test_e2e(
         .map(|(i, x)| (i as u8, *x))
         .collect();
     ixs.push(instruction::store_policies(
+        program_id,
         &policies_pubkey,
         policies_slice,
     ));
@@ -210,6 +225,7 @@ pub async fn test_e2e(
         .map(move |feepayer_keypair| {
             run_user_workflow(
                 client.clone(),
+                program_id,
                 feepayer_keypair,
                 (sk.clone(), pk),
                 interactions.clone(),
@@ -341,19 +357,23 @@ mod tests {
     fn test_local_e2e_2ads() {
         let (genesis_config, sender_keypair) = create_genesis_config(sol_to_lamports(9_000_000.0));
         let mut bank = Bank::new(&genesis_config);
-        bank.add_builtin_program(
-            "Themis",
-            spl_themis_ristretto::id(),
-            process_instruction_native,
-        );
+        let program_id = Keypair::new().pubkey();
+        bank.add_builtin_program("Themis", program_id, process_instruction_native);
         let bank_forks = Arc::new(RwLock::new(BankForks::new(bank)));
         Runtime::new().unwrap().block_on(async {
             let transport = start_local_server(&bank_forks).await;
             let mut banks_client = start_client(transport).await.unwrap();
             let policies = vec![1u64.into(), 2u64.into()];
-            test_e2e(&mut banks_client, sender_keypair, policies, 10, 3u64.into())
-                .await
-                .unwrap();
+            test_e2e(
+                &mut banks_client,
+                &program_id,
+                sender_keypair,
+                policies,
+                10,
+                3u64.into(),
+            )
+            .await
+            .unwrap();
         });
     }
 }

@@ -13,19 +13,19 @@ exclude = ["js/**"]
 
 [features]
 no-entrypoint = []
-program = ["solana-sdk/program"]
-default = ["solana-sdk/default"]
+program = ["solana-sdk/program", "elgamal_ristretto/program"]
+default = ["solana-sdk/default", "elgamal_ristretto/default"]
 
 [dependencies]
 bincode = "1.3"
 borsh = "0.7.1"
 curve25519-dalek = { git = "https://github.com/garious/curve25519-dalek", rev = "60efef3553d6bf3d7f3b09b5f97acd54d72529ff", features = ["borsh"] }
-elgamal_ristretto = { git = "https://github.com/garious/elgamal", rev = "260763fb67c34debe3915b39d95b6e7b3e1461d0" }
+elgamal_ristretto = { git = "https://github.com/garious/elgamal", rev = "6c5ad5b32160e78be080b74eb7a1867dd65aec6c", default-features = false }
 getrandom = { version = "0.1.15", features = ["dummy"] }
 num-derive = "0.3"
 num-traits = "0.2"
 rand = "0.7.0"
-solana-sdk = { version = "1.3.14", default-features = false, optional = true }
+solana-sdk = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1", default-features = false, optional = true }
 thiserror = "1.0"
 
 [lib]

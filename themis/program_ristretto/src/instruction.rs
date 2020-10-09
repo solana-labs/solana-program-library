@@ -111,13 +111,17 @@ impl ThemisInstruction {
 }
 
 /// Return an `InitializeUserAccount` instruction.
-fn initialize_user_account(user_pubkey: &Pubkey, public_key: PublicKey) -> Instruction {
+fn initialize_user_account(
+    program_id: &Pubkey,
+    user_pubkey: &Pubkey,
+    public_key: PublicKey,
+) -> Instruction {
     let data = ThemisInstruction::InitializeUserAccount { public_key };
 
     let accounts = vec![AccountMeta::new(*user_pubkey, false)];
 
     Instruction {
-        program_id: crate::id(),
+        program_id: *program_id,
         accounts,
         data: data.serialize().unwrap(),
     }
@@ -125,6 +129,7 @@ fn initialize_user_account(user_pubkey: &Pubkey, public_key: PublicKey) -> Instr
 
 /// Return two instructions that create and initialize a user account.
 pub fn create_user_account(
+    program_id: &Pubkey,
     from: &Pubkey,
     user_pubkey: &Pubkey,
     lamports: u64,
@@ -132,17 +137,21 @@ pub fn create_user_account(
 ) -> Vec<Instruction> {
     let space = User::default().try_to_vec().unwrap().len() as u64;
     vec![
-        system_instruction::create_account(from, user_pubkey, lamports, space, &crate::id()),
-        initialize_user_account(user_pubkey, public_key),
+        system_instruction::create_account(from, user_pubkey, lamports, space, program_id),
+        initialize_user_account(program_id, user_pubkey, public_key),
     ]
 }
 
 /// Return an `InitializePoliciesAccount` instruction.
-fn initialize_policies_account(policies_pubkey: &Pubkey, num_scalars: u8) -> Instruction {
+fn initialize_policies_account(
+    program_id: &Pubkey,
+    policies_pubkey: &Pubkey,
+    num_scalars: u8,
+) -> Instruction {
     let data = ThemisInstruction::InitializePoliciesAccount { num_scalars };
     let accounts = vec![AccountMeta::new(*policies_pubkey, false)];
     Instruction {
-        program_id: crate::id(),
+        program_id: *program_id,
         accounts,
         data: data.serialize().unwrap(),
     }
@@ -150,6 +159,7 @@ fn initialize_policies_account(policies_pubkey: &Pubkey, num_scalars: u8) -> Ins
 
 /// Return two instructions that create and initialize a policies account.
 pub fn create_policies_account(
+    program_id: &Pubkey,
     from: &Pubkey,
     policies_pubkey: &Pubkey,
     lamports: u64,
@@ -157,17 +167,21 @@ pub fn create_policies_account(
 ) -> Vec<Instruction> {
     let space = Policies::new(num_scalars).try_to_vec().unwrap().len() as u64;
     vec![
-        system_instruction::create_account(from, policies_pubkey, lamports, space, &crate::id()),
-        initialize_policies_account(policies_pubkey, num_scalars),
+        system_instruction::create_account(from, policies_pubkey, lamports, space, program_id),
+        initialize_policies_account(program_id, policies_pubkey, num_scalars),
     ]
 }
 
 /// Return an `InitializePoliciesAccount` instruction.
-pub fn store_policies(policies_pubkey: &Pubkey, scalars: Vec<(u8, Scalar)>) -> Instruction {
+pub fn store_policies(
+    program_id: &Pubkey,
+    policies_pubkey: &Pubkey,
+    scalars: Vec<(u8, Scalar)>,
+) -> Instruction {
     let data = ThemisInstruction::StorePolicies { scalars };
     let accounts = vec![AccountMeta::new(*policies_pubkey, true)];
     Instruction {
-        program_id: crate::id(),
+        program_id: *program_id,
         accounts,
         data: data.serialize().unwrap(),
     }
@@ -175,6 +189,7 @@ pub fn store_policies(policies_pubkey: &Pubkey, scalars: Vec<(u8, Scalar)>) -> I
 
 /// Return a `SubmitInteractions` instruction.
 pub fn submit_interactions(
+    program_id: &Pubkey,
     user_pubkey: &Pubkey,
     policies_pubkey: &Pubkey,
     encrypted_interactions: Vec<(u8, (RistrettoPoint, RistrettoPoint))>,
@@ -187,7 +202,7 @@ pub fn submit_interactions(
         AccountMeta::new_readonly(*policies_pubkey, false),
     ];
     Instruction {
-        program_id: crate::id(),
+        program_id: *program_id,
         accounts,
         data: data.serialize().unwrap(),
     }
@@ -195,6 +210,7 @@ pub fn submit_interactions(
 
 /// Return a `SubmitProofDecryption` instruction.
 pub fn submit_proof_decryption(
+    program_id: &Pubkey,
     user_pubkey: &Pubkey,
     plaintext: RistrettoPoint,
     announcement_g: RistrettoPoint,
@@ -208,7 +224,7 @@ pub fn submit_proof_decryption(
     };
     let accounts = vec![AccountMeta::new(*user_pubkey, true)];
     Instruction {
-        program_id: crate::id(),
+        program_id: *program_id,
         accounts,
         data: data.serialize().unwrap(),
     }
@@ -216,6 +232,7 @@ pub fn submit_proof_decryption(
 
 /// Return a `RequestPayment` instruction.
 pub fn request_payment(
+    program_id: &Pubkey,
     user_pubkey: &Pubkey,
     encrypted_aggregate: (RistrettoPoint, RistrettoPoint),
     decrypted_aggregate: RistrettoPoint,
@@ -228,7 +245,7 @@ pub fn request_payment(
     };
     let accounts = vec![AccountMeta::new(*user_pubkey, true)];
     Instruction {
-        program_id: crate::id(),
+        program_id: *program_id,
         accounts,
         data: data.serialize().unwrap(),
     }

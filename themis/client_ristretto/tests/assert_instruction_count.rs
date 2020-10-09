@@ -194,7 +194,7 @@ fn assert_instruction_count() {
         Policies {
             is_initialized: true,
             num_scalars: num_scalars as u8,
-            scalars: scalars.clone(),
+            scalars,
         }
         .try_to_vec()
         .unwrap()
@@ -261,10 +261,10 @@ fn assert_instruction_count() {
     let proof_decryption_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
 
-    const BASELINE_NEW_POLICIES_COUNT: u64 = 80_000; // last known 75,796 @ 128, 4,675 @ 2
-    const BASELINE_INITIALIZE_USER_COUNT: u64 = 22_000; // last known 19,868
-    const BASELINE_CALCULATE_AGGREGATE_COUNT: u64 = 15_000_000; // last known 13,061,884
-    const BASELINE_PROOF_DECRYPTION_COUNT: u64 = 60_000_000; // last known 13,167,140
+    const BASELINE_NEW_POLICIES_COUNT: u64 = 80_000; // last known 3,354
+    const BASELINE_INITIALIZE_USER_COUNT: u64 = 22_000; // last known 19,746
+    const BASELINE_CALCULATE_AGGREGATE_COUNT: u64 = 200_000; // last known 87,220
+    const BASELINE_PROOF_DECRYPTION_COUNT: u64 = 200_000; // last known 105,368
 
     println!("BPF instructions executed");
     println!(
@@ -297,12 +297,28 @@ fn assert_instruction_count() {
 
 // Mock InvokeContext
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct MockInvokeContext {
     pub key: Pubkey,
     pub logger: MockLogger,
     pub compute_meter: MockComputeMeter,
+    compute_budget: ComputeBudget,
 }
+
+impl Default for MockInvokeContext {
+    fn default() -> Self {
+        Self {
+            key: Pubkey::default(),
+            logger: MockLogger::default(),
+            compute_meter: MockComputeMeter::default(),
+            compute_budget: ComputeBudget {
+                max_invoke_depth: 10,
+                ..ComputeBudget::default()
+            },
+        }
+    }
+}
+
 impl InvokeContext for MockInvokeContext {
     fn push(&mut self, _key: &Pubkey) -> Result<(), InstructionError> {
         Ok(())
@@ -325,14 +341,11 @@ impl InvokeContext for MockInvokeContext {
     fn get_logger(&self) -> Rc<RefCell<dyn Logger>> {
         Rc::new(RefCell::new(self.logger.clone()))
     }
-    fn is_cross_program_supported(&self) -> bool {
-        true
-    }
-    fn get_compute_budget(&self) -> ComputeBudget {
-        ComputeBudget {
-            max_invoke_depth: 10,
-            ..ComputeBudget::default()
-        }
+    //fn is_cross_program_supported(&self) -> bool {
+    //    true
+    //}
+    fn get_compute_budget(&self) -> &ComputeBudget {
+        &self.compute_budget
     }
     fn get_compute_meter(&self) -> Rc<RefCell<dyn ComputeMeter>> {
         Rc::new(RefCell::new(self.compute_meter.clone()))
@@ -343,6 +356,9 @@ impl InvokeContext for MockInvokeContext {
     }
     fn record_instruction(&self, _: &solana_sdk::instruction::Instruction) {
         todo!()
+    }
+    fn is_feature_active(&self, _: &solana_sdk::pubkey::Pubkey) -> bool {
+        true
     }
 }
 
