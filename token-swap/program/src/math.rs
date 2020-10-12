@@ -78,7 +78,7 @@ impl PreciseNumber {
         }
     }
 
-    /// Performs a multiplication on two "precise" integers
+    /// Performs a multiplication on two precise numbers
     pub fn checked_mul(&self, rhs: &Self) -> Option<Self> {
         match self.value.checked_mul(rhs.value) {
             Some(v) => {
