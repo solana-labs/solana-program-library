@@ -55,7 +55,7 @@ impl PreciseNumber {
         Some(Self { value })
     }
 
-    /// Performs a checked division on two "precise" unsigned integers
+    /// Performs a checked division on two precise numbers
     pub fn checked_div(&self, rhs: &Self) -> Option<Self> {
         if rhs.value == 0 {
             return None;
