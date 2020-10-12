@@ -119,7 +119,7 @@ impl PreciseNumber {
         }
     }
 
-    /// Performs pow on a "precise" unsigned integer
+    /// Performs pow on a precise number
     pub fn checked_pow(&self, exponent: u64) -> Option<Self> {
         // For odd powers, start with a multiplication by base since we halve the
         // exponent at the start
