@@ -591,42 +591,7 @@ impl PrintProgramError for SwapError {
     where
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
-        match self {
-            SwapError::AlreadyInUse => info!("Error: Swap account already in use"),
-            SwapError::InvalidProgramAddress => {
-                info!("Error: Invalid program address generated from nonce and key")
-            }
-            SwapError::InvalidOwner => {
-                info!("Error: The input account owner is not the program address")
-            }
-            SwapError::InvalidOutputOwner => {
-                info!("Error: Output pool account owner cannot be the program address")
-            }
-            SwapError::ExpectedMint => {
-                info!("Error: Deserialized account is not an SPL Token mint")
-            }
-            SwapError::ExpectedAccount => {
-                info!("Error: Deserialized account is not an SPL Token account")
-            }
-            SwapError::EmptySupply => info!("Error: Input token account empty"),
-            SwapError::InvalidSupply => info!("Error: Pool token mint has a non-zero supply"),
-            SwapError::RepeatedMint => info!("Error: Swap input token accounts have the same mint"),
-            SwapError::InvalidDelegate => info!("Error: Token account has a delegate"),
-            SwapError::InvalidInput => info!("Error: InvalidInput"),
-            SwapError::IncorrectSwapAccount => {
-                info!("Error: Address of the provided swap token account is incorrect")
-            }
-            SwapError::IncorrectPoolMint => {
-                info!("Error: Address of the provided pool token mint is incorrect")
-            }
-            SwapError::InvalidOutput => info!("Error: InvalidOutput"),
-            SwapError::CalculationFailure => info!("Error: CalculationFailure"),
-            SwapError::InvalidInstruction => info!("Error: InvalidInstruction"),
-            SwapError::ExceededSlippage => {
-                info!("Error: Swap instruction exceeds desired slippage limit")
-            }
-            SwapError::InvalidWeight => info!("Provided weight outside of valid range (1-99)"),
-        }
+        info!(&format!("Error: {}", self));
     }
 }
 

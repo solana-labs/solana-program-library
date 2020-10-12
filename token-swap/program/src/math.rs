@@ -3,7 +3,8 @@
 /// The representation of the number one as a precise number
 pub const ONE: u128 = 10_000_000_000;
 
-/// Maximum weight for token in swap
+/// Maximum weight for token in swap.  This number is meant to stay small to
+/// so that it is possible to accurately calculate x^(MAX_WEIGHT / MIN_WEIGHT).
 pub const MAX_WEIGHT: u8 = 100;
 /// Minimum weight for token in swap
 pub const MIN_WEIGHT: u8 = 1;
@@ -16,13 +17,32 @@ pub struct PreciseNumber {
 }
 
 impl PreciseNumber {
+    /// The number 1 as a PreciseNumber, used for easier calculations.
     const ONE: Self = Self { value: ONE };
 
+    /// Correction to apply to avoid truncation errors on division.  Since
+    /// integer operations will always floor the result, we artifically bump it
+    /// up by one half to get the expect result.
     const ROUNDING_CORRECTION: u128 = ONE / 2;
-    const POW_PRECISION: u128 = 100;
-    const APPROXIMATION_ITERATIONS: u64 = 100_000;
 
+    /// Desired precision for the correction factor applied during each
+    /// iteration of checked_pow_approximation.  Once the correction factor is
+    /// smaller than this number, or we reach the maxmium number of iterations,
+    /// the calculation ends.
+    const POW_PRECISION: u128 = 100;
+
+    /// Maximum number iterations to apply on checked_pow_approximation.
+    const MAX_APPROXIMATION_ITERATIONS: u64 = 100_000;
+
+    /// Minimum base allowed when calculating exponents in checked_pow_fraction
+    /// and checked_pow_approximation.  This simply avoids 0 as a base.
     const MIN_POW_BASE: u128 = 1;
+
+    /// Maximum base allowed when calculating exponents in checked_pow_fraction
+    /// and checked_pow_approximation.  The calculation use a Taylor Series
+    /// approxmation around 1, which converges for bases between 0 and 2.  See
+    /// https://en.wikipedia.org/wiki/Binomial_series#Conditions_for_convergence
+    /// for more information.
     const MAX_POW_BASE: u128 = 2 * ONE;
 
     /// Create a precise number from an imprecise u64, should always succeed
@@ -212,7 +232,7 @@ impl PreciseNumber {
             return Some(precise_whole);
         }
         let precise_remainder =
-            self.checked_pow_approximation(&remainder_exponent, Self::APPROXIMATION_ITERATIONS)?;
+            self.checked_pow_approximation(&remainder_exponent, Self::MAX_APPROXIMATION_ITERATIONS)?;
         precise_whole.checked_mul(&precise_remainder)
     }
 }
@@ -227,7 +247,7 @@ mod tests {
         let base = PreciseNumber { value: base };
         let exponent = PreciseNumber { value: exponent };
         let root = base
-            .checked_pow_approximation(&exponent, PreciseNumber::APPROXIMATION_ITERATIONS)
+            .checked_pow_approximation(&exponent, PreciseNumber::MAX_APPROXIMATION_ITERATIONS)
             .unwrap();
         let expected = PreciseNumber { value: expected };
         assert!(root.almost_eq(&expected, POW_TEST_PRECISION));

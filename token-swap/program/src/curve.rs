@@ -21,14 +21,12 @@ pub struct SwapResult {
 impl SwapResult {
     /// SwapResult for swap from one currency into another, given pool information
     /// and fee.
-    ///              /          B_i       W_i / W_o \
-    /// A_o = B_o * | 1 - ---------------            |
-    ///              \    B_i + A_i - fee           /
+    ///
+    /// A_o = B_o * (1 - ( B_i / (B_i + A_i - fee) ) ^ (W_i / W_o))
     ///
     /// A_o = amount out, A_i = source amount in,
     /// B_o = destination amount, B_i = source amount,
     /// W_i = weight source token, W_o = weight destination token
-    ///
     pub fn swap_to(
         source_amount: u64,
         swap_source_amount: u64,
