@@ -407,6 +407,7 @@ export class TokenSwap {
 
     // already properly filled in
     // tokenSwapInfo.nonce = tokenSwapInfo.nonce;
+    tokenSwapInfo.tokenProgramId = new PublicKey(tokenSwapInfo.tokenProgramId);
     tokenSwapInfo.tokenAccountA = new PublicKey(tokenSwapInfo.tokenAccountA);
     tokenSwapInfo.tokenAccountB = new PublicKey(tokenSwapInfo.tokenAccountB);
     tokenSwapInfo.tokenPool = new PublicKey(tokenSwapInfo.tokenPool);
