@@ -216,6 +216,7 @@ export async function createTokenSwap(): Promise<void> {
 
   console.log('getting token swap');
   const swapInfo = await tokenSwap.getInfo();
+  assert(swapInfo.tokenProgramId.equals(tokenProgramId));
   assert(swapInfo.tokenAccountA.equals(tokenAccountA));
   assert(swapInfo.tokenAccountB.equals(tokenAccountB));
   assert(swapInfo.tokenPool.equals(tokenPool.publicKey));

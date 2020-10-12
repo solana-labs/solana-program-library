@@ -16,6 +16,7 @@ import {
 
 import * as Layout from './layout';
 import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
+import {loadAccount} from './util/account';
 
 /**
  * Some amount of tokens
@@ -61,6 +62,8 @@ type TokenSwapInfo = {|
    */
   nonce: number,
 
+  tokenProgramId: PublicKey,
+
   /**
    * Token A. The Liquidity token is issued against this value.
    */
@@ -100,6 +103,7 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
   [
     BufferLayout.u8('isInitialized'),
     BufferLayout.u8('nonce'),
+    Layout.publicKey('tokenProgramId'),
     Layout.publicKey('tokenAccountA'),
     Layout.publicKey('tokenAccountB'),
     Layout.publicKey('tokenPool'),
@@ -255,6 +259,55 @@ export class TokenSwap {
     });
   }
 
+  static async loadTokenSwapInfo(
+    connection: Connection,
+    address: PublicKey,
+    programId: PublicKey,
+  ): Promise<TokenSwapInfo> {
+    const data = await loadAccount(connection, address, programId);
+    const tokenSwapInfo = TokenSwapLayout.decode(data);
+    if (!tokenSwapInfo.isInitialized) {
+      throw new Error(`Invalid token swap state`);
+    }
+
+    return tokenSwapInfo;
+  }
+
+  static async loadTokenSwap(
+    connection: Connection,
+    address: PublicKey,
+    programId: PublicKey,
+    payer: Account,
+  ): Promise<TokenSwap> {
+    const tokenSwapInfo = await TokenSwap.loadTokenSwapInfo(
+      connection,
+      address,
+      programId,
+    );
+
+    const [authority, nonce] = await PublicKey.findProgramAddress(
+      [address.toBuffer()],
+      programId,
+    );
+
+    const poolToken = new PublicKey(tokenSwapInfo.tokenPool);
+    const tokenAccountA = new PublicKey(tokenSwapInfo.tokenAccountA);
+    const tokenAccountB = new PublicKey(tokenSwapInfo.tokenAccountB);
+    const tokenProgramId = new PublicKey(tokenSwapInfo.tokenProgramId);
+
+    return new TokenSwap(
+      connection,
+      address,
+      programId,
+      tokenProgramId,
+      poolToken,
+      authority,
+      tokenAccountA,
+      tokenAccountB,
+      payer,
+    );
+  }
+
   /**
    * Create a new Token Swap
    *
@@ -346,21 +399,12 @@ export class TokenSwap {
    * Retrieve tokenSwap information
    */
   async getInfo(): Promise<TokenSwapInfo> {
-    const accountInfo = await this.connection.getAccountInfo(this.tokenSwap);
-    if (accountInfo === null) {
-      throw new Error('Failed to find token swap account');
-    }
-    if (!accountInfo.owner.equals(this.swapProgramId)) {
-      throw new Error(
-        `Invalid token swap owner: ${JSON.stringify(accountInfo.owner)}`,
-      );
-    }
+    const tokenSwapInfo = await TokenSwap.loadTokenSwapInfo(
+      this.connection,
+      this.tokenSwap,
+      this.swapProgramId,
+    );
 
-    const data = Buffer.from(accountInfo.data);
-    const tokenSwapInfo = TokenSwapLayout.decode(data);
-    if (!tokenSwapInfo.isInitialized) {
-      throw new Error(`Invalid token swap state`);
-    }
     // already properly filled in
     // tokenSwapInfo.nonce = tokenSwapInfo.nonce;
     tokenSwapInfo.tokenAccountA = new PublicKey(tokenSwapInfo.tokenAccountA);
