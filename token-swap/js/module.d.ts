@@ -1,4 +1,6 @@
 declare module '@solana/spl-token-swap' {
+  import {Buffer} from 'buffer';
+  import {Layout} from 'buffer-layout';
   import {
     PublicKey,
     TransactionInstruction,
