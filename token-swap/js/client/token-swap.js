@@ -367,7 +367,7 @@ export class TokenSwap {
    * @param poolDestination Pool's destination token account
    * @param userDestination User's destination token account
    * @param amountIn Amount to transfer from source account
-   * @param minimumAmountOut Minimum amount to send
+   * @param minimumAmountOut Minimum amount of tokens the user will receive
    */
   async swap(
     userSource: PublicKey,
