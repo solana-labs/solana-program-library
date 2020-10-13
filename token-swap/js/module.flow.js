@@ -5,25 +5,12 @@
  *
  */
 
-import {PublicKey} from '@solana/web3.js';
-
 declare module '@solana/spl-token-swap' {
   // === client/token-swap.js ===
   declare export class Numberu64 extends BN {
     toBuffer(): Buffer;
     static fromBuffer(buffer: Buffer): Numberu64;
   }
-
-  declare export type TokenSwapInfo = {|
-    nonce: number,
-    tokenProgramId: PublicKey,
-    tokenAccountA: PublicKey,
-    tokenAccountB: PublicKey,
-    tokenPool: PublicKey,
-    feesNumerator: Numberu64,
-    feesDenominator: Numberu64,
-    feeRatio: number,
-  |};
 
   declare export var TokenSwapLayout: Layout;
 
@@ -37,6 +24,8 @@ declare module '@solana/spl-token-swap' {
       authority: PublicKey,
       tokenAccountA: PublicKey,
       tokenAccountB: PublicKey,
+      feeNumerator: Numberu64,
+      feeDenominator: Numberu64,
       payer: Account,
     ): TokenSwap;
 
@@ -80,8 +69,6 @@ declare module '@solana/spl-token-swap' {
       feeDenominator: number,
       programId: PublicKey,
     ): Promise<TokenSwap>;
-
-    getInfo(): Promise<TokenSwapInfo>;
 
     swap(
       userSource: PublicKey,

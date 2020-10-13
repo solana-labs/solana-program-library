@@ -1,6 +1,4 @@
 declare module '@solana/spl-token-swap' {
-  import {Buffer} from 'buffer';
-  import {Layout} from 'buffer-layout';
   import {
     PublicKey,
     TransactionInstruction,
@@ -16,17 +14,6 @@ declare module '@solana/spl-token-swap' {
     static fromBuffer(buffer: Buffer): Numberu64;
   }
 
-  export type TokenSwapInfo = {
-    nonce: number;
-    tokenProgramId: PublicKey;
-    tokenAccountA: PublicKey;
-    tokenAccountB: PublicKey;
-    tokenPool: PublicKey;
-    feesNumerator: Numberu64;
-    feesDenominator: Numberu64;
-    feeRatio: number;
-  };
-
   export const TokenSwapLayout: Layout;
 
   export class TokenSwap {
@@ -39,6 +26,8 @@ declare module '@solana/spl-token-swap' {
       authority: PublicKey,
       tokenAccountA: PublicKey,
       tokenAccountB: PublicKey,
+      feeNumerator: Numberu64,
+      feeDenominator: Numberu64,
       payer: Account,
     );
 
@@ -82,8 +71,6 @@ declare module '@solana/spl-token-swap' {
       feeDenominator: number,
       swapProgramId: PublicKey,
     ): Promise<TokenSwap>;
-
-    getInfo(): Promise<TokenSwapInfo>;
 
     swap(
       userSource: PublicKey,

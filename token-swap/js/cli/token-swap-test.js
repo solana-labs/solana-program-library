@@ -214,14 +214,20 @@ export async function createTokenSwap(): Promise<void> {
     4,
   );
 
-  console.log('getting token swap');
-  const swapInfo = await tokenSwap.getInfo();
-  assert(swapInfo.tokenProgramId.equals(tokenProgramId));
-  assert(swapInfo.tokenAccountA.equals(tokenAccountA));
-  assert(swapInfo.tokenAccountB.equals(tokenAccountB));
-  assert(swapInfo.tokenPool.equals(tokenPool.publicKey));
-  assert(1 == swapInfo.feesNumerator.toNumber());
-  assert(4 == swapInfo.feesDenominator.toNumber());
+  console.log('loading token swap');
+  const fetchedTokenSwap = await TokenSwap.loadTokenSwap(
+    connection,
+    tokenSwapAccount.publicKey,
+    tokenSwapProgramId,
+    swapPayer,
+  );
+
+  assert(fetchedTokenSwap.tokenProgramId.equals(tokenProgramId));
+  assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
+  assert(fetchedTokenSwap.tokenAccountB.equals(tokenAccountB));
+  assert(fetchedTokenSwap.poolToken.equals(tokenPool.publicKey));
+  assert(1 == fetchedTokenSwap.feeNumerator.toNumber());
+  assert(4 == fetchedTokenSwap.feeDenominator.toNumber());
 }
 
 export async function deposit(): Promise<void> {

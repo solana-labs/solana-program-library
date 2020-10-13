@@ -54,49 +54,6 @@ export class Numberu64 extends BN {
 }
 
 /**
- * Information about a token swap
- */
-type TokenSwapInfo = {|
-  /**
-   * Nonce. Used to generate the valid program address in the program
-   */
-  nonce: number,
-
-  tokenProgramId: PublicKey,
-
-  /**
-   * Token A. The Liquidity token is issued against this value.
-   */
-  tokenAccountA: PublicKey,
-
-  /**
-   * Token B
-   */
-  tokenAccountB: PublicKey,
-
-  /**
-   * Pool tokens are issued when A or B tokens are deposited
-   * Pool tokens can be withdrawn back to the original A or B token
-   */
-  tokenPool: PublicKey,
-
-  /**
-   * Fee numerator
-   */
-  feesNumerator: Numberu64,
-
-  /**
-   * Fee denominator
-   */
-  feesDenominator: Numberu64,
-
-  /**
-   * Fee ratio applied to the input token amount prior to output calculation
-   */
-  feeRatio: number,
-|};
-
-/**
  * @private
  */
 export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struct(
@@ -107,8 +64,8 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     Layout.publicKey('tokenAccountA'),
     Layout.publicKey('tokenAccountB'),
     Layout.publicKey('tokenPool'),
-    Layout.uint64('feesNumerator'),
-    Layout.uint64('feesDenominator'),
+    Layout.uint64('feeNumerator'),
+    Layout.uint64('feeDenominator'),
   ],
 );
 
@@ -157,6 +114,16 @@ export class TokenSwap {
   tokenAccountB: PublicKey;
 
   /**
+   * Fee numerator
+   */
+  feeNumerator: Numberu64;
+
+  /**
+   * Fee denominator
+   */
+  feeDenominator: Numberu64;
+
+  /**
    * Fee payer
    */
   payer: Account;
@@ -183,6 +150,8 @@ export class TokenSwap {
     authority: PublicKey,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
+    feeNumerator: Numberu64,
+    feeDenominator: Numberu64,
     payer: Account,
   ) {
     Object.assign(this, {
@@ -194,6 +163,8 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      feeNumerator,
+      feeDenominator,
       payer,
     });
   }
@@ -259,41 +230,30 @@ export class TokenSwap {
     });
   }
 
-  static async loadTokenSwapInfo(
-    connection: Connection,
-    address: PublicKey,
-    programId: PublicKey,
-  ): Promise<TokenSwapInfo> {
-    const data = await loadAccount(connection, address, programId);
-    const tokenSwapInfo = TokenSwapLayout.decode(data);
-    if (!tokenSwapInfo.isInitialized) {
-      throw new Error(`Invalid token swap state`);
-    }
-
-    return tokenSwapInfo;
-  }
-
   static async loadTokenSwap(
     connection: Connection,
     address: PublicKey,
     programId: PublicKey,
     payer: Account,
   ): Promise<TokenSwap> {
-    const tokenSwapInfo = await TokenSwap.loadTokenSwapInfo(
-      connection,
-      address,
-      programId,
-    );
+    const data = await loadAccount(connection, address, programId);
+    const tokenSwapData = TokenSwapLayout.decode(data);
+    if (!tokenSwapData.isInitialized) {
+      throw new Error(`Invalid token swap state`);
+    }
 
     const [authority] = await PublicKey.findProgramAddress(
       [address.toBuffer()],
       programId,
     );
 
-    const poolToken = new PublicKey(tokenSwapInfo.tokenPool);
-    const tokenAccountA = new PublicKey(tokenSwapInfo.tokenAccountA);
-    const tokenAccountB = new PublicKey(tokenSwapInfo.tokenAccountB);
-    const tokenProgramId = new PublicKey(tokenSwapInfo.tokenProgramId);
+    const poolToken = new PublicKey(tokenSwapData.tokenPool);
+    const tokenAccountA = new PublicKey(tokenSwapData.tokenAccountA);
+    const tokenAccountB = new PublicKey(tokenSwapData.tokenAccountB);
+    const tokenProgramId = new PublicKey(tokenSwapData.tokenProgramId);
+
+    const feeNumerator = Numberu64.fromBuffer(tokenSwapData.feeNumerator);
+    const feeDenominator = Numberu64.fromBuffer(tokenSwapData.feeDenominator);
 
     return new TokenSwap(
       connection,
@@ -304,6 +264,8 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      feeNumerator,
+      feeDenominator,
       payer,
     );
   }
@@ -351,6 +313,8 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      new Numberu64(feeNumerator),
+      new Numberu64(feeDenominator),
       payer,
     );
 
@@ -393,35 +357,6 @@ export class TokenSwap {
     );
 
     return tokenSwap;
-  }
-
-  /**
-   * Retrieve tokenSwap information
-   */
-  async getInfo(): Promise<TokenSwapInfo> {
-    const tokenSwapInfo = await TokenSwap.loadTokenSwapInfo(
-      this.connection,
-      this.tokenSwap,
-      this.swapProgramId,
-    );
-
-    // already properly filled in
-    // tokenSwapInfo.nonce = tokenSwapInfo.nonce;
-    tokenSwapInfo.tokenProgramId = new PublicKey(tokenSwapInfo.tokenProgramId);
-    tokenSwapInfo.tokenAccountA = new PublicKey(tokenSwapInfo.tokenAccountA);
-    tokenSwapInfo.tokenAccountB = new PublicKey(tokenSwapInfo.tokenAccountB);
-    tokenSwapInfo.tokenPool = new PublicKey(tokenSwapInfo.tokenPool);
-    tokenSwapInfo.feesNumerator = Numberu64.fromBuffer(
-      tokenSwapInfo.feesNumerator,
-    );
-    tokenSwapInfo.feesDenominator = Numberu64.fromBuffer(
-      tokenSwapInfo.feesDenominator,
-    );
-    tokenSwapInfo.feeRatio =
-      tokenSwapInfo.feesNumerator.toNumber() /
-      tokenSwapInfo.feesDenominator.toNumber();
-
-    return tokenSwapInfo;
   }
 
   /**
