@@ -1120,7 +1120,7 @@ fn main() {
                 .arg(
                     Arg::with_name("destination")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(2)
                         .required(true)
