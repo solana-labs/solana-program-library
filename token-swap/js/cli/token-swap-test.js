@@ -242,7 +242,6 @@ export async function deposit(): Promise<void> {
   await mintB.approve(userAccountB, authority, owner, [], tokenB);
   console.log('Creating depositor pool token account');
   const newAccountPool = await tokenPool.createAccount(owner.publicKey);
-  const [tokenProgramId] = await GetPrograms(connection);
 
   console.log('Depositing into swap');
   await tokenSwap.deposit(
@@ -288,7 +287,6 @@ export async function withdraw(): Promise<void> {
     [],
     POOL_TOKEN_AMOUNT,
   );
-  const [tokenProgramId] = await GetPrograms(connection);
 
   console.log('Withdrawing pool tokens for A and B tokens');
   await tokenSwap.withdraw(
@@ -323,12 +321,13 @@ export async function swap(): Promise<void> {
   await mintA.approve(userAccountA, authority, owner, [], SWAP_AMOUNT_IN);
   console.log('Creating swap token b account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
-  const [tokenProgramId] = await GetPrograms(connection);
 
   console.log('Swapping');
   await tokenSwap.swap(
     userAccountA,
+    tokenAccountA,
     userAccountB,
+    tokenAccountB,
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,
   );

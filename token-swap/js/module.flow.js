@@ -5,6 +5,8 @@
  *
  */
 
+import {PublicKey} from '@solana/web3.js';
+
 declare module '@solana/spl-token-swap' {
   // === client/token-swap.js ===
   declare export class Numberu64 extends BN {
@@ -14,6 +16,7 @@ declare module '@solana/spl-token-swap' {
 
   declare export type TokenSwapInfo = {|
     nonce: number,
+    tokenProgramId: PublicKey,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
     tokenPool: PublicKey,
@@ -27,8 +30,13 @@ declare module '@solana/spl-token-swap' {
   declare export class TokenSwap {
     constructor(
       connection: Connection,
+      swapProgramId: PublicKey,
+      tokenProgramId: PublicKey,
       tokenSwap: PublicKey,
-      programId: PublicKey,
+      poolToken: PublicKey,
+      authority: PublicKey,
+      tokenAccountA: PublicKey,
+      tokenAccountB: PublicKey,
       payer: Account,
     ): TokenSwap;
 
@@ -50,6 +58,13 @@ declare module '@solana/spl-token-swap' {
       feeDenominator: number,
     ): TransactionInstruction;
 
+    static loadTokenSwap(
+      connection: Connection,
+      address: PublicKey,
+      programId: PublicKey,
+      payer: Account,
+    ): Promise<TokenSwap>;
+
     static createTokenSwap(
       connection: Connection,
       payer: Account,
@@ -69,12 +84,10 @@ declare module '@solana/spl-token-swap' {
     getInfo(): Promise<TokenSwapInfo>;
 
     swap(
-      authority: PublicKey,
-      source: PublicKey,
-      swapSource: PublicKey,
-      swapDestination: PublicKey,
-      destination: PublicKey,
-      tokenProgramId: PublicKey,
+      userSource: PublicKey,
+      poolSource: PublicKey,
+      userDestination: PublicKey,
+      poolDestination: PublicKey,
       amountIn: number | Numberu64,
       minimumAmountOut: number | Numberu64,
     ): Promise<TransactionSignature>;
@@ -82,10 +95,10 @@ declare module '@solana/spl-token-swap' {
     static swapInstruction(
       tokenSwap: PublicKey,
       authority: PublicKey,
-      source: PublicKey,
-      swapSource: PublicKey,
-      swapDestination: PublicKey,
-      destination: PublicKey,
+      userSource: PublicKey,
+      poolSource: PublicKey,
+      userDestination: PublicKey,
+      poolDestination: PublicKey,
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       amountIn: number | Numberu64,
