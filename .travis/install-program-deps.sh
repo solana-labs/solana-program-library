@@ -4,6 +4,7 @@ cargo --version
 rustup install nightly
 rustup component add rustfmt
 rustup component add clippy --toolchain nightly
+cargo install rustfilt
 docker --version
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
 sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
