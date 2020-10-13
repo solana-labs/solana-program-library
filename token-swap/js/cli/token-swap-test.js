@@ -332,8 +332,8 @@ export async function swap(): Promise<void> {
   await tokenSwap.swap(
     userAccountA,
     tokenAccountA,
-    userAccountB,
     tokenAccountB,
+    userAccountB,
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,
   );

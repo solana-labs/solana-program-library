@@ -77,8 +77,8 @@ declare module '@solana/spl-token-swap' {
     swap(
       userSource: PublicKey,
       poolSource: PublicKey,
-      userDestination: PublicKey,
       poolDestination: PublicKey,
+      userDestination: PublicKey,
       amountIn: number | Numberu64,
       minimumAmountOut: number | Numberu64,
     ): Promise<TransactionSignature>;
@@ -88,8 +88,8 @@ declare module '@solana/spl-token-swap' {
       authority: PublicKey,
       userSource: PublicKey,
       poolSource: PublicKey,
-      userDestination: PublicKey,
       poolDestination: PublicKey,
+      userDestination: PublicKey,
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       amountIn: number | Numberu64,

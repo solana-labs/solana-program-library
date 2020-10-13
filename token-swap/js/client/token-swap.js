@@ -364,16 +364,16 @@ export class TokenSwap {
    *
    * @param userSource User's source token account
    * @param poolSource Pool's source token account
-   * @param userSource User's destination token account
-   * @param poolSource Pool's destination token account
+   * @param poolDestination Pool's destination token account
+   * @param userDestination User's destination token account
    * @param amountIn Amount to transfer from source account
    * @param minimumAmountOut Minimum amount to send
    */
   async swap(
     userSource: PublicKey,
     poolSource: PublicKey,
-    userDestination: PublicKey,
     poolDestination: PublicKey,
+    userDestination: PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
   ): Promise<TransactionSignature> {
@@ -403,8 +403,8 @@ export class TokenSwap {
     authority: PublicKey,
     userSource: PublicKey,
     poolSource: PublicKey,
-    userDestination: PublicKey,
     poolDestination: PublicKey,
+    userDestination: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
@@ -431,8 +431,8 @@ export class TokenSwap {
       {pubkey: authority, isSigner: false, isWritable: false},
       {pubkey: userSource, isSigner: false, isWritable: true},
       {pubkey: poolSource, isSigner: false, isWritable: true},
-      {pubkey: userDestination, isSigner: false, isWritable: true},
       {pubkey: poolDestination, isSigner: false, isWritable: true},
+      {pubkey: userDestination, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
     return new TransactionInstruction({
