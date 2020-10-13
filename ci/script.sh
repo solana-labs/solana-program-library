@@ -50,12 +50,11 @@ _ cargo run --manifest-path=utils/test-client/Cargo.toml
 #  _ git diff --exit-code token-swap/program/inc/token-swap.h
 #  _ cc token-swap/program/inc/token-swap.h -o target/token-swap.gch
 
-
-# Run clippy for all program crates, with the `program` feature enabled
+# For all BPF programs
 for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
   program_dir=$(dirname "$Xargo_toml")
   (
-
+    # Run clippy for all program crates, with the `program` feature enabled
     cd $program_dir
     _ cargo +nightly clippy --features=program -- --deny=warnings
   )
@@ -63,6 +62,8 @@ for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
   _ ./do.sh build "$program_dir"
 
   _ ./do.sh test "$program_dir"
+
+  _ ./do.sh dump "$program_dir"
 done
 
 # Run SPL Token's performance monitor
