@@ -95,28 +95,24 @@ perform_action() {
         ;;
     dump)
         # Dump depends on tools that are not installed by default and must be installed manually
-        # - greadelf
+        # - readelf
         # - rustfilt
-        (
-            pwd
+        if [[ -f "$projectDir"/Xargo.toml ]]; then
+            echo "dump $crateName ($projectDir)"
+
             "$0" build "$2"
 
             so_path="$targetDir/$profile"
-            so_name="spl_${2//\-/_}"
+            so_name="${crateName//\-/_}"
             so="$so_path/${so_name}_debug.so"
             dump="$so_path/${so_name}_dump"
-
-            echo $so_path
-            echo $so_name
-            echo $so
-            echo $dump
 
             if [ -f "$so" ]; then
                 ls \
                     -la \
                     "$so" \
                     >"${dump}_mangled.txt"
-                greadelf \
+                readelf \
                     -aW \
                     "$so" \
                     >>"${dump}_mangled.txt"
@@ -131,10 +127,19 @@ perform_action() {
                     <"${dump}_mangled.txt" |
                     rustfilt \
                         >"${dump}.txt"
+                if [ -f "$dump.txt" ]; then
+                    echo "Dumped: $dump.txt"
+                else
+                    echo "Error: No dump created"
+                    exit 1
+                fi
             else
-                echo "Warning: No dump created, cannot find: $so"
+                echo "Error: No dump created, cannot find: $so"
+                exit 1
             fi
-        )
+        else
+            echo "$projectDir does not contain a program, skipping"
+        fi
         ;;
     fmt)
         (
@@ -197,3 +202,5 @@ else
       perform_action "$1" "$2" "${@:3}"
     fi
 fi
+
+exit 0
