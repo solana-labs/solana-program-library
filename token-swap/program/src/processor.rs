@@ -214,6 +214,7 @@ impl Processor {
         let obj = SwapInfo {
             is_initialized: true,
             nonce,
+            token_program_id: *token_program_info.key,
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
             pool_mint: *pool_mint_info.key,
