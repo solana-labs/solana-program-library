@@ -7,6 +7,7 @@
 // This program is highly optimized for its particular use case and does not
 // implement the typical `process_instruction` entrypoint.
 
+extern crate solana_sdk;
 use arrayref::{array_refs, mut_array_refs};
 use solana_sdk::{
     entrypoint::MAX_PERMITTED_DATA_INCREASE, entrypoint::SUCCESS, program_error::ProgramError,
@@ -18,7 +19,7 @@ use std::{
     slice::{from_raw_parts, from_raw_parts_mut},
 };
 
-// TODO solana_sdk::declare_id!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+solana_sdk::declare_id!("shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL");
 
 /// A more efficient `copy_from_slice` implementation.
 fn fast_copy(mut src: &[u8], mut dst: &mut [u8]) {
@@ -31,7 +32,9 @@ fn fast_copy(mut src: &[u8], mut dst: &mut [u8]) {
         src = src_rem;
         dst = dst_rem;
     }
-    dst.copy_from_slice(src);
+    unsafe {
+        std::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), src.len());
+    }
 }
 
 /// Deserializes only the particular input parameters that the shared memory
@@ -76,21 +79,32 @@ unsafe fn deserialize_input_parametes<'a>(input: *mut u8) -> Result<(&'a mut [u8
     Ok((account_data, instruction_data))
 }
 
+/// This program expects one account and writes instruction data into the
+/// account's data.  The first 8 bytes of the instruction data contain the
+/// little-endian offset into the account data.  The rest of the instruction
+/// data is written into the account data starting at that offset.
+///
 /// This program uses the raw Solana runtime's entrypoint which takes a pointer
 /// to serialized input parameters.  For more information about the format of
 /// the serialized input parameters see `solana_sdk::entrypoint::deserialize`
 ///
-/// This program expects one account and writes all the instruction data into
-/// the account's data starting at offset 0.
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn entrypoint(input: *mut u8) -> u64 {
     match deserialize_input_parametes(input) {
         Ok((account_data, instruction_data)) => {
-            match account_data.get_mut(..instruction_data.len()) {
-                None => return ProgramError::AccountDataTooSmall.into(),
-                Some(data) => fast_copy(instruction_data, data),
-            };
+            if instruction_data.len() < 8 {
+                return ProgramError::AccountDataTooSmall.into();
+            }
+            #[allow(clippy::ptr_offset_with_cast)]
+            let (offset, content) = array_refs![instruction_data, 8; ..;];
+            let offset = usize::from_le_bytes(*offset);
+            if account_data.len() < offset + content.len() {
+                return ProgramError::AccountDataTooSmall.into();
+            }
+            let data_ptr = account_data.as_mut_ptr() as usize;
+            let data = from_raw_parts_mut((data_ptr + offset) as *mut u8, content.len());
+            fast_copy(content, data);
         }
         Err(err) => return err,
     }

@@ -562,19 +562,6 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
-dependencies = [
- "byteorder",
- "digest 0.8.1",
- "rand_core",
- "subtle 2.2.3",
- "zeroize",
-]
-
-[[package]]
-name = "curve25519-dalek"
-version = "2.1.0"
 source = "git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff#60efef3553d6bf3d7f3b09b5f97acd54d72529ff"
 dependencies = [
  "borsh",
@@ -582,6 +569,19 @@ dependencies = [
  "digest 0.8.1",
  "rand_core",
  "serde",
+ "subtle 2.2.3",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
+dependencies = [
+ "byteorder",
+ "digest 0.8.1",
+ "rand_core",
  "subtle 2.2.3",
  "zeroize",
 ]
@@ -2653,10 +2653,10 @@ dependencies = [
  "serde_json",
  "sha2 0.8.2",
  "sha3",
- "solana-crate-features 1.3.14",
+ "solana-crate-features 1.3.17",
  "solana-logger 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "solana-sdk-macro 1.3.14",
- "solana-sdk-macro-frozen-abi 1.3.14",
+ "solana-sdk-macro 1.3.17",
+ "solana-sdk-macro-frozen-abi 1.3.17",
  "thiserror",
 ]
 

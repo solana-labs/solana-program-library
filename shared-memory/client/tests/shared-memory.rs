@@ -70,34 +70,56 @@ fn run_program(
 
 #[test]
 fn assert_instruction_count() {
+    const OFFSET: usize = 51;
     const NUM_TO_SHARE: usize = 500;
     let program_id = Pubkey::new_rand();
     let shared_key = Pubkey::new_rand();
-    let shared_account = Account::new_ref(u64::MAX, NUM_TO_SHARE * 2, &program_id);
+    let shared_account = Account::new_ref(u64::MAX, OFFSET + NUM_TO_SHARE * 2, &program_id);
 
     // Send some data to share
     let parameter_accounts = vec![KeyedAccount::new(&shared_key, true, &shared_account)];
-    let data = vec![42; NUM_TO_SHARE];
-    let share_count = run_program(&program_id, &parameter_accounts[..], &data).unwrap();
-
-    const BASELINE_COUNT: u64 = 1464; // 94 if NUM_TO_SHARE is 8
+    let content = vec![42; NUM_TO_SHARE];
+    let mut instruction_data = OFFSET.to_le_bytes().to_vec();
+    instruction_data.extend_from_slice(&content);
+    let share_count = run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+    const BASELINE_COUNT: u64 = 1474; // 113 if NUM_TO_SHARE is 8
     println!(
         "BPF instructions executed {:?} (expected {:?})",
         share_count, BASELINE_COUNT
     );
+    assert_eq!(
+        &shared_account.borrow().data[OFFSET..OFFSET + NUM_TO_SHARE],
+        content
+    );
     assert!(share_count <= BASELINE_COUNT);
-    assert_eq!(&shared_account.borrow().data[..data.len()], data);
 }
 
 #[test]
 fn test_share_data() {
+    const OFFSET: usize = 51;
     const NUM_TO_SHARE: usize = 500;
     let program_id = Pubkey::new(&[0; 32]);
     let shared_key = Pubkey::new_rand();
     let shared_account = Account::new_ref(u64::MAX, NUM_TO_SHARE * 2, &program_id);
-    let instruction_data = vec![42; NUM_TO_SHARE];
 
     // success
+    let content = vec![42; NUM_TO_SHARE];
+    let mut instruction_data = OFFSET.to_le_bytes().to_vec();
+    instruction_data.extend_from_slice(&content);
+    let keyed_accounts = vec![KeyedAccount::new(&shared_key, true, &shared_account)];
+    let mut input = serialize_parameters(
+        &bpf_loader::id(),
+        &program_id,
+        &keyed_accounts,
+        &instruction_data,
+    )
+    .unwrap();
+    assert_eq!(unsafe { entrypoint(input.as_mut_ptr()) }, SUCCESS);
+
+    // success zero offset
+    let content = vec![42; NUM_TO_SHARE];
+    let mut instruction_data = 0_usize.to_le_bytes().to_vec();
+    instruction_data.extend_from_slice(&content);
     let keyed_accounts = vec![KeyedAccount::new(&shared_key, true, &shared_account)];
     let mut input = serialize_parameters(
         &bpf_loader::id(),
@@ -135,7 +157,26 @@ fn test_share_data() {
 
     // account data too small
     let keyed_accounts = vec![KeyedAccount::new(&shared_key, true, &shared_account)];
-    let instruction_data = vec![42; NUM_TO_SHARE * 10];
+    let content = vec![42; NUM_TO_SHARE * 10];
+    let mut instruction_data = OFFSET.to_le_bytes().to_vec();
+    instruction_data.extend_from_slice(&content);
+    let mut input = serialize_parameters(
+        &bpf_loader::id(),
+        &program_id,
+        &keyed_accounts,
+        &instruction_data,
+    )
+    .unwrap();
+    assert_eq!(
+        unsafe { entrypoint(input.as_mut_ptr()) },
+        u64::from(ProgramError::AccountDataTooSmall)
+    );
+
+    // offset too large
+    let keyed_accounts = vec![KeyedAccount::new(&shared_key, true, &shared_account)];
+    let content = vec![42; NUM_TO_SHARE];
+    let mut instruction_data = (OFFSET * 10).to_le_bytes().to_vec();
+    instruction_data.extend_from_slice(&content);
     let mut input = serialize_parameters(
         &bpf_loader::id(),
         &program_id,

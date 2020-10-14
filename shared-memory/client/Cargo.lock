@@ -2028,7 +2028,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl_shared_memory_perf_monitor"
+name = "spl_shared_memory_client"
 version = "0.0.1"
 dependencies = [
  "rand",
