@@ -11,11 +11,14 @@ set -x
 
 if [[ ! -r "$cacheDir"/bpf-sdk.tar.bz2 ]]; then
   mkdir -p "$cacheDir"
-  curl -L  --retry 5 --retry-delay 2 -o "$cacheDir"/bpf-sdk.tar.bz2 \
-    http://solana-sdk.s3.amazonaws.com/"$channel"/bpf-sdk.tar.bz2
+  curl -L --retry 5 --retry-delay 2 -o "$cacheDir"/bpf-sdk.tar.bz2 \
+    https://solana-sdk.s3.amazonaws.com/"$channel"/bpf-sdk.tar.bz2
 fi
 
 rm -rf "$installDir"
 mkdir -p "$installDir"
-( cd "$installDir"; tar jxf "$cacheDir"/bpf-sdk.tar.bz2 )
+(
+  cd "$installDir"
+  tar jxf "$cacheDir"/bpf-sdk.tar.bz2
+)
 cat "$installDir"/bpf-sdk/version.txt
