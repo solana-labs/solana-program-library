@@ -66,7 +66,8 @@ for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
   _ ./do.sh dump "$program_dir"
 done
 
-# Run SPL Token's performance monitor
+# Run client tests
+_ cargo test --manifest-path=shared-memory/client/Cargo.toml -- --nocapture
 _ cargo test --manifest-path=token/perf-monitor/Cargo.toml -- --nocapture
 _ cargo test --manifest-path=themis/client_bn/Cargo.toml -- --nocapture
 _ cargo test --manifest-path=themis/client_ristretto/Cargo.toml -- --nocapture

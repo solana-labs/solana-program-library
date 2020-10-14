@@ -6,6 +6,7 @@ module.exports = {
       "token",
       "token-swap",
       "memo",
+      "shared-memory",
     ],
   },
 };
