@@ -2,10 +2,9 @@
 title: Token Program
 ---
 
-A Fungible Token program on the Solana blockchain.
+A Token program on the Solana blockchain.
 
-This program provides an interface and implementation that third parties can
-utilize to create and use their tokens.
+This program defines a common implementation for Fungible and Non Fungible tokens.
 
 ## Background
 
@@ -86,7 +85,7 @@ Hardware Wallet URL (See [URL spec](https://docs.solana.com/wallet-guide/hardwar
 solana config set --keypair usb://ledger/
 ```
 
-### Example: Creating your own Token
+### Example: Creating your own fungible token
 
 ```sh
 $ spl-token create-token
@@ -193,6 +192,60 @@ Account                                      Token                              
 CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50
 ```
 
+### Example: Create a non-fungible token
+
+Create the token type,
+```
+$ spl-token create-token
+Creating token 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
+Signature: 4kz82JUey1B9ki1McPW7NYv1NqPKCod6WNptSkYqtuiEsQb9exHaktSAHJJsm4YxuGNW4NugPJMFX9ee6WA2dXts
+```
+
+then create an account to hold tokens of this new type:
+```
+$ spl-token create-account 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
+Creating account 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
+Signature: sjChze6ecaRtvuQVZuwURyg6teYeiH8ZwT6UTuFNKjrdayQQ3KNdPB7d2DtUZ6McafBfEefejHkJ6MWQEfVHLtC
+```
+
+Now mint only one token into the account,
+```
+$ spl-token mint 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z 1 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
+Minting 1 tokens
+  Token: 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
+  Recipient: 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
+Signature: 2Kzg6ZArQRCRvcoKSiievYy3sfPqGV91Whnz6SeimhJQXKBTYQf3E54tWg3zPpYLbcDexxyTxnj4QF69ucswfdY
+```
+
+and disable future minting:
+```
+$ spl-token authorize 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z mint --disable
+Updating 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
+  Current mint authority: vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
+  New mint authority: disabled
+Signature: 5QpykLzZsceoKcVRRFow9QCdae4Dp2zQAcjebyEWoezPFg2Np73gHKWQicHG1mqRdXu3yiZbrft3Q8JmqNRNqhwU
+```
+
+Now the `7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM` account holds the
+one and only `559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z` token:
+
+```
+$ spl-token account-info 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
+
+Address: 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
+Balance: 1
+Mint: 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
+Owner: vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
+State: Initialized
+Delegation: (not set)
+Close authority: (not set)
+```
+
+```
+$ spl-token supply 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
+1
+```
+
 ## Operational overview
 
 ### Creating a new token type
@@ -294,8 +347,7 @@ These accounts have a few unique behaviors
 - Burning is not supported
 - When closing an Account the balance may be non-zero.
 
-In spl-token v2, the Native Mint supply will always report 0, regardless of
-how much SOL is currently wrapped.
+The Native Mint supply will always report 0, regardless of how much SOL is currently wrapped.
 
 ### Rent-exemption
 
@@ -310,3 +362,6 @@ An account may be closed using the `CloseAccount` instruction. When closing an
 Account, all remaining SOL will be transferred to another Solana account
 (doesn't have to be associated with the Token Program). Non-native Accounts must
 have a balance of zero to be closed.
+
+### Non-Fungible tokens
+An NTF is simply a token type where only a single token has been minted.
