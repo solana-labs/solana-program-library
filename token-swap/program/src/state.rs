@@ -9,7 +9,6 @@ use solana_sdk::{
 };
 use std::convert::TryInto;
 
-
 /// Program states.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

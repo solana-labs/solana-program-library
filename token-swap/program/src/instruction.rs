@@ -2,8 +2,8 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use crate::error::SwapError;
 use crate::curve::CurveType;
+use crate::error::SwapError;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
@@ -105,7 +105,8 @@ impl SwapInstruction {
                 let (fee_numerator, rest) = Self::unpack_u64(rest)?;
                 let (fee_denominator, rest) = Self::unpack_u64(rest)?;
                 let (&nonce, rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
-                let (&curve_type, _rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
+                let (&curve_type, _rest) =
+                    rest.split_first().ok_or(SwapError::InvalidInstruction)?;
                 let curve_type = curve_type.try_into()?;
                 Self::Initialize {
                     fee_numerator,

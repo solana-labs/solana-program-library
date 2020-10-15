@@ -20,7 +20,9 @@ pub enum CurveType {
 }
 
 impl Default for CurveType {
-    fn default() -> Self { CurveType::ConstantProduct }
+    fn default() -> Self {
+        CurveType::ConstantProduct
+    }
 }
 
 impl TryFrom<u8> for CurveType {
@@ -37,44 +39,44 @@ impl TryFrom<u8> for CurveType {
 
 impl CurveType {
     /// Create a swap curve corresponding to the enum
-    pub fn swap_curve(&self, swap_source_amount: u64, swap_destination_amount: u64, fee_numerator: u64, fee_denominator: u64) -> Box<dyn SwapCurve> {
+    pub fn swap_curve(
+        &self,
+        swap_source_amount: u64,
+        swap_destination_amount: u64,
+        fee_numerator: u64,
+        fee_denominator: u64,
+    ) -> Box<dyn SwapCurve> {
         match self {
-            CurveType::ConstantProduct => Box::new(
-                ConstantProductCurve {
-                    swap_source_amount,
-                    swap_destination_amount,
-                    fee_numerator,
-                    fee_denominator,
-                }),
+            CurveType::ConstantProduct => Box::new(ConstantProductCurve {
+                swap_source_amount,
+                swap_destination_amount,
+                fee_numerator,
+                fee_denominator,
+            }),
             CurveType::Flat => Box::new(FlatCurve {
                 swap_source_amount,
                 swap_destination_amount,
                 fee_numerator,
-                fee_denominator }),
+                fee_denominator,
+            }),
         }
     }
 
     /// Create a pool token converter for an existing pool
     pub fn existing_pool_token_converter(&self, pool_tokens: u64) -> Box<dyn PoolTokenConverter> {
         match self {
-            CurveType::ConstantProduct => Box::new(
-                RelativePoolTokenConverter::new_existing(pool_tokens)
-            ),
-            CurveType::Flat => Box::new(
-                RelativePoolTokenConverter::new_existing(pool_tokens)
-            ),
+            CurveType::ConstantProduct => {
+                Box::new(RelativePoolTokenConverter::new_existing(pool_tokens))
+            }
+            CurveType::Flat => Box::new(RelativePoolTokenConverter::new_existing(pool_tokens)),
         }
     }
 
     /// Create a pool token converter for a new pool
     pub fn new_pool_token_converter(&self) -> Box<dyn PoolTokenConverter> {
         match self {
-            CurveType::ConstantProduct => Box::new(
-                RelativePoolTokenConverter::new_pool()
-            ),
-            CurveType::Flat => Box::new(
-                RelativePoolTokenConverter::new_pool()
-            ),
+            CurveType::ConstantProduct => Box::new(RelativePoolTokenConverter::new_pool()),
+            CurveType::Flat => Box::new(RelativePoolTokenConverter::new_pool()),
         }
     }
 }
@@ -154,7 +156,9 @@ pub struct ConstantProductCurve {
 
 impl SwapCurve for ConstantProductCurve {
     fn swap(&self, source_amount: u64) -> Option<SwapResult> {
-        let invariant = self.swap_source_amount.checked_mul(self.swap_destination_amount)?;
+        let invariant = self
+            .swap_source_amount
+            .checked_mul(self.swap_destination_amount)?;
 
         // debit the fee to calculate the amount swapped
         let mut fee = source_amount
@@ -163,11 +167,15 @@ impl SwapCurve for ConstantProductCurve {
         if fee == 0 {
             fee = 1; // minimum fee of one token
         }
-        let new_source_amount_less_fee = self.swap_source_amount
+        let new_source_amount_less_fee = self
+            .swap_source_amount
             .checked_add(source_amount)?
             .checked_sub(fee)?;
         let new_destination_amount = invariant.checked_div(new_source_amount_less_fee)?;
-        let amount_swapped = map_zero_to_none(self.swap_destination_amount.checked_sub(new_destination_amount)?)?;
+        let amount_swapped = map_zero_to_none(
+            self.swap_destination_amount
+                .checked_sub(new_destination_amount)?,
+        )?;
 
         // actually add the whole amount coming in
         let new_source_amount = self.swap_source_amount.checked_add(source_amount)?;
@@ -183,9 +191,13 @@ impl SwapCurve for ConstantProductCurve {
 /// proper initialization
 pub trait PoolTokenConverter {
     /// Create a converter based on an existing supply
-    fn new_existing(pool_token_supply: u64) -> Self where Self: Sized;
+    fn new_existing(pool_token_supply: u64) -> Self
+    where
+        Self: Sized;
     /// Create a totally new pool with some default amount
-    fn new_pool() -> Self where Self: Sized;
+    fn new_pool() -> Self
+    where
+        Self: Sized;
     /// Get the amount of liquidity tokens for pool tokens given the total amount
     /// of liquidity tokens in the pool
     fn liquidity_tokens(&self, pool_tokens: u64, total_liquidity_tokens: u64) -> Option<u64>;
@@ -208,13 +220,17 @@ impl PoolTokenConverter for RelativePoolTokenConverter {
     }
 
     /// Get total pool token supply
-    fn supply(&self) -> u64 { self.pool_token_supply }
+    fn supply(&self) -> u64 {
+        self.pool_token_supply
+    }
 
     /// Create a converter for a new pool token, no supply present yet.
     /// According to Uniswap, the geometric mean protects the pool creator
     /// in case the initial ratio is off the market.
     fn new_pool() -> Self {
-        Self { pool_token_supply: INITIAL_SWAP_POOL_AMOUNT, }
+        Self {
+            pool_token_supply: INITIAL_SWAP_POOL_AMOUNT,
+        }
     }
 
     /// Liqudidity tokens for pool tokens, returns None if output is less than 1
@@ -292,6 +308,9 @@ mod tests {
         let amount_swapped = 99;
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, amount_swapped);
-        assert_eq!(result.new_destination_amount, swap_destination_amount - amount_swapped);
+        assert_eq!(
+            result.new_destination_amount,
+            swap_destination_amount - amount_swapped
+        );
     }
 }
