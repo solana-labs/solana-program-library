@@ -117,8 +117,7 @@ $ spl-token balance 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
 
 Mint 100 tokens into the account:
 ```sh
-$ spl-token mint AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 100 \
-                 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
+$ spl-token mint AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 100
 Minting 100 tokens
   Token: AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
   Recipient: 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
@@ -162,7 +161,44 @@ Unwrapping GJTxcnA5Sydy8YRhqvHxbQ5QNsPyRKvzguodQEaShJje
 Signature: f7opZ86ZHKGvkJBQsJ8Pk81v8F3v1VUfyd4kFs4CABmfTnSZK5BffETznUU3tEWvzibgKJASCf7TUpDmwGi8Rmh
 ```
 
-### Example: Transferring tokens
+### Example: Transferring tokens to another user, with sender-funding
+First the receiver uses `spl-token create-account` to create their associated
+token account for the Token type.  Then the receiver obtains their wallet
+address by running `solana address` and provides it to the sender.
+
+The sender then runs:
+```
+$ spl-token transfer 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi 50 vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
+Transfer 50 tokens
+  Sender: 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
+  Recipient: vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
+  Recipient associated token account: F59618aQB8r6asXeMcB9jWuY6NEx1VduT9yFo1GTi1ks
+
+Signature: 5a3qbvoJQnTAxGPHCugibZTbSu7xuTgkxvF4EJupRjRXGgZZrnWFmKzfEzcqKF2ogCaF4QKVbAtuFx7xGwrDUcGd
+```
+
+### Example: Transferring tokens to another user, with sender-funding
+If the receiver does not yet have an associated token account, the sender may
+choose to fund the receiver's account.
+
+The receiver obtains their wallet address by running `solana address` and provides it to the sender.
+
+The sender then runs to fund the receiver's associated token account, at the
+sender's expense, and then transfers 50 tokens into it:
+```
+$ spl-token transfer --fund-recipient 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi 50 vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
+Transfer 50 tokens
+  Sender: 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
+  Recipient: vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
+  Recipient associated token account: F59618aQB8r6asXeMcB9jWuY6NEx1VduT9yFo1GTi1ks
+  Funding recipient: F59618aQB8r6asXeMcB9jWuY6NEx1VduT9yFo1GTi1ks (0.00203928 SOL)
+
+Signature: 5a3qbvoJQnTAxGPHCugibZTbSu7xuTgkxvF4EJupRjRXGgZZrnWFmKzfEzcqKF2ogCaF4QKVbAtuFx7xGwrDUcGd
+```
+
+### Example: Transferring tokens to an explicit recipient token account
+Tokens may be transferred to a specific recipient token account.  The recipient
+token account must already exist and be of the same Token type.
 
 ```
 $ spl-token create-account AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
@@ -176,12 +212,12 @@ Account                                      Token                              
 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 100
 CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 0
 ```
-
 ```
 $ spl-token transfer 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi 50 CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ
 Transfer 50 tokens
   Sender: 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
   Recipient: CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ
+
 Signature: 5a3qbvoJQnTAxGPHCugibZTbSu7xuTgkxvF4EJupRjRXGgZZrnWFmKzfEzcqKF2ogCaF4QKVbAtuFx7xGwrDUcGd
 ```
 ```
@@ -191,6 +227,9 @@ Account                                      Token                              
 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50
 CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50
 ```
+
+### Example: Transferring tokens with sender funding
+If the recipient a
 
 ### Example: Create a non-fungible token
 
@@ -476,3 +515,151 @@ have a balance of zero to be closed.
 
 ### Non-Fungible tokens
 An NTF is simply a token type where only a single token has been minted.
+
+## Wallet Integration Guide
+This section describes how to integrate SPL Token support into an existing
+wallet supporting native SOL.  It assumes a model whereby the user has a single
+system account as their **main wallet address** that they send and receive SOL
+from.
+
+Although all SPL Token accounts do have their own address on-chain, there's no
+need to surface these additional addresses to the user.
+
+There are two programs that are used by the wallet:
+* SPL Token program - generic program that is used by all SPL Tokens
+* SPL Associated Token Account program - this program defines the convention and the
+  provides the mechanism for mapping the user's wallet address to the associated
+  token accounts they hold.
+
+### Associated Token Account
+The associated token account convention allows all tokens to have the same
+destination address, allowing the user share their main wallet address to
+receive any SPL token.
+
+The following Rust function can be used to derive the address of a user's
+associated token account for a given SPL Token mint:
+```rust
+/// Finds the associated token address for a given wallet
+/// address and SPL Token mint
+pub fn get_associated_token_address(
+    wallet_address: &Pubkey,
+    spl_token_mint_address: &Pubkey,
+) -> Pubkey {
+    Pubkey::find_program_address(
+        &[
+            &primary_account_address.to_bytes(),
+            &spl_token::id().to_bytes(),
+            &spl_token_mint_address.to_bytes(),
+        ],
+        &spl_associated_token_account::id()
+    ).0
+}
+```
+
+
+Javascript equivalent:
+```
+import {PublicKey, PublicKeyNonce} from '@solana/web3.js';
+
+async function findAssociatedTokenAddress(
+    walletAddress: Pubkey,
+    tokenMintAddress: Pubkey
+): Promise<PublicKey> {
+    return PublicKey.findProgramAddress(
+        [
+            walletAddress.toBuffer(),
+            TOKEN_PROGRAM_ID.toBuffer(),
+            tokenMintAddress.toBuffer(),
+        ],
+        SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID
+    )[0];
+}
+```
+
+### How to fetch and display token holdings
+The [getTokenAccountsByOwner](https://docs.solana.com/apps/jsonrpc-api#gettokenaccountsbyowner)
+JSON RPC method can be used to fetch all token accounts for a wallet address.
+
+For each token mint, the wallet could have be multiple token accounts: the
+associated token account and/or other ancillary token accounts
+
+By convention it is suggested that wallets roll up the balances from all token
+accounts of the same token mint into a single balance for the user to shield the
+user from this complexity. See the
+[Garbage Collecting Ancillary Token Accounts](#garbage-collecting-ancillary-token-accounts)
+section for suggestions on how the wallet should clean up ancillary token accounts on the user's
+
+### Associated Token Account
+Before the user can receive tokens their associated token account must be created
+on-chain, requiring a small amount of SOL to mark the account as rent-exempt.
+
+There's no restriction on who can create a user's associated token account.  It
+could either be created by the wallet on behalf of the user or funded by a 3rd
+party through an airdrop campaign.
+
+Ultimately the
+`spl_associated_token_account::create_associated_token_account()` instruction
+just needs to be executed by some party.
+
+#### Sample "Add Token" workflow
+When the user wants to receive tokens, they should fund their associated token
+account.
+
+To do so, the wallet should provide a UI that allow the users to "add a token".
+The user selects the kind of token, and is presented with information about how
+much SOL it will cost to add the token.  Upon confirmation, the wallet sends a
+transaction with the
+`spl_associated_token_account::create_associated_token_account()` instruction.
+
+#### Sample "Airdrop campaign" workflow
+For each recipient wallet addresses, send a transaction containing:
+1. `spl_associated_token_account::create_associated_token_account()` to create
+   the recipient's associated token account if necessary
+2. `TokenInstruction::Transfer` to complete the airdrop
+
+#### Associated Token Account Ownership
+The wallet should never use `TokenInstruction::SetAuthority` to set the
+`AccountOwner` authority of the associated token account to another address.
+
+### Ancillary Token Accounts
+At any time ownership of an existing SPL Token account may be assigned to the
+user.  One way to accomplish this is with the
+`spl-token authorize <TOKEN_ADDRESS> owner <USER_ADDRESS>` command.
+
+### Transferring Tokens Between Wallets
+The preferred method of transferring tokens between wallets is to transfer into
+associated token account of the recipient.
+
+The recipient must provide their main wallet address to the sender.  The sender
+then:
+1. Derives the associated token account for the recipient using `spl_associated_token_account::get_associated_token_address`
+1. Fetches the recipient's associated token account over RPC and checks that it exists.
+1. If the recipient's associated token accountdoes not exist, the sender wallet may choose to first fund the recipient's wallet at their expense
+1. Use `TokenInstruction::Transfer` to complete the transfer.
+
+### Registry for token details
+At the moment Token Mint addresses need to be hard coded by each wallet.  **Improving this situation is a work in progress.**
+
+### Garbage Collecting Ancillary Token Accounts
+Wallets should empty ancillary token accounts as quickly as practical by
+transferring into the user's associated token account.  This effort serves two
+purposes:
+* If the user is the close authority for the ancillary account, the wallet can
+  reclaim SOL for the user by closing the account.
+* If the ancillary account was funded by a 3rd party, once the account is
+  emptied that 3rd party may close the account and reclaim the SOL.
+
+One natural time to garbage collect ancillary token accounts is when the user
+next sends tokens.  The additional instructions to do so can be added to the
+existing transaction, and will not require an additional fee.
+
+Cleanup Pseudo Steps:
+1. For all non-empty ancillary token accounts, add a
+   `TokenInstruction::Transfer` instruction to the transfer the full token
+   amount to the user's associated token account.
+2. For all empty ancillary token accounts where the user is the close authority,
+   add a `TokenInstruction::CloseAccount` instruction
+
+If adding one or more of clean up instructions cause the transaction to exceed
+the maximum allowed transaction size, remove those extra clean up instructions.
+They can be cleaned up during the next send operation.
