@@ -1,11 +1,14 @@
 //! State transition types
 
+use crate::curve::CurveType;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_sdk::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
+use std::convert::TryInto;
+
 
 /// Program states.
 #[repr(C)]
@@ -19,6 +22,9 @@ pub struct SwapInfo {
     /// authority over the swap's token A account, token B account, and pool
     /// token mint.
     pub nonce: u8,
+
+    /// Curve type for calculating swaps, deposits, and withdrawals
+    pub curve_type: CurveType,
 
     /// Program ID of the tokens being exchanged.
     pub token_program_id: Pubkey,
@@ -46,22 +52,23 @@ impl IsInitialized for SwapInfo {
 }
 
 impl Pack for SwapInfo {
-    const LEN: usize = 146;
+    const LEN: usize = 147;
 
     /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 146];
+        let input = array_ref![input, 0, 147];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
             nonce,
+            curve_type,
             token_program_id,
             token_a,
             token_b,
             pool_mint,
             fee_numerator,
             fee_denominator,
-        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 8, 8];
+        ) = array_refs![input, 1, 1, 1, 32, 32, 32, 32, 8, 8];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -69,6 +76,7 @@ impl Pack for SwapInfo {
                 _ => return Err(ProgramError::InvalidAccountData),
             },
             nonce: nonce[0],
+            curve_type: curve_type[0].try_into()?,
             token_program_id: Pubkey::new_from_array(*token_program_id),
             token_a: Pubkey::new_from_array(*token_a),
             token_b: Pubkey::new_from_array(*token_b),
@@ -79,19 +87,21 @@ impl Pack for SwapInfo {
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 146];
+        let output = array_mut_ref![output, 0, 147];
         let (
             is_initialized,
             nonce,
+            curve_type,
             token_program_id,
             token_a,
             token_b,
             pool_mint,
             fee_numerator,
             fee_denominator,
-        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 8, 8];
+        ) = mut_array_refs![output, 1, 1, 1, 32, 32, 32, 32, 8, 8];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
+        curve_type[0] = self.curve_type as u8;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
         token_a.copy_from_slice(self.token_a.as_ref());
         token_b.copy_from_slice(self.token_b.as_ref());
@@ -108,6 +118,8 @@ mod tests {
     #[test]
     fn test_swap_info_packing() {
         let nonce = 255;
+        let curve_type_raw: u8 = 1;
+        let curve_type = curve_type_raw.try_into().unwrap();
         let token_program_id_raw = [1u8; 32];
         let token_a_raw = [1u8; 32];
         let token_b_raw = [2u8; 32];
@@ -122,6 +134,7 @@ mod tests {
         let swap_info = SwapInfo {
             is_initialized,
             nonce,
+            curve_type,
             token_program_id,
             token_a,
             token_b,
@@ -138,6 +151,7 @@ mod tests {
         let mut packed = vec![];
         packed.push(1 as u8);
         packed.push(nonce);
+        packed.push(curve_type_raw);
         packed.extend_from_slice(&token_program_id_raw);
         packed.extend_from_slice(&token_a_raw);
         packed.extend_from_slice(&token_b_raw);

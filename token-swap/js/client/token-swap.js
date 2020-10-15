@@ -60,6 +60,7 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
   [
     BufferLayout.u8('isInitialized'),
     BufferLayout.u8('nonce'),
+    BufferLayout.u8('curveType'),
     Layout.publicKey('tokenProgramId'),
     Layout.publicKey('tokenAccountA'),
     Layout.publicKey('tokenAccountB'),
@@ -124,6 +125,13 @@ export class TokenSwap {
   feeDenominator: Numberu64;
 
   /**
+   * Curve type, current options are:
+   * 0 = Constant product curve, Uniswap-style
+   * 1 = Flat curve, always 1:1 trades
+   */
+  curveType: number;
+
+  /**
    * Fee payer
    */
   payer: Account;
@@ -150,6 +158,7 @@ export class TokenSwap {
     authority: PublicKey,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
+    curveType: number,
     feeNumerator: Numberu64,
     feeDenominator: Numberu64,
     payer: Account,
@@ -163,6 +172,7 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      curveType,
       feeNumerator,
       feeDenominator,
       payer,
@@ -185,13 +195,14 @@ export class TokenSwap {
   static createInitSwapInstruction(
     tokenSwapAccount: Account,
     authority: PublicKey,
-    nonce: number,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
     tokenPool: PublicKey,
     tokenAccountPool: PublicKey,
     tokenProgramId: PublicKey,
     swapProgramId: PublicKey,
+    nonce: number,
+    curveType: number,
     feeNumerator: number,
     feeDenominator: number,
   ): TransactionInstruction {
@@ -209,6 +220,7 @@ export class TokenSwap {
       BufferLayout.nu64('feeNumerator'),
       BufferLayout.nu64('feeDenominator'),
       BufferLayout.u8('nonce'),
+      BufferLayout.u8('curveType'),
     ]);
     let data = Buffer.alloc(1024);
     {
@@ -218,6 +230,7 @@ export class TokenSwap {
           feeNumerator,
           feeDenominator,
           nonce,
+          curveType,
         },
         data,
       );
@@ -254,6 +267,7 @@ export class TokenSwap {
 
     const feeNumerator = Numberu64.fromBuffer(tokenSwapData.feeNumerator);
     const feeDenominator = Numberu64.fromBuffer(tokenSwapData.feeDenominator);
+    const curveType = tokenSwapData.curveType;
 
     return new TokenSwap(
       connection,
@@ -264,6 +278,7 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      curveType,
       feeNumerator,
       feeDenominator,
       payer,
@@ -293,13 +308,14 @@ export class TokenSwap {
     payer: Account,
     tokenSwapAccount: Account,
     authority: PublicKey,
-    nonce: number,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
     poolToken: PublicKey,
     tokenAccountPool: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
+    nonce: number,
+    curveType: number,
     feeNumerator: number,
     feeDenominator: number,
   ): Promise<TokenSwap> {
@@ -313,6 +329,7 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      curveType,
       new Numberu64(feeNumerator),
       new Numberu64(feeDenominator),
       payer,
@@ -336,13 +353,14 @@ export class TokenSwap {
     const instruction = TokenSwap.createInitSwapInstruction(
       tokenSwapAccount,
       authority,
-      nonce,
       tokenAccountA,
       tokenAccountB,
       poolToken,
       tokenAccountPool,
       tokenProgramId,
       swapProgramId,
+      nonce,
+      curveType,
       feeNumerator,
       feeDenominator,
     );

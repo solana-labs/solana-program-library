@@ -34,6 +34,8 @@ let mintB: Token;
 let tokenAccountA: PublicKey;
 let tokenAccountB: PublicKey;
 
+// curve type used to calculate swaps and deposits
+const CURVE_TYPE = 0;
 // Initial amount in each swap token
 const BASE_AMOUNT = 1000;
 // Amount passed to swap instruction
@@ -194,13 +196,14 @@ export async function createTokenSwap(): Promise<void> {
     swapPayer,
     tokenSwapAccount,
     authority,
-    nonce,
     tokenAccountA,
     tokenAccountB,
     tokenPool.publicKey,
     tokenAccountPool,
     tokenSwapProgramId,
     tokenProgramId,
+    nonce,
+    CURVE_TYPE,
     1,
     4,
   );
@@ -217,6 +220,7 @@ export async function createTokenSwap(): Promise<void> {
   assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
   assert(fetchedTokenSwap.tokenAccountB.equals(tokenAccountB));
   assert(fetchedTokenSwap.poolToken.equals(tokenPool.publicKey));
+  assert(CURVE_TYPE == fetchedTokenSwap.curveType);
   assert(1 == fetchedTokenSwap.feeNumerator.toNumber());
   assert(4 == fetchedTokenSwap.feeDenominator.toNumber());
 }

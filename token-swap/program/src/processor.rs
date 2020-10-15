@@ -3,7 +3,7 @@
 #![cfg(feature = "program")]
 
 use crate::{
-    curve::SwapCurveType,
+    curve::CurveType,
     error::SwapError,
     instruction::SwapInstruction,
     state::SwapInfo,
@@ -142,6 +142,7 @@ impl Processor {
     pub fn process_initialize(
         program_id: &Pubkey,
         nonce: u8,
+        curve_type: CurveType,
         fee_numerator: u64,
         fee_denominator: u64,
         accounts: &[AccountInfo],
@@ -198,8 +199,7 @@ impl Processor {
             return Err(SwapError::InvalidSupply.into());
         }
 
-        let converter =
-            SwapCurveType::ConstantProduct.new_pool_token_converter();
+        let converter = curve_type.new_pool_token_converter();
         let initial_amount = converter.supply();
 
         Self::token_mint_to(
@@ -215,6 +215,7 @@ impl Processor {
         let obj = SwapInfo {
             is_initialized: true,
             nonce,
+            curve_type,
             token_program_id: *token_program_info.key,
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
@@ -263,7 +264,7 @@ impl Processor {
         let source_account = Self::unpack_token_account(&swap_source_info.data.borrow())?;
         let dest_account = Self::unpack_token_account(&swap_destination_info.data.borrow())?;
 
-        let curve = SwapCurveType::ConstantProduct.swap_curve(
+        let curve = token_swap.curve_type.swap_curve(
             source_account.amount,
             dest_account.amount,
             token_swap.fee_numerator,
@@ -331,8 +332,7 @@ impl Processor {
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
 
-        let converter =
-            SwapCurveType::ConstantProduct.existing_pool_token_converter(pool_mint.supply);
+        let converter = token_swap.curve_type.existing_pool_token_converter(pool_mint.supply);
 
         let a_amount = converter
             .liquidity_tokens(pool_token_amount, token_a.amount)
@@ -415,8 +415,7 @@ impl Processor {
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
 
-        let converter =
-            SwapCurveType::ConstantProduct.existing_pool_token_converter(pool_mint.supply);
+        let converter = token_swap.curve_type.existing_pool_token_converter(pool_mint.supply);
 
         let a_amount = converter
             .liquidity_tokens(pool_token_amount, token_a.amount)
@@ -469,11 +468,13 @@ impl Processor {
                 fee_numerator,
                 fee_denominator,
                 nonce,
+                curve_type,
             } => {
                 info!("Instruction: Init");
                 Self::process_initialize(
                     program_id,
                     nonce,
+                    curve_type,
                     fee_numerator,
                     fee_denominator,
                     accounts,
@@ -621,6 +622,7 @@ mod tests {
 
     struct SwapAccountInfo {
         nonce: u8,
+        curve_type: CurveType,
         authority_key: Pubkey,
         fee_numerator: u64,
         fee_denominator: u64,
@@ -643,6 +645,7 @@ mod tests {
     impl SwapAccountInfo {
         pub fn new(
             user_key: &Pubkey,
+            curve_type: CurveType,
             fee_numerator: u64,
             fee_denominator: u64,
             token_a_amount: u64,
@@ -686,6 +689,7 @@ mod tests {
 
             SwapAccountInfo {
                 nonce,
+                curve_type,
                 authority_key,
                 fee_numerator,
                 fee_denominator,
@@ -718,6 +722,7 @@ mod tests {
                     &self.pool_mint_key,
                     &self.pool_token_key,
                     self.nonce,
+                    self.curve_type,
                     self.fee_numerator,
                     self.fee_denominator,
                 )
@@ -1166,9 +1171,11 @@ mod tests {
         let token_a_amount = 1000;
         let token_b_amount = 2000;
         let pool_token_amount = 10;
+        let curve_type = CurveType::ConstantProduct;
 
         let mut accounts = SwapAccountInfo::new(
             &user_key,
+            curve_type,
             fee_numerator,
             fee_denominator,
             token_a_amount,
@@ -1461,6 +1468,7 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_token_key,
                         accounts.nonce,
+                        accounts.curve_type,
                         accounts.fee_numerator,
                         accounts.fee_denominator,
                     )
@@ -1510,6 +1518,7 @@ mod tests {
         let swap_info = SwapInfo::unpack(&accounts.swap_account.data).unwrap();
         assert_eq!(swap_info.is_initialized, true);
         assert_eq!(swap_info.nonce, accounts.nonce);
+        assert_eq!(swap_info.curve_type, accounts.curve_type);
         assert_eq!(swap_info.token_a, accounts.token_a_key);
         assert_eq!(swap_info.token_b, accounts.token_b_key);
         assert_eq!(swap_info.pool_mint, accounts.pool_mint_key);
@@ -1533,8 +1542,11 @@ mod tests {
         let fee_denominator = 2;
         let token_a_amount = 1000;
         let token_b_amount = 9000;
+        let curve_type = CurveType::ConstantProduct;
+
         let mut accounts = SwapAccountInfo::new(
             &user_key,
+            curve_type,
             fee_numerator,
             fee_denominator,
             token_a_amount,
@@ -2050,15 +2062,18 @@ mod tests {
         let fee_denominator = 2;
         let token_a_amount = 1000;
         let token_b_amount = 2000;
+        let curve_type = CurveType::ConstantProduct;
+
         let mut accounts = SwapAccountInfo::new(
             &user_key,
+            curve_type,
             fee_numerator,
             fee_denominator,
             token_a_amount,
             token_b_amount,
         );
         let withdrawer_key = pubkey_rand();
-        let pool_converter = SwapCurveType::ConstantProduct.new_pool_token_converter();
+        let pool_converter = CurveType::ConstantProduct.new_pool_token_converter();
         let initial_a = token_a_amount / 10;
         let initial_b = token_b_amount / 10;
         let initial_pool = pool_converter.supply() / 10;
@@ -2570,7 +2585,7 @@ mod tests {
             let swap_token_b =
                 Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
             let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
-            let pool_converter = SwapCurveType::ConstantProduct.existing_pool_token_converter(pool_mint.supply);
+            let pool_converter = CurveType::ConstantProduct.existing_pool_token_converter(pool_mint.supply);
 
             let withdrawn_a = pool_converter.liquidity_tokens(withdraw_amount, swap_token_a.amount).unwrap();
             assert_eq!(swap_token_a.amount, token_a_amount - withdrawn_a);
@@ -2593,8 +2608,11 @@ mod tests {
         let fee_denominator = 10;
         let token_a_amount = 1000;
         let token_b_amount = 5000;
+        let curve_type = CurveType::ConstantProduct;
+
         let mut accounts = SwapAccountInfo::new(
             &user_key,
+            curve_type,
             fee_numerator,
             fee_denominator,
             token_a_amount,

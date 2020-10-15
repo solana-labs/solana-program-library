@@ -1,5 +1,8 @@
 //! Swap calculations and curve implementations
 
+use solana_sdk::program_error::ProgramError;
+use std::convert::TryFrom;
+
 /// Initial amount of pool tokens for swap contract, hard-coded to something
 /// "sensible" given a maximum of u64.
 /// Note that on Ethereum, Uniswap uses the geometric mean of all provided
@@ -8,26 +11,42 @@ pub const INITIAL_SWAP_POOL_AMOUNT: u64 = 1_000_000_000;
 
 /// Curve types supported by the token-swap program.
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
-pub enum SwapCurveType {
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CurveType {
     /// Uniswap-style constant product curve, invariant = token_a_amount * token_b_amount
     ConstantProduct,
     /// Flat line, always providing 1:1 from one token to another
     Flat,
 }
 
-impl SwapCurveType {
+impl Default for CurveType {
+    fn default() -> Self { CurveType::ConstantProduct }
+}
+
+impl TryFrom<u8> for CurveType {
+    type Error = ProgramError;
+
+    fn try_from(curve_type: u8) -> Result<Self, Self::Error> {
+        match curve_type {
+            0 => Ok(CurveType::ConstantProduct),
+            1 => Ok(CurveType::Flat),
+            _ => Err(ProgramError::InvalidAccountData),
+        }
+    }
+}
+
+impl CurveType {
     /// Create a swap curve corresponding to the enum
     pub fn swap_curve(&self, swap_source_amount: u64, swap_destination_amount: u64, fee_numerator: u64, fee_denominator: u64) -> Box<dyn SwapCurve> {
         match self {
-            SwapCurveType::ConstantProduct => Box::new(
+            CurveType::ConstantProduct => Box::new(
                 ConstantProductCurve {
                     swap_source_amount,
                     swap_destination_amount,
                     fee_numerator,
                     fee_denominator,
                 }),
-            SwapCurveType::Flat => Box::new(FlatCurve {
+            CurveType::Flat => Box::new(FlatCurve {
                 swap_source_amount,
                 swap_destination_amount,
                 fee_numerator,
@@ -38,10 +57,10 @@ impl SwapCurveType {
     /// Create a pool token converter for an existing pool
     pub fn existing_pool_token_converter(&self, pool_tokens: u64) -> Box<dyn PoolTokenConverter> {
         match self {
-            SwapCurveType::ConstantProduct => Box::new(
+            CurveType::ConstantProduct => Box::new(
                 RelativePoolTokenConverter::new_existing(pool_tokens)
             ),
-            SwapCurveType::Flat => Box::new(
+            CurveType::Flat => Box::new(
                 RelativePoolTokenConverter::new_existing(pool_tokens)
             ),
         }
@@ -50,10 +69,10 @@ impl SwapCurveType {
     /// Create a pool token converter for a new pool
     pub fn new_pool_token_converter(&self) -> Box<dyn PoolTokenConverter> {
         match self {
-            SwapCurveType::ConstantProduct => Box::new(
+            CurveType::ConstantProduct => Box::new(
                 RelativePoolTokenConverter::new_pool()
             ),
-            SwapCurveType::Flat => Box::new(
+            CurveType::Flat => Box::new(
                 RelativePoolTokenConverter::new_pool()
             ),
         }
