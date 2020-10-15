@@ -3,7 +3,7 @@
 #![cfg(feature = "program")]
 
 use crate::{
-    curve::{SwapCurveType, PoolTokenConverter},
+    curve::SwapCurveType,
     error::SwapError,
     instruction::SwapInstruction,
     state::SwapInfo,
@@ -198,8 +198,9 @@ impl Processor {
             return Err(SwapError::InvalidSupply.into());
         }
 
-        let converter = PoolTokenConverter::new_pool(token_a.amount, token_b.amount);
-        let initial_amount = converter.supply;
+        let converter =
+            SwapCurveType::ConstantProduct.new_pool_token_converter();
+        let initial_amount = converter.supply();
 
         Self::token_mint_to(
             swap_info.key,
@@ -262,7 +263,7 @@ impl Processor {
         let source_account = Self::unpack_token_account(&swap_source_info.data.borrow())?;
         let dest_account = Self::unpack_token_account(&swap_destination_info.data.borrow())?;
 
-        let curve = SwapCurveType::ConstantProduct.create_swap_curve(
+        let curve = SwapCurveType::ConstantProduct.swap_curve(
             source_account.amount,
             dest_account.amount,
             token_swap.fee_numerator,
@@ -331,16 +332,16 @@ impl Processor {
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
 
         let converter =
-            PoolTokenConverter::new_existing(pool_mint.supply, token_a.amount, token_b.amount);
+            SwapCurveType::ConstantProduct.existing_pool_token_converter(pool_mint.supply);
 
         let a_amount = converter
-            .token_a_rate(pool_token_amount)
+            .liquidity_tokens(pool_token_amount, token_a.amount)
             .ok_or(SwapError::CalculationFailure)?;
         if a_amount > maximum_token_a_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = converter
-            .token_b_rate(pool_token_amount)
+            .liquidity_tokens(pool_token_amount, token_b.amount)
             .ok_or(SwapError::CalculationFailure)?;
         if b_amount > maximum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
@@ -415,16 +416,16 @@ impl Processor {
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
 
         let converter =
-            PoolTokenConverter::new_existing(pool_mint.supply, token_a.amount, token_b.amount);
+            SwapCurveType::ConstantProduct.existing_pool_token_converter(pool_mint.supply);
 
         let a_amount = converter
-            .token_a_rate(pool_token_amount)
+            .liquidity_tokens(pool_token_amount, token_a.amount)
             .ok_or(SwapError::CalculationFailure)?;
         if a_amount < minimum_token_a_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = converter
-            .token_b_rate(pool_token_amount)
+            .liquidity_tokens(pool_token_amount, token_b.amount)
             .ok_or(SwapError::CalculationFailure)?;
         if b_amount < minimum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
@@ -2057,10 +2058,10 @@ mod tests {
             token_b_amount,
         );
         let withdrawer_key = pubkey_rand();
-        let pool_converter = PoolTokenConverter::new_pool(token_a_amount, token_b_amount);
+        let pool_converter = SwapCurveType::ConstantProduct.new_pool_token_converter();
         let initial_a = token_a_amount / 10;
         let initial_b = token_b_amount / 10;
-        let initial_pool = pool_converter.supply / 10;
+        let initial_pool = pool_converter.supply() / 10;
         let withdraw_amount = initial_pool / 4;
         let minimum_a_amount = initial_a / 40;
         let minimum_b_amount = initial_b / 40;
@@ -2569,15 +2570,11 @@ mod tests {
             let swap_token_b =
                 Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
             let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
-            let pool_converter = PoolTokenConverter::new_existing(
-                pool_mint.supply,
-                swap_token_a.amount,
-                swap_token_b.amount,
-            );
+            let pool_converter = SwapCurveType::ConstantProduct.existing_pool_token_converter(pool_mint.supply);
 
-            let withdrawn_a = pool_converter.token_a_rate(withdraw_amount).unwrap();
+            let withdrawn_a = pool_converter.liquidity_tokens(withdraw_amount, swap_token_a.amount).unwrap();
             assert_eq!(swap_token_a.amount, token_a_amount - withdrawn_a);
-            let withdrawn_b = pool_converter.token_b_rate(withdraw_amount).unwrap();
+            let withdrawn_b = pool_converter.liquidity_tokens(withdraw_amount, swap_token_b.amount).unwrap();
             assert_eq!(swap_token_b.amount, token_b_amount - withdrawn_b);
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
             assert_eq!(token_a.amount, initial_a + withdrawn_a);

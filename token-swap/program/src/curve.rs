@@ -17,8 +17,8 @@ pub enum SwapCurveType {
 }
 
 impl SwapCurveType {
-    /// Create a swap curve corresponding to the enum provided
-    pub fn create_swap_curve(&self, swap_source_amount: u64, swap_destination_amount: u64, fee_numerator: u64, fee_denominator: u64) -> Box<dyn SwapCurve> {
+    /// Create a swap curve corresponding to the enum
+    pub fn swap_curve(&self, swap_source_amount: u64, swap_destination_amount: u64, fee_numerator: u64, fee_denominator: u64) -> Box<dyn SwapCurve> {
         match self {
             SwapCurveType::ConstantProduct => Box::new(
                 ConstantProductCurve {
@@ -32,6 +32,30 @@ impl SwapCurveType {
                 swap_destination_amount,
                 fee_numerator,
                 fee_denominator }),
+        }
+    }
+
+    /// Create a pool token converter for an existing pool
+    pub fn existing_pool_token_converter(&self, pool_tokens: u64) -> Box<dyn PoolTokenConverter> {
+        match self {
+            SwapCurveType::ConstantProduct => Box::new(
+                RelativePoolTokenConverter::new_existing(pool_tokens)
+            ),
+            SwapCurveType::Flat => Box::new(
+                RelativePoolTokenConverter::new_existing(pool_tokens)
+            ),
+        }
+    }
+
+    /// Create a pool token converter for a new pool
+    pub fn new_pool_token_converter(&self) -> Box<dyn PoolTokenConverter> {
+        match self {
+            SwapCurveType::ConstantProduct => Box::new(
+                RelativePoolTokenConverter::new_pool()
+            ),
+            SwapCurveType::Flat => Box::new(
+                RelativePoolTokenConverter::new_pool()
+            ),
         }
     }
 }
@@ -138,50 +162,47 @@ impl SwapCurve for ConstantProductCurve {
 
 /// Conversions for pool tokens, how much to deposit / withdraw, along with
 /// proper initialization
-pub struct PoolTokenConverter {
-    /// Total supply
-    pub supply: u64,
-    /// Token A amount
-    pub token_a: u64,
-    /// Token B amount
-    pub token_b: u64,
+pub trait PoolTokenConverter {
+    /// Create a converter based on an existing supply
+    fn new_existing(pool_token_supply: u64) -> Self where Self: Sized;
+    /// Create a totally new pool with some default amount
+    fn new_pool() -> Self where Self: Sized;
+    /// Get the amount of liquidity tokens for pool tokens given the total amount
+    /// of liquidity tokens in the pool
+    fn liquidity_tokens(&self, pool_tokens: u64, total_liquidity_tokens: u64) -> Option<u64>;
+    /// Get total pool token supply
+    fn supply(&self) -> u64;
 }
 
-impl PoolTokenConverter {
+/// Balancer-style pool token converter, which initializes with a hard-coded
+/// amount, then converts pool tokens relative to each amount of liquidity
+/// token.
+pub struct RelativePoolTokenConverter {
+    /// Total pool token supply
+    pub pool_token_supply: u64,
+}
+
+impl PoolTokenConverter for RelativePoolTokenConverter {
     /// Create a converter based on existing market information
-    pub fn new_existing(supply: u64, token_a: u64, token_b: u64) -> Self {
-        Self {
-            supply,
-            token_a,
-            token_b,
-        }
+    fn new_existing(pool_token_supply: u64) -> Self {
+        Self { pool_token_supply }
     }
+
+    /// Get total pool token supply
+    fn supply(&self) -> u64 { self.pool_token_supply }
 
     /// Create a converter for a new pool token, no supply present yet.
     /// According to Uniswap, the geometric mean protects the pool creator
     /// in case the initial ratio is off the market.
-    pub fn new_pool(token_a: u64, token_b: u64) -> Self {
-        let supply = INITIAL_SWAP_POOL_AMOUNT;
-        Self {
-            supply,
-            token_a,
-            token_b,
-        }
+    fn new_pool() -> Self {
+        Self { pool_token_supply: INITIAL_SWAP_POOL_AMOUNT, }
     }
 
-    /// A tokens for pool tokens, returns None if output is less than 0
-    pub fn token_a_rate(&self, pool_tokens: u64) -> Option<u64> {
+    /// Liqudidity tokens for pool tokens, returns None if output is less than 1
+    fn liquidity_tokens(&self, pool_tokens: u64, total_liquidity_tokens: u64) -> Option<u64> {
         pool_tokens
-            .checked_mul(self.token_a)?
-            .checked_div(self.supply)
-            .and_then(map_zero_to_none)
-    }
-
-    /// B tokens for pool tokens, returns None is output is less than 0
-    pub fn token_b_rate(&self, pool_tokens: u64) -> Option<u64> {
-        pool_tokens
-            .checked_mul(self.token_b)?
-            .checked_div(self.supply)
+            .checked_mul(total_liquidity_tokens)?
+            .checked_div(self.pool_token_supply)
             .and_then(map_zero_to_none)
     }
 }
@@ -192,28 +213,27 @@ mod tests {
 
     #[test]
     fn initial_pool_amount() {
-        let token_converter = PoolTokenConverter::new_pool(1, 5);
-        assert_eq!(token_converter.supply, INITIAL_SWAP_POOL_AMOUNT);
+        let token_converter = RelativePoolTokenConverter::new_pool();
+        assert_eq!(token_converter.pool_token_supply, INITIAL_SWAP_POOL_AMOUNT);
     }
 
-    fn check_pool_token_a_rate(
+    fn check_liquidity_pool_token_rate(
         token_a: u64,
-        token_b: u64,
         deposit: u64,
         supply: u64,
         expected: Option<u64>,
     ) {
-        let calculator = PoolTokenConverter::new_existing(supply, token_a, token_b);
-        assert_eq!(calculator.token_a_rate(deposit), expected);
+        let calculator = RelativePoolTokenConverter::new_existing(supply);
+        assert_eq!(calculator.liquidity_tokens(deposit, token_a), expected);
     }
 
     #[test]
     fn issued_tokens() {
-        check_pool_token_a_rate(2, 50, 5, 10, Some(1));
-        check_pool_token_a_rate(10, 10, 5, 10, Some(5));
-        check_pool_token_a_rate(5, 100, 5, 10, Some(2));
-        check_pool_token_a_rate(5, u64::MAX, 5, 10, Some(2));
-        check_pool_token_a_rate(u64::MAX, u64::MAX, 5, 10, None);
+        check_liquidity_pool_token_rate(2, 5, 10, Some(1));
+        check_liquidity_pool_token_rate(10, 5, 10, Some(5));
+        check_liquidity_pool_token_rate(5, 5, 10, Some(2));
+        check_liquidity_pool_token_rate(5, 5, 10, Some(2));
+        check_liquidity_pool_token_rate(u64::MAX, 5, 10, None);
     }
 
     #[test]
