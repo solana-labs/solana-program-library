@@ -298,12 +298,28 @@ fn assert_instruction_count() {
 
 // Mock InvokeContext
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct MockInvokeContext {
     pub key: Pubkey,
     pub logger: MockLogger,
     pub compute_meter: MockComputeMeter,
+    compute_budget: ComputeBudget,
 }
+
+impl Default for MockInvokeContext {
+    fn default() -> Self {
+        Self {
+            key: Pubkey::default(),
+            logger: MockLogger::default(),
+            compute_meter: MockComputeMeter::default(),
+            compute_budget: ComputeBudget {
+                max_invoke_depth: 10,
+                ..ComputeBudget::default()
+            },
+        }
+    }
+}
+
 impl InvokeContext for MockInvokeContext {
     fn push(&mut self, _key: &Pubkey) -> Result<(), InstructionError> {
         Ok(())
@@ -326,11 +342,8 @@ impl InvokeContext for MockInvokeContext {
     fn get_logger(&self) -> Rc<RefCell<dyn Logger>> {
         Rc::new(RefCell::new(self.logger.clone()))
     }
-    fn get_compute_budget(&self) -> ComputeBudget {
-        ComputeBudget {
-            max_invoke_depth: 10,
-            ..ComputeBudget::default()
-        }
+    fn get_compute_budget(&self) -> &ComputeBudget {
+        &self.compute_budget
     }
     fn get_compute_meter(&self) -> Rc<RefCell<dyn ComputeMeter>> {
         Rc::new(RefCell::new(self.compute_meter.clone()))
