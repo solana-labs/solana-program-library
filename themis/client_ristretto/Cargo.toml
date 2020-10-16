@@ -18,23 +18,23 @@ default = ["solana-sdk/default"]
 bincode = "1.3"
 borsh = "0.7.1"
 curve25519-dalek = {git = "https://github.com/garious/curve25519-dalek", rev = "60efef3553d6bf3d7f3b09b5f97acd54d72529ff", default-features = false, features = ["borsh"]}
-elgamal_ristretto = { git = "https://github.com/garious/elgamal", rev = "6c5ad5b32160e78be080b74eb7a1867dd65aec6c", default-features = false }
+elgamal_ristretto = { git = "https://github.com/garious/elgamal", rev = "db1eef8e01b8a6e93d3bdc64ab2c1acb39cb64d6", default-features = false }
 futures = "0.3"
-solana-banks-client = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
-solana-cli-config = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
-solana-sdk = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
+solana-banks-client = "1.4.1"
+solana-cli-config = "1.4.1"
+solana-sdk = "1.4.1"
 spl-themis-ristretto = { version = "0.1.0", path = "../program_ristretto" }
-tarpc = { version = "0.21.1", features = ["full"] }
+tarpc = { version = "0.22.0", features = ["full"] }
 tokio = "0.2"
 url = "2.1"
 
 [dev-dependencies]
 separator = "0.4.1"
-solana-banks-server = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
-solana-bpf-loader-program = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
-solana-core = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
-solana_rbpf = "=0.1.31"
-solana-runtime = { git = "https://github.com/solana-labs/solana", rev = "dd7fae4afb898dee5b5147c8ee8d6f6d712363d1" }
+solana-banks-server = "1.4.1"
+solana-bpf-loader-program = "1.4.1"
+solana-core = "1.4.1"
+solana_rbpf = "=0.1.32"
+solana-runtime = "1.4.1"
 
 [lib]
 crate-type = ["cdylib", "lib"]
