@@ -114,16 +114,16 @@ export class TokenSwap {
    * The public key for the second token account of the trading pair
    */
   tokenAccountB: PublicKey;
-  
+
   /**
    * Weight of token A
    */
-  weightA: number,
+  weightA: number;
 
   /**
    * Weight of token B
    */
-  weightB: number,
+  weightB: number;
 
   /**
    * Fee numerator
@@ -271,8 +271,8 @@ export class TokenSwap {
 
     const poolToken = new PublicKey(tokenSwapData.tokenPool);
     const tokenAccountA = new PublicKey(tokenSwapData.tokenAccountA);
-    const tokenAccountB = new PublicKey(tokenSwapData.tokenAccountB); 
-    
+    const tokenAccountB = new PublicKey(tokenSwapData.tokenAccountB);
+
     const tokenProgramId = new PublicKey(tokenSwapData.tokenProgramId);
 
     const feeNumerator = Numberu64.fromBuffer(tokenSwapData.feeNumerator);
@@ -323,6 +323,8 @@ export class TokenSwap {
     nonce: number,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
+    weightA: number,
+    weightB: number,
     poolToken: PublicKey,
     tokenAccountPool: PublicKey,
     swapProgramId: PublicKey,

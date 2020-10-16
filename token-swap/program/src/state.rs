@@ -19,7 +19,7 @@ pub struct SwapInfo {
     /// authority over the swap's token A account, token B account, and pool
     /// token mint.
     pub nonce: u8,
-    
+
     /// Program ID of the tokens being exchanged.
     pub token_program_id: Pubkey,
 
@@ -86,7 +86,7 @@ impl Pack for SwapInfo {
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 146];
+        let output = array_mut_ref![output, 0, 148];
         let (
             is_initialized,
             nonce,

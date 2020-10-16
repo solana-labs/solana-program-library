@@ -231,8 +231,8 @@ impl PreciseNumber {
         if remainder_exponent.value == 0 {
             return Some(precise_whole);
         }
-        let precise_remainder =
-            self.checked_pow_approximation(&remainder_exponent, Self::MAX_APPROXIMATION_ITERATIONS)?;
+        let precise_remainder = self
+            .checked_pow_approximation(&remainder_exponent, Self::MAX_APPROXIMATION_ITERATIONS)?;
         precise_whole.checked_mul(&precise_remainder)
     }
 }
