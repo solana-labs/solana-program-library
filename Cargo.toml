@@ -4,6 +4,7 @@ members = [
   "utils/test-client",
   "memo/program",
   "shared-memory/program",
+  "stake-pool/program",
   "themis/program_bn",
   "themis/program_ristretto",
   "token-lending/program",

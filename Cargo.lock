@@ -2885,6 +2885,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-stake-pool"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "rand",
+ "remove_dir_all",
+ "serde",
+ "serde_derive",
+ "solana-sdk 1.3.17",
+ "spl-token 2.0.8",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-themis-bn"
 version = "0.1.0"
 dependencies = [
