@@ -326,9 +326,6 @@ impl InvokeContext for MockInvokeContext {
     fn get_logger(&self) -> Rc<RefCell<dyn Logger>> {
         Rc::new(RefCell::new(self.logger.clone()))
     }
-    fn is_cross_program_supported(&self) -> bool {
-        true
-    }
     fn get_compute_budget(&self) -> ComputeBudget {
         ComputeBudget {
             max_invoke_depth: 10,
@@ -344,6 +341,9 @@ impl InvokeContext for MockInvokeContext {
     }
     fn record_instruction(&self, _: &solana_sdk::instruction::Instruction) {
         todo!()
+    }
+    fn is_feature_active(&self, _: &solana_sdk::pubkey::Pubkey) -> bool {
+        true
     }
 }
 
