@@ -60,12 +60,12 @@ pub enum StakePoolInstruction {
 
     ///   Withdraw the token from the pool at the current ratio.
     ///   The amount withdrawn is the MIN(u64, stake size)
-    ///   
+    ///
     ///   0. `[]` StakePool
     ///   1. `[]` withdraw  authority
     ///   2. `[w]` SOURCE Pool account, amount is transferable by authority
     ///   3. `[w]` Pool MINT account, authority is the owner
-    ///   4. `[w]` Stake SOURCE owned by the withdraw authority  
+    ///   4. `[w]` Stake SOURCE owned by the withdraw authority
     ///   6. `[w]` Stake destination, uninitialized, for the user stake
     ///   7. `[]` Token program id
     ///   userdata: amount to withdraw
@@ -91,6 +91,7 @@ pub enum StakePoolInstruction {
 
 impl StakePoolInstruction {
     /// Deserializes a byte buffer into an [StakePoolInstruction](enum.StakePoolInstruction.html).
+    /// TODO efficient unpacking here
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -112,6 +113,7 @@ impl StakePoolInstruction {
     }
 
     /// Serializes an [StakePoolInstruction](enum.StakePoolInstruction.html) into a byte buffer.
+    /// TODO efficient packing here
     pub fn serialize(&self) -> Result<Vec<u8>, ProgramError> {
         let mut output = vec![0u8; size_of::<StakePoolInstruction>()];
         match self {

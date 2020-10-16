@@ -31,14 +31,14 @@ impl Processor {
 
     /// Issue a stake_split instruction.
     pub fn stake_split<'a>(
-        me: &Pubkey,
+        stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
         authority: AccountInfo<'a>,
         nonce: u8,
         amount: u64,
         split_stake: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
-        let me_bytes = me.to_bytes();
+        let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
 
@@ -49,14 +49,14 @@ impl Processor {
 
     /// Issue a stake_set_owner instruction.
     pub fn stake_authorize<'a>(
-        me: &Pubkey,
+        stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
         authority: AccountInfo<'a>,
         nonce: u8,
         new_staker: &Pubkey,
         staker_auth: stake::StakeAuthorize,
     ) -> Result<(), ProgramError> {
-        let me_bytes = me.to_bytes();
+        let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
 
@@ -67,7 +67,7 @@ impl Processor {
 
     /// Issue a spl_token `Burn` instruction.
     pub fn token_burn<'a>(
-        me: &Pubkey,
+        stake_pool: &Pubkey,
         token_program: AccountInfo<'a>,
         burn_account: AccountInfo<'a>,
         mint: AccountInfo<'a>,
@@ -75,7 +75,7 @@ impl Processor {
         nonce: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let me_bytes = me.to_bytes();
+        let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
 
@@ -97,7 +97,7 @@ impl Processor {
 
     /// Issue a spl_token `MintTo` instruction.
     pub fn token_mint_to<'a>(
-        me: &Pubkey,
+        stake_pool: &Pubkey,
         token_program: AccountInfo<'a>,
         mint: AccountInfo<'a>,
         destination: AccountInfo<'a>,
@@ -105,7 +105,7 @@ impl Processor {
         nonce: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let me_bytes = me.to_bytes();
+        let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
         let ix = spl_token::instruction::mint_to(
@@ -385,22 +385,33 @@ impl Processor {
 
 // Test program id for the stake-pool program.
 #[cfg(not(target_arch = "bpf"))]
-const MY_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
+const STAKE_POOL_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
+
+// Test program id for the token program.
+#[cfg(not(target_arch = "bpf"))]
+const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
 
 /// Routes invokes to the token program, used for testing.
+/// TODO add routing to stake program for testing
 #[cfg(not(target_arch = "bpf"))]
 pub fn invoke_signed<'a>(
     instruction: &Instruction,
     account_infos: &[AccountInfo<'a>],
     signers_seeds: &[&[&[u8]]],
 ) -> ProgramResult {
+    // mimic check for token program in accounts
+    if !account_infos.iter().any(|x| *x.key == TOKEN_PROGRAM_ID) {
+        return Err(ProgramError::InvalidAccountData);
+    }
+
     let mut new_account_infos = vec![];
     for meta in instruction.accounts.iter() {
         for account_info in account_infos.iter() {
             if meta.pubkey == *account_info.key {
                 let mut new_account_info = account_info.clone();
                 for seeds in signers_seeds.iter() {
-                    let signer = Pubkey::create_program_address(seeds, &MY_PROGRAM_ID).unwrap();
+                    let signer =
+                        Pubkey::create_program_address(seeds, &STAKE_POOL_PROGRAM_ID).unwrap();
                     if *account_info.key == signer {
                         new_account_info.is_signer = true;
                     }
@@ -450,16 +461,13 @@ mod tests {
     use core::mem::size_of;
     use solana_sdk::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
-        rent::Rent, sysvar::rent,
+        program_pack::Pack, rent::Rent, sysvar::rent,
     };
-    use spl_token::pack::Pack;
     use spl_token::{
         instruction::{initialize_account, initialize_mint},
         processor::Processor as SplProcessor,
         state::{Account as SplAccount, Mint as SplMint},
     };
-
-    const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
 
     fn pubkey_rand() -> Pubkey {
         Pubkey::new(&rand::random::<[u8; 32]>())
@@ -477,7 +485,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         let account_infos = create_is_signer_account_infos(&mut meta);
-        if instruction.program_id == MY_PROGRAM_ID {
+        if instruction.program_id == STAKE_POOL_PROGRAM_ID {
             Processor::process(&instruction.program_id, &account_infos, &instruction.data)
         } else {
             SplProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
@@ -563,7 +571,7 @@ mod tests {
     #[test]
     fn test_initialize() {
         let stake_pool_key = pubkey_rand();
-        let mut stake_pool_account = Account::new(0, size_of::<State>(), &MY_PROGRAM_ID);
+        let mut stake_pool_account = Account::new(0, size_of::<State>(), &STAKE_POOL_PROGRAM_ID);
         let owner_key = pubkey_rand();
         let mut owner_account = Account::default();
         let authority_key = pubkey_rand();
@@ -580,7 +588,7 @@ mod tests {
         // StakePool Init
         do_process_instruction(
             initialize(
-                &MY_PROGRAM_ID,
+                &STAKE_POOL_PROGRAM_ID,
                 &stake_pool_key,
                 &owner_key,
                 &pool_mint_key,

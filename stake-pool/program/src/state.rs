@@ -68,6 +68,7 @@ pub enum State {
 
 impl State {
     /// Deserializes a byte buffer into a [State](struct.State.html).
+    /// TODO efficient unpacking here
     pub fn deserialize(input: &[u8]) -> Result<State, ProgramError> {
         if input.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
@@ -83,6 +84,7 @@ impl State {
     }
 
     /// Serializes [State](struct.State.html) into a byte buffer.
+    /// TODO efficient packing here
     pub fn serialize(&self, output: &mut [u8]) -> ProgramResult {
         if output.len() < size_of::<u8>() {
             return Err(ProgramError::InvalidAccountData);
