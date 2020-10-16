@@ -233,7 +233,7 @@ impl PoolTokenConverter for RelativePoolTokenConverter {
         }
     }
 
-    /// Liqudidity tokens for pool tokens, returns None if output is less than 1
+    /// Liquidity tokens for pool tokens, returns None if output is less than 1
     fn liquidity_tokens(&self, pool_tokens: u64, total_liquidity_tokens: u64) -> Option<u64> {
         pool_tokens
             .checked_mul(total_liquidity_tokens)?
