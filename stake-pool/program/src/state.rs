@@ -14,10 +14,10 @@ pub struct StakePool {
     pub owner: Pubkey,
     /// Deposit authority nonce
     /// for `create_program_address(&[state::StakePool account, "deposit"])`
-    pub deposit_nonce: u8,
+    pub deposit_bump_seed: u8,
     /// Withdrawal authority nonce
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
-    pub withdraw_nonce: u8,
+    pub withdraw_bump_seed: u8,
     /// Pool Mint
     pub pool_mint: Pubkey,
     /// Owner fee account
