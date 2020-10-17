@@ -14,7 +14,9 @@ use solana_clap_utils::{
     keypair::DefaultSigner,
 };
 use solana_cli_output::display::println_name_value;
-use solana_client::{rpc_client::RpcClient, rpc_request::TokenAccountsFilter};
+use solana_client::{
+    rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig, rpc_request::TokenAccountsFilter,
+};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     instruction::Instruction,
@@ -1204,9 +1206,13 @@ fn main() {
 
             let signature = config
                 .rpc_client
-                .send_and_confirm_transaction_with_spinner_and_commitment(
+                .send_and_confirm_transaction_with_spinner_and_config(
                     &transaction,
                     config.commitment_config,
+                    RpcSendTransactionConfig {
+                        preflight_commitment: Some(config.commitment_config.commitment),
+                        ..RpcSendTransactionConfig::default()
+                    },
                 )?;
             println!("Signature: {}", signature);
         }
