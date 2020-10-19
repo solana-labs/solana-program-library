@@ -1721,6 +1721,49 @@ mod tests {
         let account = Account::unpack_unchecked(&account_account.data).unwrap();
         assert_eq!(account.amount, 1000);
 
+        // bogus transfer to self using system accounts.
+        //
+        // Transfer will succeed if the source and destination accounts have the same address,
+        // regardless of whether it is a valid token account.
+        //
+        // This is probably wrong but transactions in the wild have been observed to do this so
+        // this behavior is now part of the token ABI
+        {
+            let system_account_key = pubkey_rand();
+            let mut system_account = SolanaAccount::new(1, 0, &Pubkey::default());
+
+            let instruction = transfer(
+                &program_id,
+                &system_account_key,
+                &system_account_key,
+                &owner_key,
+                &[],
+                500,
+            )
+            .unwrap();
+
+            let account_account_info = AccountInfo::from((
+                &instruction.accounts[0].pubkey,
+                instruction.accounts[0].is_signer,
+                &mut system_account,
+            ));
+            let owner_account_info = AccountInfo::from((
+                &instruction.accounts[2].pubkey,
+                instruction.accounts[2].is_signer,
+                &mut owner_account,
+            ));
+            Processor::process(
+                &instruction.program_id,
+                &[
+                    account_account_info.clone(),
+                    account_account_info,
+                    owner_account_info,
+                ],
+                &instruction.data,
+            )
+            .unwrap()
+        }
+
         // insufficient funds
         assert_eq!(
             Err(TokenError::InsufficientFunds.into()),
