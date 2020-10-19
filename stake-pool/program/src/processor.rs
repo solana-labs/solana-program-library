@@ -94,11 +94,12 @@ impl Processor {
         burn_account: AccountInfo<'a>,
         mint: AccountInfo<'a>,
         authority: AccountInfo<'a>,
-        nonce: u8,
+        authority_type: &[u8],
+        bump_seed: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
+        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let ix = spl_token::instruction::burn(
@@ -124,11 +125,12 @@ impl Processor {
         mint: AccountInfo<'a>,
         destination: AccountInfo<'a>,
         authority: AccountInfo<'a>,
-        nonce: u8,
+        authority_type: &[u8],
+        bump_seed: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], &[nonce]];
+        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
         let ix = spl_token::instruction::mint_to(
             token_program.key,
@@ -259,6 +261,7 @@ impl Processor {
             pool_mint_info.clone(),
             dest_user_info.clone(),
             withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             user_amount,
         )?;
@@ -269,6 +272,7 @@ impl Processor {
             pool_mint_info.clone(),
             owner_fee_info.clone(),
             withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             fee_amount as u64,
         )?;
@@ -339,6 +343,64 @@ impl Processor {
             source_info.clone(),
             pool_mint_info.clone(),
             withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            pool_amount,
+        )?;
+
+        stake_pool.pool_total -= pool_amount;
+        stake_pool.stake_total -= stake_amount;
+        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
+        Ok(())
+    }
+    /// Processes an [Claim](enum.Instruction.html).
+    pub fn process_claim(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let withdraw_info = next_account_info(account_info_iter)?;
+        let source_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let dest_user_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+
+        let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+
+        if *withdraw_info.key
+            != Self::authority_id(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_WITHDRAW,
+                stake_pool.withdraw_bump_seed,
+            )?
+        {
+            return Err(Error::InvalidProgramAddress.into());
+        }
+        if stake_pool.token_program_id != *token_program_info.key {
+            return Err(Error::InvalidInput.into());
+        }
+
+        let stake_amount = **source_info.lamports.borrow();
+        let pool_amount = stake_pool
+            .calc_pool_withdraw_amount(stake_amount)
+            .ok_or(Error::CalculationFailure)?;
+        let pool_amount = <u64>::try_from(pool_amount).or(Err(Error::CalculationFailure))?;
+
+        Self::stake_authorize(
+            stake_pool_info.key,
+            source_info.clone(),
+            withdraw_info.clone(),
+            stake_pool.withdraw_bump_seed,
+            dest_user_info.key,
+            stake::StakeAuthorize::Withdrawer,
+        )?;
+
+        Self::token_burn(
+            stake_pool_info.key,
+            token_program_info.clone(),
+            source_info.clone(),
+            pool_mint_info.clone(),
+            withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             pool_amount,
         )?;
@@ -426,6 +488,10 @@ impl Processor {
             StakePoolInstruction::Withdraw(amount) => {
                 info!("Instruction: Withdraw");
                 Self::process_withdraw(program_id, amount, accounts)
+            }
+            StakePoolInstruction::Claim => {
+                info!("Instruction: Claim");
+                Self::process_claim(program_id, accounts)
             }
             StakePoolInstruction::SetStakingAuthority => {
                 info!("Instruction: SetStakingAuthority");

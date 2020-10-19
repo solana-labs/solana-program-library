@@ -66,6 +66,18 @@ pub enum StakePoolInstruction {
     ///   userdata: amount to withdraw
     Withdraw(u64),
 
+    ///   Claim ownership of a whole stake account.
+    ///   Also burns enough tokens to make up for the stake account balance
+    ///   
+    ///   0. `[w]` StakePool
+    ///   1. `[]` withdraw  authority
+    ///   2. `[w]` Stake account, its withdraw authority will be changed to the destination account
+    ///   3. `[w]` Pool MINT account, authority is the owner
+    ///   6. `[]` New stake owner account
+    ///   7. `[]` Token program id
+    ///   userdata: amount to withdraw
+    Claim,
+
     ///   Update the staking pubkey for a stake
     ///
     ///   0. `[w]` StakePool
@@ -101,8 +113,9 @@ impl StakePoolInstruction {
                 let val: &u64 = unpack(input)?;
                 Self::Withdraw(*val)
             }
-            3 => Self::SetStakingAuthority,
-            4 => Self::SetOwner,
+            3 => Self::Claim,
+            4 => Self::SetStakingAuthority,
+            5 => Self::SetOwner,
             _ => return Err(ProgramError::InvalidAccountData),
         })
     }
@@ -127,11 +140,14 @@ impl StakePoolInstruction {
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
                 *value = *val;
             }
-            Self::SetStakingAuthority => {
+            Self::Claim => {
                 output[0] = 3;
             }
-            Self::SetOwner => {
+            Self::SetStakingAuthority => {
                 output[0] = 4;
+            }
+            Self::SetOwner => {
+                output[0] = 5;
             }
         }
         Ok(output)
