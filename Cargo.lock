@@ -2796,7 +2796,7 @@ dependencies = [
  "remove_dir_all",
  "serde",
  "serde_derive",
- "solana-sdk 1.3.17",
+ "solana-sdk",
  "spl-token 2.0.8",
  "thiserror",
 ]
