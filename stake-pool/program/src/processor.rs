@@ -23,10 +23,22 @@ use std::convert::TryFrom;
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
+    /// Suffix for deposit authority seed
+    pub const AUTHORITY_DEPOSIT: &'static [u8] = b"deposit";
+    /// Suffix for withdraw authority seed
+    pub const AUTHORITY_WITHDRAW: &'static [u8] = b"withdraw";
     /// Calculates the authority id by generating a program address.
-    pub fn authority_id(program_id: &Pubkey, my_info: &Pubkey, nonce: u8) -> Result<Pubkey, Error> {
-        Pubkey::create_program_address(&[&my_info.to_bytes()[..32], &[nonce]], program_id)
-            .or(Err(Error::InvalidProgramAddress))
+    pub fn authority_id(
+        program_id: &Pubkey,
+        my_info: &Pubkey,
+        authority_type: &[u8],
+        bump_seed: u8,
+    ) -> Result<Pubkey, Error> {
+        Pubkey::create_program_address(
+            &[&my_info.to_bytes()[..32], authority_type, &[bump_seed]],
+            program_id,
+        )
+        .or(Err(Error::InvalidProgramAddress))
     }
 
     /// Issue a stake_split instruction.
@@ -139,8 +151,8 @@ impl Processor {
 
         let stake_pool = State::Init(StakePool {
             owner: *owner_info.key,
-            deposit_nonce: init.deposit_nonce,
-            withdraw_nonce: init.withdraw_nonce,
+            deposit_bump_seed: init.deposit_bump_seed,
+            withdraw_bump_seed: init.withdraw_bump_seed,
             pool_mint: *pool_mint_info.key,
             owner_fee_account: *owner_fee_info.key,
             token_program_id: *token_program_info.key,
@@ -166,13 +178,23 @@ impl Processor {
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
         if *withdraw_info.key
-            != Self::authority_id(program_id, stake_pool_info.key, stake_pool.withdraw_nonce)?
+            != Self::authority_id(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_WITHDRAW,
+                stake_pool.withdraw_bump_seed,
+            )?
         {
             return Err(Error::InvalidProgramAddress.into());
         }
 
         if *deposit_info.key
-            != Self::authority_id(program_id, stake_pool_info.key, stake_pool.deposit_nonce)?
+            != Self::authority_id(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_DEPOSIT,
+                stake_pool.deposit_bump_seed,
+            )?
         {
             return Err(Error::InvalidProgramAddress.into());
         }
@@ -201,7 +223,7 @@ impl Processor {
             stake_pool_info.key,
             stake_info.clone(),
             deposit_info.clone(),
-            stake_pool.deposit_nonce,
+            stake_pool.deposit_bump_seed,
             withdraw_info.key,
             stake::StakeAuthorize::Withdrawer,
         )?;
@@ -213,7 +235,7 @@ impl Processor {
             pool_mint_info.clone(),
             dest_user_info.clone(),
             withdraw_info.clone(),
-            stake_pool.withdraw_nonce,
+            stake_pool.withdraw_bump_seed,
             user_amount,
         )?;
         let fee_amount = <u64>::try_from(fee_amount).or(Err(Error::CalculationFailure))?;
@@ -223,7 +245,7 @@ impl Processor {
             pool_mint_info.clone(),
             owner_fee_info.clone(),
             withdraw_info.clone(),
-            stake_pool.withdraw_nonce,
+            stake_pool.withdraw_bump_seed,
             fee_amount as u64,
         )?;
         let pool_amount = <u64>::try_from(pool_amount).or(Err(Error::CalculationFailure))?;
@@ -251,7 +273,12 @@ impl Processor {
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
         if *withdraw_info.key
-            != Self::authority_id(program_id, stake_pool_info.key, stake_pool.withdraw_nonce)?
+            != Self::authority_id(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_WITHDRAW,
+                stake_pool.withdraw_bump_seed,
+            )?
         {
             return Err(Error::InvalidProgramAddress.into());
         }
@@ -268,7 +295,7 @@ impl Processor {
             stake_pool_info.key,
             source_info.clone(),
             withdraw_info.clone(),
-            stake_pool.withdraw_nonce,
+            stake_pool.withdraw_bump_seed,
             stake_amount,
             stake_info.clone(),
         )?;
@@ -277,7 +304,7 @@ impl Processor {
             stake_pool_info.key,
             stake_info.clone(),
             withdraw_info.clone(),
-            stake_pool.withdraw_nonce,
+            stake_pool.withdraw_bump_seed,
             dest_user_info.key,
             stake::StakeAuthorize::Withdrawer,
         )?;
@@ -288,7 +315,7 @@ impl Processor {
             source_info.clone(),
             pool_mint_info.clone(),
             withdraw_info.clone(),
-            stake_pool.withdraw_nonce,
+            stake_pool.withdraw_bump_seed,
             pool_amount,
         )?;
 
@@ -319,7 +346,12 @@ impl Processor {
         }
 
         if *withdraw_info.key
-            != Self::authority_id(program_id, stake_pool_info.key, stake_pool.withdraw_nonce)?
+            != Self::authority_id(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_WITHDRAW,
+                stake_pool.withdraw_bump_seed,
+            )?
         {
             return Err(Error::InvalidProgramAddress.into());
         }
@@ -327,7 +359,7 @@ impl Processor {
             stake_info.key,
             stake_info.clone(),
             withdraw_info.clone(),
-            stake_pool.withdraw_nonce,
+            stake_pool.withdraw_bump_seed,
             staker_info.key,
             stake::StakeAuthorize::Staker,
         )?;
@@ -595,8 +627,8 @@ mod tests {
                 &pool_token_key,
                 &TOKEN_PROGRAM_ID,
                 InitArgs {
-                    deposit_nonce: 0,
-                    withdraw_nonce: 0,
+                    deposit_bump_seed: 0,
+                    withdraw_bump_seed: 0,
                     fee: Fee {
                         denominator: 1,
                         numerator: 2,
