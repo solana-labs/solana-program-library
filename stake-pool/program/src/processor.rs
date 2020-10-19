@@ -28,9 +28,17 @@ impl Processor {
     /// Suffix for withdraw authority seed
     pub const AUTHORITY_WITHDRAW: &'static [u8] = b"withdraw";
     /// Calculates the authority id by generating a program address.
-    pub fn authority_id(program_id: &Pubkey, my_info: &Pubkey, authority_type: &[u8], bump_seed: u8) -> Result<Pubkey, Error> {
-        Pubkey::create_program_address(&[&my_info.to_bytes()[..32], authority_type, &[bump_seed]], program_id)
-            .or(Err(Error::InvalidProgramAddress))
+    pub fn authority_id(
+        program_id: &Pubkey,
+        my_info: &Pubkey,
+        authority_type: &[u8],
+        bump_seed: u8,
+    ) -> Result<Pubkey, Error> {
+        Pubkey::create_program_address(
+            &[&my_info.to_bytes()[..32], authority_type, &[bump_seed]],
+            program_id,
+        )
+        .or(Err(Error::InvalidProgramAddress))
     }
 
     /// Issue a stake_split instruction.
@@ -170,13 +178,23 @@ impl Processor {
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
         if *withdraw_info.key
-            != Self::authority_id(program_id, stake_pool_info.key, Self::AUTHORITY_WITHDRAW, stake_pool.withdraw_bump_seed)?
+            != Self::authority_id(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_WITHDRAW,
+                stake_pool.withdraw_bump_seed,
+            )?
         {
             return Err(Error::InvalidProgramAddress.into());
         }
 
         if *deposit_info.key
-            != Self::authority_id(program_id, stake_pool_info.key, Self::AUTHORITY_DEPOSIT, stake_pool.deposit_bump_seed)?
+            != Self::authority_id(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_DEPOSIT,
+                stake_pool.deposit_bump_seed,
+            )?
         {
             return Err(Error::InvalidProgramAddress.into());
         }
@@ -255,7 +273,12 @@ impl Processor {
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
         if *withdraw_info.key
-            != Self::authority_id(program_id, stake_pool_info.key, Self::AUTHORITY_WITHDRAW, stake_pool.withdraw_bump_seed)?
+            != Self::authority_id(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_WITHDRAW,
+                stake_pool.withdraw_bump_seed,
+            )?
         {
             return Err(Error::InvalidProgramAddress.into());
         }
@@ -323,7 +346,12 @@ impl Processor {
         }
 
         if *withdraw_info.key
-            != Self::authority_id(program_id, stake_pool_info.key, Self::AUTHORITY_WITHDRAW, stake_pool.withdraw_bump_seed)?
+            != Self::authority_id(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_WITHDRAW,
+                stake_pool.withdraw_bump_seed,
+            )?
         {
             return Err(Error::InvalidProgramAddress.into());
         }
