@@ -25,11 +25,6 @@ pub struct Fee {
 pub struct InitArgs {
     /// Fee paid to the owner in pool tokens
     pub fee: Fee,
-    /// Nonce used for the deposit program address
-    pub deposit_bump_seed: u8,
-    /// Nonce used for the withdraw program address
-    /// This program address is used as the stake withdraw key as well
-    pub withdraw_bump_seed: u8,
 }
 
 /// Instructions supported by the StakePool program.

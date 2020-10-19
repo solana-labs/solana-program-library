@@ -40,6 +40,16 @@ impl Processor {
         )
         .or(Err(Error::InvalidProgramAddress))
     }
+    /// Generates seed bump for stake pool authorities
+    pub fn find_authority_bump_seed(
+        program_id: &Pubkey,
+        my_info: &Pubkey,
+        authority_type: &[u8],
+    ) -> u8 {
+        let (_pubkey, bump_seed) =
+            Pubkey::find_program_address(&[&my_info.to_bytes()[..32], authority_type], program_id);
+        bump_seed
+    }
 
     /// Issue a stake_split instruction.
     pub fn stake_split<'a>(
@@ -134,7 +144,7 @@ impl Processor {
 
     /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize(
-        _program_id: &Pubkey,
+        program_id: &Pubkey,
         init: InitArgs,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
@@ -145,14 +155,28 @@ impl Processor {
         let owner_fee_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
+        // Stake pool account should not be already initialized
         if State::Unallocated != State::deserialize(&stake_pool_info.data.borrow())? {
             return Err(Error::AlreadyInUse.into());
         }
 
+        // Numerator should be smaller than or equal to denominator (fee <= 1)
+        if init.fee.numerator > init.fee.denominator {
+            return Err(Error::FeeTooHigh.into());
+        }
+
         let stake_pool = State::Init(StakePool {
             owner: *owner_info.key,
-            deposit_bump_seed: init.deposit_bump_seed,
-            withdraw_bump_seed: init.withdraw_bump_seed,
+            deposit_bump_seed: Self::find_authority_bump_seed(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_DEPOSIT,
+            ),
+            withdraw_bump_seed: Self::find_authority_bump_seed(
+                program_id,
+                stake_pool_info.key,
+                Self::AUTHORITY_WITHDRAW,
+            ),
             pool_mint: *pool_mint_info.key,
             owner_fee_account: *owner_fee_info.key,
             token_program_id: *token_program_info.key,
@@ -476,6 +500,7 @@ impl PrintProgramError for Error {
             Error::InvalidInput => info!("Error: InvalidInput"),
             Error::InvalidOutput => info!("Error: InvalidOutput"),
             Error::CalculationFailure => info!("Error: CalculationFailure"),
+            Error::FeeTooHigh => info!("Error: FeeTooHigh"),
         }
     }
 }

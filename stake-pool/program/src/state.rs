@@ -67,6 +67,8 @@ pub enum State {
 }
 
 impl State {
+    /// Length of state data when serialized
+    pub const LEN: usize = size_of::<u8>() + size_of::<StakePool>();
     /// Deserializes a byte buffer into a [State](struct.State.html).
     /// TODO efficient unpacking here
     pub fn deserialize(input: &[u8]) -> Result<State, ProgramError> {
