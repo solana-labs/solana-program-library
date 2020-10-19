@@ -224,12 +224,12 @@ pub fn initialize(
 
     let accounts = vec![
         AccountMeta::new(*swap_pubkey, true),
-        AccountMeta::new(*authority_pubkey, false),
-        AccountMeta::new(*token_a_pubkey, false),
-        AccountMeta::new(*token_b_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*token_a_pubkey, false),
+        AccountMeta::new_readonly(*token_b_pubkey, false),
         AccountMeta::new(*pool_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
-        AccountMeta::new(*token_program_id, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
 
     Ok(Instruction {
@@ -263,15 +263,15 @@ pub fn deposit(
     .pack();
 
     let accounts = vec![
-        AccountMeta::new(*swap_pubkey, false),
-        AccountMeta::new(*authority_pubkey, false),
+        AccountMeta::new_readonly(*swap_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, false),
         AccountMeta::new(*deposit_token_a_pubkey, false),
         AccountMeta::new(*deposit_token_b_pubkey, false),
         AccountMeta::new(*swap_token_a_pubkey, false),
         AccountMeta::new(*swap_token_b_pubkey, false),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
-        AccountMeta::new(*token_program_id, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
 
     Ok(Instruction {
@@ -305,15 +305,15 @@ pub fn withdraw(
     .pack();
 
     let accounts = vec![
-        AccountMeta::new(*swap_pubkey, false),
-        AccountMeta::new(*authority_pubkey, false),
+        AccountMeta::new_readonly(*swap_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, false),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*source_pubkey, false),
         AccountMeta::new(*swap_token_a_pubkey, false),
         AccountMeta::new(*swap_token_b_pubkey, false),
         AccountMeta::new(*destination_token_a_pubkey, false),
         AccountMeta::new(*destination_token_b_pubkey, false),
-        AccountMeta::new(*token_program_id, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
 
     Ok(Instruction {
@@ -343,13 +343,13 @@ pub fn swap(
     .pack();
 
     let accounts = vec![
-        AccountMeta::new(*swap_pubkey, false),
-        AccountMeta::new(*authority_pubkey, false),
+        AccountMeta::new_readonly(*swap_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, false),
         AccountMeta::new(*source_pubkey, false),
         AccountMeta::new(*swap_source_pubkey, false),
         AccountMeta::new(*swap_destination_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
-        AccountMeta::new(*token_program_id, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
 
     Ok(Instruction {

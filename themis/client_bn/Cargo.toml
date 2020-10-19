@@ -20,9 +20,9 @@ borsh = "0.7.1"
 bn = {git = "https://github.com/garious/bn", rev = "5c35c737ffabac9921310f53f48725216d59cbf1", default-features = false, features = ["borsh"]}
 elgamal_bn = { git = "https://github.com/garious/elgamal_bn", rev = "ba9bdcdb6cdd6fb8e74d0b8bc1b918bcd1b543a9" }
 futures = "0.3"
-solana-banks-client = "1.3.14"
-solana-cli-config = "1.3.14"
-solana-sdk = "1.3.14"
+solana-banks-client = "1.4.1"
+solana-cli-config = "1.4.1"
+solana-sdk = "1.4.1"
 spl-themis-bn = { version = "0.1.0", path = "../program_bn" }
 tarpc = { version = "0.21.1", features = ["full"] }
 tokio = "0.2"
@@ -30,10 +30,10 @@ url = "2.1"
 
 [dev-dependencies]
 separator = "0.4.1"
-solana-banks-server = "1.3.14"
-solana-bpf-loader-program = "1.3.14"
-solana_rbpf = "=0.1.31"
-solana-runtime = "1.3.14"
+solana-banks-server = "1.4.1"
+solana-bpf-loader-program = "1.4.1"
+solana_rbpf = "=0.1.32"
+solana-runtime = "1.4.1"
 
 [lib]
 crate-type = ["cdylib", "lib"]
