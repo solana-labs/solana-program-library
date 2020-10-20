@@ -12,10 +12,10 @@ pub struct StakePool {
     /// Owner authority
     /// allows for updating the staking authority
     pub owner: Pubkey,
-    /// Deposit authority nonce
+    /// Deposit authority bump seed
     /// for `create_program_address(&[state::StakePool account, "deposit"])`
     pub deposit_bump_seed: u8,
-    /// Withdrawal authority nonce
+    /// Withdrawal authority bump seed
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
     pub withdraw_bump_seed: u8,
     /// Pool Mint
