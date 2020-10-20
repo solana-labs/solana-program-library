@@ -43,39 +43,40 @@ pub enum StakePoolInstruction {
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
     ///
-    ///   0. `[]` StakePool
-    ///   1. `[]` deposit authority
-    ///   2. `[]` withdraw  authority
-    ///   3. `[w]` Stake, deposit authority is set as the withdrawal key
-    ///   4. `[w]` Pool MINT account, authority is the owner.
-    ///   5. `[w]` Pool Account to deposit the generated tokens.
-    ///   6. `[w]` Pool Account to deposit the generated fee for owner.
-    ///   7. `[]` Token program id
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool deposit authority
+    ///   2. `[]` Stake pool withdraw authority
+    ///   3. `[w]` Stake account to join the pool (withdraw should be set to stake pool deposit)
+    ///   4. `[w]` User account to receive pool tokens
+    ///   5. `[w]` Account to receive pool fee tokens
+    ///   6. `[w]` Pool token mint account
+    ///   7. `[]` Pool token program id
     Deposit,
 
     ///   Withdraw the token from the pool at the current ratio.
     ///   The amount withdrawn is the MIN(u64, stake size)
     ///
-    ///   0. `[]` StakePool
-    ///   1. `[]` withdraw  authority
-    ///   2. `[w]` SOURCE Pool account, amount is transferable by authority
-    ///   3. `[w]` Pool MINT account, authority is the owner
-    ///   4. `[w]` Stake SOURCE owned by the withdraw authority
-    ///   6. `[w]` Stake destination, uninitialized, for the user stake
-    ///   7. `[]` Token program id
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[w]` Stake account to split
+    ///   3. `[w]` Unitialized stake account to receive withdrawal
+    ///   4. `[]` User account to set as a new withdraw authority
+    ///   5. `[w]` User account with pool tokens to burn from
+    ///   6. `[w]` Pool token mint account
+    ///   7. `[]` Pool token program id
     ///   userdata: amount to withdraw
     Withdraw(u64),
 
     ///   Claim ownership of a whole stake account.
     ///   Also burns enough tokens to make up for the stake account balance
     ///   
-    ///   0. `[w]` StakePool
-    ///   1. `[]` withdraw  authority
-    ///   2. `[w]` Stake account, its withdraw authority will be changed to the destination account
-    ///   3. `[w]` Pool MINT account, authority is the owner
-    ///   6. `[]` New stake owner account
-    ///   7. `[]` Token program id
-    ///   userdata: amount to withdraw
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[w]` Stake account to claim
+    ///   3. `[]` User account to set as a new withdraw authority
+    ///   4. `[w]` User account with pool tokens to burn from
+    ///   5. `[w]` Pool token mint account
+    ///   6. `[]` Pool token program id
     Claim,
 
     ///   Update the staking pubkey for a stake

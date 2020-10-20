@@ -20,12 +20,6 @@ use solana_sdk::{
 };
 use std::convert::TryFrom;
 
-macro_rules! prepare_signers {
-    ($stake_pool_key_bytes:expr, $authority_type:expr, $bump_seed:expr) => {
-        &[&[&$stake_pool_key_bytes[..32], $authority_type, &$bump_seed][..]]
-    };
-}
-
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
@@ -59,12 +53,18 @@ impl Processor {
 
     /// Issue a stake_split instruction.
     pub fn stake_split<'a>(
+        stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
         authority: AccountInfo<'a>,
+        authority_type: &[u8],
+        bump_seed: u8,
         amount: u64,
         split_stake: AccountInfo<'a>,
-        signers: &[&[&[u8]]],
     ) -> Result<(), ProgramError> {
+        let me_bytes = stake_pool.to_bytes();
+        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let signers = &[&authority_signature_seeds[..]];
+
         let ix = stake::split_only(stake_account.key, authority.key, amount, split_stake.key);
 
         invoke_signed(&ix, &[stake_account, authority, split_stake], signers)
@@ -72,26 +72,39 @@ impl Processor {
 
     /// Issue a stake_set_owner instruction.
     pub fn stake_authorize<'a>(
+        stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
         authority: AccountInfo<'a>,
+        authority_type: &[u8],
+        bump_seed: u8,
         new_staker: &Pubkey,
         staker_auth: stake::StakeAuthorize,
-        signers: &[&[&[u8]]],
     ) -> Result<(), ProgramError> {
+        let me_bytes = stake_pool.to_bytes();
+        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let signers = &[&authority_signature_seeds[..]];
+
         let ix = stake::authorize(stake_account.key, authority.key, new_staker, staker_auth);
 
         invoke_signed(&ix, &[stake_account, authority], signers)
     }
 
     /// Issue a spl_token `Burn` instruction.
+    #[allow(clippy::too_many_arguments)]
     pub fn token_burn<'a>(
+        stake_pool: &Pubkey,
         token_program: AccountInfo<'a>,
         burn_account: AccountInfo<'a>,
         mint: AccountInfo<'a>,
         authority: AccountInfo<'a>,
+        authority_type: &[u8],
+        bump_seed: u8,
         amount: u64,
-        signers: &[&[&[u8]]],
     ) -> Result<(), ProgramError> {
+        let me_bytes = stake_pool.to_bytes();
+        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let signers = &[&authority_signature_seeds[..]];
+
         let ix = spl_token::instruction::burn(
             token_program.key,
             burn_account.key,
@@ -109,14 +122,21 @@ impl Processor {
     }
 
     /// Issue a spl_token `MintTo` instruction.
+    #[allow(clippy::too_many_arguments)]
     pub fn token_mint_to<'a>(
+        stake_pool: &Pubkey,
         token_program: AccountInfo<'a>,
         mint: AccountInfo<'a>,
         destination: AccountInfo<'a>,
         authority: AccountInfo<'a>,
+        authority_type: &[u8],
+        bump_seed: u8,
         amount: u64,
-        signers: &[&[&[u8]]],
     ) -> Result<(), ProgramError> {
+        let me_bytes = stake_pool.to_bytes();
+        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let signers = &[&authority_signature_seeds[..]];
+
         let ix = spl_token::instruction::mint_to(
             token_program.key,
             mint.key,
@@ -174,16 +194,24 @@ impl Processor {
         stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
     }
 
-    /// Processes an [Withdraw](enum.Instruction.html).
+    /// Processes [Deposit](enum.Instruction.html).
     pub fn process_deposit(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+        // Stake pool
         let stake_pool_info = next_account_info(account_info_iter)?;
+        // Stake pool deposit authority
         let deposit_info = next_account_info(account_info_iter)?;
+        // Stake pool withdraw authority
         let withdraw_info = next_account_info(account_info_iter)?;
+        // Stake account to join the pool (withdraw should be set to stake pool deposit)
         let stake_info = next_account_info(account_info_iter)?;
-        let pool_mint_info = next_account_info(account_info_iter)?;
+        // User account to receive pool tokens
         let dest_user_info = next_account_info(account_info_iter)?;
+        // Account to receive pool fee tokens
         let owner_fee_info = next_account_info(account_info_iter)?;
+        // Pool token mint account
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
@@ -230,45 +258,37 @@ impl Processor {
             .checked_sub(fee_amount)
             .ok_or(Error::CalculationFailure)?;
 
-        let withdraw_bump_seed = [stake_pool.withdraw_bump_seed];
-        let deposit_bump_seed = [stake_pool.deposit_bump_seed];
-        let stake_pool_key_bytes = stake_pool_info.key.to_bytes();
-        let withdraw_signers = prepare_signers!(
-            stake_pool_key_bytes,
-            Self::AUTHORITY_WITHDRAW,
-            withdraw_bump_seed
-        );
-        let deposit_signers = prepare_signers!(
-            stake_pool_key_bytes,
-            Self::AUTHORITY_WITHDRAW,
-            deposit_bump_seed
-        );
-
         Self::stake_authorize(
+            stake_pool_info.key,
             stake_info.clone(),
             deposit_info.clone(),
+            Self::AUTHORITY_DEPOSIT,
+            stake_pool.deposit_bump_seed,
             withdraw_info.key,
             stake::StakeAuthorize::Withdrawer,
-            deposit_signers,
         )?;
 
         let user_amount = <u64>::try_from(user_amount).or(Err(Error::CalculationFailure))?;
         Self::token_mint_to(
+            stake_pool_info.key,
             token_program_info.clone(),
             pool_mint_info.clone(),
             dest_user_info.clone(),
             withdraw_info.clone(),
+            Self::AUTHORITY_DEPOSIT,
+            stake_pool.deposit_bump_seed,
             user_amount,
-            withdraw_signers,
         )?;
         let fee_amount = <u64>::try_from(fee_amount).or(Err(Error::CalculationFailure))?;
         Self::token_mint_to(
+            stake_pool_info.key,
             token_program_info.clone(),
             pool_mint_info.clone(),
             owner_fee_info.clone(),
             withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
             fee_amount as u64,
-            withdraw_signers,
         )?;
         let pool_amount = <u64>::try_from(pool_amount).or(Err(Error::CalculationFailure))?;
         stake_pool.pool_total += pool_amount;
@@ -277,19 +297,28 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [Withdraw](enum.Instruction.html).
+    /// Processes [Withdraw](enum.Instruction.html).
     pub fn process_withdraw(
         program_id: &Pubkey,
         stake_amount: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+        // Stake pool
         let stake_pool_info = next_account_info(account_info_iter)?;
+        // Stake pool withdraw authority
         let withdraw_info = next_account_info(account_info_iter)?;
-        let source_info = next_account_info(account_info_iter)?;
+        // Stake account to split
+        let stake_split_from = next_account_info(account_info_iter)?;
+        // Unitialized stake account to receive withdrawal
+        let stake_split_to = next_account_info(account_info_iter)?;
+        // User account to set as a new withdraw authority
+        let user_stake_authority = next_account_info(account_info_iter)?;
+        // User account with pool tokens to burn from
+        let burn_from_info = next_account_info(account_info_iter)?;
+        // Pool token mint account
         let pool_mint_info = next_account_info(account_info_iter)?;
-        let stake_info = next_account_info(account_info_iter)?;
-        let dest_user_info = next_account_info(account_info_iter)?;
+        // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
@@ -312,38 +341,36 @@ impl Processor {
             .calc_pool_withdraw_amount(stake_amount)
             .ok_or(Error::CalculationFailure)?;
         let pool_amount = <u64>::try_from(pool_amount).or(Err(Error::CalculationFailure))?;
-
-        let withdraw_bump_seed = [stake_pool.withdraw_bump_seed];
-        let stake_pool_key_bytes = stake_pool_info.key.to_bytes();
-        let withdraw_signers = prepare_signers!(
-            stake_pool_key_bytes,
-            Self::AUTHORITY_WITHDRAW,
-            withdraw_bump_seed
-        );
 
         Self::stake_split(
-            source_info.clone(),
+            stake_pool_info.key,
+            stake_split_from.clone(),
             withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
             stake_amount,
-            stake_info.clone(),
-            withdraw_signers,
+            stake_split_to.clone(),
         )?;
 
         Self::stake_authorize(
-            stake_info.clone(),
+            stake_pool_info.key,
+            stake_split_to.clone(),
             withdraw_info.clone(),
-            dest_user_info.key,
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            user_stake_authority.key,
             stake::StakeAuthorize::Withdrawer,
-            withdraw_signers,
         )?;
 
         Self::token_burn(
+            stake_pool_info.key,
             token_program_info.clone(),
-            source_info.clone(),
+            burn_from_info.clone(),
             pool_mint_info.clone(),
             withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
             pool_amount,
-            withdraw_signers,
         )?;
 
         stake_pool.pool_total -= pool_amount;
@@ -351,14 +378,22 @@ impl Processor {
         State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
-    /// Processes an [Claim](enum.Instruction.html).
+    /// Processes [Claim](enum.Instruction.html).
     pub fn process_claim(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+        // Stake pool
         let stake_pool_info = next_account_info(account_info_iter)?;
+        // Stake pool withdraw authority
         let withdraw_info = next_account_info(account_info_iter)?;
-        let source_info = next_account_info(account_info_iter)?;
+        // Stake account to claim
+        let stake_to_claim = next_account_info(account_info_iter)?;
+        // User account to set as a new withdraw authority
+        let user_stake_authority = next_account_info(account_info_iter)?;
+        // User account with pool tokens to burn from
+        let burn_from_info = next_account_info(account_info_iter)?;
+        // Pool token account
         let pool_mint_info = next_account_info(account_info_iter)?;
-        let dest_user_info = next_account_info(account_info_iter)?;
+        // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
@@ -377,35 +412,31 @@ impl Processor {
             return Err(Error::InvalidInput.into());
         }
 
-        let stake_amount = **source_info.lamports.borrow();
+        let stake_amount = **stake_to_claim.lamports.borrow();
         let pool_amount = stake_pool
             .calc_pool_withdraw_amount(stake_amount)
             .ok_or(Error::CalculationFailure)?;
         let pool_amount = <u64>::try_from(pool_amount).or(Err(Error::CalculationFailure))?;
 
-        let withdraw_bump_seed = [stake_pool.withdraw_bump_seed];
-        let stake_pool_key_bytes = stake_pool_info.key.to_bytes();
-        let withdraw_signers = prepare_signers!(
-            stake_pool_key_bytes,
-            Self::AUTHORITY_WITHDRAW,
-            withdraw_bump_seed
-        );
-
         Self::stake_authorize(
-            source_info.clone(),
+            stake_pool_info.key,
+            stake_to_claim.clone(),
             withdraw_info.clone(),
-            dest_user_info.key,
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            user_stake_authority.key,
             stake::StakeAuthorize::Withdrawer,
-            withdraw_signers,
         )?;
 
         Self::token_burn(
+            stake_pool_info.key,
             token_program_info.clone(),
-            source_info.clone(),
+            burn_from_info.clone(),
             pool_mint_info.clone(),
             withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
             pool_amount,
-            withdraw_signers,
         )?;
 
         stake_pool.pool_total -= pool_amount;
@@ -413,7 +444,7 @@ impl Processor {
         State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
-    /// Processes an [SetStakeAuthority](enum.Instruction.html).
+    /// Processes [SetStakeAuthority](enum.Instruction.html).
     pub fn process_set_staking_auth(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -445,25 +476,19 @@ impl Processor {
             return Err(Error::InvalidProgramAddress.into());
         }
 
-        let withdraw_bump_seed = [stake_pool.withdraw_bump_seed];
-        let stake_pool_key_bytes = stake_pool_info.key.to_bytes();
-        let withdraw_signers = prepare_signers!(
-            stake_pool_key_bytes,
-            Self::AUTHORITY_WITHDRAW,
-            withdraw_bump_seed
-        );
-
         Self::stake_authorize(
+            stake_pool_info.key,
             stake_info.clone(),
             withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
             staker_info.key,
             stake::StakeAuthorize::Staker,
-            withdraw_signers,
         )?;
         Ok(())
     }
 
-    /// Processes an [SetOwner](enum.Instruction.html).
+    /// Processes [SetOwner](enum.Instruction.html).
     pub fn process_set_owner(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -484,7 +509,7 @@ impl Processor {
         State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
-    /// Processes an [Instruction](enum.Instruction.html).
+    /// Processes [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = StakePoolInstruction::deserialize(input)?;
         match instruction {

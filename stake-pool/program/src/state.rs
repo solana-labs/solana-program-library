@@ -78,7 +78,7 @@ impl State {
         Ok(match input[0] {
             0 => State::Unallocated,
             1 => {
-                let swap: &StakePool = unpack(input)?;
+                let swap: &StakePool = unpack(&input[1..])?;
                 State::Init(*swap)
             }
             _ => return Err(ProgramError::InvalidAccountData),
