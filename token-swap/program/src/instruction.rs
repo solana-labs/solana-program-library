@@ -2,7 +2,7 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use crate::curve::{FlatCurve, ConstantProductCurve, SwapCurveWrapper, CurveType};
+use crate::curve::{FlatCurve, ConstantProductCurve, SwapCurve, CurveType};
 use crate::error::SwapError;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
@@ -31,7 +31,7 @@ pub enum SwapInstruction {
         nonce: u8,
         /// swap curve info for pool, including CurveType, fees, and anything
         /// else that may be required
-        swap_curve: SwapCurveWrapper,
+        swap_curve: SwapCurve,
     },
 
     ///   Swap the tokens in the pool.
@@ -101,7 +101,7 @@ impl SwapInstruction {
         Ok(match tag {
             0 => {
                 let (&nonce, rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
-                let swap_curve = SwapCurveWrapper::unpack_unchecked(rest)?;
+                let swap_curve = SwapCurve::unpack_unchecked(rest)?;
                 Self::Initialize {
                     nonce,
                     swap_curve,
@@ -163,7 +163,7 @@ impl SwapInstruction {
             } => {
                 buf.push(0);
                 buf.push(*nonce);
-                let mut swap_curve_slice = [0u8; SwapCurveWrapper::LEN];
+                let mut swap_curve_slice = [0u8; SwapCurve::LEN];
                 Pack::pack_into_slice(swap_curve, &mut swap_curve_slice[..]);
                 buf.extend_from_slice(&swap_curve_slice);
             }
@@ -215,7 +215,7 @@ pub fn initialize(
     fee_numerator: u64,
     fee_denominator: u64,
 ) -> Result<Instruction, ProgramError> {
-    let swap_curve = SwapCurveWrapper {
+    let swap_curve = SwapCurve {
         curve_type,
         calculator: match curve_type {
             CurveType::ConstantProduct => Box::new(ConstantProductCurve {
@@ -393,7 +393,7 @@ mod tests {
         let nonce: u8 = 255;
         let curve_type = CurveType::Flat;
         let calculator = Box::new(FlatCurve { fee_numerator, fee_denominator });
-        let swap_curve = SwapCurveWrapper {
+        let swap_curve = SwapCurve {
             curve_type,
             calculator,
         };

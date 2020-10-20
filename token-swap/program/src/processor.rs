@@ -2,7 +2,7 @@
 
 #![cfg(feature = "program")]
 
-use crate::{curve::SwapCurveWrapper, error::SwapError, instruction::SwapInstruction, state::SwapInfo};
+use crate::{curve::SwapCurve, error::SwapError, instruction::SwapInstruction, state::SwapInfo};
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
 use solana_sdk::instruction::Instruction;
@@ -137,7 +137,7 @@ impl Processor {
     pub fn process_initialize(
         program_id: &Pubkey,
         nonce: u8,
-        swap_curve: SwapCurveWrapper,
+        swap_curve: SwapCurve,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -2609,7 +2609,7 @@ mod tests {
         let token_a_amount = 1000;
         let token_b_amount = 5000;
 
-        let swap_curve = SwapCurveWrapper {
+        let swap_curve = SwapCurve {
             curve_type,
             calculator,
         };

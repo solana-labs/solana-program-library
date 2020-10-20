@@ -28,7 +28,7 @@ pub enum CurveType {
 /// Concrete struct to wrap around the trait object which performs calculation.
 #[repr(C)]
 #[derive(Debug)]
-pub struct SwapCurveWrapper {
+pub struct SwapCurve {
     /// The type of curve contained in the calculator, helpful for outside
     /// queries
     pub curve_type: CurveType,
@@ -37,9 +37,9 @@ pub struct SwapCurveWrapper {
     pub calculator: Box<dyn CurveCalculator>,
 }
 
-/// Default implementation for SwapCurveWrapper cannot be derived because of
+/// Default implementation for SwapCurve cannot be derived because of
 /// the contained Box.
-impl Default for SwapCurveWrapper {
+impl Default for SwapCurve {
     fn default() -> Self {
         let curve_type: CurveType = Default::default();
         let calculator: ConstantProductCurve = Default::default();
@@ -52,7 +52,7 @@ impl Default for SwapCurveWrapper {
 
 /// Simple implementation for PartialEq which assumes that the output of
 /// `Pack` is enough to guarantee equality
-impl PartialEq for SwapCurveWrapper {
+impl PartialEq for SwapCurve {
     fn eq(&self, other: &Self) -> bool {
         let mut packed_self = [0u8; Self::LEN];
         Self::pack_into_slice(self, &mut packed_self);
@@ -62,15 +62,15 @@ impl PartialEq for SwapCurveWrapper {
     }
 }
 
-impl Sealed for SwapCurveWrapper {}
-impl Pack for SwapCurveWrapper {
+impl Sealed for SwapCurve {}
+impl Pack for SwapCurve {
     /// Size of encoding of all curve parameters, which include fees and any other
     /// constants used to calculate swaps, deposits, and withdrawals.
     /// This includes 1 byte for the type, and 64 for the calculator to use as
     /// it needs.  Some calculators may be smaller than 64 bytes.
     const LEN: usize = 65;
 
-    /// Unpacks a byte buffer into a SwapCurveWrapper
+    /// Unpacks a byte buffer into a SwapCurve
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, 65];
         #[allow(clippy::ptr_offset_with_cast)]
@@ -92,7 +92,7 @@ impl Pack for SwapCurveWrapper {
         })
     }
 
-    /// Pack SwapCurveWrapper into a byte buffer
+    /// Pack SwapCurve into a byte buffer
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, 65];
         let (
@@ -220,7 +220,7 @@ impl IsInitialized for FlatCurve {
 impl Sealed for FlatCurve {}
 impl Pack for FlatCurve {
     const LEN: usize = 16;
-    /// Unpacks a byte buffer into a SwapCurveWrapper
+    /// Unpacks a byte buffer into a SwapCurve
     fn unpack_from_slice(input: &[u8]) -> Result<FlatCurve, ProgramError> {
         let input = array_ref![input, 0, 16];
         #[allow(clippy::ptr_offset_with_cast)]
@@ -472,14 +472,14 @@ mod tests {
             fee_denominator,
         };
         let curve_type = CurveType::ConstantProduct;
-        let swap_curve = SwapCurveWrapper {
+        let swap_curve = SwapCurve {
             curve_type,
             calculator: Box::new(curve),
         };
 
-        let mut packed = [0u8; SwapCurveWrapper::LEN];
+        let mut packed = [0u8; SwapCurve::LEN];
         Pack::pack_into_slice(&swap_curve, &mut packed[..]);
-        let unpacked = SwapCurveWrapper::unpack_from_slice(&packed).unwrap();
+        let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
         assert_eq!(swap_curve, unpacked);
 
         let mut packed = vec![];
@@ -487,7 +487,7 @@ mod tests {
         packed.extend_from_slice(&fee_numerator.to_le_bytes());
         packed.extend_from_slice(&fee_denominator.to_le_bytes());
         packed.extend_from_slice(&[0u8; 48]); // padding
-        let unpacked = SwapCurveWrapper::unpack_from_slice(&packed).unwrap();
+        let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
         assert_eq!(swap_curve, unpacked);
     }
 }

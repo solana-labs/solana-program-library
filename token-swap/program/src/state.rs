@@ -1,6 +1,6 @@
 //! State transition types
 
-use crate::curve::SwapCurveWrapper;
+use crate::curve::SwapCurve;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_sdk::{
     program_error::ProgramError,
@@ -35,7 +35,7 @@ pub struct SwapInfo {
 
     /// Swap curve parameters, to be unpacked and used by the SwapCurve, which
     /// calculates swaps, deposits, and withdrawals
-    pub swap_curve: SwapCurveWrapper,
+    pub swap_curve: SwapCurve,
 }
 
 impl Sealed for SwapInfo {}
@@ -72,7 +72,7 @@ impl Pack for SwapInfo {
             token_a: Pubkey::new_from_array(*token_a),
             token_b: Pubkey::new_from_array(*token_b),
             pool_mint: Pubkey::new_from_array(*pool_mint),
-            swap_curve: SwapCurveWrapper::unpack_from_slice(swap_curve)?,
+            swap_curve: SwapCurve::unpack_from_slice(swap_curve)?,
         })
     }
 
@@ -120,7 +120,7 @@ mod tests {
         let fee_numerator = 1;
         let fee_denominator = 4;
         let calculator = Box::new(FlatCurve { fee_numerator, fee_denominator });
-        let swap_curve = SwapCurveWrapper {
+        let swap_curve = SwapCurve {
             curve_type,
             calculator,
         };
