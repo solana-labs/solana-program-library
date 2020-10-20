@@ -246,6 +246,90 @@ $ spl-token supply 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 1
 ```
 
+## JSON RPC methods
+
+There is a rich set of JSON RPC methods available for use with SPL Token:
+* `getTokenAccountBalance`
+* `getTokenAccountsByDelegate`
+* `getTokenAccountsByOwner`
+* `getTokenLargestAccounts`
+* `getTokenSupply`
+
+See https://docs.solana.com/apps/jsonrpc-api for more details.
+
+Additionally the versatile `getProgramAcccounts` JSON RPC method can be employed in various ways to fetch SPL Token accounts of interest.
+
+### Finding all token accounts for a specific mint
+
+To find all token accounts for the `TESTpKgj42ya3st2SQTKiANjTBmncQSCqLAZGcSPLGM` mint:
+```
+curl http://api.mainnet-beta.solana.com -X POST -H "Content-Type: application/json" -d '
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "getProgramAccounts",
+    "params": [
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      {
+        "encoding": "jsonParsed",
+        "filters": [
+          {
+            "dataSize": 165
+          },
+          {
+            "memcmp": {
+              "offset": 0,
+              "bytes": "TESTpKgj42ya3st2SQTKiANjTBmncQSCqLAZGcSPLGM"
+            }
+          }
+        ]
+      }
+    ]
+  }
+'
+```
+
+The `"dataSize": 165` filter selects all [Token
+Acccount](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L86-L106)s,
+and then the `"memcmp": ...` filter selects based on the
+[mint](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L88)
+address within each token account.
+
+### Finding all token accounts for a wallet
+
+Find all token accounts owned by the `vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg` user:
+```
+curl http://api.mainnet-beta.solana.com -X POST -H "Content-Type: application/json" -d '
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "getProgramAccounts",
+    "params": [
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      {
+        "encoding": "jsonParsed",
+        "filters": [
+          {
+            "dataSize": 165
+          },
+          {
+            "memcmp": {
+              "offset": 32,
+              "bytes": "vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg"
+            }
+          }
+        ]
+      }
+    ]
+  }
+```
+
+The `"dataSize": 165` filter selects all [Token
+Acccount](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L86-L106)s,
+and then the `"memcmp": ...` filter selects based on the
+[owner](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L90)
+address within each token account.
+
 ## Operational overview
 
 ### Creating a new token type
