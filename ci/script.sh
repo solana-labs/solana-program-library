@@ -41,6 +41,7 @@ _ cargo +nightly clippy --workspace --all-targets -- --deny=warnings
 _ cargo build
 _ cargo run --manifest-path=utils/test-client/Cargo.toml
 
+_ cargo test --manifest-path=token/perf-monitor/Cargo.toml -- --nocapture
 
 #  # Check generated C headers
 #  _ cargo run --manifest-path=utils/cgen/Cargo.toml
