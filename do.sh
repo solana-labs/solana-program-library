@@ -26,16 +26,16 @@ sdkDir=bin/bpf-sdk
 profile=bpfel-unknown-unknown/release
 
 readCargoVariable() {
-  declare variable="$1"
-  declare Cargo_toml="$2"
+    declare variable="$1"
+    declare Cargo_toml="$2"
 
-  while read -r name equals value _; do
-    if [[ $name = "$variable" && $equals = = ]]; then
-        echo "${value//\"/}"
-        return
-    fi
-  done < <(cat "$Cargo_toml")
-  echo "Unable to locate $variable in $Cargo_toml" 1>&2
+    while read -r name equals value _; do
+        if [[ $name = "$variable" && $equals = = ]]; then
+            echo "${value//\"/}"
+            return
+        fi
+    done < <(cat "$Cargo_toml")
+    echo "Unable to locate $variable in $Cargo_toml" 1>&2
 }
 
 perform_action() {
@@ -59,6 +59,9 @@ perform_action() {
     fi
     case "$1" in
     build)
+        # CARGO may be set if build.sh is run from within cargo, causing
+        # incompatibilities between cargo and xargo versions
+        unset CARGO
         if [[ -f "$projectDir"/Xargo.toml ]]; then
             echo "build $crateName ($projectDir)"
             "$sdkDir"/rust/build.sh "$projectDir"
@@ -98,11 +101,11 @@ perform_action() {
         # - readelf
         # - rustfilt
         if [[ -f "$projectDir"/Xargo.toml ]]; then
-            if ! which rustfilt > /dev/null; then
+            if ! which rustfilt >/dev/null; then
                 echo "Error: rustfilt not found.  It can be installed by running: cargo install rustfilt"
                 exit 1
             fi
-            if ! which readelf > /dev/null; then
+            if ! which readelf >/dev/null; then
                 if [[ $(uname) = Darwin ]]; then
                     echo "Error: readelf not found.  It can be installed by running: brew install binutils"
                 else
@@ -112,8 +115,8 @@ perform_action() {
             fi
 
             (
-              cd "$CALLER_PWD"
-              "$0" build "$2"
+                cd "$CALLER_PWD"
+                "$0" build "$2"
             )
 
             echo "dump $crateName ($projectDir)"
@@ -127,14 +130,14 @@ perform_action() {
             dump="$so_path/${so_name}_dump"
             (
                 set -x
-                ls -la "$so" > "${dump}_mangled.txt"
+                ls -la "$so" >"${dump}_mangled.txt"
                 readelf -aW "$so" >>"${dump}_mangled.txt"
                 "$sdkDir/dependencies/llvm-native/bin/llvm-objdump" \
                     -print-imm-hex \
                     --source \
                     --disassemble \
                     "$so" \
-                    >> "${dump}_mangled.txt"
+                    >>"${dump}_mangled.txt"
                 sed s/://g <"${dump}_mangled.txt" | rustfilt >"${dump}.txt"
             )
             if [[ -f "$dump.txt" ]]; then
@@ -203,9 +206,9 @@ if [[ $2 == "all" ]]; then
 else
     # Perform operation on requested project
     if [[ -d $2/program ]]; then
-      perform_action "$1" "$2/program" "${@:3}"
+        perform_action "$1" "$2/program" "${@:3}"
     else
-      perform_action "$1" "$2" "${@:3}"
+        perform_action "$1" "$2" "${@:3}"
     fi
 fi
 
