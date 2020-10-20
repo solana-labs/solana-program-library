@@ -40,6 +40,9 @@ pub enum Error {
     /// The calculation failed.
     #[error("CalculationFailure")]
     CalculationFailure,
+    /// Stake pool fee > 1.
+    #[error("FeeTooHigh")]
+    FeeTooHigh,
 }
 impl From<Error> for ProgramError {
     fn from(e: Error) -> Self {
