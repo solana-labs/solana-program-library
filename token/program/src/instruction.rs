@@ -189,12 +189,12 @@ pub enum TokenInstruction {
     ///   * Single owner
     ///   0. `[writable]` The account to close.
     ///   1. `[writable]` The destination account.
-    ///   2. `[signer]` The account's owner.
+    ///   2. `[signer]` The account's owner or close authority.
     ///
     ///   * Multisignature owner
     ///   0. `[writable]` The account to close.
     ///   1. `[writable]` The destination account.
-    ///   2. `[]` The account's multisignature owner.
+    ///   2. `[]` The account's multisignature owner or close authority.
     ///   3. ..3+M `[signer]` M signer accounts.
     CloseAccount,
     /// Freeze an Initialized account using the Mint's freeze_authority (if set).

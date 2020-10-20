@@ -431,7 +431,8 @@ These accounts have a few unique behaviors
 - Burning is not supported
 - When closing an Account the balance may be non-zero.
 
-The Native Mint supply will always report 0, regardless of how much SOL is currently wrapped.
+The Native Mint supply will always report 0, regardless of how much SOL is
+currently wrapped.
 
 ### Rent-exemption
 
@@ -449,3 +450,119 @@ have a balance of zero to be closed.
 
 ### Non-Fungible tokens
 An NTF is simply a token type where only a single token has been minted.
+
+### Program updates
+
+As the SPL Token program evolves the accounts owned by older version may need to
+be migrated to newer versions.  This can be done via the proxy (or migration)
+program.  For more information on program updates in general, refer to
+[program updates](program-updates.md).
+
+The following is an example of how a wallet may migrate accounts owned by SPL
+Token to accounts owned by SPL Token v3.
+
+Updating the accounts will require a migration program that serves as an
+intermediary.  The migration program will be provided by the exchange to the
+wallet.  The wallet will issue a single instruction to the migration program,
+providing no instruction data but the following accounts:
+
+0. The v2 account to migrate.
+1. The v2 account's authority.  This authority must sign the migration
+   transaction and be an authority that can both burn and close the account.
+   This authority will become the new v3 account's authority.
+3. The v2 token mint.
+4. The pubkey of the new v3 account that will be created and initialized.  Must
+   be a signer to allow for `SystemInstruction::CreateAccount`.
+6. A v3 mint to be used as a source of tokens for the new account. In some
+   scenarios a mint may be a fixed supply.  In lieu of a mint, a v3 mint account
+   could be provided that contains sufficient tokens for the migration.
+7. The mint's multisignature authority where at least one of the signers is a
+   program address associated with the migration program.  Using a multisignture
+   here allows an external entity to also retain ownership of the mint or source
+   account.
+8. The Rent sysvar
+
+The update program will perform the following:
+
+- Query the v2 account's token balance.
+- Issue a `Burn` instruction on the v2 account for the entire balance.
+- Issue a `SystemInstruction::CreateAccount` instruction using the new v3
+  account's pubkey.
+- Issue a `CloseAccount` instruction on the v2 account, transferring all
+  lamports to the new v3 account.
+- Issue an `InitializeAccount` instruction on the new v3 account.
+- Issue a `MintTo` instruction from the v3 mint to the new v3 account for the
+  entire balance. The migration program will be the signer via pre-determined
+  program address when issuing this `MintTo` instruction.
+
+The migration program's `process_instruction` may look like this:
+
+```rust
+pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], _input: &[u8]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let v2_account_info = next_account_info(account_info_iter)?;
+        let v2_account_authority_info = next_account_info(account_info_iter)?;
+        let v2_mint_info = next_account_info(account_info_iter)?;
+        let v3_account_info = next_account_info(account_info_iter)?;
+        let v3_mint_info = next_account_info(account_info_iter)?;
+        let v3_mint_authority_info = next_account_info(account_info_iter)?;
+
+        let amount = spl_token::state::Account::unpack(&v2_account_info.data.borrow())?.amount;
+
+        let instruction = system_instruction::create_account(
+            v2_account_info.key,
+            v3_account_info.key,
+            0, // TODO lamports from the v2 account transfered during `CloseAccount` may not be sufficient to cover the space required for a v3 account.
+            spl_token_v3::state::Account::get_packed_len(),
+            &spl_token_v3::id(),
+        );
+        invoke(&instruction, accounts)?;
+
+        let instruction = spl_token::instruction::burn(
+            &spl_token::id(),
+            v2_account_info.key,
+            v2_mint_info.key,
+            v2_account_authority_info.key,
+            &[v2_account_authority_info.key],
+            amount,
+        )?;
+        invoke(&instruction, accounts)?;
+
+        let instruction = spl_token::instruction::close_account(
+            &spl_token::id(),
+            v2_account_info.key,
+            v3_account_info.key,
+            v2_account_authority_info.key,
+            &[v2_account_authority_info.key],
+        )?;
+        invoke(&instruction, accounts)?;
+
+        let instruction = spl_token_v3::instruction::initialize_account(
+            &spl_token_v3::id(),
+            v3_account_info.key,
+            v3_mint_info.key,
+            v2_account_authority_info.key,
+        )?;
+        invoke(&instruction, accounts)?;
+
+        let signer = Pubkey::create_program_address(
+            &[b"seed"], // TODO might need a bump seeds here passed in via instruction data
+            program_id
+        )?;
+                
+        let instruction = spl_token_v3::instruction::mint_to(
+            &spl_token_v3::id(),
+            v3_mint_info.key,
+            v3_account_info.key,
+            v3_mint_authority_info.key,
+            &[signer],
+            amount,
+        )?;
+        invoke_signed(&instruction, accounts, &["seed"])?;
+
+        Ok(())
+    }
+```
+
+
+
