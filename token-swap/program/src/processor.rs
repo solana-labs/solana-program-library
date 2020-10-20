@@ -2,7 +2,7 @@
 
 #![cfg(feature = "program")]
 
-use crate::{curve::CurveType, error::SwapError, instruction::SwapInstruction, state::SwapInfo};
+use crate::{curve::SwapCurveWrapper, error::SwapError, instruction::SwapInstruction, state::SwapInfo};
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
 use solana_sdk::instruction::Instruction;
@@ -137,9 +137,7 @@ impl Processor {
     pub fn process_initialize(
         program_id: &Pubkey,
         nonce: u8,
-        curve_type: CurveType,
-        fee_numerator: u64,
-        fee_denominator: u64,
+        swap_curve: SwapCurveWrapper,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -194,8 +192,7 @@ impl Processor {
             return Err(SwapError::InvalidSupply.into());
         }
 
-        let converter = curve_type.new_pool_token_converter();
-        let initial_amount = converter.supply();
+        let initial_amount = swap_curve.calculator.new_pool_supply();
 
         Self::token_mint_to(
             swap_info.key,
@@ -210,13 +207,11 @@ impl Processor {
         let obj = SwapInfo {
             is_initialized: true,
             nonce,
-            curve_type,
             token_program_id: *token_program_info.key,
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
             pool_mint: *pool_mint_info.key,
-            fee_numerator,
-            fee_denominator,
+            swap_curve,
         };
         SwapInfo::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
@@ -259,13 +254,7 @@ impl Processor {
         let source_account = Self::unpack_token_account(&swap_source_info.data.borrow())?;
         let dest_account = Self::unpack_token_account(&swap_destination_info.data.borrow())?;
 
-        let curve = token_swap.curve_type.swap_curve(
-            source_account.amount,
-            dest_account.amount,
-            token_swap.fee_numerator,
-            token_swap.fee_denominator,
-        );
-        let result = curve.swap(amount_in).ok_or(SwapError::CalculationFailure)?;
+        let result = token_swap.swap_curve.calculator.swap(amount_in, source_account.amount, dest_account.amount).ok_or(SwapError::CalculationFailure)?;
         if result.amount_swapped < minimum_amount_out {
             return Err(SwapError::ExceededSlippage.into());
         }
@@ -327,18 +316,16 @@ impl Processor {
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
 
-        let converter = token_swap
-            .curve_type
-            .existing_pool_token_converter(pool_mint.supply);
+        let calculator = token_swap.swap_curve.calculator;
 
-        let a_amount = converter
-            .liquidity_tokens(pool_token_amount, token_a.amount)
+        let a_amount = calculator
+            .liquidity_tokens(pool_token_amount, pool_mint.supply, token_a.amount)
             .ok_or(SwapError::CalculationFailure)?;
         if a_amount > maximum_token_a_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
-        let b_amount = converter
-            .liquidity_tokens(pool_token_amount, token_b.amount)
+        let b_amount = calculator
+            .liquidity_tokens(pool_token_amount, pool_mint.supply, token_b.amount)
             .ok_or(SwapError::CalculationFailure)?;
         if b_amount > maximum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
@@ -412,18 +399,16 @@ impl Processor {
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
 
-        let converter = token_swap
-            .curve_type
-            .existing_pool_token_converter(pool_mint.supply);
+        let calculator = token_swap.swap_curve.calculator;
 
-        let a_amount = converter
-            .liquidity_tokens(pool_token_amount, token_a.amount)
+        let a_amount = calculator
+            .liquidity_tokens(pool_token_amount, pool_mint.supply, token_a.amount)
             .ok_or(SwapError::CalculationFailure)?;
         if a_amount < minimum_token_a_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
-        let b_amount = converter
-            .liquidity_tokens(pool_token_amount, token_b.amount)
+        let b_amount = calculator
+            .liquidity_tokens(pool_token_amount, pool_mint.supply, token_b.amount)
             .ok_or(SwapError::CalculationFailure)?;
         if b_amount < minimum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
@@ -464,18 +449,14 @@ impl Processor {
         let instruction = SwapInstruction::unpack(input)?;
         match instruction {
             SwapInstruction::Initialize {
-                fee_numerator,
-                fee_denominator,
                 nonce,
-                curve_type,
+                swap_curve,
             } => {
                 info!("Instruction: Init");
                 Self::process_initialize(
                     program_id,
                     nonce,
-                    curve_type,
-                    fee_numerator,
-                    fee_denominator,
+                    swap_curve,
                     accounts,
                 )
             }
@@ -605,7 +586,7 @@ solana_sdk::program_stubs!();
 mod tests {
     use super::*;
     use crate::{
-        curve::INITIAL_SWAP_POOL_AMOUNT,
+        curve::{INITIAL_SWAP_POOL_AMOUNT, CurveType, CurveCalculator, ConstantProductCurve, FlatCurve},
         instruction::{deposit, initialize, swap, withdraw},
     };
     use solana_sdk::{
@@ -1530,12 +1511,10 @@ mod tests {
         let swap_info = SwapInfo::unpack(&accounts.swap_account.data).unwrap();
         assert_eq!(swap_info.is_initialized, true);
         assert_eq!(swap_info.nonce, accounts.nonce);
-        assert_eq!(swap_info.curve_type, accounts.curve_type);
+        assert_eq!(swap_info.swap_curve.curve_type, accounts.curve_type);
         assert_eq!(swap_info.token_a, accounts.token_a_key);
         assert_eq!(swap_info.token_b, accounts.token_b_key);
         assert_eq!(swap_info.pool_mint, accounts.pool_mint_key);
-        assert_eq!(swap_info.fee_denominator, fee_denominator);
-        assert_eq!(swap_info.fee_numerator, fee_numerator);
         let token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
         assert_eq!(token_a.amount, token_a_amount);
         let token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
@@ -2085,10 +2064,13 @@ mod tests {
             token_b_amount,
         );
         let withdrawer_key = pubkey_rand();
-        let pool_converter = CurveType::ConstantProduct.new_pool_token_converter();
+        let calculator = ConstantProductCurve {
+            fee_numerator,
+            fee_denominator,
+        };
         let initial_a = token_a_amount / 10;
         let initial_b = token_b_amount / 10;
-        let initial_pool = pool_converter.supply() / 10;
+        let initial_pool = calculator.new_pool_supply() / 10;
         let withdraw_amount = initial_pool / 4;
         let minimum_a_amount = initial_a / 40;
         let minimum_b_amount = initial_b / 40;
@@ -2597,15 +2579,17 @@ mod tests {
             let swap_token_b =
                 Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
             let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
-            let pool_converter =
-                CurveType::ConstantProduct.existing_pool_token_converter(pool_mint.supply);
+            let calculator = ConstantProductCurve {
+                fee_numerator,
+                fee_denominator,
+            };
 
-            let withdrawn_a = pool_converter
-                .liquidity_tokens(withdraw_amount, swap_token_a.amount)
+            let withdrawn_a = calculator
+                .liquidity_tokens(withdraw_amount, pool_mint.supply, swap_token_a.amount)
                 .unwrap();
             assert_eq!(swap_token_a.amount, token_a_amount - withdrawn_a);
-            let withdrawn_b = pool_converter
-                .liquidity_tokens(withdraw_amount, swap_token_b.amount)
+            let withdrawn_b = calculator
+                .liquidity_tokens(withdraw_amount, pool_mint.supply, swap_token_b.amount)
                 .unwrap();
             assert_eq!(swap_token_b.amount, token_b_amount - withdrawn_b);
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
@@ -2617,13 +2601,18 @@ mod tests {
         }
     }
 
-    fn check_valid_swap_curve(curve_type: CurveType) {
+    fn check_valid_swap_curve(curve_type: CurveType, calculator: Box<dyn CurveCalculator>) {
         let user_key = pubkey_rand();
         let swapper_key = pubkey_rand();
         let fee_numerator = 1;
         let fee_denominator = 10;
         let token_a_amount = 1000;
         let token_b_amount = 5000;
+
+        let swap_curve = SwapCurveWrapper {
+            curve_type,
+            calculator,
+        };
 
         let mut accounts = SwapAccountInfo::new(
             &user_key,
@@ -2665,13 +2654,7 @@ mod tests {
             )
             .unwrap();
 
-        let curve = curve_type.swap_curve(
-            token_a_amount,
-            token_b_amount,
-            fee_numerator,
-            fee_denominator,
-        );
-        let results = curve.swap(a_to_b_amount).unwrap();
+        let results = swap_curve.calculator.swap(a_to_b_amount, token_a_amount, token_b_amount).unwrap();
 
         let swap_token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
         let token_a_amount = swap_token_a.amount;
@@ -2704,13 +2687,7 @@ mod tests {
             )
             .unwrap();
 
-        let curve = curve_type.swap_curve(
-            token_b_amount,
-            token_a_amount,
-            fee_numerator,
-            fee_denominator,
-        );
-        let results = curve.swap(b_to_a_amount).unwrap();
+        let results = swap_curve.calculator.swap(b_to_a_amount, token_b_amount, token_a_amount).unwrap();
 
         let swap_token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
         assert_eq!(swap_token_a.amount, results.new_destination_amount);
@@ -2731,8 +2708,10 @@ mod tests {
 
     #[test]
     fn test_valid_swap_curves() {
-        check_valid_swap_curve(CurveType::ConstantProduct);
-        check_valid_swap_curve(CurveType::Flat);
+        let fee_numerator = 1;
+        let fee_denominator = 10;
+        check_valid_swap_curve(CurveType::ConstantProduct, Box::new(ConstantProductCurve { fee_numerator, fee_denominator }));
+        check_valid_swap_curve(CurveType::Flat, Box::new(FlatCurve { fee_numerator, fee_denominator }));
     }
 
     #[test]

@@ -60,13 +60,14 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
   [
     BufferLayout.u8('isInitialized'),
     BufferLayout.u8('nonce'),
-    BufferLayout.u8('curveType'),
     Layout.publicKey('tokenProgramId'),
     Layout.publicKey('tokenAccountA'),
     Layout.publicKey('tokenAccountB'),
     Layout.publicKey('tokenPool'),
+    BufferLayout.u8('curveType'),
     Layout.uint64('feeNumerator'),
     Layout.uint64('feeDenominator'),
+    BufferLayout.blob(48, 'padding'),
   ],
 );
 
@@ -217,20 +218,21 @@ export class TokenSwap {
     ];
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      BufferLayout.nu64('feeNumerator'),
-      BufferLayout.nu64('feeDenominator'),
       BufferLayout.u8('nonce'),
       BufferLayout.u8('curveType'),
+      BufferLayout.nu64('feeNumerator'),
+      BufferLayout.nu64('feeDenominator'),
+      BufferLayout.blob(48, 'padding'),
     ]);
     let data = Buffer.alloc(1024);
     {
       const encodeLength = commandDataLayout.encode(
         {
           instruction: 0, // InitializeSwap instruction
-          feeNumerator,
-          feeDenominator,
           nonce,
           curveType,
+          feeNumerator,
+          feeDenominator,
         },
         data,
       );

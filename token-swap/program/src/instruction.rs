@@ -2,11 +2,12 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use crate::curve::CurveType;
+use crate::curve::{FlatCurve, ConstantProductCurve, SwapCurveWrapper, CurveType};
 use crate::error::SwapError;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
+    program_pack::Pack,
     pubkey::Pubkey,
 };
 use std::convert::TryInto;
@@ -14,7 +15,7 @@ use std::mem::size_of;
 
 /// Instructions supported by the SwapInfo program.
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum SwapInstruction {
     ///   Initializes a new SwapInfo.
     ///
@@ -26,14 +27,11 @@ pub enum SwapInstruction {
     ///   5. `[writable]` Pool Token Account to deposit the minted tokens. Must be empty, owned by user.
     ///   6. '[]` Token program id
     Initialize {
-        /// swap pool fee numerator
-        fee_numerator: u64,
-        /// swap pool fee denominator
-        fee_denominator: u64,
         /// nonce used to create valid program address
         nonce: u8,
-        /// curve type for pool
-        curve_type: CurveType,
+        /// swap curve info for pool, including CurveType, fees, and anything
+        /// else that may be required
+        swap_curve: SwapCurveWrapper,
     },
 
     ///   Swap the tokens in the pool.
@@ -102,17 +100,11 @@ impl SwapInstruction {
         let (&tag, rest) = input.split_first().ok_or(SwapError::InvalidInstruction)?;
         Ok(match tag {
             0 => {
-                let (fee_numerator, rest) = Self::unpack_u64(rest)?;
-                let (fee_denominator, rest) = Self::unpack_u64(rest)?;
                 let (&nonce, rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
-                let (&curve_type, _rest) =
-                    rest.split_first().ok_or(SwapError::InvalidInstruction)?;
-                let curve_type = curve_type.try_into()?;
+                let swap_curve = SwapCurveWrapper::unpack_unchecked(rest)?;
                 Self::Initialize {
-                    fee_numerator,
-                    fee_denominator,
                     nonce,
-                    curve_type,
+                    swap_curve,
                 }
             }
             1 => {
@@ -164,18 +156,16 @@ impl SwapInstruction {
     /// Packs a [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
-        match *self {
+        match &*self {
             Self::Initialize {
-                fee_numerator,
-                fee_denominator,
                 nonce,
-                curve_type,
+                swap_curve,
             } => {
                 buf.push(0);
-                buf.extend_from_slice(&fee_numerator.to_le_bytes());
-                buf.extend_from_slice(&fee_denominator.to_le_bytes());
-                buf.push(nonce);
-                buf.push(curve_type as u8);
+                buf.push(*nonce);
+                let mut swap_curve_slice = [0u8; SwapCurveWrapper::LEN];
+                Pack::pack_into_slice(swap_curve, &mut swap_curve_slice[..]);
+                buf.extend_from_slice(&swap_curve_slice);
             }
             Self::Swap {
                 amount_in,
@@ -225,11 +215,22 @@ pub fn initialize(
     fee_numerator: u64,
     fee_denominator: u64,
 ) -> Result<Instruction, ProgramError> {
-    let init_data = SwapInstruction::Initialize {
-        fee_numerator,
-        fee_denominator,
-        nonce,
+    let swap_curve = SwapCurveWrapper {
         curve_type,
+        calculator: match curve_type {
+            CurveType::ConstantProduct => Box::new(ConstantProductCurve {
+                fee_numerator,
+                fee_denominator,
+            }),
+            CurveType::Flat => Box::new(FlatCurve {
+                fee_numerator,
+                fee_denominator,
+            }),
+        }
+    };
+    let init_data = SwapInstruction::Initialize {
+        nonce,
+        swap_curve,
     };
     let data = init_data.pack();
 
@@ -391,19 +392,23 @@ mod tests {
         let fee_denominator: u64 = 4;
         let nonce: u8 = 255;
         let curve_type = CurveType::Flat;
-        let check = SwapInstruction::Initialize {
-            fee_numerator,
-            fee_denominator,
-            nonce,
+        let calculator = Box::new(FlatCurve { fee_numerator, fee_denominator });
+        let swap_curve = SwapCurveWrapper {
             curve_type,
+            calculator,
+        };
+        let check = SwapInstruction::Initialize {
+            nonce,
+            swap_curve,
         };
         let packed = check.pack();
         let mut expect = vec![];
         expect.push(0 as u8);
-        expect.extend_from_slice(&fee_numerator.to_le_bytes());
-        expect.extend_from_slice(&fee_denominator.to_le_bytes());
         expect.push(nonce);
         expect.push(curve_type as u8);
+        expect.extend_from_slice(&fee_numerator.to_le_bytes());
+        expect.extend_from_slice(&fee_denominator.to_le_bytes());
+        expect.extend_from_slice(&[0u8; 48]); // padding
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
