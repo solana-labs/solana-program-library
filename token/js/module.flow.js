@@ -54,6 +54,9 @@ declare module '@solana/spl-token' {
     signer11: PublicKey,
   |};
   declare export class Token {
+    publicKey: PublicKey;
+    programId: PublicKey;
+    payer: Account;
     constructor(
       connection: Connection,
       publicKey: PublicKey,
