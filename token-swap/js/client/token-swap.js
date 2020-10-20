@@ -71,6 +71,11 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
   ],
 );
 
+export const CurveType = Object.freeze({
+  ConstantProduct: 0, // Constant product curve, Uniswap-style
+  Flat: 1, // Flat curve, always 1:1 trades
+});
+
 /**
  * A program to exchange tokens against a pool of liquidity
  */
@@ -126,9 +131,7 @@ export class TokenSwap {
   feeDenominator: Numberu64;
 
   /**
-   * Curve type, current options are:
-   * 0 = Constant product curve, Uniswap-style
-   * 1 = Flat curve, always 1:1 trades
+   * CurveType, current options are:
    */
   curveType: number;
 

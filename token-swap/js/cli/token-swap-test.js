@@ -10,7 +10,7 @@ import {
 } from '@solana/web3.js';
 
 import {Token} from '../../../token/js/client/token';
-import {TokenSwap} from '../client/token-swap';
+import {TokenSwap, CurveType} from '../client/token-swap';
 import {Store} from '../client/util/store';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {url} from '../url';
@@ -35,7 +35,7 @@ let tokenAccountA: PublicKey;
 let tokenAccountB: PublicKey;
 
 // curve type used to calculate swaps and deposits
-const CURVE_TYPE = 0;
+const CURVE_TYPE = CurveType.ConstantProduct;
 // Initial amount in each swap token
 const BASE_AMOUNT = 1000;
 // Amount passed to swap instruction

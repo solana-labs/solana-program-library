@@ -17,6 +17,7 @@ declare module '@solana/spl-token-swap' {
   }
 
   export const TokenSwapLayout: Layout;
+  export const CurveType: Object;
 
   export class TokenSwap {
     constructor(
