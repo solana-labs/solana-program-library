@@ -74,10 +74,7 @@ impl Pack for SwapCurve {
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, 65];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (
-            curve_type,
-            calculator,
-        ) = array_refs![input, 1, 64];
+        let (curve_type, calculator) = array_refs![input, 1, 64];
         let curve_type = curve_type[0].try_into()?;
         Ok(Self {
             curve_type,
@@ -85,20 +82,15 @@ impl Pack for SwapCurve {
                 CurveType::ConstantProduct => {
                     Box::new(ConstantProductCurve::unpack_from_slice(calculator)?)
                 }
-                CurveType::Flat => {
-                    Box::new(FlatCurve::unpack_from_slice(calculator)?)
-                }
-            }
+                CurveType::Flat => Box::new(FlatCurve::unpack_from_slice(calculator)?),
+            },
         })
     }
 
     /// Pack SwapCurve into a byte buffer
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, 65];
-        let (
-            curve_type,
-            calculator,
-        ) = mut_array_refs![output, 1, 64];
+        let (curve_type, calculator) = mut_array_refs![output, 1, 64];
         curve_type[0] = self.curve_type as u8;
         self.calculator.pack_into_slice(&mut calculator[..]);
     }
@@ -135,7 +127,12 @@ pub trait DynPack {
 pub trait CurveCalculator: Debug + DynPack {
     /// Calculate how much destination token will be provided given an amount
     /// of source token.
-    fn swap(&self, source_amount: u64, swap_source_amount: u64, swap_destination_amount: u64) -> Option<SwapResult>;
+    fn swap(
+        &self,
+        source_amount: u64,
+        swap_source_amount: u64,
+        swap_destination_amount: u64,
+    ) -> Option<SwapResult>;
 
     /// Get the supply of a new pool (can be a default amount or calculated
     /// based on parameters)
@@ -143,7 +140,12 @@ pub trait CurveCalculator: Debug + DynPack {
 
     /// Get the amount of liquidity tokens for pool tokens given the total amount
     /// of liquidity tokens in the pool
-    fn liquidity_tokens(&self, pool_tokens: u64, pool_token_supply: u64, total_liquidity_tokens: u64) -> Option<u64>;
+    fn liquidity_tokens(
+        &self,
+        pool_tokens: u64,
+        pool_token_supply: u64,
+        total_liquidity_tokens: u64,
+    ) -> Option<u64>;
 }
 
 /// Encodes all results of swapping from a source token to a destination token
@@ -176,7 +178,12 @@ pub struct FlatCurve {
 
 impl CurveCalculator for FlatCurve {
     /// Flat curve swap always returns 1:1 (minus fee)
-    fn swap(&self, source_amount: u64, swap_source_amount: u64, swap_destination_amount: u64) -> Option<SwapResult> {
+    fn swap(
+        &self,
+        source_amount: u64,
+        swap_source_amount: u64,
+        swap_destination_amount: u64,
+    ) -> Option<SwapResult> {
         // debit the fee to calculate the amount swapped
         let mut fee = source_amount
             .checked_mul(self.fee_numerator)?
@@ -189,7 +196,8 @@ impl CurveCalculator for FlatCurve {
         let new_destination_amount = swap_destination_amount.checked_sub(amount_swapped)?;
 
         // actually add the whole amount coming in
-        let new_source_amount = swap_source_amount.checked_add(source_amount)?; Some(SwapResult {
+        let new_source_amount = swap_source_amount.checked_add(source_amount)?;
+        Some(SwapResult {
             new_source_amount,
             new_destination_amount,
             amount_swapped,
@@ -203,7 +211,12 @@ impl CurveCalculator for FlatCurve {
 
     /// Simple ratio calculation for how many liquidity tokens correspond to
     /// a certain number of pool tokens
-    fn liquidity_tokens(&self, pool_tokens: u64, pool_token_supply: u64, total_liquidity_tokens: u64) -> Option<u64> {
+    fn liquidity_tokens(
+        &self,
+        pool_tokens: u64,
+        pool_token_supply: u64,
+        total_liquidity_tokens: u64,
+    ) -> Option<u64> {
         pool_tokens
             .checked_mul(total_liquidity_tokens)?
             .checked_div(pool_token_supply)
@@ -224,10 +237,7 @@ impl Pack for FlatCurve {
     fn unpack_from_slice(input: &[u8]) -> Result<FlatCurve, ProgramError> {
         let input = array_ref![input, 0, 16];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (
-            fee_numerator,
-            fee_denominator,
-        ) = array_refs![input, 8, 8];
+        let (fee_numerator, fee_denominator) = array_refs![input, 8, 8];
         Ok(Self {
             fee_numerator: u64::from_le_bytes(*fee_numerator),
             fee_denominator: u64::from_le_bytes(*fee_denominator),
@@ -242,10 +252,7 @@ impl Pack for FlatCurve {
 impl DynPack for FlatCurve {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, 16];
-        let (
-            fee_numerator,
-            fee_denominator,
-        ) = mut_array_refs![output, 8, 8];
+        let (fee_numerator, fee_denominator) = mut_array_refs![output, 8, 8];
         *fee_numerator = self.fee_numerator.to_le_bytes();
         *fee_denominator = self.fee_denominator.to_le_bytes();
     }
@@ -262,9 +269,13 @@ pub struct ConstantProductCurve {
 
 impl CurveCalculator for ConstantProductCurve {
     /// Constant product swap ensures x * y = constant
-    fn swap(&self, source_amount: u64, swap_source_amount: u64, swap_destination_amount: u64) -> Option<SwapResult> {
-        let invariant = swap_source_amount
-            .checked_mul(swap_destination_amount)?;
+    fn swap(
+        &self,
+        source_amount: u64,
+        swap_source_amount: u64,
+        swap_destination_amount: u64,
+    ) -> Option<SwapResult> {
+        let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
 
         // debit the fee to calculate the amount swapped
         let mut fee = source_amount
@@ -277,9 +288,8 @@ impl CurveCalculator for ConstantProductCurve {
             .checked_add(source_amount)?
             .checked_sub(fee)?;
         let new_destination_amount = invariant.checked_div(new_source_amount_less_fee)?;
-        let amount_swapped = map_zero_to_none(swap_destination_amount
-                .checked_sub(new_destination_amount)?,
-        )?;
+        let amount_swapped =
+            map_zero_to_none(swap_destination_amount.checked_sub(new_destination_amount)?)?;
 
         // actually add the whole amount coming in
         let new_source_amount = swap_source_amount.checked_add(source_amount)?;
@@ -298,7 +308,12 @@ impl CurveCalculator for ConstantProductCurve {
 
     /// Simple ratio calculation to get the amount of liquidity tokens given
     /// pool information
-    fn liquidity_tokens(&self, pool_tokens: u64, pool_token_supply: u64, total_liquidity_tokens: u64) -> Option<u64> {
+    fn liquidity_tokens(
+        &self,
+        pool_tokens: u64,
+        pool_token_supply: u64,
+        total_liquidity_tokens: u64,
+    ) -> Option<u64> {
         pool_tokens
             .checked_mul(total_liquidity_tokens)?
             .checked_div(pool_token_supply)
@@ -318,10 +333,7 @@ impl Pack for ConstantProductCurve {
     fn unpack_from_slice(input: &[u8]) -> Result<ConstantProductCurve, ProgramError> {
         let input = array_ref![input, 0, 16];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (
-            fee_numerator,
-            fee_denominator,
-        ) = array_refs![input, 8, 8];
+        let (fee_numerator, fee_denominator) = array_refs![input, 8, 8];
         Ok(Self {
             fee_numerator: u64::from_le_bytes(*fee_numerator),
             fee_denominator: u64::from_le_bytes(*fee_denominator),
@@ -336,10 +348,7 @@ impl Pack for ConstantProductCurve {
 impl DynPack for ConstantProductCurve {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, 16];
-        let (
-            fee_numerator,
-            fee_denominator,
-        ) = mut_array_refs![output, 8, 8];
+        let (fee_numerator, fee_denominator) = mut_array_refs![output, 8, 8];
         *fee_numerator = self.fee_numerator.to_le_bytes();
         *fee_denominator = self.fee_denominator.to_le_bytes();
     }
@@ -353,7 +362,10 @@ mod tests {
     fn initial_pool_amount() {
         let fee_numerator = 0;
         let fee_denominator = 1;
-        let calculator = ConstantProductCurve { fee_numerator, fee_denominator };
+        let calculator = ConstantProductCurve {
+            fee_numerator,
+            fee_denominator,
+        };
         assert_eq!(calculator.new_pool_supply(), INITIAL_SWAP_POOL_AMOUNT);
     }
 
@@ -365,8 +377,14 @@ mod tests {
     ) {
         let fee_numerator = 0;
         let fee_denominator = 1;
-        let calculator = ConstantProductCurve { fee_numerator, fee_denominator };
-        assert_eq!(calculator.liquidity_tokens(deposit, supply, token_a), expected);
+        let calculator = ConstantProductCurve {
+            fee_numerator,
+            fee_denominator,
+        };
+        assert_eq!(
+            calculator.liquidity_tokens(deposit, supply, token_a),
+            expected
+        );
     }
 
     #[test]
@@ -390,9 +408,9 @@ mod tests {
             fee_numerator,
             fee_denominator,
         };
-        let result = curve.swap(source_amount,
-            swap_source_amount,
-            swap_destination_amount).unwrap();
+        let result = curve
+            .swap(source_amount, swap_source_amount, swap_destination_amount)
+            .unwrap();
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, 4505);
         assert_eq!(result.new_destination_amount, 45495);
@@ -409,9 +427,9 @@ mod tests {
             fee_numerator,
             fee_denominator,
         };
-        let result = curve.swap(source_amount,
-            swap_source_amount,
-            swap_destination_amount).unwrap();
+        let result = curve
+            .swap(source_amount, swap_source_amount, swap_destination_amount)
+            .unwrap();
         let amount_swapped = 99;
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, amount_swapped);

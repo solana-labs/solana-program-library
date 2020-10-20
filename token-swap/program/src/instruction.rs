@@ -2,7 +2,7 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use crate::curve::{FlatCurve, ConstantProductCurve, SwapCurve, CurveType};
+use crate::curve::{ConstantProductCurve, CurveType, FlatCurve, SwapCurve};
 use crate::error::SwapError;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
@@ -102,10 +102,7 @@ impl SwapInstruction {
             0 => {
                 let (&nonce, rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
                 let swap_curve = SwapCurve::unpack_unchecked(rest)?;
-                Self::Initialize {
-                    nonce,
-                    swap_curve,
-                }
+                Self::Initialize { nonce, swap_curve }
             }
             1 => {
                 let (amount_in, rest) = Self::unpack_u64(rest)?;
@@ -157,10 +154,7 @@ impl SwapInstruction {
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match &*self {
-            Self::Initialize {
-                nonce,
-                swap_curve,
-            } => {
+            Self::Initialize { nonce, swap_curve } => {
                 buf.push(0);
                 buf.push(*nonce);
                 let mut swap_curve_slice = [0u8; SwapCurve::LEN];
@@ -226,12 +220,9 @@ pub fn initialize(
                 fee_numerator,
                 fee_denominator,
             }),
-        }
+        },
     };
-    let init_data = SwapInstruction::Initialize {
-        nonce,
-        swap_curve,
-    };
+    let init_data = SwapInstruction::Initialize { nonce, swap_curve };
     let data = init_data.pack();
 
     let accounts = vec![
@@ -392,15 +383,15 @@ mod tests {
         let fee_denominator: u64 = 4;
         let nonce: u8 = 255;
         let curve_type = CurveType::Flat;
-        let calculator = Box::new(FlatCurve { fee_numerator, fee_denominator });
+        let calculator = Box::new(FlatCurve {
+            fee_numerator,
+            fee_denominator,
+        });
         let swap_curve = SwapCurve {
             curve_type,
             calculator,
         };
-        let check = SwapInstruction::Initialize {
-            nonce,
-            swap_curve,
-        };
+        let check = SwapInstruction::Initialize { nonce, swap_curve };
         let packed = check.pack();
         let mut expect = vec![];
         expect.push(0 as u8);

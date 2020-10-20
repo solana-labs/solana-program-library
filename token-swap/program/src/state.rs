@@ -52,15 +52,8 @@ impl Pack for SwapInfo {
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, 195];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (
-            is_initialized,
-            nonce,
-            token_program_id,
-            token_a,
-            token_b,
-            pool_mint,
-            swap_curve,
-        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 65];
+        let (is_initialized, nonce, token_program_id, token_a, token_b, pool_mint, swap_curve) =
+            array_refs![input, 1, 1, 32, 32, 32, 32, 65];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -78,15 +71,8 @@ impl Pack for SwapInfo {
 
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, 195];
-        let (
-            is_initialized,
-            nonce,
-            token_program_id,
-            token_a,
-            token_b,
-            pool_mint,
-            swap_curve,
-        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 65];
+        let (is_initialized, nonce, token_program_id, token_a, token_b, pool_mint, swap_curve) =
+            mut_array_refs![output, 1, 1, 32, 32, 32, 32, 65];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
@@ -119,7 +105,10 @@ mod tests {
         let pool_mint = Pubkey::new_from_array(pool_mint_raw);
         let fee_numerator = 1;
         let fee_denominator = 4;
-        let calculator = Box::new(FlatCurve { fee_numerator, fee_denominator });
+        let calculator = Box::new(FlatCurve {
+            fee_numerator,
+            fee_denominator,
+        });
         let swap_curve = SwapCurve {
             curve_type,
             calculator,
