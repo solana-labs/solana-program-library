@@ -466,29 +466,34 @@ intermediary.  The migration program will be provided by the exchange to the
 wallet.  The wallet will issue a single instruction to the migration program,
 providing no instruction data but the following accounts:
 
-0. The v2 account to migrate.
-1. The v2 account's authority.  This authority must sign the migration
+0. The Payer for the additional space required by the new v3 account.  v2 and v3
+   accounts are the same size so this isn't actually neccissary, but likely will
+   be needed for most all migrations.
+1. The v2 account to migrate.
+2. The v2 account's authority.  This authority must sign the migration
    transaction and be an authority that can both burn and close the account.
    This authority will become the new v3 account's authority.
 3. The v2 token mint.
 4. The pubkey of the new v3 account that will be created and initialized.  Must
    be a signer to allow for `SystemInstruction::CreateAccount`.
-6. A v3 mint to be used as a source of tokens for the new account. In some
+5. A v3 mint to be used as a source of tokens for the new account. In some
    scenarios a mint may be a fixed supply.  In lieu of a mint, the program could
    be modified to instead take v3 account could be provided that contains
    sufficient tokens for the migration.
-7. The mint's multisignature authority where at least one of the signers is a
-   program address associated with the migration program.  Using a multisignture
-   here allows an external entity to also retain ownership of the mint or source
-   account.
-8. The Rent sysvar
+6. The mint's 1xN multisignature authority where at least one of the signers is
+   the program address associated with the migration program.  Using a
+   multisignture here allows an external entity to also retain ownership of the
+   mint or source account.
+7. The Rent sysvar
+8. A valid signer, must be one of the N multisignture authorities.
 
 The update program will perform the following:
 
 - Query the v2 account's token balance.
-- Issue a `Burn` instruction on the v2 account for the entire balance.
+- Calculate the difference between the old and new account sizes.
 - Issue a `SystemInstruction::CreateAccount` instruction using the new v3
   account's pubkey.
+- Issue a `Burn` instruction on the v2 account for the entire balance.
 - Issue a `CloseAccount` instruction on the v2 account, transferring all
   lamports to the new v3 account.
 - Issue an `InitializeAccount` instruction on the new v3 account.
@@ -499,22 +504,36 @@ The update program will perform the following:
 The migration program's `process_instruction` may look like this:
 
 ```rust
-pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], _input: &[u8]) -> ProgramResult {
+    pub fn process(_program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
+        if input.is_empty() || input[0] != 0 {
+            return Err(ProgramError::InvalidArgument);
+        }
+
         let account_info_iter = &mut accounts.iter();
+        let payer_info = next_account_info(account_info_iter)?;
         let v2_account_info = next_account_info(account_info_iter)?;
         let v2_account_authority_info = next_account_info(account_info_iter)?;
         let v2_mint_info = next_account_info(account_info_iter)?;
         let v3_account_info = next_account_info(account_info_iter)?;
         let v3_mint_info = next_account_info(account_info_iter)?;
         let v3_mint_authority_info = next_account_info(account_info_iter)?;
+        let rent_info = next_account_info(account_info_iter)?;
+        let program_signer_info = next_account_info(account_info_iter)?;
 
         let amount = spl_token::state::Account::unpack(&v2_account_info.data.borrow())?.amount;
 
+        // TODO v2 and v3 Account is same size so this is unnecessary, but maybe
+        // leave it in here as an example for other migrations?
+        let rent = Rent::from_account_info(rent_info)?;
+        let additional_amount_to_fund = rent
+            .minimum_balance(spl_token::state::Account::get_packed_len())
+            .saturating_sub(rent.minimum_balance(spl_token::state::Account::get_packed_len()));
+
         let instruction = system_instruction::create_account(
-            v2_account_info.key,
+            payer_info.key,
             v3_account_info.key,
-            0, // TODO lamports from the v2 account transfered during `CloseAccount` may not be sufficient to cover the space required for a v3 account.
-            spl_token_v3::state::Account::get_packed_len(),
+            additional_amount_to_fund,
+            spl_token_v3::state::Account::get_packed_len() as u64,
             &spl_token_v3::id(),
         );
         invoke(&instruction, accounts)?;
@@ -546,20 +565,15 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], _input: &[u8]) -> 
         )?;
         invoke(&instruction, accounts)?;
 
-        let signer = Pubkey::create_program_address(
-            &[b"seed"], // TODO might need a bump seeds here passed in via instruction data
-            program_id
-        )?;
-                
         let instruction = spl_token_v3::instruction::mint_to(
             &spl_token_v3::id(),
             v3_mint_info.key,
             v3_account_info.key,
             v3_mint_authority_info.key,
-            &[signer],
+            &[program_signer_info.key],
             amount,
         )?;
-        invoke_signed(&instruction, accounts, &["seed"])?;
+        invoke_signed(&instruction, accounts, &[&[b"seed"]])?;
 
         Ok(())
     }
