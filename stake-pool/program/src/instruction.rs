@@ -190,3 +190,144 @@ pub fn initialize(
         data,
     })
 }
+
+/// Creates a 'deposit' instruction.
+pub fn deposit(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_deposit: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    stake_to_join: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    pool_fee_to: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let args = StakePoolInstruction::Deposit;
+    let data = args.serialize()?;
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new(*stake_pool_deposit, false),
+        AccountMeta::new(*stake_pool_withdraw, false),
+        AccountMeta::new(*stake_to_join, false),
+        AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*pool_fee_to, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'withdraw' instruction.
+pub fn withdraw(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    stake_to_split: &Pubkey,
+    stake_to_receive: &Pubkey,
+    user_withdrawer: &Pubkey,
+    burn_from: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    let args = StakePoolInstruction::Withdraw(amount);
+    let data = args.serialize()?;
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new(*stake_pool_withdraw, false),
+        AccountMeta::new(*stake_to_split, false),
+        AccountMeta::new(*stake_to_receive, false),
+        AccountMeta::new(*user_withdrawer, false),
+        AccountMeta::new(*burn_from, true),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'claim' instruction.
+pub fn claim(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    stake_to_claim: &Pubkey,
+    user_withdrawer: &Pubkey,
+    burn_from: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    let args = StakePoolInstruction::Withdraw(amount);
+    let data = args.serialize()?;
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new(*stake_pool_withdraw, false),
+        AccountMeta::new(*stake_to_claim, false),
+        AccountMeta::new(*user_withdrawer, false),
+        AccountMeta::new(*burn_from, true),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'set staking authority' instruction.
+pub fn set_staking_authority(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_owner: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    stake_account_to_update: &Pubkey,
+    stake_account_new_authority: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let args = StakePoolInstruction::SetStakingAuthority;
+    let data = args.serialize()?;
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new(*stake_pool_owner, true),
+        AccountMeta::new(*stake_pool_withdraw, false),
+        AccountMeta::new(*stake_account_to_update, false),
+        AccountMeta::new(*stake_account_new_authority, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'set owner' instruction.
+pub fn set_owner(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_owner: &Pubkey,
+    stake_pool_new_owner: &Pubkey,
+    stake_pool_new_fee_receiver: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let args = StakePoolInstruction::SetStakingAuthority;
+    let data = args.serialize()?;
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new(*stake_pool_owner, true),
+        AccountMeta::new(*stake_pool_new_owner, false),
+        AccountMeta::new(*stake_pool_new_fee_receiver, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
