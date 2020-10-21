@@ -14,6 +14,8 @@ declare module '@solana/spl-token-swap' {
 
   declare export var TokenSwapLayout: Layout;
 
+  declare export var CurveType: Object;
+
   declare export class TokenSwap {
     constructor(
       connection: Connection,
@@ -24,6 +26,7 @@ declare module '@solana/spl-token-swap' {
       authority: PublicKey,
       tokenAccountA: PublicKey,
       tokenAccountB: PublicKey,
+      curveType: number,
       feeNumerator: Numberu64,
       feeDenominator: Numberu64,
       payer: Account,
@@ -37,12 +40,13 @@ declare module '@solana/spl-token-swap' {
       programId: PublicKey,
       tokenSwapAccount: Account,
       authority: PublicKey,
-      nonce: number,
       tokenAccountA: PublicKey,
       tokenAccountB: PublicKey,
       tokenPool: PublicKey,
       tokenAccountPool: PublicKey,
       tokenProgramId: PublicKey,
+      nonce: number,
+      curveType: number,
       feeNumerator: number,
       feeDenominator: number,
     ): TransactionInstruction;
@@ -65,6 +69,7 @@ declare module '@solana/spl-token-swap' {
       tokenAccountPool: PublicKey,
       tokenProgramId: PublicKey,
       nonce: number,
+      curveType: number,
       feeNumerator: number,
       feeDenominator: number,
       programId: PublicKey,
