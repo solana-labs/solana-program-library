@@ -454,7 +454,7 @@ An NTF is simply a token type where only a single token has been minted.
 ### Program updates
 
 As the SPL Token program evolves the accounts owned by older version may need to
-be migrated to newer versions.  This can be done via the proxy (or migration)
+be migrated to newer versions.  This can be done by proxy via a migration
 program.  For more information on program updates in general, refer to
 [program updates](program-updates.md).
 
@@ -474,8 +474,9 @@ providing no instruction data but the following accounts:
 4. The pubkey of the new v3 account that will be created and initialized.  Must
    be a signer to allow for `SystemInstruction::CreateAccount`.
 6. A v3 mint to be used as a source of tokens for the new account. In some
-   scenarios a mint may be a fixed supply.  In lieu of a mint, a v3 mint account
-   could be provided that contains sufficient tokens for the migration.
+   scenarios a mint may be a fixed supply.  In lieu of a mint, the program could
+   be modified to instead take v3 account could be provided that contains
+   sufficient tokens for the migration.
 7. The mint's multisignature authority where at least one of the signers is a
    program address associated with the migration program.  Using a multisignture
    here allows an external entity to also retain ownership of the mint or source

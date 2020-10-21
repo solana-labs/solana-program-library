@@ -15,7 +15,7 @@ the newest version.
 
 ## Updating programs by proxy
 
-One method of upgrading programs is to do so via a proxy (or migration) program.
+One method of upgrading programs is to do so by proxy via a migration program.
 The migration program can perform checks and issue instructions to the old and new
 versions of the programs in order to ferry data from accounts owned by the old
 version to accounts owned by the new.  In order to support the proxy model, both
