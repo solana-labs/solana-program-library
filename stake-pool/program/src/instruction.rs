@@ -243,7 +243,7 @@ pub fn withdraw(
         AccountMeta::new(*stake_to_split, false),
         AccountMeta::new(*stake_to_receive, false),
         AccountMeta::new(*user_withdrawer, false),
-        AccountMeta::new(*burn_from, false),
+        AccountMeta::new(*burn_from, true),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new(*token_program_id, false),
     ];
@@ -300,7 +300,7 @@ pub fn set_staking_authority(
         AccountMeta::new(*stake_pool_owner, true),
         AccountMeta::new(*stake_pool_withdraw, false),
         AccountMeta::new(*stake_account_to_update, false),
-        AccountMeta::new(*stake_account_new_authority, true),
+        AccountMeta::new(*stake_account_new_authority, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
