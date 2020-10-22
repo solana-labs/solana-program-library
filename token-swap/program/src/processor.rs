@@ -406,6 +406,7 @@ impl Processor {
         let dest_token_a_info = next_account_info(account_info_iter)?;
         let dest_token_b_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let pool_fee_account_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
@@ -419,6 +420,9 @@ impl Processor {
         }
         if *pool_mint_info.key != token_swap.pool_mint {
             return Err(SwapError::IncorrectPoolMint.into());
+        }
+        if *pool_fee_account_info.key != token_swap.pool_fee_account {
+            return Err(SwapError::IncorrectFeeAccount.into());
         }
 
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
@@ -595,7 +599,10 @@ impl PrintProgramError for SwapError {
             SwapError::InvalidCloseAuthority => info!("Error: Token account has a close authority"),
             SwapError::InvalidFreezeAuthority => {
                 info!("Error: Pool token mint has a freeze authority")
-            }
+            },
+            SwapError::IncorrectFeeAccount => {
+                info!("Error: Pool fee token account incorrect")
+            },
         }
     }
 }
@@ -1008,6 +1015,7 @@ mod tests {
                     &self.swap_key,
                     &self.authority_key,
                     &self.pool_mint_key,
+                    &self.pool_fee_key,
                     &pool_key,
                     &self.token_a_key,
                     &self.token_b_key,
@@ -1028,6 +1036,7 @@ mod tests {
                     &mut token_a_account,
                     &mut token_b_account,
                     &mut Account::default(),
+                    &mut self.pool_fee_account,
                 ],
             )
         }
@@ -2424,6 +2433,60 @@ mod tests {
             );
         }
 
+        // wrong pool fee account
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                wrong_pool_key,
+                wrong_pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &withdrawer_key,
+                initial_a,
+                initial_b,
+                withdraw_amount,
+            );
+            let (
+                _token_a_key,
+                _token_a_account,
+                _token_b_key,
+                _token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &withdrawer_key,
+                initial_a,
+                initial_b,
+                withdraw_amount,
+            );
+            let old_pool_fee_account = accounts.pool_fee_account;
+            let old_pool_fee_key = accounts.pool_fee_key;
+            accounts.pool_fee_account = wrong_pool_account;
+            accounts.pool_fee_key = wrong_pool_key;
+            assert_eq!(
+                Err(SwapError::IncorrectFeeAccount.into()),
+                accounts.withdraw(
+                    &withdrawer_key,
+                    &pool_key,
+                    &mut pool_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    withdraw_amount,
+                    minimum_a_amount,
+                    minimum_b_amount,
+                ),
+            );
+            accounts.pool_fee_account = old_pool_fee_account;
+            accounts.pool_fee_key = old_pool_fee_key;
+        }
+
+
         // no approval
         {
             let (
@@ -2443,6 +2506,7 @@ mod tests {
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &accounts.pool_mint_key,
+                        &accounts.pool_fee_key,
                         &pool_key,
                         &accounts.token_a_key,
                         &accounts.token_b_key,
@@ -2463,6 +2527,7 @@ mod tests {
                         &mut token_a_account,
                         &mut token_b_account,
                         &mut Account::default(),
+                        &mut accounts.pool_fee_account,
                     ],
                 )
             );
@@ -2494,6 +2559,7 @@ mod tests {
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &accounts.pool_mint_key,
+                        &accounts.pool_fee_key,
                         &pool_key,
                         &accounts.token_a_key,
                         &accounts.token_b_key,
@@ -2514,6 +2580,7 @@ mod tests {
                         &mut token_a_account,
                         &mut token_b_account,
                         &mut Account::default(),
+                        &mut accounts.pool_fee_account,
                     ],
                 )
             );

@@ -83,12 +83,12 @@ pub enum SwapInstruction {
     ///   1. `[]` $authority
     ///   2. `[writable]` Pool mint account, $authority is the owner
     ///   3. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   4. `[writable]` Fee account, to receive withdrawal fees
-    ///   5. `[writable]` token_a Swap Account to withdraw FROM.
-    ///   6. `[writable]` token_b Swap Account to withdraw FROM.
-    ///   7. `[writable]` token_a user Account to credit.
-    ///   8. `[writable]` token_b user Account to credit.
-    ///   9. '[]` Token program id
+    ///   4. `[writable]` token_a Swap Account to withdraw FROM.
+    ///   5. `[writable]` token_b Swap Account to withdraw FROM.
+    ///   6. `[writable]` token_a user Account to credit.
+    ///   7. `[writable]` token_b user Account to credit.
+    ///   8. '[]` Token program id
+    ///   9. `[writable]` Fee account, to receive withdrawal fees
     Withdraw {
         /// Amount of pool tokens to burn. User receives an output of token a
         /// and b based on the percentage of the pool tokens that are returned.
@@ -299,6 +299,7 @@ pub fn withdraw(
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     pool_mint_pubkey: &Pubkey,
+    fee_account_pubkey: &Pubkey,
     source_pubkey: &Pubkey,
     swap_token_a_pubkey: &Pubkey,
     swap_token_b_pubkey: &Pubkey,
@@ -325,6 +326,7 @@ pub fn withdraw(
         AccountMeta::new(*destination_token_a_pubkey, false),
         AccountMeta::new(*destination_token_b_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new(*fee_account_pubkey, false),
     ];
 
     Ok(Instruction {
