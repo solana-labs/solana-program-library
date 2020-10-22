@@ -64,6 +64,8 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     Layout.publicKey('tokenAccountA'),
     Layout.publicKey('tokenAccountB'),
     Layout.publicKey('tokenPool'),
+    Layout.publicKey('mintA'),
+    Layout.publicKey('mintB'),
     BufferLayout.u8('curveType'),
     Layout.uint64('feeNumerator'),
     Layout.uint64('feeDenominator'),
@@ -121,6 +123,16 @@ export class TokenSwap {
   tokenAccountB: PublicKey;
 
   /**
+   * The public key for the mint of the first token account of the trading pair
+   */
+  mintA: PublicKey;
+
+  /**
+   * The public key for the mint of the second token account of the trading pair
+   */
+  mintB: PublicKey;
+
+  /**
    * Fee numerator
    */
   feeNumerator: Numberu64;
@@ -162,6 +174,8 @@ export class TokenSwap {
     authority: PublicKey,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
+    mintA: PublicKey,
+    mintB: PublicKey,
     curveType: number,
     feeNumerator: Numberu64,
     feeDenominator: Numberu64,
@@ -176,6 +190,8 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      mintA,
+      mintB,
       curveType,
       feeNumerator,
       feeDenominator,
@@ -268,6 +284,8 @@ export class TokenSwap {
     const poolToken = new PublicKey(tokenSwapData.tokenPool);
     const tokenAccountA = new PublicKey(tokenSwapData.tokenAccountA);
     const tokenAccountB = new PublicKey(tokenSwapData.tokenAccountB);
+    const mintA = new PublicKey(tokenSwapData.mintA);
+    const mintB = new PublicKey(tokenSwapData.mintB);
     const tokenProgramId = new PublicKey(tokenSwapData.tokenProgramId);
 
     const feeNumerator = Numberu64.fromBuffer(tokenSwapData.feeNumerator);
@@ -283,6 +301,8 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      mintA,
+      mintB,
       curveType,
       feeNumerator,
       feeDenominator,
@@ -316,6 +336,8 @@ export class TokenSwap {
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
     poolToken: PublicKey,
+    mintA: PublicKey,
+    mintB: PublicKey,
     tokenAccountPool: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
@@ -334,6 +356,8 @@ export class TokenSwap {
       authority,
       tokenAccountA,
       tokenAccountB,
+      mintA,
+      mintB,
       curveType,
       new Numberu64(feeNumerator),
       new Numberu64(feeDenominator),

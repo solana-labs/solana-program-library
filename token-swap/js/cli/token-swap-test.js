@@ -199,6 +199,8 @@ export async function createTokenSwap(): Promise<void> {
     tokenAccountA,
     tokenAccountB,
     tokenPool.publicKey,
+    mintA.publicKey,
+    mintB.publicKey,
     tokenAccountPool,
     tokenSwapProgramId,
     tokenProgramId,
@@ -219,6 +221,8 @@ export async function createTokenSwap(): Promise<void> {
   assert(fetchedTokenSwap.tokenProgramId.equals(tokenProgramId));
   assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
   assert(fetchedTokenSwap.tokenAccountB.equals(tokenAccountB));
+  assert(fetchedTokenSwap.mintA.equals(mintA.publicKey));
+  assert(fetchedTokenSwap.mintB.equals(mintB.publicKey));
   assert(fetchedTokenSwap.poolToken.equals(tokenPool.publicKey));
   assert(CURVE_TYPE == fetchedTokenSwap.curveType);
   assert(1 == fetchedTokenSwap.feeNumerator.toNumber());
