@@ -68,9 +68,13 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     Layout.publicKey('mintB'),
     Layout.publicKey('feeAccount'),
     BufferLayout.u8('curveType'),
-    Layout.uint64('feeNumerator'),
-    Layout.uint64('feeDenominator'),
-    BufferLayout.blob(48, 'padding'),
+    Layout.uint64('tradeFeeNumerator'),
+    Layout.uint64('tradeFeeDenominator'),
+    Layout.uint64('ownerTradeFeeNumerator'),
+    Layout.uint64('ownerTradeFeeDenominator'),
+    Layout.uint64('ownerWithdrawFeeNumerator'),
+    Layout.uint64('ownerWithdrawFeeDenominator'),
+    BufferLayout.blob(16, 'padding'),
   ],
 );
 
@@ -139,14 +143,34 @@ export class TokenSwap {
   mintB: PublicKey;
 
   /**
-   * Fee numerator
+   * Trading fee numerator
    */
-  feeNumerator: Numberu64;
+  tradeFeeNumerator: Numberu64;
 
   /**
-   * Fee denominator
+   * Trading fee denominator
    */
-  feeDenominator: Numberu64;
+  tradeFeeDenominator: Numberu64;
+
+  /**
+   * Owner trading fee numerator
+   */
+  ownerTradeFeeNumerator: Numberu64;
+
+  /**
+   * Owner trading fee denominator
+   */
+  ownerTradeFeeDenominator: Numberu64;
+
+  /**
+   * Owner withdraw fee numerator
+   */
+  ownerWithdrawFeeNumerator: Numberu64;
+
+  /**
+   * Owner withdraw fee denominator
+   */
+  ownerWithdrawFeeDenominator: Numberu64;
 
   /**
    * CurveType, current options are:
@@ -184,8 +208,12 @@ export class TokenSwap {
     mintA: PublicKey,
     mintB: PublicKey,
     curveType: number,
-    feeNumerator: Numberu64,
-    feeDenominator: Numberu64,
+    tradeFeeNumerator: Numberu64,
+    tradeFeeDenominator: Numberu64,
+    ownerTradeFeeNumerator: Numberu64,
+    ownerTradeFeeDenominator: Numberu64,
+    ownerWithdrawFeeNumerator: Numberu64,
+    ownerWithdrawFeeDenominator: Numberu64,
     payer: Account,
   ) {
     Object.assign(this, {
@@ -201,8 +229,12 @@ export class TokenSwap {
       mintA,
       mintB,
       curveType,
-      feeNumerator,
-      feeDenominator,
+      tradeFeeNumerator,
+      tradeFeeDenominator,
+      ownerTradeFeeNumerator,
+      ownerTradeFeeDenominator,
+      ownerWithdrawFeeNumerator,
+      ownerWithdrawFeeDenominator,
       payer,
     });
   }
@@ -232,8 +264,12 @@ export class TokenSwap {
     swapProgramId: PublicKey,
     nonce: number,
     curveType: number,
-    feeNumerator: number,
-    feeDenominator: number,
+    tradeFeeNumerator: number,
+    tradeFeeDenominator: number,
+    ownerTradeFeeNumerator: number,
+    ownerTradeFeeDenominator: number,
+    ownerWithdrawFeeNumerator: number,
+    ownerWithdrawFeeDenominator: number,
   ): TransactionInstruction {
     const keys = [
       {pubkey: tokenSwapAccount.publicKey, isSigner: false, isWritable: true},
@@ -249,9 +285,13 @@ export class TokenSwap {
       BufferLayout.u8('instruction'),
       BufferLayout.u8('nonce'),
       BufferLayout.u8('curveType'),
-      BufferLayout.nu64('feeNumerator'),
-      BufferLayout.nu64('feeDenominator'),
-      BufferLayout.blob(48, 'padding'),
+      BufferLayout.nu64('tradeFeeNumerator'),
+      BufferLayout.nu64('tradeFeeDenominator'),
+      BufferLayout.nu64('ownerTradeFeeNumerator'),
+      BufferLayout.nu64('ownerTradeFeeDenominator'),
+      BufferLayout.nu64('ownerWithdrawFeeNumerator'),
+      BufferLayout.nu64('ownerWithdrawFeeDenominator'),
+      BufferLayout.blob(16, 'padding'),
     ]);
     let data = Buffer.alloc(1024);
     {
@@ -260,8 +300,12 @@ export class TokenSwap {
           instruction: 0, // InitializeSwap instruction
           nonce,
           curveType,
-          feeNumerator,
-          feeDenominator,
+          tradeFeeNumerator,
+          tradeFeeDenominator,
+          ownerTradeFeeNumerator,
+          ownerTradeFeeDenominator,
+          ownerWithdrawFeeNumerator,
+          ownerWithdrawFeeDenominator,
         },
         data,
       );
@@ -299,8 +343,24 @@ export class TokenSwap {
     const mintB = new PublicKey(tokenSwapData.mintB);
     const tokenProgramId = new PublicKey(tokenSwapData.tokenProgramId);
 
-    const feeNumerator = Numberu64.fromBuffer(tokenSwapData.feeNumerator);
-    const feeDenominator = Numberu64.fromBuffer(tokenSwapData.feeDenominator);
+    const tradeFeeNumerator = Numberu64.fromBuffer(
+      tokenSwapData.tradeFeeNumerator,
+    );
+    const tradeFeeDenominator = Numberu64.fromBuffer(
+      tokenSwapData.tradeFeeDenominator,
+    );
+    const ownerTradeFeeNumerator = Numberu64.fromBuffer(
+      tokenSwapData.ownerTradeFeeNumerator,
+    );
+    const ownerTradeFeeDenominator = Numberu64.fromBuffer(
+      tokenSwapData.ownerTradeFeeDenominator,
+    );
+    const ownerWithdrawFeeNumerator = Numberu64.fromBuffer(
+      tokenSwapData.ownerWithdrawFeeNumerator,
+    );
+    const ownerWithdrawFeeDenominator = Numberu64.fromBuffer(
+      tokenSwapData.ownerWithdrawFeeDenominator,
+    );
     const curveType = tokenSwapData.curveType;
 
     return new TokenSwap(
@@ -316,8 +376,12 @@ export class TokenSwap {
       mintA,
       mintB,
       curveType,
-      feeNumerator,
-      feeDenominator,
+      tradeFeeNumerator,
+      tradeFeeDenominator,
+      ownerTradeFeeNumerator,
+      ownerTradeFeeDenominator,
+      ownerWithdrawFeeNumerator,
+      ownerWithdrawFeeDenominator,
       payer,
     );
   }
@@ -356,8 +420,12 @@ export class TokenSwap {
     tokenProgramId: PublicKey,
     nonce: number,
     curveType: number,
-    feeNumerator: number,
-    feeDenominator: number,
+    tradeFeeNumerator: number,
+    tradeFeeDenominator: number,
+    ownerTradeFeeNumerator: number,
+    ownerTradeFeeDenominator: number,
+    ownerWithdrawFeeNumerator: number,
+    ownerWithdrawFeeDenominator: number,
   ): Promise<TokenSwap> {
     let transaction;
     const tokenSwap = new TokenSwap(
@@ -373,8 +441,12 @@ export class TokenSwap {
       mintA,
       mintB,
       curveType,
-      new Numberu64(feeNumerator),
-      new Numberu64(feeDenominator),
+      new Numberu64(tradeFeeNumerator),
+      new Numberu64(tradeFeeDenominator),
+      new Numberu64(ownerTradeFeeNumerator),
+      new Numberu64(ownerTradeFeeDenominator),
+      new Numberu64(ownerWithdrawFeeNumerator),
+      new Numberu64(ownerWithdrawFeeDenominator),
       payer,
     );
 
@@ -405,8 +477,12 @@ export class TokenSwap {
       swapProgramId,
       nonce,
       curveType,
-      feeNumerator,
-      feeDenominator,
+      tradeFeeNumerator,
+      tradeFeeDenominator,
+      ownerTradeFeeNumerator,
+      ownerTradeFeeDenominator,
+      ownerWithdrawFeeNumerator,
+      ownerWithdrawFeeDenominator,
     );
 
     transaction.add(instruction);
