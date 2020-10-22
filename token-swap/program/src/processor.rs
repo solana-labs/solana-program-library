@@ -173,6 +173,7 @@ impl Processor {
         if COption::Some(*authority_info.key) != pool_mint.mint_authority {
             return Err(SwapError::InvalidOwner.into());
         }
+
         if token_a.mint == token_b.mint {
             return Err(SwapError::RepeatedMint.into());
         }
@@ -188,8 +189,18 @@ impl Processor {
         if token_b.delegate.is_some() {
             return Err(SwapError::InvalidDelegate.into());
         }
+        if token_a.close_authority.is_some() {
+            return Err(SwapError::InvalidCloseAuthority.into());
+        }
+        if token_b.close_authority.is_some() {
+            return Err(SwapError::InvalidCloseAuthority.into());
+        }
+
         if pool_mint.supply != 0 {
             return Err(SwapError::InvalidSupply.into());
+        }
+        if pool_mint.freeze_authority.is_some() {
+            return Err(SwapError::InvalidFreezeAuthority.into());
         }
 
         let initial_amount = swap_curve.calculator.new_pool_supply();
@@ -570,6 +581,10 @@ impl PrintProgramError for SwapError {
             SwapError::ExceededSlippage => {
                 info!("Error: Swap instruction exceeds desired slippage limit")
             }
+            SwapError::InvalidCloseAuthority => info!("Error: Token account has a close authority"),
+            SwapError::InvalidFreezeAuthority => {
+                info!("Error: Pool token mint has a freeze authority")
+            }
         }
     }
 }
@@ -593,7 +608,10 @@ mod tests {
     };
     use spl_token::{
         error::TokenError,
-        instruction::{approve, initialize_account, initialize_mint, mint_to, revoke},
+        instruction::{
+            approve, initialize_account, initialize_mint, mint_to, revoke, set_authority,
+            AuthorityType,
+        },
         processor::Processor as SplProcessor,
         state::{Account as SplAccount, Mint as SplMint},
     };
@@ -635,7 +653,7 @@ mod tests {
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
             let (pool_mint_key, mut pool_mint_account) =
-                create_mint(&TOKEN_PROGRAM_ID, &authority_key);
+                create_mint(&TOKEN_PROGRAM_ID, &authority_key, None);
             let (pool_token_key, pool_token_account) = mint_token(
                 &TOKEN_PROGRAM_ID,
                 &pool_mint_key,
@@ -645,7 +663,7 @@ mod tests {
                 0,
             );
             let (token_a_mint_key, mut token_a_mint_account) =
-                create_mint(&TOKEN_PROGRAM_ID, &user_key);
+                create_mint(&TOKEN_PROGRAM_ID, &user_key, None);
             let (token_a_key, token_a_account) = mint_token(
                 &TOKEN_PROGRAM_ID,
                 &token_a_mint_key,
@@ -655,7 +673,7 @@ mod tests {
                 token_a_amount,
             );
             let (token_b_mint_key, mut token_b_mint_account) =
-                create_mint(&TOKEN_PROGRAM_ID, &user_key);
+                create_mint(&TOKEN_PROGRAM_ID, &user_key, None);
             let (token_b_key, token_b_account) = mint_token(
                 &TOKEN_PROGRAM_ID,
                 &token_b_mint_key,
@@ -1094,7 +1112,11 @@ mod tests {
         (account_key, account_account)
     }
 
-    fn create_mint(program_id: &Pubkey, authority_key: &Pubkey) -> (Pubkey, Account) {
+    fn create_mint(
+        program_id: &Pubkey,
+        authority_key: &Pubkey,
+        freeze_authority: Option<&Pubkey>,
+    ) -> (Pubkey, Account) {
         let mint_key = pubkey_rand();
         let mut mint_account = Account::new(
             mint_minimum_balance(),
@@ -1104,7 +1126,7 @@ mod tests {
         let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
 
         do_process_instruction(
-            initialize_mint(&program_id, &mint_key, authority_key, None, 2).unwrap(),
+            initialize_mint(&program_id, &mint_key, authority_key, freeze_authority, 2).unwrap(),
             vec![&mut mint_account, &mut rent_sysvar_account],
         )
         .unwrap();
@@ -1263,11 +1285,25 @@ mod tests {
 
         // pool mint authority is not swap authority
         {
-            let (_pool_mint_key, pool_mint_account) = create_mint(&TOKEN_PROGRAM_ID, &user_key);
+            let (_pool_mint_key, pool_mint_account) =
+                create_mint(&TOKEN_PROGRAM_ID, &user_key, None);
             let old_mint = accounts.pool_mint_account;
             accounts.pool_mint_account = pool_mint_account;
             assert_eq!(
                 Err(SwapError::InvalidOwner.into()),
+                accounts.initialize_swap()
+            );
+            accounts.pool_mint_account = old_mint;
+        }
+
+        // pool mint token has freeze authority
+        {
+            let (_pool_mint_key, pool_mint_account) =
+                create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key, Some(&user_key));
+            let old_mint = accounts.pool_mint_account;
+            accounts.pool_mint_account = pool_mint_account;
+            assert_eq!(
+                Err(SwapError::InvalidFreezeAuthority.into()),
                 accounts.initialize_swap()
             );
             accounts.pool_mint_account = old_mint;
@@ -1317,7 +1353,7 @@ mod tests {
             let old_pool_account = accounts.pool_token_account;
 
             let (_pool_mint_key, pool_mint_account) =
-                create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key);
+                create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key, None);
             accounts.pool_mint_account = pool_mint_account;
 
             let (_empty_pool_token_key, empty_pool_token_account) = mint_token(
@@ -1422,6 +1458,76 @@ mod tests {
                     &TOKEN_PROGRAM_ID,
                     &accounts.token_b_key,
                     &accounts.authority_key,
+                    &[],
+                )
+                .unwrap(),
+                vec![&mut accounts.token_b_account, &mut Account::default()],
+            )
+            .unwrap();
+        }
+
+        // token A account has close authority
+        {
+            do_process_instruction(
+                set_authority(
+                    &TOKEN_PROGRAM_ID,
+                    &accounts.token_a_key,
+                    Some(&user_key),
+                    AuthorityType::CloseAccount,
+                    &accounts.authority_key,
+                    &[],
+                )
+                .unwrap(),
+                vec![&mut accounts.token_a_account, &mut Account::default()],
+            )
+            .unwrap();
+            assert_eq!(
+                Err(SwapError::InvalidCloseAuthority.into()),
+                accounts.initialize_swap()
+            );
+
+            do_process_instruction(
+                set_authority(
+                    &TOKEN_PROGRAM_ID,
+                    &accounts.token_a_key,
+                    None,
+                    AuthorityType::CloseAccount,
+                    &user_key,
+                    &[],
+                )
+                .unwrap(),
+                vec![&mut accounts.token_a_account, &mut Account::default()],
+            )
+            .unwrap();
+        }
+
+        // token B account has close authority
+        {
+            do_process_instruction(
+                set_authority(
+                    &TOKEN_PROGRAM_ID,
+                    &accounts.token_b_key,
+                    Some(&user_key),
+                    AuthorityType::CloseAccount,
+                    &accounts.authority_key,
+                    &[],
+                )
+                .unwrap(),
+                vec![&mut accounts.token_b_account, &mut Account::default()],
+            )
+            .unwrap();
+            assert_eq!(
+                Err(SwapError::InvalidCloseAuthority.into()),
+                accounts.initialize_swap()
+            );
+
+            do_process_instruction(
+                set_authority(
+                    &TOKEN_PROGRAM_ID,
+                    &accounts.token_b_key,
+                    None,
+                    AuthorityType::CloseAccount,
+                    &user_key,
                     &[],
                 )
                 .unwrap(),
@@ -1901,7 +2007,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let (pool_mint_key, pool_mint_account) =
-                create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key);
+                create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key, None);
             let old_pool_key = accounts.pool_mint_key;
             let old_pool_account = accounts.pool_mint_account;
             accounts.pool_mint_key = pool_mint_key;
@@ -2431,7 +2537,7 @@ mod tests {
                 initial_pool,
             );
             let (pool_mint_key, pool_mint_account) =
-                create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key);
+                create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key, None);
             let old_pool_key = accounts.pool_mint_key;
             let old_pool_account = accounts.pool_mint_account;
             accounts.pool_mint_key = pool_mint_key;
