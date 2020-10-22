@@ -38,6 +38,7 @@
     "localnet:logs": "solana-localnet logs -f"
   },
   "dependencies": {
+    "@solana/spl-token": "0.0.11",
     "@solana/web3.js": "^0.87.0"
   },
   "devDependencies": {

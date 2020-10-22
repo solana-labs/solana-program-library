@@ -1,6 +1,6 @@
 # Token-lending program
 
-A lending protocol for the Token program on the Solana blockchain inspired by Aave.
+A lending protocol for the Token program on the Solana blockchain inspired by Aave and Compound.
 
 Full documentation is available at https://spl.solana.com/token-lending
 

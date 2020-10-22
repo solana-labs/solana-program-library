@@ -2,13 +2,21 @@
   "extends": "@tsconfig/recommended/tsconfig.json",
   "ts-node": {
     "compilerOptions": {
-      "module": "commonjs"
+      "module": "commonjs",
+      "baseUrl": "./",
+      "paths": {
+          "*" : ["types/*"]
+      }
     }
   },
   "compilerOptions": {
     "declaration": true,
     "moduleResolution": "node",
-    "module": "es2015"
+    "module": "es2015",
+    "baseUrl": "./",
+    "paths": {
+        "*" : ["types/*"]
+    }
   },
   "include": ["cli/**/*", "client/**/*"],
   "exclude": ["node_modules"]

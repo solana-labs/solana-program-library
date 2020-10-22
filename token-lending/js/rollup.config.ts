@@ -12,7 +12,22 @@ export default {
     { file: pkg.main, format: 'cjs', sourcemap: true },
     { file: pkg.module, format: 'es', sourcemap: true }
   ],
-  external: [],
+  external: [
+    'assert',
+    'url',
+    'http',
+    'https',
+    'crypto',
+    'buffer',
+    'path',
+    'stream',
+    'zlib',
+    'events',
+    'tls',
+    'net',
+    'os',
+    'fs'
+  ],
   watch: {
     include: 'src/**'
   },
@@ -20,7 +35,7 @@ export default {
     json(),
     typescript({useTsconfigDeclarationDir: false}),
     commonjs(),
-    resolve(),
+    resolve({preferBuiltins: true}),
     sourceMaps()
   ]
 }
