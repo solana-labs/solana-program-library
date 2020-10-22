@@ -185,12 +185,18 @@ impl CurveCalculator for FlatCurve {
         swap_destination_amount: u64,
     ) -> Option<SwapResult> {
         // debit the fee to calculate the amount swapped
-        let mut fee = source_amount
-            .checked_mul(self.fee_numerator)?
-            .checked_div(self.fee_denominator)?;
-        if fee == 0 {
-            fee = 1; // minimum fee of one token
-        }
+        let fee = if self.fee_numerator == 0 {
+            0
+        } else {
+            let calculated_fee = source_amount
+                .checked_mul(self.fee_numerator)?
+                .checked_div(self.fee_denominator)?;
+            if calculated_fee == 0 {
+                1 // minimum fee of one token
+            } else {
+                calculated_fee
+            }
+        };
 
         let amount_swapped = source_amount.checked_sub(fee)?;
         let new_destination_amount = swap_destination_amount.checked_sub(amount_swapped)?;
@@ -278,12 +284,19 @@ impl CurveCalculator for ConstantProductCurve {
         let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
 
         // debit the fee to calculate the amount swapped
-        let mut fee = source_amount
-            .checked_mul(self.fee_numerator)?
-            .checked_div(self.fee_denominator)?;
-        if fee == 0 {
-            fee = 1; // minimum fee of one token
-        }
+        let fee = if self.fee_numerator == 0 {
+            0
+        } else {
+            let calculated_fee = source_amount
+                .checked_mul(self.fee_numerator)?
+                .checked_div(self.fee_denominator)?;
+            if calculated_fee == 0 {
+                1 // minimum fee of one token
+            } else {
+                calculated_fee
+            }
+        };
+
         let new_source_amount_less_fee = swap_source_amount
             .checked_add(source_amount)?
             .checked_sub(fee)?;
@@ -414,6 +427,25 @@ mod tests {
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, 4505);
         assert_eq!(result.new_destination_amount, 45495);
+    }
+
+    #[test]
+    fn constant_product_swap_no_fee() {
+        let swap_source_amount: u64 = 1000;
+        let swap_destination_amount: u64 = 50000;
+        let fee_numerator: u64 = 0;
+        let fee_denominator: u64 = 0;
+        let source_amount: u64 = 100;
+        let curve = ConstantProductCurve {
+            fee_numerator,
+            fee_denominator,
+        };
+        let result = curve
+            .swap(source_amount, swap_source_amount, swap_destination_amount)
+            .unwrap();
+        assert_eq!(result.new_source_amount, 1100);
+        assert_eq!(result.amount_swapped, 4546);
+        assert_eq!(result.new_destination_amount, 45454);
     }
 
     #[test]

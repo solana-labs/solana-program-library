@@ -39,7 +39,7 @@ pub struct SwapInfo {
     pub token_b_mint: Pubkey,
 
     /// Pool token account to receive trading and / or withdrawal fees
-    pub fee_account: Pubkey,
+    pub pool_fee_account: Pubkey,
 
     /// Swap curve parameters, to be unpacked and used by the SwapCurve, which
     /// calculates swaps, deposits, and withdrawals
@@ -60,7 +60,7 @@ impl Pack for SwapInfo {
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, 291];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (is_initialized, nonce, token_program_id, token_a, token_b, pool_mint, token_a_mint, token_b_mint, fee_account, swap_curve) =
+        let (is_initialized, nonce, token_program_id, token_a, token_b, pool_mint, token_a_mint, token_b_mint, pool_fee_account, swap_curve) =
             array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 65];
         Ok(Self {
             is_initialized: match is_initialized {
@@ -75,14 +75,14 @@ impl Pack for SwapInfo {
             pool_mint: Pubkey::new_from_array(*pool_mint),
             token_a_mint: Pubkey::new_from_array(*token_a_mint),
             token_b_mint: Pubkey::new_from_array(*token_b_mint),
-            fee_account: Pubkey::new_from_array(*fee_account),
+            pool_fee_account: Pubkey::new_from_array(*pool_fee_account),
             swap_curve: SwapCurve::unpack_from_slice(swap_curve)?,
         })
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, 291];
-        let (is_initialized, nonce, token_program_id, token_a, token_b, pool_mint, token_a_mint, token_b_mint, fee_account, swap_curve) =
+        let (is_initialized, nonce, token_program_id, token_a, token_b, pool_mint, token_a_mint, token_b_mint, pool_fee_account, swap_curve) =
             mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 65];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
@@ -92,7 +92,7 @@ impl Pack for SwapInfo {
         pool_mint.copy_from_slice(self.pool_mint.as_ref());
         token_a_mint.copy_from_slice(self.token_a_mint.as_ref());
         token_b_mint.copy_from_slice(self.token_b_mint.as_ref());
-        fee_account.copy_from_slice(self.fee_account.as_ref());
+        pool_fee_account.copy_from_slice(self.pool_fee_account.as_ref());
         self.swap_curve.pack_into_slice(&mut swap_curve[..]);
     }
 }
@@ -115,14 +115,14 @@ mod tests {
         let pool_mint_raw = [3u8; 32];
         let token_a_mint_raw = [4u8; 32];
         let token_b_mint_raw = [5u8; 32];
-        let fee_account_raw = [6u8; 32];
+        let pool_fee_account_raw = [6u8; 32];
         let token_program_id = Pubkey::new_from_array(token_program_id_raw);
         let token_a = Pubkey::new_from_array(token_a_raw);
         let token_b = Pubkey::new_from_array(token_b_raw);
         let pool_mint = Pubkey::new_from_array(pool_mint_raw);
         let token_a_mint = Pubkey::new_from_array(token_a_mint_raw);
         let token_b_mint = Pubkey::new_from_array(token_b_mint_raw);
-        let fee_account = Pubkey::new_from_array(fee_account_raw);
+        let pool_fee_account = Pubkey::new_from_array(pool_fee_account_raw);
         let fee_numerator = 1;
         let fee_denominator = 4;
         let calculator = Box::new(FlatCurve {
@@ -143,7 +143,7 @@ mod tests {
             pool_mint,
             token_a_mint,
             token_b_mint,
-            fee_account,
+            pool_fee_account,
             swap_curve,
         };
 
@@ -161,7 +161,7 @@ mod tests {
         packed.extend_from_slice(&pool_mint_raw);
         packed.extend_from_slice(&token_a_mint_raw);
         packed.extend_from_slice(&token_b_mint_raw);
-        packed.extend_from_slice(&fee_account_raw);
+        packed.extend_from_slice(&pool_fee_account_raw);
         packed.push(curve_type_raw);
         packed.push(fee_numerator as u8);
         packed.extend_from_slice(&[0u8; 7]); // padding
