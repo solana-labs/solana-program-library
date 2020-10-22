@@ -66,6 +66,7 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     Layout.publicKey('tokenPool'),
     Layout.publicKey('mintA'),
     Layout.publicKey('mintB'),
+    Layout.publicKey('feeAccount'),
     BufferLayout.u8('curveType'),
     Layout.uint64('feeNumerator'),
     Layout.uint64('feeDenominator'),
@@ -106,6 +107,11 @@ export class TokenSwap {
    * The public key for the liquidity pool token mint
    */
   poolToken: PublicKey;
+
+  /**
+   * The public key for the fee account receiving trade and/or withdrawal fees
+   */
+  feeAccount: PublicKey;
 
   /**
    * Authority
@@ -171,6 +177,7 @@ export class TokenSwap {
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     poolToken: PublicKey,
+    feeAccount: PublicKey,
     authority: PublicKey,
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
@@ -187,6 +194,7 @@ export class TokenSwap {
       swapProgramId,
       tokenProgramId,
       poolToken,
+      feeAccount,
       authority,
       tokenAccountA,
       tokenAccountB,
@@ -218,6 +226,7 @@ export class TokenSwap {
     tokenAccountA: PublicKey,
     tokenAccountB: PublicKey,
     tokenPool: PublicKey,
+    feeAccount: PublicKey,
     tokenAccountPool: PublicKey,
     tokenProgramId: PublicKey,
     swapProgramId: PublicKey,
@@ -232,6 +241,7 @@ export class TokenSwap {
       {pubkey: tokenAccountA, isSigner: false, isWritable: false},
       {pubkey: tokenAccountB, isSigner: false, isWritable: false},
       {pubkey: tokenPool, isSigner: false, isWritable: true},
+      {pubkey: feeAccount, isSigner: false, isWritable: false},
       {pubkey: tokenAccountPool, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
@@ -282,6 +292,7 @@ export class TokenSwap {
     );
 
     const poolToken = new PublicKey(tokenSwapData.tokenPool);
+    const feeAccount = new PublicKey(tokenSwapData.feeAccount);
     const tokenAccountA = new PublicKey(tokenSwapData.tokenAccountA);
     const tokenAccountB = new PublicKey(tokenSwapData.tokenAccountB);
     const mintA = new PublicKey(tokenSwapData.mintA);
@@ -298,6 +309,7 @@ export class TokenSwap {
       programId,
       tokenProgramId,
       poolToken,
+      feeAccount,
       authority,
       tokenAccountA,
       tokenAccountB,
@@ -338,6 +350,7 @@ export class TokenSwap {
     poolToken: PublicKey,
     mintA: PublicKey,
     mintB: PublicKey,
+    feeAccount: PublicKey,
     tokenAccountPool: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
@@ -353,6 +366,7 @@ export class TokenSwap {
       swapProgramId,
       tokenProgramId,
       poolToken,
+      feeAccount,
       authority,
       tokenAccountA,
       tokenAccountB,
@@ -385,6 +399,7 @@ export class TokenSwap {
       tokenAccountA,
       tokenAccountB,
       poolToken,
+      feeAccount,
       tokenAccountPool,
       tokenProgramId,
       swapProgramId,

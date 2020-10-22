@@ -146,6 +146,7 @@ impl Processor {
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
+        let fee_account_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
@@ -159,6 +160,7 @@ impl Processor {
         }
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
+        let fee_account = Self::unpack_token_account(&fee_account_info.data.borrow())?;
         let destination = Self::unpack_token_account(&destination_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
         if *authority_info.key != token_a.owner {
@@ -168,6 +170,9 @@ impl Processor {
             return Err(SwapError::InvalidOwner.into());
         }
         if *authority_info.key == destination.owner {
+            return Err(SwapError::InvalidOutputOwner.into());
+        }
+        if *authority_info.key == fee_account.owner {
             return Err(SwapError::InvalidOutputOwner.into());
         }
         if COption::Some(*authority_info.key) != pool_mint.mint_authority {
@@ -202,6 +207,9 @@ impl Processor {
         if pool_mint.freeze_authority.is_some() {
             return Err(SwapError::InvalidFreezeAuthority.into());
         }
+        if *pool_mint_info.key != fee_account.mint {
+            return Err(SwapError::IncorrectPoolMint.into());
+        }
 
         let initial_amount = swap_curve.calculator.new_pool_supply();
 
@@ -224,6 +232,7 @@ impl Processor {
             pool_mint: *pool_mint_info.key,
             token_a_mint: token_a.mint,
             token_b_mint: token_b.mint,
+            fee_account: *fee_account_info.key,
             swap_curve,
         };
         SwapInfo::pack(obj, &mut swap_info.data.borrow_mut())?;
@@ -628,6 +637,8 @@ mod tests {
         swap_account: Account,
         pool_mint_key: Pubkey,
         pool_mint_account: Account,
+        pool_fee_key: Pubkey,
+        pool_fee_account: Account,
         pool_token_key: Pubkey,
         pool_token_account: Account,
         token_a_key: Pubkey,
@@ -657,6 +668,14 @@ mod tests {
             let (pool_mint_key, mut pool_mint_account) =
                 create_mint(&TOKEN_PROGRAM_ID, &authority_key, None);
             let (pool_token_key, pool_token_account) = mint_token(
+                &TOKEN_PROGRAM_ID,
+                &pool_mint_key,
+                &mut pool_mint_account,
+                &authority_key,
+                &user_key,
+                0,
+            );
+            let (pool_fee_key, pool_fee_account) = mint_token(
                 &TOKEN_PROGRAM_ID,
                 &pool_mint_key,
                 &mut pool_mint_account,
@@ -695,6 +714,8 @@ mod tests {
                 swap_account,
                 pool_mint_key,
                 pool_mint_account,
+                pool_fee_key,
+                pool_fee_account,
                 pool_token_key,
                 pool_token_account,
                 token_a_key,
@@ -718,6 +739,7 @@ mod tests {
                     &self.token_a_key,
                     &self.token_b_key,
                     &self.pool_mint_key,
+                    &self.pool_fee_key,
                     &self.pool_token_key,
                     self.nonce,
                     self.curve_type,
@@ -731,6 +753,7 @@ mod tests {
                     &mut self.token_a_account,
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
+                    &mut self.pool_fee_account,
                     &mut self.pool_token_account,
                     &mut Account::default(),
                 ],
@@ -1285,6 +1308,25 @@ mod tests {
             accounts.pool_token_account = old_account;
         }
 
+        // pool fee account owner is swap authority
+        {
+            let (_pool_fee_key, pool_fee_account) = mint_token(
+                &TOKEN_PROGRAM_ID,
+                &accounts.pool_mint_key,
+                &mut accounts.pool_mint_account,
+                &accounts.authority_key,
+                &accounts.authority_key,
+                0,
+            );
+            let old_account = accounts.pool_fee_account;
+            accounts.pool_fee_account = pool_fee_account;
+            assert_eq!(
+                Err(SwapError::InvalidOutputOwner.into()),
+                accounts.initialize_swap()
+            );
+            accounts.pool_fee_account = old_account;
+        }
+
         // pool mint authority is not swap authority
         {
             let (_pool_mint_key, pool_mint_account) =
@@ -1393,6 +1435,26 @@ mod tests {
             accounts.pool_mint_account = old_mint;
             accounts.pool_token_account = old_pool_account;
         }
+
+        // pool fee account has wrong mint
+        {
+            let (_pool_fee_key, pool_fee_account) = mint_token(
+                &TOKEN_PROGRAM_ID,
+                &accounts.token_a_mint_key,
+                &mut accounts.token_a_mint_account,
+                &user_key,
+                &user_key,
+                0,
+            );
+            let old_account = accounts.pool_fee_account;
+            accounts.pool_fee_account = pool_fee_account;
+            assert_eq!(
+                Err(SwapError::IncorrectPoolMint.into()),
+                accounts.initialize_swap()
+            );
+            accounts.pool_fee_account = old_account;
+        }
+
 
         // token A account is delegated
         {
@@ -1552,6 +1614,7 @@ mod tests {
                         &accounts.token_a_key,
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
+                        &accounts.pool_fee_key,
                         &accounts.pool_token_key,
                         accounts.nonce,
                         accounts.curve_type,
@@ -1565,6 +1628,7 @@ mod tests {
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
+                        &mut accounts.pool_fee_account,
                         &mut accounts.pool_token_account,
                         &mut Account::default(),
                     ],

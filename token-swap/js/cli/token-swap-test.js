@@ -28,6 +28,7 @@ let owner: Account;
 // Token pool
 let tokenPool: Token;
 let tokenAccountPool: PublicKey;
+let feeAccount: PublicKey;
 // Tokens swapped
 let mintA: Token;
 let mintB: Token;
@@ -155,6 +156,7 @@ export async function createTokenSwap(): Promise<void> {
 
   console.log('creating pool account');
   tokenAccountPool = await tokenPool.createAccount(owner.publicKey);
+  feeAccount = await tokenPool.createAccount(owner.publicKey);
 
   console.log('creating token A');
   mintA = await Token.createMint(
@@ -201,6 +203,7 @@ export async function createTokenSwap(): Promise<void> {
     tokenPool.publicKey,
     mintA.publicKey,
     mintB.publicKey,
+    feeAccount,
     tokenAccountPool,
     tokenSwapProgramId,
     tokenProgramId,
@@ -224,6 +227,7 @@ export async function createTokenSwap(): Promise<void> {
   assert(fetchedTokenSwap.mintA.equals(mintA.publicKey));
   assert(fetchedTokenSwap.mintB.equals(mintB.publicKey));
   assert(fetchedTokenSwap.poolToken.equals(tokenPool.publicKey));
+  assert(fetchedTokenSwap.feeAccount.equals(feeAccount));
   assert(CURVE_TYPE == fetchedTokenSwap.curveType);
   assert(1 == fetchedTokenSwap.feeNumerator.toNumber());
   assert(4 == fetchedTokenSwap.feeDenominator.toNumber());

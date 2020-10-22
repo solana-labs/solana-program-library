@@ -24,8 +24,11 @@ pub enum SwapInstruction {
     ///   2. `[]` token_a Account. Must be non zero, owned by $authority.
     ///   3. `[]` token_b Account. Must be non zero, owned by $authority.
     ///   4. `[writable]` Pool Token Mint. Must be empty, owned by $authority.
-    ///   5. `[writable]` Pool Token Account to deposit the minted tokens. Must be empty, owned by user.
-    ///   6. '[]` Token program id
+    ///   5. `[]` Pool Token Account to deposit trading and withdraw fees.
+    ///   Must be empty, not owned by $authority
+    ///   6. `[writable]` Pool Token Account to deposit the initial pool token
+    ///   supply.  Must be empty, not owned by $authority.
+    ///   7. '[]` Token program id
     Initialize {
         /// nonce used to create valid program address
         nonce: u8,
@@ -42,7 +45,9 @@ pub enum SwapInstruction {
     ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
     ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
     ///   5. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
-    ///   6. '[]` Token program id
+    ///   6. `[writable]` Pool token mint, to generate trading fees
+    ///   7. `[writable]` Fee account, to receive trading fees
+    ///   8. '[]` Token program id
     Swap {
         /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
         amount_in: u64,
@@ -78,11 +83,12 @@ pub enum SwapInstruction {
     ///   1. `[]` $authority
     ///   2. `[writable]` Pool mint account, $authority is the owner
     ///   3. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   4. `[writable]` token_a Swap Account to withdraw FROM.
-    ///   5. `[writable]` token_b Swap Account to withdraw FROM.
-    ///   6. `[writable]` token_a user Account to credit.
-    ///   7. `[writable]` token_b user Account to credit.
-    ///   8. '[]` Token program id
+    ///   4. `[writable]` Fee account, to receive withdrawal fees
+    ///   5. `[writable]` token_a Swap Account to withdraw FROM.
+    ///   6. `[writable]` token_b Swap Account to withdraw FROM.
+    ///   7. `[writable]` token_a user Account to credit.
+    ///   8. `[writable]` token_b user Account to credit.
+    ///   9. '[]` Token program id
     Withdraw {
         /// Amount of pool tokens to burn. User receives an output of token a
         /// and b based on the percentage of the pool tokens that are returned.
@@ -203,6 +209,7 @@ pub fn initialize(
     token_a_pubkey: &Pubkey,
     token_b_pubkey: &Pubkey,
     pool_pubkey: &Pubkey,
+    fee_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     nonce: u8,
     curve_type: CurveType,
@@ -231,6 +238,7 @@ pub fn initialize(
         AccountMeta::new_readonly(*token_a_pubkey, false),
         AccountMeta::new_readonly(*token_b_pubkey, false),
         AccountMeta::new(*pool_pubkey, false),
+        AccountMeta::new_readonly(*fee_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
