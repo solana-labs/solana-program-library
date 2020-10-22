@@ -134,9 +134,8 @@ export async function createTokenSwap(): Promise<void> {
   const [tokenProgramId, tokenSwapProgramId] = await GetPrograms(connection);
   const payer = await newAccountWithLamports(
     connection,
-    100000000000 /* wag */,
   );
-  owner = await newAccountWithLamports(connection, 100000000000 /* wag */);
+  owner = await newAccountWithLamports(connection, );
   const tokenSwapAccount = new Account();
 
   [authority, nonce] = await PublicKey.findProgramAddress(
@@ -191,7 +190,6 @@ export async function createTokenSwap(): Promise<void> {
   console.log('creating token swap');
   const swapPayer = await newAccountWithLamports(
     connection,
-    100000000000 /* wag */,
   );
   tokenSwap = await TokenSwap.createTokenSwap(
     connection,
