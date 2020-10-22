@@ -222,6 +222,8 @@ impl Processor {
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
             pool_mint: *pool_mint_info.key,
+            token_a_mint: token_a.mint,
+            token_b_mint: token_b.mint,
             swap_curve,
         };
         SwapInfo::pack(obj, &mut swap_info.data.borrow_mut())?;
@@ -1619,6 +1621,8 @@ mod tests {
         assert_eq!(swap_info.token_a, accounts.token_a_key);
         assert_eq!(swap_info.token_b, accounts.token_b_key);
         assert_eq!(swap_info.pool_mint, accounts.pool_mint_key);
+        assert_eq!(swap_info.token_a_mint, accounts.token_a_mint_key);
+        assert_eq!(swap_info.token_b_mint, accounts.token_b_mint_key);
         let token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
         assert_eq!(token_a.amount, token_a_amount);
         let token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
