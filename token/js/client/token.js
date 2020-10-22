@@ -22,6 +22,10 @@ import type {
 import * as Layout from './layout';
 import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 
+export const TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
+  'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+);
+
 /**
  * 64-bit value
  */
