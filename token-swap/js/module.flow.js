@@ -98,6 +98,8 @@ declare module '@solana/spl-token-swap' {
       poolSource: PublicKey,
       poolDestination: PublicKey,
       userDestination: PublicKey,
+      poolMint: PublicKey,
+      feeAccount: PublicKey,
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       amountIn: number | Numberu64,

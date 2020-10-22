@@ -450,6 +450,8 @@ export class TokenSwap {
           poolSource,
           poolDestination,
           userDestination,
+          this.poolToken,
+          this.feeAccount,
           this.swapProgramId,
           this.tokenProgramId,
           amountIn,
@@ -467,6 +469,8 @@ export class TokenSwap {
     poolSource: PublicKey,
     poolDestination: PublicKey,
     userDestination: PublicKey,
+    poolMint: PublicKey,
+    feeAccount: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
@@ -496,6 +500,8 @@ export class TokenSwap {
       {pubkey: poolDestination, isSigner: false, isWritable: true},
       {pubkey: userDestination, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
+      {pubkey: poolMint, isSigner: false, isWritable: true},
+      {pubkey: feeAccount, isSigner: false, isWritable: true},
     ];
     return new TransactionInstruction({
       keys,

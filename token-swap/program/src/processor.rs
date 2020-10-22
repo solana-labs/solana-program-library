@@ -254,6 +254,8 @@ impl Processor {
         let swap_destination_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let pool_fee_account_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
 
@@ -273,6 +275,13 @@ impl Processor {
         if *swap_source_info.key == *swap_destination_info.key {
             return Err(SwapError::InvalidInput.into());
         }
+        if *pool_mint_info.key != token_swap.pool_mint {
+            return Err(SwapError::IncorrectPoolMint.into());
+        }
+        if *pool_fee_account_info.key != token_swap.pool_fee_account {
+            return Err(SwapError::IncorrectFeeAccount.into());
+        }
+
         let source_account = Self::unpack_token_account(&swap_source_info.data.borrow())?;
         let dest_account = Self::unpack_token_account(&swap_destination_info.data.borrow())?;
 
@@ -874,6 +883,8 @@ mod tests {
                     &swap_source_key,
                     &swap_destination_key,
                     &user_destination_key,
+                    &self.pool_mint_key,
+                    &self.pool_fee_key,
                     amount_in,
                     minimum_amount_out,
                 )
@@ -886,6 +897,8 @@ mod tests {
                     &mut swap_destination_account,
                     &mut user_destination_account,
                     &mut Account::default(),
+                    &mut self.pool_mint_account,
+                    &mut self.pool_fee_account,
                 ],
             )?;
 
@@ -3081,6 +3094,8 @@ mod tests {
                         &accounts.token_a_key,
                         &accounts.token_b_key,
                         &token_b_key,
+                        &accounts.pool_mint_key,
+                        &accounts.pool_fee_key,
                         initial_a,
                         minimum_b_amount,
                     )
@@ -3093,6 +3108,8 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut token_b_account,
                         &mut Account::default(),
+                        &mut accounts.pool_mint_account,
+                        &mut accounts.pool_fee_account,
                     ],
                 ),
             );
@@ -3146,6 +3163,8 @@ mod tests {
                         &token_a_key,
                         &token_b_key,
                         &token_b_key,
+                        &accounts.pool_mint_key,
+                        &accounts.pool_fee_key,
                         initial_a,
                         minimum_b_amount,
                     )
@@ -3158,6 +3177,8 @@ mod tests {
                         &mut token_b_account.clone(),
                         &mut token_b_account,
                         &mut Account::default(),
+                        &mut accounts.pool_mint_account,
+                        &mut accounts.pool_fee_account,
                     ],
                 ),
             );
@@ -3215,6 +3236,80 @@ mod tests {
             );
         }
 
+        // incorrect mint provided
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                _pool_key,
+                _pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+            let (pool_mint_key, pool_mint_account) =
+                create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key, None);
+            let old_pool_key = accounts.pool_mint_key;
+            let old_pool_account = accounts.pool_mint_account;
+            accounts.pool_mint_key = pool_mint_key;
+            accounts.pool_mint_account = pool_mint_account;
+
+            assert_eq!(
+                Err(SwapError::IncorrectPoolMint.into()),
+                accounts.swap(
+                    &swapper_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &swap_token_a_key,
+                    &swap_token_b_key,
+                    &token_b_key,
+                    &mut token_b_account,
+                    initial_a,
+                    minimum_b_amount,
+                )
+            );
+
+            accounts.pool_mint_key = old_pool_key;
+            accounts.pool_mint_account = old_pool_account;
+        }
+
+        // incorrect fee account provided
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                wrong_pool_key,
+                wrong_pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &swapper_key,
+                initial_a,
+                initial_b,
+                0,
+            );
+            let old_pool_fee_account = accounts.pool_fee_account;
+            let old_pool_fee_key = accounts.pool_fee_key;
+            accounts.pool_fee_account = wrong_pool_account;
+            accounts.pool_fee_key = wrong_pool_key;
+            assert_eq!(
+                Err(SwapError::IncorrectFeeAccount.into()),
+                accounts.swap(
+                    &swapper_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &swap_token_a_key,
+                    &swap_token_b_key,
+                    &token_b_key,
+                    &mut token_b_account,
+                    initial_a,
+                    minimum_b_amount,
+                )
+            );
+            accounts.pool_fee_account = old_pool_fee_account;
+            accounts.pool_fee_key = old_pool_fee_key;
+        }
+
         // no approval
         {
             let (
@@ -3237,6 +3332,8 @@ mod tests {
                         &accounts.token_a_key,
                         &accounts.token_b_key,
                         &token_b_key,
+                        &accounts.pool_mint_key,
+                        &accounts.pool_fee_key,
                         initial_a,
                         minimum_b_amount,
                     )
@@ -3249,6 +3346,8 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut token_b_account,
                         &mut Account::default(),
+                        &mut accounts.pool_mint_account,
+                        &mut accounts.pool_fee_account,
                     ],
                 ),
             );
