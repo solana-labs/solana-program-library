@@ -322,7 +322,12 @@ impl Processor {
         let pool_token_amount = token_swap
             .swap_curve
             .calculator
-            .owner_fee_to_pool_tokens(result.owner_fee, source_account.amount, pool_mint.supply, TOKENS_IN_POOL)
+            .owner_fee_to_pool_tokens(
+                result.owner_fee,
+                source_account.amount,
+                pool_mint.supply,
+                TOKENS_IN_POOL,
+            )
             .ok_or(SwapError::CalculationFailure)?;
         Self::token_mint_to(
             swap_info.key,
@@ -462,8 +467,12 @@ impl Processor {
 
         let calculator = token_swap.swap_curve.calculator;
 
-        let withdraw_fee = calculator.owner_withdraw_fee(pool_token_amount).ok_or(SwapError::CalculationFailure)?;
-        let pool_token_amount = pool_token_amount.checked_sub(withdraw_fee).ok_or(SwapError::CalculationFailure)?;
+        let withdraw_fee = calculator
+            .owner_withdraw_fee(pool_token_amount)
+            .ok_or(SwapError::CalculationFailure)?;
+        let pool_token_amount = pool_token_amount
+            .checked_sub(withdraw_fee)
+            .ok_or(SwapError::CalculationFailure)?;
 
         let a_amount = calculator
             .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_a.amount)
@@ -644,10 +653,8 @@ impl PrintProgramError for SwapError {
             SwapError::InvalidCloseAuthority => info!("Error: Token account has a close authority"),
             SwapError::InvalidFreezeAuthority => {
                 info!("Error: Pool token mint has a freeze authority")
-            },
-            SwapError::IncorrectFeeAccount => {
-                info!("Error: Pool fee token account incorrect")
-            },
+            }
+            SwapError::IncorrectFeeAccount => info!("Error: Pool fee token account incorrect"),
         }
     }
 }
@@ -1263,12 +1270,8 @@ mod tests {
             }),
         };
 
-        let mut accounts = SwapAccountInfo::new(
-            &user_key,
-            swap_curve,
-            token_a_amount,
-            token_b_amount,
-        );
+        let mut accounts =
+            SwapAccountInfo::new(&user_key, swap_curve, token_a_amount, token_b_amount);
 
         // wrong nonce for authority_key
         {
@@ -1518,7 +1521,6 @@ mod tests {
             accounts.pool_fee_account = old_account;
         }
 
-
         // token A account is delegated
         {
             do_process_instruction(
@@ -1728,12 +1730,8 @@ mod tests {
                     trade_fee_denominator,
                 }),
             };
-            let mut accounts = SwapAccountInfo::new(
-                &user_key,
-                swap_curve,
-                token_a_amount,
-                token_b_amount,
-            );
+            let mut accounts =
+                SwapAccountInfo::new(&user_key, swap_curve, token_a_amount, token_b_amount);
             accounts.initialize_swap().unwrap();
         }
 
@@ -1747,7 +1745,10 @@ mod tests {
         let swap_info = SwapInfo::unpack(&accounts.swap_account.data).unwrap();
         assert_eq!(swap_info.is_initialized, true);
         assert_eq!(swap_info.nonce, accounts.nonce);
-        assert_eq!(swap_info.swap_curve.curve_type, accounts.swap_curve.curve_type);
+        assert_eq!(
+            swap_info.swap_curve.curve_type,
+            accounts.swap_curve.curve_type
+        );
         assert_eq!(swap_info.token_a, accounts.token_a_key);
         assert_eq!(swap_info.token_b, accounts.token_b_key);
         assert_eq!(swap_info.pool_mint, accounts.pool_mint_key);
@@ -1789,12 +1790,8 @@ mod tests {
             }),
         };
 
-        let mut accounts = SwapAccountInfo::new(
-            &user_key,
-            swap_curve,
-            token_a_amount,
-            token_b_amount,
-        );
+        let mut accounts =
+            SwapAccountInfo::new(&user_key, swap_curve, token_a_amount, token_b_amount);
 
         let deposit_a = token_a_amount / 10;
         let deposit_b = token_b_amount / 10;
@@ -2330,12 +2327,8 @@ mod tests {
         let minimum_a_amount = initial_a / 40;
         let minimum_b_amount = initial_b / 40;
 
-        let mut accounts = SwapAccountInfo::new(
-            &user_key,
-            swap_curve,
-            token_a_amount,
-            token_b_amount,
-        );
+        let mut accounts =
+            SwapAccountInfo::new(&user_key, swap_curve, token_a_amount, token_b_amount);
 
         // swap not initialized
         {
@@ -2565,7 +2558,6 @@ mod tests {
             accounts.pool_fee_account = old_pool_fee_account;
             accounts.pool_fee_key = old_pool_fee_key;
         }
-
 
         // no approval
         {
@@ -2899,14 +2891,29 @@ mod tests {
             let swap_token_b =
                 Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
             let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
-            let withdraw_fee = accounts.swap_curve.calculator
-                .owner_withdraw_fee(withdraw_amount).unwrap();
-            let withdrawn_a = accounts.swap_curve.calculator
-                .pool_tokens_to_trading_tokens(withdraw_amount - withdraw_fee, pool_mint.supply, swap_token_a.amount)
+            let withdraw_fee = accounts
+                .swap_curve
+                .calculator
+                .owner_withdraw_fee(withdraw_amount)
+                .unwrap();
+            let withdrawn_a = accounts
+                .swap_curve
+                .calculator
+                .pool_tokens_to_trading_tokens(
+                    withdraw_amount - withdraw_fee,
+                    pool_mint.supply,
+                    swap_token_a.amount,
+                )
                 .unwrap();
             assert_eq!(swap_token_a.amount, token_a_amount - withdrawn_a);
-            let withdrawn_b = accounts.swap_curve.calculator
-                .pool_tokens_to_trading_tokens(withdraw_amount - withdraw_fee, pool_mint.supply, swap_token_b.amount)
+            let withdrawn_b = accounts
+                .swap_curve
+                .calculator
+                .pool_tokens_to_trading_tokens(
+                    withdraw_amount - withdraw_fee,
+                    pool_mint.supply,
+                    swap_token_b.amount,
+                )
                 .unwrap();
             assert_eq!(swap_token_b.amount, token_b_amount - withdrawn_b);
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
@@ -2915,7 +2922,8 @@ mod tests {
             assert_eq!(token_b.amount, initial_b + withdrawn_b);
             let pool_account = Processor::unpack_token_account(&pool_account.data).unwrap();
             assert_eq!(pool_account.amount, initial_pool - withdraw_amount);
-            let fee_account = Processor::unpack_token_account(&accounts.pool_fee_account.data).unwrap();
+            let fee_account =
+                Processor::unpack_token_account(&accounts.pool_fee_account.data).unwrap();
             assert_eq!(fee_account.amount, withdraw_fee);
         }
     }
@@ -2988,8 +2996,15 @@ mod tests {
         let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
         assert_eq!(token_b.amount, initial_b + results.amount_swapped);
 
-        let first_fee = swap_curve.calculator
-            .owner_fee_to_pool_tokens(results.owner_fee, token_a_amount, initial_supply, TOKENS_IN_POOL).unwrap();
+        let first_fee = swap_curve
+            .calculator
+            .owner_fee_to_pool_tokens(
+                results.owner_fee,
+                token_a_amount,
+                initial_supply,
+                TOKENS_IN_POOL,
+            )
+            .unwrap();
         let fee_account = Processor::unpack_token_account(&accounts.pool_fee_account.data).unwrap();
         assert_eq!(fee_account.amount, first_fee);
 
@@ -3038,8 +3053,15 @@ mod tests {
             initial_b + first_swap_amount - b_to_a_amount
         );
 
-        let second_fee = swap_curve.calculator
-            .owner_fee_to_pool_tokens(results.owner_fee, token_b_amount, initial_supply, TOKENS_IN_POOL).unwrap();
+        let second_fee = swap_curve
+            .calculator
+            .owner_fee_to_pool_tokens(
+                results.owner_fee,
+                token_b_amount,
+                initial_supply,
+                TOKENS_IN_POOL,
+            )
+            .unwrap();
         let fee_account = Processor::unpack_token_account(&accounts.pool_fee_account.data).unwrap();
         assert_eq!(fee_account.amount, first_fee + second_fee);
     }
@@ -3096,12 +3118,8 @@ mod tests {
                 owner_withdraw_fee_denominator,
             }),
         };
-        let mut accounts = SwapAccountInfo::new(
-            &user_key,
-            swap_curve,
-            token_a_amount,
-            token_b_amount,
-        );
+        let mut accounts =
+            SwapAccountInfo::new(&user_key, swap_curve, token_a_amount, token_b_amount);
 
         let initial_a = token_a_amount / 5;
         let initial_b = token_b_amount / 5;
@@ -3381,13 +3399,7 @@ mod tests {
                 mut token_b_account,
                 wrong_pool_key,
                 wrong_pool_account,
-            ) = accounts.setup_token_accounts(
-                &user_key,
-                &swapper_key,
-                initial_a,
-                initial_b,
-                0,
-            );
+            ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             let old_pool_fee_account = accounts.pool_fee_account;
             let old_pool_fee_key = accounts.pool_fee_key;
             accounts.pool_fee_account = wrong_pool_account;

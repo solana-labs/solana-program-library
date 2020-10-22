@@ -151,8 +151,17 @@ pub trait CurveCalculator: Debug + DynPack {
     }
 
     /// Calculate the pool token equivalent of the owner fee on trade
-    fn owner_fee_to_pool_tokens(&self, owner_fee: u64, trading_token_amount: u64, pool_supply: u64, tokens_in_pool: u64) -> Option<u64> {
-        pool_supply.checked_mul(owner_fee)?.checked_div(trading_token_amount)?.checked_div(tokens_in_pool)
+    fn owner_fee_to_pool_tokens(
+        &self,
+        owner_fee: u64,
+        trading_token_amount: u64,
+        pool_supply: u64,
+        tokens_in_pool: u64,
+    ) -> Option<u64> {
+        pool_supply
+            .checked_mul(owner_fee)?
+            .checked_div(trading_token_amount)?
+            .checked_div(tokens_in_pool)
     }
 
     /// Get the supply for a new pool
@@ -234,7 +243,11 @@ impl CurveCalculator for FlatCurve {
         swap_destination_amount: u64,
     ) -> Option<SwapResult> {
         // debit the fee to calculate the amount swapped
-        let trade_fee = calculate_fee(source_amount, self.trade_fee_numerator, self.trade_fee_denominator)?;
+        let trade_fee = calculate_fee(
+            source_amount,
+            self.trade_fee_numerator,
+            self.trade_fee_denominator,
+        )?;
         let owner_fee = 0;
 
         let amount_swapped = source_amount.checked_sub(trade_fee)?;
@@ -312,8 +325,16 @@ impl CurveCalculator for ConstantProductCurve {
         swap_destination_amount: u64,
     ) -> Option<SwapResult> {
         // debit the fee to calculate the amount swapped
-        let trade_fee = calculate_fee(source_amount, self.trade_fee_numerator, self.trade_fee_denominator)?;
-        let owner_fee = calculate_fee(source_amount, self.owner_trade_fee_numerator, self.owner_trade_fee_denominator)?;
+        let trade_fee = calculate_fee(
+            source_amount,
+            self.trade_fee_numerator,
+            self.trade_fee_denominator,
+        )?;
+        let owner_fee = calculate_fee(
+            source_amount,
+            self.owner_trade_fee_numerator,
+            self.owner_trade_fee_denominator,
+        )?;
 
         let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
         let new_source_amount_less_fee = swap_source_amount
@@ -337,7 +358,11 @@ impl CurveCalculator for ConstantProductCurve {
 
     /// Calculate the withdraw fee in pool tokens
     fn owner_withdraw_fee(&self, pool_tokens: u64) -> Option<u64> {
-        calculate_fee(pool_tokens, self.owner_withdraw_fee_numerator, self.owner_withdraw_fee_denominator)
+        calculate_fee(
+            pool_tokens,
+            self.owner_withdraw_fee_numerator,
+            self.owner_withdraw_fee_denominator,
+        )
     }
 }
 
@@ -353,7 +378,14 @@ impl Pack for ConstantProductCurve {
     fn unpack_from_slice(input: &[u8]) -> Result<ConstantProductCurve, ProgramError> {
         let input = array_ref![input, 0, 48];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (trade_fee_numerator, trade_fee_denominator, owner_trade_fee_numerator, owner_trade_fee_denominator, owner_withdraw_fee_numerator, owner_withdraw_fee_denominator) = array_refs![input, 8, 8, 8, 8, 8, 8];
+        let (
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+        ) = array_refs![input, 8, 8, 8, 8, 8, 8];
         Ok(Self {
             trade_fee_numerator: u64::from_le_bytes(*trade_fee_numerator),
             trade_fee_denominator: u64::from_le_bytes(*trade_fee_denominator),
@@ -372,7 +404,14 @@ impl Pack for ConstantProductCurve {
 impl DynPack for ConstantProductCurve {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, 48];
-        let (trade_fee_numerator, trade_fee_denominator, owner_trade_fee_numerator, owner_trade_fee_denominator, owner_withdraw_fee_numerator, owner_withdraw_fee_denominator) = mut_array_refs![output, 8, 8, 8, 8, 8, 8];
+        let (
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+        ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8];
         *trade_fee_numerator = self.trade_fee_numerator.to_le_bytes();
         *trade_fee_denominator = self.trade_fee_denominator.to_le_bytes();
         *owner_trade_fee_numerator = self.owner_trade_fee_numerator.to_le_bytes();
@@ -405,12 +444,7 @@ mod tests {
         assert_eq!(calculator.new_pool_supply(), INITIAL_SWAP_POOL_AMOUNT);
     }
 
-    fn check_pool_token_rate(
-        token_a: u64,
-        deposit: u64,
-        supply: u64,
-        expected: Option<u64>,
-    ) {
+    fn check_pool_token_rate(token_a: u64, deposit: u64, supply: u64, expected: Option<u64>) {
         let trade_fee_numerator = 0;
         let trade_fee_denominator = 1;
         let owner_trade_fee_numerator = 0;
