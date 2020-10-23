@@ -1061,7 +1061,8 @@ mod tests {
             do_process_instruction(
                 withdraw(
                     &SWAP_PROGRAM_ID,
-                    &TOKEN_PROGRAM_ID, &self.swap_key,
+                    &TOKEN_PROGRAM_ID,
+                    &self.swap_key,
                     &self.authority_key,
                     &self.pool_mint_key,
                     &self.pool_fee_key,
