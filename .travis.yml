@@ -11,6 +11,8 @@ notifications:
 cache:
   directories:
     - "~/.cache"
+    - "~/.config/share/solana"
+    - "~/.local/share/solana"
 
 services:
   - docker
@@ -18,6 +20,7 @@ services:
 env:
   global:
     - RUST_BACKTRACE=1
+    - SOLANA_VERSION=v1.4.2
 
 jobs:
   include:

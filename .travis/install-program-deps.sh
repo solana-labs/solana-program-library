@@ -18,3 +18,9 @@ clang-7 --version
 nvm install node
 npm install -g typescript
 node --version
+
+if [[ -n $SOLANA_VERSION ]]; then
+  sh -c "$(curl -sSfL https://release.solana.com/$SOLANA_VERSION/install)"
+fi
+PATH="~/.local/share/solana/install/active_release/bin:$PATH"
+solana --version
