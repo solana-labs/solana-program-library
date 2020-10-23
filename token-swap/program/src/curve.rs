@@ -232,6 +232,14 @@ pub struct FlatCurve {
     pub trade_fee_numerator: u64,
     /// Fee denominator
     pub trade_fee_denominator: u64,
+    /// Owner trade fee numerator
+    pub owner_trade_fee_numerator: u64,
+    /// Owner trade fee denominator
+    pub owner_trade_fee_denominator: u64,
+    /// Owner withdraw fee numerator
+    pub owner_withdraw_fee_numerator: u64,
+    /// Owner withdraw fee denominator
+    pub owner_withdraw_fee_denominator: u64,
 }
 
 fn calculate_fee(token_amount: u64, fee_numerator: u64, fee_denominator: u64) -> Option<u64> {
@@ -263,9 +271,15 @@ impl CurveCalculator for FlatCurve {
             self.trade_fee_numerator,
             self.trade_fee_denominator,
         )?;
-        let owner_fee = 0;
+        let owner_fee = calculate_fee(
+            source_amount,
+            self.owner_trade_fee_numerator,
+            self.owner_trade_fee_denominator,
+        )?;
 
-        let amount_swapped = source_amount.checked_sub(trade_fee)?;
+        let amount_swapped = source_amount
+            .checked_sub(trade_fee)?
+            .checked_sub(owner_fee)?;
         let new_destination_amount = swap_destination_amount.checked_sub(amount_swapped)?;
 
         // actually add the whole amount coming in
@@ -278,6 +292,15 @@ impl CurveCalculator for FlatCurve {
             owner_fee,
         })
     }
+
+    /// Calculate the withdraw fee in pool tokens
+    fn owner_withdraw_fee(&self, pool_tokens: u64) -> Option<u64> {
+        calculate_fee(
+            pool_tokens,
+            self.owner_withdraw_fee_numerator,
+            self.owner_withdraw_fee_denominator,
+        )
+    }
 }
 
 /// IsInitialized is required to use `Pack::pack` and `Pack::unpack`
@@ -288,15 +311,25 @@ impl IsInitialized for FlatCurve {
 }
 impl Sealed for FlatCurve {}
 impl Pack for FlatCurve {
-    const LEN: usize = 16;
-    /// Unpacks a byte buffer into a SwapCurve
+    const LEN: usize = 48;
     fn unpack_from_slice(input: &[u8]) -> Result<FlatCurve, ProgramError> {
-        let input = array_ref![input, 0, 16];
+        let input = array_ref![input, 0, 48];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (trade_fee_numerator, trade_fee_denominator) = array_refs![input, 8, 8];
+        let (
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+        ) = array_refs![input, 8, 8, 8, 8, 8, 8];
         Ok(Self {
             trade_fee_numerator: u64::from_le_bytes(*trade_fee_numerator),
             trade_fee_denominator: u64::from_le_bytes(*trade_fee_denominator),
+            owner_trade_fee_numerator: u64::from_le_bytes(*owner_trade_fee_numerator),
+            owner_trade_fee_denominator: u64::from_le_bytes(*owner_trade_fee_denominator),
+            owner_withdraw_fee_numerator: u64::from_le_bytes(*owner_withdraw_fee_numerator),
+            owner_withdraw_fee_denominator: u64::from_le_bytes(*owner_withdraw_fee_denominator),
         })
     }
 
@@ -307,10 +340,21 @@ impl Pack for FlatCurve {
 
 impl DynPack for FlatCurve {
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 16];
-        let (trade_fee_numerator, trade_fee_denominator) = mut_array_refs![output, 8, 8];
+        let output = array_mut_ref![output, 0, 48];
+        let (
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+        ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8];
         *trade_fee_numerator = self.trade_fee_numerator.to_le_bytes();
         *trade_fee_denominator = self.trade_fee_denominator.to_le_bytes();
+        *owner_trade_fee_numerator = self.owner_trade_fee_numerator.to_le_bytes();
+        *owner_trade_fee_denominator = self.owner_trade_fee_denominator.to_le_bytes();
+        *owner_withdraw_fee_numerator = self.owner_withdraw_fee_numerator.to_le_bytes();
+        *owner_withdraw_fee_denominator = self.owner_withdraw_fee_denominator.to_le_bytes();
     }
 }
 
@@ -574,17 +618,27 @@ mod tests {
         let swap_destination_amount: u64 = 50000;
         let trade_fee_numerator: u64 = 1;
         let trade_fee_denominator: u64 = 100;
+        let owner_trade_fee_numerator: u64 = 2;
+        let owner_trade_fee_denominator: u64 = 100;
+        let owner_withdraw_fee_numerator: u64 = 2;
+        let owner_withdraw_fee_denominator: u64 = 100;
         let source_amount: u64 = 100;
         let curve = FlatCurve {
             trade_fee_numerator,
             trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
         };
         let result = curve
             .swap(source_amount, swap_source_amount, swap_destination_amount)
             .unwrap();
-        let amount_swapped = 99;
+        let amount_swapped = 97;
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, amount_swapped);
+        assert_eq!(result.trade_fee, 1);
+        assert_eq!(result.owner_fee, 2);
         assert_eq!(
             result.new_destination_amount,
             swap_destination_amount - amount_swapped
@@ -595,9 +649,17 @@ mod tests {
     fn pack_flat_curve() {
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 4;
+        let owner_trade_fee_numerator = 2;
+        let owner_trade_fee_denominator = 5;
+        let owner_withdraw_fee_numerator = 4;
+        let owner_withdraw_fee_denominator = 10;
         let curve = FlatCurve {
             trade_fee_numerator,
             trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
         };
 
         let mut packed = [0u8; FlatCurve::LEN];
@@ -608,6 +670,10 @@ mod tests {
         let mut packed = vec![];
         packed.extend_from_slice(&trade_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&trade_fee_denominator.to_le_bytes());
+        packed.extend_from_slice(&owner_trade_fee_numerator.to_le_bytes());
+        packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
+        packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
+        packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
         let unpacked = FlatCurve::unpack(&packed).unwrap();
         assert_eq!(curve, unpacked);
     }

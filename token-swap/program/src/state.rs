@@ -145,9 +145,17 @@ mod tests {
         let pool_fee_account = Pubkey::new_from_array(pool_fee_account_raw);
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 4;
+        let owner_trade_fee_numerator = 3;
+        let owner_trade_fee_denominator = 10;
+        let owner_withdraw_fee_numerator = 2;
+        let owner_withdraw_fee_denominator = 7;
         let calculator = Box::new(FlatCurve {
             trade_fee_numerator,
             trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
         });
         let swap_curve = SwapCurve {
             curve_type,
@@ -185,7 +193,11 @@ mod tests {
         packed.push(curve_type_raw);
         packed.extend_from_slice(&trade_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&trade_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&[0u8; 48]); // padding
+        packed.extend_from_slice(&owner_trade_fee_numerator.to_le_bytes());
+        packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
+        packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
+        packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
+        packed.extend_from_slice(&[0u8; 16]); // padding
         let unpacked = SwapInfo::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
 

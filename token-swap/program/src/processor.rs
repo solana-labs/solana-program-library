@@ -1730,6 +1730,10 @@ mod tests {
                 calculator: Box::new(FlatCurve {
                     trade_fee_numerator,
                     trade_fee_denominator,
+                    owner_trade_fee_numerator,
+                    owner_trade_fee_denominator,
+                    owner_withdraw_fee_numerator,
+                    owner_withdraw_fee_denominator,
                 }),
             };
             let mut accounts =
@@ -3092,6 +3096,10 @@ mod tests {
             Box::new(FlatCurve {
                 trade_fee_numerator,
                 trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
             }),
         );
     }

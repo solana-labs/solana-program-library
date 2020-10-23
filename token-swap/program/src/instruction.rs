@@ -382,11 +382,19 @@ mod tests {
     fn test_instruction_packing() {
         let trade_fee_numerator: u64 = 1;
         let trade_fee_denominator: u64 = 4;
+        let owner_trade_fee_numerator: u64 = 2;
+        let owner_trade_fee_denominator: u64 = 5;
+        let owner_withdraw_fee_numerator: u64 = 1;
+        let owner_withdraw_fee_denominator: u64 = 3;
         let nonce: u8 = 255;
         let curve_type = CurveType::Flat;
         let calculator = Box::new(FlatCurve {
             trade_fee_numerator,
             trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
         });
         let swap_curve = SwapCurve {
             curve_type,
@@ -400,7 +408,11 @@ mod tests {
         expect.push(curve_type as u8);
         expect.extend_from_slice(&trade_fee_numerator.to_le_bytes());
         expect.extend_from_slice(&trade_fee_denominator.to_le_bytes());
-        expect.extend_from_slice(&[0u8; 48]); // padding
+        expect.extend_from_slice(&owner_trade_fee_numerator.to_le_bytes());
+        expect.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
+        expect.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
+        expect.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
+        expect.extend_from_slice(&[0u8; 16]); // padding
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
