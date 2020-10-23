@@ -275,8 +275,8 @@ impl Processor {
             pool_mint_info.clone(),
             dest_user_info.clone(),
             withdraw_info.clone(),
-            Self::AUTHORITY_DEPOSIT,
-            stake_pool.deposit_bump_seed,
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
             user_amount,
         )?;
         let fee_amount = <u64>::try_from(fee_amount).or(Err(Error::CalculationFailure))?;
