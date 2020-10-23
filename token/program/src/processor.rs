@@ -1,6 +1,6 @@
 //! Program state processor
 
-#![cfg(feature = "program")]
+//#![cfg(feature = "program")]
 
 use crate::{
     error::TokenError,
@@ -8,7 +8,7 @@ use crate::{
     state::{Account, AccountState, Mint, Multisig},
 };
 use num_traits::FromPrimitive;
-use solana_sdk::{
+use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
@@ -780,22 +780,14 @@ impl PrintProgramError for TokenError {
     }
 }
 
-// Pull in syscall stubs when building for non-BPF targets
-#[cfg(not(target_arch = "bpf"))]
-solana_sdk::program_stubs!();
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::instruction::*;
-    use solana_sdk::{
+    use solana_program::{
         account::Account as SolanaAccount, account_info::create_is_signer_account_infos,
         clock::Epoch, instruction::Instruction, sysvar::rent,
     };
-
-    fn pubkey_rand() -> Pubkey {
-        Pubkey::new(&rand::random::<[u8; 32]>())
-    }
 
     fn do_process_instruction(
         instruction: Instruction,
@@ -968,11 +960,11 @@ mod tests {
 
     #[test]
     fn test_initialize_mint() {
-        let program_id = pubkey_rand();
-        let owner_key = pubkey_rand();
-        let mint_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let owner_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account = SolanaAccount::new(42, Mint::get_packed_len(), &program_id);
-        let mint2_key = pubkey_rand();
+        let mint2_key = Pubkey::new_unique();
         let mut mint2_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mut rent_sysvar = rent_sysvar();
@@ -1016,12 +1008,12 @@ mod tests {
 
     #[test]
     fn test_initialize_mint_account() {
-        let program_id = pubkey_rand();
-        let account_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(42, Account::get_packed_len(), &program_id);
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mut rent_sysvar = rent_sysvar();
@@ -1092,46 +1084,46 @@ mod tests {
 
     #[test]
     fn test_transfer_dups() {
-        let program_id = pubkey_rand();
-        let account1_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let mut account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let mut account2_info: AccountInfo = (&account2_key, false, &mut account2_account).into();
-        let account3_key = pubkey_rand();
+        let account3_key = Pubkey::new_unique();
         let mut account3_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account3_info: AccountInfo = (&account3_key, false, &mut account3_account).into();
-        let account4_key = pubkey_rand();
+        let account4_key = Pubkey::new_unique();
         let mut account4_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account4_info: AccountInfo = (&account4_key, true, &mut account4_account).into();
-        let multisig_key = pubkey_rand();
+        let multisig_key = Pubkey::new_unique();
         let mut multisig_account = SolanaAccount::new(
             multisig_minimum_balance(),
             Multisig::get_packed_len(),
             &program_id,
         );
         let multisig_info: AccountInfo = (&multisig_key, true, &mut multisig_account).into();
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
         let owner_info: AccountInfo = (&owner_key, true, &mut owner_account).into();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mint_info: AccountInfo = (&mint_key, false, &mut mint_account).into();
@@ -1399,41 +1391,41 @@ mod tests {
 
     #[test]
     fn test_transfer() {
-        let program_id = pubkey_rand();
-        let account_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account3_key = pubkey_rand();
+        let account3_key = Pubkey::new_unique();
         let mut account3_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let delegate_key = pubkey_rand();
+        let delegate_key = Pubkey::new_unique();
         let mut delegate_account = SolanaAccount::default();
-        let mismatch_key = pubkey_rand();
+        let mismatch_key = Pubkey::new_unique();
         let mut mismatch_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let owner2_key = pubkey_rand();
+        let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::default();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
-        let mint2_key = pubkey_rand();
+        let mint2_key = Pubkey::new_unique();
         let mut rent_sysvar = rent_sysvar();
 
         // create mint
@@ -1729,7 +1721,7 @@ mod tests {
         // This is probably wrong but transactions in the wild have been observed to do this so
         // this behavior is now part of the token ABI
         {
-            let system_account_key = pubkey_rand();
+            let system_account_key = Pubkey::new_unique();
             let mut system_account = SolanaAccount::new(1, 0, &Pubkey::default());
 
             let instruction = transfer(
@@ -1898,16 +1890,16 @@ mod tests {
 
     #[test]
     fn test_mintable_token_with_zero_supply() {
-        let program_id = pubkey_rand();
-        let account_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mut rent_sysvar = rent_sysvar();
@@ -1949,7 +1941,7 @@ mod tests {
             vec![&mut mint_account, &mut account_account, &mut owner_account],
         )
         .unwrap();
-        let _ = Mint::unpack(&mut mint_account.data).unwrap();
+        let _ = Mint::unpack(&mint_account.data).unwrap();
         let account = Account::unpack_unchecked(&account_account.data).unwrap();
         assert_eq!(account.amount, 42);
 
@@ -1971,7 +1963,7 @@ mod tests {
             )
         );
 
-        let _ = Mint::unpack(&mut mint_account.data).unwrap();
+        let _ = Mint::unpack(&mint_account.data).unwrap();
         let account = Account::unpack_unchecked(&account_account.data).unwrap();
         assert_eq!(account.amount, 42);
 
@@ -1990,46 +1982,46 @@ mod tests {
             vec![&mut mint_account, &mut account_account, &mut owner_account],
         )
         .unwrap();
-        let _ = Mint::unpack(&mut mint_account.data).unwrap();
+        let _ = Mint::unpack(&mint_account.data).unwrap();
         let account = Account::unpack_unchecked(&account_account.data).unwrap();
         assert_eq!(account.amount, 84);
     }
 
     #[test]
     fn test_approve_dups() {
-        let program_id = pubkey_rand();
-        let account1_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account2_info: AccountInfo = (&account2_key, false, &mut account2_account).into();
-        let account3_key = pubkey_rand();
+        let account3_key = Pubkey::new_unique();
         let mut account3_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account3_info: AccountInfo = (&account3_key, true, &mut account3_account).into();
-        let multisig_key = pubkey_rand();
+        let multisig_key = Pubkey::new_unique();
         let mut multisig_account = SolanaAccount::new(
             multisig_minimum_balance(),
             Multisig::get_packed_len(),
             &program_id,
         );
         let multisig_info: AccountInfo = (&multisig_key, true, &mut multisig_account).into();
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
         let owner_info: AccountInfo = (&owner_key, true, &mut owner_account).into();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mint_info: AccountInfo = (&mint_key, false, &mut mint_account).into();
@@ -2208,26 +2200,26 @@ mod tests {
 
     #[test]
     fn test_approve() {
-        let program_id = pubkey_rand();
-        let account_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let delegate_key = pubkey_rand();
+        let delegate_key = Pubkey::new_unique();
         let mut delegate_account = SolanaAccount::default();
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let owner2_key = pubkey_rand();
+        let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::default();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mut rent_sysvar = rent_sysvar();
@@ -2413,16 +2405,16 @@ mod tests {
 
     #[test]
     fn test_set_authority_dups() {
-        let program_id = pubkey_rand();
-        let account1_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
-        let owner_key = pubkey_rand();
-        let mint_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mint_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
@@ -2516,28 +2508,28 @@ mod tests {
 
     #[test]
     fn test_set_authority() {
-        let program_id = pubkey_rand();
-        let account_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let owner2_key = pubkey_rand();
+        let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::default();
-        let owner3_key = pubkey_rand();
-        let mint_key = pubkey_rand();
+        let owner3_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
-        let mint2_key = pubkey_rand();
+        let mint2_key = Pubkey::new_unique();
         let mut mint2_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mut rent_sysvar = rent_sysvar();
@@ -2855,18 +2847,18 @@ mod tests {
 
     #[test]
     fn test_mint_to_dups() {
-        let program_id = pubkey_rand();
-        let account1_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
         let owner_info: AccountInfo = (&owner_key, true, &mut owner_account).into();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mint_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
@@ -2951,40 +2943,40 @@ mod tests {
 
     #[test]
     fn test_mint_to() {
-        let program_id = pubkey_rand();
-        let account_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account3_key = pubkey_rand();
+        let account3_key = Pubkey::new_unique();
         let mut account3_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let mismatch_key = pubkey_rand();
+        let mismatch_key = Pubkey::new_unique();
         let mut mismatch_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let owner2_key = pubkey_rand();
+        let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::default();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
-        let mint2_key = pubkey_rand();
-        let uninitialized_key = pubkey_rand();
+        let mint2_key = Pubkey::new_unique();
+        let uninitialized_key = Pubkey::new_unique();
         let mut uninitialized_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
@@ -3154,18 +3146,18 @@ mod tests {
 
     #[test]
     fn test_burn_dups() {
-        let program_id = pubkey_rand();
-        let account1_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
         let owner_info: AccountInfo = (&owner_key, true, &mut owner_account).into();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mint_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
@@ -3354,41 +3346,41 @@ mod tests {
 
     #[test]
     fn test_burn() {
-        let program_id = pubkey_rand();
-        let account_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account3_key = pubkey_rand();
+        let account3_key = Pubkey::new_unique();
         let mut account3_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let delegate_key = pubkey_rand();
+        let delegate_key = Pubkey::new_unique();
         let mut delegate_account = SolanaAccount::default();
-        let mismatch_key = pubkey_rand();
+        let mismatch_key = Pubkey::new_unique();
         let mut mismatch_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let owner2_key = pubkey_rand();
+        let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::default();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
-        let mint2_key = pubkey_rand();
+        let mint2_key = Pubkey::new_unique();
         let mut rent_sysvar = rent_sysvar();
 
         // create new mint
@@ -3619,34 +3611,34 @@ mod tests {
 
     #[test]
     fn test_multisig() {
-        let program_id = pubkey_rand();
-        let mint_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
-        let account_key = pubkey_rand();
+        let account_key = Pubkey::new_unique();
         let mut account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let multisig_key = pubkey_rand();
+        let multisig_key = Pubkey::new_unique();
         let mut multisig_account = SolanaAccount::new(42, Multisig::get_packed_len(), &program_id);
-        let multisig_delegate_key = pubkey_rand();
+        let multisig_delegate_key = Pubkey::new_unique();
         let mut multisig_delegate_account = SolanaAccount::new(
             multisig_minimum_balance(),
             Multisig::get_packed_len(),
             &program_id,
         );
-        let signer_keys = vec![pubkey_rand(); MAX_SIGNERS];
-        let signer_key_refs: Vec<&Pubkey> = signer_keys.iter().map(|key| key).collect();
+        let signer_keys = vec![Pubkey::new_unique(); MAX_SIGNERS];
+        let signer_key_refs: Vec<&Pubkey> = signer_keys.iter().collect();
         let mut signer_accounts = vec![SolanaAccount::new(0, 0, &program_id); MAX_SIGNERS];
         let mut rent_sysvar = rent_sysvar();
 
@@ -3911,13 +3903,13 @@ mod tests {
         .unwrap();
 
         // freeze account
-        let account3_key = pubkey_rand();
+        let account3_key = Pubkey::new_unique();
         let mut account3_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let mint2_key = pubkey_rand();
+        let mint2_key = Pubkey::new_unique();
         let mut mint2_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         do_process_instruction(
@@ -4023,11 +4015,11 @@ mod tests {
 
     #[test]
     fn test_validate_owner() {
-        let program_id = pubkey_rand();
-        let owner_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let owner_key = Pubkey::new_unique();
         let mut signer_keys = [Pubkey::default(); MAX_SIGNERS];
         for signer_key in signer_keys.iter_mut().take(MAX_SIGNERS) {
-            *signer_key = pubkey_rand();
+            *signer_key = Pubkey::new_unique();
         }
         let mut signer_lamports = 0;
         let mut signer_data = vec![];
@@ -4183,23 +4175,23 @@ mod tests {
 
     #[test]
     fn test_close_account_dups() {
-        let program_id = pubkey_rand();
-        let account1_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account2_info: AccountInfo = (&account2_key, true, &mut account2_account).into();
-        let owner_key = pubkey_rand();
-        let mint_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mint_info: AccountInfo = (&mint_key, false, &mut mint_account).into();
@@ -4269,31 +4261,31 @@ mod tests {
 
     #[test]
     fn test_close_account() {
-        let program_id = pubkey_rand();
-        let mint_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
-        let account_key = pubkey_rand();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance() + 42,
             Account::get_packed_len(),
             &program_id,
         );
-        let account3_key = pubkey_rand();
+        let account3_key = Pubkey::new_unique();
         let mut account3_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let owner2_key = pubkey_rand();
+        let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::default();
         let mut rent_sysvar = rent_sysvar();
 
@@ -4410,13 +4402,13 @@ mod tests {
         assert_eq!(account.amount, 0);
 
         // fund and initialize new non-native account to test close authority
-        let account_key = pubkey_rand();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let owner2_key = pubkey_rand();
+        let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
@@ -4498,24 +4490,24 @@ mod tests {
 
     #[test]
     fn test_native_token() {
-        let program_id = pubkey_rand();
+        let program_id = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
-        let account_key = pubkey_rand();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance() + 40,
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account3_key = pubkey_rand();
+        let account3_key = Pubkey::new_unique();
         let mut account3_account = SolanaAccount::new(account_minimum_balance(), 0, &program_id);
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
         let mut rent_sysvar = rent_sysvar();
 
@@ -4579,7 +4571,7 @@ mod tests {
         );
 
         // burn unsupported
-        let bogus_mint_key = pubkey_rand();
+        let bogus_mint_key = Pubkey::new_unique();
         let mut bogus_mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         do_process_instruction(
@@ -4675,26 +4667,26 @@ mod tests {
 
     #[test]
     fn test_overflow() {
-        let program_id = pubkey_rand();
-        let account_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let owner2_key = pubkey_rand();
+        let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::default();
-        let mint_owner_key = pubkey_rand();
+        let mint_owner_key = Pubkey::new_unique();
         let mut mint_owner_account = SolanaAccount::default();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mut rent_sysvar = rent_sysvar();
@@ -4852,22 +4844,22 @@ mod tests {
 
     #[test]
     fn test_frozen() {
-        let program_id = pubkey_rand();
-        let account_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account2_key = pubkey_rand();
+        let account2_key = Pubkey::new_unique();
         let mut account2_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mut rent_sysvar = rent_sysvar();
@@ -4964,7 +4956,7 @@ mod tests {
         let mut account = Account::unpack_unchecked(&account_account.data).unwrap();
         account.state = AccountState::Frozen;
         Account::pack(account, &mut account_account.data).unwrap();
-        let delegate_key = pubkey_rand();
+        let delegate_key = Pubkey::new_unique();
         let mut delegate_account = SolanaAccount::default();
         assert_eq!(
             Err(TokenError::AccountFrozen.into()),
@@ -5000,7 +4992,7 @@ mod tests {
         );
 
         // no set authority if account is frozen
-        let new_owner_key = pubkey_rand();
+        let new_owner_key = Pubkey::new_unique();
         assert_eq!(
             Err(TokenError::AccountFrozen.into()),
             do_process_instruction(
@@ -5038,16 +5030,16 @@ mod tests {
 
     #[test]
     fn test_freeze_thaw_dups() {
-        let program_id = pubkey_rand();
-        let account1_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
         let account1_info: AccountInfo = (&account1_key, true, &mut account1_account).into();
-        let owner_key = pubkey_rand();
-        let mint_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mint_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
@@ -5102,20 +5094,20 @@ mod tests {
 
     #[test]
     fn test_freeze_account() {
-        let program_id = pubkey_rand();
-        let account_key = pubkey_rand();
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
         );
-        let account_owner_key = pubkey_rand();
+        let account_owner_key = Pubkey::new_unique();
         let mut account_owner_account = SolanaAccount::default();
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
-        let owner2_key = pubkey_rand();
+        let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::default();
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mut rent_sysvar = rent_sysvar();

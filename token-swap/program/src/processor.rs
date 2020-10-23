@@ -1,14 +1,14 @@
 //! Program state processor
 
-#![cfg(feature = "program")]
+//#![cfg(feature = "program")]
 
 use crate::{curve::SwapCurve, error::SwapError, instruction::SwapInstruction, state::SwapInfo};
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
-use solana_sdk::instruction::Instruction;
+use solana_program::instruction::Instruction;
 #[cfg(target_arch = "bpf")]
-use solana_sdk::program::invoke_signed;
-use solana_sdk::{
+use solana_program::program::invoke_signed;
+use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
@@ -672,10 +672,6 @@ impl PrintProgramError for SwapError {
     }
 }
 
-// Pull in syscall stubs when building for non-BPF targets
-#[cfg(not(target_arch = "bpf"))]
-solana_sdk::program_stubs!();
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -685,7 +681,7 @@ mod tests {
         },
         instruction::{deposit, initialize, swap, withdraw},
     };
-    use solana_sdk::{
+    use solana_program::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
         rent::Rent, sysvar::rent,
     };
@@ -728,7 +724,7 @@ mod tests {
             token_a_amount: u64,
             token_b_amount: u64,
         ) -> Self {
-            let swap_key = pubkey_rand();
+            let swap_key = Pubkey::new_unique();
             let swap_account = Account::new(0, SwapInfo::get_packed_len(), &SWAP_PROGRAM_ID);
             let (authority_key, nonce) =
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
@@ -886,6 +882,7 @@ mod tests {
             panic!("Could not find matching swap token account");
         }
 
+        #[allow(clippy::too_many_arguments)]
         pub fn swap(
             &mut self,
             user_key: &Pubkey,
@@ -956,6 +953,7 @@ mod tests {
             Ok(())
         }
 
+        #[allow(clippy::too_many_arguments)]
         pub fn deposit(
             &mut self,
             depositor_key: &Pubkey,
@@ -1036,6 +1034,7 @@ mod tests {
             )
         }
 
+        #[allow(clippy::too_many_arguments)]
         pub fn withdraw(
             &mut self,
             user_key: &Pubkey,
@@ -1111,10 +1110,6 @@ mod tests {
         Rent::default().minimum_balance(SplAccount::get_packed_len())
     }
 
-    fn pubkey_rand() -> Pubkey {
-        Pubkey::new(&rand::random::<[u8; 32]>())
-    }
-
     fn do_process_instruction(
         instruction: Instruction,
         accounts: Vec<&mut Account>,
@@ -1164,7 +1159,7 @@ mod tests {
         account_owner_key: &Pubkey,
         amount: u64,
     ) -> (Pubkey, Account) {
-        let account_key = pubkey_rand();
+        let account_key = Pubkey::new_unique();
         let mut account_account = Account::new(
             account_minimum_balance(),
             SplAccount::get_packed_len(),
@@ -1212,7 +1207,7 @@ mod tests {
         authority_key: &Pubkey,
         freeze_authority: Option<&Pubkey>,
     ) -> (Pubkey, Account) {
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account = Account::new(
             mint_minimum_balance(),
             SplMint::get_packed_len(),
@@ -1231,9 +1226,9 @@ mod tests {
 
     #[test]
     fn test_token_program_id_error() {
-        let swap_key = pubkey_rand();
-        let mut mint = (pubkey_rand(), Account::default());
-        let mut destination = (pubkey_rand(), Account::default());
+        let swap_key = Pubkey::new_unique();
+        let mut mint = (Pubkey::new_unique(), Account::default());
+        let mut destination = (Pubkey::new_unique(), Account::default());
         let token_program = (TOKEN_PROGRAM_ID, Account::default());
         let (authority_key, nonce) =
             Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
@@ -1260,7 +1255,7 @@ mod tests {
 
     #[test]
     fn test_initialize() {
-        let user_key = pubkey_rand();
+        let user_key = Pubkey::new_unique();
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 2;
         let owner_trade_fee_numerator = 1;
@@ -1680,7 +1675,7 @@ mod tests {
 
         // wrong token program id
         {
-            let wrong_program_id = pubkey_rand();
+            let wrong_program_id = Pubkey::new_unique();
             assert_eq!(
                 Err(ProgramError::InvalidAccountData),
                 do_process_instruction(
@@ -1784,8 +1779,8 @@ mod tests {
 
     #[test]
     fn test_deposit() {
-        let user_key = pubkey_rand();
-        let depositor_key = pubkey_rand();
+        let user_key = Pubkey::new_unique();
+        let depositor_key = Pubkey::new_unique();
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 2;
         let owner_trade_fee_numerator = 1;
@@ -2059,7 +2054,7 @@ mod tests {
                 pool_key,
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
-            let wrong_key = pubkey_rand();
+            let wrong_key = Pubkey::new_unique();
             assert_eq!(
                 Err(ProgramError::InvalidAccountData),
                 do_process_instruction(
@@ -2108,7 +2103,7 @@ mod tests {
             let old_a_key = accounts.token_a_key;
             let old_a_account = accounts.token_a_account;
 
-            accounts.token_a_key = token_a_key.clone();
+            accounts.token_a_key = token_a_key;
             accounts.token_a_account = token_a_account.clone();
 
             // wrong swap token a account
@@ -2134,7 +2129,7 @@ mod tests {
             let old_b_key = accounts.token_b_key;
             let old_b_account = accounts.token_b_account;
 
-            accounts.token_b_key = token_b_key.clone();
+            accounts.token_b_key = token_b_key;
             accounts.token_b_account = token_b_account.clone();
 
             // wrong swap token b account
@@ -2314,7 +2309,7 @@ mod tests {
 
     #[test]
     fn test_withdraw() {
-        let user_key = pubkey_rand();
+        let user_key = Pubkey::new_unique();
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 2;
         let owner_trade_fee_numerator = 1;
@@ -2336,7 +2331,7 @@ mod tests {
             }),
         };
 
-        let withdrawer_key = pubkey_rand();
+        let withdrawer_key = Pubkey::new_unique();
         let initial_a = token_a_amount / 10;
         let initial_b = token_b_amount / 10;
         let initial_pool = swap_curve.calculator.new_pool_supply() / 10;
@@ -2638,7 +2633,7 @@ mod tests {
                 initial_b,
                 withdraw_amount,
             );
-            let wrong_key = pubkey_rand();
+            let wrong_key = Pubkey::new_unique();
             assert_eq!(
                 Err(ProgramError::InvalidAccountData),
                 do_process_instruction(
@@ -2695,7 +2690,7 @@ mod tests {
             let old_a_key = accounts.token_a_key;
             let old_a_account = accounts.token_a_account;
 
-            accounts.token_a_key = token_a_key.clone();
+            accounts.token_a_key = token_a_key;
             accounts.token_a_account = token_a_account.clone();
 
             // wrong swap token a account
@@ -2721,7 +2716,7 @@ mod tests {
             let old_b_key = accounts.token_b_key;
             let old_b_account = accounts.token_b_account;
 
-            accounts.token_b_key = token_b_key.clone();
+            accounts.token_b_key = token_b_key;
             accounts.token_b_account = token_b_account.clone();
 
             // wrong swap token b account
@@ -2955,7 +2950,7 @@ mod tests {
                 mut _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, 0, 0, 0);
 
-            let pool_fee_key = accounts.pool_fee_key.clone();
+            let pool_fee_key = accounts.pool_fee_key;
             let mut pool_fee_account = accounts.pool_fee_account.clone();
             let fee_account = Processor::unpack_token_account(&pool_fee_account.data).unwrap();
             let pool_fee_amount = fee_account.amount;
@@ -3006,8 +3001,8 @@ mod tests {
     }
 
     fn check_valid_swap_curve(curve_type: CurveType, calculator: Box<dyn CurveCalculator>) {
-        let user_key = pubkey_rand();
-        let swapper_key = pubkey_rand();
+        let user_key = Pubkey::new_unique();
+        let swapper_key = Pubkey::new_unique();
         let token_a_amount = 1000;
         let token_b_amount = 5000;
 
@@ -3177,8 +3172,8 @@ mod tests {
 
     #[test]
     fn test_invalid_swap() {
-        let user_key = pubkey_rand();
-        let swapper_key = pubkey_rand();
+        let user_key = Pubkey::new_unique();
+        let swapper_key = Pubkey::new_unique();
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 4;
         let owner_trade_fee_numerator = 1;
@@ -3206,8 +3201,8 @@ mod tests {
         let initial_b = token_b_amount / 5;
         let minimum_b_amount = initial_b / 2;
 
-        let swap_token_a_key = accounts.token_a_key.clone();
-        let swap_token_b_key = accounts.token_b_key.clone();
+        let swap_token_a_key = accounts.token_a_key;
+        let swap_token_b_key = accounts.token_b_key;
 
         // swap not initialized
         {
@@ -3280,7 +3275,7 @@ mod tests {
                 _pool_key,
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
-            let wrong_program_id = pubkey_rand();
+            let wrong_program_id = Pubkey::new_unique();
             assert_eq!(
                 Err(ProgramError::InvalidAccountData),
                 do_process_instruction(
@@ -3572,7 +3567,7 @@ mod tests {
             );
         }
 
-        // slippage exceeeded: minimum out amount too high
+        // slippage exceeded: minimum out amount too high
         {
             let (
                 token_a_key,

@@ -4,7 +4,7 @@
 
 use crate::curve::SwapCurve;
 use crate::error::SwapError;
-use solana_sdk::{
+use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     program_pack::Pack,

@@ -3,16 +3,17 @@
 
 //! An ERC20-like Token program for the Solana blockchain
 
-pub mod entrypoint;
 pub mod error;
 pub mod instruction;
 pub mod native_mint;
 pub mod processor;
 pub mod state;
 
-// Export current solana-sdk types for downstream users who may also be building with a different
-// solana-sdk version
-pub use solana_sdk;
+#[cfg(not(feature = "exclude_entrypoint"))]
+pub mod entrypoint;
+
+// Export current sdk types for downstream users building with a different sdk version
+pub use solana_program;
 
 /// Convert the UI representation of a token amount (using the decimals field defined in its mint)
 /// to the raw amount
@@ -25,4 +26,4 @@ pub fn amount_to_ui_amount(amount: u64, decimals: u8) -> f64 {
     amount as f64 / 10_usize.pow(decimals as u32) as f64
 }
 
-solana_sdk::declare_id!("TokenKEGQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+solana_program::declare_id!("TokenKEGQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");

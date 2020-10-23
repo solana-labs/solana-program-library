@@ -2,8 +2,8 @@
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use solana_sdk::program_error::PrintProgramError;
-use solana_sdk::{decode_error::DecodeError, program_error::ProgramError};
+use solana_program::program_error::PrintProgramError;
+use solana_program::{decode_error::DecodeError, program_error::ProgramError};
 use thiserror::Error;
 
 /// Errors that may be returned by the Themis program.

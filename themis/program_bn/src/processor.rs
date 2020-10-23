@@ -1,4 +1,5 @@
 //! Themis program
+
 use crate::{
     error::ThemisError,
     instruction::ThemisInstruction,
@@ -6,7 +7,7 @@ use crate::{
 };
 use bn::{Fr, G1};
 use elgamal_bn::public::PublicKey;
-use solana_sdk::{
+use solana_program::{
     account_info::{next_account_info, AccountInfo},
     program_error::ProgramError,
     pubkey::Pubkey,

@@ -1,6 +1,3 @@
-
-# Note: This crate must be built using do.sh
-
 [package]
 name = "spl-shared-memory"
 version = "2.0.6"
@@ -11,13 +8,9 @@ license = "Apache-2.0"
 edition = "2018"
 exclude = ["js/**"]
 
-[features]
-program = ["solana-sdk/program"]
-default = ["solana-sdk/default"]
-
 [dependencies]
 arrayref = "0.3.6"
-solana-sdk = { version = "1.3.17", default-features = false, optional = true }
+solana-program = "1.4.3"
 
 [lib]
 crate-type = ["cdylib", "lib"]

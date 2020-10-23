@@ -1,7 +1,7 @@
 //! Instruction types
 
 use crate::error::TokenError;
-use solana_sdk::{
+use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     program_option::COption,

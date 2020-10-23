@@ -4,7 +4,7 @@ use crate::state::{Policies, User};
 use bn::{Fr, G1};
 use borsh::{BorshDeserialize, BorshSerialize};
 use elgamal_bn::public::PublicKey;
-use solana_sdk::{
+use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     pubkey::Pubkey,

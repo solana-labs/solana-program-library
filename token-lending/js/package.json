@@ -24,7 +24,7 @@
   "testnetDefaultChannel": "edge",
   "scripts": {
     "build": "rollup -c rollup.config.ts",
-    "build:program": "rm client/util/store/config.json; ../../do.sh build token-lending",
+    "build:program": "rm -f client/util/store/config.json; cargo build-bpf --manifest-path ../program/Cargo.toml",
     "start": "ts-node cli/main.ts",
     "lint": "eslint --ext .ts {cli,client}/* && prettier --check \"{cli,client}/**/*.ts\"",
     "lint:fix": "eslint --ext .ts {cli,client}/* --fix && prettier --write \"{cli,client}/**/*.ts\"",
@@ -33,7 +33,7 @@
     "cluster:testnet": "cp cluster-testnet.env .env",
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env",
     "localnet:update": "solana-localnet update",
-    "localnet:up": "rm client/util/store/config.json; set -x; solana-localnet down; set -e; solana-localnet up",
+    "localnet:up": "rm -f client/util/store/config.json; set -x; solana-localnet down; set -e; solana-localnet up",
     "localnet:down": "solana-localnet down",
     "localnet:logs": "solana-localnet logs -f"
   },

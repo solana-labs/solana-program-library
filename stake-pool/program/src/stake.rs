@@ -1,13 +1,13 @@
 //! FIXME copied from the solana stake program
 
 use serde_derive::{Deserialize, Serialize};
-use solana_sdk::{
+use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
     sysvar,
 };
 
-solana_sdk::declare_id!("StakeConfig11111111111111111111111111111111");
+solana_program::declare_id!("StakeConfig11111111111111111111111111111111");
 
 /// FIXME copied from solana stake program
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

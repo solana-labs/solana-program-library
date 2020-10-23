@@ -20,7 +20,7 @@ services:
 env:
   global:
     - RUST_BACKTRACE=1
-    - SOLANA_VERSION=v1.4.2
+    - SOLANA_VERSION=v1.4.3
 
 jobs:
   include:
