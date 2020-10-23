@@ -566,7 +566,7 @@ fn command_account(config: &Config, address: Pubkey) -> CommandResult {
 
 fn main() {
     let default_decimals = &format!("{}", native_mint::DECIMALS);
-    let matches = App::new(crate_name!())
+    let app_matches = App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
         .setting(AppSettings::SubcommandRequiredElseHelp)
@@ -972,6 +972,9 @@ fn main() {
     let mut wallet_manager = None;
     let mut bulk_signers: Vec<Option<Box<dyn Signer>>> = Vec::new();
 
+    let (sub_command, sub_matches) = app_matches.subcommand();
+    let matches = sub_matches.unwrap();
+
     let config = {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
             solana_cli_config::Config::load(config_file).unwrap_or_default()
@@ -1022,7 +1025,7 @@ fn main() {
 
     solana_logger::setup_with_default("solana=info");
 
-    let _ = match matches.subcommand() {
+    let _ = match (sub_command, sub_matches) {
         ("create-token", Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
             let (signer, token) = if arg_matches.is_present("token_keypair") {
