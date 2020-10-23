@@ -329,15 +329,17 @@ impl Processor {
                 TOKENS_IN_POOL,
             )
             .ok_or(SwapError::CalculationFailure)?;
-        Self::token_mint_to(
-            swap_info.key,
-            token_program_info.clone(),
-            pool_mint_info.clone(),
-            pool_fee_account_info.clone(),
-            authority_info.clone(),
-            token_swap.nonce,
-            pool_token_amount,
-        )?;
+        if pool_token_amount > 0 {
+            Self::token_mint_to(
+                swap_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                pool_fee_account_info.clone(),
+                authority_info.clone(),
+                token_swap.nonce,
+                pool_token_amount,
+            )?;
+        }
         Ok(())
     }
 
