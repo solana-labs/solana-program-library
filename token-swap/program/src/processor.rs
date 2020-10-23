@@ -294,7 +294,7 @@ impl Processor {
             .swap_curve
             .calculator
             .swap(amount_in, source_account.amount, dest_account.amount)
-            .ok_or(SwapError::CalculationFailure)?;
+            .ok_or(SwapError::ZeroTradingTokens)?;
         if result.amount_swapped < minimum_amount_out {
             return Err(SwapError::ExceededSlippage.into());
         }
@@ -328,7 +328,7 @@ impl Processor {
                 pool_mint.supply,
                 TOKENS_IN_POOL,
             )
-            .ok_or(SwapError::CalculationFailure)?;
+            .ok_or(SwapError::FeeCalculationFailure)?;
         if pool_token_amount > 0 {
             Self::token_mint_to(
                 swap_info.key,
@@ -384,13 +384,13 @@ impl Processor {
 
         let a_amount = calculator
             .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_a.amount)
-            .ok_or(SwapError::CalculationFailure)?;
+            .ok_or(SwapError::ZeroTradingTokens)?;
         if a_amount > maximum_token_a_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = calculator
             .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_b.amount)
-            .ok_or(SwapError::CalculationFailure)?;
+            .ok_or(SwapError::ZeroTradingTokens)?;
         if b_amount > maximum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
@@ -469,22 +469,27 @@ impl Processor {
 
         let calculator = token_swap.swap_curve.calculator;
 
-        let withdraw_fee = calculator
-            .owner_withdraw_fee(pool_token_amount)
-            .ok_or(SwapError::CalculationFailure)?;
+        let withdraw_fee = if *pool_fee_account_info.key == *source_info.key {
+            // withdrawing from the fee account, don't assess withdraw fee
+            0
+        } else {
+            calculator
+                .owner_withdraw_fee(pool_token_amount)
+                .ok_or(SwapError::FeeCalculationFailure)?
+        };
         let pool_token_amount = pool_token_amount
             .checked_sub(withdraw_fee)
             .ok_or(SwapError::CalculationFailure)?;
 
         let a_amount = calculator
             .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_a.amount)
-            .ok_or(SwapError::CalculationFailure)?;
+            .ok_or(SwapError::ZeroTradingTokens)?;
         if a_amount < minimum_token_a_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = calculator
             .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_b.amount)
-            .ok_or(SwapError::CalculationFailure)?;
+            .ok_or(SwapError::ZeroTradingTokens)?;
         if b_amount < minimum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
@@ -657,6 +662,8 @@ impl PrintProgramError for SwapError {
                 info!("Error: Pool token mint has a freeze authority")
             }
             SwapError::IncorrectFeeAccount => info!("Error: Pool fee token account incorrect"),
+            SwapError::ZeroTradingTokens => info!("Error: Given pool token amount results in zero withdrawal amount"),
+            SwapError::FeeCalculationFailure => info!("Error: The fee calculation failed due to overflow, underflow, or unexpected 0"),
         }
     }
 }
@@ -2195,7 +2202,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
-                Err(SwapError::CalculationFailure.into()),
+                Err(SwapError::ZeroTradingTokens.into()),
                 accounts.deposit(
                     &depositor_key,
                     &pool_key,
@@ -2794,7 +2801,7 @@ mod tests {
                 initial_pool,
             );
             assert_eq!(
-                Err(SwapError::CalculationFailure.into()),
+                Err(SwapError::ZeroTradingTokens.into()),
                 accounts.withdraw(
                     &withdrawer_key,
                     &pool_key,
@@ -2931,6 +2938,73 @@ mod tests {
             let fee_account =
                 Processor::unpack_token_account(&accounts.pool_fee_account.data).unwrap();
             assert_eq!(fee_account.amount, withdraw_fee);
+        }
+
+        // correct withdrawal from fee account
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                _pool_key,
+                mut _pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &withdrawer_key,
+                0,
+                0,
+                0,
+            );
+
+            let pool_fee_key = accounts.pool_fee_key.clone();
+            let mut pool_fee_account = accounts.pool_fee_account.clone();
+            let fee_account =
+                Processor::unpack_token_account(&pool_fee_account.data).unwrap();
+            let pool_fee_amount = fee_account.amount;
+
+            accounts
+                .withdraw(
+                    &user_key,
+                    &pool_fee_key,
+                    &mut pool_fee_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    pool_fee_amount,
+                    0,
+                    0,
+                )
+                .unwrap();
+
+            let swap_token_a =
+                Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
+            let swap_token_b =
+                Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
+            let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
+            let withdrawn_a = accounts
+                .swap_curve
+                .calculator
+                .pool_tokens_to_trading_tokens(
+                    pool_fee_amount,
+                    pool_mint.supply,
+                    swap_token_a.amount,
+                )
+                .unwrap();
+            let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
+            assert_eq!(token_a.amount, withdrawn_a);
+            let withdrawn_b = accounts
+                .swap_curve
+                .calculator
+                .pool_tokens_to_trading_tokens(
+                    pool_fee_amount,
+                    pool_mint.supply,
+                    swap_token_b.amount,
+                )
+                .unwrap();
+            let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
+            assert_eq!(token_b.amount, withdrawn_b);
         }
     }
 
@@ -3486,7 +3560,7 @@ mod tests {
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             assert_eq!(
-                Err(SwapError::CalculationFailure.into()),
+                Err(SwapError::ZeroTradingTokens.into()),
                 accounts.swap(
                     &swapper_key,
                     &token_b_key,
