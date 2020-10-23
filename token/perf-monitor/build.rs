@@ -1,12 +1,10 @@
-use std::{fs::canonicalize, process::Command};
+use std::process::Command;
 
 fn main() {
-    println!("cargo:warning=(not a warning) Building SPL Token shared object");
-    Command::new(canonicalize("../../do.sh").unwrap())
-        .current_dir("../..")
-        .arg("build")
-        .arg("token/program")
+    println!("cargo:warning=(not a warning) Building BPF token program");
+    Command::new("cargo")
+        .arg("build-bpf")
         .status()
-        .expect("Failed to build token program")
+        .expect("Failed to build BPF token program")
         .success();
 }

@@ -4,7 +4,7 @@ use crate::state::{Policies, User};
 use borsh::{BorshDeserialize, BorshSerialize};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use elgamal_ristretto::public::PublicKey;
-use solana_sdk::{
+use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     pubkey::Pubkey,

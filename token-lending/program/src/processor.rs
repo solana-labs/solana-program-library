@@ -1,10 +1,8 @@
 //! Program state processor
 
-#![cfg(feature = "program")]
-
 use crate::error::LendingError;
 use num_traits::FromPrimitive;
-use solana_sdk::{
+use solana_program::{
     account_info::AccountInfo, decode_error::DecodeError, entrypoint::ProgramResult, info,
     program_error::PrintProgramError, pubkey::Pubkey,
 };

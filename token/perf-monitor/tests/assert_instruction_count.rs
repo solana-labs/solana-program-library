@@ -74,15 +74,15 @@ fn run_program(
 
 #[test]
 fn assert_instruction_count() {
-    let program_id = Pubkey::new_rand();
-    let source_key = Pubkey::new_rand();
+    let program_id = Pubkey::new_unique();
+    let source_key = Pubkey::new_unique();
     let source_account = SolanaAccount::new_ref(u64::MAX, Account::get_packed_len(), &program_id);
-    let destination_key = Pubkey::new_rand();
+    let destination_key = Pubkey::new_unique();
     let destination_account =
         SolanaAccount::new_ref(u64::MAX, Account::get_packed_len(), &program_id);
-    let owner_key = Pubkey::new_rand();
+    let owner_key = Pubkey::new_unique();
     let owner_account = RefCell::new(SolanaAccount::default());
-    let mint_key = Pubkey::new_rand();
+    let mint_key = Pubkey::new_unique();
     let mint_account = SolanaAccount::new_ref(0, Mint::get_packed_len(), &program_id);
     let rent_key = rent::id();
     let rent_account = RefCell::new(rent::create_account(42, &Rent::default()));

@@ -16,55 +16,54 @@ all implementations.
 
 Full documentation is available at https://spl.solana.com
 
-## Building
+## Development
 
-These programs cannot be built directly via cargo and instead require the build
-scripts located in Solana's BPF-SDK.
+### Environment Setup
 
-Download or update the BPF-SDK by running:
-```bash
-$ ./do.sh update
+1. Install the latest Rust stable from https://rustup.rs/
+2. Install the latest Solana command-line tools from https://docs.solana.com/cli/install-solana-cli-tools
+
+### Build
+
+The normal cargo build is available for building programs against your host machine:
+```
+$ cargo build
 ```
 
-To build all programs, run:
-```bash
-$ ./do.sh build all
+To build a specific program, such as SPL Token, for the Solana BPF target:
+```
+$ cd token/program
+$ cargo build-bpf
 ```
 
-Or choose a specific program:
+### Test
+
+Unit tests contained within all projects can be run with:
 ```bash
-$ ./do.sh build <program>
+$ cargo test
 ```
 
-## Testing
-
-Unit tests contained within all projects can be built via:
-```bash
-$ ./do.sh test all
+To run a specific program's tests, such as SPL Token:
+```
+$ cd token/program
+$ cargo test
 ```
 
-Or:
-```bash
-$ ./do.sh test <program>
-```
-
-End-to-end testing may be performed via the per-project .js bindings.  See the
+Integration testing may be performed via the per-project .js bindings.  See the
 [token program's js project](token/js) for an example.
 
-## Clippy
-
-Clippy is also supported via:
+### Clippy
 ```bash
-$ ./do.sh clippy all
+$ cargo clippy
 ```
 
-Or:
+### Coverage
+```bash
+$ ./coverage.sh
 ```
-$ ./do.sh clippy <program>
-```
+
 
 ## Release Process
-
 SPL programs are currently tagged and released manually. Each program is
 versioned independently of the others, with all new development occurring on
 master. Once a program is tested and deemed ready for release:
@@ -73,7 +72,9 @@ master. Once a program is tested and deemed ready for release:
 
   * Increment the version number in the program's Cargo.toml
   * Generate a new program ID and replace in `<program>/program-id.md` and `<program>/src/lib.rs`
-  * Run `./do.sh build <program>` to update relevant C bindings. (Note the location of the generated `spl_<program>.so` for attaching to the Github release.)
+  * Run `cargo build <program>` to update relevant C bindings. (Note the
+    location of the generated `spl_<program>.so` for attaching to the Github
+    release.)
   * Open a PR with these version changes and merge after passing CI.
 
 ### Create Github tag

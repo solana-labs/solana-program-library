@@ -12,14 +12,14 @@ version = "2.0.3"
 clap = "2.33.3"
 console = "0.13.0"
 serde_json = "1.0.59"
-solana-account-decoder = { version = "=1.4.1" }
-solana-clap-utils = { version = "=1.4.1"}
-solana-cli-config = { version = "=1.4.2" }
-solana-cli-output = { version = "=1.4.1" }
-solana-client = { version = "=1.4.1" }
-solana-logger = { version = "=1.4.2" }
-solana-sdk = { version = "=1.4.1" }
-spl-token = { version = "2.0", path="../program" }
+solana-account-decoder = "1.4.3"
+solana-clap-utils = "1.4.3"
+solana-cli-config = "1.4.3"
+solana-cli-output = "1.4.3"
+solana-client = "1.4.3"
+solana-logger = "1.4.3"
+solana-sdk = "1.4.3"
+spl-token = { version = "2.0", path="../program", features = [ "exclude_entrypoint" ] }
 
 [[bin]]
 name = "spl-token"

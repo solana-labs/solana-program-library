@@ -1713,9 +1713,9 @@ dependencies = [
 
 [[package]]
 name = "solana-bpf-loader-program"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4e65edb39170c8cba00256a2ae041c28bbc97cf4add0173543ab0a9893fc91b"
+checksum = "ffe0627cc4ef87bb00a8691fe7c6bb7eec9efde660c5b02257daf20ccef8286a"
 dependencies = [
  "bincode",
  "byteorder",
@@ -1730,9 +1730,9 @@ dependencies = [
 
 [[package]]
 name = "solana-config-program"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49d31450d593803698c8df43ba5cd861decfab9ea057899f8e19f50df105c306"
+checksum = "be3dddd5b85283625f92e1bfa4b100e13c3941ecb472584b29afb5c5382ac09c"
 dependencies = [
  "bincode",
  "chrono",
@@ -1744,9 +1744,9 @@ dependencies = [
 
 [[package]]
 name = "solana-crate-features"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d665c51b3065feb33f641dd1b29d476e11e14dac657725a8ba9af52e68b6618d"
+checksum = "beeada39ad2aecfee8795d90ca7150389e7f958236f2630825273b9b900a7f19"
 dependencies = [
  "backtrace",
  "bytes 0.4.12",
@@ -1767,10 +1767,43 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-logger"
-version = "1.4.1"
+name = "solana-frozen-abi"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa91a8812e60bcfdaffaf0d7202a6fb55b64e19a144c313d208829634c69544c"
+checksum = "63bbbf3bf442bc7e4e76b57af858030fdcb8953cdbcbc6bf3ddd4819aa38e982"
+dependencies = [
+ "bs58",
+ "bv",
+ "generic-array 0.14.4",
+ "log",
+ "memmap",
+ "rustc_version",
+ "serde",
+ "serde_derive",
+ "sha2",
+ "solana-frozen-abi-macro",
+ "solana-logger",
+ "thiserror",
+]
+
+[[package]]
+name = "solana-frozen-abi-macro"
+version = "1.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdb4a177d5f46025b619c83d0562e6ea302a871f98148bd7edbc82416ac76949"
+dependencies = [
+ "lazy_static",
+ "proc-macro2 1.0.19",
+ "quote 1.0.6",
+ "rustc_version",
+ "syn 1.0.39",
+]
+
+[[package]]
+name = "solana-logger"
+version = "1.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8f251c26d46a55bf5c3f6ef5e999e8949909eab952e19a9261e6434ebd31041"
 dependencies = [
  "env_logger",
  "lazy_static",
@@ -1779,9 +1812,9 @@ dependencies = [
 
 [[package]]
 name = "solana-measure"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d31aaf307e4bcc52b18d1fe8971bdede0a0ee0e0242ea322ae5bc2e71bb5883"
+checksum = "5bacc5ec88bb53610986d49199526fd42dcad7c8b3fc795f3de5740ebff982f4"
 dependencies = [
  "jemalloc-ctl",
  "jemallocator",
@@ -1792,9 +1825,9 @@ dependencies = [
 
 [[package]]
 name = "solana-metrics"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fd1e167af8decba13acdc487cfb26ffa976e1b2fb7507baa800e9b0ae086729"
+checksum = "c11d2f59d87ff29d369394654dcff3c66a898b32a351bb67a9ae9de0db2b82f2"
 dependencies = [
  "env_logger",
  "gethostname",
@@ -1805,10 +1838,40 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-rayon-threadlimit"
-version = "1.4.1"
+name = "solana-program"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfb5a22cee0ded53e11090c6bcd963eff6d43caf49c4cda42691e94fab7ddd7d"
+checksum = "9d4621f2d8ca6d7ac09c0138a02d21def0a736b70feab1f2516f5a74f1ee642f"
+dependencies = [
+ "bincode",
+ "bs58",
+ "bv",
+ "curve25519-dalek 2.1.0",
+ "hex",
+ "itertools",
+ "lazy_static",
+ "log",
+ "num-derive",
+ "num-traits",
+ "rand",
+ "rustc_version",
+ "rustversion",
+ "serde",
+ "serde_bytes",
+ "serde_derive",
+ "sha2",
+ "solana-frozen-abi",
+ "solana-frozen-abi-macro",
+ "solana-logger",
+ "solana-sdk-macro",
+ "thiserror",
+]
+
+[[package]]
+name = "solana-rayon-threadlimit"
+version = "1.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84bac623c15acb44f571ec177b67a6434c6aa7637bdb26fe5d776aeb7f4d61ae"
 dependencies = [
  "lazy_static",
  "num_cpus",
@@ -1816,9 +1879,9 @@ dependencies = [
 
 [[package]]
 name = "solana-runtime"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d511d1dfcf89db6783e83f9f028f139bbff357e190bd0947bd23ff1235f97558"
+checksum = "8242a732a6db6227854f9bb0c2958c1f219be85989d7ca66d934033d32043c4f"
 dependencies = [
  "bincode",
  "blake3",
@@ -1846,12 +1909,13 @@ dependencies = [
  "serde",
  "serde_derive",
  "solana-config-program",
+ "solana-frozen-abi",
+ "solana-frozen-abi-macro",
  "solana-logger",
  "solana-measure",
  "solana-metrics",
  "solana-rayon-threadlimit",
  "solana-sdk",
- "solana-sdk-macro-frozen-abi",
  "solana-secp256k1-program",
  "solana-stake-program",
  "solana-vote-program",
@@ -1864,9 +1928,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e8742ccdaac9ff6e7085e8eb3737858254e4691c6fcaac6b472875db2bbba0d"
+checksum = "096751fdd2ec2dc3ed7146b1b14245a5b562a21b5046bf3677810a96037aff96"
 dependencies = [
  "assert_matches",
  "bincode",
@@ -1874,7 +1938,6 @@ dependencies = [
  "bv",
  "byteorder",
  "chrono",
- "curve25519-dalek 2.1.0",
  "digest 0.9.0",
  "ed25519-dalek",
  "generic-array 0.14.4",
@@ -1898,17 +1961,19 @@ dependencies = [
  "sha2",
  "sha3",
  "solana-crate-features",
+ "solana-frozen-abi",
+ "solana-frozen-abi-macro",
  "solana-logger",
+ "solana-program",
  "solana-sdk-macro",
- "solana-sdk-macro-frozen-abi",
  "thiserror",
 ]
 
 [[package]]
 name = "solana-sdk-macro"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f38f6c5f3b4119ffa7f75156836e5c88082e557fa978fe1f87995bd386b0d08"
+checksum = "a02d89c5d8c3c098552e39ad716f8e25b1b9ce95905ad0c770c78d36e1ebcc39"
 dependencies = [
  "bs58",
  "proc-macro2 1.0.19",
@@ -1918,23 +1983,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-sdk-macro-frozen-abi"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e47f618ad2d7af7b9c701e9cc9951681f6d6a9c754863f2ab63e1b98507e515"
-dependencies = [
- "lazy_static",
- "proc-macro2 1.0.19",
- "quote 1.0.6",
- "rustc_version",
- "syn 1.0.39",
-]
-
-[[package]]
 name = "solana-secp256k1-program"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d8888a924c9183f430a72e1a643648aeff105278bc39315d211bd6b6197e0a0"
+checksum = "0fa9c6d939374dc10aadb4f5d918134d3388411f8bb975386cd6769afe127268"
 dependencies = [
  "bincode",
  "digest 0.9.0",
@@ -1947,9 +1999,9 @@ dependencies = [
 
 [[package]]
 name = "solana-stake-program"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3780a14335d07b301128ad518876c8f4c3cb513f88e808faef3ed8a5090abc6"
+checksum = "1decea030cb64647c3bee685d804344c10de071ec03f0331436c8c90b500ca27"
 dependencies = [
  "bincode",
  "log",
@@ -1959,18 +2011,19 @@ dependencies = [
  "serde",
  "serde_derive",
  "solana-config-program",
+ "solana-frozen-abi",
+ "solana-frozen-abi-macro",
  "solana-metrics",
  "solana-sdk",
- "solana-sdk-macro-frozen-abi",
  "solana-vote-program",
  "thiserror",
 ]
 
 [[package]]
 name = "solana-vote-program"
-version = "1.4.1"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "595274785736cbae1f012ed1c78aebbbe2cf75720dec1e1850800c9cd64fae9b"
+checksum = "b44aeb9a4169443ce3d2ee417fe61abc1067d6d842e609f3ec30e462b98fae45"
 dependencies = [
  "bincode",
  "log",
@@ -1979,10 +2032,11 @@ dependencies = [
  "rustc_version",
  "serde",
  "serde_derive",
+ "solana-frozen-abi",
+ "solana-frozen-abi-macro",
  "solana-logger",
  "solana-metrics",
  "solana-sdk",
- "solana-sdk-macro-frozen-abi",
  "thiserror",
 ]
 
@@ -2015,7 +2069,7 @@ name = "spl-shared-memory"
 version = "2.0.6"
 dependencies = [
  "arrayref",
- "solana-sdk",
+ "solana-program",
 ]
 
 [[package]]

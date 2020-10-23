@@ -72,8 +72,8 @@ fn run_program(
 fn assert_instruction_count() {
     const OFFSET: usize = 51;
     const NUM_TO_SHARE: usize = 500;
-    let program_id = Pubkey::new_rand();
-    let shared_key = Pubkey::new_rand();
+    let program_id = Pubkey::new_unique();
+    let shared_key = Pubkey::new_unique();
     let shared_account = Account::new_ref(u64::MAX, OFFSET + NUM_TO_SHARE * 2, &program_id);
 
     // Send some data to share
@@ -99,7 +99,7 @@ fn test_share_data() {
     const OFFSET: usize = 51;
     const NUM_TO_SHARE: usize = 500;
     let program_id = Pubkey::new(&[0; 32]);
-    let shared_key = Pubkey::new_rand();
+    let shared_key = Pubkey::new_unique();
     let shared_account = Account::new_ref(u64::MAX, NUM_TO_SHARE * 2, &program_id);
 
     // success

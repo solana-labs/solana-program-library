@@ -1,6 +1,3 @@
-
-# Note: This crate must be built using do.sh
-
 [package]
 name = "spl-themis-ristretto"
 version = "0.1.0"
@@ -12,9 +9,8 @@ edition = "2018"
 exclude = ["js/**"]
 
 [features]
-no-entrypoint = []
-program = ["solana-sdk/program", "elgamal_ristretto/program"]
-default = ["solana-sdk/default", "elgamal_ristretto/default"]
+exclude_entrypoint = []
+default = ["elgamal_ristretto/program"]
 
 [dependencies]
 bincode = "1.3"
@@ -25,9 +21,8 @@ getrandom = { version = "0.1.15", features = ["dummy"] }
 num-derive = "0.3"
 num-traits = "0.2"
 rand = "0.7.0"
-solana-sdk = { version = "1.4.1", default-features = false, optional = true }
+solana-program = "1.4.3"
 thiserror = "1.0"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-

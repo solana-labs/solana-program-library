@@ -1,7 +1,5 @@
 //! Program state processor
 
-#![cfg(feature = "program")]
-
 use crate::{
     error::Error,
     instruction::{InitArgs, StakePoolInstruction},
@@ -10,10 +8,10 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 #[cfg(not(target_arch = "bpf"))]
-use solana_sdk::instruction::Instruction;
+use solana_program::instruction::Instruction;
 #[cfg(target_arch = "bpf")]
-use solana_sdk::program::invoke_signed;
-use solana_sdk::{
+use solana_program::program::invoke_signed;
+use solana_program::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
     entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
     pubkey::Pubkey,
@@ -607,10 +605,6 @@ impl PrintProgramError for Error {
     }
 }
 
-// Pull in syscall stubs when building for non-BPF targets
-#[cfg(not(target_arch = "bpf"))]
-solana_sdk::program_stubs!();
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -618,7 +612,7 @@ mod tests {
     use crate::instruction::Fee;
     use crate::instruction::InitArgs;
     use core::mem::size_of;
-    use solana_sdk::{
+    use solana_program::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
         program_pack::Pack, rent::Rent, sysvar::rent,
     };

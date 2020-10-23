@@ -56,7 +56,7 @@ for program in ${programs[@]}; do
   (
     set -ex
     cd $program
-    cargo +nightly test --target-dir $here/target/cov --features=program
+    cargo +nightly test --target-dir $here/target/cov
   )
 done
 

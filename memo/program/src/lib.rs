@@ -2,10 +2,10 @@
 
 //! A simple program that accepts a string of encoded characters and verifies that it parses. Currently handles UTF-8.
 
-pub mod entrypoint;
+#[cfg(not(feature = "exclude_entrypoint"))]
+mod entrypoint;
 
-// Export current solana-sdk types for downstream users who may also be building with a different
-// solana-sdk version
-pub use solana_sdk;
+// Export current sdk types for downstream users building with a different sdk version
+pub use solana_program;
 
-solana_sdk::declare_id!("Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo");
+solana_program::declare_id!("Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo");
