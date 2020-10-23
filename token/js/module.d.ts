@@ -11,6 +11,8 @@ declare module '@solana/spl-token' {
   import BN from 'bn.js';
 
   // === client/token.js ===
+  export const TOKEN_PROGRAM_ID: PublicKey;
+
   export class u64 extends BN {
     toBuffer(): Buffer;
     static fromBuffer(buffer: Buffer): u64;
