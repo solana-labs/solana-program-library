@@ -27,7 +27,8 @@ exclude = [
 # 2. Run `cargo update`
 # 3. Use `cargo` normally
 #
-[patch.crates-io]
+
+#[patch.crates-io]
 #solana-account-decoder = {path = "PATH_TO_SOLANA/account-decoder" }
 #solana-clap-utils = {path = "PATH_TO_SOLANA/clap-utils" }
 #solana-cli-config = {path = "PATH_TO_SOLANA/cli-config" }
