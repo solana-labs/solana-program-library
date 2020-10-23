@@ -662,8 +662,12 @@ impl PrintProgramError for SwapError {
                 info!("Error: Pool token mint has a freeze authority")
             }
             SwapError::IncorrectFeeAccount => info!("Error: Pool fee token account incorrect"),
-            SwapError::ZeroTradingTokens => info!("Error: Given pool token amount results in zero withdrawal amount"),
-            SwapError::FeeCalculationFailure => info!("Error: The fee calculation failed due to overflow, underflow, or unexpected 0"),
+            SwapError::ZeroTradingTokens => {
+                info!("Error: Given pool token amount results in zero withdrawal amount")
+            }
+            SwapError::FeeCalculationFailure => info!(
+                "Error: The fee calculation failed due to overflow, underflow, or unexpected 0"
+            ),
         }
     }
 }
@@ -2949,18 +2953,11 @@ mod tests {
                 mut token_b_account,
                 _pool_key,
                 mut _pool_account,
-            ) = accounts.setup_token_accounts(
-                &user_key,
-                &withdrawer_key,
-                0,
-                0,
-                0,
-            );
+            ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, 0, 0, 0);
 
             let pool_fee_key = accounts.pool_fee_key.clone();
             let mut pool_fee_account = accounts.pool_fee_account.clone();
-            let fee_account =
-                Processor::unpack_token_account(&pool_fee_account.data).unwrap();
+            let fee_account = Processor::unpack_token_account(&pool_fee_account.data).unwrap();
             let pool_fee_amount = fee_account.amount;
 
             accounts
