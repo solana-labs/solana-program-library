@@ -45,9 +45,9 @@ pub enum SwapInstruction {
     ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
     ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
     ///   5. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
-    ///   6. '[]` Token program id
-    ///   7. `[writable]` Pool token mint, to generate trading fees
-    ///   8. `[writable]` Fee account, to receive trading fees
+    ///   6. `[writable]` Pool token mint, to generate trading fees
+    ///   7. `[writable]` Fee account, to receive trading fees
+    ///   8. '[]` Token program id
     Swap {
         /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
         amount_in: u64,
@@ -87,8 +87,8 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_b Swap Account to withdraw FROM.
     ///   6. `[writable]` token_a user Account to credit.
     ///   7. `[writable]` token_b user Account to credit.
-    ///   8. '[]` Token program id
-    ///   9. `[writable]` Fee account, to receive withdrawal fees
+    ///   8. `[writable]` Fee account, to receive withdrawal fees
+    ///   9. '[]` Token program id
     Withdraw {
         /// Amount of pool tokens to burn. User receives an output of token a
         /// and b based on the percentage of the pool tokens that are returned.
@@ -310,8 +310,8 @@ pub fn withdraw(
         AccountMeta::new(*swap_token_b_pubkey, false),
         AccountMeta::new(*destination_token_a_pubkey, false),
         AccountMeta::new(*destination_token_b_pubkey, false),
-        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new(*fee_account_pubkey, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
 
     Ok(Instruction {
@@ -349,9 +349,9 @@ pub fn swap(
         AccountMeta::new(*swap_source_pubkey, false),
         AccountMeta::new(*swap_destination_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
-        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*pool_fee_pubkey, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
 
     Ok(Instruction {

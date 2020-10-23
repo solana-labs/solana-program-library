@@ -575,9 +575,9 @@ export class TokenSwap {
       {pubkey: poolSource, isSigner: false, isWritable: true},
       {pubkey: poolDestination, isSigner: false, isWritable: true},
       {pubkey: userDestination, isSigner: false, isWritable: true},
-      {pubkey: tokenProgramId, isSigner: false, isWritable: false},
       {pubkey: poolMint, isSigner: false, isWritable: true},
       {pubkey: feeAccount, isSigner: false, isWritable: true},
+      {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
     return new TransactionInstruction({
       keys,
@@ -764,8 +764,8 @@ export class TokenSwap {
       {pubkey: fromB, isSigner: false, isWritable: true},
       {pubkey: userAccountA, isSigner: false, isWritable: true},
       {pubkey: userAccountB, isSigner: false, isWritable: true},
-      {pubkey: tokenProgramId, isSigner: false, isWritable: false},
       {pubkey: feeAccount, isSigner: false, isWritable: true},
+      {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
     return new TransactionInstruction({
       keys,

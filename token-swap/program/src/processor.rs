@@ -257,9 +257,9 @@ impl Processor {
         let swap_source_info = next_account_info(account_info_iter)?;
         let swap_destination_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
 
@@ -443,8 +443,8 @@ impl Processor {
         let token_b_info = next_account_info(account_info_iter)?;
         let dest_token_a_info = next_account_info(account_info_iter)?;
         let dest_token_b_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
@@ -933,9 +933,9 @@ mod tests {
                     &mut swap_source_account,
                     &mut swap_destination_account,
                     &mut user_destination_account,
-                    &mut Account::default(),
                     &mut self.pool_mint_account,
                     &mut self.pool_fee_account,
+                    &mut Account::default(),
                 ],
             )?;
 
@@ -1061,8 +1061,7 @@ mod tests {
             do_process_instruction(
                 withdraw(
                     &SWAP_PROGRAM_ID,
-                    &TOKEN_PROGRAM_ID,
-                    &self.swap_key,
+                    &TOKEN_PROGRAM_ID, &self.swap_key,
                     &self.authority_key,
                     &self.pool_mint_key,
                     &self.pool_fee_key,
@@ -1085,8 +1084,8 @@ mod tests {
                     &mut self.token_b_account,
                     &mut token_a_account,
                     &mut token_b_account,
-                    &mut Account::default(),
                     &mut self.pool_fee_account,
+                    &mut Account::default(),
                 ],
             )
         }
@@ -2600,8 +2599,8 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut token_a_account,
                         &mut token_b_account,
-                        &mut Account::default(),
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                     ],
                 )
             );
@@ -2653,8 +2652,8 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut token_a_account,
                         &mut token_b_account,
-                        &mut Account::default(),
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                     ],
                 )
             );
@@ -3227,9 +3226,9 @@ mod tests {
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut token_b_account,
-                        &mut Account::default(),
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                     ],
                 ),
             );
@@ -3296,9 +3295,9 @@ mod tests {
                         &mut token_a_account,
                         &mut token_b_account.clone(),
                         &mut token_b_account,
-                        &mut Account::default(),
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                     ],
                 ),
             );
@@ -3459,9 +3458,9 @@ mod tests {
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut token_b_account,
-                        &mut Account::default(),
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                     ],
                 ),
             );
