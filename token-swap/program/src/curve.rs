@@ -541,15 +541,15 @@ mod tests {
     #[test]
     fn constant_product_swap_calculation_trade_fee() {
         // calculation on https://github.com/solana-labs/solana-program-library/issues/341
-        let swap_source_amount: u128 = 1000;
-        let swap_destination_amount: u128 = 50000;
-        let trade_fee_numerator: u128 = 1;
-        let trade_fee_denominator: u128 = 100;
-        let owner_trade_fee_numerator: u128 = 0;
-        let owner_trade_fee_denominator: u128 = 0;
-        let owner_withdraw_fee_numerator: u128 = 0;
-        let owner_withdraw_fee_denominator: u128 = 0;
-        let source_amount: u128 = 100;
+        let swap_source_amount = 1000;
+        let swap_destination_amount = 50000;
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 100;
+        let owner_trade_fee_numerator = 0;
+        let owner_trade_fee_denominator = 0;
+        let owner_withdraw_fee_numerator = 0;
+        let owner_withdraw_fee_denominator = 0;
+        let source_amount = 100;
         let curve = ConstantProductCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -571,14 +571,14 @@ mod tests {
     #[test]
     fn constant_product_swap_calculation_owner_fee() {
         // calculation on https://github.com/solana-labs/solana-program-library/issues/341
-        let swap_source_amount: u128 = 1000;
-        let swap_destination_amount: u128 = 50000;
-        let trade_fee_numerator: u128 = 0;
-        let trade_fee_denominator: u128 = 0;
-        let owner_trade_fee_numerator: u128 = 1;
-        let owner_trade_fee_denominator: u128 = 100;
-        let owner_withdraw_fee_numerator: u128 = 0;
-        let owner_withdraw_fee_denominator: u128 = 0;
+        let swap_source_amount = 1000;
+        let swap_destination_amount = 50000;
+        let trade_fee_numerator = 0;
+        let trade_fee_denominator = 0;
+        let owner_trade_fee_numerator = 1;
+        let owner_trade_fee_denominator = 100;
+        let owner_withdraw_fee_numerator = 0;
+        let owner_withdraw_fee_denominator = 0;
         let source_amount: u128 = 100;
         let curve = ConstantProductCurve {
             trade_fee_numerator,
@@ -614,14 +614,14 @@ mod tests {
 
     #[test]
     fn flat_swap_calculation() {
-        let swap_source_amount: u128 = 1000;
-        let swap_destination_amount: u128 = 50000;
-        let trade_fee_numerator: u128 = 1;
-        let trade_fee_denominator: u128 = 100;
-        let owner_trade_fee_numerator: u128 = 2;
-        let owner_trade_fee_denominator: u128 = 100;
-        let owner_withdraw_fee_numerator: u128 = 2;
-        let owner_withdraw_fee_denominator: u128 = 100;
+        let swap_source_amount = 1000;
+        let swap_destination_amount = 50000;
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 100;
+        let owner_trade_fee_numerator = 2;
+        let owner_trade_fee_denominator = 100;
+        let owner_withdraw_fee_numerator = 2;
+        let owner_withdraw_fee_denominator = 100;
         let source_amount: u128 = 100;
         let curve = FlatCurve {
             trade_fee_numerator,
