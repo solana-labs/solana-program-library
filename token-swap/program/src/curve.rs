@@ -152,7 +152,17 @@ pub trait CurveCalculator: Debug + DynPack {
         Some(0)
     }
 
+    /// Calculate the trading fee in trading tokens
+    /// Default implementation assumes no fee
+    fn trading_fee(&self, _trading_tokens: u64) -> Option<u64> {
+        Some(0)
+    }
+
     /// Calculate the pool token equivalent of the owner fee on trade
+    /// See the math at: https://balancer.finance/whitepaper/#single-asset-deposit
+    /// For the moment, we do an approximation for the square root.  For numbers
+    /// just above 1, simply dividing by 2 brings you very close to the correct
+    /// value.
     fn owner_fee_to_pool_tokens(
         &self,
         owner_fee: u64,
@@ -160,6 +170,9 @@ pub trait CurveCalculator: Debug + DynPack {
         pool_supply: u64,
         tokens_in_pool: u64,
     ) -> Option<u64> {
+        // Get the trading fee incurred if the owner fee is swapped for the other side
+        let trade_fee = self.trading_fee(owner_fee)?;
+        let owner_fee = owner_fee.checked_sub(trade_fee)?;
         pool_supply
             .checked_mul(owner_fee)?
             .checked_div(trading_token_amount)?
@@ -327,11 +340,7 @@ impl CurveCalculator for ConstantProductCurve {
         swap_destination_amount: u64,
     ) -> Option<SwapResult> {
         // debit the fee to calculate the amount swapped
-        let trade_fee = calculate_fee(
-            source_amount,
-            self.trade_fee_numerator,
-            self.trade_fee_denominator,
-        )?;
+        let trade_fee = self.trading_fee(source_amount)?;
         let owner_fee = calculate_fee(
             source_amount,
             self.owner_trade_fee_numerator,
@@ -364,6 +373,15 @@ impl CurveCalculator for ConstantProductCurve {
             pool_tokens,
             self.owner_withdraw_fee_numerator,
             self.owner_withdraw_fee_denominator,
+        )
+    }
+
+    /// Calculate the trading fee in trading tokens
+    fn trading_fee(&self, trading_tokens: u64) -> Option<u64> {
+        calculate_fee(
+            trading_tokens,
+            self.trade_fee_numerator,
+            self.trade_fee_denominator,
         )
     }
 }

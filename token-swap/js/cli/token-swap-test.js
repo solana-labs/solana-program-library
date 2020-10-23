@@ -44,7 +44,7 @@ let currentFeeAmount = 0;
 // Amount passed to swap instruction
 const SWAP_AMOUNT_IN = 100;
 const SWAP_AMOUNT_OUT = 53;
-const SWAP_FEE = 9089534;
+const SWAP_FEE = 6817150;
 // Pool token amount minted on init
 const DEFAULT_POOL_TOKEN_AMOUNT = 1000000000;
 // Pool token amount to withdraw / deposit
