@@ -46,8 +46,8 @@ pub enum SwapError {
     /// The output token is invalid for swap.
     #[error("InvalidOutput")]
     InvalidOutput,
-    /// The calculation failed.
-    #[error("CalculationFailure")]
+    /// General calculation failure due to overflow or underflow
+    #[error("General calculation failure due to overflow or underflow")]
     CalculationFailure,
     /// Invalid instruction number passed in.
     #[error("Invalid instruction")]
@@ -64,6 +64,15 @@ pub enum SwapError {
     /// The pool token mint has a freeze authority.
     #[error("Pool token mint has a freeze authority")]
     InvalidFreezeAuthority,
+    /// The pool fee token account is incorrect
+    #[error("Pool fee token account incorrect")]
+    IncorrectFeeAccount,
+    /// Given pool token amount results in zero trading tokens
+    #[error("Given pool token amount results in zero trading tokens")]
+    ZeroTradingTokens,
+    /// The fee calculation failed due to overflow, underflow, or unexpected 0
+    #[error("Fee calculation failed due to overflow, underflow, or unexpected 0")]
+    FeeCalculationFailure,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {
