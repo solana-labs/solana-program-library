@@ -72,6 +72,7 @@ solana airdrop 10
 
 ```bash
 cargo run --example tps
+```
 
 You should see something like:
 
