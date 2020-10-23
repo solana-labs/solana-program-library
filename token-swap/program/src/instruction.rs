@@ -64,9 +64,9 @@ pub enum SwapInstruction {
     ///   3. `[writable]` token_b $authority can transfer amount,
     ///   4. `[writable]` token_a Base Account to deposit into.
     ///   5. `[writable]` token_b Base Account to deposit into.
-    ///   7. `[writable]` Pool MINT account, $authority is the owner.
-    ///   8. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   6. '[]` Token program id
+    ///   6. `[writable]` Pool MINT account, $authority is the owner.
+    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   8. '[]` Token program id
     Deposit {
         /// Pool token amount to transfer. token_a and token_b amount are set by
         /// the current exchange rate and size of the pool
