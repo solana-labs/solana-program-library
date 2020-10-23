@@ -14,7 +14,7 @@ console = "0.13.0"
 serde_json = "1.0.59"
 solana-account-decoder = { version = "=1.4.1" }
 solana-clap-utils = { version = "=1.4.1"}
-solana-cli-config = { version = "=1.4.1" }
+solana-cli-config = { version = "=1.4.2" }
 solana-cli-output = { version = "=1.4.1" }
 solana-client = { version = "=1.4.1" }
 solana-logger = { version = "=1.4.2" }
