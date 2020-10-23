@@ -179,10 +179,10 @@ pub fn initialize(
     let data = init_data.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, true),
-        AccountMeta::new(*owner, false),
-        AccountMeta::new(*pool_mint, false),
-        AccountMeta::new(*owner_pool_account, false),
-        AccountMeta::new(*token_program_id, false),
+        AccountMeta::new_readonly(*owner, false),
+        AccountMeta::new_readonly(*pool_mint, false),
+        AccountMeta::new_readonly(*owner_pool_account, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -207,13 +207,13 @@ pub fn deposit(
     let data = args.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*stake_pool_deposit, false),
-        AccountMeta::new(*stake_pool_withdraw, false),
+        AccountMeta::new_readonly(*stake_pool_deposit, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*stake_to_join, false),
         AccountMeta::new(*pool_tokens_to, false),
         AccountMeta::new(*pool_fee_to, false),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new(*token_program_id, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -239,13 +239,13 @@ pub fn withdraw(
     let data = args.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*stake_pool_withdraw, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*stake_to_split, false),
         AccountMeta::new(*stake_to_receive, false),
-        AccountMeta::new(*user_withdrawer, false),
+        AccountMeta::new_readonly(*user_withdrawer, false),
         AccountMeta::new(*burn_from, true),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new(*token_program_id, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -270,12 +270,12 @@ pub fn claim(
     let data = args.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*stake_pool_withdraw, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*stake_to_claim, false),
-        AccountMeta::new(*user_withdrawer, false),
+        AccountMeta::new_readonly(*user_withdrawer, false),
         AccountMeta::new(*burn_from, true),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new(*token_program_id, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -297,10 +297,10 @@ pub fn set_staking_authority(
     let data = args.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*stake_pool_owner, true),
-        AccountMeta::new(*stake_pool_withdraw, false),
+        AccountMeta::new_readonly(*stake_pool_owner, true),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*stake_account_to_update, false),
-        AccountMeta::new(*stake_account_new_authority, false),
+        AccountMeta::new_readonly(*stake_account_new_authority, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -321,9 +321,9 @@ pub fn set_owner(
     let data = args.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*stake_pool_owner, true),
-        AccountMeta::new(*stake_pool_new_owner, false),
-        AccountMeta::new(*stake_pool_new_fee_receiver, false),
+        AccountMeta::new_readonly(*stake_pool_owner, true),
+        AccountMeta::new_readonly(*stake_pool_new_owner, false),
+        AccountMeta::new_readonly(*stake_pool_new_fee_receiver, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
