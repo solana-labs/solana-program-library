@@ -8,6 +8,7 @@ use solana_account_decoder::{
     UiAccountData,
 };
 use solana_clap_utils::{
+    fee_payer::fee_payer_arg,
     input_parsers::{pubkey_of_signer, signer_of},
     input_validators::{is_amount, is_url, is_valid_pubkey, is_valid_signer},
     keypair::DefaultSigner,
@@ -611,19 +612,7 @@ fn main() {
                      Defaults to the client keypair.",
                 ),
         )
-        .arg(
-            Arg::with_name("fee_payer")
-                .long("fee-payer")
-                .value_name("KEYPAIR")
-                .validator(is_valid_signer)
-                .takes_value(true)
-                .global(true)
-                .help(
-                    "Specify the fee-payer account. \
-                     This may be a keypair file, the ASK keyword. \
-                     Defaults to the client keypair.",
-                ),
-        )
+        .arg(fee_payer_arg().global(true))
         .subcommand(SubCommand::with_name("create-token").about("Create a new token")
                 .arg(
                     Arg::with_name("decimals")
