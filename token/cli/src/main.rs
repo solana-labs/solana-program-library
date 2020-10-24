@@ -9,7 +9,7 @@ use solana_account_decoder::{
 };
 use solana_clap_utils::{
     fee_payer::fee_payer_arg,
-    input_parsers::{pubkey_of_signer, signer_of, value_of},
+    input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, signer_of, value_of},
     input_validators::{is_amount, is_parsable, is_url, is_valid_pubkey, is_valid_signer},
     keypair::DefaultSigner,
     nonce::*,
@@ -36,7 +36,7 @@ use spl_token::{
     self,
     instruction::*,
     native_mint,
-    state::{Account, Mint},
+    state::{Account, Mint, Multisig},
 };
 use std::{process::exit, str::FromStr};
 
@@ -106,6 +106,17 @@ pub fn delegate_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .requires(SIGN_ONLY_ARG.name)
         .requires(BLOCKHASH_ARG.name)
         .help(DELEGATE_ADDRESS_ARG.help)
+}
+
+fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
+    let v = u8::from_str(&string).map_err(|e| e.to_string())? as usize;
+    if v < MIN_SIGNERS {
+        Err(format!("must be at least {}", MIN_SIGNERS))
+    } else if v > MAX_SIGNERS {
+        Err(format!("must be at most {}", MAX_SIGNERS))
+    } else {
+        Ok(())
+    }
 }
 
 struct Config {
@@ -220,6 +231,45 @@ fn command_create_account(config: &Config, token: Pubkey, account: Pubkey) -> Co
             &spl_token::id(),
         ),
         initialize_account(&spl_token::id(), &account, &token, &config.owner)?,
+    ];
+    Ok(Some((minimum_balance_for_rent_exemption, instructions)))
+}
+
+fn command_create_multisig(
+    config: &Config,
+    multisig: Pubkey,
+    minimum_signers: u8,
+    multisig_members: Vec<Pubkey>,
+) -> CommandResult {
+    println!(
+        "Creating {}/{} multisig {}",
+        minimum_signers,
+        multisig_members.len(),
+        multisig
+    );
+
+    let minimum_balance_for_rent_exemption = if !config.sign_only {
+        config
+            .rpc_client
+            .get_minimum_balance_for_rent_exemption(Multisig::LEN)?
+    } else {
+        0
+    };
+
+    let instructions = vec![
+        system_instruction::create_account(
+            &config.fee_payer,
+            &multisig,
+            minimum_balance_for_rent_exemption,
+            Multisig::LEN as u64,
+            &spl_token::id(),
+        ),
+        initialize_multisig(
+            &spl_token::id(),
+            &multisig,
+            multisig_members.iter().collect::<Vec<_>>().as_slice(),
+            minimum_signers,
+        )?,
     ];
     Ok(Some((minimum_balance_for_rent_exemption, instructions)))
 }
@@ -808,6 +858,50 @@ fn main() {
                 .offline_args(),
         )
         .subcommand(
+            SubCommand::with_name("create-multisig")
+                .about("Create a new account describing an M:N multisignature")
+                .arg(
+                    Arg::with_name("minimum_signers")
+                        .value_name("MINIMUM_SIGNERS")
+                        .validator(is_multisig_minimum_signers)
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help(&format!("The minimum number of signers required \
+                            to allow the operation. [{} <= M <= N]",
+                            MIN_SIGNERS,
+                        )),
+                )
+                .arg(
+                    Arg::with_name("multisig_member")
+                        .value_name("MULTISIG_MEMBER_PUBKEY")
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .min_values(MIN_SIGNERS as u64)
+                        .max_values(MAX_SIGNERS as u64)
+                        .help(&format!("The public keys for each of the N \
+                            signing members of this account. [{} <= N <= {}]",
+                            MIN_SIGNERS, MAX_SIGNERS,
+                        )),
+                )
+                .arg(
+                    Arg::with_name("address_keypair")
+                        .long("address-keypair")
+                        .value_name("ADDRESS_KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the address keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             [default: randomly generated keypair]"
+                        ),
+                )
+                .nonce_args(true)
+                .offline_args(),
+        )
+        .subcommand(
             SubCommand::with_name("authorize")
                 .about("Authorize a new signing keypair to a token or token account")
                 .arg(
@@ -1250,6 +1344,38 @@ fn main() {
             bulk_signers.push(signer);
 
             command_create_account(&config, token, account)
+        }
+        ("create-multisig", Some(arg_matches)) => {
+            let minimum_signers = value_of::<u8>(&arg_matches, "minimum_signers").unwrap();
+            let multisig_members =
+                pubkeys_of_multiple_signers(&arg_matches, "multisig_member", &mut wallet_manager)
+                    .unwrap_or_else(|e| {
+                        eprintln!("error: {}", e);
+                        exit(1);
+                    })
+                    .unwrap();
+            if minimum_signers as usize > multisig_members.len() {
+                eprintln!(
+                    "error: MINIMUM_SIGNERS cannot be greater than the number \
+                          of MULTISIG_MEMBERs passed"
+                );
+                exit(1);
+            }
+
+            let (signer, account) = if arg_matches.is_present("address_keypair") {
+                signer_of(&arg_matches, "address_keypair", &mut wallet_manager).unwrap_or_else(
+                    |e| {
+                        eprintln!("error: {}", e);
+                        exit(1);
+                    },
+                )
+            } else {
+                new_throwaway_signer()
+            };
+            let account = account.unwrap();
+            bulk_signers.push(signer);
+
+            command_create_multisig(&config, account, minimum_signers, multisig_members)
         }
         ("authorize", Some(arg_matches)) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
