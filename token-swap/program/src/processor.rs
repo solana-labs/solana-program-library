@@ -1,31 +1,18 @@
 //! Program state processor
 
-//#![cfg(feature = "program")]
-
 use crate::{curve::SwapCurve, error::SwapError, instruction::SwapInstruction, state::SwapInfo};
 use num_traits::FromPrimitive;
-#[cfg(not(target_arch = "bpf"))]
-use solana_program::instruction::Instruction;
-#[cfg(target_arch = "bpf")]
-use solana_program::program::invoke_signed;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     info,
-    program_error::PrintProgramError,
-    program_error::ProgramError,
+    program::invoke_signed,
+    program_error::{PrintProgramError, ProgramError},
     program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
 };
-
-// Test program id for the swap program.
-#[cfg(not(target_arch = "bpf"))]
-const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
-// Test program id for the token program.
-#[cfg(not(target_arch = "bpf"))]
-const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
 
 /// Hardcode the number of token types in a pool, used to calculate the
 /// equivalent pool tokens for the owner trading fee.
@@ -582,42 +569,6 @@ impl Processor {
     }
 }
 
-/// Routes invokes to the token program, used for testing.
-#[cfg(not(target_arch = "bpf"))]
-pub fn invoke_signed<'a>(
-    instruction: &Instruction,
-    account_infos: &[AccountInfo<'a>],
-    signers_seeds: &[&[&[u8]]],
-) -> ProgramResult {
-    let mut new_account_infos = vec![];
-
-    // mimic check for token program in accounts
-    if !account_infos.iter().any(|x| *x.key == TOKEN_PROGRAM_ID) {
-        return Err(ProgramError::InvalidAccountData);
-    }
-
-    for meta in instruction.accounts.iter() {
-        for account_info in account_infos.iter() {
-            if meta.pubkey == *account_info.key {
-                let mut new_account_info = account_info.clone();
-                for seeds in signers_seeds.iter() {
-                    let signer = Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
-                    if *account_info.key == signer {
-                        new_account_info.is_signer = true;
-                    }
-                }
-                new_account_infos.push(new_account_info);
-            }
-        }
-    }
-
-    spl_token::processor::Processor::process(
-        &instruction.program_id,
-        &new_account_infos,
-        &instruction.data,
-    )
-}
-
 impl PrintProgramError for SwapError {
     fn print<E>(&self)
     where
@@ -683,7 +634,7 @@ mod tests {
     };
     use solana_program::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
-        rent::Rent, sysvar::rent,
+        program_stubs, rent::Rent, sysvar::rent,
     };
     use spl_token::{
         error::TokenError,
@@ -691,9 +642,62 @@ mod tests {
             approve, initialize_account, initialize_mint, mint_to, revoke, set_authority,
             AuthorityType,
         },
-        processor::Processor as SplProcessor,
-        state::{Account as SplAccount, Mint as SplMint},
     };
+
+    // Test program id for the swap program.
+    const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
+    // Test program id for the token program.
+    const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
+
+    struct TestSyscallStubs {}
+    impl program_stubs::SyscallStubs for TestSyscallStubs {
+        fn sol_invoke_signed(
+            &self,
+            instruction: &Instruction,
+            account_infos: &[AccountInfo],
+            signers_seeds: &[&[&[u8]]],
+        ) -> ProgramResult {
+            info!("TestSyscallStubs::sol_invoke_signed()");
+
+            let mut new_account_infos = vec![];
+
+            // mimic check for token program in accounts
+            if !account_infos.iter().any(|x| *x.key == TOKEN_PROGRAM_ID) {
+                return Err(ProgramError::InvalidAccountData);
+            }
+
+            for meta in instruction.accounts.iter() {
+                for account_info in account_infos.iter() {
+                    if meta.pubkey == *account_info.key {
+                        let mut new_account_info = account_info.clone();
+                        for seeds in signers_seeds.iter() {
+                            let signer =
+                                Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
+                            if *account_info.key == signer {
+                                new_account_info.is_signer = true;
+                            }
+                        }
+                        new_account_infos.push(new_account_info);
+                    }
+                }
+            }
+
+            spl_token::processor::Processor::process(
+                &instruction.program_id,
+                &new_account_infos,
+                &instruction.data,
+            )
+        }
+    }
+
+    fn test_syscall_stubs() {
+        use std::sync::Once;
+        static ONCE: Once = Once::new();
+
+        ONCE.call_once(|| {
+            program_stubs::set_syscall_stubs(Box::new(TestSyscallStubs {}));
+        });
+    }
 
     struct SwapAccountInfo {
         nonce: u8,
@@ -1103,17 +1107,19 @@ mod tests {
     }
 
     fn mint_minimum_balance() -> u64 {
-        Rent::default().minimum_balance(SplMint::get_packed_len())
+        Rent::default().minimum_balance(spl_token::state::Mint::get_packed_len())
     }
 
     fn account_minimum_balance() -> u64 {
-        Rent::default().minimum_balance(SplAccount::get_packed_len())
+        Rent::default().minimum_balance(spl_token::state::Account::get_packed_len())
     }
 
     fn do_process_instruction(
         instruction: Instruction,
         accounts: Vec<&mut Account>,
     ) -> ProgramResult {
+        test_syscall_stubs();
+
         // approximate the logic in the actual runtime which runs the instruction
         // and only updates accounts if the instruction is successful
         let mut account_clones = accounts.iter().map(|x| (*x).clone()).collect::<Vec<_>>();
@@ -1127,7 +1133,11 @@ mod tests {
         let res = if instruction.program_id == SWAP_PROGRAM_ID {
             Processor::process(&instruction.program_id, &account_infos, &instruction.data)
         } else {
-            SplProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
+            spl_token::processor::Processor::process(
+                &instruction.program_id,
+                &account_infos,
+                &instruction.data,
+            )
         };
 
         if res.is_ok() {
@@ -1162,7 +1172,7 @@ mod tests {
         let account_key = Pubkey::new_unique();
         let mut account_account = Account::new(
             account_minimum_balance(),
-            SplAccount::get_packed_len(),
+            spl_token::state::Account::get_packed_len(),
             &program_id,
         );
         let mut mint_authority_account = Account::default();
@@ -1210,7 +1220,7 @@ mod tests {
         let mint_key = Pubkey::new_unique();
         let mut mint_account = Account::new(
             mint_minimum_balance(),
-            SplMint::get_packed_len(),
+            spl_token::state::Mint::get_packed_len(),
             &program_id,
         );
         let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
@@ -1226,6 +1236,7 @@ mod tests {
 
     #[test]
     fn test_token_program_id_error() {
+        test_syscall_stubs();
         let swap_key = Pubkey::new_unique();
         let mut mint = (Pubkey::new_unique(), Account::default());
         let mut destination = (Pubkey::new_unique(), Account::default());
