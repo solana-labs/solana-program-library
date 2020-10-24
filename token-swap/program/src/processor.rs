@@ -13,6 +13,7 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
 };
+use std::convert::TryInto;
 
 /// Hardcode the number of token types in a pool, used to calculate the
 /// equivalent pool tokens for the owner trading fee.
@@ -378,19 +379,21 @@ impl Processor {
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
+        let pool_token_amount = to_u128(pool_token_amount)?;
+        let pool_token_supply = to_u128(pool_token.supply)?;
 
         let calculator = token_swap.swap_curve.calculator;
 
         let a_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_a.amount)
+            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, to_u128(token_a.amount)?)
             .ok_or(SwapError::ZeroTradingTokens)?;
-        if a_amount > maximum_token_a_amount {
+        if a_amount > to_u128(maximum_token_a_amount)? {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_b.amount)
+            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint_supply, to_u128(token_b.amount)?)
             .ok_or(SwapError::ZeroTradingTokens)?;
-        if b_amount > maximum_token_b_amount {
+        if b_amount > to_u128(maximum_token_b_amount)? {
             return Err(SwapError::ExceededSlippage.into());
         }
 
@@ -401,7 +404,7 @@ impl Processor {
             token_a_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            a_amount,
+            to_u64(a_amount)?,
         )?;
         Self::token_transfer(
             swap_info.key,
@@ -410,7 +413,7 @@ impl Processor {
             token_b_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            b_amount,
+            to_u64(b_amount)?,
         )?;
         Self::token_mint_to(
             swap_info.key,
@@ -419,7 +422,7 @@ impl Processor {
             dest_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            pool_token_amount,
+            to_u64(pool_token_amount)?,
         )?;
 
         Ok(())
@@ -474,27 +477,28 @@ impl Processor {
 
         let calculator = token_swap.swap_curve.calculator;
 
-        let withdraw_fee = if *pool_fee_account_info.key == *source_info.key {
+        let withdraw_fee: u128 = if *pool_fee_account_info.key == *source_info.key {
             // withdrawing from the fee account, don't assess withdraw fee
             0
         } else {
             calculator
-                .owner_withdraw_fee(pool_token_amount)
+                .owner_withdraw_fee(to_u128(pool_token_amount)?)
                 .ok_or(SwapError::FeeCalculationFailure)?
         };
-        let pool_token_amount = pool_token_amount
+        let pool_token_amount = to_u128(pool_token_amount)?
             .checked_sub(withdraw_fee)
             .ok_or(SwapError::CalculationFailure)?;
 
         let a_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_a.amount)
+            .pool_tokens_to_trading_tokens(pool_token_amount, to_u128(pool_mint.supply)?, to_u128(token_a.amount)?)
             .ok_or(SwapError::ZeroTradingTokens)?;
-        if a_amount < minimum_token_a_amount {
+        if a_amount < to_u128(minimum_token_a_amount)? {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_b.amount)
+            .pool_tokens_to_trading_tokens(pool_token_amount, to_u128(pool_mint.supply)?, to_u128(token_b.amount)?)
             .ok_or(SwapError::ZeroTradingTokens)?;
+        let b_amount = to_u64(b_amount)?;
         if b_amount < minimum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
@@ -506,7 +510,7 @@ impl Processor {
             dest_token_a_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            a_amount,
+            to_u64(a_amount)?,
         )?;
         Self::token_transfer(
             swap_info.key,
@@ -525,7 +529,7 @@ impl Processor {
                 pool_fee_account_info.clone(),
                 authority_info.clone(),
                 token_swap.nonce,
-                withdraw_fee,
+                to_u64(withdraw_fee)?,
             )?;
         }
         Self::token_burn(
@@ -535,7 +539,7 @@ impl Processor {
             pool_mint_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            pool_token_amount,
+            to_u64(pool_token_amount)?,
         )?;
         Ok(())
     }
@@ -639,6 +643,14 @@ impl PrintProgramError for SwapError {
             ),
         }
     }
+}
+
+fn to_u128(val: u64) -> Result<u128, SwapError> {
+    val.try_into().map_err(|_| SwapError::CalculationFailure)
+}
+
+fn to_u64(val: u128) -> Result<u64, SwapError> {
+    val.try_into().map_err(|_| SwapError::CalculationFailure)
 }
 
 #[cfg(test)]
