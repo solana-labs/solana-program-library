@@ -15,6 +15,13 @@ use solana_program::{
 };
 use std::convert::TryInto;
 
+// Test program id for the swap program.
+#[cfg(not(target_arch = "bpf"))]
+const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
+// Test program id for the token program.
+#[cfg(not(target_arch = "bpf"))]
+const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
+
 /// Hardcode the number of token types in a pool, used to calculate the
 /// equivalent pool tokens for the owner trading fee.
 const TOKENS_IN_POOL: u64 = 2;
@@ -287,7 +294,11 @@ impl Processor {
         let result = token_swap
             .swap_curve
             .calculator
-            .swap(to_u128(amount_in)?, to_u128(source_account.amount)?, to_u128(dest_account.amount)?)
+            .swap(
+                to_u128(amount_in)?,
+                to_u128(source_account.amount)?,
+                to_u128(dest_account.amount)?,
+            )
             .ok_or(SwapError::ZeroTradingTokens)?;
         if result.amount_swapped < to_u128(minimum_amount_out)? {
             return Err(SwapError::ExceededSlippage.into());
@@ -385,13 +396,21 @@ impl Processor {
         let calculator = token_swap.swap_curve.calculator;
 
         let a_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint_supply, to_u128(token_a.amount)?)
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                pool_mint_supply,
+                to_u128(token_a.amount)?,
+            )
             .ok_or(SwapError::ZeroTradingTokens)?;
         if a_amount > to_u128(maximum_token_a_amount)? {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint_supply, to_u128(token_b.amount)?)
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                pool_mint_supply,
+                to_u128(token_b.amount)?,
+            )
             .ok_or(SwapError::ZeroTradingTokens)?;
         if b_amount > to_u128(maximum_token_b_amount)? {
             return Err(SwapError::ExceededSlippage.into());
@@ -490,13 +509,21 @@ impl Processor {
             .ok_or(SwapError::CalculationFailure)?;
 
         let a_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, to_u128(pool_mint.supply)?, to_u128(token_a.amount)?)
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                to_u128(pool_mint.supply)?,
+                to_u128(token_a.amount)?,
+            )
             .ok_or(SwapError::ZeroTradingTokens)?;
         if a_amount < to_u128(minimum_token_a_amount)? {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, to_u128(pool_mint.supply)?, to_u128(token_b.amount)?)
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                to_u128(pool_mint.supply)?,
+                to_u128(token_b.amount)?,
+            )
             .ok_or(SwapError::ZeroTradingTokens)?;
         let b_amount = to_u64(b_amount)?;
         if b_amount < minimum_token_b_amount {
@@ -641,16 +668,17 @@ impl PrintProgramError for SwapError {
             SwapError::FeeCalculationFailure => info!(
                 "Error: The fee calculation failed due to overflow, underflow, or unexpected 0"
             ),
+            SwapError::ConversionFailure => info!("Error: Conversion to or from u64 failed."),
         }
     }
 }
 
 fn to_u128(val: u64) -> Result<u128, SwapError> {
-    val.try_into().map_err(|_| SwapError::CalculationFailure)
+    val.try_into().map_err(|_| SwapError::ConversionFailure)
 }
 
 fn to_u64(val: u128) -> Result<u64, SwapError> {
-    val.try_into().map_err(|_| SwapError::CalculationFailure)
+    val.try_into().map_err(|_| SwapError::ConversionFailure)
 }
 
 #[cfg(test)]
