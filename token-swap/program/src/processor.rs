@@ -3170,8 +3170,8 @@ mod tests {
     fn check_valid_swap_curve(curve_type: CurveType, calculator: Box<dyn CurveCalculator>) {
         let user_key = Pubkey::new_unique();
         let swapper_key = Pubkey::new_unique();
-        let token_a_amount = 1000;
-        let token_b_amount = 5000;
+        let token_a_amount = 10_000_000_000u64;
+        let token_b_amount = 50_000_000_000u64;
 
         let swap_curve = SwapCurve {
             curve_type,
