@@ -47,7 +47,6 @@ _ cargo run --manifest-path=utils/test-client/Cargo.toml
 #  _ git diff --exit-code token-swap/program/inc/token-swap.h
 #  _ cc token-swap/program/inc/token-swap.h -o target/token-swap.gch
 
-
 # For all BPF programs
 for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
   program_dir=$(dirname "$Xargo_toml")
