@@ -22,6 +22,7 @@ node --version
 if [[ -n $SOLANA_VERSION ]]; then
   sh -c "$(curl -sSfL https://release.solana.com/$SOLANA_VERSION/install)"
 fi
-export PATH="~/.local/share/solana/install/active_release/bin:$PATH"
+export PATH=/home/travis/.local/share/solana/install/active_release/bin:"$PATH"
+
 solana --version
 cargo build-bpf --version
