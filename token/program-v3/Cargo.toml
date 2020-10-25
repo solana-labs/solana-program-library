@@ -20,8 +20,5 @@ thiserror = "1.0"
 arrayref = "0.3.6"
 num_enum = "0.5.1"
 
-[dev-dependencies]
-rand = { version = "0.7.0"}
-
 [lib]
 crate-type = ["cdylib", "lib"]
