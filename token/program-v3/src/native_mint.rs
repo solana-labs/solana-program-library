@@ -4,12 +4,12 @@
 pub const DECIMALS: u8 = 9;
 
 // The Mint for native SOL Token accounts
-solana_sdk::declare_id!("So11111111111111111111111111111111111111113");
+solana_program::declare_id!("So11111111111111111111111111111111111111113");
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use solana_sdk::native_token::*;
+    use solana_program::native_token::*;
 
     #[test]
     fn test_decimals() {

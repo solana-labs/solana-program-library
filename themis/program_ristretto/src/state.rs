@@ -9,7 +9,7 @@ use elgamal_ristretto::{
     ciphertext::Ciphertext, multiply::ristretto_mul, private::SecretKey, public::PublicKey,
 };
 use rand::thread_rng;
-use solana_sdk::program_error::ProgramError;
+use solana_program::program_error::ProgramError;
 
 type Points = (RistrettoPoint, RistrettoPoint);
 

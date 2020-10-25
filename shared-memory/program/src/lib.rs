@@ -1,5 +1,4 @@
 #![deny(missing_docs)]
-
 //! Shared memory program for the Solana blockchain.
 //
 // Useful for returning data from cross-program invoked programs to the invoker.
@@ -7,11 +6,11 @@
 // This program is highly optimized for its particular use case and does not
 // implement the typical `process_instruction` entrypoint.
 
-extern crate solana_sdk;
+extern crate solana_program;
 use arrayref::{array_refs, mut_array_refs};
-use solana_sdk::{
-    entrypoint::MAX_PERMITTED_DATA_INCREASE, entrypoint::SUCCESS, program_error::ProgramError,
-    pubkey::Pubkey,
+use solana_program::{
+    declare_id, entrypoint::MAX_PERMITTED_DATA_INCREASE, entrypoint::SUCCESS,
+    program_error::ProgramError, pubkey::Pubkey,
 };
 use std::{
     mem::{align_of, size_of},
@@ -19,7 +18,7 @@ use std::{
     slice::{from_raw_parts, from_raw_parts_mut},
 };
 
-solana_sdk::declare_id!("shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL");
+declare_id!("shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL");
 
 /// A more efficient `copy_from_slice` implementation.
 fn fast_copy(mut src: &[u8], mut dst: &mut [u8]) {

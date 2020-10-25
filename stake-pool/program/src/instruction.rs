@@ -2,10 +2,10 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use solana_sdk::instruction::AccountMeta;
-use solana_sdk::instruction::Instruction;
-use solana_sdk::program_error::ProgramError;
-use solana_sdk::pubkey::Pubkey;
+use solana_program::instruction::AccountMeta;
+use solana_program::instruction::Instruction;
+use solana_program::program_error::ProgramError;
+use solana_program::pubkey::Pubkey;
 use std::mem::size_of;
 
 /// Fee rate as a ratio

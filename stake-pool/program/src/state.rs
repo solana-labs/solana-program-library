@@ -2,7 +2,7 @@
 
 use crate::error::Error;
 use crate::instruction::{unpack, Fee};
-use solana_sdk::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
+use solana_program::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
 use std::mem::size_of;
 
 /// Initialized program details.

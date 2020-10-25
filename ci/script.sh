@@ -34,13 +34,10 @@ export RUSTFLAGS="-D warnings"
 export RUSTBACKTRACE=1
 
 _ cargo fmt --all -- --check
-_ cargo +nightly clippy --workspace --all-targets -- --deny=warnings
-
-
-# Build client libraries
+_ cargo +nightly clippy -Zunstable-options --workspace --all-targets -- --deny=warnings
 _ cargo build
+_ cargo test
 _ cargo run --manifest-path=utils/test-client/Cargo.toml
-
 
 #  # Check generated C headers
 #  _ cargo run --manifest-path=utils/cgen/Cargo.toml
@@ -53,17 +50,7 @@ _ cargo run --manifest-path=utils/test-client/Cargo.toml
 # For all BPF programs
 for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
   program_dir=$(dirname "$Xargo_toml")
-  (
-    # Run clippy for all program crates, with the `program` feature enabled
-    cd $program_dir
-    _ cargo +nightly clippy --features=program -- --deny=warnings
-  )
-
-  _ ./do.sh build "$program_dir"
-
-  _ ./do.sh test "$program_dir"
-
-  _ ./do.sh dump "$program_dir"
+  _ cargo build-bpf --manifest-path="$program_dir"/Cargo.toml --dump
 done
 
 # Run client tests

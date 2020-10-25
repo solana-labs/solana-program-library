@@ -75,10 +75,10 @@ fn run_program(
 
 #[test]
 fn assert_instruction_count() {
-    let program_id = Pubkey::new_rand();
+    let program_id = Pubkey::new_unique();
 
     // Create new policies
-    let policies_key = Pubkey::new_rand();
+    let policies_key = Pubkey::new_unique();
     let scalars = vec![1u64.into(), 2u64.into()];
     //let scalars = vec![
     //        1u64.into(),
@@ -211,7 +211,7 @@ fn assert_instruction_count() {
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
 
     // Create user account
-    let user_key = Pubkey::new_rand();
+    let user_key = Pubkey::new_unique();
     let user_account =
         SolanaAccount::new_ref(0, User::default().try_to_vec().unwrap().len(), &program_id);
     let instruction_data = ThemisInstruction::InitializeUserAccount { public_key: pk }

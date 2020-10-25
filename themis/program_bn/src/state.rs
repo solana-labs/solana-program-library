@@ -4,7 +4,7 @@ use bn::{Fr, Group, G1};
 use borsh::{BorshDeserialize, BorshSerialize};
 use elgamal_bn::{ciphertext::Ciphertext, private::SecretKey, public::PublicKey};
 use rand::thread_rng;
-use solana_sdk::program_error::ProgramError;
+use solana_program::program_error::ProgramError;
 
 type Points = (G1, G1);
 

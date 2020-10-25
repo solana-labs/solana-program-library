@@ -1,12 +1,10 @@
-use std::{fs::canonicalize, process::Command};
+use std::process::Command;
 
 fn main() {
-    println!("cargo:warning=(not a warning) Building SPL Themis shared object");
-    Command::new(canonicalize("../../do.sh").unwrap())
-        .current_dir("../..")
-        .arg("build")
-        .arg("themis/program_ristretto")
+    println!("cargo:warning=(not a warning) Building BPF themis program");
+    Command::new("cargo")
+        .arg("build-bpf")
         .status()
-        .expect("Failed to build themis program")
+        .expect("Failed to build BPF themis program")
         .success();
 }
