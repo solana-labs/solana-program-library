@@ -6,25 +6,20 @@ authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2018"
-exclude = ["js/**"]
 
 [features]
 exclude_entrypoint = []
 
 [dependencies]
+arrayref = "0.3.6"
 num-derive = "0.3"
 num-traits = "0.2"
-remove_dir_all = "=0.5.0"
-solana-program = "1.4.3"
-spl-token = { path = "../../token/program", features = [ "exclude_entrypoint" ] }
-thiserror = "1.0"
-arrayref = "0.3.6"
 num_enum = "0.5.1"
 serde = "1.0.117"
 serde_derive = "1.0.103"
-
-[dev-dependencies]
-rand = { version = "0.7.0"}
+solana-program = "1.4.3"
+spl-token = { path = "../../token/program", features = [ "exclude_entrypoint" ] }
+thiserror = "1.0"
 
 [lib]
 crate-type = ["cdylib", "lib"]

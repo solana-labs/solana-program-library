@@ -11,8 +11,6 @@ notifications:
 cache:
   directories:
     - "~/.cache"
-    - "~/.config/share/solana"
-    - "~/.local/share/solana"
 
 services:
   - docker

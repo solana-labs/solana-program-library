@@ -18,7 +18,5 @@ num-traits = "0.2"
 solana-program = "1.4.3"
 thiserror = "1.0"
 
-[dev-dependencies]
-
 [lib]
 crate-type = ["cdylib", "lib"]

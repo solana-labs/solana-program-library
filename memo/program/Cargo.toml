@@ -14,5 +14,4 @@ exclude_entrypoint = []
 solana-program = "1.4.3"
 
 [lib]
-name = "spl_memo"
 crate-type = ["cdylib", "lib"]
