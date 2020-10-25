@@ -659,10 +659,6 @@ mod tests {
         pub mint_account: Account,
     }
 
-    fn pubkey_rand() -> Pubkey {
-        Pubkey::new(&rand::random::<[u8; 32]>())
-    }
-
     fn do_process_instruction(
         instruction: Instruction,
         accounts: Vec<&mut Account>,
@@ -695,14 +691,14 @@ mod tests {
         mint_key: &Pubkey,
         mint_account: &mut Account,
     ) -> (Pubkey, Account) {
-        let account_key = pubkey_rand();
+        let account_key = Pubkey::new_unique();
         let mut account_account = Account::new(
             account_minimum_balance(),
             SplAccount::get_packed_len(),
             &program_id,
         );
         let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
-        let owner_key = pubkey_rand();
+        let owner_key = Pubkey::new_unique();
         let mut owner_account = Account::default();
 
         // create account
@@ -753,7 +749,7 @@ mod tests {
     }
 
     fn create_mint(program_id: &Pubkey, authority_key: &Pubkey) -> (Pubkey, Account) {
-        let mint_key = pubkey_rand();
+        let mint_key = Pubkey::new_unique();
         let mut mint_account = Account::new(
             mint_minimum_balance(),
             SplMint::get_packed_len(),
@@ -772,8 +768,8 @@ mod tests {
     }
 
     fn create_stake_pool(fee: Fee) -> StakePoolInfo {
-        let stake_pool_key = pubkey_rand();
-        let owner_key = pubkey_rand();
+        let stake_pool_key = Pubkey::new_unique();
+        let owner_key = Pubkey::new_unique();
 
         let mut stake_pool_account = Account::new(0, State::LEN, &STAKE_POOL_PROGRAM_ID);
         let mut owner_account = Account::default();
@@ -872,7 +868,7 @@ mod tests {
         // Create stake account
         let mut pool_info = create_stake_pool(fee);
 
-        let stake_account_key = pubkey_rand();
+        let stake_account_key = Pubkey::new_unique();
         let mut stake_account_account = Account::new(stake_balance, 100, &stake_program_id());
         // TODO: Set stake account Withdrawer authority to pool_info.deposit_authority_key
 
