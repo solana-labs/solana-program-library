@@ -627,10 +627,6 @@ impl PrintProgramError for Error {
     }
 }
 
-// Pull in syscall stubs when building for non-BPF targets
-#[cfg(not(target_arch = "bpf"))]
-solana_program::program_stubs!();
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -797,7 +793,7 @@ mod tests {
             create_token_account(&TOKEN_PROGRAM_ID, &mint_key, &mut mint_account);
 
         // StakePool Init
-        let result = do_process_instruction(
+        let _result = do_process_instruction(
             initialize(
                 &STAKE_POOL_PROGRAM_ID,
                 &stake_pool_key,
@@ -816,8 +812,7 @@ mod tests {
                 &mut Account::default(),
             ],
         )
-        .unwrap();
-        assert_eq!(result, ());
+        .expect("Error on stake pool initialize");
 
         StakePoolInfo {
             pool_key: stake_pool_key,
@@ -889,7 +884,7 @@ mod tests {
         );
 
         // Call deposit
-        let result = do_process_instruction(
+        let _result = do_process_instruction(
             deposit(
                 &STAKE_POOL_PROGRAM_ID,
                 &pool_info.pool_key,
@@ -913,8 +908,7 @@ mod tests {
                 &mut Account::default(),
             ],
         )
-        .unwrap();
-        assert_eq!(result, ());
+        .expect("Error on stake pool deposit");
 
         // Test stake pool balance
         let state = State::deserialize(&pool_info.pool_account.data).unwrap();
