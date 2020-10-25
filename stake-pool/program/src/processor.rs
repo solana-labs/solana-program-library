@@ -630,10 +630,7 @@ impl PrintProgramError for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instruction::deposit;
-    use crate::instruction::initialize;
-    use crate::instruction::Fee;
-    use crate::instruction::InitArgs;
+    use crate::instruction::{deposit, initialize, Fee, InitArgs};
     use solana_program::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
         native_token::sol_to_lamports, program_pack::Pack, rent::Rent, sysvar::rent,
