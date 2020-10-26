@@ -38,23 +38,23 @@ let tokenAccountB: PublicKey;
 // curve type used to calculate swaps and deposits
 const CURVE_TYPE = CurveType.ConstantProduct;
 // Initial amount in each swap token
-let currentSwapTokenA = 1000;
-let currentSwapTokenB = 1000;
+let currentSwapTokenA = 1000000;
+let currentSwapTokenB = 1000000;
 let currentFeeAmount = 0;
 // Amount passed to swap instruction
-const SWAP_AMOUNT_IN = 100;
-const SWAP_AMOUNT_OUT = 53;
-const SWAP_FEE = 6817150;
+const SWAP_AMOUNT_IN = 100000;
+const SWAP_AMOUNT_OUT = 90675;
+const SWAP_FEE = 22276;
 // Pool token amount minted on init
 const DEFAULT_POOL_TOKEN_AMOUNT = 1000000000;
 // Pool token amount to withdraw / deposit
 const POOL_TOKEN_AMOUNT = 10000000;
 
 // Pool fees
-const TRADING_FEE_NUMERATOR = 1;
-const TRADING_FEE_DENOMINATOR = 4;
-const OWNER_TRADING_FEE_NUMERATOR = 1;
-const OWNER_TRADING_FEE_DENOMINATOR = 5;
+const TRADING_FEE_NUMERATOR = 25;
+const TRADING_FEE_DENOMINATOR = 10000;
+const OWNER_TRADING_FEE_NUMERATOR = 5;
+const OWNER_TRADING_FEE_DENOMINATOR = 10000;
 const OWNER_WITHDRAW_FEE_NUMERATOR = 1;
 const OWNER_WITHDRAW_FEE_DENOMINATOR = 6;
 
@@ -165,6 +165,8 @@ export async function createTokenSwap(): Promise<void> {
   console.log('creating pool account');
   tokenAccountPool = await tokenPool.createAccount(owner.publicKey);
   feeAccount = await tokenPool.createAccount(owner.publicKey);
+  // Also need to test the situation of a fixed fee account owner
+  // feeAccount = await tokenPool.createAccount(owner.publicKey);
 
   console.log('creating token A');
   mintA = await Token.createMint(
@@ -375,6 +377,9 @@ export async function swap(): Promise<void> {
   await mintA.approve(userAccountA, authority, owner, [], SWAP_AMOUNT_IN);
   console.log('Creating swap token b account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
+  let poolAccount = null;
+  // find a way to test a host fee account too
+  // let poolAccount = await tokenPool.createAccount(owner.publicKey);
 
   console.log('Swapping');
   await tokenSwap.swap(
@@ -382,6 +387,7 @@ export async function swap(): Promise<void> {
     tokenAccountA,
     tokenAccountB,
     userAccountB,
+    poolAccount,
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,
   );
@@ -389,18 +395,23 @@ export async function swap(): Promise<void> {
   let info;
   info = await mintA.getAccountInfo(userAccountA);
   assert(info.amount.toNumber() == 0);
+
+  info = await mintB.getAccountInfo(userAccountB);
+  assert(info.amount.toNumber() == SWAP_AMOUNT_OUT);
+
   info = await mintA.getAccountInfo(tokenAccountA);
   assert(info.amount.toNumber() == currentSwapTokenA + SWAP_AMOUNT_IN);
   currentSwapTokenA -= SWAP_AMOUNT_IN;
+
   info = await mintB.getAccountInfo(tokenAccountB);
   assert(info.amount.toNumber() == currentSwapTokenB - SWAP_AMOUNT_OUT);
   currentSwapTokenB -= SWAP_AMOUNT_OUT;
-  info = await mintB.getAccountInfo(userAccountB);
-  assert(info.amount.toNumber() == SWAP_AMOUNT_OUT);
+
   info = await tokenPool.getAccountInfo(tokenAccountPool);
   assert(
     info.amount.toNumber() == DEFAULT_POOL_TOKEN_AMOUNT - POOL_TOKEN_AMOUNT,
   );
+
   info = await tokenPool.getAccountInfo(feeAccount);
   assert(info.amount.toNumber() == currentFeeAmount + SWAP_FEE);
 }

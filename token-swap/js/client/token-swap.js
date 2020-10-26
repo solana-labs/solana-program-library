@@ -512,6 +512,7 @@ export class TokenSwap {
     poolSource: PublicKey,
     poolDestination: PublicKey,
     userDestination: PublicKey,
+    hostFeeAccount: ?PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
   ): Promise<TransactionSignature> {
@@ -528,6 +529,7 @@ export class TokenSwap {
           userDestination,
           this.poolToken,
           this.feeAccount,
+          hostFeeAccount,
           this.swapProgramId,
           this.tokenProgramId,
           amountIn,
@@ -547,6 +549,7 @@ export class TokenSwap {
     userDestination: PublicKey,
     poolMint: PublicKey,
     feeAccount: PublicKey,
+    hostFeeAccount: ?PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
@@ -579,6 +582,9 @@ export class TokenSwap {
       {pubkey: feeAccount, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
+    if (hostFeeAccount != null) {
+      keys.push({pubkey: hostFeeAccount, isSigner: false, isWritable: true});
+    }
     return new TransactionInstruction({
       keys,
       programId: swapProgramId,
