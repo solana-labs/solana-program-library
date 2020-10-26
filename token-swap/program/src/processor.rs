@@ -266,6 +266,12 @@ impl Processor {
         if *swap_source_info.key == *swap_destination_info.key {
             return Err(SwapError::InvalidInput.into());
         }
+        if swap_source_info.key == source_info.key {
+            return Err(SwapError::InvalidInput.into());
+        }
+        if swap_destination_info.key == destination_info.key {
+            return Err(SwapError::InvalidInput.into());
+        }
         if *pool_mint_info.key != token_swap.pool_mint {
             return Err(SwapError::IncorrectPoolMint.into());
         }
@@ -362,6 +368,12 @@ impl Processor {
         if *pool_mint_info.key != token_swap.pool_mint {
             return Err(SwapError::IncorrectPoolMint.into());
         }
+        if token_a_info.key == source_a_info.key {
+            return Err(SwapError::InvalidInput.into());
+        }
+        if token_b_info.key == source_b_info.key {
+            return Err(SwapError::InvalidInput.into());
+        }
 
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
@@ -448,6 +460,12 @@ impl Processor {
         }
         if *pool_fee_account_info.key != token_swap.pool_fee_account {
             return Err(SwapError::IncorrectFeeAccount.into());
+        }
+        if token_a_info.key == dest_token_a_info.key {
+            return Err(SwapError::InvalidInput.into());
+        }
+        if token_b_info.key == dest_token_b_info.key {
+            return Err(SwapError::InvalidInput.into());
         }
 
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
@@ -1071,7 +1089,7 @@ mod tests {
             )
             .unwrap();
 
-            // withraw token a and b correctly
+            // withdraw token a and b correctly
             do_process_instruction(
                 withdraw(
                     &SWAP_PROGRAM_ID,
@@ -2215,12 +2233,12 @@ mod tests {
                 Err(SwapError::ZeroTradingTokens.into()),
                 accounts.deposit(
                     &depositor_key,
-                    &pool_key,
-                    &mut pool_account,
                     &token_a_key,
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
                     1,
                     deposit_a,
                     deposit_b / 10,
@@ -2228,7 +2246,7 @@ mod tests {
             );
         }
 
-        // slippage exceeeded
+        // slippage exceeded
         {
             let (
                 token_a_key,
@@ -2243,12 +2261,12 @@ mod tests {
                 Err(SwapError::ExceededSlippage.into()),
                 accounts.deposit(
                     &depositor_key,
-                    &pool_key,
-                    &mut pool_account,
                     &token_a_key,
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
                     pool_amount,
                     deposit_a / 10,
                     deposit_b,
@@ -2259,12 +2277,12 @@ mod tests {
                 Err(SwapError::ExceededSlippage.into()),
                 accounts.deposit(
                     &depositor_key,
-                    &pool_key,
-                    &mut pool_account,
                     &token_a_key,
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
                     pool_amount,
                     deposit_a,
                     deposit_b / 10,
@@ -2272,6 +2290,37 @@ mod tests {
             );
         }
 
+        // invalid input: can't use swap pool tokens as source
+        {
+            let (
+                _token_a_key,
+                _token_a_account,
+                _token_b_key,
+                _token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let swap_token_a_key = accounts.token_a_key;
+            let mut swap_token_a_account = accounts.get_token_account(&swap_token_a_key).clone();
+            let swap_token_b_key = accounts.token_b_key;
+            let mut swap_token_b_account = accounts.get_token_account(&swap_token_b_key).clone();
+            let authority_key = accounts.authority_key;
+            assert_eq!(
+                Err(SwapError::InvalidInput.into()),
+                accounts.deposit(
+                    &authority_key,
+                    &swap_token_a_key,
+                    &mut swap_token_a_account,
+                    &swap_token_b_key,
+                    &mut swap_token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    pool_amount,
+                    deposit_a,
+                    deposit_b,
+                )
+            );
+        }
         // correctly deposit
         {
             let (
@@ -2827,7 +2876,7 @@ mod tests {
             );
         }
 
-        // slippage exceeeded
+        // slippage exceeded
         {
             let (
                 token_a_key,
@@ -2873,6 +2922,58 @@ mod tests {
                     withdraw_amount,
                     minimum_a_amount,
                     minimum_b_amount * 10,
+                )
+            );
+        }
+
+        // invalid input: can't use swap pool tokens as destination
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &withdrawer_key,
+                initial_a,
+                initial_b,
+                initial_pool,
+            );
+            let swap_token_a_key = accounts.token_a_key;
+            let mut swap_token_a_account = accounts.get_token_account(&swap_token_a_key).clone();
+            assert_eq!(
+                Err(SwapError::InvalidInput.into()),
+                accounts.withdraw(
+                    &withdrawer_key,
+                    &pool_key,
+                    &mut pool_account,
+                    &swap_token_a_key,
+                    &mut swap_token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    withdraw_amount,
+                    minimum_a_amount,
+                    minimum_b_amount,
+                )
+            );
+            let swap_token_b_key = accounts.token_b_key;
+            let mut swap_token_b_account = accounts.get_token_account(&swap_token_b_key).clone();
+            assert_eq!(
+                Err(SwapError::InvalidInput.into()),
+                accounts.withdraw(
+                    &withdrawer_key,
+                    &pool_key,
+                    &mut pool_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &swap_token_b_key,
+                    &mut swap_token_b_account,
+                    withdraw_amount,
+                    minimum_a_amount,
+                    minimum_b_amount,
                 )
             );
         }
@@ -3600,6 +3701,49 @@ mod tests {
                     &mut token_b_account,
                     initial_a,
                     minimum_b_amount * 2,
+                )
+            );
+        }
+
+        // invalid input: can't use swap pool as user source / dest
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                _pool_key,
+                _pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+            let mut swap_token_a_account = accounts.get_token_account(&swap_token_a_key).clone();
+            let authority_key = accounts.authority_key;
+            assert_eq!(
+                Err(SwapError::InvalidInput.into()),
+                accounts.swap(
+                    &authority_key,
+                    &swap_token_a_key,
+                    &mut swap_token_a_account,
+                    &swap_token_a_key,
+                    &swap_token_b_key,
+                    &token_b_key,
+                    &mut token_b_account,
+                    initial_a,
+                    minimum_b_amount,
+                )
+            );
+            let mut swap_token_b_account = accounts.get_token_account(&swap_token_b_key).clone();
+            assert_eq!(
+                Err(SwapError::InvalidInput.into()),
+                accounts.swap(
+                    &swapper_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &swap_token_a_key,
+                    &swap_token_b_key,
+                    &swap_token_b_key,
+                    &mut swap_token_b_account,
+                    initial_a,
+                    minimum_b_amount,
                 )
             );
         }
