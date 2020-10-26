@@ -15,13 +15,6 @@ use solana_program::{
 };
 use std::convert::TryInto;
 
-// Test program id for the swap program.
-#[cfg(not(target_arch = "bpf"))]
-const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
-// Test program id for the token program.
-#[cfg(not(target_arch = "bpf"))]
-const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
-
 /// Hardcode the number of token types in a pool, used to calculate the
 /// equivalent pool tokens for the owner trading fee.
 const TOKENS_IN_POOL: u64 = 2;
@@ -2355,7 +2348,7 @@ mod tests {
                     &mut swap_token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -2986,7 +2979,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                initial_pool,
+                initial_pool.try_into().unwrap(),
             );
             let swap_token_a_key = accounts.token_a_key;
             let mut swap_token_a_account = accounts.get_token_account(&swap_token_a_key).clone();
@@ -3000,7 +2993,7 @@ mod tests {
                     &mut swap_token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -3017,7 +3010,7 @@ mod tests {
                     &mut token_a_account,
                     &swap_token_b_key,
                     &mut swap_token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
