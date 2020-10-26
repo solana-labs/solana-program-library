@@ -5,6 +5,11 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
+use crate::{
+    constraints::FeeConstraints,
+    error::SwapError,
+};
+
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
@@ -200,6 +205,15 @@ pub trait CurveCalculator: Debug + DynPack {
             .checked_div(pool_token_supply)
             .and_then(map_zero_to_none)
     }
+
+    /// Validate fees based on constraints
+    fn validate_fees(&self, constraints: &FeeConstraints) -> Result<(), ProgramError>;
+
+    /// Calculate the host fee based on the owner fee, only used in production
+    /// situations where a program is hosted by multiple frontends
+    fn host_fee(&self, owner_fee: u128, constraints: &FeeConstraints) -> Option<u128> {
+        owner_fee.checked_mul(constraints.host_fee_numerator)?.checked_div(constraints.host_fee_denominator).and_then(map_zero_to_none)
+    }
 }
 
 /// Encodes all results of swapping from a source token to a destination token
@@ -300,6 +314,23 @@ impl CurveCalculator for FlatCurve {
             u128::try_from(self.owner_withdraw_fee_numerator).ok()?,
             u128::try_from(self.owner_withdraw_fee_denominator).ok()?,
         )
+    }
+
+    /// Validate fees based on constraints
+    fn validate_fees(&self, constraints: &FeeConstraints) -> Result<(), ProgramError> {
+        if constraints.trade_fee_numerator != u128::from(self.trade_fee_numerator) {
+            return Err(SwapError::InvalidFee.into());
+        }
+        if constraints.trade_fee_denominator != u128::from(self.trade_fee_denominator) {
+            return Err(SwapError::InvalidFee.into());
+        }
+        if constraints.owner_trade_fee_numerator != u128::from(self.owner_trade_fee_numerator) {
+            return Err(SwapError::InvalidFee.into());
+        }
+        if constraints.owner_trade_fee_denominator != u128::from(self.owner_trade_fee_denominator) {
+            return Err(SwapError::InvalidFee.into());
+        }
+        Ok(())
     }
 }
 
@@ -427,6 +458,23 @@ impl CurveCalculator for ConstantProductCurve {
             u128::try_from(self.trade_fee_numerator).ok()?,
             u128::try_from(self.trade_fee_denominator).ok()?,
         )
+    }
+
+    /// Validate fees based on constraints
+    fn validate_fees(&self, constraints: &FeeConstraints) -> Result<(), ProgramError> {
+        if constraints.trade_fee_numerator != u128::from(self.trade_fee_numerator) {
+            return Err(SwapError::InvalidFee.into());
+        }
+        if constraints.trade_fee_denominator != u128::from(self.trade_fee_denominator) {
+            return Err(SwapError::InvalidFee.into());
+        }
+        if constraints.owner_trade_fee_numerator != u128::from(self.owner_trade_fee_numerator) {
+            return Err(SwapError::InvalidFee.into());
+        }
+        if constraints.owner_trade_fee_denominator != u128::from(self.owner_trade_fee_denominator) {
+            return Err(SwapError::InvalidFee.into());
+        }
+        Ok(())
     }
 }
 
@@ -749,5 +797,52 @@ mod tests {
         packed.extend_from_slice(&[0u8; 16]); // padding
         let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
         assert_eq!(swap_curve, unpacked);
+    }
+
+    #[test]
+    fn validate_fees() {
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 4;
+        let owner_trade_fee_numerator = 2;
+        let owner_trade_fee_denominator = 5;
+        let owner_withdraw_fee_numerator = 4;
+        let owner_withdraw_fee_denominator = 10;
+        let host_fee_numerator = 10;
+        let host_fee_denominator = 100;
+        let owner_key = "";
+        let mut fee_constraints = FeeConstraints {
+            owner_key,
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
+        };
+        let curve = ConstantProductCurve {
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+        };
+        curve.validate_fees(&fee_constraints).unwrap();
+
+        fee_constraints.trade_fee_numerator = trade_fee_numerator - 1;
+        assert_eq!(Err(SwapError::InvalidFee.into()), curve.validate_fees(&fee_constraints));
+        fee_constraints.trade_fee_numerator = trade_fee_numerator;
+
+        fee_constraints.trade_fee_denominator = trade_fee_denominator - 1;
+        assert_eq!(Err(SwapError::InvalidFee.into()), curve.validate_fees(&fee_constraints));
+        fee_constraints.trade_fee_denominator = trade_fee_denominator;
+
+        fee_constraints.owner_trade_fee_numerator = owner_trade_fee_numerator - 1;
+        assert_eq!(Err(SwapError::InvalidFee.into()), curve.validate_fees(&fee_constraints));
+        fee_constraints.owner_trade_fee_numerator = owner_trade_fee_numerator;
+
+        fee_constraints.owner_trade_fee_denominator = owner_trade_fee_denominator - 1;
+        assert_eq!(Err(SwapError::InvalidFee.into()), curve.validate_fees(&fee_constraints));
+        fee_constraints.owner_trade_fee_denominator = owner_trade_fee_denominator;
     }
 }

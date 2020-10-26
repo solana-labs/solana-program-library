@@ -76,6 +76,9 @@ pub enum SwapError {
     /// ConversionFailure
     #[error("Conversion to u64 failed with an overflow or underflow")]
     ConversionFailure,
+    /// The provided fee does not match the program owner's constraints
+    #[error("The provided fee does not match the program owner's constraints")]
+    InvalidFee,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

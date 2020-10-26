@@ -48,6 +48,7 @@ pub enum SwapInstruction {
     ///   6. `[writable]` Pool token mint, to generate trading fees
     ///   7. `[writable]` Fee account, to receive trading fees
     ///   8. '[]` Token program id
+    ///   9. `[optional, writable]` Host fee account to receive additional trading fees
     Swap {
         /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
         amount_in: u64,
@@ -333,6 +334,7 @@ pub fn swap(
     destination_pubkey: &Pubkey,
     pool_mint_pubkey: &Pubkey,
     pool_fee_pubkey: &Pubkey,
+    host_fee_pubkey: Option<&Pubkey>,
     amount_in: u64,
     minimum_amount_out: u64,
 ) -> Result<Instruction, ProgramError> {
@@ -342,7 +344,7 @@ pub fn swap(
     }
     .pack();
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
         AccountMeta::new(*source_pubkey, false),
@@ -353,6 +355,9 @@ pub fn swap(
         AccountMeta::new(*pool_fee_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
+    if let Some(host_fee_pubkey) = host_fee_pubkey {
+        accounts.push(AccountMeta::new(*host_fee_pubkey, false));
+    }
 
     Ok(Instruction {
         program_id: *program_id,
