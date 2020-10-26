@@ -23,7 +23,7 @@ pub enum TokenInstruction {
     /// Initializes a new mint and optionally deposits all the newly minted tokens in an account.
     ///
     /// The `InitializeMint` instruction requires no signers and MUST be included within
-    /// the same Transaction as the system program's `CreateInstruction` that creates the account
+    /// the same Transaction as the system program's `CreateAccount` instruction that creates the account
     /// being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
     ///
     /// Accounts expected by this instruction:
@@ -45,7 +45,7 @@ pub enum TokenInstruction {
     /// initialized before this command can succeed.
     ///
     /// The `InitializeAccount` instruction requires no signers and MUST be included within
-    /// the same Transaction as the system program's `CreateInstruction` that creates the account
+    /// the same Transaction as the system program's `CreateAccount` instruction that creates the account
     /// being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
     ///
     /// Accounts expected by this instruction:
@@ -62,7 +62,7 @@ pub enum TokenInstruction {
     /// number of signers (M) required to validate this multisignature account.
     ///
     /// The `InitializeMultisig` instruction requires no signers and MUST be included within
-    /// the same Transaction as the system program's `CreateInstruction` that creates the account
+    /// the same Transaction as the system program's `CreateAccount` instruction that creates the account
     /// being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
     ///
     /// Accounts expected by this instruction:
