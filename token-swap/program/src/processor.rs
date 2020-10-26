@@ -718,20 +718,10 @@ impl PrintProgramError for SwapError {
             SwapError::FeeCalculationFailure => info!(
                 "Error: The fee calculation failed due to overflow, underflow, or unexpected 0"
             ),
-<<<<<<< HEAD
             SwapError::ConversionFailure => info!("Error: Conversion to or from u64 failed."),
-            SwapError::InvalidFee => info!(
-                "Error: The provided fee does not match the program owner's constraints"
-            ),
-||||||| merged common ancestors
-            SwapError::InvalidFee => info!(
-                "Error: The provided fee does not match the program owner's constraints"
-            ),
-=======
             SwapError::InvalidFee => {
                 info!("Error: The provided fee does not match the program owner's constraints")
             }
->>>>>>> Run cargo fmt + clippy
         }
     }
 }

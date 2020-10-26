@@ -209,7 +209,12 @@ pub trait CurveCalculator: Debug + DynPack {
     /// Calculate the host fee based on the owner fee, only used in production
     /// situations where a program is hosted by multiple frontends
     fn host_fee(&self, owner_fee: u128, constraints: &FeeConstraints) -> Option<u128> {
-        owner_fee.checked_mul(constraints.host_fee_numerator)?.checked_div(constraints.host_fee_denominator).and_then(map_zero_to_none)
+        let numerator = u128::try_from(constraints.host_fee_numerator).ok()?;
+        let denominator = u128::try_from(constraints.host_fee_denominator).ok()?;
+        owner_fee
+            .checked_mul(numerator)?
+            .checked_div(denominator)
+            .and_then(map_zero_to_none)
     }
 }
 
@@ -315,16 +320,16 @@ impl CurveCalculator for FlatCurve {
 
     /// Validate fees based on constraints
     fn validate_fees(&self, constraints: &FeeConstraints) -> Result<(), ProgramError> {
-        if constraints.trade_fee_numerator != u128::from(self.trade_fee_numerator) {
+        if constraints.trade_fee_numerator != self.trade_fee_numerator {
             return Err(SwapError::InvalidFee.into());
         }
-        if constraints.trade_fee_denominator != u128::from(self.trade_fee_denominator) {
+        if constraints.trade_fee_denominator != self.trade_fee_denominator {
             return Err(SwapError::InvalidFee.into());
         }
-        if constraints.owner_trade_fee_numerator != u128::from(self.owner_trade_fee_numerator) {
+        if constraints.owner_trade_fee_numerator != self.owner_trade_fee_numerator {
             return Err(SwapError::InvalidFee.into());
         }
-        if constraints.owner_trade_fee_denominator != u128::from(self.owner_trade_fee_denominator) {
+        if constraints.owner_trade_fee_denominator != self.owner_trade_fee_denominator {
             return Err(SwapError::InvalidFee.into());
         }
         Ok(())
@@ -459,16 +464,16 @@ impl CurveCalculator for ConstantProductCurve {
 
     /// Validate fees based on constraints
     fn validate_fees(&self, constraints: &FeeConstraints) -> Result<(), ProgramError> {
-        if constraints.trade_fee_numerator != u128::from(self.trade_fee_numerator) {
+        if constraints.trade_fee_numerator != self.trade_fee_numerator {
             return Err(SwapError::InvalidFee.into());
         }
-        if constraints.trade_fee_denominator != u128::from(self.trade_fee_denominator) {
+        if constraints.trade_fee_denominator != self.trade_fee_denominator {
             return Err(SwapError::InvalidFee.into());
         }
-        if constraints.owner_trade_fee_numerator != u128::from(self.owner_trade_fee_numerator) {
+        if constraints.owner_trade_fee_numerator != self.owner_trade_fee_numerator {
             return Err(SwapError::InvalidFee.into());
         }
-        if constraints.owner_trade_fee_denominator != u128::from(self.owner_trade_fee_denominator) {
+        if constraints.owner_trade_fee_denominator != self.owner_trade_fee_denominator {
             return Err(SwapError::InvalidFee.into());
         }
         Ok(())

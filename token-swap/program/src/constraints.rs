@@ -10,17 +10,17 @@ pub struct FeeConstraints<'a> {
     /// Owner of the program
     pub owner_key: &'a str,
     /// Fee numerator
-    pub trade_fee_numerator: u128,
+    pub trade_fee_numerator: u64,
     /// Fee denominator
-    pub trade_fee_denominator: u128,
+    pub trade_fee_denominator: u64,
     /// Owner trade fee numerator
-    pub owner_trade_fee_numerator: u128,
+    pub owner_trade_fee_numerator: u64,
     /// Owner trade fee denominator
-    pub owner_trade_fee_denominator: u128,
+    pub owner_trade_fee_denominator: u64,
     /// Host fee numerator (e.g. 20 / 100 for host to receive 20% of owner trade fees)
-    pub host_fee_numerator: u128,
+    pub host_fee_numerator: u64,
     /// Host fee denominator
-    pub host_fee_denominator: u128,
+    pub host_fee_denominator: u64,
 }
 
 #[cfg(feature = "production")]
