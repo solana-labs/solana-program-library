@@ -73,6 +73,9 @@ pub enum SwapError {
     /// The fee calculation failed due to overflow, underflow, or unexpected 0
     #[error("Fee calculation failed due to overflow, underflow, or unexpected 0")]
     FeeCalculationFailure,
+    /// ConversionFailure
+    #[error("Conversion to u64 failed with an overflow or underflow")]
+    ConversionFailure,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

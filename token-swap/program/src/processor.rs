@@ -13,6 +13,7 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
 };
+use std::convert::TryInto;
 
 /// Hardcode the number of token types in a pool, used to calculate the
 /// equivalent pool tokens for the owner trading fee.
@@ -211,7 +212,7 @@ impl Processor {
             destination_info.clone(),
             authority_info.clone(),
             nonce,
-            initial_amount,
+            to_u64(initial_amount)?,
         )?;
 
         let obj = SwapInfo {
@@ -286,9 +287,13 @@ impl Processor {
         let result = token_swap
             .swap_curve
             .calculator
-            .swap(amount_in, source_account.amount, dest_account.amount)
+            .swap(
+                to_u128(amount_in)?,
+                to_u128(source_account.amount)?,
+                to_u128(dest_account.amount)?,
+            )
             .ok_or(SwapError::ZeroTradingTokens)?;
-        if result.amount_swapped < minimum_amount_out {
+        if result.amount_swapped < to_u128(minimum_amount_out)? {
             return Err(SwapError::ExceededSlippage.into());
         }
         Self::token_transfer(
@@ -307,7 +312,7 @@ impl Processor {
             destination_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            result.amount_swapped,
+            to_u64(result.amount_swapped)?,
         )?;
 
         // mint pool tokens equivalent to the owner fee
@@ -317,9 +322,9 @@ impl Processor {
             .calculator
             .owner_fee_to_pool_tokens(
                 result.owner_fee,
-                source_account.amount,
-                pool_mint.supply,
-                TOKENS_IN_POOL,
+                to_u128(source_account.amount)?,
+                to_u128(pool_mint.supply)?,
+                to_u128(TOKENS_IN_POOL)?,
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
         if pool_token_amount > 0 {
@@ -330,7 +335,7 @@ impl Processor {
                 pool_fee_account_info.clone(),
                 authority_info.clone(),
                 token_swap.nonce,
-                pool_token_amount,
+                to_u64(pool_token_amount)?,
             )?;
         }
         Ok(())
@@ -378,19 +383,29 @@ impl Processor {
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
+        let pool_token_amount = to_u128(pool_token_amount)?;
+        let pool_mint_supply = to_u128(pool_mint.supply)?;
 
         let calculator = token_swap.swap_curve.calculator;
 
         let a_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_a.amount)
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                pool_mint_supply,
+                to_u128(token_a.amount)?,
+            )
             .ok_or(SwapError::ZeroTradingTokens)?;
-        if a_amount > maximum_token_a_amount {
+        if a_amount > to_u128(maximum_token_a_amount)? {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_b.amount)
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                pool_mint_supply,
+                to_u128(token_b.amount)?,
+            )
             .ok_or(SwapError::ZeroTradingTokens)?;
-        if b_amount > maximum_token_b_amount {
+        if b_amount > to_u128(maximum_token_b_amount)? {
             return Err(SwapError::ExceededSlippage.into());
         }
 
@@ -401,7 +416,7 @@ impl Processor {
             token_a_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            a_amount,
+            to_u64(a_amount)?,
         )?;
         Self::token_transfer(
             swap_info.key,
@@ -410,7 +425,7 @@ impl Processor {
             token_b_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            b_amount,
+            to_u64(b_amount)?,
         )?;
         Self::token_mint_to(
             swap_info.key,
@@ -419,7 +434,7 @@ impl Processor {
             dest_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            pool_token_amount,
+            to_u64(pool_token_amount)?,
         )?;
 
         Ok(())
@@ -474,27 +489,36 @@ impl Processor {
 
         let calculator = token_swap.swap_curve.calculator;
 
-        let withdraw_fee = if *pool_fee_account_info.key == *source_info.key {
+        let withdraw_fee: u128 = if *pool_fee_account_info.key == *source_info.key {
             // withdrawing from the fee account, don't assess withdraw fee
             0
         } else {
             calculator
-                .owner_withdraw_fee(pool_token_amount)
+                .owner_withdraw_fee(to_u128(pool_token_amount)?)
                 .ok_or(SwapError::FeeCalculationFailure)?
         };
-        let pool_token_amount = pool_token_amount
+        let pool_token_amount = to_u128(pool_token_amount)?
             .checked_sub(withdraw_fee)
             .ok_or(SwapError::CalculationFailure)?;
 
         let a_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_a.amount)
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                to_u128(pool_mint.supply)?,
+                to_u128(token_a.amount)?,
+            )
             .ok_or(SwapError::ZeroTradingTokens)?;
-        if a_amount < minimum_token_a_amount {
+        if a_amount < to_u128(minimum_token_a_amount)? {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = calculator
-            .pool_tokens_to_trading_tokens(pool_token_amount, pool_mint.supply, token_b.amount)
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                to_u128(pool_mint.supply)?,
+                to_u128(token_b.amount)?,
+            )
             .ok_or(SwapError::ZeroTradingTokens)?;
+        let b_amount = to_u64(b_amount)?;
         if b_amount < minimum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
@@ -506,7 +530,7 @@ impl Processor {
             dest_token_a_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            a_amount,
+            to_u64(a_amount)?,
         )?;
         Self::token_transfer(
             swap_info.key,
@@ -525,7 +549,7 @@ impl Processor {
                 pool_fee_account_info.clone(),
                 authority_info.clone(),
                 token_swap.nonce,
-                withdraw_fee,
+                to_u64(withdraw_fee)?,
             )?;
         }
         Self::token_burn(
@@ -535,7 +559,7 @@ impl Processor {
             pool_mint_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            pool_token_amount,
+            to_u64(pool_token_amount)?,
         )?;
         Ok(())
     }
@@ -637,8 +661,17 @@ impl PrintProgramError for SwapError {
             SwapError::FeeCalculationFailure => info!(
                 "Error: The fee calculation failed due to overflow, underflow, or unexpected 0"
             ),
+            SwapError::ConversionFailure => info!("Error: Conversion to or from u64 failed."),
         }
     }
+}
+
+fn to_u128(val: u64) -> Result<u128, SwapError> {
+    val.try_into().map_err(|_| SwapError::ConversionFailure)
+}
+
+fn to_u64(val: u128) -> Result<u64, SwapError> {
+    val.try_into().map_err(|_| SwapError::ConversionFailure)
 }
 
 #[cfg(test)]
@@ -1858,7 +1891,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -1893,7 +1926,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -1927,7 +1960,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -1960,7 +1993,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -1987,7 +2020,7 @@ mod tests {
                     &mut token_a_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -2022,7 +2055,7 @@ mod tests {
                     &mut token_b_account,
                     &wrong_token_key,
                     &mut wrong_token_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -2053,7 +2086,7 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
-                        pool_amount,
+                        pool_amount.try_into().unwrap(),
                         deposit_a,
                         deposit_b,
                     )
@@ -2098,7 +2131,7 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
-                        pool_amount,
+                        pool_amount.try_into().unwrap(),
                         deposit_a,
                         deposit_b,
                     )
@@ -2146,7 +2179,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -2172,7 +2205,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -2209,7 +2242,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -2267,7 +2300,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a / 10,
                     deposit_b,
                 )
@@ -2283,7 +2316,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b / 10,
                 )
@@ -2315,7 +2348,7 @@ mod tests {
                     &mut swap_token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -2340,7 +2373,7 @@ mod tests {
                     &mut token_b_account,
                     &pool_key,
                     &mut pool_account,
-                    pool_amount,
+                    pool_amount.try_into().unwrap(),
                     deposit_a,
                     deposit_b,
                 )
@@ -2422,7 +2455,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -2457,7 +2490,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -2479,7 +2512,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                withdraw_amount / 2,
+                to_u64(withdraw_amount).unwrap() / 2u64,
             );
             assert_eq!(
                 Err(TokenError::InsufficientFunds.into()),
@@ -2491,7 +2524,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount / 2,
                     minimum_b_amount / 2,
                 )
@@ -2512,7 +2545,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                withdraw_amount,
+                withdraw_amount.try_into().unwrap(),
             );
             assert_eq!(
                 Err(TokenError::MintMismatch.into()),
@@ -2524,7 +2557,7 @@ mod tests {
                     &mut token_b_account,
                     &token_a_key,
                     &mut token_a_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -2545,7 +2578,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                withdraw_amount,
+                withdraw_amount.try_into().unwrap(),
             );
             let (
                 wrong_token_a_key,
@@ -2557,9 +2590,9 @@ mod tests {
             ) = accounts.setup_token_accounts(
                 &user_key,
                 &withdrawer_key,
-                withdraw_amount,
+                withdraw_amount.try_into().unwrap(),
                 initial_b,
-                withdraw_amount,
+                withdraw_amount.try_into().unwrap(),
             );
             assert_eq!(
                 Err(TokenError::MintMismatch.into()),
@@ -2571,7 +2604,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -2592,7 +2625,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                withdraw_amount,
+                withdraw_amount.try_into().unwrap(),
             );
             let (
                 _token_a_key,
@@ -2606,7 +2639,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                withdraw_amount,
+                withdraw_amount.try_into().unwrap(),
             );
             let old_pool_fee_account = accounts.pool_fee_account;
             let old_pool_fee_key = accounts.pool_fee_key;
@@ -2622,7 +2655,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 ),
@@ -2640,7 +2673,13 @@ mod tests {
                 mut token_b_account,
                 pool_key,
                 mut pool_account,
-            ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, 0, 0, withdraw_amount);
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &withdrawer_key,
+                0,
+                0,
+                withdraw_amount.try_into().unwrap(),
+            );
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
@@ -2656,7 +2695,7 @@ mod tests {
                         &accounts.token_b_key,
                         &token_a_key,
                         &token_b_key,
-                        withdraw_amount,
+                        withdraw_amount.try_into().unwrap(),
                         minimum_a_amount,
                         minimum_b_amount,
                     )
@@ -2691,7 +2730,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                withdraw_amount,
+                withdraw_amount.try_into().unwrap(),
             );
             let wrong_key = Pubkey::new_unique();
             assert_eq!(
@@ -2709,7 +2748,7 @@ mod tests {
                         &accounts.token_b_key,
                         &token_a_key,
                         &token_b_key,
-                        withdraw_amount,
+                        withdraw_amount.try_into().unwrap(),
                         minimum_a_amount,
                         minimum_b_amount,
                     )
@@ -2744,7 +2783,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                initial_pool,
+                initial_pool.try_into().unwrap(),
             );
 
             let old_a_key = accounts.token_a_key;
@@ -2764,7 +2803,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -2790,7 +2829,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -2814,7 +2853,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                initial_pool,
+                initial_pool.try_into().unwrap(),
             );
             let (pool_mint_key, pool_mint_account) =
                 create_mint(&TOKEN_PROGRAM_ID, &accounts.authority_key, None);
@@ -2833,7 +2872,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -2857,7 +2896,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                initial_pool,
+                initial_pool.try_into().unwrap(),
             );
             assert_eq!(
                 Err(SwapError::ZeroTradingTokens.into()),
@@ -2890,7 +2929,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                initial_pool,
+                initial_pool.try_into().unwrap(),
             );
             // minimum A amount out too high
             assert_eq!(
@@ -2903,7 +2942,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount * 10,
                     minimum_b_amount,
                 )
@@ -2919,7 +2958,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount * 10,
                 )
@@ -2940,7 +2979,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                initial_pool,
+                initial_pool.try_into().unwrap(),
             );
             let swap_token_a_key = accounts.token_a_key;
             let mut swap_token_a_account = accounts.get_token_account(&swap_token_a_key).clone();
@@ -2954,7 +2993,7 @@ mod tests {
                     &mut swap_token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -2971,7 +3010,7 @@ mod tests {
                     &mut token_a_account,
                     &swap_token_b_key,
                     &mut swap_token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -2992,7 +3031,7 @@ mod tests {
                 &withdrawer_key,
                 initial_a,
                 initial_b,
-                initial_pool,
+                initial_pool.try_into().unwrap(),
             );
 
             accounts
@@ -3004,7 +3043,7 @@ mod tests {
                     &mut token_a_account,
                     &token_b_key,
                     &mut token_b_account,
-                    withdraw_amount,
+                    withdraw_amount.try_into().unwrap(),
                     minimum_a_amount,
                     minimum_b_amount,
                 )
@@ -3025,30 +3064,39 @@ mod tests {
                 .calculator
                 .pool_tokens_to_trading_tokens(
                     withdraw_amount - withdraw_fee,
-                    pool_mint.supply,
-                    swap_token_a.amount,
+                    pool_mint.supply.try_into().unwrap(),
+                    swap_token_a.amount.try_into().unwrap(),
                 )
                 .unwrap();
-            assert_eq!(swap_token_a.amount, token_a_amount - withdrawn_a);
+            assert_eq!(
+                swap_token_a.amount,
+                token_a_amount - to_u64(withdrawn_a).unwrap()
+            );
             let withdrawn_b = accounts
                 .swap_curve
                 .calculator
                 .pool_tokens_to_trading_tokens(
                     withdraw_amount - withdraw_fee,
-                    pool_mint.supply,
-                    swap_token_b.amount,
+                    pool_mint.supply.try_into().unwrap(),
+                    swap_token_b.amount.try_into().unwrap(),
                 )
                 .unwrap();
-            assert_eq!(swap_token_b.amount, token_b_amount - withdrawn_b);
+            assert_eq!(
+                swap_token_b.amount,
+                token_b_amount - to_u64(withdrawn_b).unwrap()
+            );
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
-            assert_eq!(token_a.amount, initial_a + withdrawn_a);
+            assert_eq!(token_a.amount, initial_a + to_u64(withdrawn_a).unwrap());
             let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
-            assert_eq!(token_b.amount, initial_b + withdrawn_b);
+            assert_eq!(token_b.amount, initial_b + to_u64(withdrawn_b).unwrap());
             let pool_account = Processor::unpack_token_account(&pool_account.data).unwrap();
-            assert_eq!(pool_account.amount, initial_pool - withdraw_amount);
+            assert_eq!(
+                pool_account.amount,
+                to_u64(initial_pool - withdraw_amount).unwrap()
+            );
             let fee_account =
                 Processor::unpack_token_account(&accounts.pool_fee_account.data).unwrap();
-            assert_eq!(fee_account.amount, withdraw_fee);
+            assert_eq!(fee_account.amount, withdraw_fee.try_into().unwrap());
         }
 
         // correct withdrawal from fee account
@@ -3091,32 +3139,32 @@ mod tests {
                 .swap_curve
                 .calculator
                 .pool_tokens_to_trading_tokens(
-                    pool_fee_amount,
-                    pool_mint.supply,
-                    swap_token_a.amount,
+                    pool_fee_amount.try_into().unwrap(),
+                    pool_mint.supply.try_into().unwrap(),
+                    swap_token_a.amount.try_into().unwrap(),
                 )
                 .unwrap();
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
-            assert_eq!(token_a.amount, withdrawn_a);
+            assert_eq!(token_a.amount, withdrawn_a.try_into().unwrap());
             let withdrawn_b = accounts
                 .swap_curve
                 .calculator
                 .pool_tokens_to_trading_tokens(
-                    pool_fee_amount,
-                    pool_mint.supply,
-                    swap_token_b.amount,
+                    pool_fee_amount.try_into().unwrap(),
+                    pool_mint.supply.try_into().unwrap(),
+                    swap_token_b.amount.try_into().unwrap(),
                 )
                 .unwrap();
             let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
-            assert_eq!(token_b.amount, withdrawn_b);
+            assert_eq!(token_b.amount, withdrawn_b.try_into().unwrap());
         }
     }
 
     fn check_valid_swap_curve(curve_type: CurveType, calculator: Box<dyn CurveCalculator>) {
         let user_key = Pubkey::new_unique();
         let swapper_key = Pubkey::new_unique();
-        let token_a_amount = 1000;
-        let token_b_amount = 5000;
+        let token_a_amount = 10_000_000_000u64;
+        let token_b_amount = 50_000_000_000u64;
 
         let swap_curve = SwapCurve {
             curve_type,
@@ -3165,32 +3213,45 @@ mod tests {
 
         let results = swap_curve
             .calculator
-            .swap(a_to_b_amount, token_a_amount, token_b_amount)
+            .swap(
+                a_to_b_amount.try_into().unwrap(),
+                token_a_amount.try_into().unwrap(),
+                token_b_amount.try_into().unwrap(),
+            )
             .unwrap();
 
         let swap_token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
         let token_a_amount = swap_token_a.amount;
-        assert_eq!(token_a_amount, results.new_source_amount);
+        assert_eq!(
+            token_a_amount,
+            results.new_source_amount.try_into().unwrap()
+        );
         let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
         assert_eq!(token_a.amount, initial_a - a_to_b_amount);
 
         let swap_token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
         let token_b_amount = swap_token_b.amount;
-        assert_eq!(token_b_amount, results.new_destination_amount);
+        assert_eq!(
+            token_b_amount,
+            results.new_destination_amount.try_into().unwrap()
+        );
         let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
-        assert_eq!(token_b.amount, initial_b + results.amount_swapped);
+        assert_eq!(
+            token_b.amount,
+            initial_b + to_u64(results.amount_swapped).unwrap()
+        );
 
         let first_fee = swap_curve
             .calculator
             .owner_fee_to_pool_tokens(
                 results.owner_fee,
-                token_a_amount,
-                initial_supply,
-                TOKENS_IN_POOL,
+                token_a_amount.try_into().unwrap(),
+                initial_supply.try_into().unwrap(),
+                TOKENS_IN_POOL.try_into().unwrap(),
             )
             .unwrap();
         let fee_account = Processor::unpack_token_account(&accounts.pool_fee_account.data).unwrap();
-        assert_eq!(fee_account.amount, first_fee);
+        assert_eq!(fee_account.amount, first_fee.try_into().unwrap());
 
         let first_swap_amount = results.amount_swapped;
 
@@ -3216,38 +3277,48 @@ mod tests {
 
         let results = swap_curve
             .calculator
-            .swap(b_to_a_amount, token_b_amount, token_a_amount)
+            .swap(
+                b_to_a_amount.try_into().unwrap(),
+                token_b_amount.try_into().unwrap(),
+                token_a_amount.try_into().unwrap(),
+            )
             .unwrap();
 
         let swap_token_a = Processor::unpack_token_account(&accounts.token_a_account.data).unwrap();
         let token_a_amount = swap_token_a.amount;
-        assert_eq!(token_a_amount, results.new_destination_amount);
+        assert_eq!(
+            token_a_amount,
+            results.new_destination_amount.try_into().unwrap()
+        );
         let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
         assert_eq!(
             token_a.amount,
-            initial_a - a_to_b_amount + results.amount_swapped
+            initial_a - a_to_b_amount + to_u64(results.amount_swapped).unwrap()
         );
 
         let swap_token_b = Processor::unpack_token_account(&accounts.token_b_account.data).unwrap();
         let token_b_amount = swap_token_b.amount;
-        assert_eq!(token_b_amount, results.new_source_amount);
+        assert_eq!(
+            token_b_amount,
+            results.new_source_amount.try_into().unwrap()
+        );
         let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
         assert_eq!(
             token_b.amount,
-            initial_b + first_swap_amount - b_to_a_amount
+            initial_b + to_u64(first_swap_amount).unwrap() - b_to_a_amount
         );
 
         let second_fee = swap_curve
             .calculator
             .owner_fee_to_pool_tokens(
                 results.owner_fee,
-                token_b_amount,
-                initial_supply,
-                TOKENS_IN_POOL,
+                token_b_amount.try_into().unwrap(),
+                initial_supply.try_into().unwrap(),
+                TOKENS_IN_POOL.try_into().unwrap(),
             )
             .unwrap();
         let fee_account = Processor::unpack_token_account(&accounts.pool_fee_account.data).unwrap();
-        assert_eq!(fee_account.amount, first_fee + second_fee);
+        assert_eq!(fee_account.amount, to_u64(first_fee + second_fee).unwrap());
     }
 
     #[test]

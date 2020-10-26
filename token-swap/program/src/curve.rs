@@ -10,10 +10,10 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
-/// "sensible" given a maximum of u64.
+/// "sensible" given a maximum of u128.
 /// Note that on Ethereum, Uniswap uses the geometric mean of all provided
 /// input amounts, and Balancer uses 100 * 10 ^ 18.
-pub const INITIAL_SWAP_POOL_AMOUNT: u64 = 1_000_000_000;
+pub const INITIAL_SWAP_POOL_AMOUNT: u128 = 1_000_000_000;
 
 /// Curve types supported by the token-swap program.
 #[repr(C)]
@@ -141,20 +141,20 @@ pub trait CurveCalculator: Debug + DynPack {
     /// of source token.
     fn swap(
         &self,
-        source_amount: u64,
-        swap_source_amount: u64,
-        swap_destination_amount: u64,
+        source_amount: u128,
+        swap_source_amount: u128,
+        swap_destination_amount: u128,
     ) -> Option<SwapResult>;
 
     /// Calculate the withdraw fee in pool tokens
     /// Default implementation assumes no fee
-    fn owner_withdraw_fee(&self, _pool_tokens: u64) -> Option<u64> {
+    fn owner_withdraw_fee(&self, _pool_tokens: u128) -> Option<u128> {
         Some(0)
     }
 
     /// Calculate the trading fee in trading tokens
     /// Default implementation assumes no fee
-    fn trading_fee(&self, _trading_tokens: u64) -> Option<u64> {
+    fn trading_fee(&self, _trading_tokens: u128) -> Option<u128> {
         Some(0)
     }
 
@@ -165,11 +165,11 @@ pub trait CurveCalculator: Debug + DynPack {
     /// value.
     fn owner_fee_to_pool_tokens(
         &self,
-        owner_fee: u64,
-        trading_token_amount: u64,
-        pool_supply: u64,
-        tokens_in_pool: u64,
-    ) -> Option<u64> {
+        owner_fee: u128,
+        trading_token_amount: u128,
+        pool_supply: u128,
+        tokens_in_pool: u128,
+    ) -> Option<u128> {
         // Get the trading fee incurred if the owner fee is swapped for the other side
         let trade_fee = self.trading_fee(owner_fee)?;
         let owner_fee = owner_fee.checked_sub(trade_fee)?;
@@ -181,7 +181,7 @@ pub trait CurveCalculator: Debug + DynPack {
 
     /// Get the supply for a new pool
     /// The default implementation is a Balancer-style fixed initial supply
-    fn new_pool_supply(&self) -> u64 {
+    fn new_pool_supply(&self) -> u128 {
         INITIAL_SWAP_POOL_AMOUNT
     }
 
@@ -191,10 +191,10 @@ pub trait CurveCalculator: Debug + DynPack {
     /// trading tokens correspond to a certain number of pool tokens
     fn pool_tokens_to_trading_tokens(
         &self,
-        pool_tokens: u64,
-        pool_token_supply: u64,
-        total_trading_tokens: u64,
-    ) -> Option<u64> {
+        pool_tokens: u128,
+        pool_token_supply: u128,
+        total_trading_tokens: u128,
+    ) -> Option<u128> {
         pool_tokens
             .checked_mul(total_trading_tokens)?
             .checked_div(pool_token_supply)
@@ -205,19 +205,19 @@ pub trait CurveCalculator: Debug + DynPack {
 /// Encodes all results of swapping from a source token to a destination token
 pub struct SwapResult {
     /// New amount of source token
-    pub new_source_amount: u64,
+    pub new_source_amount: u128,
     /// New amount of destination token
-    pub new_destination_amount: u64,
+    pub new_destination_amount: u128,
     /// Amount of destination token swapped
-    pub amount_swapped: u64,
+    pub amount_swapped: u128,
     /// Amount of source tokens going to pool holders
-    pub trade_fee: u64,
+    pub trade_fee: u128,
     /// Amount of source tokens going to owner
-    pub owner_fee: u64,
+    pub owner_fee: u128,
 }
 
 /// Helper function for mapping to SwapError::CalculationFailure
-fn map_zero_to_none(x: u64) -> Option<u64> {
+fn map_zero_to_none(x: u128) -> Option<u128> {
     if x == 0 {
         None
     } else {
@@ -242,7 +242,7 @@ pub struct FlatCurve {
     pub owner_withdraw_fee_denominator: u64,
 }
 
-fn calculate_fee(token_amount: u64, fee_numerator: u64, fee_denominator: u64) -> Option<u64> {
+fn calculate_fee(token_amount: u128, fee_numerator: u128, fee_denominator: u128) -> Option<u128> {
     if fee_numerator == 0 {
         Some(0)
     } else {
@@ -261,20 +261,20 @@ impl CurveCalculator for FlatCurve {
     /// Flat curve swap always returns 1:1 (minus fee)
     fn swap(
         &self,
-        source_amount: u64,
-        swap_source_amount: u64,
-        swap_destination_amount: u64,
+        source_amount: u128,
+        swap_source_amount: u128,
+        swap_destination_amount: u128,
     ) -> Option<SwapResult> {
         // debit the fee to calculate the amount swapped
         let trade_fee = calculate_fee(
             source_amount,
-            self.trade_fee_numerator,
-            self.trade_fee_denominator,
+            u128::try_from(self.trade_fee_numerator).ok()?,
+            u128::try_from(self.trade_fee_denominator).ok()?,
         )?;
         let owner_fee = calculate_fee(
             source_amount,
-            self.owner_trade_fee_numerator,
-            self.owner_trade_fee_denominator,
+            u128::try_from(self.owner_trade_fee_numerator).ok()?,
+            u128::try_from(self.owner_trade_fee_denominator).ok()?,
         )?;
 
         let amount_swapped = source_amount
@@ -294,11 +294,11 @@ impl CurveCalculator for FlatCurve {
     }
 
     /// Calculate the withdraw fee in pool tokens
-    fn owner_withdraw_fee(&self, pool_tokens: u64) -> Option<u64> {
+    fn owner_withdraw_fee(&self, pool_tokens: u128) -> Option<u128> {
         calculate_fee(
             pool_tokens,
-            self.owner_withdraw_fee_numerator,
-            self.owner_withdraw_fee_denominator,
+            u128::try_from(self.owner_withdraw_fee_numerator).ok()?,
+            u128::try_from(self.owner_withdraw_fee_denominator).ok()?,
         )
     }
 }
@@ -379,16 +379,16 @@ impl CurveCalculator for ConstantProductCurve {
     /// Constant product swap ensures x * y = constant
     fn swap(
         &self,
-        source_amount: u64,
-        swap_source_amount: u64,
-        swap_destination_amount: u64,
+        source_amount: u128,
+        swap_source_amount: u128,
+        swap_destination_amount: u128,
     ) -> Option<SwapResult> {
         // debit the fee to calculate the amount swapped
         let trade_fee = self.trading_fee(source_amount)?;
         let owner_fee = calculate_fee(
             source_amount,
-            self.owner_trade_fee_numerator,
-            self.owner_trade_fee_denominator,
+            u128::try_from(self.owner_trade_fee_numerator).ok()?,
+            u128::try_from(self.owner_trade_fee_denominator).ok()?,
         )?;
 
         let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
@@ -412,20 +412,20 @@ impl CurveCalculator for ConstantProductCurve {
     }
 
     /// Calculate the withdraw fee in pool tokens
-    fn owner_withdraw_fee(&self, pool_tokens: u64) -> Option<u64> {
+    fn owner_withdraw_fee(&self, pool_tokens: u128) -> Option<u128> {
         calculate_fee(
             pool_tokens,
-            self.owner_withdraw_fee_numerator,
-            self.owner_withdraw_fee_denominator,
+            u128::try_from(self.owner_withdraw_fee_numerator).ok()?,
+            u128::try_from(self.owner_withdraw_fee_denominator).ok()?,
         )
     }
 
     /// Calculate the trading fee in trading tokens
-    fn trading_fee(&self, trading_tokens: u64) -> Option<u64> {
+    fn trading_fee(&self, trading_tokens: u128) -> Option<u128> {
         calculate_fee(
             trading_tokens,
-            self.trade_fee_numerator,
-            self.trade_fee_denominator,
+            u128::try_from(self.trade_fee_numerator).ok()?,
+            u128::try_from(self.trade_fee_denominator).ok()?,
         )
     }
 }
@@ -508,7 +508,7 @@ mod tests {
         assert_eq!(calculator.new_pool_supply(), INITIAL_SWAP_POOL_AMOUNT);
     }
 
-    fn check_pool_token_rate(token_a: u64, deposit: u64, supply: u64, expected: Option<u64>) {
+    fn check_pool_token_rate(token_a: u128, deposit: u128, supply: u128, expected: Option<u128>) {
         let trade_fee_numerator = 0;
         let trade_fee_denominator = 1;
         let owner_trade_fee_numerator = 0;
@@ -535,21 +535,21 @@ mod tests {
         check_pool_token_rate(10, 5, 10, Some(5));
         check_pool_token_rate(5, 5, 10, Some(2));
         check_pool_token_rate(5, 5, 10, Some(2));
-        check_pool_token_rate(u64::MAX, 5, 10, None);
+        check_pool_token_rate(u128::MAX, 5, 10, None);
     }
 
     #[test]
     fn constant_product_swap_calculation_trade_fee() {
         // calculation on https://github.com/solana-labs/solana-program-library/issues/341
-        let swap_source_amount: u64 = 1000;
-        let swap_destination_amount: u64 = 50000;
-        let trade_fee_numerator: u64 = 1;
-        let trade_fee_denominator: u64 = 100;
-        let owner_trade_fee_numerator: u64 = 0;
-        let owner_trade_fee_denominator: u64 = 0;
-        let owner_withdraw_fee_numerator: u64 = 0;
-        let owner_withdraw_fee_denominator: u64 = 0;
-        let source_amount: u64 = 100;
+        let swap_source_amount = 1000;
+        let swap_destination_amount = 50000;
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 100;
+        let owner_trade_fee_numerator = 0;
+        let owner_trade_fee_denominator = 0;
+        let owner_withdraw_fee_numerator = 0;
+        let owner_withdraw_fee_denominator = 0;
+        let source_amount = 100;
         let curve = ConstantProductCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -571,15 +571,15 @@ mod tests {
     #[test]
     fn constant_product_swap_calculation_owner_fee() {
         // calculation on https://github.com/solana-labs/solana-program-library/issues/341
-        let swap_source_amount: u64 = 1000;
-        let swap_destination_amount: u64 = 50000;
-        let trade_fee_numerator: u64 = 0;
-        let trade_fee_denominator: u64 = 0;
-        let owner_trade_fee_numerator: u64 = 1;
-        let owner_trade_fee_denominator: u64 = 100;
-        let owner_withdraw_fee_numerator: u64 = 0;
-        let owner_withdraw_fee_denominator: u64 = 0;
-        let source_amount: u64 = 100;
+        let swap_source_amount = 1000;
+        let swap_destination_amount = 50000;
+        let trade_fee_numerator = 0;
+        let trade_fee_denominator = 0;
+        let owner_trade_fee_numerator = 1;
+        let owner_trade_fee_denominator = 100;
+        let owner_withdraw_fee_numerator = 0;
+        let owner_withdraw_fee_denominator = 0;
+        let source_amount: u128 = 100;
         let curve = ConstantProductCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -600,9 +600,9 @@ mod tests {
 
     #[test]
     fn constant_product_swap_no_fee() {
-        let swap_source_amount: u64 = 1000;
-        let swap_destination_amount: u64 = 50000;
-        let source_amount: u64 = 100;
+        let swap_source_amount: u128 = 1000;
+        let swap_destination_amount: u128 = 50000;
+        let source_amount: u128 = 100;
         let curve = ConstantProductCurve::default();
         let result = curve
             .swap(source_amount, swap_source_amount, swap_destination_amount)
@@ -614,15 +614,15 @@ mod tests {
 
     #[test]
     fn flat_swap_calculation() {
-        let swap_source_amount: u64 = 1000;
-        let swap_destination_amount: u64 = 50000;
-        let trade_fee_numerator: u64 = 1;
-        let trade_fee_denominator: u64 = 100;
-        let owner_trade_fee_numerator: u64 = 2;
-        let owner_trade_fee_denominator: u64 = 100;
-        let owner_withdraw_fee_numerator: u64 = 2;
-        let owner_withdraw_fee_denominator: u64 = 100;
-        let source_amount: u64 = 100;
+        let swap_source_amount = 1000;
+        let swap_destination_amount = 50000;
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 100;
+        let owner_trade_fee_numerator = 2;
+        let owner_trade_fee_denominator = 100;
+        let owner_withdraw_fee_numerator = 2;
+        let owner_withdraw_fee_denominator = 100;
+        let source_amount: u128 = 100;
         let curve = FlatCurve {
             trade_fee_numerator,
             trade_fee_denominator,
