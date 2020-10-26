@@ -5,10 +5,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use crate::{
-    constraints::FeeConstraints,
-    error::SwapError,
-};
+use crate::{constraints::FeeConstraints, error::SwapError};
 
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::{TryFrom, TryInto};
@@ -830,19 +827,31 @@ mod tests {
         curve.validate_fees(&fee_constraints).unwrap();
 
         fee_constraints.trade_fee_numerator = trade_fee_numerator - 1;
-        assert_eq!(Err(SwapError::InvalidFee.into()), curve.validate_fees(&fee_constraints));
+        assert_eq!(
+            Err(SwapError::InvalidFee.into()),
+            curve.validate_fees(&fee_constraints)
+        );
         fee_constraints.trade_fee_numerator = trade_fee_numerator;
 
         fee_constraints.trade_fee_denominator = trade_fee_denominator - 1;
-        assert_eq!(Err(SwapError::InvalidFee.into()), curve.validate_fees(&fee_constraints));
+        assert_eq!(
+            Err(SwapError::InvalidFee.into()),
+            curve.validate_fees(&fee_constraints)
+        );
         fee_constraints.trade_fee_denominator = trade_fee_denominator;
 
         fee_constraints.owner_trade_fee_numerator = owner_trade_fee_numerator - 1;
-        assert_eq!(Err(SwapError::InvalidFee.into()), curve.validate_fees(&fee_constraints));
+        assert_eq!(
+            Err(SwapError::InvalidFee.into()),
+            curve.validate_fees(&fee_constraints)
+        );
         fee_constraints.owner_trade_fee_numerator = owner_trade_fee_numerator;
 
         fee_constraints.owner_trade_fee_denominator = owner_trade_fee_denominator - 1;
-        assert_eq!(Err(SwapError::InvalidFee.into()), curve.validate_fees(&fee_constraints));
+        assert_eq!(
+            Err(SwapError::InvalidFee.into()),
+            curve.validate_fees(&fee_constraints)
+        );
         fee_constraints.owner_trade_fee_denominator = owner_trade_fee_denominator;
     }
 }
