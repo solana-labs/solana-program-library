@@ -341,23 +341,27 @@ impl Processor {
             .ok_or(SwapError::FeeCalculationFailure)?;
         if pool_token_amount > 0 {
             if let Some(fee_constraints) = &fee_constraints {
-                let host_fee_account_info = next_account_info(account_info_iter)?;
-                let host_fee_account = Self::unpack_token_account(&host_fee_account_info.data.borrow())?;
-                if *pool_mint_info.key != host_fee_account.mint {
-                    return Err(SwapError::IncorrectPoolMint.into());
+                match next_account_info(account_info_iter) {
+                    Ok(host_fee_account_info) => {
+                        let host_fee_account = Self::unpack_token_account(&host_fee_account_info.data.borrow())?;
+                        if *pool_mint_info.key != host_fee_account.mint {
+                            return Err(SwapError::IncorrectPoolMint.into());
+                        }
+                        let host_fee = token_swap.swap_curve.calculator.host_fee(pool_token_amount, fee_constraints)
+                            .ok_or(SwapError::FeeCalculationFailure)?;
+                        pool_token_amount = pool_token_amount.checked_sub(host_fee).ok_or(SwapError::FeeCalculationFailure)?;
+                        Self::token_mint_to(
+                            swap_info.key,
+                            token_program_info.clone(),
+                            pool_mint_info.clone(),
+                            host_fee_account_info.clone(),
+                            authority_info.clone(),
+                            token_swap.nonce,
+                            to_u64(host_fee)?,
+                        )?;
+                    },
+                    Err(_) => {}, // fall through
                 }
-                let host_fee = token_swap.swap_curve.calculator.host_fee(pool_token_amount, fee_constraints)
-                    .ok_or(SwapError::FeeCalculationFailure)?;
-                pool_token_amount = pool_token_amount.checked_sub(host_fee).ok_or(SwapError::FeeCalculationFailure)?;
-                Self::token_mint_to(
-                    swap_info.key,
-                    token_program_info.clone(),
-                    pool_mint_info.clone(),
-                    host_fee_account_info.clone(),
-                    authority_info.clone(),
-                    token_swap.nonce,
-                    to_u64(host_fee)?,
-                )?;
             }
             Self::token_mint_to(
                 swap_info.key,
@@ -4181,7 +4185,7 @@ mod tests {
             );
         }
 
-        // constraint specified, no host fee account
+        // still correct: constraint specified, no host fee account
         {
             let authority_key = accounts.authority_key;
             let (
@@ -4204,39 +4208,36 @@ mod tests {
                 host_fee_numerator,
                 host_fee_denominator,
             });
-            assert_eq!(
-                Err(ProgramError::NotEnoughAccountKeys),
-                do_process_instruction_with_fee_constraints(
-                    swap(
-                        &SWAP_PROGRAM_ID,
-                        &TOKEN_PROGRAM_ID,
-                        &accounts.swap_key,
-                        &accounts.authority_key,
-                        &token_a_key,
-                        &accounts.token_a_key,
-                        &accounts.token_b_key,
-                        &token_b_key,
-                        &accounts.pool_mint_key,
-                        &accounts.pool_fee_key,
-                        None,
-                        initial_a,
-                        minimum_b_amount,
-                    )
-                    .unwrap(),
-                    vec![
-                        &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut token_a_account,
-                        &mut accounts.token_a_account,
-                        &mut accounts.token_b_account,
-                        &mut token_b_account,
-                        &mut accounts.pool_mint_account,
-                        &mut accounts.pool_fee_account,
-                        &mut Account::default(),
-                    ],
-                    &constraints,
-                ),
-            );
+            do_process_instruction_with_fee_constraints(
+                swap(
+                    &SWAP_PROGRAM_ID,
+                    &TOKEN_PROGRAM_ID,
+                    &accounts.swap_key,
+                    &accounts.authority_key,
+                    &token_a_key,
+                    &accounts.token_a_key,
+                    &accounts.token_b_key,
+                    &token_b_key,
+                    &accounts.pool_mint_key,
+                    &accounts.pool_fee_key,
+                    None,
+                    initial_a,
+                    minimum_b_amount,
+                )
+                .unwrap(),
+                vec![
+                    &mut accounts.swap_account,
+                    &mut Account::default(),
+                    &mut token_a_account,
+                    &mut accounts.token_a_account,
+                    &mut accounts.token_b_account,
+                    &mut token_b_account,
+                    &mut accounts.pool_mint_account,
+                    &mut accounts.pool_fee_account,
+                    &mut Account::default(),
+                ],
+                &constraints,
+            ).unwrap();
         }
 
         // invalid mint for host fee account
@@ -4286,7 +4287,7 @@ mod tests {
                         &accounts.pool_fee_key,
                         Some(&bad_token_a_key),
                         initial_a,
-                        minimum_b_amount,
+                        0,
                     )
                     .unwrap(),
                     vec![
