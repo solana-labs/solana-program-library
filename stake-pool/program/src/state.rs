@@ -2,7 +2,7 @@
 
 use crate::error::Error;
 use crate::instruction::{unpack, Fee};
-use solana_sdk::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
+use solana_program::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
 use std::mem::size_of;
 
 /// Initialized program details.
@@ -12,10 +12,10 @@ pub struct StakePool {
     /// Owner authority
     /// allows for updating the staking authority
     pub owner: Pubkey,
-    /// Deposit authority nonce
+    /// Deposit authority bump seed
     /// for `create_program_address(&[state::StakePool account, "deposit"])`
     pub deposit_bump_seed: u8,
-    /// Withdrawal authority nonce
+    /// Withdrawal authority bump seed
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
     pub withdraw_bump_seed: u8,
     /// Pool Mint
@@ -67,6 +67,8 @@ pub enum State {
 }
 
 impl State {
+    /// Length of state data when serialized
+    pub const LEN: usize = size_of::<u8>() + size_of::<StakePool>();
     /// Deserializes a byte buffer into a [State](struct.State.html).
     /// TODO efficient unpacking here
     pub fn deserialize(input: &[u8]) -> Result<State, ProgramError> {
@@ -76,7 +78,8 @@ impl State {
         Ok(match input[0] {
             0 => State::Unallocated,
             1 => {
-                let swap: &StakePool = unpack(input)?;
+                // We send whole input here, because unpack skips the first byte
+                let swap: &StakePool = unpack(&input)?;
                 State::Init(*swap)
             }
             _ => return Err(ProgramError::InvalidAccountData),

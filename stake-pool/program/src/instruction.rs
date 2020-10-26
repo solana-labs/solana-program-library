@@ -2,10 +2,10 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use solana_sdk::instruction::AccountMeta;
-use solana_sdk::instruction::Instruction;
-use solana_sdk::program_error::ProgramError;
-use solana_sdk::pubkey::Pubkey;
+use solana_program::instruction::AccountMeta;
+use solana_program::instruction::Instruction;
+use solana_program::program_error::ProgramError;
+use solana_program::pubkey::Pubkey;
 use std::mem::size_of;
 
 /// Fee rate as a ratio
@@ -25,11 +25,6 @@ pub struct Fee {
 pub struct InitArgs {
     /// Fee paid to the owner in pool tokens
     pub fee: Fee,
-    /// Nonce used for the deposit program address
-    pub deposit_bump_seed: u8,
-    /// Nonce used for the withdraw program address
-    /// This program address is used as the stake withdraw key as well
-    pub withdraw_bump_seed: u8,
 }
 
 /// Instructions supported by the StakePool program.
@@ -48,28 +43,41 @@ pub enum StakePoolInstruction {
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
     ///
-    ///   0. `[]` StakePool
-    ///   1. `[]` deposit authority
-    ///   2. `[]` withdraw  authority
-    ///   3. `[w]` Stake, deposit authority is set as the withdrawal key
-    ///   4. `[w]` Pool MINT account, authority is the owner.
-    ///   5. `[w]` Pool Account to deposit the generated tokens.
-    ///   6. `[w]` Pool Account to deposit the generated fee for owner.
-    ///   7. `[]` Token program id
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool deposit authority
+    ///   2. `[]` Stake pool withdraw authority
+    ///   3. `[w]` Stake account to join the pool (withdraw should be set to stake pool deposit)
+    ///   4. `[w]` User account to receive pool tokens
+    ///   5. `[w]` Account to receive pool fee tokens
+    ///   6. `[w]` Pool token mint account
+    ///   7. `[]` Pool token program id
     Deposit,
 
     ///   Withdraw the token from the pool at the current ratio.
     ///   The amount withdrawn is the MIN(u64, stake size)
     ///
-    ///   0. `[]` StakePool
-    ///   1. `[]` withdraw  authority
-    ///   2. `[w]` SOURCE Pool account, amount is transferable by authority
-    ///   3. `[w]` Pool MINT account, authority is the owner
-    ///   4. `[w]` Stake SOURCE owned by the withdraw authority
-    ///   6. `[w]` Stake destination, uninitialized, for the user stake
-    ///   7. `[]` Token program id
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[w]` Stake account to split
+    ///   3. `[w]` Unitialized stake account to receive withdrawal
+    ///   4. `[]` User account to set as a new withdraw authority
+    ///   5. `[w]` User account with pool tokens to burn from
+    ///   6. `[w]` Pool token mint account
+    ///   7. `[]` Pool token program id
     ///   userdata: amount to withdraw
     Withdraw(u64),
+
+    ///   Claim ownership of a whole stake account.
+    ///   Also burns enough tokens to make up for the stake account balance
+    ///   
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[w]` Stake account to claim
+    ///   3. `[]` User account to set as a new withdraw authority
+    ///   4. `[w]` User account with pool tokens to burn from
+    ///   5. `[w]` Pool token mint account
+    ///   6. `[]` Pool token program id
+    Claim,
 
     ///   Update the staking pubkey for a stake
     ///
@@ -106,8 +114,9 @@ impl StakePoolInstruction {
                 let val: &u64 = unpack(input)?;
                 Self::Withdraw(*val)
             }
-            3 => Self::SetStakingAuthority,
-            4 => Self::SetOwner,
+            3 => Self::Claim,
+            4 => Self::SetStakingAuthority,
+            5 => Self::SetOwner,
             _ => return Err(ProgramError::InvalidAccountData),
         })
     }
@@ -132,11 +141,14 @@ impl StakePoolInstruction {
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
                 *value = *val;
             }
-            Self::SetStakingAuthority => {
+            Self::Claim => {
                 output[0] = 3;
             }
-            Self::SetOwner => {
+            Self::SetStakingAuthority => {
                 output[0] = 4;
+            }
+            Self::SetOwner => {
+                output[0] = 5;
             }
         }
         Ok(output)
@@ -167,10 +179,151 @@ pub fn initialize(
     let data = init_data.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, true),
-        AccountMeta::new(*owner, false),
+        AccountMeta::new_readonly(*owner, false),
+        AccountMeta::new_readonly(*pool_mint, false),
+        AccountMeta::new_readonly(*owner_pool_account, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'deposit' instruction.
+pub fn deposit(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_deposit: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    stake_to_join: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    pool_fee_to: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let args = StakePoolInstruction::Deposit;
+    let data = args.serialize()?;
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_deposit, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
+        AccountMeta::new(*stake_to_join, false),
+        AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*pool_fee_to, false),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new(*owner_pool_account, false),
-        AccountMeta::new(*token_program_id, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'withdraw' instruction.
+pub fn withdraw(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    stake_to_split: &Pubkey,
+    stake_to_receive: &Pubkey,
+    user_withdrawer: &Pubkey,
+    burn_from: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    let args = StakePoolInstruction::Withdraw(amount);
+    let data = args.serialize()?;
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
+        AccountMeta::new(*stake_to_split, false),
+        AccountMeta::new(*stake_to_receive, false),
+        AccountMeta::new_readonly(*user_withdrawer, false),
+        AccountMeta::new(*burn_from, true),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'claim' instruction.
+pub fn claim(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    stake_to_claim: &Pubkey,
+    user_withdrawer: &Pubkey,
+    burn_from: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    let args = StakePoolInstruction::Withdraw(amount);
+    let data = args.serialize()?;
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
+        AccountMeta::new(*stake_to_claim, false),
+        AccountMeta::new_readonly(*user_withdrawer, false),
+        AccountMeta::new(*burn_from, true),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'set staking authority' instruction.
+pub fn set_staking_authority(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_owner: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    stake_account_to_update: &Pubkey,
+    stake_account_new_authority: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let args = StakePoolInstruction::SetStakingAuthority;
+    let data = args.serialize()?;
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_owner, true),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
+        AccountMeta::new(*stake_account_to_update, false),
+        AccountMeta::new_readonly(*stake_account_new_authority, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'set owner' instruction.
+pub fn set_owner(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_owner: &Pubkey,
+    stake_pool_new_owner: &Pubkey,
+    stake_pool_new_fee_receiver: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let args = StakePoolInstruction::SetStakingAuthority;
+    let data = args.serialize()?;
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_owner, true),
+        AccountMeta::new_readonly(*stake_pool_new_owner, false),
+        AccountMeta::new_readonly(*stake_pool_new_fee_receiver, false),
     ];
     Ok(Instruction {
         program_id: *program_id,

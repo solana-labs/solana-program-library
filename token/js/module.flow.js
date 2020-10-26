@@ -6,6 +6,7 @@
  */
 
 declare module '@solana/spl-token' {
+  declare export var TOKEN_PROGRAM_ID;
   declare export class u64 extends BN {
     toBuffer(): Buffer;
     static fromBuffer(buffer: Buffer): u64;
@@ -54,6 +55,9 @@ declare module '@solana/spl-token' {
     signer11: PublicKey,
   |};
   declare export class Token {
+    publicKey: PublicKey;
+    programId: PublicKey;
+    payer: Account;
     constructor(
       connection: Connection,
       publicKey: PublicKey,
