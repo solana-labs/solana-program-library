@@ -13,6 +13,7 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     system_instruction,
     transaction::Transaction,
+    transport,
 };
 use spl_themis_ristretto::{
     instruction,
@@ -20,6 +21,32 @@ use spl_themis_ristretto::{
 };
 use std::{io, time::Instant};
 //use tarpc::context;
+
+fn assert_transaction_size(tx: &Transaction) {
+    let tx_size = bincode::serialize(&tx).unwrap().len();
+    assert!(
+        tx_size <= 1200,
+        "transaction over 1200 bytes: {} bytes",
+        tx_size
+    );
+}
+
+// TODO: Add this to BanksClient
+pub async fn process_transactions_with_commitment(
+    client: &mut BanksClient,
+    transactions: Vec<Transaction>,
+    commitment: CommitmentLevel,
+) -> transport::Result<()> {
+    let mut clients: Vec<_> = transactions.iter().map(|_| client.clone()).collect();
+    let futures = clients
+        .iter_mut()
+        .zip(transactions)
+        .map(|(client, transaction)| {
+            client.process_transaction_with_commitment(transaction, commitment)
+        });
+    let statuses = futures::future::join_all(futures).await;
+    statuses.into_iter().collect() // Convert Vec<Result<_, _>> to Result<Vec<_>>
+}
 
 /// For a single user, create interactions, calculate the aggregate, submit a proof, and verify it.
 async fn run_user_workflow(
@@ -44,15 +71,10 @@ async fn run_user_workflow(
         sol_to_lamports(0.001),
         pk,
     );
-    let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
+    let msg = Message::new(&ixs, Some(&sender_pubkey));
     let recent_blockhash = client.get_recent_blockhash().await?;
     let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
-    let tx_size = bincode::serialize(&tx).unwrap().len();
-    assert!(
-        tx_size <= 1200,
-        "transaction over 1200 bytes: {} bytes",
-        tx_size
-    );
+    assert_transaction_size(&tx);
     client
         .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
         .await
@@ -68,15 +90,10 @@ async fn run_user_workflow(
             &policies_pubkey,
             interactions,
         );
-        let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
+        let msg = Message::new(&[ix], Some(&sender_pubkey));
         let recent_blockhash = client.get_recent_blockhash().await?;
         let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
-        let tx_size = bincode::serialize(&tx).unwrap().len();
-        assert!(
-            tx_size <= 1200,
-            "transaction over 1200 bytes: {} bytes",
-            tx_size
-        );
+        assert_transaction_size(&tx);
         client
             .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
             .await
@@ -110,7 +127,6 @@ async fn run_user_workflow(
         (RISTRETTO_BASEPOINT_POINT, RISTRETTO_BASEPOINT_POINT),
         0u64.into(),
     );
-    //sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
 
     let ix = instruction::submit_proof_decryption(
         program_id,
@@ -120,15 +136,10 @@ async fn run_user_workflow(
         announcement_ctx,
         response,
     );
-    let msg = Message::new(&[ix], Some(&sender_keypair.pubkey()));
+    let msg = Message::new(&[ix], Some(&sender_pubkey));
     let recent_blockhash = client.get_recent_blockhash().await?;
     let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
-    let tx_size = bincode::serialize(&tx).unwrap().len();
-    assert!(
-        tx_size <= 1200,
-        "transaction over 1200 bytes: {} bytes",
-        tx_size
-    );
+    assert_transaction_size(&tx);
     client
         .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
         .await
@@ -174,43 +185,33 @@ pub async fn test_e2e(
         policies_slice,
     ));
 
-    let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
+    let msg = Message::new(&ixs, Some(&sender_pubkey));
     let recent_blockhash = client.get_recent_blockhash().await?;
     let tx = Transaction::new(&[&sender_keypair, &policies_keypair], msg, recent_blockhash);
-    let tx_size = bincode::serialize(&tx).unwrap().len();
-    assert!(
-        tx_size <= 1200,
-        "transaction over 1200 bytes: {} bytes",
-        tx_size
-    );
+    assert_transaction_size(&tx);
     client
         .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
         .await
         .unwrap();
 
     // Send feepayer_keypairs some SOL
+    println!("Seeding feepayer accounts...");
     let feepayers: Vec<_> = (0..num_users).map(|_| Keypair::new()).collect();
-    for feepayers in feepayers.chunks(20) {
-        println!("Seeding feepayer accounts...");
+    let recent_blockhash = client.get_recent_blockhash().await.unwrap();
+    let txs: Vec<_> = feepayers.chunks(20).map(|feepayers| {
         let payments: Vec<_> = feepayers
             .iter()
             .map(|keypair| (keypair.pubkey(), sol_to_lamports(0.0011)))
             .collect();
         let ixs = system_instruction::transfer_many(&sender_pubkey, &payments);
         let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
-        let recent_blockhash = client.get_recent_blockhash().await.unwrap();
         let tx = Transaction::new(&[&sender_keypair], msg, recent_blockhash);
-        let tx_size = bincode::serialize(&tx).unwrap().len();
-        assert!(
-            tx_size <= 1200,
-            "transaction over 1200 bytes: {} bytes",
-            tx_size
-        );
-        client
-            .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
-            .await
-            .unwrap();
-    }
+        assert_transaction_size(&tx);
+        tx
+    }).collect();
+    process_transactions_with_commitment(client, txs, CommitmentLevel::Recent)
+        .await
+        .unwrap();
 
     println!("Starting benchmark...");
     let now = Instant::now();
