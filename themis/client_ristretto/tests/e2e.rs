@@ -12,7 +12,7 @@ use solana_sdk::{
     transaction::Transaction,
     transport,
 };
-use spl_themis_ristretto_client::test_e2e;
+use spl_themis_ristretto_client::{test_e2e, process_transactions_with_commitment};
 use std::{
     fs::{remove_dir_all, File},
     io::Read,
@@ -32,23 +32,6 @@ fn load_program(name: &str) -> Vec<u8> {
     let mut program = Vec::new();
     file.read_to_end(&mut program).unwrap();
     program
-}
-
-// TODO: Add this to BanksClient
-async fn process_transactions_with_commitment(
-    client: &mut BanksClient,
-    transactions: Vec<Transaction>,
-    commitment: CommitmentLevel,
-) -> transport::Result<()> {
-    let mut clients: Vec<_> = transactions.iter().map(|_| client.clone()).collect();
-    let futures = clients
-        .iter_mut()
-        .zip(transactions)
-        .map(|(client, transaction)| {
-            client.process_transaction_with_commitment(transaction, commitment)
-        });
-    let statuses = futures::future::join_all(futures).await;
-    statuses.into_iter().collect() // Convert Vec<Result<_, _>> to Result<Vec<_>>
 }
 
 async fn create_program_account_with_commitment(

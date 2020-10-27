@@ -10,12 +10,10 @@ members = [
   "token/cli",
   "token/program",
   "token/program-v3",
-  "themis/program_bn",
   "themis/program_ristretto",
 ]
 exclude = [
   "shared-memory/client",
   "token/perf-monitor",
-  "themis/client_bn",
   "themis/client_ristretto",
 ]
