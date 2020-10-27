@@ -56,7 +56,6 @@ done
 # Run client tests
 _ cargo test --manifest-path=shared-memory/client/Cargo.toml -- --nocapture
 _ cargo test --manifest-path=token/perf-monitor/Cargo.toml -- --nocapture
-_ cargo test --manifest-path=themis/client_bn/Cargo.toml -- --nocapture
 _ cargo test --manifest-path=themis/client_ristretto/Cargo.toml -- --nocapture
 
 

@@ -197,19 +197,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
-name = "bn"
-version = "0.4.4"
-source = "git+https://github.com/garious/bn?rev=5c35c737ffabac9921310f53f48725216d59cbf1#5c35c737ffabac9921310f53f48725216d59cbf1"
-dependencies = [
- "borsh",
- "byteorder",
- "crunchy",
- "lazy_static",
- "rand",
- "rustc-hex",
-]
-
-[[package]]
 name = "borsh"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -478,12 +465,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 
 [[package]]
-name = "cpuid-bool"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8aebca1129a03dc6dc2b127edd729435bbc4a37e1d5f4d7513165089ceb02634"
-
-[[package]]
 name = "crc32fast"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -626,19 +607,6 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
-dependencies = [
- "byteorder",
- "digest 0.8.1",
- "rand_core",
- "subtle 2.2.3",
- "zeroize",
-]
-
-[[package]]
-name = "curve25519-dalek"
-version = "2.1.0"
 source = "git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff#60efef3553d6bf3d7f3b09b5f97acd54d72529ff"
 dependencies = [
  "borsh",
@@ -646,6 +614,19 @@ dependencies = [
  "digest 0.8.1",
  "rand_core",
  "serde",
+ "subtle 2.2.3",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
+dependencies = [
+ "byteorder",
+ "digest 0.8.1",
+ "rand_core",
  "subtle 2.2.3",
  "zeroize",
 ]
@@ -746,7 +727,7 @@ dependencies = [
  "ed25519",
  "rand",
  "serde",
- "sha2 0.8.2",
+ "sha2",
  "zeroize",
 ]
 
@@ -755,20 +736,6 @@ name = "either"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
-
-[[package]]
-name = "elgamal_bn"
-version = "0.1.0"
-source = "git+https://github.com/garious/elgamal_bn?rev=ba9bdcdb6cdd6fb8e74d0b8bc1b918bcd1b543a9#ba9bdcdb6cdd6fb8e74d0b8bc1b918bcd1b543a9"
-dependencies = [
- "bn",
- "borsh",
- "clear_on_drop",
- "rand",
- "rand_core",
- "rustc-hex",
- "sha2 0.9.1",
-]
 
 [[package]]
 name = "elgamal_ristretto"
@@ -781,7 +748,7 @@ dependencies = [
  "curve25519-dalek 2.1.0 (git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff)",
  "rand_core",
  "serde",
- "sha2 0.8.2",
+ "sha2",
  "solana-sdk",
  "zkp",
 ]
@@ -1393,7 +1360,7 @@ dependencies = [
  "digest 0.8.1",
  "hmac-drbg",
  "rand",
- "sha2 0.8.2",
+ "sha2",
  "subtle 2.2.3",
  "typenum",
 ]
@@ -2106,12 +2073,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
-name = "rustc-hex"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e75f6a532d0fd9f7f13144f392b6ad56a32696bfcd9c78f797f16bbb6f072d6"
-
-[[package]]
 name = "rustc_version"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2330,19 +2291,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sha2"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2933378ddfeda7ea26f48c555bdad8bb446bf8a3d17832dc83e380d444cfb8c1"
-dependencies = [
- "block-buffer 0.9.0",
- "cfg-if 0.1.10",
- "cpuid-bool",
- "digest 0.9.0",
- "opaque-debug 0.3.0",
-]
-
-[[package]]
 name = "sha3"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2552,7 +2500,7 @@ dependencies = [
  "rustc_version",
  "serde",
  "serde_derive",
- "sha2 0.8.2",
+ "sha2",
  "solana-frozen-abi-macro",
  "solana-logger",
  "thiserror",
@@ -2654,7 +2602,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_derive",
- "sha2 0.8.2",
+ "sha2",
  "solana-frozen-abi",
  "solana-frozen-abi-macro",
  "solana-logger",
@@ -2773,7 +2721,7 @@ dependencies = [
  "serde_bytes",
  "serde_derive",
  "serde_json",
- "sha2 0.8.2",
+ "sha2",
  "sha3",
  "solana-crate-features",
  "solana-frozen-abi",
@@ -2938,22 +2886,6 @@ dependencies = [
  "serde_derive",
  "solana-program",
  "spl-token 2.0.8",
- "thiserror",
-]
-
-[[package]]
-name = "spl-themis-bn"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "bn",
- "borsh",
- "elgamal_bn",
- "getrandom",
- "num-derive",
- "num-traits",
- "rand",
- "solana-program",
  "thiserror",
 ]
 
@@ -3238,7 +3170,7 @@ dependencies = [
  "pbkdf2",
  "rand",
  "rustc-hash",
- "sha2 0.8.2",
+ "sha2",
  "unicode-normalization",
 ]
 
