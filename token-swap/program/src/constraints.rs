@@ -87,8 +87,8 @@ pub const FEE_CONSTRAINTS: Option<FeeConstraints> = {
     {
         Some(FeeConstraints {
             owner_key: OWNER_KEY,
-            valid_constant_product_curves: &VALID_CONSTANT_PRODUCT_CURVES,
-            valid_flat_curves: &VALID_FLAT_CURVES,
+            valid_constant_product_curves: VALID_CONSTANT_PRODUCT_CURVES,
+            valid_flat_curves: VALID_FLAT_CURVES,
         })
     }
     #[cfg(not(feature = "production"))]
