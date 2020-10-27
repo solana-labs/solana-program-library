@@ -5,8 +5,6 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use crate::{constraints::FeeConstraints, error::SwapError};
-
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
@@ -203,18 +201,10 @@ pub trait CurveCalculator: Debug + DynPack {
             .and_then(map_zero_to_none)
     }
 
-    /// Validate fees based on constraints
-    fn validate_fees(&self, constraints: &FeeConstraints) -> Result<(), ProgramError>;
-
     /// Calculate the host fee based on the owner fee, only used in production
     /// situations where a program is hosted by multiple frontends
-    fn host_fee(&self, owner_fee: u128, constraints: &FeeConstraints) -> Option<u128> {
-        let numerator = u128::try_from(constraints.host_fee_numerator).ok()?;
-        let denominator = u128::try_from(constraints.host_fee_denominator).ok()?;
-        owner_fee
-            .checked_mul(numerator)?
-            .checked_div(denominator)
-            .and_then(map_zero_to_none)
+    fn host_fee(&self, _owner_fee: u128) -> Option<u128> {
+        Some(0)
     }
 }
 
@@ -256,6 +246,10 @@ pub struct FlatCurve {
     pub owner_withdraw_fee_numerator: u64,
     /// Owner withdraw fee denominator
     pub owner_withdraw_fee_denominator: u64,
+    /// Host trading fee numerator
+    pub host_fee_numerator: u64,
+    /// Host trading fee denominator
+    pub host_fee_denominator: u64,
 }
 
 fn calculate_fee(token_amount: u128, fee_numerator: u128, fee_denominator: u128) -> Option<u128> {
@@ -318,21 +312,15 @@ impl CurveCalculator for FlatCurve {
         )
     }
 
-    /// Validate fees based on constraints
-    fn validate_fees(&self, constraints: &FeeConstraints) -> Result<(), ProgramError> {
-        if constraints.trade_fee_numerator != self.trade_fee_numerator {
-            return Err(SwapError::InvalidFee.into());
-        }
-        if constraints.trade_fee_denominator != self.trade_fee_denominator {
-            return Err(SwapError::InvalidFee.into());
-        }
-        if constraints.owner_trade_fee_numerator != self.owner_trade_fee_numerator {
-            return Err(SwapError::InvalidFee.into());
-        }
-        if constraints.owner_trade_fee_denominator != self.owner_trade_fee_denominator {
-            return Err(SwapError::InvalidFee.into());
-        }
-        Ok(())
+    /// Calculate the host fee based on the owner fee, only used in production
+    /// situations where a program is hosted by multiple frontends
+    fn host_fee(&self, owner_fee: u128) -> Option<u128> {
+        let numerator = u128::try_from(self.host_fee_numerator).ok()?;
+        let denominator = u128::try_from(self.host_fee_denominator).ok()?;
+        owner_fee
+            .checked_mul(numerator)?
+            .checked_div(denominator)
+            .and_then(map_zero_to_none)
     }
 }
 
@@ -344,9 +332,9 @@ impl IsInitialized for FlatCurve {
 }
 impl Sealed for FlatCurve {}
 impl Pack for FlatCurve {
-    const LEN: usize = 48;
+    const LEN: usize = 64;
     fn unpack_from_slice(input: &[u8]) -> Result<FlatCurve, ProgramError> {
-        let input = array_ref![input, 0, 48];
+        let input = array_ref![input, 0, 64];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             trade_fee_numerator,
@@ -355,7 +343,9 @@ impl Pack for FlatCurve {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
-        ) = array_refs![input, 8, 8, 8, 8, 8, 8];
+            host_fee_numerator,
+            host_fee_denominator,
+        ) = array_refs![input, 8, 8, 8, 8, 8, 8, 8, 8];
         Ok(Self {
             trade_fee_numerator: u64::from_le_bytes(*trade_fee_numerator),
             trade_fee_denominator: u64::from_le_bytes(*trade_fee_denominator),
@@ -363,6 +353,8 @@ impl Pack for FlatCurve {
             owner_trade_fee_denominator: u64::from_le_bytes(*owner_trade_fee_denominator),
             owner_withdraw_fee_numerator: u64::from_le_bytes(*owner_withdraw_fee_numerator),
             owner_withdraw_fee_denominator: u64::from_le_bytes(*owner_withdraw_fee_denominator),
+            host_fee_numerator: u64::from_le_bytes(*host_fee_numerator),
+            host_fee_denominator: u64::from_le_bytes(*host_fee_denominator),
         })
     }
 
@@ -373,7 +365,7 @@ impl Pack for FlatCurve {
 
 impl DynPack for FlatCurve {
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 48];
+        let output = array_mut_ref![output, 0, 64];
         let (
             trade_fee_numerator,
             trade_fee_denominator,
@@ -381,13 +373,17 @@ impl DynPack for FlatCurve {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
-        ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8];
+            host_fee_numerator,
+            host_fee_denominator,
+        ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8, 8, 8];
         *trade_fee_numerator = self.trade_fee_numerator.to_le_bytes();
         *trade_fee_denominator = self.trade_fee_denominator.to_le_bytes();
         *owner_trade_fee_numerator = self.owner_trade_fee_numerator.to_le_bytes();
         *owner_trade_fee_denominator = self.owner_trade_fee_denominator.to_le_bytes();
         *owner_withdraw_fee_numerator = self.owner_withdraw_fee_numerator.to_le_bytes();
         *owner_withdraw_fee_denominator = self.owner_withdraw_fee_denominator.to_le_bytes();
+        *host_fee_numerator = self.host_fee_numerator.to_le_bytes();
+        *host_fee_denominator = self.host_fee_denominator.to_le_bytes();
     }
 }
 
@@ -406,6 +402,10 @@ pub struct ConstantProductCurve {
     pub owner_withdraw_fee_numerator: u64,
     /// Owner withdraw fee denominator
     pub owner_withdraw_fee_denominator: u64,
+    /// Host trading fee numerator
+    pub host_fee_numerator: u64,
+    /// Host trading fee denominator
+    pub host_fee_denominator: u64,
 }
 
 impl CurveCalculator for ConstantProductCurve {
@@ -462,21 +462,15 @@ impl CurveCalculator for ConstantProductCurve {
         )
     }
 
-    /// Validate fees based on constraints
-    fn validate_fees(&self, constraints: &FeeConstraints) -> Result<(), ProgramError> {
-        if constraints.trade_fee_numerator != self.trade_fee_numerator {
-            return Err(SwapError::InvalidFee.into());
-        }
-        if constraints.trade_fee_denominator != self.trade_fee_denominator {
-            return Err(SwapError::InvalidFee.into());
-        }
-        if constraints.owner_trade_fee_numerator != self.owner_trade_fee_numerator {
-            return Err(SwapError::InvalidFee.into());
-        }
-        if constraints.owner_trade_fee_denominator != self.owner_trade_fee_denominator {
-            return Err(SwapError::InvalidFee.into());
-        }
-        Ok(())
+    /// Calculate the host fee based on the owner fee, only used in production
+    /// situations where a program is hosted by multiple frontends
+    fn host_fee(&self, owner_fee: u128) -> Option<u128> {
+        let numerator = u128::try_from(self.host_fee_numerator).ok()?;
+        let denominator = u128::try_from(self.host_fee_denominator).ok()?;
+        owner_fee
+            .checked_mul(numerator)?
+            .checked_div(denominator)
+            .and_then(map_zero_to_none)
     }
 }
 
@@ -488,9 +482,9 @@ impl IsInitialized for ConstantProductCurve {
 }
 impl Sealed for ConstantProductCurve {}
 impl Pack for ConstantProductCurve {
-    const LEN: usize = 48;
+    const LEN: usize = 64;
     fn unpack_from_slice(input: &[u8]) -> Result<ConstantProductCurve, ProgramError> {
-        let input = array_ref![input, 0, 48];
+        let input = array_ref![input, 0, 64];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             trade_fee_numerator,
@@ -499,7 +493,9 @@ impl Pack for ConstantProductCurve {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
-        ) = array_refs![input, 8, 8, 8, 8, 8, 8];
+            host_fee_numerator,
+            host_fee_denominator,
+        ) = array_refs![input, 8, 8, 8, 8, 8, 8, 8, 8];
         Ok(Self {
             trade_fee_numerator: u64::from_le_bytes(*trade_fee_numerator),
             trade_fee_denominator: u64::from_le_bytes(*trade_fee_denominator),
@@ -507,6 +503,8 @@ impl Pack for ConstantProductCurve {
             owner_trade_fee_denominator: u64::from_le_bytes(*owner_trade_fee_denominator),
             owner_withdraw_fee_numerator: u64::from_le_bytes(*owner_withdraw_fee_numerator),
             owner_withdraw_fee_denominator: u64::from_le_bytes(*owner_withdraw_fee_denominator),
+            host_fee_numerator: u64::from_le_bytes(*host_fee_numerator),
+            host_fee_denominator: u64::from_le_bytes(*host_fee_denominator),
         })
     }
 
@@ -517,7 +515,7 @@ impl Pack for ConstantProductCurve {
 
 impl DynPack for ConstantProductCurve {
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 48];
+        let output = array_mut_ref![output, 0, 64];
         let (
             trade_fee_numerator,
             trade_fee_denominator,
@@ -525,13 +523,17 @@ impl DynPack for ConstantProductCurve {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
-        ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8];
+            host_fee_numerator,
+            host_fee_denominator,
+        ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8, 8, 8];
         *trade_fee_numerator = self.trade_fee_numerator.to_le_bytes();
         *trade_fee_denominator = self.trade_fee_denominator.to_le_bytes();
         *owner_trade_fee_numerator = self.owner_trade_fee_numerator.to_le_bytes();
         *owner_trade_fee_denominator = self.owner_trade_fee_denominator.to_le_bytes();
         *owner_withdraw_fee_numerator = self.owner_withdraw_fee_numerator.to_le_bytes();
         *owner_withdraw_fee_denominator = self.owner_withdraw_fee_denominator.to_le_bytes();
+        *host_fee_numerator = self.host_fee_numerator.to_le_bytes();
+        *host_fee_denominator = self.host_fee_denominator.to_le_bytes();
     }
 }
 
@@ -547,6 +549,8 @@ mod tests {
         let owner_trade_fee_denominator = 1;
         let owner_withdraw_fee_numerator = 0;
         let owner_withdraw_fee_denominator = 1;
+        let host_fee_numerator = 0;
+        let host_fee_denominator = 1;
         let calculator = ConstantProductCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -554,6 +558,8 @@ mod tests {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
         };
         assert_eq!(calculator.new_pool_supply(), INITIAL_SWAP_POOL_AMOUNT);
     }
@@ -565,6 +571,8 @@ mod tests {
         let owner_trade_fee_denominator = 1;
         let owner_withdraw_fee_numerator = 0;
         let owner_withdraw_fee_denominator = 1;
+        let host_fee_numerator = 0;
+        let host_fee_denominator = 1;
         let calculator = ConstantProductCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -572,6 +580,8 @@ mod tests {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
         };
         assert_eq!(
             calculator.pool_tokens_to_trading_tokens(deposit, supply, token_a),
@@ -599,6 +609,8 @@ mod tests {
         let owner_trade_fee_denominator = 0;
         let owner_withdraw_fee_numerator = 0;
         let owner_withdraw_fee_denominator = 0;
+        let host_fee_numerator = 0;
+        let host_fee_denominator = 0;
         let source_amount = 100;
         let curve = ConstantProductCurve {
             trade_fee_numerator,
@@ -607,6 +619,8 @@ mod tests {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
         };
         let result = curve
             .swap(source_amount, swap_source_amount, swap_destination_amount)
@@ -629,6 +643,8 @@ mod tests {
         let owner_trade_fee_denominator = 100;
         let owner_withdraw_fee_numerator = 0;
         let owner_withdraw_fee_denominator = 0;
+        let host_fee_numerator = 0;
+        let host_fee_denominator = 0;
         let source_amount: u128 = 100;
         let curve = ConstantProductCurve {
             trade_fee_numerator,
@@ -637,6 +653,8 @@ mod tests {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
         };
         let result = curve
             .swap(source_amount, swap_source_amount, swap_destination_amount)
@@ -672,6 +690,8 @@ mod tests {
         let owner_trade_fee_denominator = 100;
         let owner_withdraw_fee_numerator = 2;
         let owner_withdraw_fee_denominator = 100;
+        let host_fee_numerator = 2;
+        let host_fee_denominator = 100;
         let source_amount: u128 = 100;
         let curve = FlatCurve {
             trade_fee_numerator,
@@ -680,6 +700,8 @@ mod tests {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
         };
         let result = curve
             .swap(source_amount, swap_source_amount, swap_destination_amount)
@@ -703,6 +725,8 @@ mod tests {
         let owner_trade_fee_denominator = 5;
         let owner_withdraw_fee_numerator = 4;
         let owner_withdraw_fee_denominator = 10;
+        let host_fee_numerator = 4;
+        let host_fee_denominator = 10;
         let curve = FlatCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -710,6 +734,8 @@ mod tests {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
         };
 
         let mut packed = [0u8; FlatCurve::LEN];
@@ -724,6 +750,8 @@ mod tests {
         packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
+        packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
+        packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
         let unpacked = FlatCurve::unpack(&packed).unwrap();
         assert_eq!(curve, unpacked);
     }
@@ -736,6 +764,8 @@ mod tests {
         let owner_trade_fee_denominator = 5;
         let owner_withdraw_fee_numerator = 4;
         let owner_withdraw_fee_denominator = 10;
+        let host_fee_numerator = 4;
+        let host_fee_denominator = 10;
         let curve = ConstantProductCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -743,6 +773,8 @@ mod tests {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
         };
 
         let mut packed = [0u8; ConstantProductCurve::LEN];
@@ -757,6 +789,8 @@ mod tests {
         packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
+        packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
+        packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
         let unpacked = ConstantProductCurve::unpack(&packed).unwrap();
         assert_eq!(curve, unpacked);
     }
@@ -769,6 +803,8 @@ mod tests {
         let owner_trade_fee_denominator = 5;
         let owner_withdraw_fee_numerator = 4;
         let owner_withdraw_fee_denominator = 10;
+        let host_fee_numerator = 7;
+        let host_fee_denominator = 100;
         let curve = ConstantProductCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -776,6 +812,8 @@ mod tests {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
         };
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
@@ -796,67 +834,9 @@ mod tests {
         packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&[0u8; 16]); // padding
+        packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
+        packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
         let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
         assert_eq!(swap_curve, unpacked);
-    }
-
-    #[test]
-    fn validate_fees() {
-        let trade_fee_numerator = 1;
-        let trade_fee_denominator = 4;
-        let owner_trade_fee_numerator = 2;
-        let owner_trade_fee_denominator = 5;
-        let owner_withdraw_fee_numerator = 4;
-        let owner_withdraw_fee_denominator = 10;
-        let host_fee_numerator = 10;
-        let host_fee_denominator = 100;
-        let owner_key = "";
-        let mut fee_constraints = FeeConstraints {
-            owner_key,
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        };
-        let curve = ConstantProductCurve {
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-        };
-        curve.validate_fees(&fee_constraints).unwrap();
-
-        fee_constraints.trade_fee_numerator = trade_fee_numerator - 1;
-        assert_eq!(
-            Err(SwapError::InvalidFee.into()),
-            curve.validate_fees(&fee_constraints)
-        );
-        fee_constraints.trade_fee_numerator = trade_fee_numerator;
-
-        fee_constraints.trade_fee_denominator = trade_fee_denominator - 1;
-        assert_eq!(
-            Err(SwapError::InvalidFee.into()),
-            curve.validate_fees(&fee_constraints)
-        );
-        fee_constraints.trade_fee_denominator = trade_fee_denominator;
-
-        fee_constraints.owner_trade_fee_numerator = owner_trade_fee_numerator - 1;
-        assert_eq!(
-            Err(SwapError::InvalidFee.into()),
-            curve.validate_fees(&fee_constraints)
-        );
-        fee_constraints.owner_trade_fee_numerator = owner_trade_fee_numerator;
-
-        fee_constraints.owner_trade_fee_denominator = owner_trade_fee_denominator - 1;
-        assert_eq!(
-            Err(SwapError::InvalidFee.into()),
-            curve.validate_fees(&fee_constraints)
-        );
-        fee_constraints.owner_trade_fee_denominator = owner_trade_fee_denominator;
     }
 }

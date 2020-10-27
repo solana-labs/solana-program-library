@@ -57,6 +57,11 @@ const OWNER_TRADING_FEE_NUMERATOR = 5;
 const OWNER_TRADING_FEE_DENOMINATOR = 10000;
 const OWNER_WITHDRAW_FEE_NUMERATOR = 1;
 const OWNER_WITHDRAW_FEE_DENOMINATOR = 6;
+// The following fees are required by the hard-coded constraints
+//const OWNER_WITHDRAW_FEE_NUMERATOR = 0;
+//const OWNER_WITHDRAW_FEE_DENOMINATOR = 0;
+const HOST_FEE_NUMERATOR = 20;
+const HOST_FEE_DENOMINATOR = 100;
 
 function assert(condition, message) {
   if (!condition) {
@@ -166,7 +171,7 @@ export async function createTokenSwap(): Promise<void> {
   tokenAccountPool = await tokenPool.createAccount(owner.publicKey);
   feeAccount = await tokenPool.createAccount(owner.publicKey);
   // Also need to test the situation of a fixed fee account owner
-  // feeAccount = await tokenPool.createAccount(owner.publicKey);
+  //feeAccount = await tokenPool.createAccount(new PublicKey('TokenSwap1111111111111111111111111111111111'));
 
   console.log('creating token A');
   mintA = await Token.createMint(
@@ -222,6 +227,8 @@ export async function createTokenSwap(): Promise<void> {
     OWNER_TRADING_FEE_DENOMINATOR,
     OWNER_WITHDRAW_FEE_NUMERATOR,
     OWNER_WITHDRAW_FEE_DENOMINATOR,
+    HOST_FEE_NUMERATOR,
+    HOST_FEE_DENOMINATOR,
   );
 
   console.log('loading token swap');
@@ -261,6 +268,10 @@ export async function createTokenSwap(): Promise<void> {
   assert(
     OWNER_WITHDRAW_FEE_DENOMINATOR ==
       fetchedTokenSwap.ownerWithdrawFeeDenominator.toNumber(),
+  );
+  assert(HOST_FEE_NUMERATOR == fetchedTokenSwap.hostFeeNumerator.toNumber());
+  assert(
+    HOST_FEE_DENOMINATOR == fetchedTokenSwap.hostFeeDenominator.toNumber(),
   );
 }
 

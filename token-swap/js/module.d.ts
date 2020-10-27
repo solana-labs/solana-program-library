@@ -39,6 +39,8 @@ declare module '@solana/spl-token-swap' {
       ownerTradeFeeDenominator: Numberu64,
       ownerWithdrawFeeNumerator: Numberu64,
       ownerWithdrawFeeDenominator: Numberu64,
+      hostFeeNumerator: Numberu64,
+      hostFeeDenominator: Numberu64,
       payer: Account,
     );
 
@@ -64,6 +66,8 @@ declare module '@solana/spl-token-swap' {
       ownerTradeFeeDenominator: number,
       ownerWithdrawFeeNumerator: number,
       ownerWithdrawFeeDenominator: number,
+      hostFeeNumerator: number,
+      hostFeeDenominator: number,
     ): TransactionInstruction;
 
     static loadTokenSwap(
@@ -94,6 +98,8 @@ declare module '@solana/spl-token-swap' {
       ownerTradeFeeDenominator: number,
       ownerWithdrawFeeNumerator: number,
       ownerWithdrawFeeDenominator: number,
+      hostFeeNumerator: number,
+      hostFeeDenominator: number,
       swapProgramId: PublicKey,
     ): Promise<TokenSwap>;
 
