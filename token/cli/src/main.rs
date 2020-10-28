@@ -1,6 +1,6 @@
 use clap::{
     crate_description, crate_name, crate_version, value_t_or_exit, App, AppSettings, Arg,
-    SubCommand,
+    ArgMatches, SubCommand,
 };
 use console::Emoji;
 use solana_account_decoder::{
@@ -11,7 +11,7 @@ use solana_clap_utils::{
     fee_payer::fee_payer_arg,
     input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, signer_of, value_of},
     input_validators::{is_amount, is_parsable, is_url, is_valid_pubkey, is_valid_signer},
-    keypair::DefaultSigner,
+    keypair::{pubkey_from_path, signer_from_path, DefaultSigner},
     nonce::*,
     offline::{self, *},
     ArgConstant,
@@ -21,6 +21,7 @@ use solana_client::{
     blockhash_query::BlockhashQuery, rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig,
     rpc_request::TokenAccountsFilter,
 };
+use solana_remote_wallet::remote_wallet::RemoteWalletManager;
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     instruction::Instruction,
@@ -38,7 +39,7 @@ use spl_token::{
     native_mint,
     state::{Account, Mint, Multisig},
 };
-use std::{process::exit, str::FromStr};
+use std::{process::exit, str::FromStr, sync::Arc};
 
 static WARNING: Emoji = Emoji("⚠️", "!");
 
@@ -58,6 +59,12 @@ pub const DELEGATE_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "delegate_address",
     long: "delegate-address",
     help: "Address of delegate currently assigned to token account. Required by --sign-only",
+};
+
+pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
+    name: "multisig_signer",
+    long: "multisig-signer",
+    help: "Member signer of a multisig account",
 };
 
 pub fn mint_address_arg<'a, 'b>() -> Arg<'a, 'b> {
@@ -108,6 +115,18 @@ pub fn delegate_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .help(DELEGATE_ADDRESS_ARG.help)
 }
 
+pub fn multisig_signer_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name(MULTISIG_SIGNER_ARG.name)
+        .long(MULTISIG_SIGNER_ARG.long)
+        .validator(is_valid_signer)
+        .value_name("MULTISIG_SIGNER")
+        .takes_value(true)
+        .multiple(true)
+        .min_values(0 as u64)
+        .max_values(MAX_SIGNERS as u64)
+        .help(MULTISIG_SIGNER_ARG.help)
+}
+
 fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
     let v = u8::from_str(&string).map_err(|e| e.to_string())? as usize;
     if v < MIN_SIGNERS {
@@ -119,7 +138,7 @@ fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
     }
 }
 
-struct Config {
+struct Config<'a> {
     rpc_client: RpcClient,
     verbose: bool,
     owner: Pubkey,
@@ -130,6 +149,7 @@ struct Config {
     nonce_authority: Option<Pubkey>,
     blockhash_query: BlockhashQuery,
     sign_only: bool,
+    multisigner_pubkeys: Vec<&'a Pubkey>,
 }
 
 type Error = Box<dyn std::error::Error>;
@@ -168,6 +188,26 @@ fn check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Err
         .into())
     } else {
         Ok(())
+    }
+}
+
+type SignersOf = Vec<(Box<dyn Signer>, Pubkey)>;
+pub fn signers_of(
+    matches: &ArgMatches<'_>,
+    name: &str,
+    wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+) -> Result<Option<SignersOf>, Box<dyn std::error::Error>> {
+    if let Some(values) = matches.values_of(name) {
+        let mut results = Vec::new();
+        for (i, value) in values.enumerate() {
+            let name = format!("{}-{}", name, i + 1);
+            let signer = signer_from_path(matches, value, &name, wallet_manager)?;
+            let signer_pubkey = signer.pubkey();
+            results.push((signer, signer_pubkey));
+        }
+        Ok(Some(results))
+    } else {
+        Ok(None)
     }
 }
 
@@ -303,7 +343,7 @@ fn command_authorize(
         new_owner.as_ref(),
         authority_type,
         &config.owner,
-        &[],
+        &config.multisigner_pubkeys,
     )?];
     Ok(Some((0, instructions)))
 }
@@ -354,7 +394,7 @@ fn command_transfer(
         &mint_pubkey,
         &recipient,
         &config.owner,
-        &[],
+        &config.multisigner_pubkeys,
         amount,
         decimals,
     )?];
@@ -378,7 +418,7 @@ fn command_burn(
         &source,
         &mint_pubkey,
         &config.owner,
-        &[],
+        &config.multisigner_pubkeys,
         amount,
         decimals,
     )?];
@@ -405,7 +445,7 @@ fn command_mint(
         &token,
         &recipient,
         &config.owner,
-        &[],
+        &config.multisigner_pubkeys,
         amount,
         decimals,
     )?];
@@ -422,7 +462,7 @@ fn command_freeze(config: &Config, account: Pubkey, mint_address: Option<Pubkey>
         &account,
         &token,
         &config.owner,
-        &[],
+        &config.multisigner_pubkeys,
     )?];
     Ok(Some((0, instructions)))
 }
@@ -437,7 +477,7 @@ fn command_thaw(config: &Config, account: Pubkey, mint_address: Option<Pubkey>) 
         &account,
         &token,
         &config.owner,
-        &[],
+        &config.multisigner_pubkeys,
     )?];
     Ok(Some((0, instructions)))
 }
@@ -487,7 +527,7 @@ fn command_unwrap(config: &Config, address: Pubkey) -> CommandResult {
         &address,
         &config.owner,
         &config.owner,
-        &[],
+        &config.multisigner_pubkeys,
     )?];
     Ok(Some((0, instructions)))
 }
@@ -514,7 +554,7 @@ fn command_approve(
         &mint_pubkey,
         &delegate,
         &config.owner,
-        &[],
+        &config.multisigner_pubkeys,
         amount,
         decimals,
     )?];
@@ -546,7 +586,12 @@ fn command_revoke(config: &Config, account: Pubkey, delegate: Option<Pubkey>) ->
         return Err(format!("No delegate on account {}", account).into());
     }
 
-    let instructions = vec![revoke(&spl_token::id(), &account, &config.owner, &[])?];
+    let instructions = vec![revoke(
+        &spl_token::id(),
+        &account,
+        &config.owner,
+        &config.multisigner_pubkeys,
+    )?];
     Ok(Some((0, instructions)))
 }
 
@@ -572,7 +617,7 @@ fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> Comma
         &account,
         &destination,
         &config.owner,
-        &[],
+        &config.multisigner_pubkeys,
     )?];
     Ok(Some((0, instructions)))
 }
@@ -718,13 +763,17 @@ fn command_account(config: &Config, address: Pubkey) -> CommandResult {
     Ok(None)
 }
 
-fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
+fn get_multisig(config: &Config, address: &Pubkey) -> Result<Multisig, Error> {
     let account = config
         .rpc_client
         .get_account_with_commitment(&address, config.commitment_config)?
         .value
-        .unwrap();
-    let multisig = Multisig::unpack_from_slice(&account.data)?;
+        .ok_or(format!("account does not exist: {}", address))?;
+    Multisig::unpack(&account.data).map_err(|e| e.into())
+}
+
+fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
+    let multisig = get_multisig(config, &address)?;
     let n = multisig.n as usize;
     assert!(n <= multisig.signers.len());
     println!();
@@ -962,6 +1011,7 @@ fn main() {
                         .conflicts_with("new_authority")
                         .help("Disable mint, freeze, or close functionality by setting authority to None.")
                 )
+                .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
         )
@@ -995,6 +1045,7 @@ fn main() {
                         .required(true)
                         .help("The token account address of recipient"),
                 )
+                .arg(multisig_signer_arg())
                 .mint_args()
                 .nonce_args(true)
                 .offline_args_config(&SignOnlyNeedsFullMintSpec{}),
@@ -1020,6 +1071,7 @@ fn main() {
                         .required(true)
                         .help("Amount to burn, in tokens"),
                 )
+                .arg(multisig_signer_arg())
                 .mint_args()
                 .nonce_args(true)
                 .offline_args_config(&SignOnlyNeedsFullMintSpec{}),
@@ -1055,6 +1107,7 @@ fn main() {
                         .help("The token account address of recipient"),
                 )
                 .arg(mint_decimals_arg())
+                .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args_config(&SignOnlyNeedsMintDecimals{}),
         )
@@ -1071,6 +1124,7 @@ fn main() {
                         .help("The address of the token account to freeze"),
                 )
                 .arg(mint_address_arg())
+                .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args_config(&SignOnlyNeedsMintAddress{}),
         )
@@ -1087,6 +1141,7 @@ fn main() {
                         .help("The address of the token account to thaw"),
                 )
                 .arg(mint_address_arg())
+                .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args_config(&SignOnlyNeedsMintAddress{}),
         )
@@ -1155,6 +1210,7 @@ fn main() {
                         .required(true)
                         .help("The address of the token account to unwrap"),
                 )
+                .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
         )
@@ -1214,6 +1270,7 @@ fn main() {
                         .required(true)
                         .help("The token account address of delegate"),
                 )
+                .arg(multisig_signer_arg())
                 .mint_args()
                 .nonce_args(true)
                 .offline_args_config(&SignOnlyNeedsFullMintSpec{}),
@@ -1231,6 +1288,7 @@ fn main() {
                         .help("The address of the token account"),
                 )
                 .arg(delegate_address_arg())
+                .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args_config(&SignOnlyNeedsDelegateAddress{}),
         )
@@ -1255,6 +1313,7 @@ fn main() {
                         .required(true)
                         .help("The address of the account to receive remaining SOL"),
                 )
+                .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
         )
@@ -1262,6 +1321,7 @@ fn main() {
 
     let mut wallet_manager = None;
     let mut bulk_signers: Vec<Option<Box<dyn Signer>>> = Vec::new();
+    let mut multisigner_ids = Vec::new();
 
     let (sub_command, sub_matches) = app_matches.subcommand();
     let matches = sub_matches.unwrap();
@@ -1281,26 +1341,49 @@ fn main() {
         let default_signer_path = matches
             .value_of(&default_signer_arg_name)
             .map(|s| s.to_string())
-            .unwrap_or(cli_config.keypair_path);
+            .unwrap_or_else(|| cli_config.keypair_path.clone());
         let default_signer = DefaultSigner {
             path: default_signer_path,
             arg_name: default_signer_arg_name,
         };
-        let owner = default_signer
-            .signer_from_path(&matches, &mut wallet_manager)
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            })
-            .pubkey();
-        bulk_signers.push(None);
+        // Owner doesn't sign when it's a multisig
+        let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name) {
+            let owner_val = matches
+                .value_of("owner")
+                .unwrap_or(&cli_config.keypair_path);
+            pubkey_from_path(&matches, owner_val, "owner", &mut wallet_manager).unwrap_or_else(
+                |e| {
+                    eprintln!("error: {}", e);
+                    exit(1);
+                },
+            )
+        } else {
+            bulk_signers.push(None);
+            default_signer
+                .signer_from_path(&matches, &mut wallet_manager)
+                .unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    exit(1);
+                })
+                .pubkey()
+        };
 
-        let (signer, fee_payer) = signer_of(&matches, "fee_payer", &mut wallet_manager)
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
-        let fee_payer = fee_payer.unwrap_or(owner);
+        let (signer, fee_payer) = signer_from_path(
+            &matches,
+            matches
+                .value_of("fee_payer")
+                .unwrap_or(&cli_config.keypair_path),
+            "fee_payer",
+            &mut wallet_manager,
+        )
+        .map(|s| {
+            let p = s.pubkey();
+            (Some(s), p)
+        })
+        .unwrap_or_else(|e| {
+            eprintln!("error: {}", e);
+            exit(1);
+        });
         bulk_signers.push(signer);
 
         let verbose = matches.is_present("verbose");
@@ -1324,6 +1407,18 @@ fn main() {
         let blockhash_query = BlockhashQuery::new_from_matches(matches);
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
 
+        let multisig_signers = signers_of(&matches, MULTISIG_SIGNER_ARG.name, &mut wallet_manager)
+            .unwrap_or_else(|e| {
+                eprintln!("error: {}", e);
+                exit(1);
+            });
+        if let Some(multisig_signers) = multisig_signers {
+            let (signers, pubkeys): (Vec<_>, Vec<_>) = multisig_signers.into_iter().unzip();
+            bulk_signers.extend(signers.into_iter().map(Some));
+            multisigner_ids = pubkeys;
+        }
+        let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
+
         Config {
             rpc_client: RpcClient::new(json_rpc_url),
             verbose,
@@ -1335,8 +1430,17 @@ fn main() {
             nonce_authority,
             blockhash_query,
             sign_only,
+            multisigner_pubkeys,
         }
     };
+
+    if matches.is_present(MULTISIG_SIGNER_ARG.name)
+        && !config.sign_only
+        && get_multisig(&config, &config.owner).is_err()
+    {
+        eprintln!("error: {} is not a multisig account", config.owner);
+        exit(1);
+    }
 
     solana_logger::setup_with_default("solana=info");
 
