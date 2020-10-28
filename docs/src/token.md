@@ -362,10 +362,6 @@ Accounts hold token balances and are created using the `InitializeAccount`
 instruction. Each Account has an owner who must be present as a signer in some
 instructions.
 
-Balances can be transferred between Accounts using the `Transfer` instruction.
-The owner of the source Account must be present as a signer in the `Transfer`
-instruction.
-
 An Account's owner may transfer ownership of an account to another using the
 `SetAuthority` instruction.
 
@@ -374,6 +370,19 @@ the Solana account being initialized also be a signer. The `InitializeAccount`
 instruction should be atomically processed with the system instruction that
 creates the Solana account by including both instructions in the same
 transaction.
+
+### Transferring tokens
+Balances can be transferred between Accounts using the `Transfer` instruction.
+The owner of the source Account must be present as a signer in the `Transfer`
+instruction when the source and destination accounts are different.
+
+It's important to note that when the source and destination of a `Transfer` are
+the **same**, the `Transfer` will _always_ succeed. Therefore, a successful `Transfer`
+does not necessarily imply that the involved Accounts were valid SPL Token
+accounts, that any tokens were moved, or that the source Account was present as
+a signer. We strongly recommend that developers are careful about checking that
+the source and destination are **different** before invoking a `Transfer`
+instruction from within their program.
 
 ### Burning
 
