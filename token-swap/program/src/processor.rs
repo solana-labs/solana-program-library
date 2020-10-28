@@ -250,7 +250,6 @@ impl Processor {
         amount_in: u64,
         minimum_amount_out: u64,
         accounts: &[AccountInfo],
-        fee_constraints: &Option<FeeConstraints>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
@@ -342,19 +341,19 @@ impl Processor {
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
         if pool_token_amount > 0 {
-            if let Some(_fee_constraints) = &fee_constraints {
-                // Allow error to fall through
-                if let Ok(host_fee_account_info) = next_account_info(account_info_iter) {
-                    let host_fee_account =
-                        Self::unpack_token_account(&host_fee_account_info.data.borrow())?;
-                    if *pool_mint_info.key != host_fee_account.mint {
-                        return Err(SwapError::IncorrectPoolMint.into());
-                    }
-                    let host_fee = token_swap
-                        .swap_curve
-                        .calculator
-                        .host_fee(pool_token_amount)
-                        .ok_or(SwapError::FeeCalculationFailure)?;
+            // Allow error to fall through
+            if let Ok(host_fee_account_info) = next_account_info(account_info_iter) {
+                let host_fee_account =
+                    Self::unpack_token_account(&host_fee_account_info.data.borrow())?;
+                if *pool_mint_info.key != host_fee_account.mint {
+                    return Err(SwapError::IncorrectPoolMint.into());
+                }
+                let host_fee = token_swap
+                    .swap_curve
+                    .calculator
+                    .host_fee(pool_token_amount)
+                    .ok_or(SwapError::FeeCalculationFailure)?;
+                if host_fee > 0 {
                     pool_token_amount = pool_token_amount
                         .checked_sub(host_fee)
                         .ok_or(SwapError::FeeCalculationFailure)?;
@@ -633,7 +632,6 @@ impl Processor {
                     amount_in,
                     minimum_amount_out,
                     accounts,
-                    fee_constraints,
                 )
             }
             SwapInstruction::Deposit {

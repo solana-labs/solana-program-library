@@ -315,12 +315,11 @@ impl CurveCalculator for FlatCurve {
     /// Calculate the host fee based on the owner fee, only used in production
     /// situations where a program is hosted by multiple frontends
     fn host_fee(&self, owner_fee: u128) -> Option<u128> {
-        let numerator = u128::try_from(self.host_fee_numerator).ok()?;
-        let denominator = u128::try_from(self.host_fee_denominator).ok()?;
-        owner_fee
-            .checked_mul(numerator)?
-            .checked_div(denominator)
-            .and_then(map_zero_to_none)
+        calculate_fee(
+            owner_fee,
+            u128::try_from(self.host_fee_numerator).ok()?,
+            u128::try_from(self.host_fee_denominator).ok()?,
+        )
     }
 }
 
@@ -465,12 +464,11 @@ impl CurveCalculator for ConstantProductCurve {
     /// Calculate the host fee based on the owner fee, only used in production
     /// situations where a program is hosted by multiple frontends
     fn host_fee(&self, owner_fee: u128) -> Option<u128> {
-        let numerator = u128::try_from(self.host_fee_numerator).ok()?;
-        let denominator = u128::try_from(self.host_fee_denominator).ok()?;
-        owner_fee
-            .checked_mul(numerator)?
-            .checked_div(denominator)
-            .and_then(map_zero_to_none)
+        calculate_fee(
+            owner_fee,
+            u128::try_from(self.host_fee_numerator).ok()?,
+            u128::try_from(self.host_fee_denominator).ok()?,
+        )
     }
 }
 
