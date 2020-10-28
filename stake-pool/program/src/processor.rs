@@ -7,14 +7,10 @@ use crate::{
     state::{StakePool, State},
 };
 use num_traits::FromPrimitive;
-#[cfg(not(target_arch = "bpf"))]
-use solana_program::instruction::Instruction;
-#[cfg(target_arch = "bpf")]
-use solana_program::program::invoke_signed;
 use solana_program::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
-    entrypoint::ProgramResult, info, program_error::PrintProgramError, program_error::ProgramError,
-    pubkey::Pubkey,
+    entrypoint::ProgramResult, info, program::invoke_signed, program_error::PrintProgramError,
+    program_error::ProgramError, pubkey::Pubkey,
 };
 use std::convert::TryFrom;
 
@@ -540,71 +536,6 @@ impl Processor {
     }
 }
 
-/// Test program id for the stake-pool program.
-#[cfg(not(target_arch = "bpf"))]
-const STAKE_POOL_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
-
-/// Test program id for the token program.
-#[cfg(not(target_arch = "bpf"))]
-const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
-
-/// Actual stake account program id, used for tests
-#[cfg(not(target_arch = "bpf"))]
-fn stake_program_id() -> Pubkey {
-    "Stake11111111111111111111111111111111111111"
-        .parse::<Pubkey>()
-        .unwrap()
-}
-
-/// Routes invokes to the token program, used for testing.
-#[cfg(not(target_arch = "bpf"))]
-pub fn invoke_signed<'a>(
-    instruction: &Instruction,
-    account_infos: &[AccountInfo<'a>],
-    signers_seeds: &[&[&[u8]]],
-) -> ProgramResult {
-    let mut new_account_infos = vec![];
-    for meta in instruction.accounts.iter() {
-        for account_info in account_infos.iter() {
-            if meta.pubkey == *account_info.key {
-                let mut new_account_info = account_info.clone();
-                for seeds in signers_seeds.iter() {
-                    let signer =
-                        Pubkey::create_program_address(seeds, &STAKE_POOL_PROGRAM_ID).unwrap();
-                    if *account_info.key == signer {
-                        new_account_info.is_signer = true;
-                    }
-                }
-                new_account_infos.push(new_account_info);
-            }
-        }
-    }
-
-    match instruction.program_id {
-        TOKEN_PROGRAM_ID => invoke_token(&new_account_infos, &instruction.data),
-        pubkey => {
-            if pubkey == stake_program_id() {
-                invoke_stake(&new_account_infos, &instruction.data)
-            } else {
-                Err(ProgramError::IncorrectProgramId)
-            }
-        }
-    }
-}
-
-/// Mocks token instruction invocation
-#[cfg(not(target_arch = "bpf"))]
-pub fn invoke_token<'a>(account_infos: &[AccountInfo<'a>], input: &[u8]) -> ProgramResult {
-    spl_token::processor::Processor::process(&TOKEN_PROGRAM_ID, &account_infos, &input)
-}
-
-/// Mocks stake account instruction invocation
-#[cfg(not(target_arch = "bpf"))]
-pub fn invoke_stake<'a>(_account_infos: &[AccountInfo<'a>], _input: &[u8]) -> ProgramResult {
-    // For now always return ok
-    Ok(())
-}
-
 impl PrintProgramError for Error {
     fn print<E>(&self)
     where
@@ -633,13 +564,87 @@ mod tests {
     use crate::instruction::{deposit, initialize, Fee, InitArgs};
     use solana_program::{
         account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
-        native_token::sol_to_lamports, program_pack::Pack, rent::Rent, sysvar::rent,
+        native_token::sol_to_lamports, program_pack::Pack, program_stubs, rent::Rent, sysvar::rent,
     };
     use spl_token::{
         instruction::{initialize_account, initialize_mint},
-        processor::Processor as SplProcessor,
+        processor::Processor as TokenProcessor,
         state::{Account as SplAccount, Mint as SplMint},
     };
+
+    /// Test program id for the stake-pool program.
+    const STAKE_POOL_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
+
+    /// Test program id for the token program.
+    const TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
+
+    /// Actual stake account program id, used for tests
+    fn stake_program_id() -> Pubkey {
+        "Stake11111111111111111111111111111111111111"
+            .parse::<Pubkey>()
+            .unwrap()
+    }
+
+    struct TestSyscallStubs {}
+    impl program_stubs::SyscallStubs for TestSyscallStubs {
+        fn sol_invoke_signed(
+            &self,
+            instruction: &Instruction,
+            account_infos: &[AccountInfo],
+            signers_seeds: &[&[&[u8]]],
+        ) -> ProgramResult {
+            info!("TestSyscallStubs::sol_invoke_signed()");
+
+            let mut new_account_infos = vec![];
+            for meta in instruction.accounts.iter() {
+                for account_info in account_infos.iter() {
+                    if meta.pubkey == *account_info.key {
+                        let mut new_account_info = account_info.clone();
+                        for seeds in signers_seeds.iter() {
+                            let signer =
+                                Pubkey::create_program_address(seeds, &STAKE_POOL_PROGRAM_ID)
+                                    .unwrap();
+                            if *account_info.key == signer {
+                                new_account_info.is_signer = true;
+                            }
+                        }
+                        new_account_infos.push(new_account_info);
+                    }
+                }
+            }
+
+            match instruction.program_id {
+                TOKEN_PROGRAM_ID => invoke_token(&new_account_infos, &instruction.data),
+                pubkey => {
+                    if pubkey == stake_program_id() {
+                        invoke_stake(&new_account_infos, &instruction.data)
+                    } else {
+                        Err(ProgramError::IncorrectProgramId)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Mocks token instruction invocation
+    pub fn invoke_token<'a>(account_infos: &[AccountInfo<'a>], input: &[u8]) -> ProgramResult {
+        spl_token::processor::Processor::process(&TOKEN_PROGRAM_ID, &account_infos, &input)
+    }
+
+    /// Mocks stake account instruction invocation
+    pub fn invoke_stake<'a>(_account_infos: &[AccountInfo<'a>], _input: &[u8]) -> ProgramResult {
+        // For now always return ok
+        Ok(())
+    }
+
+    fn test_syscall_stubs() {
+        use std::sync::Once;
+        static ONCE: Once = Once::new();
+
+        ONCE.call_once(|| {
+            program_stubs::set_syscall_stubs(Box::new(TestSyscallStubs {}));
+        });
+    }
 
     struct StakePoolInfo {
         pub pool_key: Pubkey,
@@ -660,19 +665,43 @@ mod tests {
         instruction: Instruction,
         accounts: Vec<&mut Account>,
     ) -> ProgramResult {
+        test_syscall_stubs();
+
+        // approximate the logic in the actual runtime which runs the instruction
+        // and only updates accounts if the instruction is successful
+        let mut account_clones = accounts.iter().map(|x| (*x).clone()).collect::<Vec<_>>();
         let mut meta = instruction
             .accounts
             .iter()
-            .zip(accounts)
+            .zip(account_clones.iter_mut())
             .map(|(account_meta, account)| (&account_meta.pubkey, account_meta.is_signer, account))
             .collect::<Vec<_>>();
-
-        let account_infos = create_is_signer_account_infos(&mut meta);
-        if instruction.program_id == STAKE_POOL_PROGRAM_ID {
+        let mut account_infos = create_is_signer_account_infos(&mut meta);
+        let res = if instruction.program_id == STAKE_POOL_PROGRAM_ID {
             Processor::process(&instruction.program_id, &account_infos, &instruction.data)
         } else {
-            SplProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
+            TokenProcessor::process(&instruction.program_id, &account_infos, &instruction.data)
+        };
+
+        if res.is_ok() {
+            let mut account_metas = instruction
+                .accounts
+                .iter()
+                .zip(accounts)
+                .map(|(account_meta, account)| (&account_meta.pubkey, account))
+                .collect::<Vec<_>>();
+            for account_info in account_infos.iter_mut() {
+                for account_meta in account_metas.iter_mut() {
+                    if account_info.key == account_meta.0 {
+                        let account = &mut account_meta.1;
+                        account.owner = *account_info.owner;
+                        account.lamports = **account_info.lamports.borrow();
+                        account.data = account_info.data.borrow().to_vec();
+                    }
+                }
+            }
         }
+        res
     }
 
     fn account_minimum_balance() -> u64 {
