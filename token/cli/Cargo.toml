@@ -18,6 +18,7 @@ solana-cli-config = "1.4.3"
 solana-cli-output = "1.4.3"
 solana-client = "1.4.3"
 solana-logger = "1.4.3"
+solana-remote-wallet = "1.4.3"
 solana-sdk = "1.4.3"
 spl-token = { version = "2.0", path="../program", features = [ "exclude_entrypoint" ] }
 
