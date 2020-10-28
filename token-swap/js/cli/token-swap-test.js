@@ -36,7 +36,8 @@ let tokenAccountA: PublicKey;
 let tokenAccountB: PublicKey;
 
 // Hard-coded fee address, for testing production mode
-const SWAP_PROGRAM_OWNER_FEE_ADDRESS = process.env.SWAP_PROGRAM_OWNER_FEE_ADDRESS;
+const SWAP_PROGRAM_OWNER_FEE_ADDRESS =
+  process.env.SWAP_PROGRAM_OWNER_FEE_ADDRESS;
 
 // Pool fees
 const TRADING_FEE_NUMERATOR = 25;
@@ -62,7 +63,9 @@ let currentFeeAmount = 0;
 const SWAP_AMOUNT_IN = 100000;
 const SWAP_AMOUNT_OUT = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 90662 : 90675;
 const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22272 : 22276;
-const HOST_SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? Math.floor(SWAP_FEE * HOST_FEE_NUMERATOR / HOST_FEE_DENOMINATOR) : 0;
+const HOST_SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS
+  ? Math.floor((SWAP_FEE * HOST_FEE_NUMERATOR) / HOST_FEE_DENOMINATOR)
+  : 0;
 const OWNER_SWAP_FEE = SWAP_FEE - HOST_SWAP_FEE;
 
 // Pool token amount minted on init
@@ -330,10 +333,13 @@ export async function withdraw(): Promise<void> {
   const supply = poolMintInfo.supply.toNumber();
   let swapTokenA = await mintA.getAccountInfo(tokenAccountA);
   let swapTokenB = await mintB.getAccountInfo(tokenAccountB);
-  const feeAmount = OWNER_WITHDRAW_FEE_NUMERATOR === 0 ? 0 : Math.floor(
-    (POOL_TOKEN_AMOUNT * OWNER_WITHDRAW_FEE_NUMERATOR) /
-      OWNER_WITHDRAW_FEE_DENOMINATOR,
-  );
+  const feeAmount =
+    OWNER_WITHDRAW_FEE_NUMERATOR === 0
+      ? 0
+      : Math.floor(
+        (POOL_TOKEN_AMOUNT * OWNER_WITHDRAW_FEE_NUMERATOR) /
+            OWNER_WITHDRAW_FEE_DENOMINATOR,
+      );
   const poolTokenAmount = POOL_TOKEN_AMOUNT - feeAmount;
   const tokenA = Math.floor(
     (swapTokenA.amount.toNumber() * poolTokenAmount) / supply,
@@ -394,7 +400,9 @@ export async function swap(): Promise<void> {
   await mintA.approve(userAccountA, authority, owner, [], SWAP_AMOUNT_IN);
   console.log('Creating swap token b account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
-  let poolAccount = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? await tokenPool.createAccount(owner.publicKey) : null;
+  let poolAccount = SWAP_PROGRAM_OWNER_FEE_ADDRESS
+    ? await tokenPool.createAccount(owner.publicKey)
+    : null;
 
   console.log('Swapping');
   await tokenSwap.swap(

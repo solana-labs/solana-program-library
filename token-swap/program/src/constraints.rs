@@ -1,7 +1,7 @@
 //! Various constraints as required for production environments
 
 use crate::{
-    curve::{SwapCurve, CurveType, ConstantProductCurve, FlatCurve},
+    curve::{ConstantProductCurve, CurveType, FlatCurve, SwapCurve},
     error::SwapError,
 };
 
@@ -20,32 +20,36 @@ pub struct FeeConstraints<'a> {
     /// Owner of the program
     pub owner_key: &'a str,
     /// Valid flat curves for the program
-    pub valid_flat_curves: &'a[FlatCurve],
+    pub valid_flat_curves: &'a [FlatCurve],
     /// Valid constant product curves for the program
-    pub valid_constant_product_curves: &'a[ConstantProductCurve],
+    pub valid_constant_product_curves: &'a [ConstantProductCurve],
 }
 
 impl<'a> FeeConstraints<'a> {
     /// Checks that the provided curve is valid for the given constraints
     pub fn validate_curve(&self, swap_curve: &SwapCurve) -> Result<(), ProgramError> {
         let valid_swap_curves: Vec<SwapCurve> = match swap_curve.curve_type {
-            CurveType::Flat =>
-                self.valid_flat_curves.iter()
-                    .map(|x| SwapCurve {
-                        curve_type: swap_curve.curve_type,
-                        calculator: Box::new(x.clone()),
-                    }).collect(),
-            CurveType::ConstantProduct =>
-                self.valid_constant_product_curves.iter()
-                    .map(|x| SwapCurve {
-                        curve_type: swap_curve.curve_type,
-                        calculator: Box::new(x.clone()),
-                    }).collect(),
+            CurveType::Flat => self
+                .valid_flat_curves
+                .iter()
+                .map(|x| SwapCurve {
+                    curve_type: swap_curve.curve_type,
+                    calculator: Box::new(x.clone()),
+                })
+                .collect(),
+            CurveType::ConstantProduct => self
+                .valid_constant_product_curves
+                .iter()
+                .map(|x| SwapCurve {
+                    curve_type: swap_curve.curve_type,
+                    calculator: Box::new(x.clone()),
+                })
+                .collect(),
         };
         if valid_swap_curves.iter().any(|x| *x == *swap_curve) {
             Ok(())
         } else {
-            return Err(SwapError::InvalidFee.into());
+            Err(SwapError::InvalidFee.into())
         }
     }
 }
@@ -53,31 +57,27 @@ impl<'a> FeeConstraints<'a> {
 #[cfg(feature = "production")]
 const OWNER_KEY: &'static str = env!("SWAP_PROGRAM_OWNER_FEE_ADDRESS");
 #[cfg(feature = "production")]
-const VALID_CONSTANT_PRODUCT_CURVES: &[ConstantProductCurve] = &[
-    ConstantProductCurve {
-        trade_fee_numerator: 25,
-        trade_fee_denominator: 10000,
-        owner_trade_fee_numerator: 5,
-        owner_trade_fee_denominator: 10000,
-        owner_withdraw_fee_numerator: 0,
-        owner_withdraw_fee_denominator: 0,
-        host_fee_numerator: 20,
-        host_fee_denominator: 100,
-    }
-];
+const VALID_CONSTANT_PRODUCT_CURVES: &[ConstantProductCurve] = &[ConstantProductCurve {
+    trade_fee_numerator: 25,
+    trade_fee_denominator: 10000,
+    owner_trade_fee_numerator: 5,
+    owner_trade_fee_denominator: 10000,
+    owner_withdraw_fee_numerator: 0,
+    owner_withdraw_fee_denominator: 0,
+    host_fee_numerator: 20,
+    host_fee_denominator: 100,
+}];
 #[cfg(feature = "production")]
-const VALID_FLAT_CURVES: &[FlatCurve] = &[
-    FlatCurve {
-        trade_fee_numerator: 25,
-        trade_fee_denominator: 10000,
-        owner_trade_fee_numerator: 5,
-        owner_trade_fee_denominator: 10000,
-        owner_withdraw_fee_numerator: 0,
-        owner_withdraw_fee_denominator: 0,
-        host_fee_numerator: 20,
-        host_fee_denominator: 100,
-    },
-];
+const VALID_FLAT_CURVES: &[FlatCurve] = &[FlatCurve {
+    trade_fee_numerator: 25,
+    trade_fee_denominator: 10000,
+    owner_trade_fee_numerator: 5,
+    owner_trade_fee_denominator: 10000,
+    owner_withdraw_fee_numerator: 0,
+    owner_withdraw_fee_denominator: 0,
+    host_fee_numerator: 20,
+    host_fee_denominator: 100,
+}];
 
 /// Fee structure defined by program creator in order to enforce certain
 /// fees when others use the program.  Adds checks on pool creation and
@@ -101,7 +101,7 @@ pub const FEE_CONSTRAINTS: Option<FeeConstraints> = {
 mod tests {
     use super::*;
 
-    use crate::curve::{CurveType, ConstantProductCurve};
+    use crate::curve::{ConstantProductCurve, CurveType};
 
     #[test]
     fn validate_fees() {

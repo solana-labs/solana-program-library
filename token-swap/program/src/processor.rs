@@ -627,12 +627,7 @@ impl Processor {
                 minimum_amount_out,
             } => {
                 info!("Instruction: Swap");
-                Self::process_swap(
-                    program_id,
-                    amount_in,
-                    minimum_amount_out,
-                    accounts,
-                )
+                Self::process_swap(program_id, amount_in, minimum_amount_out, accounts)
             }
             SwapInstruction::Deposit {
                 pool_token_amount,
@@ -3802,8 +3797,12 @@ mod tests {
                 host_fee_denominator,
             }),
         };
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, swap_curve.clone(), token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+        );
 
         let initial_a = token_a_amount / 5;
         let initial_b = token_b_amount / 5;
