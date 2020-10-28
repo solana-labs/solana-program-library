@@ -718,6 +718,28 @@ fn command_account(config: &Config, address: Pubkey) -> CommandResult {
     Ok(None)
 }
 
+fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
+    let account = config
+        .rpc_client
+        .get_account_with_commitment(&address, config.commitment_config)?
+        .value
+        .unwrap();
+    let multisig = Multisig::unpack_from_slice(&account.data)?;
+    let n = multisig.n as usize;
+    assert!(n <= multisig.signers.len());
+    println!();
+    println_name_value("Address:", &address.to_string());
+    println_name_value("M/N:", &format!("{}/{}", multisig.m, n));
+    println_name_value("Signers:", " ");
+    let width = if n >= 9 { 4 } else { 3 };
+    for i in 0..n {
+        let title = format!("{1:>0$}:", width, i + 1);
+        let pubkey = &multisig.signers[i];
+        println_name_value(&title, &pubkey.to_string())
+    }
+    Ok(None)
+}
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -1148,7 +1170,20 @@ fn main() {
                     .required(true)
                     .help("The address of the SPL Token account to query"),
                 ),
-            )
+        )
+        .subcommand(
+            SubCommand::with_name("multisig-info")
+                .about("Query details about and SPL Token multisig account by address")
+                .arg(
+                    Arg::with_name("address")
+                    .validator(is_valid_pubkey)
+                    .value_name("MULTISIG_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .index(1)
+                    .required(true)
+                    .help("The address of the SPL Token multisig account to query"),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("approve")
                 .about("Approve a delegate for a token account")
@@ -1522,6 +1557,12 @@ fn main() {
                 .unwrap()
                 .unwrap();
             command_account(&config, address)
+        }
+        ("multisig-info", Some(arg_matches)) => {
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            command_multisig(&config, address)
         }
         _ => unreachable!(),
     }
