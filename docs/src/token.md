@@ -389,6 +389,16 @@ instruction from within their program.
 The `Burn` instruction decreases an Account's token balance without transferring
 to another Account, effectively removing the token from circulation permanently.
 
+There is no other way to reduce supply on chain. This is similar to transferring
+to an account with unknown private key or burning the private key. But the act
+of burning by using `Burn` instructions is more explicit and can be confirmed on
+chain by any parties.
+
+Note that, there is a known issue where a malicious and determined account owner
+can silently burn their tokens without updating supply on chain by making an
+account be removed because of overdue rent because of
+[the known issue](#Rent-exemption).
+
 ### Authority delegation
 
 Account owners may delegate authority over some or all of their token balance
@@ -448,6 +458,17 @@ To ensure a reliable calculation of supply, a consistency valid Mint, and
 consistently valid Multisig accounts all Solana accounts holding a Account,
 Mint, or Multisig must contain enough SOL to be considered [rent
 exempt](https://docs.solana.com/implemented-proposals/rent)
+
+However note that there is currently a loophole to escape from the rent-exemption
+rule. So it isn't technically impossible to create spl-token Solana accounts
+which aren't actually rent-exempt. This loophole was unintentionally created
+because the token program is susceptible to sysvar spoofing. Specifically, there
+was an insufficient check for accounts passed as sysvar while executing in
+solana-program-sdk, which is statically linked into the token program.
+
+For example, this could be abused to delete (= effectively burn) Account by
+transfering to crafted (= not rent-exempt) Solana accounts by anyone who has the
+authority to execute such a transaction.
 
 ### Closing accounts
 
