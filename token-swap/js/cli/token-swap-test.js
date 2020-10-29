@@ -333,13 +333,13 @@ export async function withdraw(): Promise<void> {
   const supply = poolMintInfo.supply.toNumber();
   let swapTokenA = await mintA.getAccountInfo(tokenAccountA);
   let swapTokenB = await mintB.getAccountInfo(tokenAccountB);
-  const feeAmount =
-    OWNER_WITHDRAW_FEE_NUMERATOR === 0
-      ? 0
-      : Math.floor(
-        (POOL_TOKEN_AMOUNT * OWNER_WITHDRAW_FEE_NUMERATOR) /
-            OWNER_WITHDRAW_FEE_DENOMINATOR,
-      );
+  let feeAmount = 0;
+  if (OWNER_WITHDRAW_FEE_NUMERATOR !== 0) {
+    feeAmount = Math.floor(
+      (POOL_TOKEN_AMOUNT * OWNER_WITHDRAW_FEE_NUMERATOR) /
+        OWNER_WITHDRAW_FEE_DENOMINATOR,
+    );
+  }
   const poolTokenAmount = POOL_TOKEN_AMOUNT - feeAmount;
   const tokenA = Math.floor(
     (swapTokenA.amount.toNumber() * poolTokenAmount) / supply,
