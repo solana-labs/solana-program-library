@@ -396,8 +396,7 @@ chain by any parties.
 
 Note that, there is a known issue where a malicious and determined account owner
 can silently burn their tokens without updating supply on chain by making an
-account be removed because of overdue rent because of
-[the known issue](#Rent-exemption).
+account be removed by overdue rent because of [the known issue](#Rent-exemption).
 
 ### Authority delegation
 
