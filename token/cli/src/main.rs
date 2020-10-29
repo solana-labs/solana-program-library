@@ -1711,7 +1711,7 @@ fn main() {
                 transaction.try_partial_sign(&signer_info.signers, recent_blockhash)?;
                 println!("{}", return_signers(&transaction, &OutputFormat::Display)?);
             } else {
-                transaction.sign(&signer_info.signers, recent_blockhash);
+                transaction.try_sign(&signer_info.signers, recent_blockhash)?;
                 let signature = config
                     .rpc_client
                     .send_and_confirm_transaction_with_spinner_and_config(
