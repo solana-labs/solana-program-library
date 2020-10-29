@@ -94,6 +94,20 @@ js_token_swap() {
 }
 _ js_token_swap
 
+# Test token-swap js bindings with "production" feature
+production_token_swap() {
+  address="SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8"
+  SWAP_PROGRAM_OWNER_FEE_ADDRESS="$address" cargo build-bpf --manifest-path=token-swap/program/Cargo.toml --dump --features production
+  cd token-swap/js
+  npm run cluster:localnet || exit $?
+  npm run localnet:down
+  npm run localnet:update || exit $?
+  npm run localnet:up || exit $?
+  SWAP_PROGRAM_OWNER_FEE_ADDRESS="$address" npm run start || exit $?
+  npm run localnet:down
+}
+_ production_token_swap
+
 # Test token-lending js bindings
 js_token_lending() {
   cd token-lending/js

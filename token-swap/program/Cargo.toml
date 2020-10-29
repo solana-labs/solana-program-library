@@ -9,6 +9,7 @@ edition = "2018"
 
 [features]
 exclude_entrypoint = []
+production = []
 
 [dependencies]
 arrayref = "0.3.6"
