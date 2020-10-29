@@ -7,7 +7,7 @@ use solana_program::{
     sysvar,
 };
 
-solana_program::declare_id!("StakeConfig11111111111111111111111111111111");
+solana_program::declare_id!("Stake11111111111111111111111111111111111111");
 
 /// FIXME copied from solana stake program
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
