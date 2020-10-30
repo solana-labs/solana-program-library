@@ -1,4 +1,5 @@
-//! ...
+//! Swap calculations
+
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something

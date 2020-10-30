@@ -1,4 +1,4 @@
-//! Swap calculations and curve implementations
+//! Base curve implementation
 
 use solana_program::{
     program_error::ProgramError,
