@@ -1,8 +1,9 @@
 //! Various constraints as required for production environments
 
 use crate::{
+    curve::cp::ConstantProductCurve,
     curve::flat::FlatCurve,
-    curve::shared::{ConstantProductCurve, CurveType, SwapCurve},
+    curve::shared::{CurveType, SwapCurve},
     error::SwapError,
 };
 
@@ -102,7 +103,7 @@ pub const FEE_CONSTRAINTS: Option<FeeConstraints> = {
 mod tests {
     use super::*;
 
-    use crate::curve::shared::{ConstantProductCurve, CurveType};
+    use crate::curve::{cp::ConstantProductCurve, shared::CurveType};
 
     #[test]
     fn validate_fees() {
