@@ -5,7 +5,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use super::shared::{calculate_fee, CurveCalculator, DynPack, SwapResult};
+use crate::curve::shared::{calculate_fee, CurveCalculator, DynPack, SwapResult};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::TryFrom;
 
