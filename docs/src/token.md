@@ -362,10 +362,6 @@ Accounts hold token balances and are created using the `InitializeAccount`
 instruction. Each Account has an owner who must be present as a signer in some
 instructions.
 
-Balances can be transferred between Accounts using the `Transfer` instruction.
-The owner of the source Account must be present as a signer in the `Transfer`
-instruction.
-
 An Account's owner may transfer ownership of an account to another using the
 `SetAuthority` instruction.
 
@@ -375,10 +371,32 @@ instruction should be atomically processed with the system instruction that
 creates the Solana account by including both instructions in the same
 transaction.
 
+### Transferring tokens
+Balances can be transferred between Accounts using the `Transfer` instruction.
+The owner of the source Account must be present as a signer in the `Transfer`
+instruction when the source and destination accounts are different.
+
+It's important to note that when the source and destination of a `Transfer` are
+the **same**, the `Transfer` will _always_ succeed. Therefore, a successful `Transfer`
+does not necessarily imply that the involved Accounts were valid SPL Token
+accounts, that any tokens were moved, or that the source Account was present as
+a signer. We strongly recommend that developers are careful about checking that
+the source and destination are **different** before invoking a `Transfer`
+instruction from within their program.
+
 ### Burning
 
 The `Burn` instruction decreases an Account's token balance without transferring
 to another Account, effectively removing the token from circulation permanently.
+
+There is no other way to reduce supply on chain. This is similar to transferring
+to an account with unknown private key or destroying a private key. But the act
+of burning by using `Burn` instructions is more explicit and can be confirmed on
+chain by any parties.
+
+Note: there is a method by which a malicious and determined account owner
+can silently burn their tokens without updating supply on chain by making an
+account that is removed by rent collection because of [this known issue](#rent-exemption-loophole).
 
 ### Authority delegation
 
@@ -439,6 +457,15 @@ To ensure a reliable calculation of supply, a consistency valid Mint, and
 consistently valid Multisig accounts all Solana accounts holding a Account,
 Mint, or Multisig must contain enough SOL to be considered [rent
 exempt](https://docs.solana.com/implemented-proposals/rent)
+
+#### Rent-exemption loophole
+
+However note that there is currently a loophole to escape from the rent-exemption
+rule. It is possible to create SPL Token accounts that are not rent exempt by
+spoofing the Rent sysvar, since
+[there are insufficient sysvar checks](https://github.com/solana-labs/solana/pull/13175)
+in the program. This could be abused to burn tokens by transferring tokens to
+a non-exempt Account that is subsequently rent-collected out of existence.
 
 ### Closing accounts
 

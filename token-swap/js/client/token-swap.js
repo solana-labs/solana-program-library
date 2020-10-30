@@ -74,7 +74,8 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     Layout.uint64('ownerTradeFeeDenominator'),
     Layout.uint64('ownerWithdrawFeeNumerator'),
     Layout.uint64('ownerWithdrawFeeDenominator'),
-    BufferLayout.blob(16, 'padding'),
+    Layout.uint64('hostFeeNumerator'),
+    Layout.uint64('hostFeeDenominator'),
   ],
 );
 
@@ -173,6 +174,16 @@ export class TokenSwap {
   ownerWithdrawFeeDenominator: Numberu64;
 
   /**
+   * Host trading fee numerator
+   */
+  hostFeeNumerator: Numberu64;
+
+  /**
+   * Host trading fee denominator
+   */
+  hostFeeDenominator: Numberu64;
+
+  /**
    * CurveType, current options are:
    */
   curveType: number;
@@ -214,6 +225,8 @@ export class TokenSwap {
     ownerTradeFeeDenominator: Numberu64,
     ownerWithdrawFeeNumerator: Numberu64,
     ownerWithdrawFeeDenominator: Numberu64,
+    hostFeeNumerator: Numberu64,
+    hostFeeDenominator: Numberu64,
     payer: Account,
   ) {
     Object.assign(this, {
@@ -235,6 +248,8 @@ export class TokenSwap {
       ownerTradeFeeDenominator,
       ownerWithdrawFeeNumerator,
       ownerWithdrawFeeDenominator,
+      hostFeeNumerator,
+      hostFeeDenominator,
       payer,
     });
   }
@@ -270,6 +285,8 @@ export class TokenSwap {
     ownerTradeFeeDenominator: number,
     ownerWithdrawFeeNumerator: number,
     ownerWithdrawFeeDenominator: number,
+    hostFeeNumerator: number,
+    hostFeeDenominator: number,
   ): TransactionInstruction {
     const keys = [
       {pubkey: tokenSwapAccount.publicKey, isSigner: false, isWritable: true},
@@ -291,7 +308,8 @@ export class TokenSwap {
       BufferLayout.nu64('ownerTradeFeeDenominator'),
       BufferLayout.nu64('ownerWithdrawFeeNumerator'),
       BufferLayout.nu64('ownerWithdrawFeeDenominator'),
-      BufferLayout.blob(16, 'padding'),
+      BufferLayout.nu64('hostFeeNumerator'),
+      BufferLayout.nu64('hostFeeDenominator'),
     ]);
     let data = Buffer.alloc(1024);
     {
@@ -306,6 +324,8 @@ export class TokenSwap {
           ownerTradeFeeDenominator,
           ownerWithdrawFeeNumerator,
           ownerWithdrawFeeDenominator,
+          hostFeeNumerator,
+          hostFeeDenominator,
         },
         data,
       );
@@ -361,6 +381,12 @@ export class TokenSwap {
     const ownerWithdrawFeeDenominator = Numberu64.fromBuffer(
       tokenSwapData.ownerWithdrawFeeDenominator,
     );
+    const hostFeeNumerator = Numberu64.fromBuffer(
+      tokenSwapData.hostFeeNumerator,
+    );
+    const hostFeeDenominator = Numberu64.fromBuffer(
+      tokenSwapData.hostFeeDenominator,
+    );
     const curveType = tokenSwapData.curveType;
 
     return new TokenSwap(
@@ -382,6 +408,8 @@ export class TokenSwap {
       ownerTradeFeeDenominator,
       ownerWithdrawFeeNumerator,
       ownerWithdrawFeeDenominator,
+      hostFeeNumerator,
+      hostFeeDenominator,
       payer,
     );
   }
@@ -426,6 +454,8 @@ export class TokenSwap {
     ownerTradeFeeDenominator: number,
     ownerWithdrawFeeNumerator: number,
     ownerWithdrawFeeDenominator: number,
+    hostFeeNumerator: number,
+    hostFeeDenominator: number,
   ): Promise<TokenSwap> {
     let transaction;
     const tokenSwap = new TokenSwap(
@@ -447,6 +477,8 @@ export class TokenSwap {
       new Numberu64(ownerTradeFeeDenominator),
       new Numberu64(ownerWithdrawFeeNumerator),
       new Numberu64(ownerWithdrawFeeDenominator),
+      new Numberu64(hostFeeNumerator),
+      new Numberu64(hostFeeDenominator),
       payer,
     );
 
@@ -483,6 +515,8 @@ export class TokenSwap {
       ownerTradeFeeDenominator,
       ownerWithdrawFeeNumerator,
       ownerWithdrawFeeDenominator,
+      hostFeeNumerator,
+      hostFeeDenominator,
     );
 
     transaction.add(instruction);
@@ -512,6 +546,7 @@ export class TokenSwap {
     poolSource: PublicKey,
     poolDestination: PublicKey,
     userDestination: PublicKey,
+    hostFeeAccount: ?PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
   ): Promise<TransactionSignature> {
@@ -528,6 +563,7 @@ export class TokenSwap {
           userDestination,
           this.poolToken,
           this.feeAccount,
+          hostFeeAccount,
           this.swapProgramId,
           this.tokenProgramId,
           amountIn,
@@ -547,6 +583,7 @@ export class TokenSwap {
     userDestination: PublicKey,
     poolMint: PublicKey,
     feeAccount: PublicKey,
+    hostFeeAccount: ?PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
@@ -579,6 +616,9 @@ export class TokenSwap {
       {pubkey: feeAccount, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
+    if (hostFeeAccount != null) {
+      keys.push({pubkey: hostFeeAccount, isSigner: false, isWritable: true});
+    }
     return new TransactionInstruction({
       keys,
       programId: swapProgramId,

@@ -149,6 +149,8 @@ mod tests {
         let owner_trade_fee_denominator = 10;
         let owner_withdraw_fee_numerator = 2;
         let owner_withdraw_fee_denominator = 7;
+        let host_fee_numerator = 5;
+        let host_fee_denominator = 20;
         let calculator = Box::new(FlatCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -156,6 +158,8 @@ mod tests {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
         });
         let swap_curve = SwapCurve {
             curve_type,
@@ -197,7 +201,8 @@ mod tests {
         packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&[0u8; 16]); // padding
+        packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
+        packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
         let unpacked = SwapInfo::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
 
