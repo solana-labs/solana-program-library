@@ -5,9 +5,9 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
+use super::shared::{calculate_fee, map_zero_to_none, CurveCalculator, DynPack, SwapResult};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use std::convert::{TryFrom};
-use super::shared::{CurveCalculator, DynPack, SwapResult, calculate_fee, map_zero_to_none};
+use std::convert::TryFrom;
 
 /// ConstantProductCurve struct implementing CurveCalculator
 #[derive(Clone, Debug, Default, PartialEq)]

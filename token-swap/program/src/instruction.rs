@@ -381,7 +381,7 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
 mod tests {
     use super::*;
 
-    use crate::curve::{shared::CurveType, flat::FlatCurve};
+    use crate::curve::{flat::FlatCurve, shared::CurveType};
 
     #[test]
     fn test_instruction_packing() {

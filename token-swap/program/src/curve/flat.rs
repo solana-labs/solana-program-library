@@ -5,9 +5,9 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
+use super::shared::{calculate_fee, CurveCalculator, DynPack, SwapResult};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use std::convert::{TryFrom};
-use super::shared::{CurveCalculator, DynPack, SwapResult, calculate_fee};
+use std::convert::TryFrom;
 
 /// FlatCurve struct implementing CurveCalculator
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -228,5 +228,4 @@ mod tests {
         let unpacked = FlatCurve::unpack(&packed).unwrap();
         assert_eq!(curve, unpacked);
     }
-
 }

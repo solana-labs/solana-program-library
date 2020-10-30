@@ -735,9 +735,7 @@ mod tests {
     use crate::{
         curve::cp::ConstantProductCurve,
         curve::flat::FlatCurve,
-        curve::shared::{
-            CurveCalculator, CurveType, INITIAL_SWAP_POOL_AMOUNT,
-        },
+        curve::shared::{CurveCalculator, CurveType, INITIAL_SWAP_POOL_AMOUNT},
         instruction::{deposit, initialize, swap, withdraw},
     };
     use solana_program::{

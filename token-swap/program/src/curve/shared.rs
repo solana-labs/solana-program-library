@@ -5,11 +5,11 @@ use solana_program::{
     program_pack::{Pack, Sealed},
 };
 
+use super::cp::ConstantProductCurve;
+use super::flat::FlatCurve;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
-use super::cp::ConstantProductCurve;
-use super::flat::FlatCurve;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
 /// "sensible" given a maximum of u128.
@@ -18,7 +18,11 @@ use super::flat::FlatCurve;
 pub const INITIAL_SWAP_POOL_AMOUNT: u128 = 1_000_000_000;
 
 /// Helper function for calcuating swap fee
-pub fn calculate_fee(token_amount: u128, fee_numerator: u128, fee_denominator: u128) -> Option<u128> {
+pub fn calculate_fee(
+    token_amount: u128,
+    fee_numerator: u128,
+    fee_denominator: u128,
+) -> Option<u128> {
     if fee_numerator == 0 {
         Some(0)
     } else {
