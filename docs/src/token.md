@@ -396,7 +396,7 @@ chain by any parties.
 
 Note: there is a method by which a malicious and determined account owner
 can silently burn their tokens without updating supply on chain by making an
-account that is removed by rent collection because of [this known issue](#Rent-exemption).
+account that is removed by rent collection because of [this known issue](#rent-exemption-loophole).
 
 ### Authority delegation
 
@@ -457,6 +457,8 @@ To ensure a reliable calculation of supply, a consistency valid Mint, and
 consistently valid Multisig accounts all Solana accounts holding a Account,
 Mint, or Multisig must contain enough SOL to be considered [rent
 exempt](https://docs.solana.com/implemented-proposals/rent)
+
+#### Rent-exemption loophole
 
 However note that there is currently a loophole to escape from the rent-exemption
 rule. It is possible to create SPL Token accounts
