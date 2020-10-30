@@ -5,7 +5,7 @@ use solana_program::{
     program_pack::{Pack, Sealed},
 };
 
-use crate::curve::{cp::ConstantProductCurve, flat::FlatCurve};
+use crate::curve::{constant_product::ConstantProductCurve, flat::FlatCurve};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
