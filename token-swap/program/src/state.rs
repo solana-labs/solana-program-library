@@ -120,7 +120,7 @@ impl Pack for SwapInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::shared::FlatCurve;
+    use crate::curve::flat::FlatCurve;
 
     use std::convert::TryInto;
 

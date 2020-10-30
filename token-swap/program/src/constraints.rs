@@ -1,7 +1,8 @@
 //! Various constraints as required for production environments
 
 use crate::{
-    curve::shared::{ConstantProductCurve, CurveType, FlatCurve, SwapCurve},
+    curve::flat::FlatCurve,
+    curve::shared::{ConstantProductCurve, CurveType, SwapCurve},
     error::SwapError,
 };
 

@@ -733,8 +733,9 @@ fn to_u64(val: u128) -> Result<u64, SwapError> {
 mod tests {
     use super::*;
     use crate::{
+        curve::flat::FlatCurve,
         curve::shared::{
-            ConstantProductCurve, CurveCalculator, CurveType, FlatCurve, INITIAL_SWAP_POOL_AMOUNT,
+            ConstantProductCurve, CurveCalculator, CurveType, INITIAL_SWAP_POOL_AMOUNT,
         },
         instruction::{deposit, initialize, swap, withdraw},
     };
