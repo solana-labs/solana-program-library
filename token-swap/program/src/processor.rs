@@ -2,7 +2,7 @@
 
 use crate::constraints::{FeeConstraints, FEE_CONSTRAINTS};
 use crate::{
-    curve::shared::SwapCurve, error::SwapError, instruction::SwapInstruction, state::SwapInfo,
+    curve::base::SwapCurve, error::SwapError, instruction::SwapInstruction, state::SwapInfo,
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -733,8 +733,9 @@ fn to_u64(val: u128) -> Result<u64, SwapError> {
 mod tests {
     use super::*;
     use crate::{
+        curve::base::CurveType,
+        curve::calculator::{CurveCalculator, INITIAL_SWAP_POOL_AMOUNT},
         curve::{constant_product::ConstantProductCurve, flat::FlatCurve},
-        curve::shared::{CurveCalculator, CurveType, INITIAL_SWAP_POOL_AMOUNT},
         instruction::{deposit, initialize, swap, withdraw},
     };
     use solana_program::{

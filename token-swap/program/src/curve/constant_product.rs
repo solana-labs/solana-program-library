@@ -5,7 +5,9 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use crate::curve::shared::{calculate_fee, map_zero_to_none, CurveCalculator, DynPack, SwapResult};
+use crate::curve::calculator::{
+    calculate_fee, map_zero_to_none, CurveCalculator, DynPack, SwapResult,
+};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::TryFrom;
 
@@ -160,8 +162,8 @@ impl DynPack for ConstantProductCurve {
 
 #[cfg(test)]
 mod tests {
-    use crate::curve::shared::INITIAL_SWAP_POOL_AMOUNT;
     use super::*;
+    use crate::curve::calculator::INITIAL_SWAP_POOL_AMOUNT;
 
     #[test]
     fn initial_pool_amount() {

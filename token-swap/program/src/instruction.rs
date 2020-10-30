@@ -2,7 +2,7 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use crate::curve::shared::SwapCurve;
+use crate::curve::base::SwapCurve;
 use crate::error::SwapError;
 use solana_program::{
     instruction::{AccountMeta, Instruction},
@@ -381,7 +381,7 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
 mod tests {
     use super::*;
 
-    use crate::curve::{flat::FlatCurve, shared::CurveType};
+    use crate::curve::{base::CurveType, flat::FlatCurve};
 
     #[test]
     fn test_instruction_packing() {

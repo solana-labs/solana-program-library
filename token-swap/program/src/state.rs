@@ -1,6 +1,6 @@
 //! State transition types
 
-use crate::curve::shared::SwapCurve;
+use crate::curve::base::SwapCurve;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     program_error::ProgramError,
