@@ -10,7 +10,7 @@ use num_traits::FromPrimitive;
 use solana_program::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
     entrypoint::ProgramResult, info, program::invoke_signed, program_error::PrintProgramError,
-    program_error::ProgramError, pubkey::Pubkey
+    program_error::ProgramError, pubkey::Pubkey,
 };
 use std::convert::TryFrom;
 
@@ -46,6 +46,7 @@ impl Processor {
     }
 
     /// Issue a stake_split instruction.
+    #[allow(clippy::too_many_arguments)]
     pub fn stake_split<'a>(
         stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
@@ -63,10 +64,21 @@ impl Processor {
 
         let ix = stake::split_only(stake_account.key, authority.key, amount, split_stake.key);
 
-        invoke_signed(&ix, &[stake_account, reserved, authority, split_stake, stake_program_info], signers)
+        invoke_signed(
+            &ix,
+            &[
+                stake_account,
+                reserved,
+                authority,
+                split_stake,
+                stake_program_info,
+            ],
+            signers,
+        )
     }
 
     /// Issue a stake_set_owner instruction.
+    #[allow(clippy::too_many_arguments)]
     pub fn stake_authorize<'a>(
         stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
@@ -84,7 +96,11 @@ impl Processor {
 
         let ix = stake::authorize(stake_account.key, authority.key, new_staker, staker_auth);
 
-        invoke_signed(&ix, &[stake_account, reserved, authority, stake_program_info], signers)
+        invoke_signed(
+            &ix,
+            &[stake_account, reserved, authority, stake_program_info],
+            signers,
+        )
     }
 
     /// Issue a spl_token `Burn` instruction.
@@ -269,7 +285,7 @@ impl Processor {
             withdraw_info.key,
             stake::StakeAuthorize::Withdrawer,
             reserved.clone(),
-            stake_program_info.clone(), 
+            stake_program_info.clone(),
         )?;
 
         let user_amount = <u64>::try_from(user_amount).or(Err(Error::CalculationFailure))?;
