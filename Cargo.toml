@@ -5,6 +5,7 @@ members = [
   "memo/program",
   "shared-memory/program",
   "stake-pool/program",
+  "stake-pool/cli",
   "token-lending/program",
   "token-swap/program",
   "token/cli",

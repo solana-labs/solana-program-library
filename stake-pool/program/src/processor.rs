@@ -10,7 +10,7 @@ use num_traits::FromPrimitive;
 use solana_program::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
     entrypoint::ProgramResult, info, program::invoke_signed, program_error::PrintProgramError,
-    program_error::ProgramError, pubkey::Pubkey,
+    program_error::ProgramError, pubkey::Pubkey
 };
 use std::convert::TryFrom;
 
@@ -54,6 +54,8 @@ impl Processor {
         bump_seed: u8,
         amount: u64,
         split_stake: AccountInfo<'a>,
+        reserved: AccountInfo<'a>,
+        stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
         let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
@@ -61,7 +63,7 @@ impl Processor {
 
         let ix = stake::split_only(stake_account.key, authority.key, amount, split_stake.key);
 
-        invoke_signed(&ix, &[stake_account, authority, split_stake], signers)
+        invoke_signed(&ix, &[stake_account, reserved, authority, split_stake, stake_program_info], signers)
     }
 
     /// Issue a stake_set_owner instruction.
@@ -73,6 +75,8 @@ impl Processor {
         bump_seed: u8,
         new_staker: &Pubkey,
         staker_auth: stake::StakeAuthorize,
+        reserved: AccountInfo<'a>,
+        stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
         let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
@@ -80,7 +84,7 @@ impl Processor {
 
         let ix = stake::authorize(stake_account.key, authority.key, new_staker, staker_auth);
 
-        invoke_signed(&ix, &[stake_account, authority], signers)
+        invoke_signed(&ix, &[stake_account, reserved, authority, stake_program_info], signers)
     }
 
     /// Issue a spl_token `Burn` instruction.
@@ -207,6 +211,10 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
+        // (Reserved)
+        let reserved = next_account_info(account_info_iter)?;
+        // Stake program id
+        let stake_program_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
@@ -260,6 +268,8 @@ impl Processor {
             stake_pool.deposit_bump_seed,
             withdraw_info.key,
             stake::StakeAuthorize::Withdrawer,
+            reserved.clone(),
+            stake_program_info.clone(), 
         )?;
 
         let user_amount = <u64>::try_from(user_amount).or(Err(Error::CalculationFailure))?;
@@ -315,6 +325,10 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
+        // (Reserved)
+        let reserved = next_account_info(account_info_iter)?;
+        // Stake program id
+        let stake_program_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
@@ -345,6 +359,8 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
             stake_amount,
             stake_split_to.clone(),
+            reserved.clone(),
+            stake_program_info.clone(),
         )?;
 
         Self::stake_authorize(
@@ -355,6 +371,8 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
             user_stake_authority.key,
             stake::StakeAuthorize::Withdrawer,
+            reserved.clone(),
+            stake_program_info.clone(),
         )?;
 
         Self::token_burn(
@@ -390,6 +408,10 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
+        // (Reserved)
+        let reserved = next_account_info(account_info_iter)?;
+        // Stake program id
+        let stake_program_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
@@ -421,6 +443,8 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
             user_stake_authority.key,
             stake::StakeAuthorize::Withdrawer,
+            reserved.clone(),
+            stake_program_info.clone(),
         )?;
 
         Self::token_burn(
@@ -450,6 +474,10 @@ impl Processor {
         let withdraw_info = next_account_info(account_info_iter)?;
         let stake_info = next_account_info(account_info_iter)?;
         let staker_info = next_account_info(account_info_iter)?;
+        // (Reserved)
+        let reserved = next_account_info(account_info_iter)?;
+        // Stake program id
+        let stake_program_info = next_account_info(account_info_iter)?;
 
         let stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
@@ -479,6 +507,8 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
             staker_info.key,
             stake::StakeAuthorize::Staker,
+            reserved.clone(),
+            stake_program_info.clone(),
         )?;
         Ok(())
     }
@@ -917,6 +947,7 @@ mod tests {
                 &pool_info.owner_fee_key,
                 &pool_info.mint_key,
                 &TOKEN_PROGRAM_ID,
+                &stake_program_id(),
             )
             .unwrap(),
             vec![

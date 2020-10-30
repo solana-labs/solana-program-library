@@ -6,6 +6,7 @@ use solana_program::instruction::AccountMeta;
 use solana_program::instruction::Instruction;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
+use solana_program::sysvar;
 use std::mem::size_of;
 
 /// Fee rate as a ratio
@@ -50,7 +51,9 @@ pub enum StakePoolInstruction {
     ///   4. `[w]` User account to receive pool tokens
     ///   5. `[w]` Account to receive pool fee tokens
     ///   6. `[w]` Pool token mint account
-    ///   7. `[]` Pool token program id
+    ///   7. `[]` Pool token program id,
+    ///   8. '[]' Sysvar clock account (reserved for future use)
+    ///   9. `[]` Stake program id,
     Deposit,
 
     ///   Withdraw the token from the pool at the current ratio.
@@ -64,6 +67,8 @@ pub enum StakePoolInstruction {
     ///   5. `[w]` User account with pool tokens to burn from
     ///   6. `[w]` Pool token mint account
     ///   7. `[]` Pool token program id
+    ///   8. '[]' Sysvar clock account (reserved for future use)
+    ///   9. `[]` Stake program id,
     ///   userdata: amount to withdraw
     Withdraw(u64),
 
@@ -77,6 +82,8 @@ pub enum StakePoolInstruction {
     ///   4. `[w]` User account with pool tokens to burn from
     ///   5. `[w]` Pool token mint account
     ///   6. `[]` Pool token program id
+    ///   7. '[]' Sysvar clock account (reserved for future use)
+    ///   8. `[]` Stake program id,
     Claim,
 
     ///   Update the staking pubkey for a stake
@@ -86,6 +93,8 @@ pub enum StakePoolInstruction {
     ///   2. `[]` withdraw authority
     ///   3. `[w]` Stake to update the staking pubkey
     ///   4. '[]` Staking pubkey.
+    ///   5. '[]' Sysvar clock account (reserved for future use)
+    ///   6. `[]` Stake program id,
     SetStakingAuthority,
 
     ///   Update owner
@@ -202,6 +211,7 @@ pub fn deposit(
     pool_fee_to: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
+    stake_program_id: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let args = StakePoolInstruction::Deposit;
     let data = args.serialize()?;
@@ -214,6 +224,8 @@ pub fn deposit(
         AccountMeta::new(*pool_fee_to, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*stake_program_id, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -233,6 +245,7 @@ pub fn withdraw(
     burn_from: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
+    stake_program_id: &Pubkey,
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     let args = StakePoolInstruction::Withdraw(amount);
@@ -246,6 +259,8 @@ pub fn withdraw(
         AccountMeta::new(*burn_from, true),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*stake_program_id, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -264,6 +279,7 @@ pub fn claim(
     burn_from: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
+    stake_program_id: &Pubkey,
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     let args = StakePoolInstruction::Withdraw(amount);
@@ -276,6 +292,8 @@ pub fn claim(
         AccountMeta::new(*burn_from, true),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*stake_program_id, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -292,6 +310,7 @@ pub fn set_staking_authority(
     stake_pool_withdraw: &Pubkey,
     stake_account_to_update: &Pubkey,
     stake_account_new_authority: &Pubkey,
+    stake_program_id: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let args = StakePoolInstruction::SetStakingAuthority;
     let data = args.serialize()?;
@@ -301,6 +320,8 @@ pub fn set_staking_authority(
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*stake_account_to_update, false),
         AccountMeta::new_readonly(*stake_account_new_authority, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*stake_program_id, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
