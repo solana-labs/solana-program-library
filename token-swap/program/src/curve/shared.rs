@@ -253,230 +253,47 @@ pub struct SwapResult {
     pub owner_fee: u128,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[test]
+fn pack_swap_curve() {
+    let trade_fee_numerator = 1;
+    let trade_fee_denominator = 4;
+    let owner_trade_fee_numerator = 2;
+    let owner_trade_fee_denominator = 5;
+    let owner_withdraw_fee_numerator = 4;
+    let owner_withdraw_fee_denominator = 10;
+    let host_fee_numerator = 7;
+    let host_fee_denominator = 100;
+    let curve = ConstantProductCurve {
+        trade_fee_numerator,
+        trade_fee_denominator,
+        owner_trade_fee_numerator,
+        owner_trade_fee_denominator,
+        owner_withdraw_fee_numerator,
+        owner_withdraw_fee_denominator,
+        host_fee_numerator,
+        host_fee_denominator,
+    };
+    let curve_type = CurveType::ConstantProduct;
+    let swap_curve = SwapCurve {
+        curve_type,
+        calculator: Box::new(curve),
+    };
 
-    #[test]
-    fn initial_pool_amount() {
-        let trade_fee_numerator = 0;
-        let trade_fee_denominator = 1;
-        let owner_trade_fee_numerator = 0;
-        let owner_trade_fee_denominator = 1;
-        let owner_withdraw_fee_numerator = 0;
-        let owner_withdraw_fee_denominator = 1;
-        let host_fee_numerator = 0;
-        let host_fee_denominator = 1;
-        let calculator = ConstantProductCurve {
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        };
-        assert_eq!(calculator.new_pool_supply(), INITIAL_SWAP_POOL_AMOUNT);
-    }
+    let mut packed = [0u8; SwapCurve::LEN];
+    Pack::pack_into_slice(&swap_curve, &mut packed[..]);
+    let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
+    assert_eq!(swap_curve, unpacked);
 
-    fn check_pool_token_rate(token_a: u128, deposit: u128, supply: u128, expected: Option<u128>) {
-        let trade_fee_numerator = 0;
-        let trade_fee_denominator = 1;
-        let owner_trade_fee_numerator = 0;
-        let owner_trade_fee_denominator = 1;
-        let owner_withdraw_fee_numerator = 0;
-        let owner_withdraw_fee_denominator = 1;
-        let host_fee_numerator = 0;
-        let host_fee_denominator = 1;
-        let calculator = ConstantProductCurve {
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        };
-        assert_eq!(
-            calculator.pool_tokens_to_trading_tokens(deposit, supply, token_a),
-            expected
-        );
-    }
-
-    #[test]
-    fn trading_token_conversion() {
-        check_pool_token_rate(2, 5, 10, Some(1));
-        check_pool_token_rate(10, 5, 10, Some(5));
-        check_pool_token_rate(5, 5, 10, Some(2));
-        check_pool_token_rate(5, 5, 10, Some(2));
-        check_pool_token_rate(u128::MAX, 5, 10, None);
-    }
-
-    #[test]
-    fn constant_product_swap_calculation_trade_fee() {
-        // calculation on https://github.com/solana-labs/solana-program-library/issues/341
-        let swap_source_amount = 1000;
-        let swap_destination_amount = 50000;
-        let trade_fee_numerator = 1;
-        let trade_fee_denominator = 100;
-        let owner_trade_fee_numerator = 0;
-        let owner_trade_fee_denominator = 0;
-        let owner_withdraw_fee_numerator = 0;
-        let owner_withdraw_fee_denominator = 0;
-        let host_fee_numerator = 0;
-        let host_fee_denominator = 0;
-        let source_amount = 100;
-        let curve = ConstantProductCurve {
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        };
-        let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount)
-            .unwrap();
-        assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 4505);
-        assert_eq!(result.new_destination_amount, 45495);
-        assert_eq!(result.trade_fee, 1);
-        assert_eq!(result.owner_fee, 0);
-    }
-
-    #[test]
-    fn constant_product_swap_calculation_owner_fee() {
-        // calculation on https://github.com/solana-labs/solana-program-library/issues/341
-        let swap_source_amount = 1000;
-        let swap_destination_amount = 50000;
-        let trade_fee_numerator = 0;
-        let trade_fee_denominator = 0;
-        let owner_trade_fee_numerator = 1;
-        let owner_trade_fee_denominator = 100;
-        let owner_withdraw_fee_numerator = 0;
-        let owner_withdraw_fee_denominator = 0;
-        let host_fee_numerator = 0;
-        let host_fee_denominator = 0;
-        let source_amount: u128 = 100;
-        let curve = ConstantProductCurve {
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        };
-        let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount)
-            .unwrap();
-        assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 4505);
-        assert_eq!(result.new_destination_amount, 45495);
-        assert_eq!(result.trade_fee, 0);
-        assert_eq!(result.owner_fee, 1);
-    }
-
-    #[test]
-    fn constant_product_swap_no_fee() {
-        let swap_source_amount: u128 = 1000;
-        let swap_destination_amount: u128 = 50000;
-        let source_amount: u128 = 100;
-        let curve = ConstantProductCurve::default();
-        let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount)
-            .unwrap();
-        assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 4546);
-        assert_eq!(result.new_destination_amount, 45454);
-    }
-
-    #[test]
-    fn pack_constant_product_curve() {
-        let trade_fee_numerator = 1;
-        let trade_fee_denominator = 4;
-        let owner_trade_fee_numerator = 2;
-        let owner_trade_fee_denominator = 5;
-        let owner_withdraw_fee_numerator = 4;
-        let owner_withdraw_fee_denominator = 10;
-        let host_fee_numerator = 4;
-        let host_fee_denominator = 10;
-        let curve = ConstantProductCurve {
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        };
-
-        let mut packed = [0u8; ConstantProductCurve::LEN];
-        Pack::pack_into_slice(&curve, &mut packed[..]);
-        let unpacked = ConstantProductCurve::unpack(&packed).unwrap();
-        assert_eq!(curve, unpacked);
-
-        let mut packed = vec![];
-        packed.extend_from_slice(&trade_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&trade_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&owner_trade_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
-        let unpacked = ConstantProductCurve::unpack(&packed).unwrap();
-        assert_eq!(curve, unpacked);
-    }
-
-    #[test]
-    fn pack_swap_curve() {
-        let trade_fee_numerator = 1;
-        let trade_fee_denominator = 4;
-        let owner_trade_fee_numerator = 2;
-        let owner_trade_fee_denominator = 5;
-        let owner_withdraw_fee_numerator = 4;
-        let owner_withdraw_fee_denominator = 10;
-        let host_fee_numerator = 7;
-        let host_fee_denominator = 100;
-        let curve = ConstantProductCurve {
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        };
-        let curve_type = CurveType::ConstantProduct;
-        let swap_curve = SwapCurve {
-            curve_type,
-            calculator: Box::new(curve),
-        };
-
-        let mut packed = [0u8; SwapCurve::LEN];
-        Pack::pack_into_slice(&swap_curve, &mut packed[..]);
-        let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
-        assert_eq!(swap_curve, unpacked);
-
-        let mut packed = vec![];
-        packed.push(curve_type as u8);
-        packed.extend_from_slice(&trade_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&trade_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&owner_trade_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
-        let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
-        assert_eq!(swap_curve, unpacked);
-    }
+    let mut packed = vec![];
+    packed.push(curve_type as u8);
+    packed.extend_from_slice(&trade_fee_numerator.to_le_bytes());
+    packed.extend_from_slice(&trade_fee_denominator.to_le_bytes());
+    packed.extend_from_slice(&owner_trade_fee_numerator.to_le_bytes());
+    packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
+    packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
+    packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
+    packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
+    packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
+    let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
+    assert_eq!(swap_curve, unpacked);
 }
