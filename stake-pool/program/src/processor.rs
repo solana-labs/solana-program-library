@@ -975,6 +975,8 @@ mod tests {
                 &mut pool_info.owner_fee_account,
                 &mut pool_info.mint_account,
                 &mut Account::default(),
+                &mut Account::default(),
+                &mut Account::default(),
             ],
         )
         .expect("Error on stake pool deposit");
