@@ -461,15 +461,11 @@ exempt](https://docs.solana.com/implemented-proposals/rent)
 #### Rent-exemption loophole
 
 However note that there is currently a loophole to escape from the rent-exemption
-rule. It is possible to create SPL Token accounts
-which aren't actually rent-exempt. This loophole was unintentionally created
-because the token program is susceptible to sysvar spoofing. Specifically, there
-was an insufficient check for accounts passed as sysvar while executing in
-solana-program-sdk, which is statically linked into the token program.
-
-For example, this could be abused to delete (= effectively burn) Account by
-transfering to crafted (= not rent-exempt) Solana accounts by anyone who has the
-authority to execute such a transaction.
+rule. It is possible to create SPL Token accounts that are not rent exempt by
+spoofing the Rent sysvar, since
+[there are insufficient sysvar checks](https://github.com/solana-labs/solana/pull/13175)
+in the program. This could be abused to burn tokens by transferring tokens to
+a non-exempt Account that is subsequently rent-collected out of existence.
 
 ### Closing accounts
 
