@@ -2,6 +2,7 @@
 members = [
   "utils/cgen",
   "utils/test-client",
+  "identity/program",
   "memo/program",
   "shared-memory/program",
   "stake-pool/program",
