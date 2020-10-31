@@ -2,29 +2,23 @@ use solana_bpf_loader_program::{
     create_vm,
     serialization::{deserialize_parameters, serialize_parameters},
 };
-use solana_rbpf::vm::{EbpfVm, InstructionMeter};
-use solana_runtime::process_instruction::{
-    ComputeBudget, ComputeMeter, Executor, InvokeContext, Logger, ProcessInstruction,
-};
-use solana_sdk::{
-    account::{Account, KeyedAccount},
-    bpf_loader,
-    entrypoint::SUCCESS,
-    instruction::{CompiledInstruction, Instruction, InstructionError},
-    message::Message,
-    program_error::ProgramError,
+use solana_program::{
+    bpf_loader, entrypoint::SUCCESS, instruction::InstructionError, program_error::ProgramError,
     pubkey::Pubkey,
 };
+use solana_rbpf::vm::EbpfVm;
+use solana_sdk::{
+    account::Account, keyed_account::KeyedAccount, process_instruction::MockInvokeContext,
+};
 use spl_shared_memory::entrypoint;
-
-use std::{cell::RefCell, fs::File, io::Read, path::PathBuf, rc::Rc, sync::Arc};
+use std::{fs::File, io::Read, path::PathBuf};
 
 fn load_program(name: &str) -> Vec<u8> {
     let mut path = PathBuf::new();
-    path.push("../../target/bpfel-unknown-unknown/release");
     path.push(name);
     path.set_extension("so");
-    let mut file = File::open(path).unwrap();
+    let mut file = File::open(&path)
+        .unwrap_or_else(|err| panic!("Unable to open {}: {}", path.display(), err));
 
     let mut program = Vec::new();
     file.read_to_end(&mut program).unwrap();
@@ -188,80 +182,4 @@ fn test_share_data() {
         unsafe { entrypoint(input.as_mut_ptr()) },
         u64::from(ProgramError::AccountDataTooSmall)
     );
-}
-
-// Mock InvokeContext
-
-#[derive(Debug, Default)]
-struct MockInvokeContext {
-    pub key: Pubkey,
-    pub logger: MockLogger,
-    pub compute_budget: ComputeBudget,
-    pub compute_meter: MockComputeMeter,
-}
-impl InvokeContext for MockInvokeContext {
-    fn push(&mut self, _key: &Pubkey) -> Result<(), InstructionError> {
-        Ok(())
-    }
-    fn pop(&mut self) {}
-    fn verify_and_update(
-        &mut self,
-        _message: &Message,
-        _instruction: &CompiledInstruction,
-        _accounts: &[Rc<RefCell<Account>>],
-    ) -> Result<(), InstructionError> {
-        Ok(())
-    }
-    fn get_caller(&self) -> Result<&Pubkey, InstructionError> {
-        Ok(&self.key)
-    }
-    fn get_programs(&self) -> &[(Pubkey, ProcessInstruction)] {
-        &[]
-    }
-    fn get_logger(&self) -> Rc<RefCell<dyn Logger>> {
-        Rc::new(RefCell::new(self.logger.clone()))
-    }
-    fn get_compute_budget(&self) -> &ComputeBudget {
-        &self.compute_budget
-    }
-    fn get_compute_meter(&self) -> Rc<RefCell<dyn ComputeMeter>> {
-        Rc::new(RefCell::new(self.compute_meter.clone()))
-    }
-    fn add_executor(&mut self, _pubkey: &Pubkey, _executor: Arc<dyn Executor>) {}
-    fn get_executor(&mut self, _pubkey: &Pubkey) -> Option<Arc<dyn Executor>> {
-        None
-    }
-    fn record_instruction(&self, _instruction: &Instruction) {}
-    fn is_feature_active(&self, _feature_id: &Pubkey) -> bool {
-        true
-    }
-}
-
-#[derive(Debug, Default, Clone)]
-struct MockComputeMeter {}
-impl ComputeMeter for MockComputeMeter {
-    fn consume(&mut self, _amount: u64) -> Result<(), InstructionError> {
-        Ok(())
-    }
-    fn get_remaining(&self) -> u64 {
-        u64::MAX
-    }
-}
-#[derive(Debug, Default, Clone)]
-struct MockLogger {}
-impl Logger for MockLogger {
-    fn log_enabled(&self) -> bool {
-        true
-    }
-    fn log(&mut self, message: &str) {
-        println!("{}", message);
-    }
-}
-
-struct TestInstructionMeter {}
-impl InstructionMeter for TestInstructionMeter {
-    fn consume(&mut self, _amount: u64) {}
-    fn get_remaining(&self) -> u64 {
-        u64::MAX
-    }
 }

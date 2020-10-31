@@ -11,7 +11,6 @@ fi
 
 workspace_crates=(
   Cargo.toml
-  shared-memory/client/Cargo.toml
   themis/client_ristretto/Cargo.toml
   token/perf-monitor/Cargo.toml
 )
