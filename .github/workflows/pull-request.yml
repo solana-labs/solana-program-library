@@ -170,7 +170,7 @@ jobs:
           toolchain: 1.47.0 # MSRV
           override: true
           profile: minimal
-    
+
       - name: Install dependencies
         run: |
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
@@ -206,8 +206,6 @@ jobs:
     strategy:
       matrix:
         path:
-          - shared-memory/client
-          - token/perf-monitor
           - themis/client_ristretto
 
     steps:

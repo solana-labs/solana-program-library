@@ -11,5 +11,10 @@ edition = "2018"
 arrayref = "0.3.6"
 solana-program = "1.4.3"
 
+[dev-dependencies]
+solana-bpf-loader-program = "1.5.0"
+solana-sdk = "1.5.0"
+solana_rbpf = "=0.1.32"
+
 [lib]
 crate-type = ["cdylib", "lib"]
