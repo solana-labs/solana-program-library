@@ -2946,6 +2946,7 @@ dependencies = [
  "solana-cli-output",
  "solana-client",
  "solana-logger",
+ "solana-remote-wallet",
  "solana-sdk",
  "spl-token 2.0.8",
 ]
