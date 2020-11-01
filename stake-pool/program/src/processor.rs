@@ -563,9 +563,10 @@ mod tests {
     use super::*;
     use crate::instruction::{deposit, initialize, Fee, InitArgs};
     use solana_program::{
-        account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
-        native_token::sol_to_lamports, program_pack::Pack, program_stubs, rent::Rent, sysvar::rent,
+        instruction::Instruction, native_token::sol_to_lamports, program_pack::Pack, program_stubs,
+        rent::Rent,
     };
+    use solana_sdk::account::{create_account, create_is_signer_account_infos, Account};
     use spl_token::{
         instruction::{initialize_account, initialize_mint},
         processor::Processor as TokenProcessor,
@@ -723,7 +724,7 @@ mod tests {
             SplAccount::get_packed_len(),
             &program_id,
         );
-        let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
+        let mut rent_sysvar_account = create_account(&Rent::free(), 1);
         let owner_key = Pubkey::new_unique();
         let mut owner_account = Account::default();
 
@@ -781,7 +782,7 @@ mod tests {
             SplMint::get_packed_len(),
             &program_id,
         );
-        let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
+        let mut rent_sysvar_account = create_account(&Rent::free(), 1);
 
         // create token mint
         do_process_instruction(

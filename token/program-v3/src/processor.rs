@@ -781,9 +781,9 @@ impl PrintProgramError for TokenError {
 mod tests {
     use super::*;
     use crate::instruction::*;
-    use solana_program::{
-        account::Account as SolanaAccount, account_info::create_is_signer_account_infos,
-        clock::Epoch, instruction::Instruction, sysvar::rent,
+    use solana_program::{clock::Epoch, instruction::Instruction, sysvar::rent};
+    use solana_sdk::account::{
+        create_account, create_is_signer_account_infos, Account as SolanaAccount,
     };
 
     fn do_process_instruction(
@@ -813,7 +813,7 @@ mod tests {
     }
 
     fn rent_sysvar() -> SolanaAccount {
-        rent::create_account(42, &Rent::default())
+        create_account(&Rent::default(), 42)
     }
 
     fn mint_minimum_balance() -> u64 {

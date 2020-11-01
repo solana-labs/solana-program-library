@@ -736,10 +736,8 @@ mod tests {
         },
         instruction::{deposit, initialize, swap, withdraw},
     };
-    use solana_program::{
-        account::Account, account_info::create_is_signer_account_infos, instruction::Instruction,
-        program_stubs, rent::Rent, sysvar::rent,
-    };
+    use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
+    use solana_sdk::account::{create_account, create_is_signer_account_infos, Account};
     use spl_token::{
         error::TokenError,
         instruction::{
@@ -1294,7 +1292,7 @@ mod tests {
             &program_id,
         );
         let mut mint_authority_account = Account::default();
-        let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
+        let mut rent_sysvar_account = create_account(&Rent::free(), 1);
 
         do_process_instruction(
             initialize_account(&program_id, &account_key, &mint_key, account_owner_key).unwrap(),
@@ -1341,7 +1339,7 @@ mod tests {
             spl_token::state::Mint::get_packed_len(),
             &program_id,
         );
-        let mut rent_sysvar_account = rent::create_account(1, &Rent::free());
+        let mut rent_sysvar_account = create_account(&Rent::free(), 1);
 
         do_process_instruction(
             initialize_mint(&program_id, &mint_key, authority_key, freeze_authority, 2).unwrap(),
@@ -3369,7 +3367,10 @@ mod tests {
             );
             let fee_account =
                 Processor::unpack_token_account(&accounts.pool_fee_account.data).unwrap();
-            assert_eq!(fee_account.amount, withdraw_fee.try_into().unwrap());
+            assert_eq!(
+                fee_account.amount,
+                TryInto::<u64>::try_into(withdraw_fee).unwrap()
+            );
         }
 
         // correct withdrawal from fee account
@@ -3418,7 +3419,10 @@ mod tests {
                 )
                 .unwrap();
             let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
-            assert_eq!(token_a.amount, withdrawn_a.try_into().unwrap());
+            assert_eq!(
+                token_a.amount,
+                TryInto::<u64>::try_into(withdrawn_a).unwrap()
+            );
             let withdrawn_b = accounts
                 .swap_curve
                 .calculator
@@ -3429,7 +3433,10 @@ mod tests {
                 )
                 .unwrap();
             let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
-            assert_eq!(token_b.amount, withdrawn_b.try_into().unwrap());
+            assert_eq!(
+                token_b.amount,
+                TryInto::<u64>::try_into(withdrawn_b).unwrap()
+            );
         }
     }
 
@@ -3497,7 +3504,7 @@ mod tests {
         let token_a_amount = swap_token_a.amount;
         assert_eq!(
             token_a_amount,
-            results.new_source_amount.try_into().unwrap()
+            TryInto::<u64>::try_into(results.new_source_amount).unwrap()
         );
         let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
         assert_eq!(token_a.amount, initial_a - a_to_b_amount);
@@ -3506,7 +3513,7 @@ mod tests {
         let token_b_amount = swap_token_b.amount;
         assert_eq!(
             token_b_amount,
-            results.new_destination_amount.try_into().unwrap()
+            TryInto::<u64>::try_into(results.new_destination_amount).unwrap()
         );
         let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
         assert_eq!(
@@ -3524,7 +3531,10 @@ mod tests {
             )
             .unwrap();
         let fee_account = Processor::unpack_token_account(&accounts.pool_fee_account.data).unwrap();
-        assert_eq!(fee_account.amount, first_fee.try_into().unwrap());
+        assert_eq!(
+            fee_account.amount,
+            TryInto::<u64>::try_into(first_fee).unwrap()
+        );
 
         let first_swap_amount = results.amount_swapped;
 
@@ -3561,7 +3571,7 @@ mod tests {
         let token_a_amount = swap_token_a.amount;
         assert_eq!(
             token_a_amount,
-            results.new_destination_amount.try_into().unwrap()
+            TryInto::<u64>::try_into(results.new_destination_amount).unwrap()
         );
         let token_a = Processor::unpack_token_account(&token_a_account.data).unwrap();
         assert_eq!(
@@ -3573,7 +3583,7 @@ mod tests {
         let token_b_amount = swap_token_b.amount;
         assert_eq!(
             token_b_amount,
-            results.new_source_amount.try_into().unwrap()
+            TryInto::<u64>::try_into(results.new_source_amount).unwrap()
         );
         let token_b = Processor::unpack_token_account(&token_b_account.data).unwrap();
         assert_eq!(
