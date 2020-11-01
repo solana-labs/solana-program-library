@@ -1,18 +1,17 @@
 //! Program entrypoint
 
 use solana_program::{
-    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, info,
-    program_error::ProgramError, pubkey::Pubkey,
+    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, program_error::ProgramError,
+    pubkey::Pubkey,
 };
 use std::str::from_utf8;
 
 entrypoint!(process_instruction);
-fn process_instruction<'a>(
+fn process_instruction(
     _program_id: &Pubkey,
-    _accounts: &'a [AccountInfo<'a>],
+    _accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    info!("hi");
     from_utf8(instruction_data).map_err(|_| ProgramError::InvalidInstructionData)?;
     Ok(())
 }
