@@ -50,6 +50,8 @@ solana-logger = {path = "$solana_dir/logger" }
 solana-program = { path = "$solana_dir/sdk/program" }
 solana-runtime = { path = "$solana_dir/runtime" }
 solana-sdk = { path = "$solana_dir/sdk" }
+solana-stake-program = { path = "$solana_dir/programs/stake" }
+solana-vote-program = { path = "$solana_dir/programs/vote" }
 PATCH
   fi
 done

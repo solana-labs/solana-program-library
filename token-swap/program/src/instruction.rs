@@ -412,7 +412,7 @@ mod tests {
         let check = SwapInstruction::Initialize { nonce, swap_curve };
         let packed = check.pack();
         let mut expect = vec![];
-        expect.push(0 as u8);
+        expect.push(0u8);
         expect.push(nonce);
         expect.push(curve_type as u8);
         expect.extend_from_slice(&trade_fee_numerator.to_le_bytes());
