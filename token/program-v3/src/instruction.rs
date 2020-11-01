@@ -1056,7 +1056,7 @@ pub fn burn2(
 
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
-    !(index < MIN_SIGNERS || index > MAX_SIGNERS)
+    (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)
 }
 
 #[cfg(test)]
