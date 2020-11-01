@@ -79,7 +79,7 @@ fn assert_instruction_count() {
     let mint_key = Pubkey::new_unique();
     let mint_account = SolanaAccount::new_ref(0, Mint::get_packed_len(), &program_id);
     let rent_key = rent::id();
-    let rent_account = RefCell::new(create_account(&Rent::default(), 42));
+    let rent_account = RefCell::new(create_account(&Rent::free(), 42));
 
     // Create new mint
     let instruction_data = TokenInstruction::InitializeMint {
@@ -90,7 +90,7 @@ fn assert_instruction_count() {
     .pack();
     let parameter_accounts = vec![
         KeyedAccount::new(&mint_key, false, &mint_account),
-        KeyedAccount::new(&source_key, false, &source_account),
+        KeyedAccount::new(&rent_key, false, &rent_account),
     ];
     let initialize_mint_count =
         run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
