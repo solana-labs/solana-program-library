@@ -11,12 +11,12 @@ version = "2.0.1"
 [dependencies]
 clap = "2.33.3"
 serde_json = "1.0.57"
-solana-account-decoder = "1.4.3"
-solana-clap-utils = "1.4.3"
-solana-cli-config = "1.4.3"
-solana-client = "1.4.3"
-solana-logger = "1.4.3"
-solana-sdk = "1.4.3"
+solana-account-decoder = "1.4.4"
+solana-clap-utils = "1.4.4"
+solana-cli-config = "1.4.4"
+solana-client = "1.4.4"
+solana-logger = "1.4.4"
+solana-sdk = "1.4.4"
 spl-stake-pool = { version = "0.1.0", path="../program", features = [ "exclude_entrypoint" ] }
 
 [[bin]]

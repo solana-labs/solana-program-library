@@ -6,29 +6,24 @@ use solana_bpf_loader_program::{
     create_vm,
     serialization::{deserialize_parameters, serialize_parameters},
 };
-use solana_rbpf::vm::{EbpfVm, InstructionMeter};
-use solana_runtime::process_instruction::{
-    ComputeBudget, ComputeMeter, Executor, InvokeContext, Logger, ProcessInstruction,
-};
+use solana_rbpf::vm::EbpfVm;
 use solana_sdk::{
-    account::{Account as SolanaAccount, KeyedAccount},
+    account::Account,
     bpf_loader,
     entrypoint::SUCCESS,
-    instruction::{CompiledInstruction, InstructionError},
-    message::Message,
+    instruction::InstructionError,
+    keyed_account::KeyedAccount,
+    process_instruction::{BpfComputeBudget, MockInvokeContext},
     pubkey::Pubkey,
 };
 use spl_themis_ristretto::{
     instruction::ThemisInstruction,
     state::{generate_keys, /*recover_scalar,*/ Policies, User},
 };
-use std::{cell::RefCell, fs::File, io::Read, path::PathBuf, rc::Rc, sync::Arc};
+use std::{fs::File, io::Read, path::PathBuf};
 
 fn load_program(name: &str) -> Vec<u8> {
-    let mut path = PathBuf::new();
-    path.push("../../target/bpfel-unknown-unknown/release");
-    path.push(name);
-    path.set_extension("so");
+    let path = PathBuf::from(name).with_extension("so");
     let mut file = File::open(path).unwrap();
 
     let mut program = Vec::new();
@@ -41,10 +36,15 @@ fn run_program(
     parameter_accounts: &[KeyedAccount],
     instruction_data: &[u8],
 ) -> Result<u64, InstructionError> {
-    let mut program_account = SolanaAccount::default();
+    let mut program_account = Account::default();
     program_account.data = load_program("spl_themis_ristretto");
     let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
+    invoke_context.bpf_compute_budget = BpfComputeBudget {
+        max_invoke_depth: 10,
+        ..BpfComputeBudget::default()
+    };
+
     let executable = EbpfVm::<solana_bpf_loader_program::BPFError>::create_executable_from_elf(
         &&program_account.data,
         None,
@@ -189,7 +189,7 @@ fn assert_instruction_count() {
         .map(|i| (i as u8, pk.encrypt(&RISTRETTO_BASEPOINT_POINT).points))
         .collect();
 
-    let policies_account = SolanaAccount::new_ref(
+    let policies_account = Account::new_ref(
         0,
         Policies {
             is_initialized: true,
@@ -213,7 +213,7 @@ fn assert_instruction_count() {
     // Create user account
     let user_key = Pubkey::new_unique();
     let user_account =
-        SolanaAccount::new_ref(0, User::default().try_to_vec().unwrap().len(), &program_id);
+        Account::new_ref(0, User::default().try_to_vec().unwrap().len(), &program_id);
     let instruction_data = ThemisInstruction::InitializeUserAccount { public_key: pk }
         .serialize()
         .unwrap();
@@ -293,97 +293,4 @@ fn assert_instruction_count() {
     assert!(initialize_user_count <= BASELINE_INITIALIZE_USER_COUNT);
     assert!(calculate_aggregate_count <= BASELINE_CALCULATE_AGGREGATE_COUNT);
     assert!(proof_decryption_count <= BASELINE_PROOF_DECRYPTION_COUNT);
-}
-
-// Mock InvokeContext
-
-#[derive(Debug)]
-struct MockInvokeContext {
-    pub key: Pubkey,
-    pub logger: MockLogger,
-    pub compute_meter: MockComputeMeter,
-    compute_budget: ComputeBudget,
-}
-
-impl Default for MockInvokeContext {
-    fn default() -> Self {
-        Self {
-            key: Pubkey::default(),
-            logger: MockLogger::default(),
-            compute_meter: MockComputeMeter::default(),
-            compute_budget: ComputeBudget {
-                max_invoke_depth: 10,
-                ..ComputeBudget::default()
-            },
-        }
-    }
-}
-
-impl InvokeContext for MockInvokeContext {
-    fn push(&mut self, _key: &Pubkey) -> Result<(), InstructionError> {
-        Ok(())
-    }
-    fn pop(&mut self) {}
-    fn verify_and_update(
-        &mut self,
-        _message: &Message,
-        _instruction: &CompiledInstruction,
-        _accounts: &[Rc<RefCell<SolanaAccount>>],
-    ) -> Result<(), InstructionError> {
-        Ok(())
-    }
-    fn get_caller(&self) -> Result<&Pubkey, InstructionError> {
-        Ok(&self.key)
-    }
-    fn get_programs(&self) -> &[(Pubkey, ProcessInstruction)] {
-        &[]
-    }
-    fn get_logger(&self) -> Rc<RefCell<dyn Logger>> {
-        Rc::new(RefCell::new(self.logger.clone()))
-    }
-    fn get_compute_budget(&self) -> &ComputeBudget {
-        &self.compute_budget
-    }
-    fn get_compute_meter(&self) -> Rc<RefCell<dyn ComputeMeter>> {
-        Rc::new(RefCell::new(self.compute_meter.clone()))
-    }
-    fn add_executor(&mut self, _pubkey: &Pubkey, _executor: Arc<dyn Executor>) {}
-    fn get_executor(&mut self, _pubkey: &Pubkey) -> Option<Arc<dyn Executor>> {
-        None
-    }
-    fn record_instruction(&self, _: &solana_sdk::instruction::Instruction) {
-        todo!()
-    }
-    fn is_feature_active(&self, _: &solana_sdk::pubkey::Pubkey) -> bool {
-        true
-    }
-}
-
-#[derive(Debug, Default, Clone)]
-struct MockComputeMeter {}
-impl ComputeMeter for MockComputeMeter {
-    fn consume(&mut self, _amount: u64) -> Result<(), InstructionError> {
-        Ok(())
-    }
-    fn get_remaining(&self) -> u64 {
-        u64::MAX
-    }
-}
-#[derive(Debug, Default, Clone)]
-struct MockLogger {}
-impl Logger for MockLogger {
-    fn log_enabled(&self) -> bool {
-        true
-    }
-    fn log(&mut self, message: &str) {
-        println!("{}", message);
-    }
-}
-
-struct TestInstructionMeter {}
-impl InstructionMeter for TestInstructionMeter {
-    fn consume(&mut self, _amount: u64) {}
-    fn get_remaining(&self) -> u64 {
-        u64::MAX
-    }
 }

@@ -19,13 +19,10 @@ use spl_token::{
     instruction::TokenInstruction,
     state::{Account, Mint},
 };
-use std::{cell::RefCell, fs::File, io::Read, path::PathBuf};
+use std::{cell::RefCell, fs::File, io::Read};
 
 fn load_program(name: &str) -> Vec<u8> {
-    let mut path = PathBuf::new();
-    path.push(name);
-    path.set_extension("so");
-    let mut file = File::open(path).unwrap();
+    let mut file = File::open(name).unwrap();
 
     let mut program = Vec::new();
     file.read_to_end(&mut program).unwrap();
@@ -38,9 +35,10 @@ fn run_program(
     instruction_data: &[u8],
 ) -> Result<u64, InstructionError> {
     let mut program_account = SolanaAccount::default();
-    program_account.data = load_program("spl_token");
+    program_account.data = load_program("spl_token.so");
     let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
+
     let executable = EbpfVm::<solana_bpf_loader_program::BPFError>::create_executable_from_elf(
         &&program_account.data,
         None,
@@ -61,9 +59,8 @@ fn run_program(
     )
     .unwrap();
     assert_eq!(
-        SUCCESS,
+        Ok(SUCCESS),
         vm.execute_program(parameter_bytes.as_mut_slice(), &[], &[heap_region])
-            .unwrap()
     );
     deserialize_parameters(&loader_id, parameter_accounts, &parameter_bytes).unwrap();
     Ok(vm.get_total_instruction_count())
