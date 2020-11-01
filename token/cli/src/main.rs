@@ -122,7 +122,7 @@ pub fn multisig_signer_arg<'a, 'b>() -> Arg<'a, 'b> {
         .value_name("MULTISIG_SIGNER")
         .takes_value(true)
         .multiple(true)
-        .min_values(0 as u64)
+        .min_values(0u64)
         .max_values(MAX_SIGNERS as u64)
         .help(MULTISIG_SIGNER_ARG.help)
 }

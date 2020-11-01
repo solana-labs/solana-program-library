@@ -185,7 +185,7 @@ mod tests {
         assert_eq!(swap_info, unpacked);
 
         let mut packed = vec![];
-        packed.push(1 as u8);
+        packed.push(1u8);
         packed.push(nonce);
         packed.extend_from_slice(&token_program_id_raw);
         packed.extend_from_slice(&token_a_raw);
