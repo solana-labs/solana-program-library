@@ -49,8 +49,8 @@ pub enum IdentityInstruction {
     ///   0. `[writable]` The subject identity account to attest claims against.
     ///   1. `[signer]` The IDV.
     Attest {
-        /// The string to be attested, as a byte vector
-        attestation_data: Vec<u8>
+        /// The string to be attested, as a byte array
+        attestation_data: [u8; 32]
     }
 
 }
@@ -155,10 +155,10 @@ pub fn attest(
     program_id: &Pubkey,
     identity_pubkey: &Pubkey,
     idv_pubkey: &Pubkey,
-    attestation_data: Vec<u8>,
+    attestation_data: &[u8; 32],
 ) -> Instruction {
     let data = IdentityInstruction::Attest {
-        attestation_data,
+        attestation_data: *attestation_data,
     };
     let accounts = vec![
         AccountMeta::new(*identity_pubkey, false),

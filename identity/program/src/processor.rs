@@ -35,7 +35,7 @@ impl Processor {
 
         let new_account_info_data_len = new_subject_info.data_len();
         info!(new_subject_info.data_len(), 0, 0, 0, 0);
-        let mut subject = IdentityAccount::deserialize(&new_subject_info.data.borrow())?;
+        let mut subject = IdentityAccount::deserialize2(&new_subject_info.data.borrow())?;
 
         info!("Instruction: InitializeIdentity, deserialized subject");
 
@@ -47,9 +47,9 @@ impl Processor {
             return Err(IdentityError::NotRentExempt.into());
         }
 
-        info!("Instruction: InitializeIdentity, checks commplete");
+        info!("Instruction: InitializeIdentity, checks complete");
 
-        subject.owner = SerializablePubkey(*owner_info.key);
+        subject.owner = SerializablePubkey::from(*owner_info.key);
         subject.state = AccountState::Initialized;
         subject.serialize(&mut new_subject_info.data.borrow_mut())?;
 
@@ -57,18 +57,21 @@ impl Processor {
     }
 
     /// Processes an [Attest](enum.IdentityInstruction.html) instruction.
-    pub fn process_attest(accounts: &[AccountInfo], attestation_data: Vec<u8>) -> ProgramResult {
+    pub fn process_attest(accounts: &[AccountInfo], attestation_data: &[u8; 32]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let subject_info = next_account_info(account_info_iter)?;
         let idv_info = next_account_info(account_info_iter)?;
 
-        let mut subject = IdentityAccount::deserialize(&subject_info.data.borrow())?;
+        let mut subject = IdentityAccount::deserialize2(&subject_info.data.borrow())?;
 
         info!("Instruction: Attest, extracted inputs");
 
-        let serializable_idv_pubkey = SerializablePubkey(*idv_info.key);
-        let new_attestation = Attestation { idv: serializable_idv_pubkey, attestation_data };
-        subject.attestations.push(new_attestation);
+        let serializable_idv_pubkey = SerializablePubkey::from(*idv_info.key);
+        let new_attestation = Attestation { idv: serializable_idv_pubkey, attestation_data: *attestation_data };
+
+        // TODO replace this with attestations.push() when more than one attestation is allowed
+        subject.num_attestations = 1;
+        subject.attestation = new_attestation;
 
         subject.serialize(&mut subject_info.data.borrow_mut())?;
 
@@ -88,7 +91,7 @@ impl Processor {
             }
             IdentityInstruction::Attest { attestation_data } => {
                 info!("Instruction: Attest");
-                Self::process_attest(accounts, attestation_data)
+                Self::process_attest(accounts, &attestation_data)
             }
         }
     }

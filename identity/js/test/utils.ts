@@ -85,7 +85,7 @@ export async function loadIdentityProgram(payer: Account): Promise<Identity> {
   return new Identity(connection, programId, payer);
 }
 
-export async function createOwnerAccount(
+export async function createAccount(
   airdropLamports: number = 1000000000
 ): Promise<Account> {
   const connection = await getConnection();

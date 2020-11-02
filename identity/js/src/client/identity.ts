@@ -16,6 +16,7 @@ import { sendAndConfirmTransaction } from './util/send-and-confirm-transaction';
 
 enum Instruction {
   INITIALIZE_IDENTITY,
+  ATTEST,
 }
 
 /**
@@ -53,31 +54,45 @@ export class u64 extends BN {
   }
 }
 
-// The address of the special mint for wrapped native identity.
-export const NATIVE_MINT: PublicKey = new PublicKey(
-  'So11111111111111111111111111111111111111112'
-);
+enum AccountState {
+  Uninitialized,
+  Initialized,
+}
+
+// the max size of an attestation hash in bytes
+export const ATTESTATION_SIZE = 32;
+type Attestation = {
+  idv: PublicKey;
+  attestationData: string;
+};
 
 /**
  * Information about an account
  */
-type AccountInfo = {
-  /**
-   * Owner of this account
-   */
+type IdentityAccountInfo = {
   owner: PublicKey;
+  state: AccountState;
+  attestation?: Attestation;
 };
 
 /**
  * @private
  */
 export const IdentityAccountLayout: BufferLayout.Layout = BufferLayout.struct([
-  Layout.publicKey('owner'),
-  BufferLayout.u8('state'),
+  Layout.publicKey('owner'), // 32 bytes pubkey
+  BufferLayout.u8('state'), // 1 byte enum
+  BufferLayout.u8('numAttestations'), // 1 byte unsigned int
+  BufferLayout.struct(
+    [
+      Layout.publicKey('idv'), //  32 bytes idv pubkey
+      BufferLayout.blob(ATTESTATION_SIZE, 'attestationData'), // 32 bytes attestation hash
+    ],
+    'attestation'
+  ),
 ]);
 
 /**
- * An Identity Account
+ * An Identity Client
  */
 export class Identity {
   /**
@@ -174,7 +189,7 @@ export class Identity {
   async getAccountInfo(
     account: PublicKey,
     commitment?: Commitment
-  ): Promise<AccountInfo> {
+  ): Promise<IdentityAccountInfo> {
     const info = await this.connection.getAccountInfo(account, commitment);
     if (info === null) {
       throw new Error('Failed to find account');
@@ -187,28 +202,21 @@ export class Identity {
     }
 
     const data = Buffer.from(info.data);
-    const accountInfo = IdentityAccountLayout.decode(data);
-    accountInfo.owner = new PublicKey(accountInfo.owner);
-    accountInfo.amount = u64.fromBuffer(accountInfo.amount);
 
-    accountInfo.isInitialized = accountInfo.state !== 0;
-    accountInfo.isFrozen = accountInfo.state === 2;
+    const decodedAccountInfo = IdentityAccountLayout.decode(data);
 
-    if (accountInfo.isNativeOption === 1) {
-      accountInfo.rentExemptReserve = u64.fromBuffer(accountInfo.isNative);
-      accountInfo.isNative = true;
-    } else {
-      accountInfo.rentExemptReserve = null;
-      accountInfo.isNative = false;
-    }
+    const attestation = decodedAccountInfo.numAttestations
+      ? {
+          idv: new PublicKey(decodedAccountInfo.attestation.idv),
+          attestationData: decodedAccountInfo.attestation.attestationData.toString(),
+        }
+      : undefined;
 
-    if (accountInfo.closeAuthorityOption === 0) {
-      accountInfo.closeAuthority = null;
-    } else {
-      accountInfo.closeAuthority = new PublicKey(accountInfo.closeAuthority);
-    }
-
-    return accountInfo;
+    return {
+      owner: new PublicKey(decodedAccountInfo.owner),
+      state: decodedAccountInfo.state,
+      attestation,
+    };
   }
 
   /**
@@ -233,6 +241,74 @@ export class Identity {
     dataLayout.encode(
       {
         instruction: Instruction.INITIALIZE_IDENTITY,
+      },
+      data
+    );
+
+    return new TransactionInstruction({
+      keys,
+      programId,
+      data,
+    });
+  }
+
+  /**
+   * Create and initialize a new account.
+   *
+   * @param owner User account that will own the new account
+   * @return Public key of the new empty account
+   */
+  async attest(
+    idv: Account,
+    identityAccount: PublicKey,
+    attestation: string
+  ): Promise<void> {
+    const transaction = new Transaction();
+    transaction.add(
+      Identity.createAttestInstruction(
+        this.programId,
+        idv.publicKey,
+        identityAccount,
+        attestation
+      )
+    );
+
+    // Send the transaction
+    await sendAndConfirmTransaction(
+      'attest',
+      this.connection,
+      transaction,
+      idv
+    );
+  }
+
+  /**
+   * Construct an Attest instruction
+   *
+   * @param programId SPL Identity program account
+   * @param idv The IDV making the attestation
+   * @param identityAccount The identity that the attestation belongs to
+   * @param attestation The attestation data
+   */
+  static createAttestInstruction(
+    programId: PublicKey,
+    idv: PublicKey,
+    identityAccount: PublicKey,
+    attestation: string
+  ): TransactionInstruction {
+    const keys = [
+      { pubkey: identityAccount, isSigner: false, isWritable: true },
+      { pubkey: idv, isSigner: true, isWritable: false },
+    ];
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      BufferLayout.blob(ATTESTATION_SIZE, 'attestationData'),
+    ]);
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: Instruction.ATTEST,
+        attestationData: Buffer.from(attestation, 'utf8'),
       },
       data
     );
