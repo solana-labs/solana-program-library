@@ -20,6 +20,8 @@ jobs:
       - js_token_lending
       - build_bpf_programs
       - excluded_project_tests
+    steps:
+      - run: echo "Done"
   rustfmt:
     runs-on: ubuntu-latest
     steps:
