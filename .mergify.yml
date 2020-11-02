@@ -6,7 +6,23 @@
 pull_request_rules:
   - name: automatic merge (squash) on CI success
     conditions:
-      - status-success=Travis CI - Pull Request
+      - check-success=Travis CI - Pull Request
+      - check-success=rustfmt
+      - check-success=clippy
+      - check-success=list_bpf_programs
+      - check-success=cargo_test
+      - check-success=js_token
+      - check-success=js_token_swap
+      - check-success=js_token_lending
+      - check-success=Test themis/client_ristretto
+      - check-success=Build Program memo/program
+      - check-success=Build Program shared-memory/program
+      - check-success=Build Program stake-pool/program
+      - check-success=Build Program themis/program_ristretto
+      - check-success=Build Program token-lending/program
+      - check-success=Build Program token-swap/program
+      - check-success=Build Program token/program-v3
+      - check-success=Build Program token/program
       - label=automerge
       - author≠@dont-squash-my-commits
     actions:
@@ -15,7 +31,23 @@ pull_request_rules:
   # Join the dont-squash-my-commits group if you won't like your commits squashed
   - name: automatic merge (rebase) on CI success
     conditions:
-      - status-success=Travis CI - Pull Request
+      - check-success=Travis CI - Pull Request
+      - check-success=rustfmt
+      - check-success=clippy
+      - check-success=list_bpf_programs
+      - check-success=cargo_test
+      - check-success=js_token
+      - check-success=js_token_swap
+      - check-success=js_token_lending
+      - check-success=Test themis/client_ristretto
+      - check-success=Build Program memo/program
+      - check-success=Build Program shared-memory/program
+      - check-success=Build Program stake-pool/program
+      - check-success=Build Program themis/program_ristretto
+      - check-success=Build Program token-lending/program
+      - check-success=Build Program token-swap/program
+      - check-success=Build Program token/program-v3
+      - check-success=Build Program token/program
       - label=automerge
       - author=@dont-squash-my-commits
     actions:
