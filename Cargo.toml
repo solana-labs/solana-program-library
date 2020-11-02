@@ -1,17 +1,17 @@
 [workspace]
 members = [
-  "utils/cgen",
-  "utils/test-client",
   "memo/program",
   "shared-memory/program",
   "stake-pool/program",
+  "themis/program_ristretto",
   "token-lending/program",
   "token-swap/program",
   "token/cli",
+  "token/perf-monitor",
   "token/program",
   "token/program-v3",
-  "token/perf-monitor",
-  "themis/program_ristretto",
+  "utils/cgen",
+  "utils/test-client",
 ]
 exclude = [
   "themis/client_ristretto",
