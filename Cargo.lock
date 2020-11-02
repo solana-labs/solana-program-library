@@ -3812,6 +3812,7 @@ name = "spl-identity"
 version = "0.0.1"
 dependencies = [
  "arrayref",
+ "borsh",
  "num-derive",
  "num-traits",
  "num_enum",

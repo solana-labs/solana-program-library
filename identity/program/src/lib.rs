@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
+#![feature(trivial_bounds)]
 
 //! An Identity program for Solana
 
