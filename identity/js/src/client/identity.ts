@@ -255,20 +255,21 @@ export class Identity {
   /**
    * Create and initialize a new account.
    *
-   * @param owner User account that will own the new account
-   * @return Public key of the new empty account
+   * @param identityAccount The subject the attestation applies to
+   * @param idv The IDV making the attestation
+   * @param attestation The attestation data
    */
   async attest(
-    idv: Account,
     identityAccount: PublicKey,
+    idv: Account,
     attestation: string
   ): Promise<void> {
     const transaction = new Transaction();
     transaction.add(
       Identity.createAttestInstruction(
         this.programId,
-        idv.publicKey,
         identityAccount,
+        idv.publicKey,
         attestation
       )
     );
@@ -286,14 +287,14 @@ export class Identity {
    * Construct an Attest instruction
    *
    * @param programId SPL Identity program account
-   * @param idv The IDV making the attestation
    * @param identityAccount The identity that the attestation belongs to
+   * @param idv The IDV making the attestation
    * @param attestation The attestation data
    */
   static createAttestInstruction(
     programId: PublicKey,
-    idv: PublicKey,
     identityAccount: PublicKey,
+    idv: PublicKey,
     attestation: string
   ): TransactionInstruction {
     const keys = [
@@ -318,5 +319,18 @@ export class Identity {
       programId,
       data,
     });
+  }
+
+  async hasAttestation(
+    identityAccount: PublicKey,
+    idv: PublicKey,
+    attestationData: string
+  ): Promise<boolean> {
+    const accountInfo = await this.getAccountInfo(identityAccount);
+
+    if (!accountInfo.attestation) return false;
+    if (accountInfo.attestation.idv.toBase58() !== idv.toBase58()) return false;
+
+    return accountInfo.attestation.attestationData === attestationData;
   }
 }
