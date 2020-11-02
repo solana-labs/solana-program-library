@@ -198,17 +198,20 @@ pub async fn test_e2e(
     println!("Seeding feepayer accounts...");
     let feepayers: Vec<_> = (0..num_users).map(|_| Keypair::new()).collect();
     let recent_blockhash = client.get_recent_blockhash().await.unwrap();
-    let txs: Vec<_> = feepayers.chunks(20).map(|feepayers| {
-        let payments: Vec<_> = feepayers
-            .iter()
-            .map(|keypair| (keypair.pubkey(), sol_to_lamports(0.0011)))
-            .collect();
-        let ixs = system_instruction::transfer_many(&sender_pubkey, &payments);
-        let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
-        let tx = Transaction::new(&[&sender_keypair], msg, recent_blockhash);
-        assert_transaction_size(&tx);
-        tx
-    }).collect();
+    let txs: Vec<_> = feepayers
+        .chunks(20)
+        .map(|feepayers| {
+            let payments: Vec<_> = feepayers
+                .iter()
+                .map(|keypair| (keypair.pubkey(), sol_to_lamports(0.0011)))
+                .collect();
+            let ixs = system_instruction::transfer_many(&sender_pubkey, &payments);
+            let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
+            let tx = Transaction::new(&[&sender_keypair], msg, recent_blockhash);
+            assert_transaction_size(&tx);
+            tx
+        })
+        .collect();
     process_transactions_with_commitment(client, txs, CommitmentLevel::Recent)
         .await
         .unwrap();
@@ -260,11 +263,9 @@ mod tests {
     use solana_banks_server::banks_server::start_local_server;
     use solana_runtime::{bank::Bank, bank_forks::BankForks};
     use solana_sdk::{
-        account::{Account, KeyedAccount},
-        account_info::AccountInfo,
-        genesis_config::create_genesis_config,
-        instruction::InstructionError,
-        program_error::ProgramError,
+        account::Account, account_info::AccountInfo, genesis_config::create_genesis_config,
+        instruction::InstructionError, keyed_account::KeyedAccount,
+        process_instruction::InvokeContext, program_error::ProgramError,
     };
     use spl_themis_ristretto::processor::process_instruction;
     use std::{
@@ -298,6 +299,7 @@ mod tests {
         program_id: &Pubkey,
         keyed_accounts: &[KeyedAccount],
         input: &[u8],
+        _invoke_context: &mut dyn InvokeContext,
     ) -> Result<(), InstructionError> {
         // Copy all the accounts into a HashMap to ensure there are no duplicates
         let mut accounts: HashMap<Pubkey, Account> = keyed_accounts
@@ -359,7 +361,7 @@ mod tests {
         let (genesis_config, sender_keypair) = create_genesis_config(sol_to_lamports(9_000_000.0));
         let mut bank = Bank::new(&genesis_config);
         let program_id = Keypair::new().pubkey();
-        bank.add_builtin_program("Themis", program_id, process_instruction_native);
+        bank.add_builtin("Themis", program_id, process_instruction_native);
         let bank_forks = Arc::new(RwLock::new(BankForks::new(bank)));
         Runtime::new().unwrap().block_on(async {
             let transport = start_local_server(&bank_forks).await;

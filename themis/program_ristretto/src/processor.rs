@@ -88,9 +88,9 @@ fn process_request_payment(
 }
 
 /// Process the given transaction instruction
-pub fn process_instruction<'a>(
+pub fn process_instruction(
     _program_id: &Pubkey,
-    account_infos: &'a [AccountInfo<'a>],
+    account_infos: &[AccountInfo],
     input: &[u8],
 ) -> Result<(), ProgramError> {
     let account_infos_iter = &mut account_infos.iter();

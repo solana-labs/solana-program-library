@@ -22,13 +22,6 @@ env:
 
 jobs:
   include:
-    - name: "Build programs"
-      language: rust
-      install:
-        source .travis/install-program-deps.sh
-      script:
-        - ci/script.sh
-
     # docs pull request or commit to master
     - name: "Build Docs"
       if: type IN (push, pull_request) AND branch = master
