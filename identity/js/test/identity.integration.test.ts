@@ -40,10 +40,14 @@ describe('Identity', function() {
 
   it('should add an attestation', async () => {
     const attestation = 'hello'.padStart(ATTESTATION_SIZE, ' ');
-    await identity.attest(idv, identityAccount, attestation);
+    await identity.attest(identityAccount, idv, attestation);
 
-    const identityAccountInfo = await identity.getAccountInfo(identityAccount);
+    const identityHasAttestation = await identity.hasAttestation(
+      identityAccount,
+      idv.publicKey,
+      attestation
+    );
 
-    console.log(identityAccountInfo);
+    expect(identityHasAttestation).to.be.true();
   });
 });
