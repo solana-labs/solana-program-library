@@ -5,9 +5,10 @@
 use crate::{
     error::IdentityError,
     instruction::{IdentityInstruction, MAX_SIGNERS},
-    state::{Account, AccountState, Multisig},
+    state::{IdentityAccount, AccountState, Multisig, Attestation, SerializablePubkey},
 };
 use num_traits::FromPrimitive;
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
@@ -26,39 +27,68 @@ impl Processor {
     /// Processes an [InitializeIdentity](enum.IdentityInstruction.html) instruction.
     pub fn process_initialize_identity(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let new_account_info = next_account_info(account_info_iter)?;
+        let new_subject_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
         let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
 
-        let new_account_info_data_len = new_account_info.data_len();
-        info!(new_account_info.data_len(), 0, 0, 0, 0);
-        let mut account = Account::unpack_unchecked(&new_account_info.data.borrow())?;
+        info!("Instruction: InitializeIdentity, extracted inputs");
 
-        if account.is_initialized() {
+        let new_account_info_data_len = new_subject_info.data_len();
+        info!(new_subject_info.data_len(), 0, 0, 0, 0);
+        let mut subject = IdentityAccount::deserialize(&new_subject_info.data.borrow())?;
+
+        info!("Instruction: InitializeIdentity, deserialized subject");
+
+        if subject.is_initialized() {
             return Err(IdentityError::AlreadyInUse.into());
         }
 
-        if !rent.is_exempt(new_account_info.lamports(), new_account_info_data_len) {
+        if !rent.is_exempt(new_subject_info.lamports(), new_account_info_data_len) {
             return Err(IdentityError::NotRentExempt.into());
         }
 
-        info!("Instruction: InitializeIdentity, extracted inputs");
+        info!("Instruction: InitializeIdentity, checks commplete");
 
-        account.owner = *owner_info.key;
-        account.state = AccountState::Initialized;
-        Account::pack(account, &mut new_account_info.data.borrow_mut())?;
+        subject.owner = SerializablePubkey(*owner_info.key);
+        subject.state = AccountState::Initialized;
+        subject.serialize(&mut new_subject_info.data.borrow_mut())?;
 
         Ok(())
     }
 
+    /// Processes an [Attest](enum.IdentityInstruction.html) instruction.
+    pub fn process_attest(accounts: &[AccountInfo], attestation_data: Vec<u8>) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let subject_info = next_account_info(account_info_iter)?;
+        let idv_info = next_account_info(account_info_iter)?;
+
+        let mut subject = IdentityAccount::deserialize(&subject_info.data.borrow())?;
+
+        info!("Instruction: Attest, extracted inputs");
+
+        let serializable_idv_pubkey = SerializablePubkey(*idv_info.key);
+        let new_attestation = Attestation { idv: serializable_idv_pubkey, attestation_data };
+        subject.attestations.push(new_attestation);
+
+        subject.serialize(&mut subject_info.data.borrow_mut())?;
+
+        Ok(())
+    }
+
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
-        let instruction = IdentityInstruction::unpack(input)?;
+        info!("process");
+        let instruction = IdentityInstruction::deserialize(input)?;
 
         match instruction {
             IdentityInstruction::InitializeIdentity => {
                 info!("Instruction: InitializeIdentity");
                 Self::process_initialize_identity(accounts)
+            }
+            IdentityInstruction::Attest { attestation_data } => {
+                info!("Instruction: Attest");
+                Self::process_attest(accounts, attestation_data)
             }
         }
     }
