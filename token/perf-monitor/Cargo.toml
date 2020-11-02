@@ -13,4 +13,4 @@ spl-token = { path = "../program", features = [ "exclude_entrypoint" ] }
 solana-runtime = "1.4.4"
 solana-sdk = "1.4.4"
 solana-bpf-loader-program = "1.4.4"
-solana_rbpf = "=0.2.0"
+solana_rbpf = "=0.1.32"
