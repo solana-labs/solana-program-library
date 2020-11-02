@@ -12,7 +12,7 @@ use solana_sdk::{
     transaction::Transaction,
     transport,
 };
-use spl_themis_ristretto_client::{test_e2e, process_transactions_with_commitment};
+use spl_themis_ristretto_client::{process_transactions_with_commitment, test_e2e};
 use std::{
     fs::{remove_dir_all, File},
     io::Read,
@@ -23,10 +23,7 @@ use tokio::runtime::Runtime;
 const DATA_CHUNK_SIZE: usize = 229; // Keep program chunks under PACKET_DATA_SIZE
 
 fn load_program(name: &str) -> Vec<u8> {
-    let mut path = PathBuf::new();
-    path.push("../../target/bpfel-unknown-unknown/release");
-    path.push(name);
-    path.set_extension("so");
+    let path = PathBuf::from(name).with_extension("so");
     let mut file = File::open(path).unwrap();
 
     let mut program = Vec::new();
