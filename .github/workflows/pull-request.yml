@@ -9,7 +9,7 @@ env:
   SOLANA_VERSION: v1.4.4
 
 jobs:
-  github-checks:
+  all_github_checks:
     runs-on: ubuntu-latest
     needs:
       - clippy
