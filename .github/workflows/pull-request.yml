@@ -5,6 +5,9 @@ on:
   push:
     branches: [master]
 
+env:
+  SOLANA_VERSION: v1.4.4
+
 jobs:
   rustfmt:
     runs-on: ubuntu-latest
@@ -36,6 +39,10 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sh -c "$(curl -sSfL https://release.solana.com/$SOLANA_VERSION/install)"
+          echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          cargo build-bpf --version
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
           sudo apt-get update
@@ -97,8 +104,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{fromJson(needs.list_bpf_programs.outputs.matrix)}}
-    env:
-      SOLANA_VERSION: v1.4.4
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -161,7 +166,7 @@ jobs:
           path: "*.so"
           if-no-files-found: error
 
-  test:
+  cargo_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -173,6 +178,10 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sh -c "$(curl -sSfL https://release.solana.com/$SOLANA_VERSION/install)"
+          echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          cargo build-bpf --version
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
           sudo apt-get update
@@ -192,6 +201,14 @@ jobs:
           key: cargo-test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-test-
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache
+          key: solana-${{ env.SOLANA_VERSION }}-nonce-1
+          restore-keys: |
+            solana-nonce-1
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -218,6 +235,10 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sh -c "$(curl -sSfL https://release.solana.com/$SOLANA_VERSION/install)"
+          echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          cargo build-bpf --version
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
           sudo apt-get update
