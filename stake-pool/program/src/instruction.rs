@@ -51,8 +51,8 @@ pub enum StakePoolInstruction {
     ///   4. `[w]` User account to receive pool tokens
     ///   5. `[w]` Account to receive pool fee tokens
     ///   6. `[w]` Pool token mint account
-    ///   7. `[]` Pool token program id,
-    ///   8. '[]' Sysvar clock account (reserved for future use)
+    ///   7. '[]' Sysvar clock account (reserved for future use)
+    ///   8. `[]` Pool token program id,
     ///   9. `[]` Stake program id,
     Deposit,
 
@@ -66,8 +66,8 @@ pub enum StakePoolInstruction {
     ///   4. `[]` User account to set as a new withdraw authority
     ///   5. `[w]` User account with pool tokens to burn from
     ///   6. `[w]` Pool token mint account
-    ///   7. `[]` Pool token program id
-    ///   8. '[]' Sysvar clock account (reserved for future use)
+    ///   7. '[]' Sysvar clock account (reserved for future use)
+    ///   8. `[]` Pool token program id
     ///   9. `[]` Stake program id,
     ///   userdata: amount to withdraw
     Withdraw(u64),
@@ -81,8 +81,8 @@ pub enum StakePoolInstruction {
     ///   3. `[]` User account to set as a new withdraw authority
     ///   4. `[w]` User account with pool tokens to burn from
     ///   5. `[w]` Pool token mint account
-    ///   6. `[]` Pool token program id
-    ///   7. '[]' Sysvar clock account (reserved for future use)
+    ///   6. '[]' Sysvar clock account (reserved for future use)
+    ///   7. `[]` Pool token program id
     ///   8. `[]` Stake program id,
     Claim,
 
@@ -223,8 +223,8 @@ pub fn deposit(
         AccountMeta::new(*pool_tokens_to, false),
         AccountMeta::new(*pool_fee_to, false),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(*stake_program_id, false),
     ];
     Ok(Instruction {
@@ -258,8 +258,8 @@ pub fn withdraw(
         AccountMeta::new_readonly(*user_withdrawer, false),
         AccountMeta::new(*burn_from, true),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(*stake_program_id, false),
     ];
     Ok(Instruction {
@@ -291,8 +291,8 @@ pub fn claim(
         AccountMeta::new_readonly(*user_withdrawer, false),
         AccountMeta::new(*burn_from, true),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(*stake_program_id, false),
     ];
     Ok(Instruction {

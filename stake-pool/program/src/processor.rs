@@ -225,10 +225,10 @@ impl Processor {
         let owner_fee_info = next_account_info(account_info_iter)?;
         // Pool token mint account
         let pool_mint_info = next_account_info(account_info_iter)?;
-        // Pool token program id
-        let token_program_info = next_account_info(account_info_iter)?;
         // (Reserved)
         let reserved = next_account_info(account_info_iter)?;
+        // Pool token program id
+        let token_program_info = next_account_info(account_info_iter)?;
         // Stake program id
         let stake_program_info = next_account_info(account_info_iter)?;
 
@@ -339,10 +339,10 @@ impl Processor {
         let burn_from_info = next_account_info(account_info_iter)?;
         // Pool token mint account
         let pool_mint_info = next_account_info(account_info_iter)?;
-        // Pool token program id
-        let token_program_info = next_account_info(account_info_iter)?;
         // (Reserved)
         let reserved = next_account_info(account_info_iter)?;
+        // Pool token program id
+        let token_program_info = next_account_info(account_info_iter)?;
         // Stake program id
         let stake_program_info = next_account_info(account_info_iter)?;
 
@@ -422,10 +422,10 @@ impl Processor {
         let burn_from_info = next_account_info(account_info_iter)?;
         // Pool token account
         let pool_mint_info = next_account_info(account_info_iter)?;
-        // Pool token program id
-        let token_program_info = next_account_info(account_info_iter)?;
         // (Reserved)
         let reserved = next_account_info(account_info_iter)?;
+        // Pool token program id
+        let token_program_info = next_account_info(account_info_iter)?;
         // Stake program id
         let stake_program_info = next_account_info(account_info_iter)?;
 
