@@ -7,7 +7,7 @@ pull_request_rules:
   - name: automatic merge (squash) on CI success
     conditions:
       - check-success=Travis CI - Pull Request
-      - check-success=all_github_checks
+      - check-success=all_github_action_checks
       - label=automerge
       - author≠@dont-squash-my-commits
     actions:
@@ -17,7 +17,7 @@ pull_request_rules:
   - name: automatic merge (rebase) on CI success
     conditions:
       - check-success=Travis CI - Pull Request
-      - check-success=all_github_checks
+      - check-success=all_github_action_checks
       - label=automerge
       - author=@dont-squash-my-commits
     actions:
