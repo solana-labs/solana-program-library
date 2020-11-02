@@ -28,26 +28,28 @@ use std::{io, io::Write, io::Error};
 // }
 
 /// A version of Solana's Pubkey type that is serializable using Borsh
-#[derive(Clone, PartialEq, Debug, Default)]
-pub struct SerializablePubkey(pub Pubkey);
-impl BorshSerialize for SerializablePubkey {
-    // fn serialize(&self, mut data: &mut [u8]) -> Result<(), ProgramError> {
-    //     BorshSerialize::serialize(&self.0.to_bytes(), &mut data).map_err(|_| ProgramError::AccountDataTooSmall)
-    // }
-
-    fn serialize<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        self.0.to_bytes().serialize(writer)
-    }
-}
-impl BorshDeserialize for SerializablePubkey {
-    fn deserialize(data: &mut &[u8]) -> io::Result<Self> {
-        Self::try_from_slice(&data)
-    }
-
-    // fn try_from_slice(data: &[u8]) -> Result<Self, Error> {
-    //     BorshDeserialize::try_from_slice(&data)
-    // }
-}
+#[derive(Clone, PartialEq, Debug, Default, BorshSerialize, BorshDeserialize)]
+pub struct SerializablePubkey([u8; 32]);
+// impl BorshSerialize for SerializablePubkey {
+//     // fn serialize(&self, mut data: &mut [u8]) -> Result<(), ProgramError> {
+//     //     BorshSerialize::serialize(&self.0.to_bytes(), &mut data).map_err(|_| ProgramError::AccountDataTooSmall)
+//     // }
+//
+//     fn serialize<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+//         self.0.to_bytes().serialize(writer)
+//     }
+// }
+// impl BorshDeserialize for SerializablePubkey {
+//     fn deserialize(data: &mut &[u8]) -> io::Result<Self> {
+//         info!("SerializablePubKey deserialize");
+//         [u8]::deserialize(data)
+//         // Self::try_from_slice(&data)
+//     }
+//
+//     // fn try_from_slice(data: &[u8]) -> Result<Self, Error> {
+//     //     BorshDeserialize::try_from_slice(&data)
+//     // }
+// }
 // impl BorshDeserialize for SerializablePubkey {
 //     fn deserialize(data: &mut &[u8]) -> io::Result<Self> {
 //         Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidAccountData)
@@ -56,7 +58,7 @@ impl BorshDeserialize for SerializablePubkey {
 
 impl From<Pubkey> for SerializablePubkey {
     fn from(pubkey: Pubkey) -> Self {
-        SerializablePubkey(pubkey)
+        SerializablePubkey(pubkey.to_bytes())
     }
 }
 
@@ -66,7 +68,7 @@ pub struct Attestation {
     /// The IDV that made the attestation
     pub idv: SerializablePubkey,
     /// The attestation data
-    pub attestation_data: Vec<u8>
+    pub attestation_data: [u8; 32]
 }
 impl Attestation {
     fn matches(&self, attestation: &Attestation) -> bool {
@@ -85,7 +87,7 @@ pub struct IdentityAccount {
     /// The size of the attestations vector
     pub num_attestations: u8,
     /// Attestations added to the account
-    pub attestations: Vec<Attestation>,
+    pub attestation: Attestation,
 }
 impl IdentityAccount {
     /// Serialize the account into a byte array
@@ -93,23 +95,18 @@ impl IdentityAccount {
         BorshSerialize::serialize(self, &mut data).map_err(|_| ProgramError::AccountDataTooSmall)
     }
     /// Deserialize the account from a byte array
-    pub fn deserialize(data: &[u8]) -> Result<Self, ProgramError> {
-        info!("IdentityAccount: deserialize");
+    pub fn deserialize2(data: &[u8]) -> Result<Self, ProgramError> {
+        info!("IdentityAccount: deserialize2");
         Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidAccountData)
     }
-
-    // fn try_from_slice(data: &[u8]) -> Result<Self, Error> {
-    //     info!("IdentityAccount: try_from_slice");
-    //     BorshDeserialize::try_from_slice(&data)
-    // }
 
     /// Create a new identity with no attestations
     pub fn new(owner: Pubkey) -> Self {
         Self {
-            owner: SerializablePubkey(owner),
+            owner: SerializablePubkey::from(owner),
             state: AccountState::Initialized,
             num_attestations: 0,
-            attestations: vec![],
+            attestation: Attestation::default(),
         }
     }
 
@@ -122,7 +119,8 @@ impl IdentityAccount {
     // }
 
     fn verify(&self, attestation: &Attestation) -> bool {
-        self.attestations.iter().any(|att| att.matches(attestation))
+        // self.attestations.iter().any(|att| att.matches(attestation))
+        return false;
     }
 }
 impl Sealed for IdentityAccount {}
