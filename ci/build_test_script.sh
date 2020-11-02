@@ -8,8 +8,16 @@ export RUSTBACKTRACE=1
 # For all BPF programs
 for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
   program_dir=$(dirname "$Xargo_toml")
+
+  if [ "$program_dir" == "token-swap/program" ]; then	
+    address="SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8"	
+    SWAP_PROGRAM_OWNER_FEE_ADDRESS="$address" cargo build-bpf --manifest-path=token-swap/program/Cargo.toml --dump --features production	
+    mv spl_token_swap.so spl_token_swap_production.so	
+  fi	
+
   cargo build-bpf --manifest-path="$program_dir"/Cargo.toml --dump
 done
+
 
 cargo build
 cargo test -- --nocapture

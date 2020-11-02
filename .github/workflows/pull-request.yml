@@ -60,6 +60,9 @@ jobs:
           restore-keys: |
             cargo-clippy-
 
+      - name: Install dependencies
+        run: ./ci/install-deps.sh
+
       - name: Run clippy
         uses: actions-rs/cargo@v1
         with:
@@ -107,6 +110,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          ./ci/install-deps.sh
           ./ci/install-program-deps.sh
           echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
 
