@@ -1,6 +1,6 @@
 //! State transition types
 
-use crate::curve::SwapCurve;
+use crate::curve::base::SwapCurve;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     program_error::ProgramError,
@@ -120,7 +120,7 @@ impl Pack for SwapInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::FlatCurve;
+    use crate::curve::flat::FlatCurve;
 
     use std::convert::TryInto;
 

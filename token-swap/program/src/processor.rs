@@ -1,7 +1,9 @@
 //! Program state processor
 
 use crate::constraints::{FeeConstraints, FEE_CONSTRAINTS};
-use crate::{curve::SwapCurve, error::SwapError, instruction::SwapInstruction, state::SwapInfo};
+use crate::{
+    curve::base::SwapCurve, error::SwapError, instruction::SwapInstruction, state::SwapInfo,
+};
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -731,9 +733,9 @@ fn to_u64(val: u128) -> Result<u64, SwapError> {
 mod tests {
     use super::*;
     use crate::{
-        curve::{
-            ConstantProductCurve, CurveCalculator, CurveType, FlatCurve, INITIAL_SWAP_POOL_AMOUNT,
-        },
+        curve::base::CurveType,
+        curve::calculator::{CurveCalculator, INITIAL_SWAP_POOL_AMOUNT},
+        curve::{constant_product::ConstantProductCurve, flat::FlatCurve},
         instruction::{deposit, initialize, swap, withdraw},
     };
     use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
