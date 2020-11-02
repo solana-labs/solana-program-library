@@ -1,0 +1,26 @@
+[package]
+name = "spl-default-token-account"
+version = "1.0.0"
+description = "SPL Default Token Account Program"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[features]
+exclude_entrypoint = []
+
+[dependencies]
+num-derive = "0.3"
+num-traits = "0.2"
+solana-program = "1.4.4"
+spl-token = { path = "../../token/program", features = ["exclude_entrypoint"] }
+thiserror = "1.0"
+
+[dev-dependencies]
+solana-program-test = "1.4.4"
+solana-sdk = "1.4.4"
+tokio = { version = "0.3", features = ["macros"]}
+
+[lib]
+crate-type = ["cdylib", "lib"]
