@@ -1,0 +1,23 @@
+[package]
+name = "spl-associated-token-account"
+version = "1.0.0"
+description = "SPL Associated Token Account"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[features]
+exclude_entrypoint = []
+
+[dependencies]
+solana-program = "1.4.4"
+spl-token = { path = "../../token/program", features = ["exclude_entrypoint"] }
+
+[dev-dependencies]
+solana-program-test = "1.4.4"
+solana-sdk = "1.4.4"
+tokio = { version = "0.3", features = ["macros"]}
+
+[lib]
+crate-type = ["cdylib", "lib"]

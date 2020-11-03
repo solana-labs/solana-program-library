@@ -9,6 +9,19 @@ env:
   SOLANA_VERSION: v1.4.4
 
 jobs:
+  all_github_action_checks:
+    runs-on: ubuntu-latest
+    needs:
+      - clippy
+      - list_bpf_programs
+      - cargo_test
+      - js_token
+      - js_token_swap
+      - js_token_lending
+      - build_bpf_programs
+      - excluded_project_tests
+    steps:
+      - run: echo "Done"
   rustfmt:
     runs-on: ubuntu-latest
     steps:
