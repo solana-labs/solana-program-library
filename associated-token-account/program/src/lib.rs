@@ -46,7 +46,7 @@ pub fn get_associated_token_address(
 ///   0. `[writeable,signer]` Funding account (must be a system account)
 ///   1. `[writeable]` Associated token account address to be created
 ///   2. `[]` Wallet address for the new associated token account
-///   3. `[]` The token mint for new associated token account
+///   3. `[]` The token mint for the new associated token account
 ///   4. `[]` System program
 ///   4. `[]` SPL Token program
 ///   5. `[]` Rent sysvar
