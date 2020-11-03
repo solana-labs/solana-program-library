@@ -135,9 +135,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 12.x
-    defaults:
-      run:
-        working-directory: token/js
     needs: cargo-build-test
     steps:
       - uses: actions/checkout@v2
@@ -156,15 +153,12 @@ jobs:
         with:
           name: programs
           path: target/bpfel-unknown-unknown/release
-      - run: ../../ci/js-test-token.sh
+      - run: ./ci/js-test-token.sh
 
   js-test-token-swap:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 12.x
-    defaults:
-      run:
-        working-directory: token-swap/js
     needs: cargo-build-test
     steps:
       - uses: actions/checkout@v2
@@ -183,15 +177,12 @@ jobs:
         with:
           name: programs
           path: target/bpfel-unknown-unknown/release
-      - run: ../../ci/js-test-token-swap.sh
+      - run: ./ci/js-test-token-swap.sh
 
   js-test-token-lending:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 12.x
-    defaults:
-      run:
-        working-directory: token-lending/js
     needs: cargo-build-test
     steps:
       - uses: actions/checkout@v2
@@ -210,4 +201,4 @@ jobs:
         with:
           name: programs
           path: target/bpfel-unknown-unknown/release
-      - run: ../../ci/js-test-token-lending.sh
+      - run: ./ci/js-test-token-lending.sh
