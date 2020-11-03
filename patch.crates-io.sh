@@ -47,6 +47,7 @@ solana-core = { path = "$solana_dir/core"}
 solana-logger = {path = "$solana_dir/logger" }
 solana-remote-wallet = {path = "$solana_dir/remote-wallet" }
 solana-program = { path = "$solana_dir/sdk/program" }
+solana-program-test = { path = "$solana_dir/program-test" }
 solana-runtime = { path = "$solana_dir/runtime" }
 solana-sdk = { path = "$solana_dir/sdk" }
 solana-stake-program = { path = "$solana_dir/programs/stake" }
