@@ -9,7 +9,7 @@ edition = "2018"
 
 [dependencies]
 solana-sdk = "1.4.4"
-spl-memo = { path = "../../memo/program", features = [ "exclude_entrypoint" ] }
-spl-token = { path = "../../token/program", features = [ "exclude_entrypoint" ] }
-spl-token-swap = { path = "../../token-swap/program", features = [ "exclude_entrypoint" ] }
-spl-token-v3 = { path = "../../token/program-v3", features = [ "exclude_entrypoint" ] }
+spl-memo = { path = "../../memo/program", features = [ "no-entrypoint" ] }
+spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
+spl-token-swap = { path = "../../token-swap/program", features = [ "no-entrypoint" ] }
+spl-token-v3 = { path = "../../token/program-v3", features = [ "no-entrypoint" ] }

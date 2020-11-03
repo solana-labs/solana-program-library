@@ -18,7 +18,7 @@ futures = "0.3"
 solana-banks-client = "1.4.4"
 solana-cli-config = "1.4.4"
 solana-sdk = "1.4.4"
-spl-themis-ristretto = { version = "0.1.0", path = "../program_ristretto", features = ["exclude_entrypoint"] }
+spl-themis-ristretto = { version = "0.1.0", path = "../program_ristretto", features = ["no-entrypoint"] }
 tarpc = { version = "0.22.0", features = ["full"] }
 tokio = "0.3"
 url = "2.1"

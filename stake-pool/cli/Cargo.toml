@@ -17,8 +17,8 @@ solana-cli-config = "1.4.4"
 solana-client = "1.4.4"
 solana-logger = "1.4.4"
 solana-sdk = "1.4.4"
-spl-stake-pool = { version = "0.1.0", path="../program", features = [ "exclude_entrypoint" ] }
-spl-token = { path="../../token/program" }
+spl-stake-pool = { path="../program", features = [ "no-entrypoint" ] }
+spl-token = { path="../../token/program", features = [ "no-entrypoint" ]  }
 
 [[bin]]
 name = "spl-stake-pool"

@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2018"
 
 [features]
-exclude_entrypoint = []
+no-entrypoint = []
 
 [dependencies]
 solana-program = "1.4.4"
