@@ -170,7 +170,7 @@ export class Identity {
 
     // Send the two instructions
     await sendAndConfirmTransaction(
-      'createAccount and InitializeAccount',
+      'createAccount and InitializeIdentity',
       this.connection,
       transaction,
       this.payer,

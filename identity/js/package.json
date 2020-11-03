@@ -13,7 +13,7 @@
   "scripts": {
     "start": "tsdx watch",
     "build": "tsdx build",
-    "test": "ts-mocha test/**",
+    "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-mocha test/**",
     "lint": "tsdx lint",
     "prepare": "tsdx build",
     "size": "size-limit",
