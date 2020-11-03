@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 
-set -ex
+set -e
 cd "$(dirname "$0")"
 cd ..
 
 source ./ci/rust-version.sh stable
-source ./ci/solana-version.sh
+source ./ci/solana-version.sh install
 
 export RUSTFLAGS="-D warnings"
 export RUSTBACKTRACE=1
+
+set -x
 
 # For all BPF programs
 for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do

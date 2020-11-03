@@ -22,18 +22,12 @@ export solana_docker_image=solanalabs/solana:"$solana_version"
 
 [[ -z $1 ]] || (
 
-  solana_install() {
-    sh -c "$(curl -sSfL https://release.solana.com/$solana_version/install)"
-    export PATH="$HOME"/.local/share/solana/install/active_release/bin:"$PATH"
-    solana --version
-  }
-
   set -e
   cd "$(dirname "${BASH_SOURCE[0]}")"
   case $1 in
   install)
-     solana_install
-     ;;
+    sh -c "$(curl -sSfL https://release.solana.com/$solana_version/install)"
+    ;;
   *)
     echo "$0: Note: ignoring unknown argument: $1" >&2
     ;;
