@@ -14,7 +14,7 @@ use solana_program::{
     sysvar,
 };
 
-solana_program::declare_id!("3medvrcM8s3UnkoYqqV3RAURii1ysuT5oD7t8nmfgJmj");
+solana_program::declare_id!("5vXnHJkHwqo9UJ3L8WM6YnW4TmhujV4AKs1mS9DpsFAG");
 
 pub(crate) fn get_associated_token_address_and_bump_seed(
     wallet_address: &Pubkey,
