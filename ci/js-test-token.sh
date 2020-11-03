@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-set -e
+set -ex
+cd "$(dirname "$0")"
 
+cd ../token/js
 npm install
 npm run lint
 npm run flow

@@ -5,9 +5,6 @@ on:
   push:
     branches: [master]
 
-env:
-  SOLANA_VERSION: v1.4.4
-
 jobs:
   all_github_action_checks:
     runs-on: ubuntu-latest
@@ -69,7 +66,7 @@ jobs:
           command: clippy
           args: -Zunstable-options --workspace --all-targets -- --deny=warnings
 
-  build_test:
+  cargo-build-test:
     runs-on: ubuntu-latest
     env:
       SOLANA_VERSION: v1.4.4
@@ -115,7 +112,7 @@ jobs:
           echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
 
       - name: Build and test
-        run: ./ci/build_test_script.sh
+        run: ./ci/cargo-build-test.sh
 
       - name: Upload programs
         uses: actions/upload-artifact@v2
@@ -124,14 +121,14 @@ jobs:
           path: "*.so"
           if-no-files-found: error
 
-  js_token:
+  js-test-token:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 12.x
     defaults:
       run:
         working-directory: token/js
-    needs: build_test
+    needs: cargo-build-test
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -149,16 +146,16 @@ jobs:
         with:
           name: programs
           path: target/bpfel-unknown-unknown/release
-      - run: ../../ci/js_token_script.sh
+      - run: ../../ci/js-test-token.sh
 
-  js_token_swap:
+  js-test-token-swap:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 12.x
     defaults:
       run:
         working-directory: token-swap/js
-    needs: build_test
+    needs: cargo-build-test
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -170,22 +167,22 @@ jobs:
           path: ~/.npm
           key: node-token-swap-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            node-token-swap
+            node-token-swap-
       - name: Download programs
         uses: actions/download-artifact@v2
         with:
           name: programs
           path: target/bpfel-unknown-unknown/release
-      - run: ../../ci/js_token_swap_script.sh
+      - run: ../../ci/js-test-token-swap.sh
 
-  js_token_lending:
+  js-test-token-lending:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 12.x
     defaults:
       run:
         working-directory: token-lending/js
-    needs: build_test
+    needs: cargo-build-test
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -203,4 +200,4 @@ jobs:
         with:
           name: programs
           path: target/bpfel-unknown-unknown/release
-      - run: ../../ci/js_token_lending_script.sh
+      - run: ../../ci/js-test-token-lending.sh
