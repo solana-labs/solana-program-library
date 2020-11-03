@@ -1,6 +1,4 @@
-use solana_program::{
-    instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction, sysvar::rent::Rent,
-};
+use solana_program::{instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction};
 use solana_program_test::*;
 use solana_sdk::{
     signature::Signer,
@@ -49,9 +47,13 @@ async fn test_associated_token_address() {
     let associated_token_address =
         get_associated_token_address(&wallet_address, &token_mint_address);
 
-    let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address).start().await;
-    let rent = Rent::default(); // <-- TODO: get Rent from `ProgramTest`
+    let StartOutputs {
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        rent,
+        ..
+    } = program_test().start().await;
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
     // Associated account does not exist
@@ -95,9 +97,13 @@ async fn test_create_with_a_lamport() {
     let associated_token_address =
         get_associated_token_address(&wallet_address, &token_mint_address);
 
-    let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address).start().await;
-    let rent = Rent::default(); // <-- TOOD: get Rent from `ProgramTest`
+    let StartOutputs {
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        rent,
+        ..
+    } = program_test().start().await;
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
     // Transfer 1 lamport into `associated_token_address` before creating it
@@ -148,9 +154,13 @@ async fn test_create_with_excess_lamports() {
     let associated_token_address =
         get_associated_token_address(&wallet_address, &token_mint_address);
 
-    let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address).start().await;
-    let rent = Rent::default(); // <-- TOOD: get Rent from `ProgramTest`
+    let StartOutputs {
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        rent,
+        ..
+    } = program_test().start().await;
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
     // Transfer 1 lamport into `associated_token_address` before creating it
@@ -201,8 +211,13 @@ async fn test_create_account_mismatch() {
     let _associated_token_address =
         get_associated_token_address(&wallet_address, &token_mint_address);
 
-    let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address).start().await;
+    let StartOutputs {
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        ..
+    } = program_test().start().await;
+    let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
     let mut instruction =
         create_associated_token_account(&payer.pubkey(), &wallet_address, &token_mint_address);
