@@ -1,4 +1,6 @@
-use solana_program::{instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction};
+use solana_program::{
+    instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction, sysvar::rent::Rent,
+};
 use solana_program_test::*;
 use solana_sdk::{
     signature::Signer,
@@ -53,13 +55,9 @@ async fn test_associated_token_account() {
     let associated_token_account =
         get_associated_token_address(&user_wallet_address, &token_mint_address);
 
-    let StartOutputs {
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        rent,
-        ..
-    } = program_test_with_mint(token_mint_address).start().await;
+    let (mut banks_client, payer, recent_blockhash) =
+        program_test_with_mint(token_mint_address).start().await;
+    let rent = Rent::default(); // <-- TOOD: get Rent from `ProgramTest`
 
     // Associated account does not exist
     assert_eq!(
@@ -101,12 +99,7 @@ async fn test_associated_token_account() {
 
 #[tokio::test]
 async fn test_invalid_instruction_data() {
-    let StartOutputs {
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        ..
-    } = program_test().start().await;
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[Instruction {
@@ -140,12 +133,7 @@ async fn test_create_with_a_lamport() {
     )
     .0;
 
-    let StartOutputs {
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        ..
-    } = program_test().start().await;
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
 
     // Transfer 1 lamport into `assocated_account_address` before creating it
     let mut transaction = Transaction::new_with_payer(
@@ -211,12 +199,7 @@ async fn test_create_with_excess_lamports() {
     )
     .0;
 
-    let StartOutputs {
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        ..
-    } = program_test().start().await;
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
 
     // Transfer 100 lamports into `assocated_account_address` before creating it
     let mut transaction = Transaction::new_with_payer(
@@ -282,12 +265,7 @@ async fn test_create_account_mismatch() {
     )
     .0;
 
-    let StartOutputs {
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        ..
-    } = program_test().start().await;
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[Instruction {
