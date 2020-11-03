@@ -8,11 +8,11 @@ license = "Apache-2.0"
 edition = "2018"
 
 [features]
-exclude_entrypoint = []
+no-entrypoint = []
 
 [dependencies]
 solana-program = "1.4.4"
-spl-token = { path = "../../token/program", features = ["exclude_entrypoint"] }
+spl-token = { path = "../../token/program", features = ["no-entrypoint"] }
 
 [dev-dependencies]
 solana-program-test = "1.4.4"

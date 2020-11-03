@@ -8,7 +8,7 @@ pub mod processor;
 pub mod stake;
 pub mod state;
 
-#[cfg(not(feature = "exclude_entrypoint"))]
+#[cfg(not(feature = "no-entrypoint"))]
 pub mod entrypoint;
 
 // Export current sdk types for downstream users building with a different sdk version

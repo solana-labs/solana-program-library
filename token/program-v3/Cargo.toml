@@ -9,7 +9,7 @@ edition = "2018"
 exclude = ["js/**"]
 
 [features]
-exclude_entrypoint = []
+no-entrypoint = []
 
 [dependencies]
 arrayref = "0.3.6"

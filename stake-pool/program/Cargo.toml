@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2018"
 
 [features]
-exclude_entrypoint = []
+no-entrypoint = []
 
 [dependencies]
 arrayref = "0.3.6"
@@ -18,7 +18,7 @@ num_enum = "0.5.1"
 serde = "1.0.117"
 serde_derive = "1.0.103"
 solana-program = "1.4.4"
-spl-token = { path = "../../token/program", features = [ "exclude_entrypoint" ] }
+spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 
 [dev-dependencies]

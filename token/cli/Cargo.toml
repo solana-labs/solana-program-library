@@ -20,7 +20,7 @@ solana-client = "1.4.4"
 solana-logger = "1.4.4"
 solana-remote-wallet = "1.4.4"
 solana-sdk = "1.4.4"
-spl-token = { version = "2.0", path="../program", features = [ "exclude_entrypoint" ] }
+spl-token = { version = "2.0", path="../program", features = [ "no-entrypoint" ] }
 
 [[bin]]
 name = "spl-token"
