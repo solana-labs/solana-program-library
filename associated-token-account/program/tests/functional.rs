@@ -16,7 +16,7 @@ fn program_test(token_mint_address: Pubkey) -> ProgramTest {
         None, //processor!(processor::process_instruction),
     );
 
-    // Add Token program
+    // Add SPL Token program
     pc.add_program(
         "spl_token",
         spl_token::id(),
