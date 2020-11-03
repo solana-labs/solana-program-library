@@ -426,6 +426,7 @@ export class TokenSwap {
       tokenAccountB,
       mintA,
       mintB,
+      idv,
       curveType,
       tradeFeeNumerator,
       tradeFeeDenominator,
@@ -587,7 +588,7 @@ export class TokenSwap {
     poolSource: PublicKey,
     poolDestination: PublicKey,
     userDestination: PublicKey,
-    identity: Account,
+    identity: PublicKey,
     hostFeeAccount: ?PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
@@ -605,6 +606,7 @@ export class TokenSwap {
           userDestination,
           this.poolToken,
           this.feeAccount,
+          identity,
           hostFeeAccount,
           this.swapProgramId,
           this.tokenProgramId,
@@ -612,8 +614,7 @@ export class TokenSwap {
           minimumAmountOut,
         ),
       ),
-      this.payer,
-      identity,
+      this.payer
     );
   }
 
@@ -626,7 +627,7 @@ export class TokenSwap {
     userDestination: PublicKey,
     poolMint: PublicKey,
     feeAccount: PublicKey,
-    idv: PublicKey,
+    identity: PublicKey,
     hostFeeAccount: ?PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
@@ -649,6 +650,8 @@ export class TokenSwap {
       data,
     );
 
+    console.log('Identity used for swap', identity);
+
     const keys = [
       {pubkey: tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
@@ -658,7 +661,7 @@ export class TokenSwap {
       {pubkey: userDestination, isSigner: false, isWritable: true},
       {pubkey: poolMint, isSigner: false, isWritable: true},
       {pubkey: feeAccount, isSigner: false, isWritable: true},
-      {pubkey: idv, isSigner: true, isWritable: false},
+      {pubkey: identity, isSigner: false, isWritable: false},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
     if (hostFeeAccount != null) {

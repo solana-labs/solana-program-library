@@ -7,6 +7,7 @@
 import {
   loadPrograms,
   createTokenSwap,
+  createIdentityAccount,
   swap,
   deposit,
   withdraw,
@@ -18,6 +19,8 @@ async function main() {
   await loadPrograms();
   console.log('Run test: createTokenSwap');
   await createTokenSwap();
+  console.log('Creating identity account to use with the tokenSwap');
+  await createIdentityAccount();
   console.log('Run test: deposit');
   await deposit();
   console.log('Run test: withdraw');

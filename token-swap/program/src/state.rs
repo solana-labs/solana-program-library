@@ -57,11 +57,11 @@ impl IsInitialized for SwapInfo {
 }
 
 impl Pack for SwapInfo {
-    const LEN: usize = 291;
+    const LEN: usize = 323;
 
     /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 323];
+        let input = array_ref![input, 0, 323]; // Must match LEN
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
