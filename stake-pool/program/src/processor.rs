@@ -632,6 +632,8 @@ mod tests {
             .unwrap()
     }
 
+    const STAKE_ACCOUNT_LEN: usize = 100;
+
     struct TestSyscallStubs {}
     impl program_stubs::SyscallStubs for TestSyscallStubs {
         fn sol_invoke_signed(
@@ -967,7 +969,8 @@ mod tests {
         token: &mut TokenInfo,
     ) -> DepositInfo {
         let stake_account_key = Pubkey::new_unique();
-        let mut stake_account_account = Account::new(stake_balance, 100, &stake_program_id());
+        let mut stake_account_account =
+            Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
         // TODO: Set stake account Withdrawer authority to pool_info.deposit_authority_key
 
         // Call deposit
@@ -1040,9 +1043,10 @@ mod tests {
             numerator: 2,
         };
         let stake_balance: u64 = sol_to_lamports(10.0);
-        let user_token_balance: u64 = sol_to_lamports(9.8);
-        let fee_token_balance: u64 = sol_to_lamports(0.2);
-        assert_eq!(stake_balance, user_token_balance + fee_token_balance);
+        let tokens_to_issue: u64 = 10_000_000_000;
+        let user_token_balance: u64 = 9_800_000_000;
+        let fee_token_balance: u64 = 0_200_000_000;
+        assert_eq!(tokens_to_issue, user_token_balance + fee_token_balance);
 
         // Create stake account
         let mut pool_info = create_stake_pool(fee);
@@ -1051,13 +1055,9 @@ mod tests {
 
         // Test stake pool balance
         let state = State::deserialize(&pool_info.pool_account.data).unwrap();
-        match state {
-            State::Unallocated => panic!("Stake pool state is not initialized after deposit"),
-            State::Init(stake_pool) => {
-                assert_eq!(stake_pool.stake_total, stake_balance);
-                assert_eq!(stake_pool.pool_total, stake_balance);
-            }
-        }
+        assert!(
+            matches!(state, State::Init(stake_pool) if stake_pool.stake_total == stake_balance && stake_pool.pool_total == tokens_to_issue)
+        );
 
         // Test token balances
         let user_token_state =
@@ -1072,6 +1072,8 @@ mod tests {
         let mint_state = SplMint::unpack_from_slice(&pool_info.mint_account.data)
             .expect("Mint account is not initialized after deposit");
         assert_eq!(mint_state.supply, stake_balance);
+
+        // TODO: Check stake account Withdrawer to match stake pool withdraw authority
     }
     #[test]
     fn test_withdraw() {
@@ -1080,9 +1082,12 @@ mod tests {
         let user_withdrawer_key = Pubkey::new_unique();
 
         let stake_balance = sol_to_lamports(20.0);
+        let tokens_to_issue: u64 = 20_000_000_000;
+
         let mut deposit_info = do_deposit(&mut pool_info, stake_balance);
 
         let withdraw_amount = sol_to_lamports(5.0);
+        let tokens_to_burn: u64 = 5_000_000_000;
 
         approve_token(
             &TOKEN_PROGRAM_ID,
@@ -1090,11 +1095,12 @@ mod tests {
             &mut deposit_info.token_receiver_account,
             &pool_info.withdraw_authority_key,
             &deposit_info.token_owner_key,
-            withdraw_amount,
+            tokens_to_burn,
         );
 
         let stake_to_receive_key = Pubkey::new_unique();
-        let mut stake_to_receive_account = Account::new(stake_balance, 100, &stake_program_id());
+        let mut stake_to_receive_account =
+            Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
 
         let _result = do_process_instruction(
             withdraw(
@@ -1126,7 +1132,7 @@ mod tests {
         )
         .expect("Error on withdraw");
 
-        let fee_amount = stake_balance * FEE_DEFAULT.numerator / FEE_DEFAULT.denominator;
+        let fee_amount = stake_balance * pool_info.fee.numerator / pool_info.fee.denominator;
 
         let user_token_state =
             SplAccount::unpack_from_slice(&deposit_info.token_receiver_account.data)
@@ -1138,13 +1144,9 @@ mod tests {
 
         // Check stake pool token amounts
         let state = State::deserialize(&pool_info.pool_account.data).unwrap();
-        match state {
-            State::Unallocated => panic!("Stake pool state is not initialized after withdraw"),
-            State::Init(stake_pool) => {
-                assert_eq!(stake_pool.stake_total, stake_balance - withdraw_amount);
-                assert_eq!(stake_pool.pool_total, stake_balance - withdraw_amount);
-            }
-        }
+        assert!(
+            matches!(state, State::Init(stake_pool) if stake_pool.stake_total == stake_balance - withdraw_amount && stake_pool.pool_total == tokens_to_issue - tokens_to_burn)
+        );
     }
     #[test]
     fn test_claim() {
@@ -1156,9 +1158,9 @@ mod tests {
         let mut deposit_info = do_deposit(&mut pool_info, stake_balance);
 
         // Need to deposit more to cover deposit fee
-        let fee_amount = stake_balance * FEE_DEFAULT.numerator / FEE_DEFAULT.denominator;
-        let extra_deposit = (fee_amount * FEE_DEFAULT.denominator)
-            / (FEE_DEFAULT.denominator - FEE_DEFAULT.numerator);
+        let fee_amount = stake_balance * pool_info.fee.numerator / pool_info.fee.denominator;
+        let extra_deposit = (fee_amount * pool_info.fee.denominator)
+            / (pool_info.fee.denominator - pool_info.fee.numerator);
 
         let mut token_info: TokenInfo = TokenInfo {
             key: deposit_info.token_receiver_key,
@@ -1209,6 +1211,8 @@ mod tests {
             SplAccount::unpack_from_slice(&extra_deposit_info.token_receiver_account.data)
                 .expect("User token account is not initialized after withdraw");
         assert_eq!(user_token_state.amount, 0);
+
+        // TODO: Check deposit_info.stake_account_account Withdrawer to change to user_withdrawer_key
     }
     #[test]
     fn test_set_staking_authority() {
@@ -1216,9 +1220,10 @@ mod tests {
         let stake_balance: u64 = sol_to_lamports(10.0);
 
         let stake_key = Pubkey::new_unique();
-        let mut stake_account = Account::new(stake_balance, 100, &stake_program_id());
+        let mut stake_account = Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
         let new_authorithy_key = Pubkey::new_unique();
-        let mut new_authorithy_account = Account::new(stake_balance, 100, &stake_program_id());
+        let mut new_authorithy_account =
+            Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
 
         let _result = do_process_instruction(
             set_staking_authority(
@@ -1276,12 +1281,8 @@ mod tests {
         .expect("Error on set_owner");
 
         let state = State::deserialize(&pool_info.pool_account.data).unwrap();
-        match state {
-            State::Unallocated => panic!("Stake pool state is not initialized after set owner"),
-            State::Init(stake_pool) => {
-                assert_eq!(stake_pool.owner, new_owner_key);
-                assert_eq!(stake_pool.owner_fee_account, new_owner_fee.key);
-            }
-        }
+        assert!(
+            matches!(state, State::Init(stake_pool) if stake_pool.owner == new_owner_key && stake_pool.owner_fee_account == new_owner_fee.key)
+        );
     }
 }
