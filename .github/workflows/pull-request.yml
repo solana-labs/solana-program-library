@@ -3,7 +3,7 @@ name: Pull Request
 on:
   pull_request:
   push:
-    branches: [master, simplify-github-actions]
+    branches: [master]
 
 jobs:
   all_github_action_checks:
