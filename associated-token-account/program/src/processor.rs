@@ -5,7 +5,6 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     info,
-    log::sol_log_compute_units,
     program::{invoke, invoke_signed},
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -46,8 +45,6 @@ pub fn process_instruction(
         &spl_token_mint_info.key.to_bytes(),
         &[bump_seed],
     ];
-
-    sol_log_compute_units();
 
     // Fund the associated token account with the minimum balance to be rent exempt
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
