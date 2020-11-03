@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
-set -e
+set -ex
+cd "$(dirname "$0")"
+cd ..
+
+source ./ci/rust-version.sh stable
+source ./ci/solana-version.sh
 
 export RUSTFLAGS="-D warnings"
 export RUSTBACKTRACE=1
@@ -15,14 +20,14 @@ for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
     mv spl_token_swap.so spl_token_swap_production.so	
   fi	
 
-  cargo build-bpf --manifest-path="$program_dir"/Cargo.toml --dump
+  cargo +"$rust_stable" build-bpf --manifest-path="$program_dir"/Cargo.toml --dump
 done
 
 
-cargo build
-cargo test -- --nocapture
-cargo run --manifest-path=utils/test-client/Cargo.toml
-cargo test --manifest-path=themis/client_ristretto/Cargo.toml -- --nocapture
+cargo +"$rust_stable" build
+cargo +"$rust_stable" test -- --nocapture
+cargo +"$rust_stable" run --manifest-path=utils/test-client/Cargo.toml
+cargo +"$rust_stable" test --manifest-path=themis/client_ristretto/Cargo.toml -- --nocapture
 
 #  # Check generated C headers
 #  cargo run --manifest-path=utils/cgen/Cargo.toml

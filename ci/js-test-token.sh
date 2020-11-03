@@ -2,8 +2,8 @@
 
 set -ex
 cd "$(dirname "$0")"
-
 cd ../token/js
+
 npm install
 npm run lint
 npm run flow

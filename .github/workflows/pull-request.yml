@@ -3,29 +3,34 @@ name: Pull Request
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [master, simplify-github-actions]
 
 jobs:
   all_github_action_checks:
     runs-on: ubuntu-latest
     needs:
+      - rustfmt
       - clippy
-      - list_bpf_programs
-      - cargo_test
-      - js_token
-      - js_token_swap
-      - js_token_lending
-      - build_bpf_programs
-      - excluded_project_tests
+      - cargo-build-test
+      - js-test-token
+      - js-test-token-swap
+      - js-test-token-lending
     steps:
       - run: echo "Done"
+
   rustfmt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: ${{ env.RUST_STABLE }}
           override: true
           profile: minimal
           components: rustfmt
@@ -68,14 +73,19 @@ jobs:
 
   cargo-build-test:
     runs-on: ubuntu-latest
-    env:
-      SOLANA_VERSION: v1.4.4
-      RUST_VERSION: 1.47.0 # MSRV
     steps:
       - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ env.RUST_VERSION }}
+          toolchain: ${{ env.RUST_STABLE }}
           override: true
           profile: minimal
 
@@ -109,7 +119,7 @@ jobs:
         run: |
           ./ci/install-build-deps.sh
           ./ci/install-program-deps.sh
-          echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test
         run: ./ci/cargo-build-test.sh
