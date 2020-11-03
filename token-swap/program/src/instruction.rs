@@ -9,6 +9,7 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
+    info,
 };
 use std::convert::TryInto;
 use std::mem::size_of;
@@ -28,7 +29,8 @@ pub enum SwapInstruction {
     ///   Must be empty, not owned by $authority
     ///   6. `[writable]` Pool Token Account to deposit the initial pool token
     ///   supply.  Must be empty, not owned by $authority.
-    ///   7. '[]` Token program id
+    ///   7. `[]` Validator of identities allowed to use the swap program
+    ///   8. `[]` Token program id
     Initialize {
         /// nonce used to create valid program address
         nonce: u8,
@@ -47,8 +49,9 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   6. `[writable]` Pool token mint, to generate trading fees
     ///   7. `[writable]` Fee account, to receive trading fees
-    ///   8. '[]` Token program id
-    ///   9. `[optional, writable]` Host fee account to receive additional trading fees
+    ///   8. `[]` Identity making the swap
+    ///   9. '[]` Token program id
+    ///   10. `[optional, writable]` Host fee account to receive additional trading fees
     Swap {
         /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
         amount_in: u64,
@@ -212,6 +215,7 @@ pub fn initialize(
     pool_pubkey: &Pubkey,
     fee_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
+    idv_pubkey: &Pubkey,
     nonce: u8,
     swap_curve: SwapCurve,
 ) -> Result<Instruction, ProgramError> {
@@ -226,6 +230,7 @@ pub fn initialize(
         AccountMeta::new(*pool_pubkey, false),
         AccountMeta::new_readonly(*fee_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
+        AccountMeta::new_readonly(*idv_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
 
@@ -334,6 +339,7 @@ pub fn swap(
     destination_pubkey: &Pubkey,
     pool_mint_pubkey: &Pubkey,
     pool_fee_pubkey: &Pubkey,
+    identity_pubkey: &Pubkey,
     host_fee_pubkey: Option<&Pubkey>,
     amount_in: u64,
     minimum_amount_out: u64,
@@ -353,6 +359,7 @@ pub fn swap(
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*pool_fee_pubkey, false),
+        AccountMeta::new_readonly(*identity_pubkey, true),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     if let Some(host_fee_pubkey) = host_fee_pubkey {

@@ -41,6 +41,9 @@ pub struct SwapInfo {
     /// Pool token account to receive trading and / or withdrawal fees
     pub pool_fee_account: Pubkey,
 
+    /// Validator of identities allowed to use the swap program
+    pub idv: Pubkey,
+
     /// Swap curve parameters, to be unpacked and used by the SwapCurve, which
     /// calculates swaps, deposits, and withdrawals
     pub swap_curve: SwapCurve,
@@ -58,7 +61,7 @@ impl Pack for SwapInfo {
 
     /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 291];
+        let input = array_ref![input, 0, 323];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
@@ -70,8 +73,9 @@ impl Pack for SwapInfo {
             token_a_mint,
             token_b_mint,
             pool_fee_account,
+            idv,
             swap_curve,
-        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 65];
+        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 32, 65];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -86,12 +90,13 @@ impl Pack for SwapInfo {
             token_a_mint: Pubkey::new_from_array(*token_a_mint),
             token_b_mint: Pubkey::new_from_array(*token_b_mint),
             pool_fee_account: Pubkey::new_from_array(*pool_fee_account),
+            idv: Pubkey::new_from_array(*idv),
             swap_curve: SwapCurve::unpack_from_slice(swap_curve)?,
         })
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 291];
+        let output = array_mut_ref![output, 0, 323];
         let (
             is_initialized,
             nonce,
@@ -102,8 +107,9 @@ impl Pack for SwapInfo {
             token_a_mint,
             token_b_mint,
             pool_fee_account,
+            idv,
             swap_curve,
-        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 65];
+        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 32, 65];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
@@ -113,6 +119,7 @@ impl Pack for SwapInfo {
         token_a_mint.copy_from_slice(self.token_a_mint.as_ref());
         token_b_mint.copy_from_slice(self.token_b_mint.as_ref());
         pool_fee_account.copy_from_slice(self.pool_fee_account.as_ref());
+        idv.copy_from_slice(self.idv.as_ref());
         self.swap_curve.pack_into_slice(&mut swap_curve[..]);
     }
 }
@@ -136,6 +143,7 @@ mod tests {
         let token_a_mint_raw = [4u8; 32];
         let token_b_mint_raw = [5u8; 32];
         let pool_fee_account_raw = [6u8; 32];
+        let idv_raw = [7u8; 32];
         let token_program_id = Pubkey::new_from_array(token_program_id_raw);
         let token_a = Pubkey::new_from_array(token_a_raw);
         let token_b = Pubkey::new_from_array(token_b_raw);
@@ -143,6 +151,7 @@ mod tests {
         let token_a_mint = Pubkey::new_from_array(token_a_mint_raw);
         let token_b_mint = Pubkey::new_from_array(token_b_mint_raw);
         let pool_fee_account = Pubkey::new_from_array(pool_fee_account_raw);
+        let idv = Pubkey::new_from_array(idv_raw);
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 4;
         let owner_trade_fee_numerator = 3;
@@ -176,6 +185,7 @@ mod tests {
             token_a_mint,
             token_b_mint,
             pool_fee_account,
+            idv,
             swap_curve,
         };
 

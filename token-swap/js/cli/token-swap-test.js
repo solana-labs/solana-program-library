@@ -25,6 +25,10 @@ let authority: PublicKey;
 let nonce: number;
 // owner of the user accounts
 let owner: Account;
+// the user's on-chain identity
+let identity: PublicKey;
+// the identity validator for the pool
+let idv: Account;
 // Token pool
 let tokenPool: Token;
 let tokenAccountPool: PublicKey;
@@ -162,6 +166,9 @@ export async function createTokenSwap(): Promise<void> {
   owner = await newAccountWithLamports(connection, 1000000000);
   const tokenSwapAccount = new Account();
 
+  console.log('creating IDV');
+  idv = await newAccountWithLamports(connection, 1000000000);
+
   [authority, nonce] = await PublicKey.findProgramAddress(
     [tokenSwapAccount.publicKey.toBuffer()],
     tokenSwapProgramId,
@@ -226,6 +233,7 @@ export async function createTokenSwap(): Promise<void> {
     mintB.publicKey,
     feeAccount,
     tokenAccountPool,
+    idv.publicKey,
     tokenSwapProgramId,
     tokenProgramId,
     nonce,
@@ -255,6 +263,7 @@ export async function createTokenSwap(): Promise<void> {
   assert(fetchedTokenSwap.mintB.equals(mintB.publicKey));
   assert(fetchedTokenSwap.poolToken.equals(tokenPool.publicKey));
   assert(fetchedTokenSwap.feeAccount.equals(feeAccount));
+  assert(fetchedTokenSwap.idv.equals(idv.publicKey));
   assert(CURVE_TYPE == fetchedTokenSwap.curveType);
   assert(
     TRADING_FEE_NUMERATOR == fetchedTokenSwap.tradeFeeNumerator.toNumber(),

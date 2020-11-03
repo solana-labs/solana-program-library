@@ -67,6 +67,7 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     Layout.publicKey('mintA'),
     Layout.publicKey('mintB'),
     Layout.publicKey('feeAccount'),
+    Layout.publicKey('idv'),
     BufferLayout.u8('curveType'),
     Layout.uint64('tradeFeeNumerator'),
     Layout.uint64('tradeFeeDenominator'),
@@ -144,6 +145,12 @@ export class TokenSwap {
   mintB: PublicKey;
 
   /**
+   * The public key for the identity validator, that provides a gateway for who
+   * is permitted to use the pool.
+   */
+  idv: PublicKey;
+
+  /**
    * Trading fee numerator
    */
   tradeFeeNumerator: Numberu64;
@@ -201,9 +208,22 @@ export class TokenSwap {
    * @param swapProgramId The program ID of the token-swap program
    * @param tokenProgramId The program ID of the token program
    * @param poolToken The pool token
+   * @param feeAccount
    * @param authority The authority over the swap and accounts
    * @param tokenAccountA: The token swap's Token A account
    * @param tokenAccountB: The token swap's Token B account
+   * @param mintA
+   * @param mintB
+   * @param idv
+   * @param curveType
+   * @param tradeFeeNumerator
+   * @param tradeFeeDenominator
+   * @param ownerTradeFeeNumerator
+   * @param ownerTradeFeeDenominator
+   * @param ownerWithdrawFeeNumerator
+   * @param ownerWithdrawFeeDenominator
+   * @param hostFeeNumerator
+   * @param hostFeeDenominator
    * @param payer Pays for the transaction
    */
   constructor(
@@ -218,6 +238,7 @@ export class TokenSwap {
     tokenAccountB: PublicKey,
     mintA: PublicKey,
     mintB: PublicKey,
+    idv: PublicKey,
     curveType: number,
     tradeFeeNumerator: Numberu64,
     tradeFeeDenominator: Numberu64,
@@ -241,6 +262,7 @@ export class TokenSwap {
       tokenAccountB,
       mintA,
       mintB,
+      idv,
       curveType,
       tradeFeeNumerator,
       tradeFeeDenominator,
@@ -275,6 +297,7 @@ export class TokenSwap {
     tokenPool: PublicKey,
     feeAccount: PublicKey,
     tokenAccountPool: PublicKey,
+    idv: PublicKey,
     tokenProgramId: PublicKey,
     swapProgramId: PublicKey,
     nonce: number,
@@ -296,6 +319,7 @@ export class TokenSwap {
       {pubkey: tokenPool, isSigner: false, isWritable: true},
       {pubkey: feeAccount, isSigner: false, isWritable: false},
       {pubkey: tokenAccountPool, isSigner: false, isWritable: true},
+      {pubkey: idv, isSigner: false, isWritable: false},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
     const commandDataLayout = BufferLayout.struct([
@@ -361,6 +385,7 @@ export class TokenSwap {
     const tokenAccountB = new PublicKey(tokenSwapData.tokenAccountB);
     const mintA = new PublicKey(tokenSwapData.mintA);
     const mintB = new PublicKey(tokenSwapData.mintB);
+    const idv = new PublicKey(tokenSwapData.idv);
     const tokenProgramId = new PublicKey(tokenSwapData.tokenProgramId);
 
     const tradeFeeNumerator = Numberu64.fromBuffer(
@@ -421,15 +446,26 @@ export class TokenSwap {
    * @param payer Pays for the transaction
    * @param tokenSwapAccount The token swap account
    * @param authority The authority over the swap and accounts
+   * @param mintA
+   * @param mintB
+   * @param feeAccount
    * @param nonce The nonce used to generate the authority
    * @param tokenAccountA: The token swap's Token A account
    * @param tokenAccountB: The token swap's Token B account
    * @param poolToken The pool token
    * @param tokenAccountPool The token swap's pool token account
+   * @param idv The validator of identities allowed to use the swap program
    * @param tokenProgramId The program ID of the token program
    * @param swapProgramId The program ID of the token-swap program
-   * @param feeNumerator Numerator of the fee ratio
-   * @param feeDenominator Denominator of the fee ratio
+   * @param curveType
+   * @param tradeFeeNumerator
+   * @param tradeFeeDenominator
+   * @param ownerTradeFeeNumerator
+   * @param ownerTradeFeeDenominator
+   * @param ownerWithdrawFeeNumerator
+   * @param ownerWithdrawFeeDenominator
+   * @param hostFeeNumerator
+   * @param hostFeeDenominator
    * @return Token object for the newly minted token, Public key of the account holding the total supply of new tokens
    */
   static async createTokenSwap(
@@ -444,6 +480,7 @@ export class TokenSwap {
     mintB: PublicKey,
     feeAccount: PublicKey,
     tokenAccountPool: PublicKey,
+    idv: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     nonce: number,
@@ -470,6 +507,7 @@ export class TokenSwap {
       tokenAccountB,
       mintA,
       mintB,
+      idv,
       curveType,
       new Numberu64(tradeFeeNumerator),
       new Numberu64(tradeFeeDenominator),
@@ -505,6 +543,7 @@ export class TokenSwap {
       poolToken,
       feeAccount,
       tokenAccountPool,
+      idv,
       tokenProgramId,
       swapProgramId,
       nonce,
@@ -538,6 +577,8 @@ export class TokenSwap {
    * @param poolSource Pool's source token account
    * @param poolDestination Pool's destination token account
    * @param userDestination User's destination token account
+   * @param identity User's identity account
+   * @param hostFeeAccount
    * @param amountIn Amount to transfer from source account
    * @param minimumAmountOut Minimum amount of tokens the user will receive
    */
@@ -546,6 +587,7 @@ export class TokenSwap {
     poolSource: PublicKey,
     poolDestination: PublicKey,
     userDestination: PublicKey,
+    identity: Account,
     hostFeeAccount: ?PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
@@ -571,6 +613,7 @@ export class TokenSwap {
         ),
       ),
       this.payer,
+      identity,
     );
   }
 
@@ -583,6 +626,7 @@ export class TokenSwap {
     userDestination: PublicKey,
     poolMint: PublicKey,
     feeAccount: PublicKey,
+    idv: PublicKey,
     hostFeeAccount: ?PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
@@ -614,6 +658,7 @@ export class TokenSwap {
       {pubkey: userDestination, isSigner: false, isWritable: true},
       {pubkey: poolMint, isSigner: false, isWritable: true},
       {pubkey: feeAccount, isSigner: false, isWritable: true},
+      {pubkey: idv, isSigner: true, isWritable: false},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
     if (hostFeeAccount != null) {

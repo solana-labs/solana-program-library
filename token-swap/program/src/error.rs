@@ -79,6 +79,9 @@ pub enum SwapError {
     /// The provided fee does not match the program owner's constraints
     #[error("The provided fee does not match the program owner's constraints")]
     InvalidFee,
+    /// The provided Identity does not have an attestation registered by the pool IDV
+    #[error("The provided fee does not match the program owner's constraints")]
+    UnauthorizedIdentity,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

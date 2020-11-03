@@ -7,14 +7,16 @@ import { Account, PublicKey } from '@solana/web3.js';
 chai.use(dirtyChai);
 const { expect } = chai;
 
+const attestation = 'hello'.padStart(ATTESTATION_SIZE, ' ');
+
+let identity: Identity;
+let owner: Account;
+let idv: Account;
+
+let identityAccount: PublicKey;
+
 describe('Identity', function() {
   this.timeout(60000);
-
-  let identity: Identity;
-  let owner: Account;
-  let idv: Account;
-
-  let identityAccount: PublicKey;
 
   before('create owner and idv accounts', async () => {
     owner = await createAccount();
@@ -39,7 +41,6 @@ describe('Identity', function() {
   });
 
   it('should add an attestation', async () => {
-    const attestation = 'hello'.padStart(ATTESTATION_SIZE, ' ');
     await identity.attest(identityAccount, idv, attestation);
 
     const identityHasAttestation = await identity.hasAttestation(
