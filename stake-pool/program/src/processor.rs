@@ -1045,7 +1045,7 @@ mod tests {
         let stake_balance: u64 = sol_to_lamports(10.0);
         let tokens_to_issue: u64 = 10_000_000_000;
         let user_token_balance: u64 = 9_800_000_000;
-        let fee_token_balance: u64 = 0_200_000_000;
+        let fee_token_balance: u64 = 200_000_000;
         assert_eq!(tokens_to_issue, user_token_balance + fee_token_balance);
 
         // Create stake account
