@@ -8,18 +8,6 @@ branches:
 notifications:
   email: false
 
-cache:
-  directories:
-    - "~/.cache"
-
-services:
-  - docker
-
-env:
-  global:
-    - RUST_BACKTRACE=1
-    - SOLANA_VERSION=v1.4.3
-
 jobs:
   include:
     # docs pull request or commit to master

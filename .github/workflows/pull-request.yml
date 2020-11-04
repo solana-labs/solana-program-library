@@ -5,30 +5,32 @@ on:
   push:
     branches: [master]
 
-env:
-  SOLANA_VERSION: v1.4.4
-
 jobs:
   all_github_action_checks:
     runs-on: ubuntu-latest
     needs:
+      - rustfmt
       - clippy
-      - list_bpf_programs
-      - cargo_test
-      - js_token
-      - js_token_swap
-      - js_token_lending
-      - build_bpf_programs
-      - excluded_project_tests
+      - cargo-build-test
+      - js-test-token
+      - js-test-token-swap
+      - js-test-token-lending
     steps:
       - run: echo "Done"
+
   rustfmt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: ${{ env.RUST_STABLE }}
           override: true
           profile: minimal
           components: rustfmt
@@ -50,22 +52,6 @@ jobs:
           profile: minimal
           components: clippy
 
-      - name: Install dependencies
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/$SOLANA_VERSION/install)"
-          echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          cargo build-bpf --version
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
-          sudo apt-get update
-          sudo apt-get install -y clang-7 --allow-unauthenticated
-          sudo apt-get install -y openssl --allow-unauthenticated
-          sudo apt-get install -y libssl-dev --allow-unauthenticated
-          sudo apt-get install -y libssl1.1 --allow-unauthenticated
-          sudo apt-get install -y libudev-dev
-          clang-7 --version
-
       - uses: actions/cache@v2
         with:
           path: |
@@ -76,63 +62,42 @@ jobs:
           restore-keys: |
             cargo-clippy-
 
+      - name: Install dependencies
+        run: ./ci/install-build-deps.sh
+
       - name: Run clippy
-        if: always()
         uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: -Zunstable-options --workspace --all-targets -- --deny=warnings
 
-  list_bpf_programs:
+  cargo-build-test:
     runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.list-bpf-programs.outputs.matrix }}
     steps:
       - uses: actions/checkout@v2
-      - id: list-bpf-programs
+
+      - name: Set env vars
         run: |
-          JSON="{\"include\":["
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
 
-          for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
-            program_dir=$(dirname "$Xargo_toml")
-            JSONline="{\"path\": \"$program_dir\"},"
-            if [[ "$JSON" != *"$JSONline"* ]]; then
-                JSON="$JSON$JSONline"
-            fi
-          done
-
-          # Remove last "," and add closing brackets
-          if [[ $JSON == *, ]]; then
-            JSON="${JSON%?}"
-          fi
-          JSON="$JSON]}"
-          echo $JSON
-
-          # Set output
-          echo "::set-output name=matrix::$( echo "$JSON" )"
-
-  build_bpf_programs:
-    name: Build Program ${{ matrix.path }}
-    needs: list_bpf_programs
-    runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{fromJson(needs.list_bpf_programs.outputs.matrix)}}
-    steps:
-      - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.47.0 # MSRV
+          toolchain: ${{ env.RUST_STABLE }}
           override: true
           profile: minimal
+
       - uses: actions/cache@v2
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: cargo-bpf-${{ matrix.path }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            cargo-bpf-${{ matrix.path }}-
+            cargo-build-
 
       - uses: actions/cache@v2
         with:
@@ -146,151 +111,31 @@ jobs:
         with:
           path: |
             ~/.cache
-          key: solana-${{ env.SOLANA_VERSION }}-nonce-1
+          key: solana-${{ env.SOLANA_VERSION }}
           restore-keys: |
-            solana-nonce-1
+            solana-
 
       - name: Install dependencies
         run: |
-          cargo install rustfilt || true
-          sh -c "$(curl -sSfL https://release.solana.com/$SOLANA_VERSION/install)"
-          echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          cargo build-bpf --version
+          ./ci/install-build-deps.sh
+          ./ci/install-program-deps.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Production check
-        run: |
-          if [ "${{ matrix.path }}" == "token-swap/program" ]; then
-            address="SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8"
-            SWAP_PROGRAM_OWNER_FEE_ADDRESS="$address" cargo build-bpf --manifest-path=token-swap/program/Cargo.toml --dump --features production
-            mv spl_token_swap.so spl_token_swap_production.so
-          fi
+      - name: Build and test
+        run: ./ci/cargo-build-test.sh
 
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build-bpf
-          args: --manifest-path=${{ matrix.path }}/Cargo.toml --dump
-
-      - name: Upload program for later jobs
+      - name: Upload programs
         uses: actions/upload-artifact@v2
         with:
           name: programs
           path: "*.so"
           if-no-files-found: error
 
-  cargo_test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.47.0 # MSRV
-          override: true
-          profile: minimal
-
-      - name: Install dependencies
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/$SOLANA_VERSION/install)"
-          echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          cargo build-bpf --version
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
-          sudo apt-get update
-          sudo apt-get install -y clang-7 --allow-unauthenticated
-          sudo apt-get install -y openssl --allow-unauthenticated
-          sudo apt-get install -y libssl-dev --allow-unauthenticated
-          sudo apt-get install -y libssl1.1 --allow-unauthenticated
-          sudo apt-get install -y libudev-dev
-          clang-7 --version
-
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-test-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-test-
-
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cache
-          key: solana-${{ env.SOLANA_VERSION }}-nonce-1
-          restore-keys: |
-            solana-nonce-1
-
-      - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-
-  excluded_project_tests:
-    needs: build_bpf_programs
-    name: Test ${{ matrix.path }}
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        path:
-          - themis/client_ristretto
-
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          profile: minimal
-
-      - name: Install dependencies
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/$SOLANA_VERSION/install)"
-          echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          cargo build-bpf --version
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
-          sudo apt-get update
-          sudo apt-get install -y clang-7 --allow-unauthenticated
-          sudo apt-get install -y openssl --allow-unauthenticated
-          sudo apt-get install -y libssl-dev --allow-unauthenticated
-          sudo apt-get install -y libssl1.1 --allow-unauthenticated
-          sudo apt-get install -y libudev-dev
-          clang-7 --version
-
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ${{ matrix.path }}/target
-          key: cargo-excluded-${{ matrix.path }}-${{ hashFiles('**/Cargo.lock') }}-nonce-1
-          restore-keys: |
-            cargo-excluded-${{ matrix.path }}-
-
-      - uses: actions/download-artifact@v2
-        with:
-          name: programs
-          path: target/bpfel-unknown-unknown/release
-
-      - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --manifest-path=${{ matrix.path }}/Cargo.toml -- --nocapture
-
-  js_token:
+  js-test-token:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 12.x
-    defaults:
-      run:
-        working-directory: token/js
-    needs: build_bpf_programs
+    needs: cargo-build-test
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -303,30 +148,18 @@ jobs:
           key: node-token-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             node-token-
-      - uses: actions/download-artifact@v2
+      - name: Download programs
+        uses: actions/download-artifact@v2
         with:
           name: programs
           path: target/bpfel-unknown-unknown/release
-      - run: npm install
-      - run: npm run lint
-      - run: npm run flow
-      - run: tsc module.d.ts
-      - run: |
-          npm run cluster:localnet
-          npm run localnet:update
-          npm run localnet:up
-      - run: npm run start
-      - run: PROGRAM_VERSION=2.0.4 npm run start
-      - run: npm run localnet:down
+      - run: ./ci/js-test-token.sh
 
-  js_token_swap:
+  js-test-token-swap:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 12.x
-    defaults:
-      run:
-        working-directory: token-swap/js
-    needs: build_bpf_programs
+    needs: cargo-build-test
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -338,35 +171,19 @@ jobs:
           path: ~/.npm
           key: node-token-swap-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            node-token-swap
-      - uses: actions/download-artifact@v2
+            node-token-swap-
+      - name: Download programs
+        uses: actions/download-artifact@v2
         with:
           name: programs
           path: target/bpfel-unknown-unknown/release
-      - run: (cd ../../token/js && npm install)
-      - run: npm install
-      - run: npm run lint
-      - run: npm run flow
-      - run: tsc module.d.ts
-      - run: |
-          npm run cluster:localnet
-          npm run localnet:update
-          npm run localnet:up
-      - run: npm run start
-      - name: run production test
-        run: |
-          (cd ../../target/bpfel-unknown-unknown/release && mv spl_token_swap_production.so spl_token_swap.so)
-          SWAP_PROGRAM_OWNER_FEE_ADDRESS="SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8" npm run start
-      - run: npm run localnet:down
+      - run: ./ci/js-test-token-swap.sh
 
-  js_token_lending:
+  js-test-token-lending:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 12.x
-    defaults:
-      run:
-        working-directory: token-lending/js
-    needs: build_bpf_programs
+    needs: cargo-build-test
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -379,17 +196,9 @@ jobs:
           key: node-token-lending-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             node-token-lending-
-      - uses: actions/download-artifact@v2
+      - name: Download programs
+        uses: actions/download-artifact@v2
         with:
           name: programs
           path: target/bpfel-unknown-unknown/release
-      - run: (cd ../../token/js && npm install)
-      - run: npm install
-      - run: npm run lint
-      - run: npm run build
-      - run: |
-          npm run cluster:localnet
-          npm run localnet:update
-          npm run localnet:up
-      - run: npm run start
-      - run: npm run localnet:down
+      - run: ./ci/js-test-token-lending.sh
