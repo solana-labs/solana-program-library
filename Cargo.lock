@@ -684,19 +684,6 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
-dependencies = [
- "byteorder",
- "digest 0.8.1",
- "rand_core",
- "subtle 2.2.3",
- "zeroize",
-]
-
-[[package]]
-name = "curve25519-dalek"
-version = "2.1.0"
 source = "git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff#60efef3553d6bf3d7f3b09b5f97acd54d72529ff"
 dependencies = [
  "borsh",
@@ -704,6 +691,19 @@ dependencies = [
  "digest 0.8.1",
  "rand_core",
  "serde",
+ "subtle 2.2.3",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
+dependencies = [
+ "byteorder",
+ "digest 0.8.1",
+ "rand_core",
  "subtle 2.2.3",
  "zeroize",
 ]
@@ -2661,7 +2661,7 @@ dependencies = [
  "solana-sdk",
  "solana-stake-program",
  "solana-vote-program",
- "spl-token 2.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token 2.0.8",
  "thiserror",
 ]
 
@@ -3187,7 +3187,7 @@ dependencies = [
  "solana-stake-program",
  "solana-vote-program",
  "spl-memo 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-token 2.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token 2.0.8",
  "thiserror",
 ]
 
@@ -3259,7 +3259,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token 2.0.8",
+ "spl-token 3.0.0",
  "tokio 0.3.3",
 ]
 
@@ -3302,7 +3302,7 @@ dependencies = [
  "serde_derive",
  "solana-program",
  "solana-sdk",
- "spl-token 2.0.8",
+ "spl-token 3.0.0",
  "thiserror",
 ]
 
@@ -3325,19 +3325,6 @@ dependencies = [
 [[package]]
 name = "spl-token"
 version = "2.0.8"
-dependencies = [
- "arrayref",
- "num-derive",
- "num-traits",
- "num_enum",
- "solana-program",
- "solana-sdk",
- "thiserror",
-]
-
-[[package]]
-name = "spl-token"
-version = "2.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eaa27ab75067c63b8804d9fff30bd2e8bfb5be448bea8067ed768381e70ca181"
 dependencies = [
@@ -3346,6 +3333,19 @@ dependencies = [
  "num-traits",
  "num_enum",
  "remove_dir_all",
+ "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-token"
+version = "3.0.0"
+dependencies = [
+ "arrayref",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program",
  "solana-sdk",
  "thiserror",
 ]
@@ -3366,7 +3366,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "spl-associated-token-account",
- "spl-token 2.0.8",
+ "spl-token 3.0.0",
 ]
 
 [[package]]
@@ -3390,7 +3390,7 @@ dependencies = [
  "num-traits",
  "solana-program",
  "solana-sdk",
- "spl-token 2.0.8",
+ "spl-token 3.0.0",
  "thiserror",
 ]
 
@@ -3416,7 +3416,7 @@ dependencies = [
  "solana-runtime",
  "solana-sdk",
  "solana_rbpf",
- "spl-token 2.0.8",
+ "spl-token 3.0.0",
 ]
 
 [[package]]
@@ -3581,7 +3581,7 @@ version = "0.1.0"
 dependencies = [
  "solana-sdk",
  "spl-memo 1.0.9",
- "spl-token 2.0.8",
+ "spl-token 3.0.0",
  "spl-token-swap",
  "spl-token-v3",
 ]
