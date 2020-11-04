@@ -5,6 +5,7 @@ module.exports = {
       "introduction",
       "token",
       "token-swap",
+      "associated-token-account",
       "memo",
       "shared-memory",
     ],

@@ -21,19 +21,18 @@ The Token Program's source is available on
 
 ## Interface
 
-The on-chain Token Program is written in Rust and available on crates.io as
-[spl-token](https://docs.rs/spl-token). The program's [instruction interface
-documentation](https://docs.rs/spl-token/2.0.4/spl_token/instruction/enum.TokenInstruction.html)
-can also be found there.
+The Token Program is written in Rust and available on [crates.io](https://crates.io/crates/spl-token) and [docs.rs](https://docs.rs/spl-token).
 
-Auto-generated C bindings are also available for the on-chain Token Program and
-available
+Auto-generated C bindings are also available
 [here](https://github.com/solana-labs/solana-program-library/blob/master/token/program/inc/token.h)
 
 [JavaScript
 bindings](https://github.com/solana-labs/solana-program-library/blob/master/token/js/client/token.js)
 are available that support loading the Token Program on to a chain and issue
 instructions.
+
+See the [SPL Associated Token Account](associated-token-account.md) program for
+convention around wallet address to token account mapping and funding.
 
 ## Command-line Utility
 
@@ -71,9 +70,8 @@ solana config set --url https://devnet.solana.com
 
 #### Default Keypair
 
-See [Keypair conventions]
-(https://docs.solana.com/cli/conventions#keypair-conventions) for information on
-how to setup a keypair if you don't already have one.
+See [Keypair conventions](https://docs.solana.com/cli/conventions#keypair-conventions)
+for information on how to setup a keypair if you don't already have one.
 
 Keypair File
 ```
@@ -161,7 +159,7 @@ Unwrapping GJTxcnA5Sydy8YRhqvHxbQ5QNsPyRKvzguodQEaShJje
 Signature: f7opZ86ZHKGvkJBQsJ8Pk81v8F3v1VUfyd4kFs4CABmfTnSZK5BffETznUU3tEWvzibgKJASCf7TUpDmwGi8Rmh
 ```
 
-### Example: Transferring tokens to another user, with sender-funding
+### Example: Transferring tokens to another user
 First the receiver uses `spl-token create-account` to create their associated
 token account for the Token type.  Then the receiver obtains their wallet
 address by running `solana address` and provides it to the sender.
@@ -227,9 +225,6 @@ Account                                      Token                              
 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50
 CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50
 ```
-
-### Example: Transferring tokens with sender funding
-If the recipient a
 
 ### Example: Create a non-fungible token
 
@@ -526,105 +521,60 @@ Although all SPL Token accounts do have their own address on-chain, there's no
 need to surface these additional addresses to the user.
 
 There are two programs that are used by the wallet:
-* SPL Token program - generic program that is used by all SPL Tokens
-* SPL Associated Token Account program - this program defines the convention and the
-  provides the mechanism for mapping the user's wallet address to the associated
-  token accounts they hold.
-
-### Associated Token Account
-The associated token account convention allows all tokens to have the same
-destination address, allowing the user share their main wallet address to
-receive any SPL token.
-
-The following Rust function can be used to derive the address of a user's
-associated token account for a given SPL Token mint:
-```rust
-/// Finds the associated token address for a given wallet
-/// address and SPL Token mint
-pub fn get_associated_token_address(
-    wallet_address: &Pubkey,
-    spl_token_mint_address: &Pubkey,
-) -> Pubkey {
-    Pubkey::find_program_address(
-        &[
-            &primary_account_address.to_bytes(),
-            &spl_token::id().to_bytes(),
-            &spl_token_mint_address.to_bytes(),
-        ],
-        &spl_associated_token_account::id()
-    ).0
-}
-```
-
-
-Javascript equivalent:
-```
-import {PublicKey, PublicKeyNonce} from '@solana/web3.js';
-
-async function findAssociatedTokenAddress(
-    walletAddress: Pubkey,
-    tokenMintAddress: Pubkey
-): Promise<PublicKey> {
-    return PublicKey.findProgramAddress(
-        [
-            walletAddress.toBuffer(),
-            TOKEN_PROGRAM_ID.toBuffer(),
-            tokenMintAddress.toBuffer(),
-        ],
-        SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID
-    )[0];
-}
-```
+* SPL Token program: generic program that is used by all SPL Tokens
+* [SPL Associated Token Account](associated-token-account.md) program: defines
+  the convention and provides the mechanism for mapping the user's wallet
+  address to the associated token accounts they hold.
 
 ### How to fetch and display token holdings
 The [getTokenAccountsByOwner](https://docs.solana.com/apps/jsonrpc-api#gettokenaccountsbyowner)
 JSON RPC method can be used to fetch all token accounts for a wallet address.
 
-For each token mint, the wallet could have be multiple token accounts: the
+For each token mint, the wallet could have multiple token accounts: the
 associated token account and/or other ancillary token accounts
 
 By convention it is suggested that wallets roll up the balances from all token
 accounts of the same token mint into a single balance for the user to shield the
-user from this complexity. See the
-[Garbage Collecting Ancillary Token Accounts](#garbage-collecting-ancillary-token-accounts)
-section for suggestions on how the wallet should clean up ancillary token accounts on the user's
+user from this complexity.
+
+See the [Garbage Collecting Ancillary Token Accounts](#garbage-collecting-ancillary-token-accounts)
+section for suggestions on how the wallet should clean up ancillary token accounts on the user's behalf.
 
 ### Associated Token Account
-Before the user can receive tokens their associated token account must be created
+Before the user can receive tokens, their associated token account must be created
 on-chain, requiring a small amount of SOL to mark the account as rent-exempt.
 
 There's no restriction on who can create a user's associated token account.  It
 could either be created by the wallet on behalf of the user or funded by a 3rd
 party through an airdrop campaign.
 
-Ultimately the
-`spl_associated_token_account::create_associated_token_account()` instruction
-just needs to be executed by some party.
+The creation process is described [here](associated-token-account.md#creating-an-associated-token-account).
 
 #### Sample "Add Token" workflow
-When the user wants to receive tokens, they should fund their associated token
-account.
+The user should first fund their associated token when they want to receive tokens of a certain type.
 
-To do so, the wallet should provide a UI that allow the users to "add a token".
+The wallet should provide a UI that allow the users to "add a token".
 The user selects the kind of token, and is presented with information about how
-much SOL it will cost to add the token.  Upon confirmation, the wallet sends a
-transaction with the
-`spl_associated_token_account::create_associated_token_account()` instruction.
+much SOL it will cost to add the token.
+
+Upon confirmation, the wallet creates the associated token type as the described
+[here](associated-token-account.md#creating-an-associated-token-account).
 
 #### Sample "Airdrop campaign" workflow
 For each recipient wallet addresses, send a transaction containing:
-1. `spl_associated_token_account::create_associated_token_account()` to create
-   the recipient's associated token account if necessary
-2. `TokenInstruction::Transfer` to complete the airdrop
+1. Create the associated token account on the recipient's behalf.
+2. Use `TokenInstruction::Transfer` to complete the transfer
 
 #### Associated Token Account Ownership
-The wallet should never use `TokenInstruction::SetAuthority` to set the
+⚠️ The wallet should never use `TokenInstruction::SetAuthority` to set the
 `AccountOwner` authority of the associated token account to another address.
 
 ### Ancillary Token Accounts
 At any time ownership of an existing SPL Token account may be assigned to the
 user.  One way to accomplish this is with the
-`spl-token authorize <TOKEN_ADDRESS> owner <USER_ADDRESS>` command.
+`spl-token authorize <TOKEN_ADDRESS> owner <USER_ADDRESS>` command.  Wallets
+should be prepared to gracefully manage token accounts that they themselves did
+not create for the user.
 
 ### Transferring Tokens Between Wallets
 The preferred method of transferring tokens between wallets is to transfer into
@@ -632,9 +582,9 @@ associated token account of the recipient.
 
 The recipient must provide their main wallet address to the sender.  The sender
 then:
-1. Derives the associated token account for the recipient using `spl_associated_token_account::get_associated_token_address`
+1. Derives the associated token account for the recipient
 1. Fetches the recipient's associated token account over RPC and checks that it exists.
-1. If the recipient's associated token accountdoes not exist, the sender wallet may choose to first fund the recipient's wallet at their expense
+1. If the recipient's associated token account does not exist, the sender wallet may choose to first fund the recipient's wallet at their expense
 1. Use `TokenInstruction::Transfer` to complete the transfer.
 
 ### Registry for token details
@@ -663,3 +613,5 @@ Cleanup Pseudo Steps:
 If adding one or more of clean up instructions cause the transaction to exceed
 the maximum allowed transaction size, remove those extra clean up instructions.
 They can be cleaned up during the next send operation.
+
+The `spl-token gc` command provides an example implementation of this cleanup process.
