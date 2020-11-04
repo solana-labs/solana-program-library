@@ -714,9 +714,6 @@ mod tests {
     struct DepositInfo {
         stake_account_key: Pubkey,
         stake_account_account: Account,
-        token_receiver_key: Pubkey,
-        token_receiver_account: Account,
-        token_owner_key: Pubkey,
     }
 
     fn do_process_instruction(
@@ -953,17 +950,7 @@ mod tests {
         }
     }
 
-    fn do_deposit(pool_info: &mut StakePoolInfo, stake_balance: u64) -> DepositInfo {
-        // Create account to receive minted tokens
-        let mut token = create_token_account(
-            &TOKEN_PROGRAM_ID,
-            &pool_info.mint_key,
-            &mut pool_info.mint_account,
-        );
-        do_deposit_custom(pool_info, stake_balance, &mut token)
-    }
-
-    fn do_deposit_custom(
+    fn do_deposit(
         pool_info: &mut StakePoolInfo,
         stake_balance: u64,
         token: &mut TokenInfo,
@@ -1006,9 +993,6 @@ mod tests {
         DepositInfo {
             stake_account_key,
             stake_account_account,
-            token_receiver_key: token.key,
-            token_receiver_account: token.account.clone(),
-            token_owner_key: token.owner,
         }
     }
 
@@ -1051,7 +1035,12 @@ mod tests {
         // Create stake account
         let mut pool_info = create_stake_pool(fee);
 
-        let deposit_info = do_deposit(&mut pool_info, stake_balance);
+        let mut pool_token_receiver = create_token_account(
+            &TOKEN_PROGRAM_ID,
+            &pool_info.mint_key,
+            &mut pool_info.mint_account,
+        );
+        let _deposit_info = do_deposit(&mut pool_info, stake_balance, &mut pool_token_receiver);
 
         // Test stake pool balance
         let state = State::deserialize(&pool_info.pool_account.data).unwrap();
@@ -1060,9 +1049,8 @@ mod tests {
         );
 
         // Test token balances
-        let user_token_state =
-            SplAccount::unpack_from_slice(&deposit_info.token_receiver_account.data)
-                .expect("User token account is not initialized after deposit");
+        let user_token_state = SplAccount::unpack_from_slice(&pool_token_receiver.account.data)
+            .expect("User token account is not initialized after deposit");
         assert_eq!(user_token_state.amount, user_token_balance);
         let fee_token_state = SplAccount::unpack_from_slice(&pool_info.owner_fee_account.data)
             .expect("Fee token account is not initialized after deposit");
@@ -1084,17 +1072,22 @@ mod tests {
         let stake_balance = sol_to_lamports(20.0);
         let tokens_to_issue: u64 = 20_000_000_000;
 
-        let mut deposit_info = do_deposit(&mut pool_info, stake_balance);
+        let mut pool_token_receiver = create_token_account(
+            &TOKEN_PROGRAM_ID,
+            &pool_info.mint_key,
+            &mut pool_info.mint_account,
+        );
+        let mut deposit_info = do_deposit(&mut pool_info, stake_balance, &mut pool_token_receiver);
 
         let withdraw_amount = sol_to_lamports(5.0);
         let tokens_to_burn: u64 = 5_000_000_000;
 
         approve_token(
             &TOKEN_PROGRAM_ID,
-            &deposit_info.token_receiver_key,
-            &mut deposit_info.token_receiver_account,
+            &pool_token_receiver.key,
+            &mut pool_token_receiver.account,
             &pool_info.withdraw_authority_key,
-            &deposit_info.token_owner_key,
+            &pool_token_receiver.owner,
             tokens_to_burn,
         );
 
@@ -1110,7 +1103,7 @@ mod tests {
                 &deposit_info.stake_account_key,
                 &stake_to_receive_key,
                 &user_withdrawer_key,
-                &deposit_info.token_receiver_key,
+                &pool_token_receiver.key,
                 &pool_info.mint_key,
                 &TOKEN_PROGRAM_ID,
                 &stake_program_id(),
@@ -1123,7 +1116,7 @@ mod tests {
                 &mut deposit_info.stake_account_account,
                 &mut stake_to_receive_account,
                 &mut Account::default(),
-                &mut deposit_info.token_receiver_account,
+                &mut pool_token_receiver.account,
                 &mut pool_info.mint_account,
                 &mut Account::default(),
                 &mut Account::default(),
@@ -1134,9 +1127,8 @@ mod tests {
 
         let fee_amount = stake_balance * pool_info.fee.numerator / pool_info.fee.denominator;
 
-        let user_token_state =
-            SplAccount::unpack_from_slice(&deposit_info.token_receiver_account.data)
-                .expect("User token account is not initialized after withdraw");
+        let user_token_state = SplAccount::unpack_from_slice(&pool_token_receiver.account.data)
+            .expect("User token account is not initialized after withdraw");
         assert_eq!(
             user_token_state.amount,
             stake_balance - fee_amount - withdraw_amount
@@ -1155,28 +1147,28 @@ mod tests {
         let user_withdrawer_key = Pubkey::new_unique();
 
         let stake_balance = sol_to_lamports(20.0);
-        let mut deposit_info = do_deposit(&mut pool_info, stake_balance);
+
+        let mut pool_token_receiver = create_token_account(
+            &TOKEN_PROGRAM_ID,
+            &pool_info.mint_key,
+            &mut pool_info.mint_account,
+        );
+        let mut deposit_info = do_deposit(&mut pool_info, stake_balance, &mut pool_token_receiver);
 
         // Need to deposit more to cover deposit fee
         let fee_amount = stake_balance * pool_info.fee.numerator / pool_info.fee.denominator;
         let extra_deposit = (fee_amount * pool_info.fee.denominator)
             / (pool_info.fee.denominator - pool_info.fee.numerator);
 
-        let mut token_info: TokenInfo = TokenInfo {
-            key: deposit_info.token_receiver_key,
-            account: deposit_info.token_receiver_account,
-            owner: deposit_info.token_owner_key,
-        };
-
-        let mut extra_deposit_info =
-            do_deposit_custom(&mut pool_info, extra_deposit, &mut token_info);
+        let _extra_deposit_info =
+            do_deposit(&mut pool_info, extra_deposit, &mut pool_token_receiver);
 
         approve_token(
             &TOKEN_PROGRAM_ID,
-            &deposit_info.token_receiver_key,
-            &mut extra_deposit_info.token_receiver_account,
+            &pool_token_receiver.key,
+            &mut pool_token_receiver.account,
             &pool_info.withdraw_authority_key,
-            &deposit_info.token_owner_key,
+            &pool_token_receiver.owner,
             stake_balance,
         );
 
@@ -1187,7 +1179,7 @@ mod tests {
                 &pool_info.withdraw_authority_key,
                 &deposit_info.stake_account_key,
                 &user_withdrawer_key,
-                &deposit_info.token_receiver_key,
+                &pool_token_receiver.key,
                 &pool_info.mint_key,
                 &TOKEN_PROGRAM_ID,
                 &stake_program_id(),
@@ -1198,7 +1190,7 @@ mod tests {
                 &mut Account::default(),
                 &mut deposit_info.stake_account_account,
                 &mut Account::default(),
-                &mut extra_deposit_info.token_receiver_account,
+                &mut pool_token_receiver.account,
                 &mut pool_info.mint_account,
                 &mut Account::default(),
                 &mut Account::default(),
@@ -1207,9 +1199,8 @@ mod tests {
         )
         .expect("Error on claim");
 
-        let user_token_state =
-            SplAccount::unpack_from_slice(&extra_deposit_info.token_receiver_account.data)
-                .expect("User token account is not initialized after withdraw");
+        let user_token_state = SplAccount::unpack_from_slice(&pool_token_receiver.account.data)
+            .expect("User token account is not initialized after withdraw");
         assert_eq!(user_token_state.amount, 0);
 
         // TODO: Check deposit_info.stake_account_account Withdrawer to change to user_withdrawer_key
