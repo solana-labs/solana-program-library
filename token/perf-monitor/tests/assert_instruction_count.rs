@@ -35,7 +35,7 @@ fn run_program(
     instruction_data: &[u8],
 ) -> Result<u64, InstructionError> {
     let mut program_account = SolanaAccount::default();
-    program_account.data = load_program("spl_token.so");
+    program_account.data = load_program("../../target/deploy/spl_token.so");
     let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
 
