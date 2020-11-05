@@ -1,3 +1,3 @@
-import { Identity } from './client/identity';
+import { Identity, IdentityAccountLayout } from './client/identity';
 
-export default Identity;
+export { Identity, IdentityAccountLayout };

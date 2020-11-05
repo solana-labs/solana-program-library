@@ -30,36 +30,14 @@ use std::{io, io::Write, io::Error};
 /// A version of Solana's Pubkey type that is serializable using Borsh
 #[derive(Clone, PartialEq, Debug, Default, BorshSerialize, BorshDeserialize)]
 pub struct SerializablePubkey([u8; 32]);
-// impl BorshSerialize for SerializablePubkey {
-//     // fn serialize(&self, mut data: &mut [u8]) -> Result<(), ProgramError> {
-//     //     BorshSerialize::serialize(&self.0.to_bytes(), &mut data).map_err(|_| ProgramError::AccountDataTooSmall)
-//     // }
-//
-//     fn serialize<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-//         self.0.to_bytes().serialize(writer)
-//     }
-// }
-// impl BorshDeserialize for SerializablePubkey {
-//     fn deserialize(data: &mut &[u8]) -> io::Result<Self> {
-//         info!("SerializablePubKey deserialize");
-//         [u8]::deserialize(data)
-//         // Self::try_from_slice(&data)
-//     }
-//
-//     // fn try_from_slice(data: &[u8]) -> Result<Self, Error> {
-//     //     BorshDeserialize::try_from_slice(&data)
-//     // }
-// }
-// impl BorshDeserialize for SerializablePubkey {
-//     fn deserialize(data: &mut &[u8]) -> io::Result<Self> {
-//         Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidAccountData)
-//     }
-// }
-
 impl From<Pubkey> for SerializablePubkey {
     fn from(pubkey: Pubkey) -> Self {
         SerializablePubkey(pubkey.to_bytes())
     }
+}
+impl SerializablePubkey {
+    /// Convert a SerializablePubkey to a Solana Pubkey (which is the same)
+    pub fn to_pubkey(&self) -> Pubkey { Pubkey::new(&self.0)}
 }
 
 /// An attestation by an identity validator (IDV) for some claims on an Identity

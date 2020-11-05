@@ -1,4 +1,5 @@
 {
+  "name": "@civic/spl-identity",
   "version": "0.1.0",
   "license": "MIT",
   "main": "dist/index.js",
@@ -39,7 +40,6 @@
     "singleQuote": true,
     "trailingComma": "es5"
   },
-  "name": "js",
   "author": "dankelleher",
   "module": "dist/js.esm.js",
   "size-limit": [
