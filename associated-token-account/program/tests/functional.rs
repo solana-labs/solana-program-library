@@ -1,6 +1,4 @@
-use solana_program::{
-    instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction, sysvar::rent::Rent,
-};
+use solana_program::{instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction};
 use solana_program_test::*;
 use solana_sdk::{
     signature::Signer,
@@ -51,7 +49,7 @@ async fn test_associated_token_address() {
 
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address).start().await;
-    let rent = Rent::default(); // <-- TODO: get Rent from `ProgramTest`
+    let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
     // Associated account does not exist
@@ -97,7 +95,7 @@ async fn test_create_with_a_lamport() {
 
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address).start().await;
-    let rent = Rent::default(); // <-- TOOD: get Rent from `ProgramTest`
+    let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
     // Transfer 1 lamport into `associated_token_address` before creating it
@@ -150,7 +148,7 @@ async fn test_create_with_excess_lamports() {
 
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address).start().await;
-    let rent = Rent::default(); // <-- TOOD: get Rent from `ProgramTest`
+    let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
     // Transfer 1 lamport into `associated_token_address` before creating it
