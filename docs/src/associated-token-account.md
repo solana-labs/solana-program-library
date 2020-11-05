@@ -34,13 +34,13 @@ The Associated Token Account Program is written in Rust and available on
 The associated token account for a given wallet address is simply a
 program-derived account consisting of the wallet address itself and the token mint.
 
-The [get_associated_token_address](https://github.com/solana-labs/solana-program-library/blob/associated-token-account-v1.0.0/associated-token-account/program/src/lib.rs#L35)
+The [get_associated_token_address](https://docs.rs/spl-associated-token-account/latest/spl_associated_token_account/fn.get_associated_token_address.html)
 Rust function may be used by clients to derive the wallet's associated token address.
 
 
 The associated account address can be derived in Javascript with:
 ```js
-import {PublicKey, PublicKeyNonce} from '@solana/web3.js';
+import {PublicKey} from '@solana/web3.js';
 
 const SPL_TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
   'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
@@ -69,7 +69,7 @@ async function findAssociatedTokenAddress(
 
 If the associated token account for a given wallet address does not yet exist,
 it may be created by *anybody* by issuing a transaction containing the
-instruction return by [create_associated_token_account](https://github.com/solana-labs/solana-program-library/blob/associated-token-account-v1.0.0/associated-token-account/program/src/lib.rs#L54).
+instruction return by [create_associated_token_account](https://docs.rs/spl-associated-token-account/latest/spl_associated_token_account/fn.create_associated_token_account.html).
 
 Regardless of creator the new associated token account will be fully owned by
 the wallet, as if the wallet itself had created it.
