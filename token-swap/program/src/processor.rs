@@ -30,10 +30,10 @@ impl Processor {
         spl_token::state::Account::unpack(data).map_err(|_| SwapError::ExpectedAccount)
     }
 
-    // /// Unpacks an identity `Account`.
-    // pub fn unpack_identity_account(data: &[u8]) -> Result<spl_identity::state::IdentityAccount, SwapError> {
-    //     spl_identity::state::IdentityAccount::deserialize2(data).map_err(|_| SwapError::ExpectedAccount)
-    // }
+    /// Unpacks an identity `Account`.
+    pub fn unpack_identity_account(data: &[u8]) -> Result<spl_identity::state::IdentityAccount, SwapError> {
+        spl_identity::state::IdentityAccount::deserialize2(data).map_err(|_| SwapError::ExpectedAccount)
+    }
 
     /// Unpacks a spl_token `Mint`.
     pub fn unpack_mint(data: &[u8]) -> Result<spl_token::state::Mint, SwapError> {
@@ -316,12 +316,17 @@ impl Processor {
         let source_account = Self::unpack_token_account(&swap_source_info.data.borrow())?;
         let dest_account = Self::unpack_token_account(&swap_destination_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
-        //
-        // let identity_account = Self::unpack_identity_account(&identity_account_info.data.borrow())?;
-        // if !identity_account.attestation || !identity_account.idv {
-        //     info!("No attestations for identity");
-        //     return Err(SwapError::InvalidInput.into());
-        // }
+
+        let identity_account = Self::unpack_identity_account(&identity_account_info.data.borrow())?;
+        if identity_account.num_attestations < 1 {
+            info!("No attestations for identity");
+            return Err(SwapError::UnauthorizedIdentity.into());
+        }
+
+        if identity_account.attestation.idv.to_pubkey() != token_swap.idv {
+            info!("Identity not attested by correct IDV");
+            return Err(SwapError::UnauthorizedIdentity.into());
+        }
 
         let result = token_swap
             .swap_curve

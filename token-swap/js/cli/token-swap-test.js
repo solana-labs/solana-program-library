@@ -10,7 +10,7 @@ import {
 } from '@solana/web3.js';
 
 import {Token} from '../../../token/js/client/token';
-import Identity from '../../../identity/js/dist';
+import {Identity} from '../../../identity/js/dist';
 import {TokenSwap, CurveType} from '../client/token-swap';
 import {Store} from '../client/util/store';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
