@@ -16,15 +16,13 @@ use spl_themis_ristretto_client::{process_transactions_with_commitment, test_e2e
 use std::{
     fs::{remove_dir_all, File},
     io::Read,
-    path::PathBuf,
 };
 use tokio::runtime::Runtime;
 
 const DATA_CHUNK_SIZE: usize = 229; // Keep program chunks under PACKET_DATA_SIZE
 
 fn load_program(name: &str) -> Vec<u8> {
-    let path = PathBuf::from(name).with_extension("so");
-    let mut file = File::open(path).unwrap();
+    let mut file = File::open(name).unwrap();
 
     let mut program = Vec::new();
     file.read_to_end(&mut program).unwrap();
@@ -161,7 +159,7 @@ fn test_validator_e2e() {
         ..TestValidatorOptions::default()
     });
 
-    let program = load_program("spl_themis_ristretto");
+    let program = load_program("../../target/deploy/spl_themis_ristretto.so");
 
     Runtime::new().unwrap().block_on(async {
         let mut banks_client = start_tcp_client(leader_data.rpc_banks).await.unwrap();
