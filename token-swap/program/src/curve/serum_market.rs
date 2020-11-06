@@ -8,7 +8,7 @@ use crate::curve::calculator::{
 use crate::error::SwapError;
 
 use solana_program::{
-    account_info::AccountInfo,
+    account_info::{next_account_info, AccountInfo},
     pubkey::Pubkey,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
@@ -49,7 +49,6 @@ pub struct SerumMarketCurve {
     pub host_fee_numerator: u64,
     /// Host trading fee denominator
     pub host_fee_denominator: u64,
-    /*
     /// Address of token A mint, for validation
     pub token_a_mint: Pubkey,
     /// Address of token A bids
@@ -62,7 +61,6 @@ pub struct SerumMarketCurve {
     pub token_b_bids: Pubkey,
     /// Address of token B asks
     pub token_b_asks: Pubkey,
-    */
 }
 
 /// The following is an adaptation of the code in critbit.rs and state.rs from
@@ -180,22 +178,78 @@ fn unpack_asks<'a>(asks: &'a AccountInfo) -> Result<RefMut<'a, Slab>, ProgramErr
     }
 }
 
+fn best_bid(slab: &Slab) -> Option<u64> {
+    let node_handle = slab.find_max()?;
+    let leaf = slab.get(node_handle)?.as_leaf()?;
+    Some(leaf.price().get())
+}
+
+fn best_ask(slab: &Slab) -> Option<u64> {
+    let node_handle = slab.find_min()?;
+    let leaf = slab.get(node_handle)?.as_leaf()?;
+    Some(leaf.price().get())
+}
+
+fn mid_price(bid_account_info: &AccountInfo, ask_account_info: &AccountInfo) -> Option<u128> {
+    let bids = unpack_bids(bid_account_info).ok()?;
+    let asks = unpack_asks(ask_account_info).ok()?;
+    let bid = best_bid(&bids)?;
+    let ask = best_ask(&asks)?;
+    let mid = bid.checked_add(ask)?.checked_div(2)?;
+    u128::try_from(mid).ok()
+}
+
 impl CurveCalculator for SerumMarketCurve {
-    /// Constant product swap ensures x * y = constant
+    /// Swaps one currency for another based on the ratio of the token
+    /// prices on Serum.
+    /// The accounts are expected in the following order:
+    /// 1. source token bid orderbook
+    /// 2. source token ask orderbook
+    /// 3. destination token bid orderbook
+    /// 4. destination token ask orderbook
     fn swap(
         &self,
         source_amount: u128,
         swap_source_amount: u128,
         swap_destination_amount: u128,
-        accounts: &[AccountInfo],
+        curve_accounts: &[AccountInfo],
     ) -> Option<SwapResult> {
-        // get the price for
+        let account_info_iter = &mut curve_accounts.iter();
+        let source_token_bid_info = next_account_info(account_info_iter).ok()?;
+        let source_token_ask_info = next_account_info(account_info_iter).ok()?;
+        let destination_token_bid_info = next_account_info(account_info_iter).ok()?;
+        let destination_token_ask_info = next_account_info(account_info_iter).ok()?;
+
+        // get the price for source
+        let source_mid = mid_price(source_token_bid_info, source_token_ask_info)?;
+        // get price for destination
+        let destination_mid = mid_price(destination_token_bid_info, destination_token_ask_info)?;
+
         // debit the fee to calculate the amount swapped
-        let new_source_amount = swap_source_amount;
-        let new_destination_amount = swap_destination_amount;
-        let amount_swapped = 0;
-        let trade_fee = 0;
-        let owner_fee = 0;
+        let trade_fee = self.trading_fee(source_amount)?;
+        let owner_fee = calculate_fee(
+            source_amount,
+            u128::try_from(self.owner_trade_fee_numerator).ok()?,
+            u128::try_from(self.owner_trade_fee_denominator).ok()?,
+        )?;
+
+        let source_amount_less_fee = source_amount
+            .checked_sub(trade_fee)?
+            .checked_sub(owner_fee)?;
+
+        // This looks counter-intuitive, but FX markets are strange. Here is an
+        // example: if SOL/USDC = 10 and SRM/USDC = 2, we instinctively
+        // know that SOL is the "stronger" currency, so it must be that
+        // 1 SOL gives 5 SRM.
+        // The formula, then, is:
+        //
+        // amount_srm = (amount_sol) * (SOL/USDC) / (SRM/USDC)
+        let amount_swapped =
+            map_zero_to_none(source_amount_less_fee.checked_mul(source_mid)?.checked_div(destination_mid)?)?;
+        let new_destination_amount = swap_destination_amount.checked_sub(amount_swapped)?;
+
+        // actually add the whole amount coming in
+        let new_source_amount = swap_source_amount.checked_add(source_amount)?;
         Some(SwapResult {
             new_source_amount,
             new_destination_amount,
@@ -233,18 +287,54 @@ impl CurveCalculator for SerumMarketCurve {
         )
     }
 
-    /// Validate mints provided in the swap instruction, ensuring
-    /// that the curve and swap instruction are aligned. For example, if the
-    /// swap goes from token A to token B, and the associated curve accounts
-    /// are provided in the order required for a swap from token A to token B.
-    /// This prevents an attack of declaring a swap from token A to token B,
-    /// but providing reference accounts for a token B to token A swap.
+    /// Validate mints provided in the swap instruction, ensuring that the
+    /// orderbooks correspond to the correct source and destination tokens.
+    /// The accounts are expected in the following order:
+    /// 1. source token bid orderbook
+    /// 2. source token ask orderbook
+    /// 3. destination token bid orderbook
+    /// 4. destination token ask orderbook
     fn validate_swap_accounts(
         &self,
-        _source_mint: &Pubkey,
-        _destination_mint: &Pubkey,
-        _curve_accounts: &[AccountInfo],
-    ) -> Result<(), SwapError> {
+        source_mint: &Pubkey,
+        destination_mint: &Pubkey,
+        curve_accounts: &[AccountInfo],
+    ) -> Result<(), ProgramError> {
+        let account_info_iter = &mut curve_accounts.iter();
+        let source_token_bid_info = next_account_info(account_info_iter)?;
+        let source_token_ask_info = next_account_info(account_info_iter)?;
+        let destination_token_bid_info = next_account_info(account_info_iter)?;
+        let destination_token_ask_info = next_account_info(account_info_iter)?;
+
+        let (curve_source_token_bid_key, curve_source_token_ask_key) = if *source_mint == self.token_a_mint {
+            (self.token_a_bids, self.token_a_asks)
+        } else if *source_mint == self.token_b_mint {
+            (self.token_b_bids, self.token_b_asks)
+        } else {
+            return Err(SwapError::InvalidCurveAccounts.into());
+        };
+
+        let (curve_destination_token_bid_key, curve_destination_token_ask_key) = if *destination_mint == self.token_a_mint {
+            (self.token_a_bids, self.token_a_asks)
+        } else if *destination_mint == self.token_b_mint {
+            (self.token_b_bids, self.token_b_asks)
+        } else {
+            return Err(SwapError::InvalidCurveAccounts.into());
+        };
+
+        if *source_token_bid_info.key != curve_source_token_bid_key {
+            return Err(SwapError::InvalidCurveAccounts.into());
+        }
+        if *source_token_ask_info.key != curve_source_token_ask_key {
+            return Err(SwapError::InvalidCurveAccounts.into());
+        }
+        if *destination_token_bid_info.key != curve_destination_token_bid_key {
+            return Err(SwapError::InvalidCurveAccounts.into());
+        }
+        if *destination_token_ask_info.key != curve_destination_token_ask_key {
+            return Err(SwapError::InvalidCurveAccounts.into());
+        }
+
         Ok(())
     }
 }
@@ -257,9 +347,9 @@ impl IsInitialized for SerumMarketCurve {
 }
 impl Sealed for SerumMarketCurve {}
 impl Pack for SerumMarketCurve {
-    const LEN: usize = 64;
+    const LEN: usize = 256;
     fn unpack_from_slice(input: &[u8]) -> Result<SerumMarketCurve, ProgramError> {
-        let input = array_ref![input, 0, 64];
+        let input = array_ref![input, 0, 256];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             trade_fee_numerator,
@@ -270,7 +360,13 @@ impl Pack for SerumMarketCurve {
             owner_withdraw_fee_denominator,
             host_fee_numerator,
             host_fee_denominator,
-        ) = array_refs![input, 8, 8, 8, 8, 8, 8, 8, 8];
+            token_a_mint,
+            token_a_bids,
+            token_a_asks,
+            token_b_mint,
+            token_b_bids,
+            token_b_asks,
+        ) = array_refs![input, 8, 8, 8, 8, 8, 8, 8, 8, 32, 32, 32, 32, 32, 32];
         Ok(Self {
             trade_fee_numerator: u64::from_le_bytes(*trade_fee_numerator),
             trade_fee_denominator: u64::from_le_bytes(*trade_fee_denominator),
@@ -280,6 +376,12 @@ impl Pack for SerumMarketCurve {
             owner_withdraw_fee_denominator: u64::from_le_bytes(*owner_withdraw_fee_denominator),
             host_fee_numerator: u64::from_le_bytes(*host_fee_numerator),
             host_fee_denominator: u64::from_le_bytes(*host_fee_denominator),
+            token_a_mint: Pubkey::new_from_array(*token_a_mint),
+            token_a_bids: Pubkey::new_from_array(*token_a_bids),
+            token_a_asks: Pubkey::new_from_array(*token_a_asks),
+            token_b_mint: Pubkey::new_from_array(*token_b_mint),
+            token_b_bids: Pubkey::new_from_array(*token_b_bids),
+            token_b_asks: Pubkey::new_from_array(*token_b_asks),
         })
     }
 
@@ -290,7 +392,7 @@ impl Pack for SerumMarketCurve {
 
 impl DynPack for SerumMarketCurve {
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 64];
+        let output = array_mut_ref![output, 0, 256];
         let (
             trade_fee_numerator,
             trade_fee_denominator,
@@ -300,7 +402,13 @@ impl DynPack for SerumMarketCurve {
             owner_withdraw_fee_denominator,
             host_fee_numerator,
             host_fee_denominator,
-        ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8, 8, 8];
+            token_a_mint,
+            token_a_bids,
+            token_a_asks,
+            token_b_mint,
+            token_b_bids,
+            token_b_asks,
+        ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8, 8, 8, 32, 32, 32, 32, 32, 32];
         *trade_fee_numerator = self.trade_fee_numerator.to_le_bytes();
         *trade_fee_denominator = self.trade_fee_denominator.to_le_bytes();
         *owner_trade_fee_numerator = self.owner_trade_fee_numerator.to_le_bytes();
@@ -309,6 +417,12 @@ impl DynPack for SerumMarketCurve {
         *owner_withdraw_fee_denominator = self.owner_withdraw_fee_denominator.to_le_bytes();
         *host_fee_numerator = self.host_fee_numerator.to_le_bytes();
         *host_fee_denominator = self.host_fee_denominator.to_le_bytes();
+        token_a_mint.copy_from_slice(self.token_a_mint.as_ref());
+        token_a_bids.copy_from_slice(self.token_a_bids.as_ref());
+        token_a_asks.copy_from_slice(self.token_a_asks.as_ref());
+        token_b_mint.copy_from_slice(self.token_b_mint.as_ref());
+        token_b_bids.copy_from_slice(self.token_b_bids.as_ref());
+        token_b_asks.copy_from_slice(self.token_b_asks.as_ref());
     }
 }
 
@@ -364,6 +478,26 @@ mod tests {
         let min_ref = slab.get(min_node_handle).unwrap().as_leaf().unwrap();
         let price = min_ref.price();
         assert_eq!(price, NonZeroU64::new(MIN_PRICE as u64).unwrap());
+    }
+
+    fn orderbook_data(data: &mut [u8],) {
+        let mut bytes = vec![0u8; 10_000];
+        let mut slab = Slab::new(&mut bytes);
+
+        fill_orderbook(&mut slab);
+
+        let mut ob_data = vec![0u8; 10_023]; // 3 padding + 5 + header (8) + size + 7
+        let ob_view = init_account_padding(&mut ob_data[3..]).unwrap();
+        const OB_HEADER_WORDS: usize = size_of::<OrderBookStateHeader>() / size_of::<u64>();
+        assert!(ob_view.len() > OB_HEADER_WORDS);
+        let (hdr_array, slab_words) = mut_array_refs![ob_view, OB_HEADER_WORDS; .. ;];
+        let ob_hdr: &mut OrderBookStateHeader = cast_mut(hdr_array);
+        *ob_hdr = OrderBookStateHeader {
+            account_flags: (AccountFlag::Initialized | AccountFlag::Bids).bits(),
+        };
+        let slab_data: &mut [u8] = cast_slice_mut(slab_words);
+        slab_data.clone_from_slice(&bytes);
+        let _slab = Slab::new(cast_slice_mut(slab_words));
     }
 
     #[test]
@@ -538,6 +672,19 @@ mod tests {
         let owner_withdraw_fee_denominator = 10;
         let host_fee_numerator = 4;
         let host_fee_denominator = 10;
+        let token_a_mint_raw = [1u8; 32];
+        let token_b_mint_raw = [6u8; 32];
+        let token_a_bids_raw = [2u8; 32];
+        let token_b_bids_raw = [3u8; 32];
+        let token_a_asks_raw = [4u8; 32];
+        let token_b_asks_raw = [5u8; 32];
+
+        let token_a_mint = Pubkey::new_from_array(token_a_mint_raw);
+        let token_a_bids = Pubkey::new_from_array(token_a_bids_raw);
+        let token_a_asks = Pubkey::new_from_array(token_a_asks_raw);
+        let token_b_mint = Pubkey::new_from_array(token_b_mint_raw);
+        let token_b_bids = Pubkey::new_from_array(token_b_bids_raw);
+        let token_b_asks = Pubkey::new_from_array(token_b_asks_raw);
         let curve = SerumMarketCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -547,6 +694,12 @@ mod tests {
             owner_withdraw_fee_denominator,
             host_fee_numerator,
             host_fee_denominator,
+            token_a_mint,
+            token_a_bids,
+            token_a_asks,
+            token_b_mint,
+            token_b_bids,
+            token_b_asks,
         };
 
         let mut packed = [0u8; SerumMarketCurve::LEN];
@@ -563,6 +716,12 @@ mod tests {
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
+        packed.extend_from_slice(&token_a_mint_raw);
+        packed.extend_from_slice(&token_a_bids_raw);
+        packed.extend_from_slice(&token_a_asks_raw);
+        packed.extend_from_slice(&token_b_mint_raw);
+        packed.extend_from_slice(&token_b_bids_raw);
+        packed.extend_from_slice(&token_b_asks_raw);
         let unpacked = SerumMarketCurve::unpack(&packed).unwrap();
         assert_eq!(curve, unpacked);
     }

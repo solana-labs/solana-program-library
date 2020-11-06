@@ -1,8 +1,8 @@
 //! Swap calculations
 
-use crate::error::SwapError;
 use solana_program::{
     account_info::AccountInfo,
+    program_error::ProgramError,
     pubkey::Pubkey,
 };
 use std::fmt::Debug;
@@ -86,7 +86,7 @@ pub trait CurveCalculator: Debug + DynPack {
         _source_mint: &Pubkey,
         _destination_mint: &Pubkey,
         _curve_accounts: &[AccountInfo],
-    ) -> Result<(), SwapError> {
+    ) -> Result<(), ProgramError> {
         Ok(())
     }
 
