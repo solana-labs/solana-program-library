@@ -21,7 +21,7 @@ Full documentation is available at https://spl.solana.com
 ### Environment Setup
 
 1. Install the latest Rust stable from https://rustup.rs/
-2. Install the latest Solana command-line tools from https://docs.solana.com/cli/install-solana-cli-tools
+2. Install Solana v1.4.5 or later from from https://docs.solana.com/cli/install-solana-cli-tools
 
 ### Build
 
@@ -40,13 +40,15 @@ $ cargo build-bpf
 
 Unit tests contained within all projects can be run with:
 ```bash
-$ cargo test
+$ cargo test      # <-- runs host-based tests
+$ cargo test-bpf  # <-- runs BPF program tests
 ```
 
 To run a specific program's tests, such as SPL Token:
 ```
 $ cd token/program
-$ cargo test
+$ cargo test      # <-- runs host-based tests
+$ cargo test-bpf  # <-- runs BPF program tests
 ```
 
 Integration testing may be performed via the per-project .js bindings.  See the
@@ -59,7 +61,7 @@ $ cargo clippy
 
 ### Coverage
 ```bash
-$ ./coverage.sh
+$ ./coverage.sh  # Please help! Coverage build currently fails on MacOS due to an XCode `grcov` mismatch...
 ```
 
 
