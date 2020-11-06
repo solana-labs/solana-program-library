@@ -69,7 +69,7 @@ async function findAssociatedTokenAddress(
 
 If the associated token account for a given wallet address does not yet exist,
 it may be created by *anybody* by issuing a transaction containing the
-instruction return by [create_associated_token_account](https://docs.rs/spl-associated-token-account/latest/spl_associated_token_account/fn.create_associated_token_account.html).
+instruction returned by [create_associated_token_account](https://docs.rs/spl-associated-token-account/latest/spl_associated_token_account/fn.create_associated_token_account.html).
 
 Regardless of creator the new associated token account will be fully owned by
 the wallet, as if the wallet itself had created it.
