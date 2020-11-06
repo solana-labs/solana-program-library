@@ -6,6 +6,7 @@ members = [
   "examples/rust/logging",
   "examples/rust/sysvar",
   "examples/rust/transfer-lamports",
+  "feature-proposal/program",
   "memo/program",
   "shared-memory/program",
   "stake-pool/cli",
