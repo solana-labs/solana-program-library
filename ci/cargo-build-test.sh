@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
-cd "$(dirname "$0")"
-cd ..
+cd "$(dirname "$0")/.."
 
 source ./ci/rust-version.sh stable
 source ./ci/solana-version.sh install
@@ -12,25 +11,26 @@ export RUSTBACKTRACE=1
 
 set -x
 
-# For all BPF programs
-for Xargo_toml in $(git ls-files -- '*/Xargo.toml'); do
-  program_dir=$(dirname "$Xargo_toml")
+# Build/test all BPF programs
+cargo +"$rust_stable" test-bpf -- --nocapture
 
-  if [ "$program_dir" == "token-swap/program" ]; then
-    address="SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8"
-    SWAP_PROGRAM_OWNER_FEE_ADDRESS="$address" cargo build-bpf \
-      --manifest-path=token-swap/program/Cargo.toml \
-      --dump --features production
-    mv target/deploy/spl_token_swap.so target/deploy/spl_token_swap_production.so
-  fi
-
-  cargo +"$rust_stable" test-bpf --manifest-path="$program_dir"/Cargo.toml -- --nocapture
-done
-
+# Build/test all host crates
 cargo +"$rust_stable" build
 cargo +"$rust_stable" test -- --nocapture
+
+# Run test-client sanity check
 cargo +"$rust_stable" run --manifest-path=utils/test-client/Cargo.toml
+
+# client_ristretto isn't in the workspace, test it explictly
 cargo +"$rust_stable" test --manifest-path=themis/client_ristretto/Cargo.toml -- --nocapture
+
+
+SWAP_PROGRAM_OWNER_FEE_ADDRESS="SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8" \
+  cargo +"$rust_stable" build-bpf \
+    --manifest-path=token-swap/program/Cargo.toml \
+    --features production \
+    --bpf-out-dir target/deploy-production
+mv target/deploy-production/spl_token_swap.so target/deploy/spl_token_swap_production.so
 
 #  # Check generated C headers
 #  cargo run --manifest-path=utils/cgen/Cargo.toml
