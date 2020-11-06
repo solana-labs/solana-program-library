@@ -1,3 +1,6 @@
+// Mark this test as BPF-only due to current `ProgramTest` limitations when CPIing into the system program
+#![cfg(feature = "test-bpf")]
+
 use solana_program::{instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction};
 use solana_program_test::*;
 use solana_sdk::{
@@ -10,8 +13,7 @@ fn program_test(token_mint_address: Pubkey) -> ProgramTest {
     let mut pc = ProgramTest::new(
         "spl_associated_token_account",
         id(),
-        // TODO: BPF only until native CPI rework in the monorepo completes
-        None, //processor!(processor::process_instruction),
+        processor!(processor::process_instruction),
     );
 
     // Add SPL Token program

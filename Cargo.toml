@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "associated-token-account/program",
   "memo/program",
   "shared-memory/program",
   "stake-pool/program",
@@ -14,6 +15,5 @@ members = [
   "utils/test-client",
 ]
 exclude = [
-  "associated-token-account/program", # Exclude until `cargo test` works
   "themis/client_ristretto",
 ]
