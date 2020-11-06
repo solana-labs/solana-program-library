@@ -5,9 +5,11 @@ module.exports = {
       "introduction",
       "token",
       "token-swap",
+      "token-lending",
       "associated-token-account",
       "memo",
       "shared-memory",
+      "stake-pool",
     ],
   },
 };
