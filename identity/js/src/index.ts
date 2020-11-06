@@ -1,3 +1,13 @@
-import { Identity, IdentityAccountLayout } from './client/identity';
+import {
+  Identity,
+  IdentityAccountLayout,
+  IdentityAccountInfo,
+  ATTESTATION_SIZE,
+} from './client/identity';
 
-export { Identity, IdentityAccountLayout };
+export {
+  Identity,
+  IdentityAccountLayout,
+  IdentityAccountInfo,
+  ATTESTATION_SIZE,
+};
