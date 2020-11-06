@@ -288,6 +288,18 @@ impl Processor {
             stake_program_info.clone(),
         )?;
 
+        Self::stake_authorize(
+            stake_pool_info.key,
+            stake_info.clone(),
+            deposit_info.clone(),
+            Self::AUTHORITY_DEPOSIT,
+            stake_pool.deposit_bump_seed,
+            withdraw_info.key,
+            stake::StakeAuthorize::Staker,
+            reserved.clone(),
+            stake_program_info.clone(),
+        )?;
+
         let user_amount = <u64>::try_from(user_amount).or(Err(Error::CalculationFailure))?;
         Self::token_mint_to(
             stake_pool_info.key,
