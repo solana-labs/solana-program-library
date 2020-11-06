@@ -32,6 +32,7 @@ declare module '@solana/spl-token-swap' {
       tokenAccountB: PublicKey,
       mintA: PublicKey,
       mintB: PublicKey,
+      nonce: number,
       curveType: number,
       tradeFeeNumerator: Numberu64,
       tradeFeeDenominator: Numberu64,
@@ -51,6 +52,7 @@ declare module '@solana/spl-token-swap' {
     tokenAccountB: PublicKey;
     mintA: PublicKey;
     mintB: PublicKey;
+    nonce: number;
     curveType: number;
     tradeFeeNumerator: Numberu64;
     tradeFeeDenominator: Numberu64;
@@ -73,6 +75,7 @@ declare module '@solana/spl-token-swap' {
       tokenPool: PublicKey,
       feeAccount: PublicKey,
       tokenAccountPool: PublicKey,
+      idv: PublicKey,
       tokenProgramId: PublicKey,
       swapProgramId: PublicKey,
       nonce: number,
@@ -139,6 +142,7 @@ declare module '@solana/spl-token-swap' {
       userDestination: PublicKey,
       poolMint: PublicKey,
       feeAccount: PublicKey,
+      idv: PublicKey,
       hostFeeAccount: PublicKey | null,
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,

@@ -69,7 +69,7 @@ type Attestation = {
 /**
  * Information about an account
  */
-type IdentityAccountInfo = {
+export type IdentityAccountInfo = {
   owner: PublicKey;
   state: AccountState;
   attestation?: Attestation;
@@ -203,6 +203,10 @@ export class Identity {
 
     const data = Buffer.from(info.data);
 
+    return this.accountInfoDataToIdentity(data);
+  }
+
+  accountInfoDataToIdentity(data: Buffer) {
     const decodedAccountInfo = IdentityAccountLayout.decode(data);
 
     const attestation = decodedAccountInfo.numAttestations

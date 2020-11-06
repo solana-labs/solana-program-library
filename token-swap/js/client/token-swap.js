@@ -215,6 +215,7 @@ export class TokenSwap {
    * @param mintA
    * @param mintB
    * @param idv
+   * @param nonce
    * @param curveType
    * @param tradeFeeNumerator
    * @param tradeFeeDenominator
@@ -239,6 +240,7 @@ export class TokenSwap {
     mintA: PublicKey,
     mintB: PublicKey,
     idv: PublicKey,
+    nonce: number,
     curveType: number,
     tradeFeeNumerator: Numberu64,
     tradeFeeDenominator: Numberu64,
@@ -263,6 +265,7 @@ export class TokenSwap {
       mintA,
       mintB,
       idv,
+      nonce,
       curveType,
       tradeFeeNumerator,
       tradeFeeDenominator,
@@ -379,6 +382,7 @@ export class TokenSwap {
       programId,
     );
 
+    const nonce = tokenSwapData.nonce;
     const poolToken = new PublicKey(tokenSwapData.tokenPool);
     const feeAccount = new PublicKey(tokenSwapData.feeAccount);
     const tokenAccountA = new PublicKey(tokenSwapData.tokenAccountA);
@@ -427,6 +431,7 @@ export class TokenSwap {
       mintA,
       mintB,
       idv,
+      nonce,
       curveType,
       tradeFeeNumerator,
       tradeFeeDenominator,
@@ -509,6 +514,7 @@ export class TokenSwap {
       mintA,
       mintB,
       idv,
+      nonce,
       curveType,
       new Numberu64(tradeFeeNumerator),
       new Numberu64(tradeFeeDenominator),
