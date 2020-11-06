@@ -1,6 +1,7 @@
 //! Simple constant 1:1 swap curve
 
 use solana_program::{
+    account_info::AccountInfo,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
 };
@@ -37,6 +38,7 @@ impl CurveCalculator for FlatCurve {
         source_amount: u128,
         swap_source_amount: u128,
         swap_destination_amount: u128,
+        _accounts: &[AccountInfo],
     ) -> Option<SwapResult> {
         // debit the fee to calculate the amount swapped
         let trade_fee = calculate_fee(
@@ -177,7 +179,7 @@ mod tests {
             host_fee_denominator,
         };
         let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount)
+            .swap(source_amount, swap_source_amount, swap_destination_amount, &[])
             .unwrap();
         let amount_swapped = 97;
         assert_eq!(result.new_source_amount, 1100);

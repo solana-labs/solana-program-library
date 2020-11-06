@@ -1,5 +1,10 @@
 //! Swap calculations
 
+use crate::error::SwapError;
+use solana_program::{
+    account_info::AccountInfo,
+    pubkey::Pubkey,
+};
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
@@ -67,7 +72,23 @@ pub trait CurveCalculator: Debug + DynPack {
         source_amount: u128,
         swap_source_amount: u128,
         swap_destination_amount: u128,
+        curve_accounts: &[AccountInfo],
     ) -> Option<SwapResult>;
+
+    /// Validate mints provided in the swap instruction, ensuring
+    /// that the curve and swap instruction are aligned. For example, if the
+    /// swap goes from token A to token B, and the associated curve accounts
+    /// are provided in the order required for a swap from token A to token B.
+    /// This prevents an attack of declaring a swap from token A to token B,
+    /// but providing reference accounts for a token B to token A swap.
+    fn validate_swap_accounts(
+        &self,
+        _source_mint: &Pubkey,
+        _destination_mint: &Pubkey,
+        _curve_accounts: &[AccountInfo],
+    ) -> Result<(), SwapError> {
+        Ok(())
+    }
 
     /// Calculate the withdraw fee in pool tokens
     /// Default implementation assumes no fee

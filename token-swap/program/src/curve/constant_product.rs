@@ -1,6 +1,7 @@
 //! The Uniswap invariant calculator.
 
 use solana_program::{
+    account_info::AccountInfo,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
 };
@@ -11,7 +12,7 @@ use crate::curve::calculator::{
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::TryFrom;
 
-/// ConstantProductCurve struct implementing CurveCalculator
+/// Uniswap invariant curve calculator
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ConstantProductCurve {
     /// Trade fee numerator
@@ -39,6 +40,7 @@ impl CurveCalculator for ConstantProductCurve {
         source_amount: u128,
         swap_source_amount: u128,
         swap_destination_amount: u128,
+        _accounts: &[AccountInfo],
     ) -> Option<SwapResult> {
         // debit the fee to calculate the amount swapped
         let trade_fee = self.trading_fee(source_amount)?;
@@ -247,7 +249,7 @@ mod tests {
             host_fee_denominator,
         };
         let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount)
+            .swap(source_amount, swap_source_amount, swap_destination_amount, &[])
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, 4505);
@@ -281,7 +283,7 @@ mod tests {
             host_fee_denominator,
         };
         let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount)
+            .swap(source_amount, swap_source_amount, swap_destination_amount, &[])
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, 4505);
@@ -297,7 +299,7 @@ mod tests {
         let source_amount: u128 = 100;
         let curve = ConstantProductCurve::default();
         let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount)
+            .swap(source_amount, swap_source_amount, swap_destination_amount, &[])
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, 4546);
