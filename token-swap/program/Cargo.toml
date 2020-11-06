@@ -10,6 +10,7 @@ edition = "2018"
 [features]
 no-entrypoint = []
 production = []
+serum = ["bytemuck", "serum_dex", "enumflags2"]
 
 [dependencies]
 arrayref = "0.3.6"
@@ -18,6 +19,9 @@ num-traits = "0.2"
 solana-program = "1.4.6"
 spl-token = { version = "3.0", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
+bytemuck = { version = "1.4.0", optional = true }
+enumflags2 = { version = "0.6.4", optional = true }
+serum_dex = { git = "https://github.com/joncinque/serum-dex", rev = "acb8499", features = ["no-entrypoint"], optional = true}
 
 [dev-dependencies]
 solana-sdk = "1.4.5"
