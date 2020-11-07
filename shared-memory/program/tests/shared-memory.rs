@@ -27,8 +27,10 @@ fn run_program(
     parameter_accounts: &[KeyedAccount],
     instruction_data: &[u8],
 ) -> Result<u64, InstructionError> {
-    let mut program_account = Account::default();
-    program_account.data = load_program("../../target/deploy/spl_shared_memory.so");
+    let program_account = Account {
+        data: load_program("../../target/deploy/spl_shared_memory.so"),
+        ..Account::default()
+    };
     let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
     let executable = EbpfVm::<solana_bpf_loader_program::BPFError>::create_executable_from_elf(
