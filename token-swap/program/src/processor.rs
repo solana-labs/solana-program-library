@@ -35,6 +35,11 @@ impl Processor {
         spl_identity::state::IdentityAccount::deserialize2(data).map_err(|_| SwapError::ExpectedAccount)
     }
 
+    /// Verifies an identity `Account` is owned by the swap caller and signed by the IdV.
+    pub fn verify_identity_account(account: &spl_identity::state::IdentityAccount, expected_owner: &Pubkey, idv: &Pubkey) -> Result<(), SwapError> {
+        spl_identity::processor::Processor::verify(account, expected_owner, idv).map_err(|_| SwapError::UnauthorizedIdentity)
+    }
+
     /// Unpacks a spl_token `Mint`.
     pub fn unpack_mint(data: &[u8]) -> Result<spl_token::state::Mint, SwapError> {
         spl_token::state::Mint::unpack(data).map_err(|_| SwapError::ExpectedMint)
@@ -318,6 +323,14 @@ impl Processor {
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
 
         let identity_account = Self::unpack_identity_account(&identity_account_info.data.borrow())?;
+        let identity_verification_result = Self::verify_identity_account
+            (&identity_account, &source_account.owner, &token_swap.idv);
+
+        // Stop if identity verification fails
+        if identity_verification_result.is_err() {
+            return identity_verification_result.map_err(|e| Into::<ProgramError>::into(e))
+        }
+
         if identity_account.num_attestations < 1 {
             info!("No attestations for identity");
             return Err(SwapError::UnauthorizedIdentity.into());

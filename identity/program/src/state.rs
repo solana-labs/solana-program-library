@@ -74,7 +74,6 @@ impl IdentityAccount {
     }
     /// Deserialize the account from a byte array
     pub fn deserialize2(data: &[u8]) -> Result<Self, ProgramError> {
-        info!("IdentityAccount: deserialize2");
         Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidAccountData)
     }
 
