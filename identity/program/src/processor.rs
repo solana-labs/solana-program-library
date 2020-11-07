@@ -96,6 +96,30 @@ impl Processor {
         }
     }
 
+    /// Verifies than Identity belongs to the correct owner
+    /// and is signed by the expected IdV
+    pub fn verify(
+        identity: &IdentityAccount,
+        expected_owner: &Pubkey,
+        expected_idv: &Pubkey,
+    ) -> Result<(), IdentityError> {
+        if *expected_owner != identity.owner.to_pubkey() {
+            return Err(IdentityError::OwnerMismatch.into());
+        }
+        if identity.num_attestations < 1 {
+            info!("No attestations for identity");
+            return Err(IdentityError::UnauthorizedIdentity.into());
+        }
+
+        if *expected_idv != identity.attestation.idv.to_pubkey() {
+            info!("Identity not attested by correct IDV");
+            return Err(IdentityError::UnauthorizedIdentity.into());
+        }
+
+        Ok(())
+    }
+
+
     /// Validates owner(s) are present
     pub fn validate_owner(
         program_id: &Pubkey,
@@ -147,6 +171,7 @@ impl PrintProgramError for IdentityError {
             IdentityError::OwnerMismatch => info!("Error: owner does not match"),
             IdentityError::AlreadyInUse => info!("Error: account already in use"),
             IdentityError::InvalidInstruction => info!("Error: Invalid instruction"),
+            IdentityError::UnauthorizedIdentity => info!("Error: Unauthorized identity"),
         }
     }
 }

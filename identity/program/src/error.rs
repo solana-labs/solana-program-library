@@ -22,6 +22,9 @@ pub enum IdentityError {
     /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
+    /// The provided Identity does not have an attestation registered by the required IDV
+    #[error("The provided identity does have an attestation registered by the required IDV")]
+    UnauthorizedIdentity,
 }
 impl From<IdentityError> for ProgramError {
     fn from(e: IdentityError) -> Self {
