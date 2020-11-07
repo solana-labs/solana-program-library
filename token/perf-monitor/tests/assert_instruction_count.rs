@@ -34,8 +34,10 @@ fn run_program(
     parameter_accounts: &[KeyedAccount],
     instruction_data: &[u8],
 ) -> Result<u64, InstructionError> {
-    let mut program_account = SolanaAccount::default();
-    program_account.data = load_program("../../target/deploy/spl_token.so");
+    let program_account = SolanaAccount {
+        data: load_program("../../target/deploy/spl_token.so"),
+        ..SolanaAccount::default()
+    };
     let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
 
