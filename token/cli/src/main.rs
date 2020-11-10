@@ -286,7 +286,7 @@ fn command_create_account(
         )
     } else {
         let account = get_associated_token_address(&config.owner, &token);
-        println!("Creating associated account for {}", &config.owner);
+        println!("Creating account {}", account);
         (
             account,
             true,
@@ -443,7 +443,7 @@ fn command_transfer(
         if account_data.owner == system_program::id() {
             recipient_token_account = get_associated_token_address(&recipient, &mint_pubkey);
             println!(
-                "Recipient's associated token account: {}",
+                "  Recipient associated token account: {}",
                 recipient_token_account
             );
 
@@ -471,7 +471,7 @@ fn command_transfer(
                         .rpc_client
                         .get_minimum_balance_for_rent_exemption(Account::LEN)?;
                     println!(
-                        "Funding recipient: {} ({} SOL)",
+                        "  Funding recipient: {} ({} SOL)",
                         recipient_token_account,
                         lamports_to_sol(minimum_balance_for_rent_exemption)
                     );
@@ -1162,7 +1162,7 @@ fn main() {
                         .help(
                             "Specify the account keypair. \
                              This may be a keypair file or the ASK keyword. \
-                             [default: RANDOMLY GENERATED KEYPAIR]"
+                             [default: associated token account for --owner]"
                         ),
                 )
                 .nonce_args(true)
@@ -1351,7 +1351,7 @@ fn main() {
                         .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
-                        .help("The token account address of recipient [default: associated token account]"),
+                        .help("The token account address of recipient [default: associated token account for --owner]"),
                 )
                 .arg(mint_decimals_arg())
                 .arg(multisig_signer_arg())

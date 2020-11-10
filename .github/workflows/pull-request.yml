@@ -128,7 +128,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: programs
-          path: "*.so"
+          path: "target/deploy/*.so"
           if-no-files-found: error
 
   js-test-token:

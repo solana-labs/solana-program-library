@@ -3642,6 +3642,25 @@ mod tests {
                 host_fee_denominator,
             }),
         );
+        let owner_trade_fee_numerator = 0;
+        let owner_trade_fee_denominator = 0;
+        let owner_withdraw_fee_numerator = 0;
+        let owner_withdraw_fee_denominator = 0;
+        let host_fee_numerator = 0;
+        let host_fee_denominator = 0;
+        check_valid_swap_curve(
+            CurveType::ConstantProduct,
+            Box::new(ConstantProductCurve {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+                host_fee_numerator,
+                host_fee_denominator,
+            }),
+        );
     }
 
     #[test]

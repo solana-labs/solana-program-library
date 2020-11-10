@@ -11,7 +11,10 @@ edition = "2018"
 no-entrypoint = []
 
 [dependencies]
-solana-program = "1.4.4"
+solana-program = "1.4.5"
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
