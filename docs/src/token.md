@@ -328,7 +328,7 @@ of all keypairs allowed (`N`) to sign for the multisig account. This example
 will use a "2 of 3" multisig account.  That is, two of the three allowed keypairs
 must sign all transactions.
 
-NOTE: SPL Token Multisig accounts are limited to a signing set of eleven signers
+NOTE: SPL Token Multisig accounts are limited to a signer-set of eleven signers
 (1 <= `N` <= 11) and minimum signers must be no more than `N` (1 <= `M` <= `N`)
 ```
 $ spl-token create-multisig 2 BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ \
@@ -359,7 +359,7 @@ Signature: yy7dJiTx1t7jvLPCRX5RQWxNRNtFwvARSfbMJG94QKEiNS4uZcp3GhhjnMgZ1CaWMWe4j
 ```
 
 To demonstrate that the mint account is now under control of the multisig
-account, attempting to mint with one (online) signer fails
+account, attempting to mint with one multisig signer fails
 ```
 $ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
@@ -370,7 +370,7 @@ Minting 1 tokens
 RPC response error -32002: Transaction simulation failed: Error processing Instruction 0: missing required signature for instruction
 ```
 
-But repeating with a second (again, online) signer, succeeds
+But repeating with a second multisig signer, succeeds
 ```
 spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
