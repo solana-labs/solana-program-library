@@ -192,7 +192,7 @@ impl Processor {
         let (_, withdraw_bump_seed) = Self::find_authority_bump_seed(
             program_id,
             stake_pool_info.key,
-            Self::AUTHORITY_DEPOSIT,
+            Self::AUTHORITY_WITHDRAW,
         );
         let stake_pool = State::Init(StakePool {
             owner: *owner_info.key,
