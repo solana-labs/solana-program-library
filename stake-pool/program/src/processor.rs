@@ -39,10 +39,8 @@ impl Processor {
         program_id: &Pubkey,
         my_info: &Pubkey,
         authority_type: &[u8],
-    ) -> u8 {
-        let (_pubkey, bump_seed) =
-            Pubkey::find_program_address(&[&my_info.to_bytes()[..32], authority_type], program_id);
-        bump_seed
+    ) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[&my_info.to_bytes()[..32], authority_type], program_id)
     }
 
     /// Issue a stake_split instruction.
@@ -186,18 +184,20 @@ impl Processor {
             return Err(Error::FeeTooHigh.into());
         }
 
+        let (_, deposit_bump_seed) = Self::find_authority_bump_seed(
+            program_id,
+            stake_pool_info.key,
+            Self::AUTHORITY_DEPOSIT,
+        );
+        let (_, withdraw_bump_seed) = Self::find_authority_bump_seed(
+            program_id,
+            stake_pool_info.key,
+            Self::AUTHORITY_DEPOSIT,
+        );
         let stake_pool = State::Init(StakePool {
             owner: *owner_info.key,
-            deposit_bump_seed: Self::find_authority_bump_seed(
-                program_id,
-                stake_pool_info.key,
-                Self::AUTHORITY_DEPOSIT,
-            ),
-            withdraw_bump_seed: Self::find_authority_bump_seed(
-                program_id,
-                stake_pool_info.key,
-                Self::AUTHORITY_WITHDRAW,
-            ),
+            deposit_bump_seed,
+            withdraw_bump_seed,
             pool_mint: *pool_mint_info.key,
             owner_fee_account: *owner_fee_info.key,
             token_program_id: *token_program_info.key,

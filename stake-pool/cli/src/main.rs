@@ -143,12 +143,10 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
     let default_decimals = native_mint::DECIMALS;
 
     // Calculate withdraw authority used for minting pool tokens
-    let (withdraw_authority, _) = Pubkey::find_program_address(
-        &[
-            &pool_account.pubkey().to_bytes()[..32],
-            PoolProcessor::AUTHORITY_WITHDRAW,
-        ],
+    let (withdraw_authority, _) = PoolProcessor::find_authority_bump_seed(
         &spl_stake_pool::id(),
+        &pool_account.pubkey(),
+        PoolProcessor::AUTHORITY_WITHDRAW,
     );
 
     if config.verbose {
@@ -220,7 +218,6 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
         &pool_account,
         &mint_account,
         &pool_fee_account,
-        config.owner.as_ref(),
     ];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
@@ -378,6 +375,22 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     Ok(None)
 }
 
+fn stake_amount_to_pool_tokens(pool_data: &StakePool, amount: u64) -> u64 {
+    (amount as u128)
+        .checked_mul(pool_data.pool_total as u128)
+        .unwrap()
+        .checked_div(pool_data.stake_total as u128)
+        .unwrap() as u64
+}
+
+fn pool_tokens_to_stake_amount(pool_data: &StakePool, tokens: u64) -> u64 {
+    (tokens as u128)
+        .checked_mul(pool_data.stake_total as u128)
+        .unwrap()
+        .checked_div(pool_data.pool_total as u128)
+        .unwrap() as u64
+}
+
 fn command_withdraw(
     config: &Config,
     pool: &Pubkey,
@@ -411,11 +424,7 @@ fn command_withdraw(
     }
 
     // Check burn_from balance
-    let max_withdraw_amount = (account_data.amount as u128)
-        .checked_mul(pool_data.stake_total as u128)
-        .unwrap()
-        .checked_div(pool_data.pool_total as u128)
-        .unwrap() as u64;
+    let max_withdraw_amount = pool_tokens_to_stake_amount(&pool_data, account_data.amount);
     if max_withdraw_amount < amount {
         println!(
             "Not enough token balance to withdraw {} SOL.\nMaximum withdraw amount is {} SOL.",
@@ -448,11 +457,7 @@ fn command_withdraw(
         let mut total_rent_free_balances: u64 = 0;
 
         // Calculate amount of tokens to burn
-        let tokens_to_burn = (amount as u128)
-            .checked_mul(pool_data.pool_total as u128)
-            .unwrap()
-            .checked_div(pool_data.stake_total as u128)
-            .unwrap() as u64;
+        let tokens_to_burn = stake_amount_to_pool_tokens(&pool_data, amount);
 
         instructions.push(
             // Approve spending token
