@@ -318,27 +318,20 @@ impl Processor {
             return Err(SwapError::IncorrectFeeAccount.into());
         }
 
+        let user_source_account = Self::unpack_token_account(&source_info.data.borrow())?;
         let source_account = Self::unpack_token_account(&swap_source_info.data.borrow())?;
         let dest_account = Self::unpack_token_account(&swap_destination_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
 
         let identity_account = Self::unpack_identity_account(&identity_account_info.data.borrow())?;
+
+        // verify that the user is allowed to use the pool
         let identity_verification_result = Self::verify_identity_account
-            (&identity_account, &source_account.owner, &token_swap.idv);
+            (&identity_account, &user_source_account.owner, &token_swap.idv);
 
         // Stop if identity verification fails
         if identity_verification_result.is_err() {
             return identity_verification_result.map_err(|e| Into::<ProgramError>::into(e))
-        }
-
-        if identity_account.num_attestations < 1 {
-            info!("No attestations for identity");
-            return Err(SwapError::UnauthorizedIdentity.into());
-        }
-
-        if identity_account.attestation.idv.to_pubkey() != token_swap.idv {
-            info!("Identity not attested by correct IDV");
-            return Err(SwapError::UnauthorizedIdentity.into());
         }
 
         let result = token_swap

@@ -104,6 +104,7 @@ impl Processor {
         expected_idv: &Pubkey,
     ) -> Result<(), IdentityError> {
         if *expected_owner != identity.owner.to_pubkey() {
+            info!("Identity account does not have the correct owner");
             return Err(IdentityError::OwnerMismatch.into());
         }
         if identity.num_attestations < 1 {

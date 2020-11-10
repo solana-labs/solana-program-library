@@ -63,7 +63,7 @@ enum AccountState {
 export const ATTESTATION_SIZE = 32;
 type Attestation = {
   idv: PublicKey;
-  attestationData: string;
+  attestationData: Uint8Array;
 };
 
 /**
@@ -90,6 +90,10 @@ export const IdentityAccountLayout: BufferLayout.Layout = BufferLayout.struct([
     'attestation'
   ),
 ]);
+
+const arraysEqual = (first: Uint8Array, second: Uint8Array) =>
+  first.length === second.length &&
+  first.every((value, index) => value === second[index]);
 
 /**
  * An Identity Client
@@ -206,13 +210,17 @@ export class Identity {
     return this.accountInfoDataToIdentity(data);
   }
 
-  accountInfoDataToIdentity(data: Buffer) {
+  accountInfoDataToIdentity(data: Buffer): IdentityAccountInfo {
     const decodedAccountInfo = IdentityAccountLayout.decode(data);
 
-    const attestation = decodedAccountInfo.numAttestations
+    const attestation:
+      | Attestation
+      | undefined = decodedAccountInfo.numAttestations
       ? {
           idv: new PublicKey(decodedAccountInfo.attestation.idv),
-          attestationData: decodedAccountInfo.attestation.attestationData.toString(),
+          attestationData: new Uint8Array(
+            decodedAccountInfo.attestation.attestationData
+          ),
         }
       : undefined;
 
@@ -266,7 +274,7 @@ export class Identity {
   async attest(
     identityAccount: PublicKey,
     idv: Account,
-    attestation: string
+    attestation: string | Uint8Array
   ): Promise<void> {
     const transaction = new Transaction();
     transaction.add(
@@ -299,7 +307,7 @@ export class Identity {
     programId: PublicKey,
     identityAccount: PublicKey,
     idv: PublicKey,
-    attestation: string
+    attestation: string | Uint8Array
   ): TransactionInstruction {
     const keys = [
       { pubkey: identityAccount, isSigner: false, isWritable: true },
@@ -310,10 +318,15 @@ export class Identity {
       BufferLayout.blob(ATTESTATION_SIZE, 'attestationData'),
     ]);
     const data = Buffer.alloc(dataLayout.span);
+
+    const attestationData =
+      typeof attestation === 'string'
+        ? Buffer.from(attestation, 'utf8')
+        : Buffer.from(attestation);
     dataLayout.encode(
       {
         instruction: Instruction.ATTEST,
-        attestationData: Buffer.from(attestation, 'utf8'),
+        attestationData,
       },
       data
     );
@@ -328,13 +341,16 @@ export class Identity {
   async hasAttestation(
     identityAccount: PublicKey,
     idv: PublicKey,
-    attestationData: string
+    attestationData: Uint8Array
   ): Promise<boolean> {
     const accountInfo = await this.getAccountInfo(identityAccount);
 
     if (!accountInfo.attestation) return false;
     if (accountInfo.attestation.idv.toBase58() !== idv.toBase58()) return false;
 
-    return accountInfo.attestation.attestationData === attestationData;
+    return arraysEqual(
+      accountInfo.attestation.attestationData,
+      attestationData
+    );
   }
 }
