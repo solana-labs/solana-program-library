@@ -84,11 +84,12 @@ declare module '@solana/spl-token-swap' {
       authority: PublicKey,
       tokenAccountA: PublicKey,
       tokenAccountB: PublicKey,
-      tokenPool: PublicKey,
+      poolToken: PublicKey,
       mintA: PublicKey,
       mintB: PublicKey,
       feeAccount: PublicKey,
       tokenAccountPool: PublicKey,
+      swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       nonce: number,
       curveType: number,
@@ -100,7 +101,6 @@ declare module '@solana/spl-token-swap' {
       ownerWithdrawFeeDenominator: number,
       hostFeeNumerator: number,
       hostFeeDenominator: number,
-      swapProgramId: PublicKey,
     ): Promise<TokenSwap>;
 
     swap(
@@ -130,14 +130,9 @@ declare module '@solana/spl-token-swap' {
     ): TransactionInstruction;
 
     deposit(
-      authority: PublicKey,
-      sourceA: PublicKey,
-      sourceB: PublicKey,
-      intoA: PublicKey,
-      intoB: PublicKey,
-      poolToken: PublicKey,
+      userAccountA: PublicKey,
+      userAccountB: PublicKey,
       poolAccount: PublicKey,
-      tokenProgramId: PublicKey,
       poolTokenAmount: number | Numberu64,
       maximumTokenA: number | Numberu64,
       maximumTokenB: number | Numberu64,
