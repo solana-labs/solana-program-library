@@ -1,13 +1,15 @@
 import chai from 'chai';
 import dirtyChai from 'dirty-chai';
 import { createAccount, loadIdentityProgram } from './utils';
-import { ATTESTATION_SIZE, Identity } from '../src/client/identity';
+import { ATTESTATION_SIZE, Identity } from '../src';
 import { Account, PublicKey } from '@solana/web3.js';
 
 chai.use(dirtyChai);
 const { expect } = chai;
 
-const attestation = 'hello'.padStart(ATTESTATION_SIZE, ' ');
+const attestation = new Uint8Array(
+  Buffer.from('hello'.padStart(ATTESTATION_SIZE, ' '), 'utf-8')
+);
 
 let identity: Identity;
 let owner: Account;
