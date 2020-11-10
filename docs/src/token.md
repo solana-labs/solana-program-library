@@ -286,7 +286,7 @@ The main difference in `spl-token` command line usage when referencing multisig
 accounts is in specifying the `--owner` argument. Typically the signer specified
 by this argument directly provides a signature granting its authority, but in
 the multisig case it just points to the address of the multisig account.
-Signatures are then provided by the multisig signer set members specified by the
+Signatures are then provided by the multisig signer-set members specified by the
 `--multisig-signer` argument.
 
 Multisig accounts can be used for any authority on an SPL Token mint or token
@@ -301,7 +301,7 @@ account.
 
 ### Example: Mint with multisig authority
 
-First create keypairs to act as the multisig signer set. In reality, these can
+First create keypairs to act as the multisig signer-set. In reality, these can
 be any supported signer, like: a Ledger hardware wallet, a keypair file, or
 a paper wallet. For convenience, keypair files will be used in this example.
 ```
@@ -311,7 +311,7 @@ Wrote new keypair to signer-2.json
 Wrote new keypair to signer-3.json
 ```
 
-In order to create the multisig account, the public keys of the signer set must
+In order to create the multisig account, the public keys of the signer-set must
 be collected.
 ```
 $ for i in $(seq 3); do SIGNER="signer-${i}.json"; echo "$SIGNER: $(solana-keygen pubkey "$SIGNER")"; done
@@ -389,8 +389,8 @@ example. Be sure to familiarize yourself with that process, [offline signing](ht
 and the [durable nonce](https://docs.solana.com/offline-signing/durable-nonce)
 feature before continuing.
 
-This example will use the same mint, token and multisig accounts as the online
-example. As well as multisig account signer set keypair file names.
+This example will use the same mint account, token account, multisig account,
+and multisig signer-set keypair filenames as the online example.
 
 A nonce account at `Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj` will be used
 ```
