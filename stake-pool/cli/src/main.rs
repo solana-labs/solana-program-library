@@ -145,17 +145,17 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
     let pool_account = Keypair::new();
     println!("Creating stake pool {}", pool_account.pubkey());
 
-    let mint_accont_balance = config
+    let mint_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(TokenMint::LEN)?;
-    let pool_fee_accont_balance = config
+    let pool_fee_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(TokenAccount::LEN)?;
-    let pool_accont_balance = config
+    let pool_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(PoolState::LEN)?;
     let total_rent_free_balances =
-        mint_accont_balance + pool_fee_accont_balance + pool_accont_balance;
+        mint_account_balance + pool_fee_account_balance + pool_account_balance;
 
     let default_decimals = native_mint::DECIMALS;
 
@@ -178,7 +178,7 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
             system_instruction::create_account(
                 &config.fee_payer.pubkey(),
                 &mint_account.pubkey(),
-                mint_accont_balance,
+                mint_account_balance,
                 TokenMint::LEN as u64,
                 &spl_token::id(),
             ),
@@ -186,7 +186,7 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
             system_instruction::create_account(
                 &config.fee_payer.pubkey(),
                 &pool_fee_account.pubkey(),
-                pool_fee_accont_balance,
+                pool_fee_account_balance,
                 TokenAccount::LEN as u64,
                 &spl_token::id(),
             ),
@@ -194,7 +194,7 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
             system_instruction::create_account(
                 &config.fee_payer.pubkey(),
                 &pool_account.pubkey(),
-                pool_accont_balance,
+                pool_account_balance,
                 PoolState::LEN as u64,
                 &spl_stake_pool::id(),
             ),
@@ -273,7 +273,7 @@ fn command_deposit(
                 token_receiver_account.pubkey()
             );
 
-            let token_receiver_accont_balance = config
+            let token_receiver_account_balance = config
                 .rpc_client
                 .get_minimum_balance_for_rent_exemption(TokenAccount::LEN)?;
 
@@ -282,7 +282,7 @@ fn command_deposit(
                 system_instruction::create_account(
                     &config.fee_payer.pubkey(),
                     &token_receiver_account.pubkey(),
-                    token_receiver_accont_balance,
+                    token_receiver_account_balance,
                     TokenAccount::LEN as u64,
                     &spl_token::id(),
                 ),
@@ -297,7 +297,7 @@ fn command_deposit(
 
             signers.push(&token_receiver_account);
 
-            total_rent_free_balances += token_receiver_accont_balance;
+            total_rent_free_balances += token_receiver_account_balance;
 
             token_receiver_account.pubkey()
         }
@@ -507,7 +507,7 @@ fn command_withdraw(
                         stake_receiver_account.pubkey()
                     );
 
-                    let stake_receiver_accont_balance = config
+                    let stake_receiver_account_balance = config
                         .rpc_client
                         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?;
 
@@ -516,7 +516,7 @@ fn command_withdraw(
                         system_instruction::create_account(
                             &config.fee_payer.pubkey(),
                             &stake_receiver_account.pubkey(),
-                            stake_receiver_accont_balance,
+                            stake_receiver_account_balance,
                             STAKE_STATE_LEN as u64,
                             &stake_program_id(),
                         ),
@@ -524,7 +524,7 @@ fn command_withdraw(
 
                     signers.push(&stake_receiver_account);
 
-                    total_rent_free_balances += stake_receiver_accont_balance;
+                    total_rent_free_balances += stake_receiver_account_balance;
 
                     stake_receiver_account.pubkey()
                 }
@@ -661,7 +661,7 @@ fn main() {
                     .validator(is_pubkey)
                     .value_name("ADDRESS")
                     .takes_value(true)
-                    .help("Account to receive pool token. Must be initialized account of the stake pool token. Defaults to the new token account."),
+                    .help("Account to receive pool token. Must be initialized account of the stake pool token. Defaults to the new pool token account."),
             )
         )
         .subcommand(SubCommand::with_name("list").about("List stake accounts managed by this pool")
@@ -675,7 +675,7 @@ fn main() {
                     .help("Stake pool address."),
             )
         )
-        .subcommand(SubCommand::with_name("withdraw").about("Withdraw amount from the staking pool")
+        .subcommand(SubCommand::with_name("withdraw").about("Withdraw amount from the stake pool")
             .arg(
                 Arg::with_name("pool")
                     .long("pool")
@@ -701,7 +701,7 @@ fn main() {
                     .value_name("ADDRESS")
                     .takes_value(true)
                     .required(true)
-                    .help("Account to burn tokens from. Should be owned by the client."),
+                    .help("Account to burn tokens from. Must be owned by the client."),
             )
             .arg(
                 Arg::with_name("stake_receiver")
