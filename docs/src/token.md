@@ -301,9 +301,9 @@ account.
 
 ### Example: Mint with multisig authority
 
-First create keypairs to act as the multisig signer set. In reality. these can
-be any supported signer; Ledger hardware wallet, keypair file, paper wallet. For
-convenience, keypair files will be used in this example.
+First create keypairs to act as the multisig signer set. In reality, these can
+be any supported signer, like: a Ledger hardware wallet, a keypair file, or
+a paper wallet. For convenience, keypair files will be used in this example.
 ```
 $ for i in $(seq 3); do solana-keygen new --no-passphrase -so "signer-${i}.json"; done
 Wrote new keypair to signer-1.json
@@ -385,7 +385,7 @@ Signature: 2ubqWqZb3ooDuc8FLaBkqZwzguhtMgQpgMAHhKsWcUzjy61qtJ7cZ1bfmYktKUfnbMYWT
 ### Example: Mint with multisig authority and offline signers
 
 This example builds off of the [online mint with multisig](#example-mint-with-multisig-authority)
-example. Be sure to familiarize yourself with it, [offline signing](https://docs.solana.com/offline-signing)
+example. Be sure to familiarize yourself with that process, [offline signing](https://docs.solana.com/offline-signing),
 and the [durable nonce](https://docs.solana.com/offline-signing/durable-nonce)
 feature before continuing.
 
@@ -397,20 +397,20 @@ A nonce account at `Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj` will be used
 $ solana nonce-account Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj
 Balance: 0.01 SOL
 Minimum Balance Required: 0.00144768 SOL
-Nonce: 6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E
+Nonce blockhash: 6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E
 Fee: 5000 lamports per signature
 Authority: 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE
 ```
 
-For the fee-payer and nonce-authority roles a local hot wallet at
-`5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE` is used.
+For the fee-payer and nonce-authority roles, a local hot wallet at
+`5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE` will be used.
 
 First a template command is built by specifying all signers by their public
 key. Upon running this command, all signers will be listed as "Absent Signers"
 in the output. This command will be run by each offline signer to generate the
 corresponding signature.
 
-NOTE: The argument to the `--blockhash` parameter is the "Nonce:" field from
+NOTE: The argument to the `--blockhash` parameter is the "Nonce blockhash:" field from
 the designated durable nonce account.
 
 ```
