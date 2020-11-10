@@ -4,6 +4,7 @@ members = [
   "identity/program",
   "memo/program",
   "shared-memory/program",
+  "stake-pool/cli",
   "stake-pool/program",
   "themis/program_ristretto",
   "token-lending/program",

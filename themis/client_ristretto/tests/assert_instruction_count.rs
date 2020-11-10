@@ -20,11 +20,10 @@ use spl_themis_ristretto::{
     instruction::ThemisInstruction,
     state::{generate_keys, /*recover_scalar,*/ Policies, User},
 };
-use std::{fs::File, io::Read, path::PathBuf};
+use std::{fs::File, io::Read};
 
 fn load_program(name: &str) -> Vec<u8> {
-    let path = PathBuf::from(name).with_extension("so");
-    let mut file = File::open(path).unwrap();
+    let mut file = File::open(name).unwrap();
 
     let mut program = Vec::new();
     file.read_to_end(&mut program).unwrap();
@@ -37,7 +36,7 @@ fn run_program(
     instruction_data: &[u8],
 ) -> Result<u64, InstructionError> {
     let mut program_account = Account::default();
-    program_account.data = load_program("spl_themis_ristretto");
+    program_account.data = load_program("../../target/deploy/spl_themis_ristretto.so");
     let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
     invoke_context.bpf_compute_budget = BpfComputeBudget {

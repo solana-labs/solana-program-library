@@ -5,7 +5,6 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     info,
-    log::sol_log_compute_units,
     program::{invoke, invoke_signed},
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -47,8 +46,6 @@ pub fn process_instruction(
         &[bump_seed],
     ];
 
-    sol_log_compute_units();
-
     // Fund the associated token account with the minimum balance to be rent exempt
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
     let required_lamports = rent
@@ -57,6 +54,10 @@ pub fn process_instruction(
         .saturating_sub(associated_token_account_info.lamports());
 
     if required_lamports > 0 {
+        info!(&format!(
+            "Transfer {} lamports to the associated token account",
+            required_lamports
+        ));
         invoke(
             &system_instruction::transfer(
                 &funder_info.key,
@@ -71,7 +72,7 @@ pub fn process_instruction(
         )?;
     }
 
-    // Allocate space for the associated token account
+    info!("Allocate space for the associated token account");
     invoke_signed(
         &system_instruction::allocate(
             associated_token_account_info.key,
@@ -84,7 +85,7 @@ pub fn process_instruction(
         &[&associated_token_account_signer_seeds],
     )?;
 
-    // Assign the associated token account to the SPL Token program
+    info!("Assign the associated token account to the SPL Token program");
     invoke_signed(
         &system_instruction::assign(associated_token_account_info.key, &spl_token::id()),
         &[
@@ -94,7 +95,7 @@ pub fn process_instruction(
         &[&associated_token_account_signer_seeds],
     )?;
 
-    // Initialize the associated token account
+    info!("Initialize the associated token account");
     invoke(
         &spl_token::instruction::initialize_account(
             &spl_token::id(),

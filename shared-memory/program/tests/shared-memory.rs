@@ -11,14 +11,11 @@ use solana_sdk::{
     account::Account, keyed_account::KeyedAccount, process_instruction::MockInvokeContext,
 };
 use spl_shared_memory::entrypoint;
-use std::{fs::File, io::Read, path::PathBuf};
+use std::{fs::File, io::Read};
 
 fn load_program(name: &str) -> Vec<u8> {
-    let mut path = PathBuf::new();
-    path.push(name);
-    path.set_extension("so");
-    let mut file = File::open(&path)
-        .unwrap_or_else(|err| panic!("Unable to open {}: {}", path.display(), err));
+    let mut file =
+        File::open(&name).unwrap_or_else(|err| panic!("Unable to open {}: {}", name, err));
 
     let mut program = Vec::new();
     file.read_to_end(&mut program).unwrap();
@@ -30,8 +27,10 @@ fn run_program(
     parameter_accounts: &[KeyedAccount],
     instruction_data: &[u8],
 ) -> Result<u64, InstructionError> {
-    let mut program_account = Account::default();
-    program_account.data = load_program("spl_shared_memory");
+    let program_account = Account {
+        data: load_program("../../target/deploy/spl_shared_memory.so"),
+        ..Account::default()
+    };
     let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
     let executable = EbpfVm::<solana_bpf_loader_program::BPFError>::create_executable_from_elf(

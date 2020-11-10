@@ -10,6 +10,5 @@ if [[ $1 = -v ]]; then
   export RUST_LOG=solana=debug
 fi
 
-bpf=1 cargo test
-# TODO: bpf=0 not supported until native CPI rework in the monorepo completes
-#bpf=0 cargo test
+cargo test
+cargo test-bpf

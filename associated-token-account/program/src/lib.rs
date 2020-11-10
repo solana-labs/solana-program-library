@@ -1,11 +1,11 @@
-//! Convention for associating token accounts with a primary account (such as a user wallet)
+//! Convention for associating token accounts with a user wallet
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
 mod entrypoint;
 pub mod processor;
 
-// Export current sdk types for downstream users building with a different sdk version
+// Export current SDK types for downstream users building with a different SDK version
 pub use solana_program;
 use solana_program::{
     instruction::{AccountMeta, Instruction},
@@ -14,7 +14,7 @@ use solana_program::{
     sysvar,
 };
 
-solana_program::declare_id!("3medvrcM8s3UnkoYqqV3RAURii1ysuT5oD7t8nmfgJmj");
+solana_program::declare_id!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
 pub(crate) fn get_associated_token_address_and_bump_seed(
     wallet_address: &Pubkey,
@@ -31,7 +31,7 @@ pub(crate) fn get_associated_token_address_and_bump_seed(
     )
 }
 
-/// Derives the associated SPL token address for the given wallet address and SPL Token mint
+/// Derives the associated token account address for the given wallet address and token mint
 pub fn get_associated_token_address(
     wallet_address: &Pubkey,
     spl_token_mint_address: &Pubkey,
@@ -39,14 +39,14 @@ pub fn get_associated_token_address(
     get_associated_token_address_and_bump_seed(&wallet_address, &spl_token_mint_address, &id()).0
 }
 
-/// Create an associated token account for a wallet address
+/// Create an associated token account for the given wallet address and token mint
 ///
 /// Accounts expected by this instruction:
 ///
 ///   0. `[writeable,signer]` Funding account (must be a system account)
-///   1. `[writeable]` Associated token account address
+///   1. `[writeable]` Associated token account address to be created
 ///   2. `[]` Wallet address for the new associated token account
-///   3. `[]` The SPL token mint for the associated token account
+///   3. `[]` The token mint for the new associated token account
 ///   4. `[]` System program
 ///   4. `[]` SPL Token program
 ///   5. `[]` Rent sysvar
