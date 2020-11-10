@@ -280,6 +280,235 @@ $ spl-token supply 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 1
 ```
 
+### Mutlisig usage
+
+The main difference in `spl-token` command line usage when referencing multisig
+accounts is in specifying the `--owner` argument. Typically the signer specified
+by this argument directly provides a signature granting its authority, but in
+the multisig case it just points to the address of the multisig account.
+Signatures are then provided by the multisig signer set members specified by the
+`--multisig-signer` argument.
+
+Multisig accounts can be used for any authority on an SPL Token mint or token
+account.
+- Mint account mint authority: `spl-token mint ...`, `spl-token authorize ... mint ...`
+- Mint account freeze authority: `spl-token freeze ...`, `spl-token thaw ...`,
+`spl-token authorize ... freeze ...`
+- Token account owner authority: `spl-token transfer ...`, `spl-token approve ...`,
+`spl-token revoke ...`, `spl-token burn ...`, `spl-token wrap ...`,
+`spl-token unwrap ...`, `spl-token authorize ... owner ...`
+- Token account close authority: `spl-token close ...`, `spl-token authorize ... close ...`
+
+### Example: Mint with multisig authority
+
+First create keypairs to act as the multisig signer set. In reality. these can
+be any supported signer; Ledger hardware wallet, keypair file, paper wallet. For
+convenience, keypair files will be used in this example.
+```
+$ for i in $(seq 3); do solana-keygen new --no-passphrase -so "signer-${i}.json"; done
+Wrote new keypair to signer-1.json
+Wrote new keypair to signer-2.json
+Wrote new keypair to signer-3.json
+```
+
+In order to create the multisig account, the public keys of the signer set must
+be collected.
+```
+$ for i in $(seq 3); do SIGNER="signer-${i}.json"; echo "$SIGNER: $(solana-keygen pubkey "$SIGNER")"; done
+signer-1.json: BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ
+signer-2.json: DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY
+signer-3.json: D7ssXHrZJjfpZXsmDf8RwfPxe1BMMMmP1CtmX3WojPmG
+```
+
+Now the multisig account can be created with the `spl-token create-multisig`
+subcommand. Its first positional argument is the minimum number of signers (`M`)
+that must sign a transaction affecting a token/mint account that is controlled
+by this multisig account. The remaining positional arguments are the public keys
+of all keypairs allowed (`N`) to sign for the multisig account. This example
+will use a "2 of 3" multisig account.  That is, two of the three allowed keypairs
+must sign all transactions.
+
+NOTE: SPL Token Multisig accounts are limited to a signing set of eleven signers
+(1 <= `N` <= 11) and minimum signers must be no more than `N` (1 <= `M` <= `N`)
+```
+$ spl-token create-multisig 2 BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ \
+DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY D7ssXHrZJjfpZXsmDf8RwfPxe1BMMMmP1CtmX3WojPmG
+Creating 2/3 multisig 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re
+Signature: 2FN4KXnczAz33SAxwsuevqrD1BvikP6LUhLie5Lz4ETt594X8R7yvMZzZW2zjmFLPsLQNHsRuhQeumExHbnUGC9A
+```
+
+Next create the token mint and recieving accounts
+[as previously described](#example-creating-your-own-fungible-token)
+```
+$ spl-token create-token
+Creating token 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
+Signature: 3n6zmw3hS5Hyo5duuhnNvwjAbjzC42uzCA3TTsrgr9htUonzDUXdK1d8b8J77XoeSherqWQM8mD8E1TMYCpksS2r
+
+$ spl-token create-account 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
+Creating account EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
+Signature: 5mVes7wjE7avuFqzrmSCWneKBQyPAjasCLYZPNSkmqmk2YFosYWAP9hYSiZ7b7NKpV866x5gwyKbbppX3d8PcE9s
+```
+
+Then set the mint account's minting authority to the multisig account
+```
+$ spl-token authorize 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o mint 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re
+Updating 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
+  Current mint authority: 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE
+  New mint authority: 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re
+Signature: yy7dJiTx1t7jvLPCRX5RQWxNRNtFwvARSfbMJG94QKEiNS4uZcp3GhhjnMgZ1CaWMWe4jVEMy9zQBoUhzomMaxC
+```
+
+To demonstrate that the mint account is now under control of the multisig
+account, attempting to mint with one (online) signer fails
+```
+$ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
+--owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
+--multisig-signer signer-1.json
+Minting 1 tokens
+  Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
+  Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
+RPC response error -32002: Transaction simulation failed: Error processing Instruction 0: missing required signature for instruction
+```
+
+But repeating with a second (again, online) signer, succeeds
+```
+spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
+--owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
+--multisig-signer signer-1.json \
+--multisig-signer signer-2.json
+Minting 1 tokens
+  Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
+  Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
+Signature: 2ubqWqZb3ooDuc8FLaBkqZwzguhtMgQpgMAHhKsWcUzjy61qtJ7cZ1bfmYktKUfnbMYWTC1S8zdKgU6m4THsgspT
+```
+
+### Example: Mint with multisig authority and offline signers
+
+This example builds off of the [online mint with multisig](#example-mint-with-multisig-authority)
+example. Be sure to familiarize yourself with it, [offline signing](https://docs.solana.com/offline-signing)
+and the [durable nonce](https://docs.solana.com/offline-signing/durable-nonce)
+feature before continuing.
+
+This example will use the same mint, token and multisig accounts as the online
+example. As well as multisig account signer set keypair file names.
+
+A nonce account at `Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj` will be used
+```
+$ solana nonce-account Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj
+Balance: 0.01 SOL
+Minimum Balance Required: 0.00144768 SOL
+Nonce: 6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E
+Fee: 5000 lamports per signature
+Authority: 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE
+```
+
+For the fee-payer and nonce-authority roles a local hot wallet at
+`5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE` is used.
+
+First a template command is built by specifying all signers by their public
+key. Upon running this command, all signers will be listed as "Absent Signers"
+in the output. This command will be run by each offline signer to generate the
+corresponding signature.
+
+NOTE: The argument to the `--blockhash` parameter is the "Nonce:" field from
+the designated durable nonce account.
+
+```
+$ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
+--owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
+--multisig-signer BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ \
+--multisig-signer DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY \
+--blockhash 6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E \
+--fee-payer 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE \
+--nonce Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj \
+--nonce-authority 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE \
+--sign-only \
+--mint-decimals 9
+Minting 1 tokens
+  Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
+  Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
+
+Blockhash: 6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E
+Absent Signers (Pubkey):
+ 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE
+ BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ
+ DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY
+```
+
+Next each offline signer executes the template command, replacing each instance
+of their public key with the corresponding keypair.
+```
+spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
+--owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
+--multisig-signer signer-1.json \
+--multisig-signer DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY \
+--blockhash 6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E \
+--fee-payer 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE \
+--nonce Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj \
+--nonce-authority 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE \
+--sign-only \
+--mint-decimals 9
+Minting 1 tokens
+  Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
+  Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
+
+Blockhash: 6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E
+Signers (Pubkey=Signature):
+ BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ=2QVah9XtvPAuhDB2QwE7gNaY962DhrGP6uy9zeN4sTWvY2xDUUzce6zkQeuT3xg44wsgtUw2H5Rf8pEArPSzJvHX
+Absent Signers (Pubkey):
+ 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE
+ DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY
+```
+
+```
+$ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
+--owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
+--multisig-signer BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ \
+--multisig-signer signer-2.json \
+--blockhash 6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E \
+--fee-payer 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE \
+--nonce Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj \
+--nonce-authority 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE \
+--sign-only \
+--mint-decimals 9
+Minting 1 tokens
+  Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
+  Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
+
+Blockhash: 6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E
+Signers (Pubkey=Signature):
+ DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY=2brZbTiCfyVYSCp6vZE3p7qCDeFf3z1JFmJHPBrz8SnWSDZPjbpjsW2kxFHkktTNkhES3y6UULqS4eaWztLW7FrU
+Absent Signers (Pubkey):
+ 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE
+ BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ
+```
+
+Finally, the offline signers communicate the `Pubkey=Signature` pair from the
+output of their command to the party who will broadcast the transaction to the
+cluster. The broadcasting party then runs the template command after modifying
+it as follows:
+1. Replaces any corresponding public keys with their keypair (`--fee-payer ...`
+and `--nonce-authority ...` in this example)
+1. Removes the `--sign-only` argument, and in the case of the `mint` subcommand,
+the `--mint-decimals ...` argument as it will be queried from the cluster
+1. Adds the offline signatures to the template command via the `--signer` argument
+```
+$ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
+--owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
+--multisig-signer BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ \
+--multisig-signer DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY \
+--blockhash 6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E \
+--fee-payer hot-wallet.json \
+--nonce Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj \
+--nonce-authority hot-wallet.json \
+--signer BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ=2QVah9XtvPAuhDB2QwE7gNaY962DhrGP6uy9zeN4sTWvY2xDUUzce6zkQeuT3xg44wsgtUw2H5Rf8pEArPSzJvHX \
+--signer DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY=2brZbTiCfyVYSCp6vZE3p7qCDeFf3z1JFmJHPBrz8SnWSDZPjbpjsW2kxFHkktTNkhES3y6UULqS4eaWztLW7FrU
+Minting 1 tokens
+  Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
+  Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
+Signature: 2AhZXVPDBVBxTQLJohyH1wAhkkSuxRiYKomSSXtwhPL9AdF3wmhrrJGD7WgvZjBPLZUFqWrockzPp9S3fvzbgicy
+```
+
 ## JSON RPC methods
 
 There is a rich set of JSON RPC methods available for use with SPL Token:
