@@ -6,7 +6,7 @@ use clap::{
 use solana_account_decoder::UiAccountEncoding;
 use solana_clap_utils::{
     input_parsers::pubkey_of,
-    input_validators::{is_amount, is_keypair, is_pubkey, is_url},
+    input_validators::{is_amount, is_keypair, is_parsable, is_pubkey, is_url},
     keypair::signer_from_path,
 };
 use solana_client::{
@@ -113,23 +113,6 @@ fn _check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Er
     } else {
         Ok(())
     }
-}
-
-const MAX_FLOAT_FRACTION_ERROR: f64 = 0.000000001;
-const MAX_DENOMINATOR: u64 = 1_000_000_000;
-fn float_to_numerator_denominator(value: f64) -> (u64, u64) {
-    let mut denominator: u64 = 1;
-    let mut numerator: u64;
-    loop {
-        let multiplied: f64 = value * denominator as f64;
-        numerator = multiplied.round() as u64;
-        let error = (multiplied / numerator as f64 - numerator as f64).abs();
-        if error < MAX_FLOAT_FRACTION_ERROR || denominator >= MAX_DENOMINATOR {
-            break;
-        }
-        denominator *= 10;
-    }
-    (numerator, denominator)
 }
 
 fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
@@ -627,13 +610,24 @@ fn main() {
         )
         .subcommand(SubCommand::with_name("create-pool").about("Create a new stake pool")
             .arg(
-                Arg::with_name("fee")
-                    .long("fee")
-                    .validator(is_amount)
-                    .value_name("FEE")
+                Arg::with_name("fee_numerator")
+                    .long("fee-numerator")
+                    .short("n")
+                    .validator(is_parsable::<u64>)
+                    .value_name("NUMERATOR")
                     .takes_value(true)
                     .required(true)
-                    .help("Pool fee taken from each pool token payout, 0.01 means 1% fee"),
+                    .help("Fee numerator, fee amount is numerator divided by denominator."),
+            )
+            .arg(
+                Arg::with_name("fee_denominator")
+                    .long("fee-denominator")
+                    .short("d")
+                    .validator(is_parsable::<u64>)
+                    .value_name("DENOMINATOR")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Fee denominator, fee amount is numerator divided by denominator."),
             )
         )
         .subcommand(SubCommand::with_name("deposit").about("Add stake account to the stake pool")
@@ -759,8 +753,8 @@ fn main() {
 
     let _ = match matches.subcommand() {
         ("create-pool", Some(arg_matches)) => {
-            let (numerator, denominator) =
-                float_to_numerator_denominator(value_t_or_exit!(arg_matches, "fee", f64));
+            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
+            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
             command_create_pool(
                 &config,
                 PoolFee {
