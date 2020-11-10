@@ -21,7 +21,7 @@ Full documentation is available at https://spl.solana.com
 ### Environment Setup
 
 1. Install the latest Rust stable from https://rustup.rs/
-2. Install Solana v1.4.5 or later from from https://docs.solana.com/cli/install-solana-cli-tools
+2. Install Solana v1.4.6 or later from from https://docs.solana.com/cli/install-solana-cli-tools
 
 ### Build
 
