@@ -146,3 +146,20 @@ pub fn authorize(
         account_metas,
     )
 }
+
+/// FIXME copied from the stake program
+pub fn merge(
+    destination_stake_pubkey: &Pubkey,
+    source_stake_pubkey: &Pubkey,
+    authorized_pubkey: &Pubkey,
+) -> Instruction {
+    let account_metas = vec![
+        AccountMeta::new(*destination_stake_pubkey, false),
+        AccountMeta::new(*source_stake_pubkey, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(*authorized_pubkey, true),
+    ];
+
+    Instruction::new(id(), &StakeInstruction::Merge, account_metas)
+}

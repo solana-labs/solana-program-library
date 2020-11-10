@@ -32,6 +32,7 @@ use spl_stake_pool::{
     processor::Processor as PoolProcessor,
     stake::authorize as authorize_stake,
     stake::id as stake_program_id,
+    stake::merge as merge_stake,
     stake::StakeAuthorize,
     state::StakePool,
     state::State as PoolState,
@@ -484,6 +485,14 @@ fn command_withdraw(
                 &spl_token::id(),
                 &stake_program_id(),
             )?);
+            // Merge into stake_receiver (if present)
+            if let Some(merge_into) = stake_receiver {
+                instructions.push(merge_stake(
+                    &merge_into,
+                    &stake_pubkey,
+                    &config.owner.pubkey(),
+                ));
+            }
         } else {
             // Withdraw to split account
             let stake_receiver: Pubkey = match stake_receiver {
