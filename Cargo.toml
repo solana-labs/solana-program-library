@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "associated-token-account/program",
+  "identity/program",
   "memo/program",
   "shared-memory/program",
   "stake-pool/cli",

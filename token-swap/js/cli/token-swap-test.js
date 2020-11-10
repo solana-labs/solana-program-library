@@ -10,11 +10,15 @@ import {
 } from '@solana/web3.js';
 
 import {Token} from '../../../token/js/client/token';
+import {Identity} from '../../../identity/js/dist';
 import {TokenSwap, CurveType} from '../client/token-swap';
 import {Store} from '../client/util/store';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {url} from '../url';
 import {sleep} from '../client/util/sleep';
+
+// for testing only - not cryptographically-secure
+const randomUUID = size => [...Array(size)].map(_=>(Math.random()*36|0).toString(36)).join``;
 
 // The following globals are created by `createTokenSwap` and used by subsequent tests
 // Token swap
@@ -34,6 +38,14 @@ let mintA: Token;
 let mintB: Token;
 let tokenAccountA: PublicKey;
 let tokenAccountB: PublicKey;
+
+// the user's on-chain identity
+let identityAccount: PublicKey;
+// a dummy attestation hash, possessed by the user, attested to by the IDV
+// and passed by the user to the on-chain token-swap program
+const attestation = randomUUID(32);
+// the identity validator for the pool
+let idv: Account;
 
 // Hard-coded fee address, for testing production mode
 const SWAP_PROGRAM_OWNER_FEE_ADDRESS =
@@ -122,6 +134,7 @@ async function GetPrograms(
   const store = new Store();
   let tokenProgramId = null;
   let tokenSwapProgramId = null;
+  let identityProgramId = null;
   try {
     const config = await store.load('config.json');
     console.log('Using pre-loaded Token and Token-swap programs');
@@ -130,29 +143,40 @@ async function GetPrograms(
     );
     tokenProgramId = new PublicKey(config.tokenProgramId);
     tokenSwapProgramId = new PublicKey(config.tokenSwapProgramId);
+    identityProgramId = new PublicKey(config.identityProgramId);
   } catch (err) {
-    tokenProgramId = await loadProgram(
-      connection,
-      '../../target/bpfel-unknown-unknown/release/spl_token.so',
-    );
     tokenSwapProgramId = await loadProgram(
       connection,
       '../../target/bpfel-unknown-unknown/release/spl_token_swap.so',
     );
+
+    await sleep(10000);
+    tokenProgramId = await loadProgram(
+      connection,
+      '../../target/bpfel-unknown-unknown/release/spl_token.so',
+    );
+
+    await sleep(10000);
+    identityProgramId = await loadProgram(
+      connection,
+      '../../target/bpfel-unknown-unknown/release/spl_identity.so',
+    );
     await store.save('config.json', {
       tokenProgramId: tokenProgramId.toString(),
       tokenSwapProgramId: tokenSwapProgramId.toString(),
+      identityProgramId: identityProgramId.toString(),
     });
   }
-  return [tokenProgramId, tokenSwapProgramId];
+  return [tokenProgramId, tokenSwapProgramId, identityProgramId];
 }
 
 export async function loadPrograms(): Promise<void> {
   const connection = await getConnection();
-  const [tokenProgramId, tokenSwapProgramId] = await GetPrograms(connection);
+  const [tokenProgramId, tokenSwapProgramId, identityProgramId] = await GetPrograms(connection);
 
   console.log('Token Program ID', tokenProgramId.toString());
   console.log('Token-swap Program ID', tokenSwapProgramId.toString());
+  console.log('Identity Program ID', identityProgramId.toString());
 }
 
 export async function createTokenSwap(): Promise<void> {
@@ -161,6 +185,9 @@ export async function createTokenSwap(): Promise<void> {
   const payer = await newAccountWithLamports(connection, 1000000000);
   owner = await newAccountWithLamports(connection, 1000000000);
   const tokenSwapAccount = new Account();
+
+  console.log('creating IDV');
+  idv = await newAccountWithLamports(connection, 1000000000);
 
   [authority, nonce] = await PublicKey.findProgramAddress(
     [tokenSwapAccount.publicKey.toBuffer()],
@@ -226,6 +253,7 @@ export async function createTokenSwap(): Promise<void> {
     mintB.publicKey,
     feeAccount,
     tokenAccountPool,
+    idv.publicKey,
     tokenSwapProgramId,
     tokenProgramId,
     nonce,
@@ -255,6 +283,7 @@ export async function createTokenSwap(): Promise<void> {
   assert(fetchedTokenSwap.mintB.equals(mintB.publicKey));
   assert(fetchedTokenSwap.poolToken.equals(tokenPool.publicKey));
   assert(fetchedTokenSwap.feeAccount.equals(feeAccount));
+  assert(fetchedTokenSwap.idv.equals(idv.publicKey));
   assert(CURVE_TYPE == fetchedTokenSwap.curveType);
   assert(
     TRADING_FEE_NUMERATOR == fetchedTokenSwap.tradeFeeNumerator.toNumber(),
@@ -393,6 +422,18 @@ export async function withdraw(): Promise<void> {
   currentFeeAmount = feeAmount;
 }
 
+export async function createIdentityAccount(): Promise<void> {
+  const [, , identityProgramId] = await GetPrograms(connection);
+  const identity = new Identity(connection, identityProgramId, owner);
+  console.log('Creating the identity account', {
+    identityProgramId: identityProgramId.toBase58()
+  });
+  identityAccount = await identity.createAccount(owner.publicKey);
+
+  console.log('As the IDV, adding an attestation to the account');
+  await identity.attest(identityAccount, idv, attestation);
+}
+
 export async function swap(): Promise<void> {
   console.log('Creating swap token a account');
   let userAccountA = await mintA.createAccount(owner.publicKey);
@@ -410,6 +451,7 @@ export async function swap(): Promise<void> {
     tokenAccountA,
     tokenAccountB,
     userAccountB,
+    identityAccount,
     poolAccount,
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,

@@ -32,6 +32,7 @@ declare module '@solana/spl-token-swap' {
       tokenAccountB: PublicKey,
       mintA: PublicKey,
       mintB: PublicKey,
+      nonce: number,
       curveType: number,
       tradeFeeNumerator: Numberu64,
       tradeFeeDenominator: Numberu64,
@@ -43,6 +44,24 @@ declare module '@solana/spl-token-swap' {
       hostFeeDenominator: Numberu64,
       payer: Account,
     );
+
+    poolToken: PublicKey;
+    feeAccount: PublicKey;
+    authority: PublicKey;
+    tokenAccountA: PublicKey;
+    tokenAccountB: PublicKey;
+    mintA: PublicKey;
+    mintB: PublicKey;
+    nonce: number;
+    curveType: number;
+    tradeFeeNumerator: Numberu64;
+    tradeFeeDenominator: Numberu64;
+    ownerTradeFeeNumerator: Numberu64;
+    ownerTradeFeeDenominator: Numberu64;
+    ownerWithdrawFeeNumerator: Numberu64;
+    ownerWithdrawFeeDenominator: Numberu64;
+    hostFeeNumerator: Numberu64;
+    hostFeeDenominator: Numberu64;
 
     static getMinBalanceRentForExemptTokenSwap(
       connection: Connection,
@@ -56,6 +75,7 @@ declare module '@solana/spl-token-swap' {
       tokenPool: PublicKey,
       feeAccount: PublicKey,
       tokenAccountPool: PublicKey,
+      idv: PublicKey,
       tokenProgramId: PublicKey,
       swapProgramId: PublicKey,
       nonce: number,
@@ -122,6 +142,7 @@ declare module '@solana/spl-token-swap' {
       userDestination: PublicKey,
       poolMint: PublicKey,
       feeAccount: PublicKey,
+      idv: PublicKey,
       hostFeeAccount: PublicKey | null,
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,

@@ -3264,6 +3264,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-identity"
+version = "0.0.1"
+dependencies = [
+ "arrayref",
+ "borsh",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "remove_dir_all",
+ "solana-program",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-memo"
 version = "2.0.0"
 dependencies = [
@@ -3407,7 +3421,8 @@ dependencies = [
  "num-traits",
  "solana-program",
  "solana-sdk",
- "spl-token 3.0.0",
+ "spl-identity",
+ "spl-token 2.0.8",
  "thiserror",
 ]
 

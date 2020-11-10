@@ -30,6 +30,16 @@ impl Processor {
         spl_token::state::Account::unpack(data).map_err(|_| SwapError::ExpectedAccount)
     }
 
+    /// Unpacks an identity `Account`.
+    pub fn unpack_identity_account(data: &[u8]) -> Result<spl_identity::state::IdentityAccount, SwapError> {
+        spl_identity::state::IdentityAccount::deserialize2(data).map_err(|_| SwapError::ExpectedAccount)
+    }
+
+    /// Verifies an identity `Account` is owned by the swap caller and signed by the IdV.
+    pub fn verify_identity_account(account: &spl_identity::state::IdentityAccount, expected_owner: &Pubkey, idv: &Pubkey) -> Result<(), SwapError> {
+        spl_identity::processor::Processor::verify(account, expected_owner, idv).map_err(|_| SwapError::UnauthorizedIdentity)
+    }
+
     /// Unpacks a spl_token `Mint`.
     pub fn unpack_mint(data: &[u8]) -> Result<spl_token::state::Mint, SwapError> {
         spl_token::state::Mint::unpack(data).map_err(|_| SwapError::ExpectedMint)
@@ -144,12 +154,16 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let fee_account_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
+        let idv_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+
+        info!("Accounts iterated");
 
         let token_swap = SwapInfo::unpack_unchecked(&swap_info.data.borrow())?;
         if token_swap.is_initialized {
             return Err(SwapError::AlreadyInUse.into());
         }
+        info!("Swap Info unpacked");
 
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
@@ -159,6 +173,9 @@ impl Processor {
         let fee_account = Self::unpack_token_account(&fee_account_info.data.borrow())?;
         let destination = Self::unpack_token_account(&destination_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
+
+        info!("Token accounts unpacked");
+
         if *authority_info.key != token_a.owner {
             return Err(SwapError::InvalidOwner.into());
         }
@@ -207,6 +224,8 @@ impl Processor {
             return Err(SwapError::IncorrectPoolMint.into());
         }
 
+        info!("Token account constraints checked");
+
         if let Some(fee_constraints) = fee_constraints {
             let owner_key = fee_constraints
                 .owner_key
@@ -219,6 +238,8 @@ impl Processor {
         }
 
         let initial_amount = swap_curve.calculator.new_pool_supply();
+
+        info!("About to mint");
 
         Self::token_mint_to(
             swap_info.key,
@@ -240,6 +261,7 @@ impl Processor {
             token_a_mint: token_a.mint,
             token_b_mint: token_b.mint,
             pool_fee_account: *fee_account_info.key,
+            idv: *idv_info.key,
             swap_curve,
         };
         SwapInfo::pack(obj, &mut swap_info.data.borrow_mut())?;
@@ -262,6 +284,7 @@ impl Processor {
         let destination_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let identity_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
@@ -295,9 +318,21 @@ impl Processor {
             return Err(SwapError::IncorrectFeeAccount.into());
         }
 
+        let user_source_account = Self::unpack_token_account(&source_info.data.borrow())?;
         let source_account = Self::unpack_token_account(&swap_source_info.data.borrow())?;
         let dest_account = Self::unpack_token_account(&swap_destination_info.data.borrow())?;
         let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
+
+        let identity_account = Self::unpack_identity_account(&identity_account_info.data.borrow())?;
+
+        // verify that the user is allowed to use the pool
+        let identity_verification_result = Self::verify_identity_account
+            (&identity_account, &user_source_account.owner, &token_swap.idv);
+
+        // Stop if identity verification fails
+        if identity_verification_result.is_err() {
+            return identity_verification_result.map_err(|e| Into::<ProgramError>::into(e))
+        }
 
         let result = token_swap
             .swap_curve
@@ -716,7 +751,10 @@ impl PrintProgramError for SwapError {
             SwapError::ConversionFailure => info!("Error: Conversion to or from u64 failed."),
             SwapError::InvalidFee => {
                 info!("Error: The provided fee does not match the program owner's constraints")
-            }
+            },
+            SwapError::UnauthorizedIdentity => info!(
+                "Error: The provided identity was not validated by the pool's identity validator"
+            )
         }
     }
 }
