@@ -1,16 +1,13 @@
 //! Instruction types
 
-use crate::error::IdentityError;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
-    program_option::COption,
     pubkey::Pubkey,
     sysvar,
     info,
 };
-use std::mem::size_of;
 
 /// Minimum number of multisignature signers (min N)
 pub const MIN_SIGNERS: usize = 1;
@@ -55,33 +52,6 @@ pub enum IdentityInstruction {
 
 }
 impl IdentityInstruction {
-    // /// Unpacks a byte buffer into a [IdentityInstruction](enum.IdentityInstruction.html).
-    // pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-    //     use IdentityError::InvalidInstruction;
-    //
-    //     let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
-    //     Ok(match tag {
-    //         0 => Self::InitializeIdentity,
-    //         1 => {
-    //             let (attestation, _rest) = Self::unpack_u64(rest)?; // TODO change unpack_u64
-    //             Self::Attest { attestation }
-    //         },
-    //         _ => return Err(IdentityError::InvalidInstruction.into()),
-    //     })
-    // }
-    //
-    // /// Packs an [IdentityInstruction](enum.IdentityInstruction.html) into a byte buffer.
-    // pub fn pack(&self) -> Vec<u8> {
-    //     let mut buf = Vec::with_capacity(size_of::<Self>());
-    //     match self {
-    //         Self::InitializeIdentity => buf.push(0),
-    //         Self::Attest => {
-    //             buf.push(self.serialize().unwrap())
-    //         },
-    //     };
-    //     buf
-    // }
-
     /// Serializes an [IdentityInstruction](enum.IdentityInstruction.html) into a byte buffer.
     pub fn serialize(&self) -> Result<Vec<u8>, ProgramError> {
         info!("insrtuction serialize");
@@ -92,38 +62,6 @@ impl IdentityInstruction {
     /// Deserializes a byte buffer into a [IdentityInstruction](enum.IdentityInstruction.html).
     pub(crate) fn deserialize(data: &[u8]) -> Result<Self, ProgramError> {
         Self::try_from_slice(&data).map_err(|_| ProgramError::InvalidInstructionData)
-    }
-
-    fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
-        if input.len() >= 32 {
-            let (key, rest) = input.split_at(32);
-            let pk = Pubkey::new(key);
-            Ok((pk, rest))
-        } else {
-            Err(IdentityError::InvalidInstruction.into())
-        }
-    }
-
-    fn unpack_pubkey_option(input: &[u8]) -> Result<(COption<Pubkey>, &[u8]), ProgramError> {
-        match input.split_first() {
-            Option::Some((&0, rest)) => Ok((COption::None, rest)),
-            Option::Some((&1, rest)) if rest.len() >= 32 => {
-                let (key, rest) = rest.split_at(32);
-                let pk = Pubkey::new(key);
-                Ok((COption::Some(pk), rest))
-            }
-            _ => Err(IdentityError::InvalidInstruction.into()),
-        }
-    }
-
-    fn pack_pubkey_option(value: &COption<Pubkey>, buf: &mut Vec<u8>) {
-        match *value {
-            COption::Some(ref key) => {
-                buf.push(1);
-                buf.extend_from_slice(&key.to_bytes());
-            }
-            COption::None => buf.push(0),
-        }
     }
 }
 

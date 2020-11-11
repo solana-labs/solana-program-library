@@ -7,25 +7,8 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
-    info
+    pubkey::Pubkey
 };
-use std::{io, io::Write, io::Error};
-
-// #[cfg(feature = "serde")]
-// impl Serialize for Pubkey {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//         where S: Serializer
-//     {
-//         use serde::ser::SerializeTuple;
-//         let mut tup = serializer.serialize_tuple(32)?;
-//         for byte in self.iter() {
-//             tup.serialize_element(byte)?;
-//         }
-//         tup.end()
-//
-//     }
-// }
 
 /// A version of Solana's Pubkey type that is serializable using Borsh
 #[derive(Clone, PartialEq, Debug, Default, BorshSerialize, BorshDeserialize)]
@@ -85,19 +68,6 @@ impl IdentityAccount {
             num_attestations: 0,
             attestation: Attestation::default(),
         }
-    }
-
-    // /// Useful for testing
-    // pub fn new_with_attestations(owner: Pubkey, attestations: &Vec<Attestation>) -> Self {
-    //     let mut account = Self::new(owner);
-    //     account.attestations = *attestations;
-    //     account.num_attestations = attestations.len() as u8;
-    //     account
-    // }
-
-    fn verify(&self, attestation: &Attestation) -> bool {
-        // self.attestations.iter().any(|att| att.matches(attestation))
-        return false;
     }
 }
 impl Sealed for IdentityAccount {}

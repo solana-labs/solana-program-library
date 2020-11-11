@@ -8,7 +8,6 @@ use crate::{
     state::{IdentityAccount, AccountState, Multisig, Attestation, SerializablePubkey},
 };
 use num_traits::FromPrimitive;
-use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
@@ -80,7 +79,7 @@ impl Processor {
 
 
     /// Processes an [Instruction](enum.Instruction.html).
-    pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
+    pub fn process(_program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         info!("process");
         let instruction = IdentityInstruction::deserialize(input)?;
 
