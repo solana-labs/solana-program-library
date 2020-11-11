@@ -1,6 +1,6 @@
 use clap::{
     crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
-    SubCommand,
+    ArgGroup, SubCommand,
 };
 use solana_account_decoder::UiAccountEncoding;
 use solana_clap_utils::{
@@ -25,8 +25,8 @@ use solana_sdk::{
 };
 use spl_stake_pool::{
     instruction::{
-        claim, deposit, initialize as initialize_pool, withdraw, Fee as PoolFee,
-        InitArgs as PoolInitArgs,
+        claim, deposit, initialize as initialize_pool, set_owner, set_staking_authority, withdraw,
+        Fee as PoolFee, InitArgs as PoolInitArgs,
     },
     processor::Processor as PoolProcessor,
     stake::authorize as authorize_stake,
@@ -562,6 +562,104 @@ fn command_withdraw(
     Ok(None)
 }
 
+fn command_set_staking_auth(
+    config: &Config,
+    pool: &Pubkey,
+    stake_account: &Pubkey,
+    new_staker: &Pubkey,
+) -> CommandResult {
+    let pool_data = config.rpc_client.get_account_data(&pool)?;
+    let pool_data: StakePool = PoolState::deserialize(pool_data.as_slice())
+        .unwrap()
+        .stake_pool()
+        .unwrap();
+
+    let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
+        &spl_stake_pool::id(),
+        pool,
+        PoolProcessor::AUTHORITY_WITHDRAW,
+        pool_data.withdraw_bump_seed,
+    )
+    .unwrap();
+
+    let mut transaction = Transaction::new_with_payer(
+        &[set_staking_authority(
+            &spl_stake_pool::id(),
+            &pool,
+            &config.owner.pubkey(),
+            &pool_withdraw_authority,
+            &stake_account,
+            &new_staker,
+            &stake_program_id(),
+        )?],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+    Ok(Some(transaction))
+}
+
+fn command_set_owner(
+    config: &Config,
+    pool: &Pubkey,
+    new_owner: &Option<Pubkey>,
+    new_fee_receiver: &Option<Pubkey>,
+) -> CommandResult {
+    let pool_data = config.rpc_client.get_account_data(&pool)?;
+    let pool_data: StakePool = PoolState::deserialize(pool_data.as_slice())
+        .unwrap()
+        .stake_pool()
+        .unwrap();
+
+    // If new accounts are missing in the arguments use the old ones
+    let new_owner: Pubkey = match new_owner {
+        None => pool_data.owner,
+        Some(value) => *value,
+    };
+    let new_fee_receiver: Pubkey = match new_fee_receiver {
+        None => pool_data.owner,
+        Some(value) => {
+            // Check for fee receiver being a valid token account and have to same mint as the stake pool
+            let account_data = config.rpc_client.get_account_data(value)?;
+            let account_data: TokenAccount =
+                match TokenAccount::unpack_from_slice(account_data.as_slice()) {
+                    Ok(data) => data,
+                    Err(_) => {
+                        println!("{} is not a token account", value);
+                        return Ok(None);
+                    }
+                };
+            if account_data.mint != pool_data.pool_mint {
+                println!("Fee receiver account belongs to a different mint");
+                return Ok(None);
+            }
+            *value
+        }
+    };
+
+    let mut transaction = Transaction::new_with_payer(
+        &[set_owner(
+            &spl_stake_pool::id(),
+            &pool,
+            &config.owner.pubkey(),
+            &new_owner,
+            &new_fee_receiver,
+        )?],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+    Ok(Some(transaction))
+}
+
 fn main() {
     let matches = App::new(crate_name!())
         .about(crate_description!())
@@ -719,6 +817,67 @@ fn main() {
                     .help("Stake account to receive SOL from the stake pool. Defaults to a new stake account."),
             )
         )
+        .subcommand(SubCommand::with_name("set-staking-auth").about("Changes staking authority of one of the accounts from the stake pool.")
+            .arg(
+                Arg::with_name("pool")
+                    .long("pool")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("stake_account")
+                    .long("stake-account")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake account address to change staking authority."),
+            )
+            .arg(
+                Arg::with_name("new_staker")
+                    .long("new-staker")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Public key of the new staker account."),
+            )
+        )
+        .subcommand(SubCommand::with_name("set-owner").about("Changes owner or fee receiver account for the stake pool.")
+            .arg(
+                Arg::with_name("pool")
+                    .long("pool")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("new_owner")
+                    .long("new-owner")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .help("Public key for the new stake pool owner."),
+            )
+            .arg(
+                Arg::with_name("new_fee_receiver")
+                    .long("new-fee-receiver")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .help("Public key for the new account to set as the stake pool fee receiver."),
+            )
+            .group(ArgGroup::with_name("new_accounts")
+                .arg("new_owner")
+                .arg("new_fee_receiver")
+                .required(true)
+            )
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -792,6 +951,18 @@ fn main() {
             let amount: u64 = sol_to_lamports(value_t_or_exit!(arg_matches, "amount", f64));
             let stake_receiver: Option<Pubkey> = pubkey_of(arg_matches, "stake_receiver");
             command_withdraw(&config, &pool_account, amount, &burn_from, &stake_receiver)
+        }
+        ("set-staking-auth", Some(arg_matches)) => {
+            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
+            let stake_account: Pubkey = pubkey_of(arg_matches, "stake_account").unwrap();
+            let new_staker: Pubkey = pubkey_of(arg_matches, "new_staker").unwrap();
+            command_set_staking_auth(&config, &pool_account, &stake_account, &new_staker)
+        }
+        ("set-owner", Some(arg_matches)) => {
+            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
+            let new_owner: Option<Pubkey> = pubkey_of(arg_matches, "new_owner");
+            let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
+            command_set_owner(&config, &pool_account, &new_owner, &new_fee_receiver)
         }
         _ => unreachable!(),
     }
