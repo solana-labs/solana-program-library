@@ -38,6 +38,7 @@ describe('Identity', function() {
   it('should get the identity account info', async () => {
     const identityAccountInfo = await identity.getAccountInfo(identityAccount);
 
+    // A new identity has no attestations
     expect(identityAccountInfo.attestation).to.be.undefined();
     expect(identityAccountInfo.owner).to.deep.equal(owner.publicKey);
   });
