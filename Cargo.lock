@@ -3265,7 +3265,7 @@ dependencies = [
 
 [[package]]
 name = "spl-example-cross-program-invocation"
-version = "1.0.1"
+version = "1.0.0"
 dependencies = [
  "solana-program",
  "solana-program-test",
@@ -3275,7 +3275,7 @@ dependencies = [
 
 [[package]]
 name = "spl-example-custom-heap"
-version = "1.0.1"
+version = "1.0.0"
 dependencies = [
  "solana-program",
  "solana-program-test",
@@ -3285,7 +3285,7 @@ dependencies = [
 
 [[package]]
 name = "spl-example-logging"
-version = "1.0.1"
+version = "1.0.0"
 dependencies = [
  "solana-program",
  "solana-program-test",
@@ -3295,7 +3295,7 @@ dependencies = [
 
 [[package]]
 name = "spl-example-sysvar"
-version = "1.0.1"
+version = "1.0.0"
 dependencies = [
  "solana-program",
  "solana-program-test",
@@ -3305,7 +3305,7 @@ dependencies = [
 
 [[package]]
 name = "spl-example-transfer-lamports"
-version = "1.0.1"
+version = "1.0.0"
 dependencies = [
  "solana-program",
  "solana-program-test",

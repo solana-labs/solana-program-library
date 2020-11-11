@@ -4,22 +4,24 @@ use solana_program::{
 };
 use solana_program_test::{processor, BanksClientExt, ProgramTest};
 use solana_sdk::{account::Account, signature::Signer, transaction::Transaction};
-use spl_example_transfer_lamports::{id, processor::process_instruction};
+use spl_example_transfer_lamports::processor::process_instruction;
+use std::str::FromStr;
 
 #[tokio::test]
 async fn test_lamport_transfer() {
+    let program_id = Pubkey::from_str(&"TransferLamports111111111111111111111111111").unwrap();
     let source_pubkey = Pubkey::new_unique();
     let destination_pubkey = Pubkey::new_unique();
     let mut program_test = ProgramTest::new(
         "spl_example_transfer_lamports",
-        id(),
+        program_id,
         processor!(process_instruction),
     );
     program_test.add_account(
         source_pubkey,
         Account {
             lamports: 5,
-            owner: id(), // Can only withdraw lamports from accounts owned by the program
+            owner: program_id, // Can only withdraw lamports from accounts owned by the program
             ..Account::default()
         },
     );
@@ -34,7 +36,7 @@ async fn test_lamport_transfer() {
 
     let mut transaction = Transaction::new_with_payer(
         &[Instruction::new(
-            id(),
+            program_id,
             &(),
             vec![
                 AccountMeta::new(source_pubkey, false),

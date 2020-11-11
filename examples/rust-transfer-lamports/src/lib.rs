@@ -4,5 +4,3 @@
 
 mod entrypoint;
 pub mod processor;
-
-solana_program::declare_id!("TransferLamports111111111111111111111111111");

@@ -1,11 +1,12 @@
 [package]
 name = "spl-example-custom-heap"
-version = "1.0.1"
+version = "1.0.0"
 description = "Solana Program Library Custom Heap Example"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2018"
+publish = false
 
 [features]
 default = ["custom-heap"]

@@ -4,9 +4,8 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     info,
-    program_error::ProgramError,
     pubkey::Pubkey,
-    sysvar::{self, clock::Clock, Sysvar},
+    sysvar::{clock::Clock, Sysvar},
 };
 
 /// Instruction processor
@@ -21,11 +20,6 @@ pub fn process_instruction(
     // As part of the program specification the first account is the clock
     // sysvar
     let clock_sysvar_info = next_account_info(account_info_iter)?;
-
-    if *clock_sysvar_info.key != sysvar::clock::id() {
-        // first account is not the clock sysvar
-        return Err(ProgramError::InvalidArgument);
-    }
 
     // Deserialize the account into a clock struct
     let clock = Clock::from_account_info(&clock_sysvar_info)?;

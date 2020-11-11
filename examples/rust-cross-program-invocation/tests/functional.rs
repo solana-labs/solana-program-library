@@ -9,17 +9,17 @@ use solana_program::{
 };
 use solana_program_test::{processor, BanksClientExt, ProgramTest};
 use solana_sdk::{account::Account, signature::Signer, transaction::Transaction};
-use spl_example_cross_program_invocation::{
-    id,
-    processor::{process_instruction, SIZE},
-};
+use spl_example_cross_program_invocation::processor::{process_instruction, SIZE};
+use std::str::FromStr;
 
 #[tokio::test]
 async fn test_cross_program_invocation() {
-    let (allocated_pubkey, bump_seed) = Pubkey::find_program_address(&[b"You pass butter"], &id());
+    let program_id = Pubkey::from_str(&"invoker111111111111111111111111111111111111").unwrap();
+    let (allocated_pubkey, bump_seed) =
+        Pubkey::find_program_address(&[b"You pass butter"], &program_id);
     let mut program_test = ProgramTest::new(
         "spl_example_cross_program_invocation",
-        id(),
+        program_id,
         processor!(process_instruction),
     );
     program_test.add_account(
@@ -34,7 +34,7 @@ async fn test_cross_program_invocation() {
 
     let mut transaction = Transaction::new_with_payer(
         &[Instruction::new(
-            id(),
+            program_id,
             &[bump_seed],
             vec![
                 AccountMeta::new(system_program::id(), false),
