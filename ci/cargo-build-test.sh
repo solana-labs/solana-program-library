@@ -11,6 +11,9 @@ export RUSTBACKTRACE=1
 
 set -x
 
+# Build all C examples
+make -C examples/c
+
 # Build/test all BPF programs
 cargo +"$rust_stable" test-bpf -- --nocapture
 
