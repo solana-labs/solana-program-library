@@ -24,7 +24,6 @@ cargo +"$rust_stable" run --manifest-path=utils/test-client/Cargo.toml
 # client_ristretto isn't in the workspace, test it explictly
 cargo +"$rust_stable" test --manifest-path=themis/client_ristretto/Cargo.toml -- --nocapture
 
-
 SWAP_PROGRAM_OWNER_FEE_ADDRESS="SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8" \
   cargo +"$rust_stable" build-bpf \
     --manifest-path=token-swap/program/Cargo.toml \

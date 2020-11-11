@@ -1,6 +1,11 @@
 [workspace]
 members = [
   "associated-token-account/program",
+  "examples/rust/cross-program-invocation",
+  "examples/rust/custom-heap",
+  "examples/rust/logging",
+  "examples/rust/sysvar",
+  "examples/rust/transfer-lamports",
   "memo/program",
   "shared-memory/program",
   "stake-pool/cli",

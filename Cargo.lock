@@ -684,19 +684,6 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
-dependencies = [
- "byteorder",
- "digest 0.8.1",
- "rand_core",
- "subtle 2.2.3",
- "zeroize",
-]
-
-[[package]]
-name = "curve25519-dalek"
-version = "2.1.0"
 source = "git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff#60efef3553d6bf3d7f3b09b5f97acd54d72529ff"
 dependencies = [
  "borsh",
@@ -704,6 +691,19 @@ dependencies = [
  "digest 0.8.1",
  "rand_core",
  "serde",
+ "subtle 2.2.3",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
+dependencies = [
+ "byteorder",
+ "digest 0.8.1",
+ "rand_core",
  "subtle 2.2.3",
  "zeroize",
 ]
@@ -3260,6 +3260,56 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 3.0.0",
+ "tokio 0.3.3",
+]
+
+[[package]]
+name = "spl-example-cross-program-invocation"
+version = "1.0.0"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "tokio 0.3.3",
+]
+
+[[package]]
+name = "spl-example-custom-heap"
+version = "1.0.0"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "tokio 0.3.3",
+]
+
+[[package]]
+name = "spl-example-logging"
+version = "1.0.0"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "tokio 0.3.3",
+]
+
+[[package]]
+name = "spl-example-sysvar"
+version = "1.0.0"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "tokio 0.3.3",
+]
+
+[[package]]
+name = "spl-example-transfer-lamports"
+version = "1.0.0"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
  "tokio 0.3.3",
 ]
 
