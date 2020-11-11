@@ -16,6 +16,20 @@ all implementations.
 
 Full documentation is available at https://spl.solana.com
 
+## Solana Hackathon Submission
+
+This fork represents a part of the
+[on-chain Identity](https://github.com/civicteam/identity-swap)
+entry for the Solana Wormhole Hackathon 2020.
+
+Additions and changes in this fork are:
+
+- The [Identity program](./identity) and the associated [JS client](./identity/js).
+- The identity gate added to the [Token-Swap program](./token-swap).
+
+For details of each, see the links above, and for details of the overall entry, see
+[identity-swap](https://github.com/civicteam/identity-swap)
+
 ## Development
 
 ### Environment Setup
