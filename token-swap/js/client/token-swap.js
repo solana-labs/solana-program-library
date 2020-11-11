@@ -43,7 +43,7 @@ export class Numberu64 extends BN {
    */
   static fromBuffer(buffer: typeof Buffer): Numberu64 {
     assert(buffer.length === 8, `Invalid buffer length: ${buffer.length}`);
-    return new BN(
+    return new Numberu64(
       [...buffer]
         .reverse()
         .map(i => `00${i.toString(16)}`.slice(-2))
