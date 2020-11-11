@@ -1,3 +1,6 @@
+// goes away when the sdk incorporates it
+int printf(const char * restrictformat, ... );
+
 #include "custom-heap.c"
 #include <criterion/criterion.h>
 
