@@ -13,7 +13,7 @@ no-entrypoint = []
 test-bpf = []
 
 [dependencies]
-solana-program = "1.4.5"
+solana-program = "1.4.6"
 
 [dev-dependencies]
 solana-program-test = "1.4.5"
