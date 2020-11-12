@@ -15,12 +15,12 @@ production = []
 arrayref = "0.3.6"
 num-derive = "0.3"
 num-traits = "0.2"
-solana-program = "1.4.6"
+solana-program = "1.4.7"
 spl-token = { version = "3.0", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 
 [dev-dependencies]
-solana-sdk = "1.4.5"
+solana-sdk = "1.4.7"
 
 [lib]
 crate-type = ["cdylib", "lib"]

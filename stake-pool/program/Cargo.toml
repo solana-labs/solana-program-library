@@ -17,12 +17,12 @@ num-traits = "0.2"
 num_enum = "0.5.1"
 serde = "1.0.117"
 serde_derive = "1.0.103"
-solana-program = "1.4.6"
+solana-program = "1.4.7"
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 
 [dev-dependencies]
-solana-sdk = "1.4.5"
+solana-sdk = "1.4.7"
 
 [lib]
 crate-type = ["cdylib", "lib"]
