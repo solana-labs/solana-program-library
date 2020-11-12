@@ -179,7 +179,12 @@ mod tests {
             host_fee_denominator,
         };
         let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount, &[])
+            .swap(
+                source_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                &[],
+            )
             .unwrap();
         let amount_swapped = 97;
         assert_eq!(result.new_source_amount, 1100);

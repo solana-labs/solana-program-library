@@ -305,7 +305,8 @@ impl Processor {
         token_swap.swap_curve.calculator.validate_swap_accounts(
             &source_account.mint,
             &destination_account.mint,
-            curve_accounts)?;
+            curve_accounts,
+        )?;
         let result = token_swap
             .swap_curve
             .calculator
@@ -718,13 +719,11 @@ impl PrintProgramError for SwapError {
             SwapError::ConversionFailure => info!("Error: Conversion to or from u64 failed."),
             SwapError::InvalidFee => {
                 info!("Error: The provided fee does not match the program owner's constraints")
-            },
+            }
             SwapError::InvalidCurveAccounts => {
                 info!("Error: The curve accounts do not match the swap inputs")
-            },
-            SwapError::InvalidOrderbook => {
-                info!("Error: The provided orderbook is invalid")
-            },
+            }
+            SwapError::InvalidOrderbook => info!("Error: The provided orderbook is invalid"),
         }
     }
 }
@@ -4334,22 +4333,21 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                &mut accounts.swap_account,
-                &mut Account::default(),
-                &mut token_a_account,
-                &mut accounts.token_a_account,
-                &mut accounts.token_b_account,
-                &mut token_b_account,
-                &mut accounts.pool_mint_account,
-                &mut accounts.pool_fee_account,
-                &mut Account::default(),
-                &mut Account::default(),
+                    &mut accounts.swap_account,
+                    &mut Account::default(),
+                    &mut token_a_account,
+                    &mut accounts.token_a_account,
+                    &mut accounts.token_b_account,
+                    &mut token_b_account,
+                    &mut accounts.pool_mint_account,
+                    &mut accounts.pool_fee_account,
+                    &mut Account::default(),
+                    &mut Account::default(),
                 ],
                 &constraints,
-                )
-                    .unwrap();
-            }
-
+            )
+            .unwrap();
+        }
 
         // invalid mint for host fee account
         {

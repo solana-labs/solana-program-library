@@ -9,26 +9,22 @@ use crate::error::SwapError;
 
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    pubkey::Pubkey,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
+    pubkey::Pubkey,
 };
 
 use serum_dex::{
     critbit::{LeafNode, Slab, SlabView},
-    state::{AccountFlag},
     error::{DexError, DexErrorCode, DexResult},
+    state::AccountFlag,
 };
 
-use bytemuck::{cast_mut, cast_slice_mut, try_from_bytes_mut, try_cast_slice_mut, Zeroable, Pod};
-use enumflags2::BitFlags;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use std::{
-    cell::RefMut,
-    convert::TryFrom,
-    num::NonZeroU64,
-};
+use bytemuck::{cast_mut, cast_slice_mut, try_cast_slice_mut, try_from_bytes_mut, Pod, Zeroable};
+use enumflags2::BitFlags;
 use std::mem::{align_of, size_of};
+use std::{cell::RefMut, convert::TryFrom, num::NonZeroU64};
 
 /// Calculator based on observable Serum market
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -86,7 +82,8 @@ fn init_account_padding(data: &mut [u8]) -> DexResult<&mut [u64]> {
     let (head, data, tail) = mut_array_refs![data, 5; ..; 7];
     *head = *ACCOUNT_HEAD_PADDING;
     *tail = *ACCOUNT_TAIL_PADDING;
-    try_cast_slice_mut(data).map_err(|_e| DexError::ErrorCode(DexErrorCode::WrongAccountDataAlignment))
+    try_cast_slice_mut(data)
+        .map_err(|_e| DexError::ErrorCode(DexErrorCode::WrongAccountDataAlignment))
 }
 
 fn check_account_padding(data: &mut [u8]) -> DexResult<&mut [u64]> {
@@ -94,7 +91,8 @@ fn check_account_padding(data: &mut [u8]) -> DexResult<&mut [u64]> {
     let (head, data, tail) = mut_array_refs![data, 5; ..; 7];
     assert_eq!(head, ACCOUNT_HEAD_PADDING);
     assert_eq!(tail, ACCOUNT_TAIL_PADDING);
-    try_cast_slice_mut(data).map_err(|_e| DexError::ErrorCode(DexErrorCode::WrongAccountDataAlignment))
+    try_cast_slice_mut(data)
+        .map_err(|_e| DexError::ErrorCode(DexErrorCode::WrongAccountDataAlignment))
 }
 
 fn strip_account_padding(padded_data: &mut [u8], init_allowed: bool) -> DexResult<&mut [u64]> {
@@ -123,7 +121,8 @@ fn strip_header<'a, H: Pod, D: Pod>(
             let padded_data: &mut [u8] = *padded_data;
 
             let u64_result = if (padded_data.as_ptr() as usize) % align_of::<u64>() == 0 {
-                try_cast_slice_mut(padded_data).map_err(|_e| DexError::ErrorCode(DexErrorCode::WrongAccountDataAlignment))
+                try_cast_slice_mut(padded_data)
+                    .map_err(|_e| DexError::ErrorCode(DexErrorCode::WrongAccountDataAlignment))
             } else {
                 strip_account_padding(padded_data, init_allowed)
             };
@@ -244,8 +243,11 @@ impl CurveCalculator for SerumMarketCurve {
         // The formula, then, is:
         //
         // amount_srm = (amount_sol) * (SOL/USDC) / (SRM/USDC)
-        let amount_swapped =
-            map_zero_to_none(source_amount_less_fee.checked_mul(source_mid)?.checked_div(destination_mid)?)?;
+        let amount_swapped = map_zero_to_none(
+            source_amount_less_fee
+                .checked_mul(source_mid)?
+                .checked_div(destination_mid)?,
+        )?;
         let new_destination_amount = swap_destination_amount.checked_sub(amount_swapped)?;
 
         // actually add the whole amount coming in
@@ -306,21 +308,23 @@ impl CurveCalculator for SerumMarketCurve {
         let destination_token_bid_info = next_account_info(account_info_iter)?;
         let destination_token_ask_info = next_account_info(account_info_iter)?;
 
-        let (curve_source_token_bid_key, curve_source_token_ask_key) = if *source_mint == self.token_a_mint {
-            (self.token_a_bids, self.token_a_asks)
-        } else if *source_mint == self.token_b_mint {
-            (self.token_b_bids, self.token_b_asks)
-        } else {
-            return Err(SwapError::InvalidCurveAccounts.into());
-        };
+        let (curve_source_token_bid_key, curve_source_token_ask_key) =
+            if *source_mint == self.token_a_mint {
+                (self.token_a_bids, self.token_a_asks)
+            } else if *source_mint == self.token_b_mint {
+                (self.token_b_bids, self.token_b_asks)
+            } else {
+                return Err(SwapError::InvalidCurveAccounts.into());
+            };
 
-        let (curve_destination_token_bid_key, curve_destination_token_ask_key) = if *destination_mint == self.token_a_mint {
-            (self.token_a_bids, self.token_a_asks)
-        } else if *destination_mint == self.token_b_mint {
-            (self.token_b_bids, self.token_b_asks)
-        } else {
-            return Err(SwapError::InvalidCurveAccounts.into());
-        };
+        let (curve_destination_token_bid_key, curve_destination_token_ask_key) =
+            if *destination_mint == self.token_a_mint {
+                (self.token_a_bids, self.token_a_asks)
+            } else if *destination_mint == self.token_b_mint {
+                (self.token_b_bids, self.token_b_asks)
+            } else {
+                return Err(SwapError::InvalidCurveAccounts.into());
+            };
 
         if *source_token_bid_info.key != curve_source_token_bid_key {
             return Err(SwapError::InvalidCurveAccounts.into());
@@ -434,16 +438,12 @@ mod tests {
     const MAX_PRICE: u128 = 10001;
     const MIN_PRICE: u128 = 400;
 
-    fn to_account_info<'a>(key: &'a Pubkey, lamports: &'a mut u64, data: &'a mut [u8],) -> AccountInfo<'a> {
-        AccountInfo::new(
-            key,
-            false,
-            false,
-            lamports,
-            data,
-            key,
-            false,
-            1,)
+    fn to_account_info<'a>(
+        key: &'a Pubkey,
+        lamports: &'a mut u64,
+        data: &'a mut [u8],
+    ) -> AccountInfo<'a> {
+        AccountInfo::new(key, false, false, lamports, data, key, false, 1)
     }
 
     fn fill_orderbook(slab: &mut Slab) {
@@ -480,7 +480,7 @@ mod tests {
         assert_eq!(price, NonZeroU64::new(MIN_PRICE as u64).unwrap());
     }
 
-    fn orderbook_data(data: &mut [u8],) {
+    fn orderbook_data(data: &mut [u8]) {
         let mut bytes = vec![0u8; 10_000];
         let mut slab = Slab::new(&mut bytes);
 
@@ -555,7 +555,8 @@ mod tests {
 
         {
             let mut ob_data = vec![0u8; 10_000]; // header (8) + size
-            let (hdr_array, slab_words) = mut_array_refs![&mut ob_data, size_of::<OrderBookStateHeader>(); .. ;];
+            let (hdr_array, slab_words) =
+                mut_array_refs![&mut ob_data, size_of::<OrderBookStateHeader>(); .. ;];
             let ob_hdr: &mut OrderBookStateHeader = cast_mut(hdr_array);
             *ob_hdr = OrderBookStateHeader {
                 account_flags: (AccountFlag::Initialized | AccountFlag::Bids).bits(),
@@ -571,7 +572,8 @@ mod tests {
 
         {
             let mut ob_data = vec![0u8; 10_000]; // header (8) + size
-            let (hdr_array, slab_words) = mut_array_refs![&mut ob_data, size_of::<OrderBookStateHeader>(); .. ;];
+            let (hdr_array, slab_words) =
+                mut_array_refs![&mut ob_data, size_of::<OrderBookStateHeader>(); .. ;];
             let ob_hdr: &mut OrderBookStateHeader = cast_mut(hdr_array);
             *ob_hdr = OrderBookStateHeader {
                 account_flags: (AccountFlag::Initialized | AccountFlag::Asks).bits(),
@@ -620,7 +622,8 @@ mod tests {
         fill_orderbook(&mut slab);
 
         let mut ob_data = vec![0u8; 10_008]; // header (8) + size
-        let (hdr_array, slab_words) = mut_array_refs![&mut ob_data, size_of::<OrderBookStateHeader>(); .. ;];
+        let (hdr_array, slab_words) =
+            mut_array_refs![&mut ob_data, size_of::<OrderBookStateHeader>(); .. ;];
         let ob_hdr: &mut OrderBookStateHeader = cast_mut(hdr_array);
         *ob_hdr = OrderBookStateHeader {
             account_flags: (AccountFlag::Initialized | AccountFlag::Bids).bits(),
@@ -655,7 +658,12 @@ mod tests {
         let source_amount: u128 = 100;
         let curve = SerumMarketCurve::default();
         let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount, &[])
+            .swap(
+                source_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                &[],
+            )
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, 4546);

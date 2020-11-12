@@ -249,7 +249,12 @@ mod tests {
             host_fee_denominator,
         };
         let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount, &[])
+            .swap(
+                source_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                &[],
+            )
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, 4505);
@@ -283,7 +288,12 @@ mod tests {
             host_fee_denominator,
         };
         let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount, &[])
+            .swap(
+                source_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                &[],
+            )
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, 4505);
@@ -299,7 +309,12 @@ mod tests {
         let source_amount: u128 = 100;
         let curve = ConstantProductCurve::default();
         let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount, &[])
+            .swap(
+                source_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                &[],
+            )
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
         assert_eq!(result.amount_swapped, 4546);
