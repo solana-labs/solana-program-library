@@ -361,16 +361,16 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     let accounts = get_authority_accounts(config, &pool_withdraw_authority);
 
     if accounts.is_empty() {
-        println!("No accounts found.")
-    } else {
-        let mut total_balance: u64 = 0;
-        for (pubkey, account) in accounts {
-            let balance = account.lamports;
-            total_balance += balance;
-            println!("{}\t{} SOL", pubkey, lamports_to_sol(balance));
-        }
-        println!("Total: {} SOL", lamports_to_sol(total_balance));
+        return Err("No accounts found.".to_string().into());
     }
+
+    let mut total_balance: u64 = 0;
+    for (pubkey, account) in accounts {
+        let balance = account.lamports;
+        total_balance += balance;
+        println!("{}\t{} SOL", pubkey, lamports_to_sol(balance));
+    }
+    println!("Total: {} SOL", lamports_to_sol(total_balance));
 
     Ok(None)
 }
@@ -419,25 +419,23 @@ fn command_withdraw(
         TokenAccount::unpack_from_slice(account_data.as_slice()).unwrap();
 
     if account_data.mint != pool_data.pool_mint {
-        println!("Wrong token account.");
-        return Ok(None);
+        return Err("Wrong token account.".to_string().into());
     }
 
     // Check burn_from balance
     let max_withdraw_amount = pool_tokens_to_stake_amount(&pool_data, account_data.amount);
     if max_withdraw_amount < amount {
-        println!(
+        return Err(format!(
             "Not enough token balance to withdraw {} SOL.\nMaximum withdraw amount is {} SOL.",
             lamports_to_sol(amount),
             lamports_to_sol(max_withdraw_amount)
-        );
-        return Ok(None);
+        )
+        .into());
     }
 
     let mut accounts = get_authority_accounts(config, &pool_withdraw_authority);
     if accounts.is_empty() {
-        println!("No accounts found.");
-        return Ok(None);
+        return Err("No accounts found.".to_string().into());
     }
     // Sort from lowest to highest balance
     accounts.sort_by(|a, b| a.1.lamports.cmp(&b.1.lamports));
@@ -555,11 +553,11 @@ fn command_withdraw(
         return Ok(Some(transaction));
     }
 
-    println!(
+    Err(format!(
         "No stake accounts found in this pool with enough balance to withdraw {} SOL.",
         lamports_to_sol(amount)
-    );
-    Ok(None)
+    )
+    .into())
 }
 
 fn command_set_staking_auth(
@@ -621,7 +619,7 @@ fn command_set_owner(
         Some(value) => *value,
     };
     let new_fee_receiver: Pubkey = match new_fee_receiver {
-        None => pool_data.owner,
+        None => pool_data.owner_fee_account,
         Some(value) => {
             // Check for fee receiver being a valid token account and have to same mint as the stake pool
             let account_data = config.rpc_client.get_account_data(value)?;
@@ -629,13 +627,13 @@ fn command_set_owner(
                 match TokenAccount::unpack_from_slice(account_data.as_slice()) {
                     Ok(data) => data,
                     Err(_) => {
-                        println!("{} is not a token account", value);
-                        return Ok(None);
+                        return Err(format!("{} is not a token account", value).into());
                     }
                 };
             if account_data.mint != pool_data.pool_mint {
-                println!("Fee receiver account belongs to a different mint");
-                return Ok(None);
+                return Err("Fee receiver account belongs to a different mint"
+                    .to_string()
+                    .into());
             }
             *value
         }
@@ -876,6 +874,7 @@ fn main() {
                 .arg("new_owner")
                 .arg("new_fee_receiver")
                 .required(true)
+                .multiple(true)
             )
         )
         .get_matches();
