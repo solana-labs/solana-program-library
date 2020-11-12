@@ -10,7 +10,7 @@ use num_traits::FromPrimitive;
 use solana_program::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
     entrypoint::ProgramResult, info, program::invoke_signed, program_error::PrintProgramError,
-    program_error::ProgramError, pubkey::Pubkey,
+    program_error::ProgramError, program_pack::Pack, pubkey::Pubkey,
 };
 use std::convert::TryFrom;
 
@@ -182,6 +182,13 @@ impl Processor {
         // Numerator should be smaller than or equal to denominator (fee <= 1)
         if init.fee.numerator > init.fee.denominator {
             return Err(Error::FeeTooHigh.into());
+        }
+
+        // Check for owner fee account to have proper mint assigned
+        if *pool_mint_info.key
+            != spl_token::state::Account::unpack_from_slice(&owner_fee_info.data.borrow())?.mint
+        {
+            return Err(Error::WrongAccountMint.into());
         }
 
         let (_, deposit_bump_seed) = Self::find_authority_bump_seed(
@@ -557,6 +564,14 @@ impl Processor {
         if !owner_info.is_signer {
             return Err(Error::InvalidInput.into());
         }
+
+        // Check for owner fee account to have proper mint assigned
+        if stake_pool.pool_mint
+            != spl_token::state::Account::unpack_from_slice(&new_owner_fee_info.data.borrow())?.mint
+        {
+            return Err(Error::WrongAccountMint.into());
+        }
+
         stake_pool.owner = *new_owner_info.key;
         stake_pool.owner_fee_account = *new_owner_fee_info.key;
         State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
@@ -612,6 +627,7 @@ impl PrintProgramError for Error {
             Error::InvalidOutput => info!("Error: InvalidOutput"),
             Error::CalculationFailure => info!("Error: CalculationFailure"),
             Error::FeeTooHigh => info!("Error: FeeTooHigh"),
+            Error::WrongAccountMint => info!("Error: WrongAccountMint"),
         }
     }
 }
