@@ -46,7 +46,7 @@
   "keywords": [],
   "dependencies": {
     "@babel/runtime": "^7.11.2",
-    "@solana/web3.js": "^0.86.2",
+    "@solana/web3.js": "^0.87.0",
     "bn.js": "^5.1.3",
     "buffer-layout": "^1.2.0",
     "dotenv": "8.2.0",
