@@ -38,7 +38,7 @@
     "localnet:logs": "solana-localnet logs -f"
   },
   "dependencies": {
-    "@solana/web3.js": "^0.86.4"
+    "@solana/web3.js": "^0.87.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^16.0.0",
