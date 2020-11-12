@@ -47,7 +47,7 @@
     "@types/eslint-plugin-prettier": "^3.1.0",
     "@types/mkdirp": "^1.0.1",
     "@types/mz": "^2.7.2",
-    "@types/node": "^14.14.6",
+    "@types/node": "^14.14.7",
     "@types/prettier": "^2.1.5",
     "@types/rollup-plugin-json": "^3.0.2",
     "@typescript-eslint/eslint-plugin": "^4.7.0",
