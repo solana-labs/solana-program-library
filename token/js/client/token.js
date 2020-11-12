@@ -51,7 +51,7 @@ export class u64 extends BN {
    */
   static fromBuffer(buffer: typeof Buffer): u64 {
     assert(buffer.length === 8, `Invalid buffer length: ${buffer.length}`);
-    return new BN(
+    return new u64(
       [...buffer]
         .reverse()
         .map(i => `00${i.toString(16)}`.slice(-2))
