@@ -4,12 +4,6 @@ int printf(const char * restrictformat, ... );
 #include "custom-heap.c"
 #include <criterion/criterion.h>
 
-// goes away when the sdk incorporates it
-void sol_panic_(const char *file, uint64_t len, uint64_t line, uint64_t column) {
-  printf("Panic in %s at %d:%d\n", file, line, column);
-  __builtin_trap();
-}
-
 bool is_aligned(void *ptr, uint64_t align) {
   if (0 == ((uint64_t)ptr & (align - 1))) {
     return true;
