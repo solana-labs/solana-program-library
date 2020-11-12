@@ -2827,9 +2827,9 @@ dependencies = [
 
 [[package]]
 name = "solana-crate-features"
-version = "1.4.5"
+version = "1.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6163b6527000639a0420f91eae71e9af835c10140d0740142f2cdb56e541fafd"
+checksum = "9dd53ffcdfaffe98ff34e553a900ee96ac7354737cf70b77075f6e2a6d2f807d"
 dependencies = [
  "backtrace",
  "bytes 0.4.12",
@@ -3075,9 +3075,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk"
-version = "1.4.5"
+version = "1.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b137c94925588c790864ffa39cd16f4b8de1d3ad6184c4583cc13344babd183"
+checksum = "b021a35aa262e7fcff16b8a51d24dcbc82b48f4190cb76a258dbf738902e3e60"
 dependencies = [
  "assert_matches",
  "bincode",

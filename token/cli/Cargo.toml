@@ -19,7 +19,7 @@ solana-cli-output = "1.4.5"
 solana-client = "1.4.5"
 solana-logger = "1.4.5"
 solana-remote-wallet = "1.4.5"
-solana-sdk = "1.4.5"
+solana-sdk = "1.4.6"
 spl-token = { version = "3.0", path="../program", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "1.0", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
 

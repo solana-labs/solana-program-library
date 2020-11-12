@@ -11,6 +11,6 @@ edition = "2018"
 rand = { version = "0.7.0"}
 spl-token = { path = "../program", features = [ "no-entrypoint" ] }
 solana-runtime = "1.4.5"
-solana-sdk = "1.4.5"
+solana-sdk = "1.4.6"
 solana-bpf-loader-program = "1.4.5"
 solana_rbpf = "=0.1.32"
