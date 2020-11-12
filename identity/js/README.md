@@ -15,16 +15,16 @@ This is the JS client for the Identity program.
 
 ### Install
 ```
-npm install @civicteam/spl-identity
+npm install @civic/spl-identity
 ```
 or 
 ```
-yarn add @civicteam/spl-identity
+yarn add @civic/spl-identity
 ```
 
 ### Import
 ```
-import { Identity } from '@civicteam/spl-identity';
+import { Identity } from '@civic/spl-identity';
 ```
 
 ### Creating a new Identity

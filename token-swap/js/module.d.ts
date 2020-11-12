@@ -1,4 +1,4 @@
-declare module '@solana/spl-token-swap' {
+declare module '@civic/spl-token-swap' {
   import {Buffer} from 'buffer';
   import {Layout} from 'buffer-layout';
   import {
