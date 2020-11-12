@@ -2,9 +2,10 @@
 
 use serde_derive::{Deserialize, Serialize};
 use solana_program::{
+    clock::{Epoch, UnixTimestamp},
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
-    sysvar,
+    system_instruction, sysvar,
 };
 
 solana_program::declare_id!("Stake11111111111111111111111111111111111111");
@@ -21,7 +22,7 @@ pub enum StakeInstruction {
     /// Authorized carries pubkeys that must sign staker transactions
     ///   and withdrawer transactions.
     /// Lockup carries information about withdrawal restrictions
-    InitializeNOTUSED,
+    Initialize(Authorized, Lockup),
 
     /// Authorize a key to manage stake or withdrawal
     ///
@@ -104,11 +105,82 @@ pub enum StakeInstruction {
 
 /// FIXME copied from the stake program
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[allow(clippy::large_enum_variant)]
+pub enum StakeState {
+    /// FIXME copied from the stake program
+    Uninitialized,
+    /// FIXME copied from the stake program
+    Initialized(Meta),
+    /// FIXME copied from the stake program
+    Stake(Meta, Stake),
+    /// FIXME copied from the stake program
+    RewardsPool,
+}
+
+/// FIXME copied from the stake program
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+pub struct Meta {
+    /// FIXME copied from the stake program
+    pub rent_exempt_reserve: u64,
+    /// FIXME copied from the stake program
+    pub authorized: Authorized,
+    /// FIXME copied from the stake program
+    pub lockup: Lockup,
+}
+
+/// FIXME copied from the stake program
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Clone, Copy)]
+pub struct Stake {
+    /// FIXME copied from the stake program
+    pub delegation: Delegation,
+    /// credits observed is credits from vote account state when delegated or redeemed
+    pub credits_observed: u64,
+}
+
+/// FIXME copied from the stake program
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Clone, Copy)]
+pub struct Delegation {
+    /// to whom the stake is delegated
+    pub voter_pubkey: Pubkey,
+    /// activated stake amount, set at delegate() time
+    pub stake: u64,
+    /// epoch at which this stake was activated, std::Epoch::MAX if is a bootstrap stake
+    pub activation_epoch: Epoch,
+    /// epoch the stake was deactivated, std::Epoch::MAX if not deactivated
+    pub deactivation_epoch: Epoch,
+    /// how much stake we can activate per-epoch as a fraction of currently effective stake
+    pub warmup_cooldown_rate: f64,
+}
+
+/// FIXME copied from the stake program
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum StakeAuthorize {
     /// FIXME copied from the stake program
     Staker,
     /// FIXME copied from the stake program
     Withdrawer,
+}
+/// FIXME copied from the stake program
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+pub struct Authorized {
+    /// FIXME copied from the stake program
+    pub staker: Pubkey,
+    /// FIXME copied from the stake program
+    pub withdrawer: Pubkey,
+}
+
+/// FIXME copied from the stake program
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+pub struct Lockup {
+    /// UnixTimestamp at which this stake will allow withdrawal, unless the
+    ///   transaction is signed by the custodian
+    pub unix_timestamp: UnixTimestamp,
+    /// epoch height at which this stake will allow withdrawal, unless the
+    ///   transaction is signed by the custodian
+    pub epoch: Epoch,
+    /// custodian signature on a transaction exempts the operation from
+    ///  lockup constraints
+    pub custodian: Pubkey,
 }
 
 /// FIXME copied from the stake program
@@ -162,4 +234,36 @@ pub fn merge(
     ];
 
     Instruction::new(id(), &StakeInstruction::Merge, account_metas)
+}
+
+/// FIXME copied from the stake program
+pub fn create_account(
+    from_pubkey: &Pubkey,
+    stake_pubkey: &Pubkey,
+    authorized: &Authorized,
+    lockup: &Lockup,
+    lamports: u64,
+) -> Vec<Instruction> {
+    vec![
+        system_instruction::create_account(
+            from_pubkey,
+            stake_pubkey,
+            lamports,
+            std::mem::size_of::<StakeState>() as u64,
+            &id(),
+        ),
+        initialize(stake_pubkey, authorized, lockup),
+    ]
+}
+
+/// FIXME copied from the stake program
+fn initialize(stake_pubkey: &Pubkey, authorized: &Authorized, lockup: &Lockup) -> Instruction {
+    Instruction::new(
+        id(),
+        &StakeInstruction::Initialize(*authorized, *lockup),
+        vec![
+            AccountMeta::new(*stake_pubkey, false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+        ],
+    )
 }
