@@ -175,7 +175,7 @@ mod tests {
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&0u64.to_le_bytes());  // 8 bytes reserved for larget calcs
+        packed.extend_from_slice(&0u64.to_le_bytes()); // 8 bytes reserved for larget calcs
         let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
         assert_eq!(swap_curve, unpacked);
     }
