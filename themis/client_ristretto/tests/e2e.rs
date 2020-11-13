@@ -159,7 +159,7 @@ fn test_validator_e2e() {
         ..TestValidatorOptions::default()
     });
 
-    let program = load_program("../../target/deploy/spl_themis_ristretto.so");
+    let program = load_program("spl_themis_ristretto.so");
 
     Runtime::new().unwrap().block_on(async {
         let mut banks_client = start_tcp_client(leader_data.rpc_banks).await.unwrap();

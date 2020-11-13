@@ -36,7 +36,7 @@ fn run_program(
     instruction_data: &[u8],
 ) -> Result<u64, InstructionError> {
     let mut program_account = Account::default();
-    program_account.data = load_program("../../target/deploy/spl_themis_ristretto.so");
+    program_account.data = load_program("spl_themis_ristretto.so");
     let loader_id = bpf_loader::id();
     let mut invoke_context = MockInvokeContext::default();
     invoke_context.bpf_compute_budget = BpfComputeBudget {
