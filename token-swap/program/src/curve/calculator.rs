@@ -81,6 +81,12 @@ pub trait CurveCalculator: Debug + DynPack {
         Some(0)
     }
 
+    /// Calculate the trading fee in trading tokens
+    /// Default implementation assumes no fee
+    fn owner_trading_fee(&self, _trading_tokens: u128) -> Option<u128> {
+        Some(0)
+    }
+
     /// Calculate the pool token equivalent of the owner fee on trade
     /// See the math at: https://balancer.finance/whitepaper/#single-asset-deposit
     /// For the moment, we do an approximation for the square root.  For numbers

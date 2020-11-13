@@ -46,6 +46,14 @@ impl<'a> FeeConstraints<'a> {
                     calculator: Box::new(x.clone()),
                 })
                 .collect(),
+            CurveType::Stable => self
+                .valid_constant_product_curves
+                .iter()
+                .map(|x| SwapCurve {
+                    curve_type: swap_curve.curve_type,
+                    calculator: Box::new(x.clone()),
+                })
+                .collect(),
         };
         if valid_swap_curves.iter().any(|x| *x == *swap_curve) {
             Ok(())

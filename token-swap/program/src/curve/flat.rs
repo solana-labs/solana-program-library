@@ -39,16 +39,8 @@ impl CurveCalculator for FlatCurve {
         swap_destination_amount: u128,
     ) -> Option<SwapResult> {
         // debit the fee to calculate the amount swapped
-        let trade_fee = calculate_fee(
-            source_amount,
-            u128::try_from(self.trade_fee_numerator).ok()?,
-            u128::try_from(self.trade_fee_denominator).ok()?,
-        )?;
-        let owner_fee = calculate_fee(
-            source_amount,
-            u128::try_from(self.owner_trade_fee_numerator).ok()?,
-            u128::try_from(self.owner_trade_fee_denominator).ok()?,
-        )?;
+        let trade_fee = self.trading_fee(source_amount)?;
+        let owner_fee = self.owner_trading_fee(source_amount)?;
 
         let amount_swapped = source_amount
             .checked_sub(trade_fee)?
@@ -75,6 +67,24 @@ impl CurveCalculator for FlatCurve {
         )
     }
 
+    /// Calculate the trading fee in trading tokens
+    fn trading_fee(&self, trading_tokens: u128) -> Option<u128> {
+        calculate_fee(
+            trading_tokens,
+            u128::try_from(self.trade_fee_numerator).ok()?,
+            u128::try_from(self.trade_fee_denominator).ok()?,
+        )
+    }
+
+    /// Calculate the owner trading fee in trading tokens
+    fn owner_trading_fee(&self, trading_tokens: u128) -> Option<u128> {
+        calculate_fee(
+            trading_tokens,
+            u128::try_from(self.owner_trade_fee_numerator).ok()?,
+            u128::try_from(self.owner_trade_fee_denominator).ok()?,
+        )
+    }
+
     /// Calculate the host fee based on the owner fee, only used in production
     /// situations where a program is hosted by multiple frontends
     fn host_fee(&self, owner_fee: u128) -> Option<u128> {
@@ -95,6 +105,10 @@ impl IsInitialized for FlatCurve {
 impl Sealed for FlatCurve {}
 impl Pack for FlatCurve {
     const LEN: usize = 64;
+    fn pack_into_slice(&self, output: &mut [u8]) {
+        (self as &dyn DynPack).pack_into_slice(output);
+    }
+
     fn unpack_from_slice(input: &[u8]) -> Result<FlatCurve, ProgramError> {
         let input = array_ref![input, 0, 64];
         #[allow(clippy::ptr_offset_with_cast)]
@@ -118,10 +132,6 @@ impl Pack for FlatCurve {
             host_fee_numerator: u64::from_le_bytes(*host_fee_numerator),
             host_fee_denominator: u64::from_le_bytes(*host_fee_denominator),
         })
-    }
-
-    fn pack_into_slice(&self, output: &mut [u8]) {
-        (self as &dyn DynPack).pack_into_slice(output);
     }
 }
 
