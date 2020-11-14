@@ -1,0 +1,5 @@
+error: Unknown identifier, make sure that it is spelled correctly and defined above the location it is borrowed.
+ --> $DIR/borrow_before_declaration.rs:5:15
+  |
+5 |     #[borrows(a)]
+  |               ^

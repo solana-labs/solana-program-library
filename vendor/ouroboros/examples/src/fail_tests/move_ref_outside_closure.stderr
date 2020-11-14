@@ -1,0 +1,24 @@
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/move_ref_outside_closure.rs:16:48
+   |
+16 |     instance.with_data_ref(|dref| stored_ref = Some(*dref));
+   |                                                ^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 16:28...
+  --> $DIR/move_ref_outside_closure.rs:16:28
+   |
+16 |     instance.with_data_ref(|dref| stored_ref = Some(*dref));
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/move_ref_outside_closure.rs:16:53
+   |
+16 |     instance.with_data_ref(|dref| stored_ref = Some(*dref));
+   |                                                     ^^^^^
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that the expression is assignable
+  --> $DIR/move_ref_outside_closure.rs:16:48
+   |
+16 |     instance.with_data_ref(|dref| stored_ref = Some(*dref));
+   |                                                ^^^^^^^^^^^
+   = note: expected `std::option::Option<&'static i32>`
+              found `std::option::Option<&i32>`

@@ -1,0 +1,9 @@
+error[E0505]: cannot move out of `instance` because it is borrowed
+  --> $DIR/use_after_free.rs:16:10
+   |
+15 |     let data_ref = instance.with_data_ref(|dref| *dref);
+   |                    -------- borrow of `instance` occurs here
+16 |     drop(instance);
+   |          ^^^^^^^^ move out of `instance` occurs here
+17 |     println!("{:?}", data_ref);
+   |                      -------- borrow later used here

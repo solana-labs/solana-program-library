@@ -1,0 +1,5 @@
+error: Cannot borrow mutably twice.
+ --> $DIR/double_mutable_borrow.rs:6:26
+  |
+6 |     #[borrows(mut a, mut a)]
+  |                          ^

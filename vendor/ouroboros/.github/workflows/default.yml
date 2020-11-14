@@ -1,0 +1,37 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  stable-test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+    
+  miri-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup MIRI-Compatible Toolchain
+        run: |
+          MIRI_NIGHTLY=nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)
+          echo "Installing latest nightly with Miri: $MIRI_NIGHTLY"
+          rustup set profile minimal
+          rustup default "$MIRI_NIGHTLY"
+          rustup component add miri
+      - name: Run tests with MIRI
+        working-directory: examples
+        run: cargo miri test --features="miri"

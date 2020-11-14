@@ -1,0 +1,25 @@
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+ --> $DIR/reborrow_external_ref.rs:3:1
+  |
+3 | #[self_referencing]
+  | ^^^^^^^^^^^^^^^^^^^
+  |
+note: first, the lifetime cannot outlive the lifetime `'a` as defined on the impl at 4:28...
+ --> $DIR/reborrow_external_ref.rs:4:28
+  |
+4 | struct ReborrowExternalRef<'a> {
+  |                            ^^
+note: ...so that the types are compatible
+ --> $DIR/reborrow_external_ref.rs:3:1
+  |
+3 | #[self_referencing]
+  | ^^^^^^^^^^^^^^^^^^^
+  = note: expected `std::mem::MaybeUninit<ouroboros_impl_reborrow_external_ref::ReborrowExternalRef<'_>>`
+             found `std::mem::MaybeUninit<ouroboros_impl_reborrow_external_ref::ReborrowExternalRef<'a>>`
+  = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that the type `&str` will meet its required lifetime bounds
+ --> $DIR/reborrow_external_ref.rs:3:1
+  |
+3 | #[self_referencing]
+  | ^^^^^^^^^^^^^^^^^^^
+  = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
