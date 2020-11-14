@@ -2,7 +2,7 @@
 
 use crate::{
     curve::base::{CurveType, SwapCurve},
-    curve::{constant_product::ConstantProductCurve, flat::FlatCurve},
+    curve::{constant_product::ConstantProductCurve, flat::FlatCurve, stable::StableCurve},
     error::SwapError,
 };
 
@@ -24,6 +24,8 @@ pub struct FeeConstraints<'a> {
     pub valid_flat_curves: &'a [FlatCurve],
     /// Valid constant product curves for the program
     pub valid_constant_product_curves: &'a [ConstantProductCurve],
+    /// Valid stable curves for the program
+    pub valid_stable_curves: &'a [StableCurve],
 }
 
 impl<'a> FeeConstraints<'a> {
@@ -47,7 +49,7 @@ impl<'a> FeeConstraints<'a> {
                 })
                 .collect(),
             CurveType::Stable => self
-                .valid_constant_product_curves
+                .valid_stable_curves
                 .iter()
                 .map(|x| SwapCurve {
                     curve_type: swap_curve.curve_type,
@@ -87,6 +89,18 @@ const VALID_FLAT_CURVES: &[FlatCurve] = &[FlatCurve {
     host_fee_numerator: 20,
     host_fee_denominator: 100,
 }];
+#[cfg(feature = "production")]
+const VALID_STABLE_CURVES: &[StableCurve] = &[StableCurve {
+    trade_fee_numerator: 25,
+    trade_fee_denominator: 10000,
+    owner_trade_fee_numerator: 5,
+    owner_trade_fee_denominator: 10000,
+    owner_withdraw_fee_numerator: 0,
+    owner_withdraw_fee_denominator: 0,
+    host_fee_numerator: 20,
+    host_fee_denominator: 100,
+    amp: 85
+}];
 
 /// Fee structure defined by program creator in order to enforce certain
 /// fees when others use the program.  Adds checks on pool creation and
@@ -98,6 +112,7 @@ pub const FEE_CONSTRAINTS: Option<FeeConstraints> = {
             owner_key: OWNER_KEY,
             valid_constant_product_curves: VALID_CONSTANT_PRODUCT_CURVES,
             valid_flat_curves: VALID_FLAT_CURVES,
+            valid_stable_curves: VALID_STABLE_CURVES,
         })
     }
     #[cfg(not(feature = "production"))]
@@ -142,6 +157,7 @@ mod tests {
             owner_key,
             valid_constant_product_curves: &[calculator.clone()],
             valid_flat_curves: &[],
+            valid_stable_curves: &[],
         };
 
         fee_constraints.validate_curve(&swap_curve).unwrap();
