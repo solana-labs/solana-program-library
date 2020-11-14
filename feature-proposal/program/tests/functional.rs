@@ -94,23 +94,6 @@ async fn test_basic() {
         .expect("some account");
     assert_eq!(feature_id_acccount.owner, system_program::id());
 
-    let feature_proposal_acccount = banks_client
-        .get_account(feature_proposal.pubkey())
-        .await
-        .expect("success")
-        .expect("some account");
-    let feature_proposal_acccount =
-        spl_feature_proposal::state::FeatureProposal::unpack_from_slice(
-            &feature_proposal_acccount.data,
-        )
-        .expect("unpack success");
-    assert!(matches!(
-        feature_proposal_acccount,
-        FeatureProposal::Pending(AcceptanceCriteria {
-            tokens_required: 42,
-            deadline: None,
-        })
-    ));
     assert!(matches!(
         get_account::<FeatureProposal>(&mut banks_client, feature_proposal.pubkey()).await,
         Ok(FeatureProposal::Pending(_))
