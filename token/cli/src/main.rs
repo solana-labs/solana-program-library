@@ -163,7 +163,10 @@ fn new_throwaway_signer() -> (Option<Box<dyn Signer>>, Option<Pubkey>) {
 }
 
 fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
-    let balance = config.rpc_client.get_balance(&config.fee_payer)?;
+    let balance = config
+        .rpc_client
+        .get_balance_with_commitment(&config.fee_payer, config.commitment_config)?
+        .value;
     if balance < required_balance {
         Err(format!(
             "Fee payer, {}, has insufficient balance: {} required, {} available",
@@ -178,7 +181,10 @@ fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(),
 }
 
 fn check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
-    let balance = config.rpc_client.get_balance(&config.owner)?;
+    let balance = config
+        .rpc_client
+        .get_balance_with_commitment(&config.owner, config.commitment_config)?
+        .value;
     if balance < required_balance {
         Err(format!(
             "Owner, {}, has insufficient balance: {} required, {} available",
