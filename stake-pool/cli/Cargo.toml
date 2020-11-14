@@ -20,7 +20,7 @@ solana-sdk = "1.4.8"
 solana-program = "1.4.8"
 spl-stake-pool = { path="../program", features = [ "no-entrypoint" ] }
 spl-token = { path="../../token/program", features = [ "no-entrypoint" ]  }
-bs58 = "0.3.1"
+bs58 = "0.4.0"
 
 [[bin]]
 name = "spl-stake-pool"
