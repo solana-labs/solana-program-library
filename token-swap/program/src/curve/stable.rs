@@ -1,4 +1,4 @@
-//! The Uniswap invariant calculator.
+//! The curve.fi invariant calculator.
 
 use solana_program::{
     program_error::ProgramError,
@@ -35,20 +35,21 @@ pub struct StableCurve {
     pub amp: u64,
 }
 
-fn calc_step(
+/// d = (leverage * sum_x + d_product * n_coins) * initial_d / ((leverage - 1) * initial_d + (n_coins + 1) * d_product)
+fn calculate_step(
     initial_d: u128,
     leverage: u128,
     sum_x: u128,
-    d_p: u128,
+    d_product: u128,
     n_coins: u128,
 ) -> Option<u128> {
     let leverage_mul = leverage.checked_mul(sum_x)?;
-    let d_p_mul = d_p.checked_mul(n_coins)?;
+    let d_p_mul = d_product.checked_mul(n_coins)?;
 
     let l_val = leverage_mul.checked_add(d_p_mul)?.checked_mul(initial_d)?;
 
     let leverage_sub = leverage.checked_sub(1)?.checked_mul(initial_d)?;
-    let n_coins_sum = n_coins.checked_add(1)?.checked_mul(d_p)?;
+    let n_coins_sum = n_coins.checked_add(1)?.checked_mul(d_product)?;
 
     let r_val = leverage_sub.checked_add(n_coins_sum)?;
 
@@ -67,23 +68,23 @@ fn compute_d(amp: u128, amount_a: u128, amount_b: u128) -> Option<u128> {
     if sum_x == 0 {
         Some(0)
     } else {
-        let mut d_prev: u128;
+        let mut d_previous: u128;
         let mut d = sum_x;
         let leverage = amp.checked_mul(n_coins)?; // A * n
                                                   // Newton's method to approximate D
         for _ in 0..128 {
-            let mut d_p = d;
-            d_p = d_p.checked_mul(d)?.checked_div(amount_a_times_coins)?;
-            d_p = d_p.checked_mul(d)?.checked_div(amount_b_times_coins)?;
-            d_prev = d;
+            let mut d_product = d;
+            d_product = d_product.checked_mul(d)?.checked_div(amount_a_times_coins)?;
+            d_product = d_product.checked_mul(d)?.checked_div(amount_b_times_coins)?;
+            d_previous = d;
             //d = (leverage * sum_x + d_p * n_coins) * d / ((leverage - 1) * d + (n_coins + 1) * d_p);
-            d = calc_step(d, leverage, sum_x, d_p, n_coins)?;
+            d = calculate_step(d, leverage, sum_x, d_product, n_coins)?;
             // Equality with the precision of 1
-            if d > d_p {
-                if d.checked_sub(d_prev)? <= 1 {
+            if d > d_product {
+                if d.checked_sub(d_previous)? <= 1 {
                     break;
                 }
-            } else if d_prev.checked_sub(d)? <= 1 {
+            } else if d_previous.checked_sub(d)? <= 1 {
                 break;
             }
         }
@@ -95,7 +96,7 @@ fn compute_d(amp: u128, amount_a: u128, amount_b: u128) -> Option<u128> {
 /// Solve for y:
 /// y**2 + y * (sum' - (A*n**n - 1) * D / (A * n**n)) = D ** (n + 1) / (n ** (2 * n) * prod' * A)
 /// y**2 + b*y = c
-fn compute_dest(amp: u128, new_source_amount: u128, d_val: u128) -> Option<u128> {
+fn compute_new_destination_amount(amp: u128, new_source_amount: u128, d_val: u128) -> Option<u128> {
     // XXX: Curve uses u256
     let n_coins: u128 = 2;
     let leverage = amp.checked_mul(n_coins)?; // A * n
@@ -142,7 +143,7 @@ impl CurveCalculator for StableCurve {
             .checked_sub(trade_fee)?
             .checked_sub(owner_fee)?;
 
-        let new_destination_amount = compute_dest(
+        let new_destination_amount = compute_new_destination_amount(
             self.amp as u128,
             new_source_amount_less_fee,
             compute_d(
