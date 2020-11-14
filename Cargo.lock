@@ -3321,6 +3321,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-feature-proposal"
+version = "1.0.0-pre1"
+dependencies = [
+ "borsh",
+ "borsh-derive",
+ "futures 0.3.5",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token 3.0.0",
+ "tokio 0.3.3",
+]
+
+[[package]]
 name = "spl-memo"
 version = "2.0.0"
 dependencies = [
