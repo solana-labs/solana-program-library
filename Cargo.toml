@@ -23,3 +23,7 @@ members = [
 exclude = [
   "themis/client_ristretto",
 ]
+
+[patch.crates-io]
+ouroboros = { path = "vendor/ouroboros/ouroboros" }
+ouroboros_macro = { path = "vendor/ouroboros/ouroboros_macro" }
