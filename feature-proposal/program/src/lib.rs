@@ -12,7 +12,7 @@ pub mod state;
 pub use solana_program;
 use solana_program::{program_pack::Pack, pubkey::Pubkey};
 
-solana_program::declare_id!("badkenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8kn"); // TODO: Update Id
+solana_program::declare_id!("Feat1YXHhH6t1juaWF74WLcfv4XoNocjXA6sPWHNgAse");
 
 pub(crate) fn get_mint_address_with_seed(feature_proposal_address: &Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(&[&feature_proposal_address.to_bytes(), br"mint"], &id())
