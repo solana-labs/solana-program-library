@@ -186,6 +186,7 @@ declare module '@solana/spl-token' {
       programId: PublicKey,
       account: PublicKey,
       newAuthority: PublicKey | null,
+      authorityType: AuthorityType,
       authority: PublicKey,
       multiSigners: Array<Account>,
     ): TransactionInstruction;
