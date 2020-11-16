@@ -6,7 +6,8 @@
 pull_request_rules:
   - name: automatic merge (squash) on CI success
     conditions:
-      - status-success=Travis CI - Pull Request
+      - check-success=Travis CI - Pull Request
+      - check-success=all_github_action_checks
       - label=automerge
       - author≠@dont-squash-my-commits
     actions:
@@ -15,7 +16,8 @@ pull_request_rules:
   # Join the dont-squash-my-commits group if you won't like your commits squashed
   - name: automatic merge (rebase) on CI success
     conditions:
-      - status-success=Travis CI - Pull Request
+      - check-success=Travis CI - Pull Request
+      - check-success=all_github_action_checks
       - label=automerge
       - author=@dont-squash-my-commits
     actions:

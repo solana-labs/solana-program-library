@@ -12,43 +12,21 @@ use solana_sdk::{
     transaction::Transaction,
     transport,
 };
-use spl_themis_ristretto_client::test_e2e;
+use spl_themis_ristretto_client::{process_transactions_with_commitment, test_e2e};
 use std::{
     fs::{remove_dir_all, File},
     io::Read,
-    path::PathBuf,
 };
 use tokio::runtime::Runtime;
 
 const DATA_CHUNK_SIZE: usize = 229; // Keep program chunks under PACKET_DATA_SIZE
 
 fn load_program(name: &str) -> Vec<u8> {
-    let mut path = PathBuf::new();
-    path.push("../../target/bpfel-unknown-unknown/release");
-    path.push(name);
-    path.set_extension("so");
-    let mut file = File::open(path).unwrap();
+    let mut file = File::open(name).unwrap();
 
     let mut program = Vec::new();
     file.read_to_end(&mut program).unwrap();
     program
-}
-
-// TODO: Add this to BanksClient
-async fn process_transactions_with_commitment(
-    client: &mut BanksClient,
-    transactions: Vec<Transaction>,
-    commitment: CommitmentLevel,
-) -> transport::Result<()> {
-    let mut clients: Vec<_> = transactions.iter().map(|_| client.clone()).collect();
-    let futures = clients
-        .iter_mut()
-        .zip(transactions)
-        .map(|(client, transaction)| {
-            client.process_transaction_with_commitment(transaction, commitment)
-        });
-    let statuses = futures::future::join_all(futures).await;
-    statuses.into_iter().collect() // Convert Vec<Result<_, _>> to Result<Vec<_>>
 }
 
 async fn create_program_account_with_commitment(
@@ -181,7 +159,7 @@ fn test_validator_e2e() {
         ..TestValidatorOptions::default()
     });
 
-    let program = load_program("spl_themis_ristretto");
+    let program = load_program("../../target/deploy/spl_themis_ristretto.so");
 
     Runtime::new().unwrap().block_on(async {
         let mut banks_client = start_tcp_client(leader_data.rpc_banks).await.unwrap();

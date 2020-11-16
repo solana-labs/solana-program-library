@@ -1,6 +1,6 @@
 //! State transition types
 
-use crate::curve::SwapCurve;
+use crate::curve::base::SwapCurve;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     program_error::ProgramError,
@@ -120,7 +120,7 @@ impl Pack for SwapInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::FlatCurve;
+    use crate::curve::flat::FlatCurve;
 
     use std::convert::TryInto;
 
@@ -149,6 +149,8 @@ mod tests {
         let owner_trade_fee_denominator = 10;
         let owner_withdraw_fee_numerator = 2;
         let owner_withdraw_fee_denominator = 7;
+        let host_fee_numerator = 5;
+        let host_fee_denominator = 20;
         let calculator = Box::new(FlatCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -156,6 +158,8 @@ mod tests {
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
             owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
         });
         let swap_curve = SwapCurve {
             curve_type,
@@ -181,7 +185,7 @@ mod tests {
         assert_eq!(swap_info, unpacked);
 
         let mut packed = vec![];
-        packed.push(1 as u8);
+        packed.push(1u8);
         packed.push(nonce);
         packed.extend_from_slice(&token_program_id_raw);
         packed.extend_from_slice(&token_a_raw);
@@ -197,7 +201,8 @@ mod tests {
         packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&[0u8; 16]); // padding
+        packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
+        packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
         let unpacked = SwapInfo::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
 

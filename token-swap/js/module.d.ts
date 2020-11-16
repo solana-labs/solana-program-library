@@ -39,6 +39,8 @@ declare module '@solana/spl-token-swap' {
       ownerTradeFeeDenominator: Numberu64,
       ownerWithdrawFeeNumerator: Numberu64,
       ownerWithdrawFeeDenominator: Numberu64,
+      hostFeeNumerator: Numberu64,
+      hostFeeDenominator: Numberu64,
       payer: Account,
     );
 
@@ -64,6 +66,8 @@ declare module '@solana/spl-token-swap' {
       ownerTradeFeeDenominator: number,
       ownerWithdrawFeeNumerator: number,
       ownerWithdrawFeeDenominator: number,
+      hostFeeNumerator: number,
+      hostFeeDenominator: number,
     ): TransactionInstruction;
 
     static loadTokenSwap(
@@ -80,11 +84,12 @@ declare module '@solana/spl-token-swap' {
       authority: PublicKey,
       tokenAccountA: PublicKey,
       tokenAccountB: PublicKey,
-      tokenPool: PublicKey,
+      poolToken: PublicKey,
       mintA: PublicKey,
       mintB: PublicKey,
       feeAccount: PublicKey,
       tokenAccountPool: PublicKey,
+      swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       nonce: number,
       curveType: number,
@@ -94,7 +99,8 @@ declare module '@solana/spl-token-swap' {
       ownerTradeFeeDenominator: number,
       ownerWithdrawFeeNumerator: number,
       ownerWithdrawFeeDenominator: number,
-      swapProgramId: PublicKey,
+      hostFeeNumerator: number,
+      hostFeeDenominator: number,
     ): Promise<TokenSwap>;
 
     swap(
@@ -102,6 +108,7 @@ declare module '@solana/spl-token-swap' {
       poolSource: PublicKey,
       poolDestination: PublicKey,
       userDestination: PublicKey,
+      hostFeeAccount: PublicKey | null,
       amountIn: number | Numberu64,
       minimumAmountOut: number | Numberu64,
     ): Promise<TransactionSignature>;
@@ -115,6 +122,7 @@ declare module '@solana/spl-token-swap' {
       userDestination: PublicKey,
       poolMint: PublicKey,
       feeAccount: PublicKey,
+      hostFeeAccount: PublicKey | null,
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       amountIn: number | Numberu64,
@@ -122,14 +130,9 @@ declare module '@solana/spl-token-swap' {
     ): TransactionInstruction;
 
     deposit(
-      authority: PublicKey,
-      sourceA: PublicKey,
-      sourceB: PublicKey,
-      intoA: PublicKey,
-      intoB: PublicKey,
-      poolToken: PublicKey,
+      userAccountA: PublicKey,
+      userAccountB: PublicKey,
       poolAccount: PublicKey,
-      tokenProgramId: PublicKey,
       poolTokenAmount: number | Numberu64,
       maximumTokenA: number | Numberu64,
       maximumTokenB: number | Numberu64,

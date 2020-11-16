@@ -123,6 +123,16 @@ declare module '@solana/spl-token' {
       multiSigners: Array<Account>,
       amount: number | u64,
     ): Promise<void>;
+    freezeAccount(
+      account: PublicKey,
+      authority: any,
+      multiSigners: Array<Account>,
+    ): Promise<void>;
+    thawAccount(
+      account: PublicKey,
+      authority: any,
+      multiSigners: Array<Account>,
+    ): Promise<void>;
     closeAccount(
       account: PublicKey,
       dest: PublicKey,

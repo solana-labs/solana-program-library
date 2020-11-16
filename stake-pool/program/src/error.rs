@@ -43,6 +43,9 @@ pub enum Error {
     /// Stake pool fee > 1.
     #[error("FeeTooHigh")]
     FeeTooHigh,
+    /// Token account is associated with the wrong mint.
+    #[error("WrongAccountMint")]
+    WrongAccountMint,
 }
 impl From<Error> for ProgramError {
     fn from(e: Error) -> Self {

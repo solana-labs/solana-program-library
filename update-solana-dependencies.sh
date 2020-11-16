@@ -26,6 +26,8 @@ crates=(
   solana-core
   solana-logger
   solana-program
+  solana-program-test
+  solana-remote-wallet
   solana-runtime
   solana-sdk
 )
@@ -34,8 +36,4 @@ set -x
 for crate in "${crates[@]}"; do
   sed -i -e "s#\(${crate} = \"\).*\(\"\)#\1$solana_ver\2#g" "${tomls[@]}"
 done
-
-#sed -i -e "s#\(solana-sdk = { version = \"\).*\(\"\)#\1$solana_ver\2#g" "${tomls[@]}"
-#sed -i -e "s#\(solana-client = \"\).*\(\"\)#\1$solana_ver\2#g" "${tomls[@]}"
-
 

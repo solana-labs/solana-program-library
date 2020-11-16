@@ -8,27 +8,8 @@ branches:
 notifications:
   email: false
 
-cache:
-  directories:
-    - "~/.cache"
-
-services:
-  - docker
-
-env:
-  global:
-    - RUST_BACKTRACE=1
-    - SOLANA_VERSION=v1.4.3
-
 jobs:
   include:
-    - name: "Build programs"
-      language: rust
-      install:
-        source .travis/install-program-deps.sh
-      script:
-        - ci/script.sh
-
     # docs pull request or commit to master
     - name: "Build Docs"
       if: type IN (push, pull_request) AND branch = master

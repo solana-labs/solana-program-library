@@ -1,6 +1,6 @@
 [package]
 name = "spl-memo"
-version = "1.0.9"
+version = "2.0.0"
 description = "Solana Program Library Memo"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -8,10 +8,13 @@ license = "Apache-2.0"
 edition = "2018"
 
 [features]
-exclude_entrypoint = []
+no-entrypoint = []
 
 [dependencies]
-solana-program = "1.4.3"
+solana-program = "1.4.8"
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
