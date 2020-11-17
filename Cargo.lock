@@ -3322,7 +3322,7 @@ dependencies = [
 
 [[package]]
 name = "spl-feature-proposal"
-version = "1.0.0-pre2"
+version = "1.0.0-pre3"
 dependencies = [
  "borsh",
  "borsh-derive",
@@ -3332,6 +3332,19 @@ dependencies = [
  "solana-sdk",
  "spl-token 3.0.0",
  "tokio 0.3.3",
+]
+
+[[package]]
+name = "spl-feature-proposal-cli"
+version = "1.0.0"
+dependencies = [
+ "clap",
+ "solana-clap-utils",
+ "solana-cli-config",
+ "solana-client",
+ "solana-logger",
+ "solana-sdk",
+ "spl-feature-proposal",
 ]
 
 [[package]]
