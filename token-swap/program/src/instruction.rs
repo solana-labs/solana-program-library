@@ -46,9 +46,10 @@ pub enum SwapInstruction {
     ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
     ///   5. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   6. `[writable]` Pool token mint, to generate trading fees
-    ///   7. `[writable]` Fee account, to receive trading fees
-    ///   8. '[]` Token program id
-    ///   9. `[optional, writable]` Host fee account to receive additional trading fees
+    ///   7. `[writable]` Owner fee account, to receive trading fees
+    ///   8. `[writable]` Host fee account, splits trading fees with owner
+    ///   9. '[]` Token program id
+    ///   10. ..10+N. `[]` The accounts required by the curve, where N can be any number of accounts
     Swap {
         /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
         amount_in: u64,
@@ -333,8 +334,8 @@ pub fn swap(
     swap_destination_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     pool_mint_pubkey: &Pubkey,
-    pool_fee_pubkey: &Pubkey,
-    host_fee_pubkey: Option<&Pubkey>,
+    owner_fee_pubkey: &Pubkey,
+    host_fee_pubkey: &Pubkey,
     amount_in: u64,
     minimum_amount_out: u64,
 ) -> Result<Instruction, ProgramError> {
@@ -344,7 +345,7 @@ pub fn swap(
     }
     .pack();
 
-    let mut accounts = vec![
+    let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
         AccountMeta::new(*source_pubkey, false),
@@ -352,12 +353,10 @@ pub fn swap(
         AccountMeta::new(*swap_destination_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new(*pool_mint_pubkey, false),
-        AccountMeta::new(*pool_fee_pubkey, false),
+        AccountMeta::new(*owner_fee_pubkey, false),
+        AccountMeta::new(*host_fee_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
-    if let Some(host_fee_pubkey) = host_fee_pubkey {
-        accounts.push(AccountMeta::new(*host_fee_pubkey, false));
-    }
 
     Ok(Instruction {
         program_id: *program_id,

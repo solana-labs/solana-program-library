@@ -79,6 +79,12 @@ pub enum SwapError {
     /// The provided fee does not match the program owner's constraints
     #[error("The provided fee does not match the program owner's constraints")]
     InvalidFee,
+    /// The curve accounts do not match the swap inputs
+    #[error("The curve accounts do not match the swap inputs")]
+    InvalidCurveAccounts,
+    /// The provided orderbook is invalid
+    #[error("The provided orderbook is invalid")]
+    InvalidOrderbook,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {
