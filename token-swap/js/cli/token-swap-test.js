@@ -6,11 +6,14 @@ import {
   Connection,
   BpfLoader,
   PublicKey,
+  SystemProgram,
+  Transaction,
   BPF_LOADER_PROGRAM_ID,
 } from '@solana/web3.js';
 
-import {Token} from '../../../token/js/client/token';
+import {AccountLayout, Token} from '../../../token/js/client/token';
 import {TokenSwap, CurveType} from '../client/token-swap';
+import {sendAndConfirmTransaction} from '../client/util/send-and-confirm-transaction';
 import {Store} from '../client/util/store';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {url} from '../url';
@@ -391,6 +394,75 @@ export async function withdraw(): Promise<void> {
   info = await tokenPool.getAccountInfo(feeAccount);
   assert(info.amount.toNumber() == feeAmount);
   currentFeeAmount = feeAmount;
+}
+
+export async function createAccountAndSwapAtomic(): Promise<void> {
+  console.log('Creating swap token a account');
+  let userAccountA = await mintA.createAccount(owner.publicKey);
+  await mintA.mintTo(userAccountA, owner, [], SWAP_AMOUNT_IN);
+
+  const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
+    connection,
+  );
+  const newAccount = new Account();
+  const transaction = new Transaction();
+  transaction.add(
+    SystemProgram.createAccount({
+      fromPubkey: owner.publicKey,
+      newAccountPubkey: newAccount.publicKey,
+      lamports: balanceNeeded,
+      space: AccountLayout.span,
+      programId: mintB.programId,
+    }),
+  );
+
+  transaction.add(
+    Token.createInitAccountInstruction(
+      mintB.programId,
+      mintB.publicKey,
+      newAccount.publicKey,
+      owner.publicKey,
+    ),
+  );
+
+  transaction.add(
+    Token.createApproveInstruction(
+      mintA.programId,
+      userAccountA,
+      authority,
+      owner.publicKey,
+      [owner],
+      SWAP_AMOUNT_IN,
+    ),
+  );
+
+  transaction.add(
+    TokenSwap.swapInstruction(
+      tokenSwap.tokenSwap,
+      tokenSwap.authority,
+      userAccountA,
+      tokenSwap.tokenAccountA,
+      tokenSwap.tokenAccountB,
+      newAccount.publicKey,
+      tokenSwap.poolToken,
+      tokenSwap.feeAccount,
+      null,
+      tokenSwap.swapProgramId,
+      tokenSwap.tokenProgramId,
+      SWAP_AMOUNT_IN,
+      0,
+    ),
+  );
+
+  // Send the instructions
+  console.log('sending big instruction');
+  await sendAndConfirmTransaction(
+    'create account, approve transfer, swap',
+    connection,
+    transaction,
+    owner,
+    newAccount,
+  );
 }
 
 export async function swap(): Promise<void> {

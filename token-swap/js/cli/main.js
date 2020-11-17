@@ -6,6 +6,7 @@
 
 import {
   loadPrograms,
+  createAccountAndSwapAtomic,
   createTokenSwap,
   swap,
   deposit,
@@ -24,6 +25,8 @@ async function main() {
   await withdraw();
   console.log('Run test: swap');
   await swap();
+  console.log('Run test: create account, approve, swap all at once');
+  await createAccountAndSwapAtomic();
   console.log('Success\n');
 }
 
