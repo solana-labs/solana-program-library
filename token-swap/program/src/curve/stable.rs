@@ -74,8 +74,12 @@ fn compute_d(amp: u128, amount_a: u128, amount_b: u128) -> Option<u128> {
                                                   // Newton's method to approximate D
         for _ in 0..128 {
             let mut d_product = d;
-            d_product = d_product.checked_mul(d)?.checked_div(amount_a_times_coins)?;
-            d_product = d_product.checked_mul(d)?.checked_div(amount_b_times_coins)?;
+            d_product = d_product
+                .checked_mul(d)?
+                .checked_div(amount_a_times_coins)?;
+            d_product = d_product
+                .checked_mul(d)?
+                .checked_div(amount_b_times_coins)?;
             d_previous = d;
             //d = (leverage * sum_x + d_p * n_coins) * d / ((leverage - 1) * d + (n_coins + 1) * d_p);
             d = calculate_step(d, leverage, sum_x, d_product, n_coins)?;
@@ -103,7 +107,7 @@ fn compute_new_destination_amount(amp: u128, new_source_amount: u128, d_val: u12
 
     // sum' = prod' = x
     // c =  D ** (n + 1) / (n ** (2 * n) * prod' * A)
-    let c = checked_pow(d_val, 3)?.checked_div(
+    let c = checked_pow(d_val, n_coins.checked_add(1)? as usize)?.checked_div(
         new_source_amount.checked_mul(checked_pow(n_coins, 2)?.checked_mul(leverage)?)?,
     )?;
     // b = sum' - (A*n**n - 1) * D / (A * n**n)

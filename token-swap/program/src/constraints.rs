@@ -90,17 +90,7 @@ const VALID_FLAT_CURVES: &[FlatCurve] = &[FlatCurve {
     host_fee_denominator: 100,
 }];
 #[cfg(feature = "production")]
-const VALID_STABLE_CURVES: &[StableCurve] = &[StableCurve {
-    trade_fee_numerator: 25,
-    trade_fee_denominator: 10000,
-    owner_trade_fee_numerator: 5,
-    owner_trade_fee_denominator: 10000,
-    owner_withdraw_fee_numerator: 0,
-    owner_withdraw_fee_denominator: 0,
-    host_fee_numerator: 20,
-    host_fee_denominator: 100,
-    amp: 85
-}];
+const VALID_STABLE_CURVES: &[StableCurve] = &[];
 
 /// Fee structure defined by program creator in order to enforce certain
 /// fees when others use the program.  Adds checks on pool creation and
