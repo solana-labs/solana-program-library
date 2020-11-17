@@ -780,8 +780,13 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
         println!("None");
     }
 
-    println!("Account                                      Token                                        Balance");
-    println!("-------------------------------------------------------------------------------------------------");
+    if token.is_some() {
+        println!("Account                                      Balance");
+        println!("----------------------------------------------------");
+    } else {
+        println!("Account                                      Token                                        Balance");
+        println!("-------------------------------------------------------------------------------------------------");
+    }
     for keyed_account in accounts {
         let address = keyed_account.pubkey;
 
@@ -799,13 +804,20 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                         } else {
                             "".to_string()
                         };
-                        println!(
-                            "{:<44} {:<44} {}{}",
-                            address,
-                            ui_token_account.mint,
-                            ui_token_account.token_amount.ui_amount,
-                            maybe_frozen
-                        )
+                        if token.is_some() {
+                            println!(
+                                "{:<44} {}{}",
+                                address, ui_token_account.token_amount.ui_amount, maybe_frozen
+                            )
+                        } else {
+                            println!(
+                                "{:<44} {:<44} {}{}",
+                                address,
+                                ui_token_account.mint,
+                                ui_token_account.token_amount.ui_amount,
+                                maybe_frozen
+                            )
+                        }
                     }
                     Ok(_) => println!("{:<44} Unsupported token account", address),
                     Err(err) => println!("{:<44} Account parse failure: {}", address, err),
