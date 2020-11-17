@@ -10,7 +10,9 @@ use solana_account_decoder::{
 use solana_clap_utils::{
     fee_payer::fee_payer_arg,
     input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, signer_of, value_of},
-    input_validators::{is_amount, is_parsable, is_url, is_valid_pubkey, is_valid_signer},
+    input_validators::{
+        is_amount, is_amount_or_all, is_parsable, is_url, is_valid_pubkey, is_valid_signer,
+    },
     keypair::{pubkey_from_path, signer_from_path, DefaultSigner},
     nonce::*,
     offline::{self, *},
@@ -423,16 +425,35 @@ fn resolve_mint_info(
 fn command_transfer(
     config: &Config,
     sender: Pubkey,
-    ui_amount: f64,
+    ui_amount: Option<f64>,
     recipient: Pubkey,
     fund_recipient: bool,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
 ) -> CommandResult {
+    let sender_balance = config
+        .rpc_client
+        .get_token_account_balance(&sender)
+        .map_err(|err| {
+            format!(
+                "Error: Failed to get token balance of sender address {}: {}",
+                sender, err
+            )
+        })?
+        .ui_amount;
+    let ui_amount = ui_amount.unwrap_or(sender_balance);
+
     println!(
         "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
         ui_amount, sender, recipient
     );
+    if ui_amount > sender_balance {
+        return Err(format!(
+            "Error: Sender has insufficient funds, current balance is {}",
+            sender_balance
+        )
+        .into());
+    }
 
     let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, mint_address, mint_decimals)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
@@ -1287,12 +1308,12 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(is_amount)
+                        .validator(is_amount_or_all)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
                         .required(true)
-                        .help("Amount to send, in tokens"),
+                        .help("Amount to send, in tokens; accepts keyword ALL"),
                 )
                 .arg(
                     Arg::with_name("recipient")
@@ -1804,7 +1825,11 @@ fn main() {
             let sender = pubkey_of_signer(arg_matches, "sender", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+
+            let amount = match matches.value_of("amount").unwrap() {
+                "ALL" => None,
+                amount => Some(amount.parse::<f64>().unwrap()),
+            };
             let recipient = pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
