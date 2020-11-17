@@ -28,7 +28,7 @@ separator = "0.4.1"
 solana-banks-server = "1.4.8"
 solana-bpf-loader-program = "1.4.8"
 solana-core = "1.4.8"
-solana_rbpf = "=0.1.32"
+solana_rbpf = "0.1"
 solana-runtime = "1.4.8"
 
 [lib]
