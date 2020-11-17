@@ -1912,6 +1912,7 @@ mod tests {
                 owner_key,
                 valid_constant_product_curves,
                 valid_flat_curves: &[],
+                valid_stable_curves: &[],
             });
             let mut accounts =
                 SwapAccountInfo::new(&user_key, swap_curve, token_a_amount, token_b_amount);
@@ -1976,6 +1977,7 @@ mod tests {
                 owner_key,
                 valid_constant_product_curves,
                 valid_flat_curves: &[],
+                valid_stable_curves: &[],
             });
             let mut accounts =
                 SwapAccountInfo::new(&user_key, swap_curve, token_a_amount, token_b_amount);
@@ -2039,6 +2041,7 @@ mod tests {
                 owner_key,
                 valid_constant_product_curves,
                 valid_flat_curves: &[],
+                valid_stable_curves: &[],
             });
             let mut accounts =
                 SwapAccountInfo::new(&user_key, swap_curve, token_a_amount, token_b_amount);
@@ -3700,6 +3703,7 @@ mod tests {
             owner_key: owner_key_str,
             valid_constant_product_curves,
             valid_flat_curves: &[],
+            valid_stable_curves: &[],
         });
         let mut accounts =
             SwapAccountInfo::new(&owner_key, swap_curve, token_a_amount, token_b_amount);
@@ -4289,6 +4293,7 @@ mod tests {
                 owner_key,
                 valid_constant_product_curves: &[],
                 valid_flat_curves: &[],
+                valid_stable_curves: &[],
             });
             do_process_instruction_with_fee_constraints(
                 swap(
@@ -4347,6 +4352,7 @@ mod tests {
                 owner_key,
                 valid_constant_product_curves: &[],
                 valid_flat_curves: &[],
+                valid_stable_curves: &[],
             });
             assert_eq!(
                 Err(SwapError::IncorrectPoolMint.into()),

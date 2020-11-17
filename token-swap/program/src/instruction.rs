@@ -381,7 +381,7 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
 mod tests {
     use super::*;
 
-    use crate::curve::{base::CurveType, flat::FlatCurve};
+    use crate::curve::{base::CurveType, stable::StableCurve};
 
     #[test]
     fn test_instruction_packing() {
@@ -394,8 +394,9 @@ mod tests {
         let host_fee_numerator: u64 = 5;
         let host_fee_denominator: u64 = 20;
         let nonce: u8 = 255;
-        let curve_type = CurveType::Flat;
-        let calculator = Box::new(FlatCurve {
+        let amp: u64 = 1;
+        let curve_type = CurveType::Stable;
+        let calculator = Box::new(StableCurve {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
@@ -404,6 +405,7 @@ mod tests {
             owner_withdraw_fee_denominator,
             host_fee_numerator,
             host_fee_denominator,
+            amp,
         });
         let swap_curve = SwapCurve {
             curve_type,
@@ -423,6 +425,7 @@ mod tests {
         expect.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
         expect.extend_from_slice(&host_fee_numerator.to_le_bytes());
         expect.extend_from_slice(&host_fee_denominator.to_le_bytes());
+        expect.extend_from_slice(&amp.to_le_bytes());
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

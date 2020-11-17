@@ -76,6 +76,7 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     Layout.uint64('ownerWithdrawFeeDenominator'),
     Layout.uint64('hostFeeNumerator'),
     Layout.uint64('hostFeeDenominator'),
+    Layout.uint64('amp'),
   ],
 );
 
@@ -310,6 +311,7 @@ export class TokenSwap {
       BufferLayout.nu64('ownerWithdrawFeeDenominator'),
       BufferLayout.nu64('hostFeeNumerator'),
       BufferLayout.nu64('hostFeeDenominator'),
+      BufferLayout.nu64('amp'),
     ]);
     let data = Buffer.alloc(1024);
     {
