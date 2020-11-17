@@ -6,9 +6,9 @@
 
 import {
   loadPrograms,
+  createAccountAndSwapAtomic,
   createTokenSwap,
   swap,
-  swapOneTransaction,
   deposit,
   withdraw,
 } from './token-swap-test';
@@ -19,14 +19,14 @@ async function main() {
   await loadPrograms();
   console.log('Run test: createTokenSwap');
   await createTokenSwap();
-  console.log('Run test: create account, approve, swap all at once');
-  await swapOneTransaction();
   console.log('Run test: deposit');
   await deposit();
   console.log('Run test: withdraw');
   await withdraw();
   console.log('Run test: swap');
   await swap();
+  console.log('Run test: create account, approve, swap all at once');
+  await createAccountAndSwapAtomic();
   console.log('Success\n');
 }
 

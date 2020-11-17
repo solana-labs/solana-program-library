@@ -396,7 +396,7 @@ export async function withdraw(): Promise<void> {
   currentFeeAmount = feeAmount;
 }
 
-export async function swapOneTransaction(): Promise<void> {
+export async function createAccountAndSwapAtomic(): Promise<void> {
   console.log('Creating swap token a account');
   let userAccountA = await mintA.createAccount(owner.publicKey);
   await mintA.mintTo(userAccountA, owner, [], SWAP_AMOUNT_IN);
@@ -433,16 +433,16 @@ export async function swapOneTransaction(): Promise<void> {
       owner.publicKey,
       [owner],
       SWAP_AMOUNT_IN,
-    )
+    ),
   );
 
   transaction.add(
     TokenSwap.swapInstruction(
-      this.tokenSwap,
-      this.authority,
+      tokenSwap.tokenSwap,
+      tokenSwap.authority,
       userAccountA,
-      tokenAccountA,
-      tokenAccountB,
+      tokenSwap.tokenAccountA,
+      tokenSwap.tokenAccountB,
       newAccount.publicKey,
       tokenSwap.poolToken,
       tokenSwap.feeAccount,
@@ -450,14 +450,14 @@ export async function swapOneTransaction(): Promise<void> {
       tokenSwap.swapProgramId,
       tokenSwap.tokenProgramId,
       SWAP_AMOUNT_IN,
-      SWAP_AMOUNT_OUT,
-    )
+      0,
+    ),
   );
 
   // Send the instructions
   console.log('sending big instruction');
   await sendAndConfirmTransaction(
-    'do a whole lot',
+    'create account, approve transfer, swap',
     connection,
     transaction,
     owner,
