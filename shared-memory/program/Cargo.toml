@@ -14,7 +14,7 @@ solana-program = "1.4.9"
 [dev-dependencies]
 solana-bpf-loader-program = "1.4.9"
 solana-sdk = "1.4.9"
-solana_rbpf = "0.1"
+solana_rbpf = "0.2"
 
 [lib]
 crate-type = ["cdylib", "lib"]
