@@ -18,10 +18,13 @@ pub(crate) fn get_mint_address_with_seed(feature_proposal_address: &Pubkey) -> (
     Pubkey::find_program_address(&[&feature_proposal_address.to_bytes(), br"mint"], &id())
 }
 
-pub(crate) fn get_delivery_token_address_with_seed(
+pub(crate) fn get_distributor_token_address_with_seed(
     feature_proposal_address: &Pubkey,
 ) -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[&feature_proposal_address.to_bytes(), br"delivery"], &id())
+    Pubkey::find_program_address(
+        &[&feature_proposal_address.to_bytes(), br"distributor"],
+        &id(),
+    )
 }
 
 pub(crate) fn get_acceptance_token_address_with_seed(
@@ -47,8 +50,8 @@ pub fn get_mint_address(feature_proposal_address: &Pubkey) -> Pubkey {
 
 /// Derive the SPL Token token address associated with a feature proposal that receives the initial
 /// minted tokens
-pub fn get_delivery_token_address(feature_proposal_address: &Pubkey) -> Pubkey {
-    get_delivery_token_address_with_seed(feature_proposal_address).0
+pub fn get_distributor_token_address(feature_proposal_address: &Pubkey) -> Pubkey {
+    get_distributor_token_address_with_seed(feature_proposal_address).0
 }
 
 /// Derive the SPL Token token address associated with a feature proposal that users send their

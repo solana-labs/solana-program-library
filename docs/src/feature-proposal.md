@@ -99,7 +99,7 @@ This is done by running:
 $ spl-feature-proposal propose feature-proposal.json
 Feature Id: HQ3baDfNU7WKCyWvtMYZmi51YPs7vhSiLn1ESYp3jhiA
 Token Mint Address: ALvA7Lv9jbo8JFhxqnRpjWWuR3aD12uCb5KBJst4uc3d
-Delivery Token Address: GK55hNft4TGc3Hg4KzbjEmju8VfaNuXK8jQNDTZKcsNF
+Distributor Token Address: GK55hNft4TGc3Hg4KzbjEmju8VfaNuXK8jQNDTZKcsNF
 Acceptance Token Address: AdqKm3mSJf8AtTWjfpA5ZbJszWQPcwyLA2XkRyLbf3Di
 Number of validators: 376
 Tokens to be minted: 134575791.53064314

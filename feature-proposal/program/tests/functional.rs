@@ -57,7 +57,7 @@ async fn test_basic() {
 
     let feature_id_address = get_feature_id_address(&feature_proposal.pubkey());
     let mint_address = get_mint_address(&feature_proposal.pubkey());
-    let delivery_token_address = get_delivery_token_address(&feature_proposal.pubkey());
+    let distributor_token_address = get_distributor_token_address(&feature_proposal.pubkey());
     let acceptance_token_address = get_acceptance_token_address(&feature_proposal.pubkey());
 
     // Create a new feature proposal
@@ -94,15 +94,15 @@ async fn test_basic() {
     assert!(mint.freeze_authority.is_none());
     assert_eq!(mint.mint_authority, COption::Some(mint_address));
 
-    // Confirm delivery token account state
-    let delivery_token =
-        get_account_data::<spl_token::state::Account>(&mut banks_client, delivery_token_address)
+    // Confirm distributor token account state
+    let distributor_token =
+        get_account_data::<spl_token::state::Account>(&mut banks_client, distributor_token_address)
             .await
             .unwrap();
-    assert_eq!(delivery_token.amount, 42);
-    assert_eq!(delivery_token.mint, mint_address);
-    assert_eq!(delivery_token.owner, feature_proposal.pubkey());
-    assert!(delivery_token.close_authority.is_none());
+    assert_eq!(distributor_token.amount, 42);
+    assert_eq!(distributor_token.mint, mint_address);
+    assert_eq!(distributor_token.owner, feature_proposal.pubkey());
+    assert!(distributor_token.close_authority.is_none());
 
     // Confirm acceptance token account state
     let acceptance_token =
@@ -140,7 +140,7 @@ async fn test_basic() {
     let mut transaction = Transaction::new_with_payer(
         &[spl_token::instruction::transfer(
             &spl_token::id(),
-            &delivery_token_address,
+            &distributor_token_address,
             &acceptance_token_address,
             &feature_proposal.pubkey(),
             &[],
