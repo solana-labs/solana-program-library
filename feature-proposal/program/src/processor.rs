@@ -34,7 +34,7 @@ pub fn process_instruction(
             let funder_info = next_account_info(account_info_iter)?;
             let feature_proposal_info = next_account_info(account_info_iter)?;
             let mint_info = next_account_info(account_info_iter)?;
-            let delivery_token_info = next_account_info(account_info_iter)?;
+            let distributor_token_info = next_account_info(account_info_iter)?;
             let acceptance_token_info = next_account_info(account_info_iter)?;
             let feature_id_info = next_account_info(account_info_iter)?;
             let system_program_info = next_account_info(account_info_iter)?;
@@ -49,10 +49,10 @@ pub fn process_instruction(
                 return Err(ProgramError::InvalidArgument);
             }
 
-            let (delivery_token_address, delivery_token_bump_seed) =
-                get_delivery_token_address_with_seed(feature_proposal_info.key);
-            if delivery_token_address != *delivery_token_info.key {
-                info!("Error: delivery token address derivation mismatch");
+            let (distributor_token_address, distributor_token_bump_seed) =
+                get_distributor_token_address_with_seed(feature_proposal_info.key);
+            if distributor_token_address != *distributor_token_info.key {
+                info!("Error: distributor token address derivation mismatch");
                 return Err(ProgramError::InvalidArgument);
             }
 
@@ -76,10 +76,10 @@ pub fn process_instruction(
                 &[mint_bump_seed],
             ];
 
-            let delivery_token_signer_seeds: &[&[_]] = &[
+            let distributor_token_signer_seeds: &[&[_]] = &[
                 &feature_proposal_info.key.to_bytes(),
-                br"delivery",
-                &[delivery_token_bump_seed],
+                br"distributor",
+                &[distributor_token_bump_seed],
             ];
 
             let acceptance_token_signer_seeds: &[&[_]] = &[
@@ -145,33 +145,33 @@ pub fn process_instruction(
                 ],
             )?;
 
-            info!("Creating delivery token account");
+            info!("Creating distributor token account");
             invoke_signed(
                 &system_instruction::create_account(
                     funder_info.key,
-                    delivery_token_info.key,
+                    distributor_token_info.key,
                     1.max(rent.minimum_balance(spl_token::state::Account::get_packed_len())),
                     spl_token::state::Account::get_packed_len() as u64,
                     &spl_token::id(),
                 ),
                 &[
                     funder_info.clone(),
-                    delivery_token_info.clone(),
+                    distributor_token_info.clone(),
                     system_program_info.clone(),
                 ],
-                &[&delivery_token_signer_seeds],
+                &[&distributor_token_signer_seeds],
             )?;
 
-            info!("Initializing delivery token account");
+            info!("Initializing distributor token account");
             invoke(
                 &spl_token::instruction::initialize_account(
                     &spl_token::id(),
-                    delivery_token_info.key,
+                    distributor_token_info.key,
                     mint_info.key,
                     feature_proposal_info.key,
                 )?,
                 &[
-                    delivery_token_info.clone(),
+                    distributor_token_info.clone(),
                     spl_token_program_info.clone(),
                     rent_sysvar_info.clone(),
                     feature_proposal_info.clone(),
@@ -243,21 +243,21 @@ pub fn process_instruction(
                 ],
             )?;
 
-            // Mint `tokens_to_mint` tokens into `delivery_token_account` owned by
+            // Mint `tokens_to_mint` tokens into `distributor_token_account` owned by
             // `feature_proposal`
             info!(&format!("Minting {} tokens", tokens_to_mint));
             invoke_signed(
                 &spl_token::instruction::mint_to(
                     &spl_token::id(),
                     mint_info.key,
-                    delivery_token_info.key,
+                    distributor_token_info.key,
                     mint_info.key,
                     &[],
                     tokens_to_mint,
                 )?,
                 &[
                     mint_info.clone(),
-                    delivery_token_info.clone(),
+                    distributor_token_info.clone(),
                     spl_token_program_info.clone(),
                 ],
                 &[&mint_signer_seeds],

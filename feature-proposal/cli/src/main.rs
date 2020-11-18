@@ -237,8 +237,8 @@ fn process_propose(
     percent_stake_required: u8,
     confirm: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let delivery_token_address =
-        spl_feature_proposal::get_delivery_token_address(&feature_proposal_keypair.pubkey());
+    let distributor_token_address =
+        spl_feature_proposal::get_distributor_token_address(&feature_proposal_keypair.pubkey());
     let feature_id_address =
         spl_feature_proposal::get_feature_id_address(&feature_proposal_keypair.pubkey());
     let acceptance_token_address =
@@ -247,7 +247,7 @@ fn process_propose(
 
     println!("Feature Id: {}", feature_id_address);
     println!("Token Mint Address: {}", mint_address);
-    println!("Delivery Token Address: {}", delivery_token_address,);
+    println!("Distributor Token Address: {}", distributor_token_address);
     println!("Acceptance Token Address: {}", acceptance_token_address);
 
     let vote_accounts = rpc_client.get_vote_accounts()?;
@@ -314,7 +314,7 @@ fn process_propose(
                   --db-path db.{} \
                   --fee-payer ~/.config/solana/id.json \
                   --owner <FEATURE_PROPOSAL_KEYPAIR>",
-        delivery_token_address,
+        distributor_token_address,
         distribution_file,
         &feature_proposal_keypair.pubkey().to_string()[..8]
     );
