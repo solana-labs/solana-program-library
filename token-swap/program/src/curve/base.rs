@@ -7,6 +7,7 @@ use solana_program::{
 
 use crate::curve::{
     calculator::CurveCalculator, constant_product::ConstantProductCurve, flat::FlatCurve,
+    stable::StableCurve,
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::{TryFrom, TryInto};
@@ -20,6 +21,8 @@ pub enum CurveType {
     ConstantProduct,
     /// Flat line, always providing 1:1 from one token to another
     Flat,
+    /// Stable, Like uniswap, but with wide zone of 1:1 instead of one point
+    Stable,
 }
 
 /// Concrete struct to wrap around the trait object which performs calculation.
@@ -75,15 +78,15 @@ impl Sealed for SwapCurve {}
 impl Pack for SwapCurve {
     /// Size of encoding of all curve parameters, which include fees and any other
     /// constants used to calculate swaps, deposits, and withdrawals.
-    /// This includes 1 byte for the type, and 64 for the calculator to use as
-    /// it needs.  Some calculators may be smaller than 64 bytes.
-    const LEN: usize = 65;
+    /// This includes 1 byte for the type, and 72 for the calculator to use as
+    /// it needs.  Some calculators may be smaller than 72 bytes.
+    const LEN: usize = 73;
 
     /// Unpacks a byte buffer into a SwapCurve
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 65];
+        let input = array_ref![input, 0, 73];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (curve_type, calculator) = array_refs![input, 1, 64];
+        let (curve_type, calculator) = array_refs![input, 1, 72];
         let curve_type = curve_type[0].try_into()?;
         Ok(Self {
             curve_type,
@@ -92,14 +95,15 @@ impl Pack for SwapCurve {
                     Box::new(ConstantProductCurve::unpack_from_slice(calculator)?)
                 }
                 CurveType::Flat => Box::new(FlatCurve::unpack_from_slice(calculator)?),
+                CurveType::Stable => Box::new(StableCurve::unpack_from_slice(calculator)?),
             },
         })
     }
 
     /// Pack SwapCurve into a byte buffer
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 65];
-        let (curve_type, calculator) = mut_array_refs![output, 1, 64];
+        let output = array_mut_ref![output, 0, 73];
+        let (curve_type, calculator) = mut_array_refs![output, 1, 72];
         curve_type[0] = self.curve_type as u8;
         self.calculator.pack_into_slice(&mut calculator[..]);
     }
@@ -120,6 +124,7 @@ impl TryFrom<u8> for CurveType {
         match curve_type {
             0 => Ok(CurveType::ConstantProduct),
             1 => Ok(CurveType::Flat),
+            2 => Ok(CurveType::Stable),
             _ => Err(ProgramError::InvalidAccountData),
         }
     }
@@ -170,6 +175,7 @@ mod tests {
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
+        packed.extend_from_slice(&0u64.to_le_bytes()); // 8 bytes reserved for larget calcs
         let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
         assert_eq!(swap_curve, unpacked);
     }

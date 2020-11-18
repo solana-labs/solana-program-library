@@ -50,17 +50,17 @@ const SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID: PublicKey = new PublicKey(
 );
 
 async function findAssociatedTokenAddress(
-    walletAddress: Pubkey,
-    tokenMintAddress: Pubkey
+    walletAddress: PublicKey,
+    tokenMintAddress: PublicKey
 ): Promise<PublicKey> {
-    return PublicKey.findProgramAddress(
+    return (await PublicKey.findProgramAddress(
         [
             walletAddress.toBuffer(),
             SPL_TOKEN_PROGRAM_ID.toBuffer(),
             tokenMintAddress.toBuffer(),
         ],
         SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID
-    )[0];
+    ))[0];
 }
 ```
 

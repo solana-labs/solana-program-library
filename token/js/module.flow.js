@@ -205,5 +205,19 @@ declare module '@solana/spl-token' {
       authority: PublicKey,
       multiSigners: Array<Account>,
     ): TransactionInstruction;
+    static createFreezeAccountInstruction(
+      programId: PublicKey,
+      account: PublicKey,
+      mint: PublicKey,
+      authority: PublicKey,
+      multiSigners: Array<Account>,
+    ): TransactionInstruction;
+    static createThawAccountInstruction(
+      programId: PublicKey,
+      account: PublicKey,
+      mint: PublicKey,
+      authority: PublicKey,
+      multiSigners: Array<Account>,
+    ): TransactionInstruction;
   }
 }

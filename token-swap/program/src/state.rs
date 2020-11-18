@@ -54,11 +54,37 @@ impl IsInitialized for SwapInfo {
 }
 
 impl Pack for SwapInfo {
-    const LEN: usize = 291;
+    const LEN: usize = 299;
+
+    fn pack_into_slice(&self, output: &mut [u8]) {
+        let output = array_mut_ref![output, 0, 299];
+        let (
+            is_initialized,
+            nonce,
+            token_program_id,
+            token_a,
+            token_b,
+            pool_mint,
+            token_a_mint,
+            token_b_mint,
+            pool_fee_account,
+            swap_curve,
+        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 73];
+        is_initialized[0] = self.is_initialized as u8;
+        nonce[0] = self.nonce;
+        token_program_id.copy_from_slice(self.token_program_id.as_ref());
+        token_a.copy_from_slice(self.token_a.as_ref());
+        token_b.copy_from_slice(self.token_b.as_ref());
+        pool_mint.copy_from_slice(self.pool_mint.as_ref());
+        token_a_mint.copy_from_slice(self.token_a_mint.as_ref());
+        token_b_mint.copy_from_slice(self.token_b_mint.as_ref());
+        pool_fee_account.copy_from_slice(self.pool_fee_account.as_ref());
+        self.swap_curve.pack_into_slice(&mut swap_curve[..]);
+    }
 
     /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 291];
+        let input = array_ref![input, 0, 299];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
@@ -71,7 +97,7 @@ impl Pack for SwapInfo {
             token_b_mint,
             pool_fee_account,
             swap_curve,
-        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 65];
+        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 73];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -89,45 +115,19 @@ impl Pack for SwapInfo {
             swap_curve: SwapCurve::unpack_from_slice(swap_curve)?,
         })
     }
-
-    fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 291];
-        let (
-            is_initialized,
-            nonce,
-            token_program_id,
-            token_a,
-            token_b,
-            pool_mint,
-            token_a_mint,
-            token_b_mint,
-            pool_fee_account,
-            swap_curve,
-        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 65];
-        is_initialized[0] = self.is_initialized as u8;
-        nonce[0] = self.nonce;
-        token_program_id.copy_from_slice(self.token_program_id.as_ref());
-        token_a.copy_from_slice(self.token_a.as_ref());
-        token_b.copy_from_slice(self.token_b.as_ref());
-        pool_mint.copy_from_slice(self.pool_mint.as_ref());
-        token_a_mint.copy_from_slice(self.token_a_mint.as_ref());
-        token_b_mint.copy_from_slice(self.token_b_mint.as_ref());
-        pool_fee_account.copy_from_slice(self.pool_fee_account.as_ref());
-        self.swap_curve.pack_into_slice(&mut swap_curve[..]);
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::flat::FlatCurve;
+    use crate::curve::stable::StableCurve;
 
     use std::convert::TryInto;
 
     #[test]
     fn test_swap_info_packing() {
         let nonce = 255;
-        let curve_type_raw: u8 = 1;
+        let curve_type_raw: u8 = 2;
         let curve_type = curve_type_raw.try_into().unwrap();
         let token_program_id_raw = [1u8; 32];
         let token_a_raw = [1u8; 32];
@@ -151,7 +151,8 @@ mod tests {
         let owner_withdraw_fee_denominator = 7;
         let host_fee_numerator = 5;
         let host_fee_denominator = 20;
-        let calculator = Box::new(FlatCurve {
+        let amp: u64 = 1;
+        let calculator = Box::new(StableCurve {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
@@ -160,6 +161,7 @@ mod tests {
             owner_withdraw_fee_denominator,
             host_fee_numerator,
             host_fee_denominator,
+            amp,
         });
         let swap_curve = SwapCurve {
             curve_type,
@@ -203,6 +205,7 @@ mod tests {
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
+        packed.extend_from_slice(&amp.to_le_bytes());
         let unpacked = SwapInfo::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
 
