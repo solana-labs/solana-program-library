@@ -4,6 +4,7 @@
 use futures::{Future, FutureExt};
 use solana_program::{
     feature::{self, Feature},
+    program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
     system_program,
@@ -54,6 +55,9 @@ async fn test_basic() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
 
     let feature_id_address = get_feature_id_address(&feature_proposal.pubkey());
+    let mint_address = get_mint_address(&feature_proposal.pubkey());
+    let delivery_token_address = get_delivery_token_address(&feature_proposal.pubkey());
+    let acceptance_token_address = get_acceptance_token_address(&feature_proposal.pubkey());
 
     // Create a new feature proposal
     let mut transaction = Transaction::new_with_payer(
@@ -80,6 +84,38 @@ async fn test_basic() {
     assert_eq!(feature_id_acccount.owner, system_program::id());
     assert_eq!(feature_id_acccount.data.len(), Feature::size_of());
 
+    // Confirm mint account state
+    let mint = get_account::<spl_token::state::Mint>(&mut banks_client, mint_address)
+        .await
+        .unwrap();
+    assert_eq!(mint.supply, 42);
+    assert_eq!(mint.decimals, 9);
+    assert!(mint.freeze_authority.is_none());
+    assert_eq!(mint.mint_authority, COption::Some(mint_address));
+
+    // Confirm delivery token account state
+    let delivery_token =
+        get_account::<spl_token::state::Account>(&mut banks_client, delivery_token_address)
+            .await
+            .unwrap();
+    assert_eq!(delivery_token.amount, 42);
+    assert_eq!(delivery_token.mint, mint_address);
+    assert_eq!(delivery_token.owner, feature_proposal.pubkey());
+    assert!(delivery_token.close_authority.is_none());
+
+    // Confirm acceptance token account state
+    let acceptance_token =
+        get_account::<spl_token::state::Account>(&mut banks_client, acceptance_token_address)
+            .await
+            .unwrap();
+    assert_eq!(acceptance_token.amount, 0);
+    assert_eq!(acceptance_token.mint, mint_address);
+    assert_eq!(acceptance_token.owner, id());
+    assert_eq!(
+        acceptance_token.close_authority,
+        COption::Some(feature_proposal.pubkey())
+    );
+
     // Tally #1: Does nothing because the acceptance criteria has not been met
     let mut transaction =
         Transaction::new_with_payer(&[tally(&feature_proposal.pubkey())], Some(&payer.pubkey()));
@@ -100,9 +136,6 @@ async fn test_basic() {
     ));
 
     // Transfer tokens to the acceptance account
-    let delivery_token_address = get_delivery_token_address(&feature_proposal.pubkey());
-    let acceptance_token_address = get_acceptance_token_address(&feature_proposal.pubkey());
-
     let mut transaction = Transaction::new_with_payer(
         &[spl_token::instruction::transfer(
             &spl_token::id(),
