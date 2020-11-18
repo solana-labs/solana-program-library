@@ -212,6 +212,36 @@ pub fn process_instruction(
                     mint_info.clone(),
                 ],
             )?;
+            invoke(
+                &spl_token::instruction::set_authority(
+                    &spl_token::id(),
+                    acceptance_token_info.key,
+                    Some(&feature_proposal_info.key),
+                    spl_token::instruction::AuthorityType::CloseAccount,
+                    feature_proposal_info.key,
+                    &[],
+                )?,
+                &[
+                    spl_token_program_info.clone(),
+                    acceptance_token_info.clone(),
+                    feature_proposal_info.clone(),
+                ],
+            )?;
+            invoke(
+                &spl_token::instruction::set_authority(
+                    &spl_token::id(),
+                    acceptance_token_info.key,
+                    Some(&program_id),
+                    spl_token::instruction::AuthorityType::AccountOwner,
+                    feature_proposal_info.key,
+                    &[],
+                )?,
+                &[
+                    spl_token_program_info.clone(),
+                    acceptance_token_info.clone(),
+                    feature_proposal_info.clone(),
+                ],
+            )?;
 
             // Mint `tokens_to_mint` tokens into `delivery_token_account` owned by
             // `feature_proposal`
