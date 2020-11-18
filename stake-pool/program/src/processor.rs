@@ -642,10 +642,10 @@ mod tests {
     };
     use solana_sdk::account::{create_account, create_is_signer_account_infos, Account};
     use spl_token::{
+        error::TokenError,
         instruction::{initialize_account, initialize_mint},
         processor::Processor as TokenProcessor,
         state::{Account as SplAccount, Mint as SplMint},
-        error::TokenError,
     };
 
     /// Test program id for the stake-pool program.
@@ -1414,7 +1414,7 @@ mod tests {
 
         Claim {
             tokens_to_issue,
-            allow_burn_to: pool_info.withdraw_authority_key.clone(),
+            allow_burn_to: pool_info.withdraw_authority_key,
             pool_info,
             user_withdrawer_key,
             pool_token_receiver,
