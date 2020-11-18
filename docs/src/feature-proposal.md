@@ -56,7 +56,7 @@ The `spl-feature-proposal` configuration is shared with the `solana` command-lin
 
 This section describes the life cycle of a feature proposal.
 
-### Implement The Feature
+### Implement the Feature
 The first step is to conceive of the new feature and realize it in the
 Solana code base, working with the core Solana developers at https://github.com/solana-labs/solana.
 
