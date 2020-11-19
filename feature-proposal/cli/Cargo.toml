@@ -8,6 +8,7 @@ license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
+chrono = "0.4.19"
 clap = "2.33.3"
 solana-clap-utils = "1.4.8"
 solana-cli-config = "1.4.8"
