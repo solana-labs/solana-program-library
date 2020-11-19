@@ -12,17 +12,9 @@ use spl_token::{
 };
 
 use solana_program::{
-    account_info::AccountInfo,
-    bpf_loader,
-    clock::Epoch,
-    entrypoint::ProgramResult,
-    instruction::Instruction,
-    program_option::COption,
-    program_pack::Pack,
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    program_stubs,
-    system_program,
+    account_info::AccountInfo, bpf_loader, clock::Epoch, entrypoint::ProgramResult,
+    instruction::Instruction, program_error::ProgramError, program_option::COption,
+    program_pack::Pack, program_stubs, pubkey::Pubkey, system_program,
 };
 
 struct TestSyscallStubs {}
@@ -73,16 +65,19 @@ fn test_syscall_stubs() {
     });
 }
 
-fn do_process_instruction(
-    instruction: Instruction,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
+fn do_process_instruction(instruction: Instruction, accounts: &[AccountInfo]) -> ProgramResult {
     test_syscall_stubs();
 
     // approximate the logic in the actual runtime which runs the instruction
     // and only updates accounts if the instruction is successful
-    let mut account_data = accounts.iter().map(AccountData::new_from_account_info).collect::<Vec<_>>();
-    let account_infos = account_data.iter_mut().map(AccountData::into_account_info).collect::<Vec<_>>();
+    let mut account_data = accounts
+        .iter()
+        .map(AccountData::new_from_account_info)
+        .collect::<Vec<_>>();
+    let account_infos = account_data
+        .iter_mut()
+        .map(AccountData::into_account_info)
+        .collect::<Vec<_>>();
     let res = if instruction.program_id == spl_token_swap::id() {
         spl_token_swap::processor::Processor::process(
             &instruction.program_id,
@@ -114,7 +109,8 @@ fn do_process_instruction(
                     data.clone_from_slice(*account_info.data.borrow());
                 }
             }
-        } }
+        }
+    }
     res
 }
 
@@ -150,7 +146,14 @@ impl AccountData {
 
     pub fn into_account_info(&mut self) -> AccountInfo {
         AccountInfo::new(
-            &self.key, self.is_signer, false, &mut self.lamports, &mut self.data[..], &self.program_id, false, Epoch::default()
+            &self.key,
+            self.is_signer,
+            false,
+            &mut self.lamports,
+            &mut self.data[..],
+            &self.program_id,
+            false,
+            Epoch::default(),
         )
     }
 }
@@ -180,7 +183,11 @@ pub fn create_mint(owner: &Pubkey) -> AccountData {
     account_data
 }
 
-pub fn create_token_account(mint_account: &mut AccountData, owner: &Pubkey, amount: u64) -> AccountData {
+pub fn create_token_account(
+    mint_account: &mut AccountData,
+    owner: &Pubkey,
+    amount: u64,
+) -> AccountData {
     let mut mint = Mint::unpack(&mint_account.data).unwrap();
     let mut account_data = AccountData::new(TokenAccount::LEN, spl_token::id());
     let mut account = TokenAccount::default();
@@ -206,26 +213,34 @@ pub fn create_program_account(program_id: Pubkey) -> AccountData {
 }
 
 impl TokenSwapAccountInfo {
-    pub fn new(
-        swap_curve: SwapCurve,
-        token_a_amount: u64,
-        token_b_amount: u64,
-    ) -> Self {
+    pub fn new(swap_curve: SwapCurve, token_a_amount: u64, token_b_amount: u64) -> Self {
         let mut user_account = AccountData::new(0, system_program::id());
         user_account.is_signer = true;
         let mut swap_account = AccountData::new(SwapInfo::LEN, spl_token_swap::id());
-        let (authority_key, nonce) =
-            Pubkey::find_program_address(&[&swap_account.key.to_bytes()[..]], &spl_token_swap::id());
+        let (authority_key, nonce) = Pubkey::find_program_address(
+            &[&swap_account.key.to_bytes()[..]],
+            &spl_token_swap::id(),
+        );
         let mut authority_account = create_program_account(authority_key);
         let mut token_program_account = create_program_account(spl_token::id());
 
         let mut pool_mint_account = create_mint(&authority_account.key);
-        let mut pool_token_account = create_token_account(&mut pool_mint_account, &user_account.key, 0);
-        let mut pool_fee_account = create_token_account(&mut pool_mint_account, &user_account.key, 0);
+        let mut pool_token_account =
+            create_token_account(&mut pool_mint_account, &user_account.key, 0);
+        let mut pool_fee_account =
+            create_token_account(&mut pool_mint_account, &user_account.key, 0);
         let mut token_a_mint_account = create_mint(&user_account.key);
-        let mut token_a_account = create_token_account(&mut token_a_mint_account, &authority_account.key, token_a_amount);
+        let mut token_a_account = create_token_account(
+            &mut token_a_mint_account,
+            &authority_account.key,
+            token_a_amount,
+        );
         let mut token_b_mint_account = create_mint(&user_account.key);
-        let mut token_b_account = create_token_account(&mut token_b_mint_account, &authority_account.key, token_b_amount);
+        let mut token_b_account = create_token_account(
+            &mut token_b_mint_account,
+            &authority_account.key,
+            token_b_amount,
+        );
 
         let init_instruction = instruction::initialize(
             &spl_token_swap::id(),
@@ -239,7 +254,8 @@ impl TokenSwapAccountInfo {
             &pool_token_account.key,
             nonce,
             swap_curve.clone(),
-        ).unwrap();
+        )
+        .unwrap();
 
         do_process_instruction(
             init_instruction,
@@ -278,18 +294,26 @@ impl TokenSwapAccountInfo {
     }
 
     pub fn create_token_a_account(&mut self, amount: u64) -> AccountData {
-        create_token_account(&mut self.token_a_mint_account, &self.user_account.key, amount)
+        create_token_account(
+            &mut self.token_a_mint_account,
+            &self.user_account.key,
+            amount,
+        )
     }
 
     pub fn create_token_b_account(&mut self, amount: u64) -> AccountData {
-        create_token_account(&mut self.token_b_mint_account, &self.user_account.key, amount)
+        create_token_account(
+            &mut self.token_b_mint_account,
+            &self.user_account.key,
+            amount,
+        )
     }
 
     pub fn swap_a_to_b(
         &mut self,
         token_a_account: &mut AccountData,
         token_b_account: &mut AccountData,
-        instruction: Swap
+        instruction: Swap,
     ) -> ProgramResult {
         do_process_instruction(
             approve(
@@ -299,13 +323,15 @@ impl TokenSwapAccountInfo {
                 &self.user_account.key,
                 &[],
                 instruction.amount_in,
-            ).unwrap(),
+            )
+            .unwrap(),
             &[
                 token_a_account.into_account_info(),
                 self.authority_account.into_account_info(),
                 self.user_account.into_account_info(),
             ],
-        ).unwrap();
+        )
+        .unwrap();
         let swap_instruction = instruction::swap(
             &spl_token_swap::id(),
             &spl_token::id(),
@@ -319,7 +345,8 @@ impl TokenSwapAccountInfo {
             &self.pool_fee_account.key,
             Some(&self.pool_token_account.key),
             instruction,
-        ).unwrap();
+        )
+        .unwrap();
 
         do_process_instruction(
             swap_instruction,
@@ -342,7 +369,7 @@ impl TokenSwapAccountInfo {
         &mut self,
         token_b_account: &mut AccountData,
         token_a_account: &mut AccountData,
-        instruction: Swap
+        instruction: Swap,
     ) -> ProgramResult {
         do_process_instruction(
             approve(
@@ -352,13 +379,15 @@ impl TokenSwapAccountInfo {
                 &self.user_account.key,
                 &[],
                 instruction.amount_in,
-            ).unwrap(),
+            )
+            .unwrap(),
             &[
                 token_b_account.into_account_info(),
                 self.authority_account.into_account_info(),
                 self.user_account.into_account_info(),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let swap_instruction = instruction::swap(
             &spl_token_swap::id(),
@@ -373,7 +402,8 @@ impl TokenSwapAccountInfo {
             &self.pool_fee_account.key,
             Some(&self.pool_token_account.key),
             instruction,
-        ).unwrap();
+        )
+        .unwrap();
 
         do_process_instruction(
             swap_instruction,
@@ -407,13 +437,15 @@ impl TokenSwapAccountInfo {
                 &self.user_account.key,
                 &[],
                 instruction.maximum_token_a_amount,
-            ).unwrap(),
+            )
+            .unwrap(),
             &[
                 token_a_account.into_account_info(),
                 self.authority_account.into_account_info(),
                 self.user_account.into_account_info(),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         do_process_instruction(
             approve(
@@ -423,13 +455,15 @@ impl TokenSwapAccountInfo {
                 &self.user_account.key,
                 &[],
                 instruction.maximum_token_b_amount,
-            ).unwrap(),
+            )
+            .unwrap(),
             &[
                 token_b_account.into_account_info(),
                 self.authority_account.into_account_info(),
                 self.user_account.into_account_info(),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let deposit_instruction = instruction::deposit(
             &spl_token_swap::id(),
@@ -443,7 +477,8 @@ impl TokenSwapAccountInfo {
             &self.pool_mint_account.key,
             &pool_account.key,
             instruction,
-        ).unwrap();
+        )
+        .unwrap();
 
         do_process_instruction(
             deposit_instruction,
@@ -476,13 +511,15 @@ impl TokenSwapAccountInfo {
                 &self.user_account.key,
                 &[],
                 instruction.pool_token_amount,
-            ).unwrap(),
+            )
+            .unwrap(),
             &[
                 token_a_account.into_account_info(),
                 self.authority_account.into_account_info(),
                 self.user_account.into_account_info(),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let withdraw_instruction = instruction::withdraw(
             &spl_token_swap::id(),
@@ -497,7 +534,8 @@ impl TokenSwapAccountInfo {
             &token_a_account.key,
             &token_b_account.key,
             instruction,
-        ).unwrap();
+        )
+        .unwrap();
 
         do_process_instruction(
             withdraw_instruction,
@@ -530,7 +568,12 @@ impl TokenSwapAccountInfo {
                 minimum_token_a_amount: 0,
                 minimum_token_b_amount: 0,
             };
-            self.withdraw(&mut pool_account, &mut token_a_account, &mut token_b_account, instruction)
+            self.withdraw(
+                &mut pool_account,
+                &mut token_a_account,
+                &mut token_b_account,
+                instruction,
+            )
         } else {
             Ok(())
         }

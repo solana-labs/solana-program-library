@@ -2,8 +2,9 @@
 
 use crate::constraints::{FeeConstraints, FEE_CONSTRAINTS};
 use crate::{
-    curve::base::SwapCurve, error::SwapError,
-    instruction::{SwapInstruction, Initialize, Deposit, Withdraw, Swap},
+    curve::base::SwapCurve,
+    error::SwapError,
+    instruction::{Deposit, Initialize, Swap, SwapInstruction, Withdraw},
     state::SwapInfo,
 };
 use num_traits::FromPrimitive;

@@ -3,12 +3,12 @@
 use spl_token_swap_fuzz::{get_token_balance, AccountData, TokenSwapAccountInfo};
 
 use spl_token_swap::{
-    instruction::{Deposit, Swap, Withdraw},
-    error::SwapError,
     curve::{
-        base::{SwapCurve, CurveType},
+        base::{CurveType, SwapCurve},
         constant_product::ConstantProductCurve,
     },
+    error::SwapError,
+    instruction::{Deposit, Swap, Withdraw},
 };
 
 use spl_token::error::TokenError;
@@ -56,7 +56,9 @@ const INITIAL_SWAP_TOKEN_B_AMOUNT: u64 = 300_000_000_000;
 const INITIAL_USER_TOKEN_A_AMOUNT: u64 = 1_000_000_000;
 const INITIAL_USER_TOKEN_B_AMOUNT: u64 = 3_000_000_000;
 
-fuzz_target!(|fuzz_instructions: Vec<FuzzInstruction>| { run_fuzz_instructions(fuzz_instructions) });
+fuzz_target!(|fuzz_instructions: Vec<FuzzInstruction>| {
+    run_fuzz_instructions(fuzz_instructions)
+});
 
 fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
     let trade_fee_numerator = 25;
@@ -92,17 +94,33 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
     let mut pool_accounts: HashMap<AccountId, AccountData> = HashMap::new();
 
     // to ensure that we never create or remove base tokens
-    let before_total_token_a = INITIAL_SWAP_TOKEN_A_AMOUNT + get_total_token_a_amount(&fuzz_instructions);
-    let before_total_token_b = INITIAL_SWAP_TOKEN_B_AMOUNT + get_total_token_b_amount(&fuzz_instructions);
+    let before_total_token_a =
+        INITIAL_SWAP_TOKEN_A_AMOUNT + get_total_token_a_amount(&fuzz_instructions);
+    let before_total_token_b =
+        INITIAL_SWAP_TOKEN_B_AMOUNT + get_total_token_b_amount(&fuzz_instructions);
 
     for fuzz_instruction in fuzz_instructions {
-        run_fuzz_instruction(fuzz_instruction, &mut token_swap, &mut token_a_accounts, &mut token_b_accounts, &mut pool_accounts);
+        run_fuzz_instruction(
+            fuzz_instruction,
+            &mut token_swap,
+            &mut token_a_accounts,
+            &mut token_b_accounts,
+            &mut pool_accounts,
+        );
     }
 
     // check total token a and b amounts
-    let after_total_token_a = token_a_accounts.values().map(get_token_balance).sum::<u64>() + get_token_balance(&token_swap.token_a_account);
+    let after_total_token_a = token_a_accounts
+        .values()
+        .map(get_token_balance)
+        .sum::<u64>()
+        + get_token_balance(&token_swap.token_a_account);
     assert_eq!(before_total_token_a, after_total_token_a);
-    let after_total_token_b = token_b_accounts.values().map(get_token_balance).sum::<u64>() + get_token_balance(&token_swap.token_b_account);
+    let after_total_token_b = token_b_accounts
+        .values()
+        .map(get_token_balance)
+        .sum::<u64>()
+        + get_token_balance(&token_swap.token_b_account);
     assert_eq!(before_total_token_b, after_total_token_b);
 
     // final check to make sure that withdrawing everything works
@@ -141,69 +159,88 @@ fn run_fuzz_instruction(
             trade_direction,
             instruction,
         } => {
-            let mut token_a_account = token_a_accounts.entry(token_a_id).or_insert(
-                token_swap.create_token_a_account(INITIAL_USER_TOKEN_A_AMOUNT));
-            let mut token_b_account = token_b_accounts.entry(token_b_id).or_insert(
-                token_swap.create_token_b_account(INITIAL_USER_TOKEN_B_AMOUNT));
+            let mut token_a_account = token_a_accounts
+                .entry(token_a_id)
+                .or_insert(token_swap.create_token_a_account(INITIAL_USER_TOKEN_A_AMOUNT));
+            let mut token_b_account = token_b_accounts
+                .entry(token_b_id)
+                .or_insert(token_swap.create_token_b_account(INITIAL_USER_TOKEN_B_AMOUNT));
             match trade_direction {
                 TradeDirection::AtoB => {
                     token_swap.swap_a_to_b(&mut token_a_account, &mut token_b_account, instruction)
-                },
+                }
                 TradeDirection::BtoA => {
                     token_swap.swap_b_to_a(&mut token_b_account, &mut token_a_account, instruction)
-                },
+                }
             }
-        },
+        }
         FuzzInstruction::Deposit {
             token_a_id,
             token_b_id,
             pool_token_id,
             instruction,
         } => {
-            let mut token_a_account = token_a_accounts.entry(token_a_id).or_insert(
-                token_swap.create_token_a_account(INITIAL_USER_TOKEN_A_AMOUNT));
-            let mut token_b_account = token_b_accounts.entry(token_b_id).or_insert(
-                token_swap.create_token_b_account(INITIAL_USER_TOKEN_B_AMOUNT));
-            let mut pool_account = pool_accounts.entry(pool_token_id).or_insert(
-                token_swap.create_pool_account());
-            token_swap.deposit(&mut token_a_account, &mut token_b_account, &mut pool_account, instruction)
-        },
+            let mut token_a_account = token_a_accounts
+                .entry(token_a_id)
+                .or_insert(token_swap.create_token_a_account(INITIAL_USER_TOKEN_A_AMOUNT));
+            let mut token_b_account = token_b_accounts
+                .entry(token_b_id)
+                .or_insert(token_swap.create_token_b_account(INITIAL_USER_TOKEN_B_AMOUNT));
+            let mut pool_account = pool_accounts
+                .entry(pool_token_id)
+                .or_insert(token_swap.create_pool_account());
+            token_swap.deposit(
+                &mut token_a_account,
+                &mut token_b_account,
+                &mut pool_account,
+                instruction,
+            )
+        }
         FuzzInstruction::Withdraw {
             token_a_id,
             token_b_id,
             pool_token_id,
             instruction,
         } => {
-            let mut token_a_account = token_a_accounts.entry(token_a_id).or_insert(
-                token_swap.create_token_a_account(INITIAL_USER_TOKEN_A_AMOUNT));
-            let mut token_b_account = token_b_accounts.entry(token_b_id).or_insert(
-                token_swap.create_token_b_account(INITIAL_USER_TOKEN_B_AMOUNT));
-            let mut pool_account = pool_accounts.entry(pool_token_id).or_insert(
-                token_swap.create_pool_account());
-            token_swap.withdraw(&mut pool_account, &mut token_a_account, &mut token_b_account, instruction)
-        },
-    };
-    result.map_err(|e| {
-        if e == SwapError::CalculationFailure.into() {}
-        else if e == SwapError::ConversionFailure.into() {}
-        else if e == SwapError::FeeCalculationFailure.into() {}
-        else if e == SwapError::ExceededSlippage.into() {}
-        else if e == SwapError::ZeroTradingTokens.into() {}
-        else if e == TokenError::InsufficientFunds.into() {}
-        else {
-            Err(e).unwrap()
+            let mut token_a_account = token_a_accounts
+                .entry(token_a_id)
+                .or_insert(token_swap.create_token_a_account(INITIAL_USER_TOKEN_A_AMOUNT));
+            let mut token_b_account = token_b_accounts
+                .entry(token_b_id)
+                .or_insert(token_swap.create_token_b_account(INITIAL_USER_TOKEN_B_AMOUNT));
+            let mut pool_account = pool_accounts
+                .entry(pool_token_id)
+                .or_insert(token_swap.create_pool_account());
+            token_swap.withdraw(
+                &mut pool_account,
+                &mut token_a_account,
+                &mut token_b_account,
+                instruction,
+            )
         }
-    })
-    .ok();
+    };
+    result
+        .map_err(|e| {
+            if e == SwapError::CalculationFailure.into() {
+            } else if e == SwapError::ConversionFailure.into() {
+            } else if e == SwapError::FeeCalculationFailure.into() {
+            } else if e == SwapError::ExceededSlippage.into() {
+            } else if e == SwapError::ZeroTradingTokens.into() {
+            } else if e == TokenError::InsufficientFunds.into() {
+            } else {
+                Err(e).unwrap()
+            }
+        })
+        .ok();
 }
 
 fn get_total_token_a_amount(fuzz_instructions: &Vec<FuzzInstruction>) -> u64 {
     let mut token_a_ids = HashSet::new();
     for fuzz_instruction in fuzz_instructions.iter() {
         match fuzz_instruction {
-            FuzzInstruction::Swap { token_a_id, ..  } => token_a_ids.insert(token_a_id),
-            FuzzInstruction::Deposit { token_a_id, ..  } => token_a_ids.insert(token_a_id),
-            FuzzInstruction::Withdraw { token_a_id, ..  } => token_a_ids.insert(token_a_id),
+            FuzzInstruction::Swap { token_a_id, .. } => token_a_ids.insert(token_a_id),
+            FuzzInstruction::Deposit { token_a_id, .. } => token_a_ids.insert(token_a_id),
+            FuzzInstruction::Withdraw { token_a_id, .. } => token_a_ids.insert(token_a_id),
         };
     }
     (token_a_ids.len() as u64) * INITIAL_USER_TOKEN_A_AMOUNT
@@ -213,9 +250,9 @@ fn get_total_token_b_amount(fuzz_instructions: &Vec<FuzzInstruction>) -> u64 {
     let mut token_b_ids = HashSet::new();
     for fuzz_instruction in fuzz_instructions.iter() {
         match fuzz_instruction {
-            FuzzInstruction::Swap { token_b_id, ..  } => token_b_ids.insert(token_b_id),
-            FuzzInstruction::Deposit { token_b_id, ..  } => token_b_ids.insert(token_b_id),
-            FuzzInstruction::Withdraw { token_b_id, ..  } => token_b_ids.insert(token_b_id),
+            FuzzInstruction::Swap { token_b_id, .. } => token_b_ids.insert(token_b_id),
+            FuzzInstruction::Deposit { token_b_id, .. } => token_b_ids.insert(token_b_id),
+            FuzzInstruction::Withdraw { token_b_id, .. } => token_b_ids.insert(token_b_id),
         };
     }
     (token_b_ids.len() as u64) * INITIAL_USER_TOKEN_B_AMOUNT
