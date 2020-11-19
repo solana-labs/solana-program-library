@@ -96,8 +96,6 @@ jobs:
             ~/.cargo/git
             target
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-build-
 
       - uses: actions/cache@v2
         with:
