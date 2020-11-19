@@ -3338,6 +3338,7 @@ dependencies = [
 name = "spl-feature-proposal-cli"
 version = "1.0.0"
 dependencies = [
+ "chrono",
  "clap",
  "solana-clap-utils",
  "solana-cli-config",

@@ -1,4 +1,5 @@
 use {
+    chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc},
     clap::{
         crate_description, crate_name, crate_version, value_t_or_exit, App, AppSettings, Arg,
         SubCommand,
@@ -9,6 +10,7 @@ use {
     },
     solana_client::rpc_client::RpcClient,
     solana_sdk::{
+        clock::UnixTimestamp,
         commitment_config::CommitmentConfig,
         program_pack::Pack,
         pubkey::Pubkey,
@@ -16,7 +18,11 @@ use {
         transaction::Transaction,
     },
     spl_feature_proposal::state::{AcceptanceCriteria, FeatureProposal},
-    std::{fs::File, io::Write},
+    std::{
+        fs::File,
+        io::Write,
+        time::{Duration, SystemTime, UNIX_EPOCH},
+    },
 };
 
 struct Config {
@@ -183,12 +189,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let distribution_file = value_t_or_exit!(arg_matches, "distribution_file", String);
             let percent_stake_required =
                 value_t_or_exit!(arg_matches, "percent_stake_required", u8);
+
+            // Hard code deadline for now...
+            let fortnight = Duration::from_secs(60 * 60 * 24 * 14);
+            let deadline = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .checked_add(fortnight)
+                .unwrap()
+                .as_secs() as UnixTimestamp;
+
             process_propose(
                 &rpc_client,
                 &config,
                 &feature_proposal_keypair,
                 distribution_file,
                 percent_stake_required,
+                deadline,
                 arg_matches.is_present("confirm"),
             )
         }
@@ -229,12 +246,25 @@ fn get_feature_proposal(
     }
 }
 
+fn unix_timestamp_to_string(unix_timestamp: UnixTimestamp) -> String {
+    format!(
+        "{} (UnixTimestamp: {})",
+        match NaiveDateTime::from_timestamp_opt(unix_timestamp, 0) {
+            Some(ndt) =>
+                DateTime::<Utc>::from_utc(ndt, Utc).to_rfc3339_opts(SecondsFormat::Secs, true),
+            None => "unknown".to_string(),
+        },
+        unix_timestamp,
+    )
+}
+
 fn process_propose(
     rpc_client: &RpcClient,
     config: &Config,
     feature_proposal_keypair: &Keypair,
     distribution_file: String,
     percent_stake_required: u8,
+    deadline: UnixTimestamp,
     confirm: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let distributor_token_address =
@@ -295,7 +325,7 @@ fn process_propose(
             tokens_to_mint,
             AcceptanceCriteria {
                 tokens_required,
-                deadline: None,
+                deadline,
             },
         )],
         Some(&config.keypair.pubkey()),
@@ -348,6 +378,11 @@ fn process_propose(
     println!("Once this feature proposal is accepted, the {} feature will be activated at the next epoch.", feature_id_address);
 
     println!();
+    println!(
+        "Proposal will expire at {}",
+        unix_timestamp_to_string(deadline)
+    );
+    println!();
     if !confirm {
         println!("Add --confirm flag to initiate the feature proposal");
         return Ok(());
@@ -396,19 +431,22 @@ fn process_tally(
                 "{} tokens have been received",
                 spl_feature_proposal::amount_to_ui_amount(acceptance_token_balance)
             );
+            println!(
+                "Proposal will expire at {}",
+                unix_timestamp_to_string(acceptance_criteria.deadline)
+            );
             println!();
 
-            match acceptance_criteria.deadline {
-                None => {
-                    // Don't bother issuing a transaction if it's clear the Tally won't succeed
-                    if acceptance_token_balance < acceptance_criteria.tokens_required {
-                        println!("Feature proposal pending");
-                        return Ok(());
-                    }
-                }
-                Some(deadline) => {
-                    println!("Deadline: {}", deadline); // TODO: format deadline nicely
-                }
+            // Don't bother issuing a transaction if it's clear the Tally won't succeed
+            if acceptance_token_balance < acceptance_criteria.tokens_required
+                && (SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs() as UnixTimestamp)
+                    < acceptance_criteria.deadline
+            {
+                println!("Feature proposal pending");
+                return Ok(());
             }
         }
         FeatureProposal::Accepted { .. } => {
