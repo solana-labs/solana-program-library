@@ -1,5 +1,9 @@
 //! Instruction types
 
+use solana_program::program_pack::{Sealed, Pack};
+use solana_program::program_pack::IsInitialized;
+use solana_program::program_error::ProgramError;
+
 /// Instructions supported by the MarginPoolInfo program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -95,4 +99,21 @@ pub enum MarginPoolInstruction {
         /// Minimum amount of LP to receive, prevents excessive slippage
         minimum_token_LP_amount: u64,
     },
+}
+
+impl Pack for MarginPoolInstruction {
+    const LEN: usize = 291;
+    fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
+        unimplemented!();
+    }
+    fn pack_into_slice(&self, output: &mut [u8]) {
+        unimplemented!();
+    }
+}
+
+impl Sealed for MarginPoolInstruction {}
+impl IsInitialized for MarginPoolInstruction {
+    fn is_initialized(&self) -> bool {
+        true
+    }
 }
