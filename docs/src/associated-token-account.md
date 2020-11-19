@@ -2,10 +2,13 @@
 title: Associated Token Account Program
 ---
 
-This program defines the convention and the provides the mechanism for mapping
+This program defines the convention and provides the mechanism for mapping
 the user's wallet address to the associated token accounts they hold.
 
-It also enables sender-funded token transfers.
+## Motivation
+
+-  A user may own arbitarily many token accounts belonging to the same mint which makes it difficult for other users to know which account they should send tokens to and introduces friction into many other aspects of token management. This program introduces a way to _deterministically_ derive a token account key from a user's main System account address and a token mint address, allowing the user to create a main token account for each token he owns. We call these accounts _Associated Token Accounts_.
+- In addition, it allows a user to send tokens to another user even if the beneficiary does not yet have a token account for that mint. Unlike a system transfer, for a token transfer to succeed the recipient must have a token account with the compatible mint already, and somebody needs to fund that token account. If the recipient must fund it first, it makes things like airdrop campaigns difficult and just generally increases the friction of token transfers. AToken allows the sender to create the associated token account for the receiver, so the token transfer just works.
 
 See the [SPL Token](token.md) program for more information about tokens in
 general.
@@ -39,12 +42,10 @@ Rust function may be used by clients to derive the wallet's associated token add
 
 
 The associated account address can be derived in Javascript with:
-```js
-import {PublicKey} from '@solana/web3.js';
+```ts
+import { PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
-const SPL_TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
-  'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
-);
 const SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID: PublicKey = new PublicKey(
   'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
 );
@@ -56,7 +57,7 @@ async function findAssociatedTokenAddress(
     return (await PublicKey.findProgramAddress(
         [
             walletAddress.toBuffer(),
-            SPL_TOKEN_PROGRAM_ID.toBuffer(),
+            TOKEN_PROGRAM_ID.toBuffer(),
             tokenMintAddress.toBuffer(),
         ],
         SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID
