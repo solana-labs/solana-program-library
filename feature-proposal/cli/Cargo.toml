@@ -15,7 +15,7 @@ solana-cli-config = "1.4.8"
 solana-client = "1.4.8"
 solana-logger = "1.4.8"
 solana-sdk = "1.4.8"
-spl-feature-proposal = { version = "1.0.0-pre3", path = "../program", features = ["no-entrypoint"] }
+spl-feature-proposal = { version = "1.0", path = "../program", features = ["no-entrypoint"] }
 
 [[bin]]
 name = "spl-feature-proposal"
