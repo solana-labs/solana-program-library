@@ -298,9 +298,14 @@ fn command_create_account(
         )
     };
 
-    let account_data = config.rpc_client.get_account(&account)?;
-    if !(account_data.owner == system_program::id() && system_account_ok) {
-        return Err(format!("Error: Account already exists: {}", account).into());
+    if let Some(account_data) = config
+        .rpc_client
+        .get_account_with_commitment(&account, config.rpc_client.commitment())?
+        .value
+    {
+        if !(account_data.owner == system_program::id() && system_account_ok) {
+            return Err(format!("Error: Account already exists: {}", account).into());
+        }
     }
 
     Ok(Some((
@@ -448,55 +453,67 @@ fn command_transfer(
     let mut recipient_token_account = recipient;
     let mut minimum_balance_for_rent_exemption = 0;
 
-    let account_data = config.rpc_client.get_account(&recipient)?;
-    if account_data.owner == system_program::id() {
-        recipient_token_account = get_associated_token_address(&recipient, &mint_pubkey);
-        println!(
-            "  Recipient associated token account: {}",
-            recipient_token_account
-        );
+    if let Some(account_data) = config
+        .rpc_client
+        .get_account_with_commitment(&recipient, config.rpc_client.commitment())?
+        .value
+    {
+        if account_data.owner == system_program::id() {
+            recipient_token_account = get_associated_token_address(&recipient, &mint_pubkey);
+            println!(
+                "  Recipient associated token account: {}",
+                recipient_token_account
+            );
 
-        let needs_funding = if let Some(recipient_token_account_data) = config
-            .rpc_client
-            .get_account_with_commitment(&recipient_token_account, config.rpc_client.commitment())?
-            .value
-        {
-            if recipient_token_account_data.owner == system_program::id() {
+            let needs_funding = if let Some(recipient_token_account_data) = config
+                .rpc_client
+                .get_account_with_commitment(
+                    &recipient_token_account,
+                    config.rpc_client.commitment(),
+                )?
+                .value
+            {
+                if recipient_token_account_data.owner == system_program::id() {
+                    true
+                } else if recipient_token_account_data.owner == spl_token::id() {
+                    false
+                } else {
+                    return Err(
+                        format!("Error: Unsupported recipient address: {}", recipient).into(),
+                    );
+                }
+            } else {
                 true
-            } else if recipient_token_account_data.owner == spl_token::id() {
-                false
-            } else {
-                return Err(format!("Error: Unsupported recipient address: {}", recipient).into());
-            }
-        } else {
-            true
-        };
+            };
 
-        if needs_funding {
-            if fund_recipient {
-                minimum_balance_for_rent_exemption += config
-                    .rpc_client
-                    .get_minimum_balance_for_rent_exemption(Account::LEN)?;
-                println!(
-                    "  Funding recipient: {} ({} SOL)",
-                    recipient_token_account,
-                    lamports_to_sol(minimum_balance_for_rent_exemption)
-                );
-                instructions.push(create_associated_token_account(
-                    &config.fee_payer,
-                    &recipient,
-                    &mint_pubkey,
-                ));
-            } else {
-                return Err(
-                    "Error: Recipient's associated token account does not exist. \
+            if needs_funding {
+                if fund_recipient {
+                    minimum_balance_for_rent_exemption += config
+                        .rpc_client
+                        .get_minimum_balance_for_rent_exemption(Account::LEN)?;
+                    println!(
+                        "  Funding recipient: {} ({} SOL)",
+                        recipient_token_account,
+                        lamports_to_sol(minimum_balance_for_rent_exemption)
+                    );
+                    instructions.push(create_associated_token_account(
+                        &config.fee_payer,
+                        &recipient,
+                        &mint_pubkey,
+                    ));
+                } else {
+                    return Err(
+                        "Error: Recipient's associated token account does not exist. \
                                         Add `--fund-recipient` to fund their account"
-                        .into(),
-                );
+                            .into(),
+                    );
+                }
             }
+        } else if account_data.owner != spl_token::id() {
+            return Err(format!("Error: Unsupported recipient address: {}", recipient).into());
         }
-    } else if account_data.owner != spl_token::id() {
-        return Err(format!("Error: Unsupported recipient address: {}", recipient).into());
+    } else {
+        return Err(format!("Error: Recipient does not exist: {}", recipient).into());
     }
 
     instructions.push(transfer_checked(
