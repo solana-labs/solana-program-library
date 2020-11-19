@@ -324,14 +324,13 @@ pub fn process_instruction(
                         &[feature_id_bump_seed],
                     ];
 
-                    if let Some(deadline) = acceptance_criteria.deadline {
-                        if clock.unix_timestamp >= deadline {
-                            info!("Feature proposal expired");
-                            FeatureProposal::Expired
-                                .pack_into_slice(&mut feature_proposal_info.data.borrow_mut());
-                            return Ok(());
-                        }
+                    if clock.unix_timestamp >= acceptance_criteria.deadline {
+                        info!("Feature proposal expired");
+                        FeatureProposal::Expired
+                            .pack_into_slice(&mut feature_proposal_info.data.borrow_mut());
+                        return Ok(());
                     }
+
                     info!("Unpacking acceptance token account");
                     let acceptance_token =
                         spl_token::state::Account::unpack(&acceptance_token_info.data.borrow())?;

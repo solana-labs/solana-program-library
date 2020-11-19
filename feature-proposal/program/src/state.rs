@@ -15,8 +15,7 @@ pub struct AcceptanceCriteria {
     pub tokens_required: u64,
 
     /// If the required tokens are not tallied by this deadline then the proposal will expire.
-    /// `None` if the proposal should never expire.
-    pub deadline: Option<UnixTimestamp>,
+    pub deadline: UnixTimestamp,
 }
 
 /// Contents of a Feature Proposal account
@@ -38,7 +37,7 @@ pub enum FeatureProposal {
 impl Sealed for FeatureProposal {}
 
 impl Pack for FeatureProposal {
-    const LEN: usize = 18; // see `test_get_packed_len()` for justification of "18"
+    const LEN: usize = 17; // see `test_get_packed_len()` for justification of "18"
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
         let data = self.try_to_vec().unwrap();
@@ -77,21 +76,11 @@ mod tests {
         assert_eq!(
             FeatureProposal::Pending(AcceptanceCriteria {
                 tokens_required: 0xdeadbeefdeadbeef,
-                deadline: None,
+                deadline: -1,
             })
             .try_to_vec()
             .unwrap(),
-            vec![1, 239, 190, 173, 222, 239, 190, 173, 222, 0],
-        );
-
-        assert_eq!(
-            FeatureProposal::Pending(AcceptanceCriteria {
-                tokens_required: 0,
-                deadline: Some(-1),
-            })
-            .try_to_vec()
-            .unwrap(),
-            vec![1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 255, 255, 255, 255, 255, 255, 255, 255],
+            vec![1, 239, 190, 173, 222, 239, 190, 173, 222, 255, 255, 255, 255, 255, 255, 255, 255],
         );
     }
 

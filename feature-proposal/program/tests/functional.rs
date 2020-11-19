@@ -68,7 +68,7 @@ async fn test_basic() {
             42,
             AcceptanceCriteria {
                 tokens_required: 42,
-                deadline: None,
+                deadline: i64::MAX,
             },
         )],
         Some(&payer.pubkey()),
@@ -183,4 +183,41 @@ async fn test_basic() {
     ));
 }
 
-// TODO: more tests....
+#[tokio::test]
+async fn test_expired() {
+    let feature_proposal = Keypair::new();
+
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+
+    // Create a new feature proposal
+    let mut transaction = Transaction::new_with_payer(
+        &[propose(
+            &payer.pubkey(),
+            &feature_proposal.pubkey(),
+            42,
+            AcceptanceCriteria {
+                tokens_required: 42,
+                deadline: 0, // <=== Already expired
+            },
+        )],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer, &feature_proposal], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    assert!(matches!(
+        get_account_data::<FeatureProposal>(&mut banks_client, feature_proposal.pubkey()).await,
+        Ok(FeatureProposal::Pending(_))
+    ));
+
+    // Tally will cause the proposal to expire
+    let mut transaction =
+        Transaction::new_with_payer(&[tally(&feature_proposal.pubkey())], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    assert!(matches!(
+        get_account_data::<FeatureProposal>(&mut banks_client, feature_proposal.pubkey()).await,
+        Ok(FeatureProposal::Expired)
+    ));
+}
