@@ -76,7 +76,7 @@ pub enum FeatureProposalInstruction {
 
 impl Sealed for FeatureProposalInstruction {}
 impl Pack for FeatureProposalInstruction {
-    const LEN: usize = 26; // see `test_get_packed_len()` for justification of "18"
+    const LEN: usize = 25; // see `test_get_packed_len()` for justification of "18"
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
         let data = self.pack_into_vec();
@@ -177,12 +177,15 @@ mod tests {
                 tokens_to_mint: 42,
                 acceptance_criteria: AcceptanceCriteria {
                     tokens_required: 0xdeadbeefdeadbeef,
-                    deadline: None,
+                    deadline: -1,
                 }
             }
             .try_to_vec()
             .unwrap(),
-            vec![0, 42, 0, 0, 0, 0, 0, 0, 0, 239, 190, 173, 222, 239, 190, 173, 222, 0]
+            vec![
+                0, 42, 0, 0, 0, 0, 0, 0, 0, 239, 190, 173, 222, 239, 190, 173, 222, 255, 255, 255,
+                255, 255, 255, 255, 255
+            ]
         );
     }
 
