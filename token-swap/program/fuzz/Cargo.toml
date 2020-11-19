@@ -1,0 +1,30 @@
+
+[package]
+name = "spl-token-swap-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2018"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { version = "0.4.7", features = ["derive"] }
+libfuzzer-sys = "0.3"
+solana-program = "1.4.8"
+spl-token = { version = "3.0", path = "../../../token/program", features = [ "no-entrypoint" ] }
+
+[dependencies.spl-token-swap]
+path = ".."
+features = ["fuzz", "no-entrypoint"]
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "instructions"
+path = "fuzz_targets/instructions.rs"
+test = false
+doc = false

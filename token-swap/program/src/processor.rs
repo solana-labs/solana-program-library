@@ -2,7 +2,9 @@
 
 use crate::constraints::{FeeConstraints, FEE_CONSTRAINTS};
 use crate::{
-    curve::base::SwapCurve, error::SwapError, instruction::SwapInstruction, state::SwapInfo,
+    curve::base::SwapCurve, error::SwapError,
+    instruction::{SwapInstruction, Initialize, Deposit, Withdraw, Swap},
+    state::SwapInfo,
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -620,22 +622,22 @@ impl Processor {
     ) -> ProgramResult {
         let instruction = SwapInstruction::unpack(input)?;
         match instruction {
-            SwapInstruction::Initialize { nonce, swap_curve } => {
+            SwapInstruction::Initialize(Initialize { nonce, swap_curve }) => {
                 info!("Instruction: Init");
                 Self::process_initialize(program_id, nonce, swap_curve, accounts, fee_constraints)
             }
-            SwapInstruction::Swap {
+            SwapInstruction::Swap(Swap {
                 amount_in,
                 minimum_amount_out,
-            } => {
+            }) => {
                 info!("Instruction: Swap");
                 Self::process_swap(program_id, amount_in, minimum_amount_out, accounts)
             }
-            SwapInstruction::Deposit {
+            SwapInstruction::Deposit(Deposit {
                 pool_token_amount,
                 maximum_token_a_amount,
                 maximum_token_b_amount,
-            } => {
+            }) => {
                 info!("Instruction: Deposit");
                 Self::process_deposit(
                     program_id,
@@ -645,11 +647,11 @@ impl Processor {
                     accounts,
                 )
             }
-            SwapInstruction::Withdraw {
+            SwapInstruction::Withdraw(Withdraw {
                 pool_token_amount,
                 minimum_token_a_amount,
                 minimum_token_b_amount,
-            } => {
+            }) => {
                 info!("Instruction: Withdraw");
                 Self::process_withdraw(
                     program_id,
@@ -1039,8 +1041,10 @@ mod tests {
                     &self.pool_mint_key,
                     &self.pool_fee_key,
                     None,
-                    amount_in,
-                    minimum_amount_out,
+                    Swap {
+                        amount_in,
+                        minimum_amount_out,
+                    },
                 )
                 .unwrap(),
                 vec![
@@ -1072,9 +1076,9 @@ mod tests {
             mut depositor_token_b_account: &mut Account,
             depositor_pool_key: &Pubkey,
             mut depositor_pool_account: &mut Account,
-            pool_amount: u64,
-            amount_a: u64,
-            amount_b: u64,
+            pool_token_amount: u64,
+            maximum_token_a_amount: u64,
+            maximum_token_b_amount: u64,
         ) -> ProgramResult {
             do_process_instruction(
                 approve(
@@ -1083,7 +1087,7 @@ mod tests {
                     &self.authority_key,
                     &depositor_key,
                     &[],
-                    amount_a,
+                    maximum_token_a_amount,
                 )
                 .unwrap(),
                 vec![
@@ -1101,7 +1105,7 @@ mod tests {
                     &self.authority_key,
                     &depositor_key,
                     &[],
-                    amount_b,
+                    maximum_token_b_amount,
                 )
                 .unwrap(),
                 vec![
@@ -1124,9 +1128,11 @@ mod tests {
                     &self.token_b_key,
                     &self.pool_mint_key,
                     &depositor_pool_key,
-                    pool_amount,
-                    amount_a,
-                    amount_b,
+                    Deposit {
+                        pool_token_amount,
+                        maximum_token_a_amount,
+                        maximum_token_b_amount,
+                    },
                 )
                 .unwrap(),
                 vec![
@@ -2357,9 +2363,11 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
-                        pool_amount.try_into().unwrap(),
-                        deposit_a,
-                        deposit_b,
+                        Deposit {
+                            pool_token_amount: pool_amount.try_into().unwrap(),
+                            maximum_token_a_amount: deposit_a,
+                            maximum_token_b_amount: deposit_b,
+                        },
                     )
                     .unwrap(),
                     vec![
@@ -2402,9 +2410,11 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
-                        pool_amount.try_into().unwrap(),
-                        deposit_a,
-                        deposit_b,
+                        Deposit {
+                            pool_token_amount: pool_amount.try_into().unwrap(),
+                            maximum_token_a_amount: deposit_a,
+                            maximum_token_b_amount: deposit_b,
+                        },
                     )
                     .unwrap(),
                     vec![
@@ -3772,8 +3782,10 @@ mod tests {
                 &accounts.pool_mint_key,
                 &accounts.pool_fee_key,
                 Some(&pool_key),
-                amount_in,
-                minimum_amount_out,
+                Swap {
+                    amount_in,
+                    minimum_amount_out,
+                },
             )
             .unwrap(),
             vec![
@@ -3929,8 +3941,10 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         None,
-                        initial_a,
-                        minimum_b_amount,
+                        Swap {
+                            amount_in: initial_a,
+                            minimum_amount_out: minimum_b_amount,
+                        },
                     )
                     .unwrap(),
                     vec![
@@ -3999,8 +4013,10 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         None,
-                        initial_a,
-                        minimum_b_amount,
+                        Swap {
+                            amount_in: initial_a,
+                            minimum_amount_out: minimum_b_amount,
+                        },
                     )
                     .unwrap(),
                     vec![
@@ -4163,8 +4179,10 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         None,
-                        initial_a,
-                        minimum_b_amount,
+                        Swap {
+                            amount_in: initial_a,
+                            minimum_amount_out: minimum_b_amount,
+                        },
                     )
                     .unwrap(),
                     vec![
@@ -4308,8 +4326,10 @@ mod tests {
                     &accounts.pool_mint_key,
                     &accounts.pool_fee_key,
                     None,
-                    initial_a,
-                    minimum_b_amount,
+                    Swap {
+                        amount_in: initial_a,
+                        minimum_amount_out: minimum_b_amount,
+                    },
                 )
                 .unwrap(),
                 vec![
@@ -4369,8 +4389,10 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         Some(&bad_token_a_key),
-                        initial_a,
-                        0,
+                        Swap {
+                            amount_in: initial_a,
+                            minimum_amount_out: 0,
+                        },
                     )
                     .unwrap(),
                     vec![

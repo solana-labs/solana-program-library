@@ -52,8 +52,6 @@ impl Default for SwapCurve {
 
 /// Clone takes advantage of pack / unpack to get around the difficulty of
 /// cloning dynamic objects.
-/// Note that this is only to be used for testing.
-#[cfg(test)]
 impl Clone for SwapCurve {
     fn clone(&self) -> Self {
         let mut packed_self = [0u8; Self::LEN];
