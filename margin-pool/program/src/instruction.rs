@@ -97,16 +97,16 @@ pub enum MarginPoolInstruction {
         /// and b based on the percentage of the pool tokens that are returned.
         pool_token_amount: u64,
         /// Minimum amount of LP to receive, prevents excessive slippage
-        minimum_token_LP_amount: u64,
+        minimum_token_lp_amount: u64,
     },
 }
 
 impl Pack for MarginPoolInstruction {
     const LEN: usize = 291;
-    fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
+    fn unpack_from_slice(_input: &[u8]) -> Result<Self, ProgramError> {
         unimplemented!();
     }
-    fn pack_into_slice(&self, output: &mut [u8]) {
+    fn pack_into_slice(&self, _output: &mut [u8]) {
         unimplemented!();
     }
 }

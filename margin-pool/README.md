@@ -7,8 +7,8 @@ Margin trading for token-swap
 
 Collateral for the margin trade needs to cover how much the price moves when the trade occurs.
 
-1. user borrows a bunch of USDC from aave/lending pool
-2. BUYs $100 worth of BTC, moves the price on btc/usdc swap (user now has 100 btc from swap, needs to pay back aave usdc)
+1. user borrows a bunch of USDC from lending pool
+2. BUYs $100 worth of BTC, moves the price on btc/usdc swap (user now has 100 btc from swap, needs to pay back lending pool usdc)
 3. deposits $X collateral into the margin pool, and does an atomic BUY of $100 btc on the btc/usdc swap
 4. Internally some LP tokens are converted to $100 USDC
 5. $100 worth of BTC is bought with the swap
@@ -16,7 +16,15 @@ Collateral for the margin trade needs to cover how much the price moves when the
 7. pays back AAVE to close the usdc loan
 8. user gives up the $X collateral used in #3 since price has dropped
 
-The deposit $X used in #3 needs to be higher than the price difference for the trade that closes the aave loan.  
+The deposit $X used in #3 needs to be higher than the price difference for the trade that closes the lending pool loan.  
 The margin pool takes LP tokens as a deposit, and the “funding rate” needs to cover the loss of fees while the position is open.
 Opening positions causes some liquidity to be removed from the swap, which would increase the margin requirements.
+
+
+For example:
+
+* Pool has 50btc at 20k, invariant = 50 * (50 * 20,000) = 50,000,000 
+* Cost to go long `10btc = 50,000,000/40 - (1000000 + 10*20,000) = 50,000 = 4x leverage`
+* Cost to go long `1btc = 50,000,000/49 - (1000000 + 1*20,000) = 408.1632653061 = 49x leverage`
+
 
