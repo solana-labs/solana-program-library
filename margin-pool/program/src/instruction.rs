@@ -1,18 +1,5 @@
 //! Instruction types
 
-#![allow(clippy::too_many_arguments)]
-
-use crate::curve::base::MarginPoolCurve;
-use crate::error::MarginPoolError;
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    program_pack::Pack,
-    pubkey::Pubkey,
-};
-use std::convert::TryInto;
-use std::mem::size_of;
-
 /// Instructions supported by the MarginPoolInfo program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -22,44 +9,45 @@ pub enum MarginPoolInstruction {
     ///   0. `[writable, signer]` New MarginPool to create.
     ///   1. `[]` $authority derived from `create_program_address(&[MarginPool account])`
     ///   4. `[]` Swap Market for token_A and token_B
-    ///   2. `[]` token_A Account. Must be non zero, owned by $authority.
-    ///   3. `[]` token_B Account. Must be non zero, owned by $authority.
+    ///   2. `[]` token_LP Account. Must be empty, owned by $authority.
+    ///   2. `[]` token_A Account. Must be empty, owned by $authority.
+    ///   3. `[]` token_B Account. Must be empty, owned by $authority.
     ///   5. `[writable]` Pool Token Mint. Must be empty, owned by $authority.
     ///   8. '[]` Token program id
-    ///   9. '[]` Serum program id
+    ///   9. '[]` Swap program id
     Initialize {
         /// nonce used to create valid program address
         nonce: u8,
     },
 
-    ///   Open a position.
+    ///   Open/Fund a position.
     ///
     ///   0. `[]` MarginPool
     ///   1. `[]` $authority
-    ///   4. `[]` Swap Market for token_A and token_A
-    ///   2. `[writable]` token_X SOURCE Account, amount is transferable by $authority,
-    ///   3. `[writable]` token_X Base BORROW Account.
-    ///   4. `[writable]` token_Y Base Account to deposit into. 
-    ///   4. `[writable]` Uninitialized MarginPool state for the open position.
+    ///   4. `[]` Swap Market
+    ///   4. `[writable]` MarginPool::Position state, uninitialized to open a position.
+    ///   2. `[writable]` token_X SOURCE Account, amount is transferable by $authority.
+    ///   3. `[writable]` token_LP LP account to borrow from.
+    ///   4. `[writable]` token_Y Base Account to deposit into, owned by $authority.
     ///   8. '[]` Token program id
-    OpenPosition {
-        /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
+    FundPosition {
+        /// SOURCE amount
         amount_in: u64,
-        /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
+        /// BORROW amount
         borrow: u64,
-        /// Minimum amount of DESTINATION token to output, prevents excessive slippage
+        /// Minimum amount DESTINATION token to output, prevents excessive slippage
         minimum_amount_out: u64,
     },
 
-    ///   Close a position.
+    ///   Close/Reduce a position.
     ///
     ///   0. `[]` MarginPool
     ///   1. `[]` $authority
     ///   4. `[]` Swap Market for token_A and token_A
-    ///   2. `[writable]` token_X SOURCE Account, amount is transferable by $authority,
-    ///   3. `[writable]` token_X Base BORROW Account.
-    ///   4. `[writable]` token_Y Base Account to deposit into. 
-    ///   4. `[writable]` OpenPosition.
+    ///   4. `[writable]` Initialized MarginPool::Position state.
+    ///   3. `[writable]` token_LP LP account.
+    ///   3. `[writable]` token_Y Base Account.
+    ///   4. `[writable]` token_X DESTINATION Account.
     ///   8. '[]` Token program id
     ClosePosition {
         /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
@@ -67,7 +55,6 @@ pub enum MarginPoolInstruction {
         /// Minimum amount of DESTINATION token to output, prevents excessive slippage
         minimum_amount_out: u64,
     },
-
 
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.

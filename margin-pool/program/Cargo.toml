@@ -1,7 +1,7 @@
 [package]
-name = "spl-token-swap"
+name = "spl-margin-pool"
 version = "0.1.0"
-description = "Solana Program Library Token Swap"
+description = "Solana Program Library Margin Pool"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
@@ -17,6 +17,7 @@ num-derive = "0.3"
 num-traits = "0.2"
 solana-program = "1.4.4"
 spl-token = { version = "3.0", path = "../../token/program", features = [ "no-entrypoint" ] }
+spl-token-swap = { version = "0.1.0", path = "../../token-swap/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 
 [dev-dependencies]
