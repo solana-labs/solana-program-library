@@ -1,6 +1,6 @@
 [package]
 name = "spl-feature-proposal"
-version = "1.0.0-pre3"
+version = "1.0.0"
 description = "Solana Program Library Feature Proposal Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
