@@ -28,142 +28,107 @@ fn assert_transaction_size(tx: &Transaction) {
     );
 }
 
-// This code was copied verbatim from solana/cli/src/cli.rs
-pub fn send_and_confirm_transactions_with_spinner<T: solana_sdk::signers::Signers>(
+pub fn send_and_confirm_transactions_with_spinner(
     rpc_client: &RpcClient,
-    mut transactions: Vec<Transaction>,
-    signer_keys: &T,
+    transactions: Vec<Transaction>,
     commitment: CommitmentConfig,
-    mut last_valid_slot: solana_sdk::clock::Slot,
+    last_valid_slot: solana_sdk::clock::Slot,
 ) -> ClientResult<()> {
     use bincode::serialize;
     use solana_cli::send_tpu::{get_leader_tpu, send_transaction_tpu};
     use solana_cli_output::display::new_spinner_progress_bar;
     use solana_client::{
-        client_error::ClientErrorKind, rpc_config::RpcSendTransactionConfig,
+        client_error::ClientErrorKind,
         rpc_request::MAX_GET_SIGNATURE_STATUSES_QUERY_ITEMS, rpc_response::RpcLeaderSchedule,
     };
     use std::{cmp::min, collections::HashMap, net::UdpSocket, thread::sleep, time::Duration};
 
     let progress_bar = new_spinner_progress_bar();
-    let mut send_retries = 5;
     let mut leader_schedule: Option<RpcLeaderSchedule> = None;
-    let mut leader_schedule_epoch = 0;
     let send_socket = UdpSocket::bind("0.0.0.0:0").unwrap();
     let cluster_nodes = rpc_client.get_cluster_nodes().ok();
 
+    progress_bar.set_message("Finding leader node...");
+    let epoch_info = rpc_client.get_epoch_info_with_commitment(commitment)?;
+    if epoch_info.epoch > 0 || leader_schedule.is_none() {
+        leader_schedule = rpc_client
+            .get_leader_schedule_with_commitment(Some(epoch_info.absolute_slot), commitment)?;
+    }
+    let tpu_address = get_leader_tpu(
+        min(epoch_info.slot_index + 1, epoch_info.slots_in_epoch),
+        leader_schedule.as_ref(),
+        cluster_nodes.as_ref(),
+    ).unwrap();
+
+    // Send all transactions
+    let mut pending_transactions = HashMap::new();
+    let num_transactions = transactions.len();
+    for transaction in transactions {
+        let wire_transaction = serialize(&transaction).expect("serialization should succeed");
+        send_transaction_tpu(&send_socket, &tpu_address, &wire_transaction);
+        pending_transactions.insert(transaction.signatures[0], wire_transaction);
+
+        progress_bar.set_message(&format!(
+            "[{}/{}] Total Transactions sent",
+            pending_transactions.len(),
+            num_transactions
+        ));
+    }
+
+    // Collect statuses for all the transactions, drop those that are confirmed
     loop {
-        let mut status_retries = 15;
+        // Retry once a second
+        sleep(Duration::from_millis(1000));
 
-        progress_bar.set_message("Finding leader node...");
-        let epoch_info = rpc_client.get_epoch_info_with_commitment(commitment)?;
-        if epoch_info.epoch > leader_schedule_epoch || leader_schedule.is_none() {
-            leader_schedule = rpc_client
-                .get_leader_schedule_with_commitment(Some(epoch_info.absolute_slot), commitment)?;
-            leader_schedule_epoch = epoch_info.epoch;
+        progress_bar.set_message(&format!(
+            "[{}/{}] Transactions confirmed",
+            num_transactions - pending_transactions.len(),
+            num_transactions
+        ));
+
+        let mut statuses = vec![];
+        let pending_signatures = pending_transactions.keys().cloned().collect::<Vec<_>>();
+        for pending_signatures_chunk in
+            pending_signatures.chunks(MAX_GET_SIGNATURE_STATUSES_QUERY_ITEMS - 1)
+        {
+            statuses.extend(
+                rpc_client
+                    .get_signature_statuses_with_history(pending_signatures_chunk)?
+                    .value
+                    .into_iter(),
+            );
         }
-        let tpu_address = get_leader_tpu(
-            min(epoch_info.slot_index + 1, epoch_info.slots_in_epoch),
-            leader_schedule.as_ref(),
-            cluster_nodes.as_ref(),
-        );
+        assert_eq!(statuses.len(), pending_signatures.len());
 
-        // Send all transactions
-        let mut pending_transactions = HashMap::new();
-        let num_transactions = transactions.len();
-        for transaction in transactions {
-            if let Some(tpu_address) = tpu_address {
-                let wire_transaction =
-                    serialize(&transaction).expect("serialization should succeed");
-                send_transaction_tpu(&send_socket, &tpu_address, &wire_transaction);
-            } else {
-                let _result = rpc_client
-                    .send_transaction_with_config(
-                        &transaction,
-                        RpcSendTransactionConfig {
-                            preflight_commitment: Some(commitment.commitment),
-                            ..RpcSendTransactionConfig::default()
-                        },
-                    )
-                    .ok();
+        for (signature, status) in pending_signatures.into_iter().zip(statuses.into_iter()) {
+            if let Some(status) = status {
+                if status.confirmations.is_none() || status.confirmations.unwrap() > 1 {
+                    let _ = pending_transactions.remove(&signature);
+                }
             }
-            pending_transactions.insert(transaction.signatures[0], transaction);
-
-            progress_bar.set_message(&format!(
-                "[{}/{}] Total Transactions sent",
-                pending_transactions.len(),
-                num_transactions
-            ));
-        }
-
-        // Collect statuses for all the transactions, drop those that are confirmed
-        while status_retries > 0 {
-            status_retries -= 1;
-
             progress_bar.set_message(&format!(
                 "[{}/{}] Transactions confirmed",
                 num_transactions - pending_transactions.len(),
                 num_transactions
             ));
-
-            let mut statuses = vec![];
-            let pending_signatures = pending_transactions.keys().cloned().collect::<Vec<_>>();
-            for pending_signatures_chunk in
-                pending_signatures.chunks(MAX_GET_SIGNATURE_STATUSES_QUERY_ITEMS - 1)
-            {
-                statuses.extend(
-                    rpc_client
-                        .get_signature_statuses_with_history(pending_signatures_chunk)?
-                        .value
-                        .into_iter(),
-                );
-            }
-            assert_eq!(statuses.len(), pending_signatures.len());
-
-            for (signature, status) in pending_signatures.into_iter().zip(statuses.into_iter()) {
-                if let Some(status) = status {
-                    if status.confirmations.is_none() || status.confirmations.unwrap() > 1 {
-                        let _ = pending_transactions.remove(&signature);
-                    }
-                }
-                progress_bar.set_message(&format!(
-                    "[{}/{}] Transactions confirmed",
-                    num_transactions - pending_transactions.len(),
-                    num_transactions
-                ));
-            }
-
-            if pending_transactions.is_empty() {
-                return Ok(());
-            }
-
-            let slot = rpc_client.get_slot_with_commitment(commitment)?;
-            if slot > last_valid_slot {
-                break;
-            }
-
-            if cfg!(not(test)) {
-                // Retry twice a second
-                sleep(Duration::from_millis(500));
-            }
         }
 
-        if send_retries == 0 {
-            return Err(ClientErrorKind::Custom("Transactions failed".to_string()).into());
+        if pending_transactions.is_empty() {
+            return Ok(());
         }
-        send_retries -= 1;
 
-        // Re-sign any failed transactions with a new blockhash and retry
-        let (blockhash, _fee_calculator, new_last_valid_slot) = rpc_client
-            .get_recent_blockhash_with_commitment(commitment)?
-            .value;
-        last_valid_slot = new_last_valid_slot;
-        transactions = vec![];
-        for (_, mut transaction) in pending_transactions.into_iter() {
-            transaction.try_sign(signer_keys, blockhash)?;
-            transactions.push(transaction);
+        let slot = rpc_client.get_slot_with_commitment(commitment)?;
+        if slot > last_valid_slot {
+            break;
+        }
+
+        // TODO: Don't resend so much. Implement exponential backoff.
+        for wire_transaction in pending_transactions.values() {
+            send_transaction_tpu(&send_socket, &tpu_address, &wire_transaction);
         }
     }
+
+    return Err(ClientErrorKind::Custom("Transactions failed".to_string()).into());
 }
 
 /// For each user, create interactions, calculate the aggregate, submit a proof, and verify it.
@@ -204,12 +169,9 @@ fn run_user_workflow(
         .collect();
     num_transactions += txs.len();
 
-    // TODO: pass signer for each transaction to send_and_confirm_transactions_with_spinner
-    let signer_keys: Vec<&Keypair> = vec![];
     send_and_confirm_transactions_with_spinner(
         client,
         txs,
-        &signer_keys,
         CommitmentConfig::recent(),
         last_valid_slot,
     )
@@ -241,7 +203,6 @@ fn run_user_workflow(
     send_and_confirm_transactions_with_spinner(
         client,
         txs,
-        &signer_keys,
         CommitmentConfig::recent(),
         last_valid_slot,
     )
@@ -296,7 +257,6 @@ fn run_user_workflow(
     send_and_confirm_transactions_with_spinner(
         client,
         txs,
-        &signer_keys,
         CommitmentConfig::recent(),
         last_valid_slot,
     )
@@ -374,7 +334,6 @@ pub fn test_e2e(
     send_and_confirm_transactions_with_spinner(
         client,
         txs,
-        &signer_keys,
         CommitmentConfig::recent(),
         last_valid_slot,
     )

@@ -64,7 +64,6 @@ fn write_program_with_commitment(
     let (recent_blockhash, _fee_calculator, last_valid_slot) = client
         .get_recent_blockhash_with_commitment(CommitmentConfig::default())?
         .value;
-    let signer_keys = [funder_keypair, program_keypair];
     let transactions: Vec<_> = program
         .chunks(DATA_CHUNK_SIZE)
         .enumerate()
@@ -76,13 +75,12 @@ fn write_program_with_commitment(
                 chunk.to_vec(),
             );
             let message = Message::new(&[instruction], Some(&funder_keypair.pubkey()));
-            Transaction::new(&signer_keys, message, recent_blockhash)
+            Transaction::new(&[funder_keypair, program_keypair], message, recent_blockhash)
         })
         .collect();
     send_and_confirm_transactions_with_spinner(
         client,
         transactions,
-        &signer_keys,
         commitment,
         last_valid_slot,
     )
@@ -141,7 +139,6 @@ fn deploy_program_with_commitment(
 }
 
 #[test]
-#[ignore]
 fn test_validator_e2e() {
     let TestValidator {
         server,
