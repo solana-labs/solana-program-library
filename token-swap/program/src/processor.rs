@@ -1161,9 +1161,9 @@ mod tests {
             mut token_a_account: &mut Account,
             token_b_key: &Pubkey,
             mut token_b_account: &mut Account,
-            pool_amount: u64,
-            minimum_a_amount: u64,
-            minimum_b_amount: u64,
+            pool_token_amount: u64,
+            minimum_token_a_amount: u64,
+            minimum_token_b_amount: u64,
         ) -> ProgramResult {
             // approve swap program to take out pool tokens
             do_process_instruction(
@@ -1173,7 +1173,7 @@ mod tests {
                     &self.authority_key,
                     &user_key,
                     &[],
-                    pool_amount,
+                    pool_token_amount,
                 )
                 .unwrap(),
                 vec![
@@ -1198,9 +1198,11 @@ mod tests {
                     &self.token_b_key,
                     &token_a_key,
                     &token_b_key,
-                    pool_amount,
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    Withdraw {
+                        pool_token_amount,
+                        minimum_token_a_amount,
+                        minimum_token_b_amount,
+                    },
                 )
                 .unwrap(),
                 vec![
@@ -2717,8 +2719,8 @@ mod tests {
         let initial_b = token_b_amount / 10;
         let initial_pool = swap_curve.calculator.new_pool_supply() / 10;
         let withdraw_amount = initial_pool / 4;
-        let minimum_a_amount = initial_a / 40;
-        let minimum_b_amount = initial_b / 40;
+        let minimum_token_a_amount = initial_a / 40;
+        let minimum_token_b_amount = initial_b / 40;
 
         let mut accounts =
             SwapAccountInfo::new(&user_key, swap_curve, token_a_amount, token_b_amount);
@@ -2744,8 +2746,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 )
             );
         }
@@ -2779,8 +2781,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 )
             );
             accounts.authority_key = old_authority;
@@ -2813,8 +2815,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount / 2,
-                    minimum_b_amount / 2,
+                    minimum_token_a_amount / 2,
+                    minimum_token_b_amount / 2,
                 )
             );
         }
@@ -2846,8 +2848,8 @@ mod tests {
                     &token_a_key,
                     &mut token_a_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 )
             );
         }
@@ -2893,8 +2895,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 )
             );
         }
@@ -2944,8 +2946,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 ),
             );
             accounts.pool_fee_account = old_pool_fee_account;
@@ -2983,9 +2985,11 @@ mod tests {
                         &accounts.token_b_key,
                         &token_a_key,
                         &token_b_key,
-                        withdraw_amount.try_into().unwrap(),
-                        minimum_a_amount,
-                        minimum_b_amount,
+                        Withdraw {
+                            pool_token_amount: withdraw_amount.try_into().unwrap(),
+                            minimum_token_a_amount,
+                            minimum_token_b_amount,
+                        }
                     )
                     .unwrap(),
                     vec![
@@ -3036,9 +3040,11 @@ mod tests {
                         &accounts.token_b_key,
                         &token_a_key,
                         &token_b_key,
-                        withdraw_amount.try_into().unwrap(),
-                        minimum_a_amount,
-                        minimum_b_amount,
+                        Withdraw {
+                            pool_token_amount: withdraw_amount.try_into().unwrap(),
+                            minimum_token_a_amount,
+                            minimum_token_b_amount,
+                        },
                     )
                     .unwrap(),
                     vec![
@@ -3092,8 +3098,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 )
             );
 
@@ -3118,8 +3124,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 )
             );
 
@@ -3161,8 +3167,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 )
             );
 
@@ -3197,8 +3203,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     1,
-                    minimum_a_amount * 10,
-                    minimum_b_amount,
+                    minimum_token_a_amount * 10,
+                    minimum_token_b_amount,
                 )
             );
         }
@@ -3231,8 +3237,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount * 10,
-                    minimum_b_amount,
+                    minimum_token_a_amount * 10,
+                    minimum_token_b_amount,
                 )
             );
             // minimum B amount out too high
@@ -3247,8 +3253,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount * 10,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount * 10,
                 )
             );
         }
@@ -3282,8 +3288,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 )
             );
             let swap_token_b_key = accounts.token_b_key;
@@ -3299,8 +3305,8 @@ mod tests {
                     &swap_token_b_key,
                     &mut swap_token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 )
             );
         }
@@ -3332,8 +3338,8 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     withdraw_amount.try_into().unwrap(),
-                    minimum_a_amount,
-                    minimum_b_amount,
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
                 )
                 .unwrap();
 
@@ -3491,7 +3497,7 @@ mod tests {
         ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
         // swap one way
         let a_to_b_amount = initial_a / 10;
-        let minimum_b_amount = 0;
+        let minimum_token_b_amount = 0;
         let pool_mint = Processor::unpack_mint(&accounts.pool_mint_account.data).unwrap();
         let initial_supply = pool_mint.supply;
         accounts
@@ -3504,7 +3510,7 @@ mod tests {
                 &token_b_key,
                 &mut token_b_account,
                 a_to_b_amount,
-                minimum_b_amount,
+                minimum_token_b_amount,
             )
             .unwrap();
 
@@ -3851,7 +3857,7 @@ mod tests {
 
         let initial_a = token_a_amount / 5;
         let initial_b = token_b_amount / 5;
-        let minimum_b_amount = initial_b / 2;
+        let minimum_token_b_amount = initial_b / 2;
 
         let swap_token_a_key = accounts.token_a_key;
         let swap_token_b_key = accounts.token_b_key;
@@ -3877,7 +3883,7 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     initial_a,
-                    minimum_b_amount,
+                    minimum_token_b_amount,
                 )
             );
         }
@@ -3911,7 +3917,7 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     initial_a,
-                    minimum_b_amount,
+                    minimum_token_b_amount,
                 )
             );
             accounts.authority_key = old_authority;
@@ -3945,7 +3951,7 @@ mod tests {
                         None,
                         Swap {
                             amount_in: initial_a,
-                            minimum_amount_out: minimum_b_amount,
+                            minimum_amount_out: minimum_token_b_amount,
                         },
                     )
                     .unwrap(),
@@ -3985,7 +3991,7 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     initial_a * 2,
-                    minimum_b_amount * 2,
+                    minimum_token_b_amount * 2,
                 )
             );
         }
@@ -4017,7 +4023,7 @@ mod tests {
                         None,
                         Swap {
                             amount_in: initial_a,
-                            minimum_amount_out: minimum_b_amount,
+                            minimum_amount_out: minimum_token_b_amount,
                         },
                     )
                     .unwrap(),
@@ -4057,7 +4063,7 @@ mod tests {
                     &token_a_key,
                     &mut token_a_account,
                     initial_a,
-                    minimum_b_amount,
+                    minimum_token_b_amount,
                 )
             );
         }
@@ -4083,7 +4089,7 @@ mod tests {
                     &token_a_key,
                     &mut token_a_account,
                     initial_a,
-                    minimum_b_amount,
+                    minimum_token_b_amount,
                 )
             );
         }
@@ -4116,7 +4122,7 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     initial_a,
-                    minimum_b_amount,
+                    minimum_token_b_amount,
                 )
             );
 
@@ -4149,7 +4155,7 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     initial_a,
-                    minimum_b_amount,
+                    minimum_token_b_amount,
                 )
             );
             accounts.pool_fee_account = old_pool_fee_account;
@@ -4183,7 +4189,7 @@ mod tests {
                         None,
                         Swap {
                             amount_in: initial_a,
-                            minimum_amount_out: minimum_b_amount,
+                            minimum_amount_out: minimum_token_b_amount,
                         },
                     )
                     .unwrap(),
@@ -4249,7 +4255,7 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     initial_a,
-                    minimum_b_amount * 2,
+                    minimum_token_b_amount * 2,
                 )
             );
         }
@@ -4277,7 +4283,7 @@ mod tests {
                     &token_b_key,
                     &mut token_b_account,
                     initial_a,
-                    minimum_b_amount,
+                    minimum_token_b_amount,
                 )
             );
             let mut swap_token_b_account = accounts.get_token_account(&swap_token_b_key).clone();
@@ -4292,7 +4298,7 @@ mod tests {
                     &swap_token_b_key,
                     &mut swap_token_b_account,
                     initial_a,
-                    minimum_b_amount,
+                    minimum_token_b_amount,
                 )
             );
         }
@@ -4330,7 +4336,7 @@ mod tests {
                     None,
                     Swap {
                         amount_in: initial_a,
-                        minimum_amount_out: minimum_b_amount,
+                        minimum_amount_out: minimum_token_b_amount,
                     },
                 )
                 .unwrap(),
