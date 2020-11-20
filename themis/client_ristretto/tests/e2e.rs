@@ -75,15 +75,14 @@ fn write_program_with_commitment(
                 chunk.to_vec(),
             );
             let message = Message::new(&[instruction], Some(&funder_keypair.pubkey()));
-            Transaction::new(&[funder_keypair, program_keypair], message, recent_blockhash)
+            Transaction::new(
+                &[funder_keypair, program_keypair],
+                message,
+                recent_blockhash,
+            )
         })
         .collect();
-    send_and_confirm_transactions_with_spinner(
-        client,
-        transactions,
-        commitment,
-        last_valid_slot,
-    )
+    send_and_confirm_transactions_with_spinner(client, transactions, commitment, last_valid_slot)
 }
 
 fn finalize_program_with_commitment(

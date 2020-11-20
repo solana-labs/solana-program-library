@@ -38,8 +38,8 @@ pub fn send_and_confirm_transactions_with_spinner(
     use solana_cli::send_tpu::{get_leader_tpu, send_transaction_tpu};
     use solana_cli_output::display::new_spinner_progress_bar;
     use solana_client::{
-        client_error::ClientErrorKind,
-        rpc_request::MAX_GET_SIGNATURE_STATUSES_QUERY_ITEMS, rpc_response::RpcLeaderSchedule,
+        client_error::ClientErrorKind, rpc_request::MAX_GET_SIGNATURE_STATUSES_QUERY_ITEMS,
+        rpc_response::RpcLeaderSchedule,
     };
     use std::{cmp::min, collections::HashMap, net::UdpSocket, thread::sleep, time::Duration};
 
@@ -58,7 +58,8 @@ pub fn send_and_confirm_transactions_with_spinner(
         min(epoch_info.slot_index + 1, epoch_info.slots_in_epoch),
         leader_schedule.as_ref(),
         cluster_nodes.as_ref(),
-    ).unwrap();
+    )
+    .unwrap();
 
     // Send all transactions
     let mut pending_transactions = HashMap::new();
@@ -181,24 +182,28 @@ fn run_user_workflow(
     let (recent_blockhash, _fee_calculator, last_valid_slot) = client
         .get_recent_blockhash_with_commitment(CommitmentConfig::default())?
         .value;
-    let txs: Vec<_> = keys.iter().flat_map(|(sender_keypair, user_keypair)| {
-        let sender_pubkey = sender_keypair.pubkey();
-        let user_pubkey = user_keypair.pubkey();
-        interactions
-            .iter()
-            .enumerate()
-            .map(|(i, interaction)| {
-                let interactions = vec![(i as u8, *interaction)];
-                let ix = instruction::submit_interactions(
-                    program_id,
-                    &user_pubkey,
-                    &policies_pubkey,
-                    interactions,
-                );
-                let msg = Message::new(&[ix], Some(&sender_pubkey));
-                Transaction::new(&[sender_keypair, user_keypair], msg, recent_blockhash)
-            }).collect::<Vec<_>>()
-    }).collect();
+    let txs: Vec<_> = keys
+        .iter()
+        .flat_map(|(sender_keypair, user_keypair)| {
+            let sender_pubkey = sender_keypair.pubkey();
+            let user_pubkey = user_keypair.pubkey();
+            interactions
+                .iter()
+                .enumerate()
+                .map(|(i, interaction)| {
+                    let interactions = vec![(i as u8, *interaction)];
+                    let ix = instruction::submit_interactions(
+                        program_id,
+                        &user_pubkey,
+                        &policies_pubkey,
+                        interactions,
+                    );
+                    let msg = Message::new(&[ix], Some(&sender_pubkey));
+                    Transaction::new(&[sender_keypair, user_keypair], msg, recent_blockhash)
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
     num_transactions += txs.len();
     send_and_confirm_transactions_with_spinner(
         client,
