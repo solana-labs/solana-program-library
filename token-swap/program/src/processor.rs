@@ -553,7 +553,8 @@ impl Processor {
                 to_u128(token_a.amount)?,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
-        if a_amount < to_u128(minimum_token_a_amount)? {
+        let a_amount = to_u64(a_amount)?;
+        if a_amount < minimum_token_a_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
         let b_amount = calculator
@@ -575,7 +576,7 @@ impl Processor {
             dest_token_a_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            to_u64(a_amount)?,
+            a_amount,
         )?;
         Self::token_transfer(
             swap_info.key,

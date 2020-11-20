@@ -427,7 +427,7 @@ impl TokenSwapAccountInfo {
         token_a_account: &mut AccountData,
         token_b_account: &mut AccountData,
         pool_account: &mut AccountData,
-        instruction: Deposit,
+        mut instruction: Deposit,
     ) -> ProgramResult {
         do_process_instruction(
             approve(
@@ -464,6 +464,12 @@ impl TokenSwapAccountInfo {
             ],
         )
         .unwrap();
+
+        // special logic: if we only deposit 1 pool token, we can't withdraw it
+        // because we incur a withdrawal fee, so we hack it to not be 1
+        if instruction.pool_token_amount == 1 {
+            instruction.pool_token_amount = 2;
+        }
 
         let deposit_instruction = instruction::deposit(
             &spl_token_swap::id(),
@@ -514,7 +520,7 @@ impl TokenSwapAccountInfo {
             )
             .unwrap(),
             &[
-                token_a_account.into_account_info(),
+                pool_account.into_account_info(),
                 self.authority_account.into_account_info(),
                 self.user_account.into_account_info(),
             ],
@@ -561,7 +567,6 @@ impl TokenSwapAccountInfo {
         mut token_b_account: &mut AccountData,
     ) -> ProgramResult {
         let pool_token_amount = get_token_balance(&pool_account);
-        println!("{}", pool_token_amount);
         if pool_token_amount > 0 {
             let instruction = Withdraw {
                 pool_token_amount,
