@@ -123,6 +123,14 @@ pub fn send_and_confirm_transactions_with_spinner(
             break;
         }
 
+        let epoch_info = rpc_client.get_epoch_info_with_commitment(commitment)?;
+        let tpu_address = get_leader_tpu(
+            min(epoch_info.slot_index + 1, epoch_info.slots_in_epoch),
+            leader_schedule.as_ref(),
+            cluster_nodes.as_ref(),
+        )
+        .unwrap_or(tpu_address);
+
         // TODO: Don't resend so much. Implement exponential backoff.
         for wire_transaction in pending_transactions.values() {
             send_transaction_tpu(&send_socket, &tpu_address, &wire_transaction);
