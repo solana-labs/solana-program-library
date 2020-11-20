@@ -18,7 +18,7 @@ use arbitrary::Arbitrary;
 
 /// Initialize instruction data
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Initialize {
     /// nonce used to create valid program address
     pub nonce: u8,
