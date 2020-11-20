@@ -93,7 +93,7 @@ pub fn send_and_confirm_transactions_with_spinner(
         {
             statuses.extend(
                 rpc_client
-                    .get_signature_statuses_with_history(pending_signatures_chunk)?
+                    .get_signature_statuses(pending_signatures_chunk)?
                     .value
                     .into_iter(),
             );
