@@ -3,24 +3,22 @@ use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
 use elgamal_ristretto::{/*ciphertext::Ciphertext,*/ private::SecretKey, public::PublicKey};
-use futures::future::join_all;
-use solana_banks_client::{BanksClient, BanksClientExt};
+use rayon::prelude::*;
+use solana_client::{client_error::Result as ClientResult, rpc_client::RpcClient};
 use solana_sdk::{
-    commitment_config::CommitmentLevel,
+    commitment_config::CommitmentConfig,
     message::Message,
     native_token::sol_to_lamports,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_instruction,
     transaction::Transaction,
-    transport,
 };
 use spl_themis_ristretto::{
     instruction,
     state::generate_keys, // recover_scalar, User},
 };
-use std::{io, time::Instant};
-//use tarpc::context;
+use std::time::Instant;
 
 fn assert_transaction_size(tx: &Transaction) {
     let tx_size = bincode::serialize(&tx).unwrap().len();
@@ -31,33 +29,154 @@ fn assert_transaction_size(tx: &Transaction) {
     );
 }
 
-// TODO: Add this to BanksClient
-pub async fn process_transactions_with_commitment(
-    client: &mut BanksClient,
-    transactions: Vec<Transaction>,
-    commitment: CommitmentLevel,
-) -> transport::Result<()> {
-    let mut clients: Vec<_> = transactions.iter().map(|_| client.clone()).collect();
-    let futures = clients
-        .iter_mut()
-        .zip(transactions)
-        .map(|(client, transaction)| {
-            client.process_transaction_with_commitment(transaction, commitment)
-        });
-    let statuses = futures::future::join_all(futures).await;
-    statuses.into_iter().collect() // Convert Vec<Result<_, _>> to Result<Vec<_>>
+// This code was copied verbatim from solana/cli/src/cli.rs
+pub fn send_and_confirm_transactions_with_spinner<T: solana_sdk::signers::Signers>(
+    rpc_client: &RpcClient,
+    mut transactions: Vec<Transaction>,
+    signer_keys: &T,
+    commitment: CommitmentConfig,
+    mut last_valid_slot: solana_sdk::clock::Slot,
+) -> ClientResult<()> {
+    use bincode::serialize;
+    use solana_cli::send_tpu::{get_leader_tpu, send_transaction_tpu};
+    use solana_cli_output::display::new_spinner_progress_bar;
+    use solana_client::{
+        client_error::ClientErrorKind, rpc_config::RpcSendTransactionConfig,
+        rpc_request::MAX_GET_SIGNATURE_STATUSES_QUERY_ITEMS, rpc_response::RpcLeaderSchedule,
+    };
+    use std::{cmp::min, collections::HashMap, net::UdpSocket, thread::sleep, time::Duration};
+
+    let progress_bar = new_spinner_progress_bar();
+    let mut send_retries = 5;
+    let mut leader_schedule: Option<RpcLeaderSchedule> = None;
+    let mut leader_schedule_epoch = 0;
+    let send_socket = UdpSocket::bind("0.0.0.0:0").unwrap();
+    let cluster_nodes = rpc_client.get_cluster_nodes().ok();
+
+    loop {
+        let mut status_retries = 15;
+
+        progress_bar.set_message("Finding leader node...");
+        let epoch_info = rpc_client.get_epoch_info_with_commitment(commitment)?;
+        if epoch_info.epoch > leader_schedule_epoch || leader_schedule.is_none() {
+            leader_schedule = rpc_client
+                .get_leader_schedule_with_commitment(Some(epoch_info.absolute_slot), commitment)?;
+            leader_schedule_epoch = epoch_info.epoch;
+        }
+        let tpu_address = get_leader_tpu(
+            min(epoch_info.slot_index + 1, epoch_info.slots_in_epoch),
+            leader_schedule.as_ref(),
+            cluster_nodes.as_ref(),
+        );
+
+        // Send all transactions
+        let mut pending_transactions = HashMap::new();
+        let num_transactions = transactions.len();
+        for transaction in transactions {
+            if let Some(tpu_address) = tpu_address {
+                let wire_transaction =
+                    serialize(&transaction).expect("serialization should succeed");
+                send_transaction_tpu(&send_socket, &tpu_address, &wire_transaction);
+            } else {
+                let _result = rpc_client
+                    .send_transaction_with_config(
+                        &transaction,
+                        RpcSendTransactionConfig {
+                            preflight_commitment: Some(commitment.commitment),
+                            ..RpcSendTransactionConfig::default()
+                        },
+                    )
+                    .ok();
+            }
+            pending_transactions.insert(transaction.signatures[0], transaction);
+
+            progress_bar.set_message(&format!(
+                "[{}/{}] Total Transactions sent",
+                pending_transactions.len(),
+                num_transactions
+            ));
+        }
+
+        // Collect statuses for all the transactions, drop those that are confirmed
+        while status_retries > 0 {
+            status_retries -= 1;
+
+            progress_bar.set_message(&format!(
+                "[{}/{}] Transactions confirmed",
+                num_transactions - pending_transactions.len(),
+                num_transactions
+            ));
+
+            let mut statuses = vec![];
+            let pending_signatures = pending_transactions.keys().cloned().collect::<Vec<_>>();
+            for pending_signatures_chunk in
+                pending_signatures.chunks(MAX_GET_SIGNATURE_STATUSES_QUERY_ITEMS - 1)
+            {
+                statuses.extend(
+                    rpc_client
+                        .get_signature_statuses_with_history(pending_signatures_chunk)?
+                        .value
+                        .into_iter(),
+                );
+            }
+            assert_eq!(statuses.len(), pending_signatures.len());
+
+            for (signature, status) in pending_signatures.into_iter().zip(statuses.into_iter()) {
+                if let Some(status) = status {
+                    if status.confirmations.is_none() || status.confirmations.unwrap() > 1 {
+                        let _ = pending_transactions.remove(&signature);
+                    }
+                }
+                progress_bar.set_message(&format!(
+                    "[{}/{}] Transactions confirmed",
+                    num_transactions - pending_transactions.len(),
+                    num_transactions
+                ));
+            }
+
+            if pending_transactions.is_empty() {
+                return Ok(());
+            }
+
+            let slot = rpc_client.get_slot_with_commitment(commitment)?;
+            if slot > last_valid_slot {
+                break;
+            }
+
+            if cfg!(not(test)) {
+                // Retry twice a second
+                sleep(Duration::from_millis(500));
+            }
+        }
+
+        if send_retries == 0 {
+            return Err(ClientErrorKind::Custom("Transactions failed".to_string()).into());
+        }
+        send_retries -= 1;
+
+        // Re-sign any failed transactions with a new blockhash and retry
+        let (blockhash, _fee_calculator, new_last_valid_slot) = rpc_client
+            .get_recent_blockhash_with_commitment(commitment)?
+            .value;
+        last_valid_slot = new_last_valid_slot;
+        transactions = vec![];
+        for (_, mut transaction) in pending_transactions.into_iter() {
+            transaction.try_sign(signer_keys, blockhash)?;
+            transactions.push(transaction);
+        }
+    }
 }
 
 /// For a single user, create interactions, calculate the aggregate, submit a proof, and verify it.
-async fn run_user_workflow(
-    mut client: BanksClient,
+fn run_user_workflow(
+    client: &RpcClient,
     program_id: &Pubkey,
-    sender_keypair: Keypair,
+    sender_keypair: &Keypair,
     (_sk, pk): (SecretKey, PublicKey),
     interactions: Vec<(RistrettoPoint, RistrettoPoint)>,
     policies_pubkey: Pubkey,
     _expected_scalar_aggregate: Scalar,
-) -> io::Result<u64> {
+) -> ClientResult<u64> {
     let sender_pubkey = sender_keypair.pubkey();
     let mut num_transactions = 0;
 
@@ -72,12 +191,11 @@ async fn run_user_workflow(
         pk,
     );
     let msg = Message::new(&ixs, Some(&sender_pubkey));
-    let recent_blockhash = client.get_recent_blockhash().await?;
-    let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
+    let (recent_blockhash, _fee_calculator) = client.get_recent_blockhash()?;
+    let tx = Transaction::new(&[sender_keypair, &user_keypair], msg, recent_blockhash);
     assert_transaction_size(&tx);
     client
-        .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
-        .await
+        .send_and_confirm_transaction_with_spinner_and_commitment(&tx, CommitmentConfig::recent())
         .unwrap();
     num_transactions += 1;
 
@@ -91,23 +209,23 @@ async fn run_user_workflow(
             interactions,
         );
         let msg = Message::new(&[ix], Some(&sender_pubkey));
-        let recent_blockhash = client.get_recent_blockhash().await?;
-        let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
+        let (recent_blockhash, _fee_calculator) = client.get_recent_blockhash()?;
+        let tx = Transaction::new(&[sender_keypair, &user_keypair], msg, recent_blockhash);
         assert_transaction_size(&tx);
         client
-            .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
-            .await
+            .send_and_confirm_transaction_with_spinner_and_commitment(
+                &tx,
+                CommitmentConfig::recent(),
+            )
             .unwrap();
         num_transactions += 1;
     }
 
     //let user_account = client
-    //    .get_account_with_commitment_and_context(
-    //        context::current(),
+    //    .get_account_with_commitment(
     //        user_pubkey,
-    //        CommitmentLevel::Recent,
+    //        CommitmentConfig::recent(),
     //    )
-    //    .await
     //    .unwrap()
     //    .unwrap();
     //let user = User::deserialize(&user_account.data).unwrap();
@@ -137,30 +255,29 @@ async fn run_user_workflow(
         response,
     );
     let msg = Message::new(&[ix], Some(&sender_pubkey));
-    let recent_blockhash = client.get_recent_blockhash().await?;
-    let tx = Transaction::new(&[&sender_keypair, &user_keypair], msg, recent_blockhash);
+    let (recent_blockhash, _fee_calculator) = client.get_recent_blockhash()?;
+    let tx = Transaction::new(&[sender_keypair, &user_keypair], msg, recent_blockhash);
     assert_transaction_size(&tx);
     client
-        .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
-        .await
+        .send_and_confirm_transaction_with_spinner_and_commitment(&tx, CommitmentConfig::recent())
         .unwrap();
     num_transactions += 1;
 
-    //let user_account = client.get_account_with_commitment_and_context(context::current(), user_pubkey, CommitmentLevel::Recent).await.unwrap().unwrap();
+    //let user_account = client.get_account_with_commitment(user_pubkey, CommitmentConfig::recent()).unwrap().unwrap();
     //let user = User::deserialize(&user_account.data).unwrap();
     //assert!(user.fetch_proof_verification());
 
     Ok(num_transactions)
 }
 
-pub async fn test_e2e(
-    client: &mut BanksClient,
+pub fn test_e2e(
+    client: &RpcClient,
     program_id: &Pubkey,
     sender_keypair: Keypair,
     policies: Vec<Scalar>,
     num_users: u64,
     expected_scalar_aggregate: Scalar,
-) -> io::Result<()> {
+) -> ClientResult<()> {
     let sender_pubkey = sender_keypair.pubkey();
     let policies_keypair = Keypair::new();
     let policies_pubkey = policies_keypair.pubkey();
@@ -186,18 +303,21 @@ pub async fn test_e2e(
     ));
 
     let msg = Message::new(&ixs, Some(&sender_pubkey));
-    let recent_blockhash = client.get_recent_blockhash().await?;
+    let (recent_blockhash, _fee_calculator) = client.get_recent_blockhash()?;
     let tx = Transaction::new(&[&sender_keypair, &policies_keypair], msg, recent_blockhash);
     assert_transaction_size(&tx);
     client
-        .process_transaction_with_commitment(tx, CommitmentLevel::Recent)
-        .await
+        .send_and_confirm_transaction_with_spinner_and_commitment(&tx, CommitmentConfig::recent())
         .unwrap();
 
     // Send feepayer_keypairs some SOL
     println!("Seeding feepayer accounts...");
     let feepayers: Vec<_> = (0..num_users).map(|_| Keypair::new()).collect();
-    let recent_blockhash = client.get_recent_blockhash().await.unwrap();
+    let signer_keys = [&sender_keypair];
+    let (recent_blockhash, _fee_calcualtor, last_valid_slot) = client
+        .get_recent_blockhash_with_commitment(CommitmentConfig::default())
+        .unwrap()
+        .value;
     let txs: Vec<_> = feepayers
         .chunks(20)
         .map(|feepayers| {
@@ -207,14 +327,19 @@ pub async fn test_e2e(
                 .collect();
             let ixs = system_instruction::transfer_many(&sender_pubkey, &payments);
             let msg = Message::new(&ixs, Some(&sender_keypair.pubkey()));
-            let tx = Transaction::new(&[&sender_keypair], msg, recent_blockhash);
+            let tx = Transaction::new(&signer_keys, msg, recent_blockhash);
             assert_transaction_size(&tx);
             tx
         })
         .collect();
-    process_transactions_with_commitment(client, txs, CommitmentLevel::Recent)
-        .await
-        .unwrap();
+    send_and_confirm_transactions_with_spinner(
+        client,
+        txs,
+        &signer_keys,
+        CommitmentConfig::recent(),
+        last_valid_slot,
+    )
+    .unwrap();
 
     println!("Starting benchmark...");
     let now = Instant::now();
@@ -224,11 +349,11 @@ pub async fn test_e2e(
         .map(|_| pk.encrypt(&RISTRETTO_BASEPOINT_POINT).points)
         .collect();
 
-    let futures: Vec<_> = feepayers
-        .into_iter()
+    let results: Vec<_> = feepayers
+        .par_iter()
         .map(move |feepayer_keypair| {
             run_user_workflow(
-                client.clone(),
+                client,
                 program_id,
                 feepayer_keypair,
                 (sk.clone(), pk),
@@ -238,7 +363,6 @@ pub async fn test_e2e(
             )
         })
         .collect();
-    let results = join_all(futures).await;
     let elapsed = now.elapsed();
     println!("Benchmark complete.");
 
@@ -254,129 +378,4 @@ pub async fn test_e2e(
     );
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use solana_banks_client::start_client;
-    use solana_banks_server::banks_server::start_local_server;
-    use solana_runtime::{bank::Bank, bank_forks::BankForks};
-    use solana_sdk::{
-        account::Account, account_info::AccountInfo, genesis_config::create_genesis_config,
-        instruction::InstructionError, keyed_account::KeyedAccount,
-        process_instruction::InvokeContext, program_error::ProgramError,
-    };
-    use spl_themis_ristretto::processor::process_instruction;
-    use std::{
-        collections::HashMap,
-        sync::{Arc, RwLock},
-        {cell::RefCell, rc::Rc},
-    };
-    use tokio::runtime::Runtime;
-
-    fn to_instruction_error(error: ProgramError) -> InstructionError {
-        match error {
-            ProgramError::Custom(err) => InstructionError::Custom(err),
-            ProgramError::InvalidArgument => InstructionError::InvalidArgument,
-            ProgramError::InvalidInstructionData => InstructionError::InvalidInstructionData,
-            ProgramError::InvalidAccountData => InstructionError::InvalidAccountData,
-            ProgramError::AccountDataTooSmall => InstructionError::AccountDataTooSmall,
-            ProgramError::InsufficientFunds => InstructionError::InsufficientFunds,
-            ProgramError::IncorrectProgramId => InstructionError::IncorrectProgramId,
-            ProgramError::MissingRequiredSignature => InstructionError::MissingRequiredSignature,
-            ProgramError::AccountAlreadyInitialized => InstructionError::AccountAlreadyInitialized,
-            ProgramError::UninitializedAccount => InstructionError::UninitializedAccount,
-            ProgramError::NotEnoughAccountKeys => InstructionError::NotEnoughAccountKeys,
-            ProgramError::AccountBorrowFailed => InstructionError::AccountBorrowFailed,
-            ProgramError::MaxSeedLengthExceeded => InstructionError::MaxSeedLengthExceeded,
-            ProgramError::InvalidSeeds => InstructionError::InvalidSeeds,
-        }
-    }
-
-    // Same as process_instruction, but but can be used as a builtin program. Handy for unit-testing.
-    pub fn process_instruction_native(
-        program_id: &Pubkey,
-        keyed_accounts: &[KeyedAccount],
-        input: &[u8],
-        _invoke_context: &mut dyn InvokeContext,
-    ) -> Result<(), InstructionError> {
-        // Copy all the accounts into a HashMap to ensure there are no duplicates
-        let mut accounts: HashMap<Pubkey, Account> = keyed_accounts
-            .iter()
-            .map(|ka| (*ka.unsigned_key(), ka.account.borrow().clone()))
-            .collect();
-
-        // Create shared references to each account's lamports/data/owner
-        let account_refs: HashMap<_, _> = accounts
-            .iter_mut()
-            .map(|(key, account)| {
-                (
-                    *key,
-                    (
-                        Rc::new(RefCell::new(&mut account.lamports)),
-                        Rc::new(RefCell::new(&mut account.data[..])),
-                        &account.owner,
-                    ),
-                )
-            })
-            .collect();
-
-        // Create AccountInfos
-        let account_infos: Vec<AccountInfo> = keyed_accounts
-            .iter()
-            .map(|keyed_account| {
-                let key = keyed_account.unsigned_key();
-                let (lamports, data, owner) = &account_refs[key];
-                AccountInfo {
-                    key,
-                    is_signer: keyed_account.signer_key().is_some(),
-                    is_writable: keyed_account.is_writable(),
-                    lamports: lamports.clone(),
-                    data: data.clone(),
-                    owner,
-                    executable: keyed_account.executable().unwrap(),
-                    rent_epoch: keyed_account.rent_epoch().unwrap(),
-                }
-            })
-            .collect();
-
-        // Execute the BPF entrypoint
-        process_instruction(program_id, &account_infos, input).map_err(to_instruction_error)?;
-
-        // Commit changes to the KeyedAccounts
-        for keyed_account in keyed_accounts {
-            let mut account = keyed_account.account.borrow_mut();
-            let key = keyed_account.unsigned_key();
-            let (lamports, data, _owner) = &account_refs[key];
-            account.lamports = **lamports.borrow();
-            account.data = data.borrow().to_vec();
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_local_e2e_2ads() {
-        let (genesis_config, sender_keypair) = create_genesis_config(sol_to_lamports(9_000_000.0));
-        let mut bank = Bank::new(&genesis_config);
-        let program_id = Keypair::new().pubkey();
-        bank.add_builtin("Themis", program_id, process_instruction_native);
-        let bank_forks = Arc::new(RwLock::new(BankForks::new(bank)));
-        Runtime::new().unwrap().block_on(async {
-            let transport = start_local_server(&bank_forks).await;
-            let mut banks_client = start_client(transport).await.unwrap();
-            let policies = vec![1u64.into(), 2u64.into()];
-            test_e2e(
-                &mut banks_client,
-                &program_id,
-                sender_keypair,
-                policies,
-                10,
-                3u64.into(),
-            )
-            .await
-            .unwrap();
-        });
-    }
 }

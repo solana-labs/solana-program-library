@@ -1,23 +1,21 @@
-use solana_banks_client::{start_tcp_client, BanksClient, BanksClientExt};
+use solana_client::{client_error::Result as ClientResult, rpc_client::RpcClient};
 use solana_core::test_validator::{TestValidator, TestValidatorOptions};
 use solana_sdk::{
     bpf_loader,
-    commitment_config::CommitmentLevel,
+    commitment_config::CommitmentConfig,
     loader_instruction,
     message::Message,
     native_token::sol_to_lamports,
     pubkey::Pubkey,
-    signature::{Keypair, Signer},
+    signature::{Keypair, Signature, Signer},
     system_instruction,
     transaction::Transaction,
-    transport,
 };
-use spl_themis_ristretto_client::{process_transactions_with_commitment, test_e2e};
+use spl_themis_ristretto_client::{send_and_confirm_transactions_with_spinner, test_e2e};
 use std::{
     fs::{remove_dir_all, File},
     io::Read,
 };
-use tokio::runtime::Runtime;
 
 const DATA_CHUNK_SIZE: usize = 229; // Keep program chunks under PACKET_DATA_SIZE
 
@@ -29,14 +27,14 @@ fn load_program(name: &str) -> Vec<u8> {
     program
 }
 
-async fn create_program_account_with_commitment(
-    client: &mut BanksClient,
+fn create_program_account_with_commitment(
+    client: &RpcClient,
     loader_id: &Pubkey,
     funder_keypair: &Keypair,
     program_keypair: &Keypair,
     program_len: usize,
-    commitment: CommitmentLevel,
-) -> transport::Result<()> {
+    commitment: CommitmentConfig,
+) -> ClientResult<Signature> {
     let minimum_balance = 0.01; // TODO: Can we calcualte this from get_fees() and program_len?
     let ix = system_instruction::create_account(
         &funder_keypair.pubkey(),
@@ -46,26 +44,27 @@ async fn create_program_account_with_commitment(
         loader_id,
     );
     let message = Message::new(&[ix], Some(&funder_keypair.pubkey()));
-    let recent_blockhash = client.get_recent_blockhash().await?;
+    let (recent_blockhash, _fee_calculator) = client.get_recent_blockhash()?;
     let transaction = Transaction::new(
         &[funder_keypair, program_keypair],
         message,
         recent_blockhash,
     );
-    client
-        .process_transaction_with_commitment(transaction, commitment)
-        .await
+    client.send_and_confirm_transaction_with_spinner_and_commitment(&transaction, commitment)
 }
 
-async fn write_program_with_commitment(
-    client: &mut BanksClient,
+fn write_program_with_commitment(
+    client: &RpcClient,
     loader_id: &Pubkey,
     funder_keypair: &Keypair,
     program_keypair: &Keypair,
     program: Vec<u8>,
-    commitment: CommitmentLevel,
-) -> transport::Result<()> {
-    let recent_blockhash = client.get_recent_blockhash().await?;
+    commitment: CommitmentConfig,
+) -> ClientResult<()> {
+    let (recent_blockhash, _fee_calculator, last_valid_slot) = client
+        .get_recent_blockhash_with_commitment(CommitmentConfig::default())?
+        .value;
+    let signer_keys = [funder_keypair, program_keypair];
     let transactions: Vec<_> = program
         .chunks(DATA_CHUNK_SIZE)
         .enumerate()
@@ -77,45 +76,44 @@ async fn write_program_with_commitment(
                 chunk.to_vec(),
             );
             let message = Message::new(&[instruction], Some(&funder_keypair.pubkey()));
-            Transaction::new(
-                &[funder_keypair, program_keypair],
-                message,
-                recent_blockhash,
-            )
+            Transaction::new(&signer_keys, message, recent_blockhash)
         })
         .collect();
-    process_transactions_with_commitment(client, transactions, commitment).await
+    send_and_confirm_transactions_with_spinner(
+        client,
+        transactions,
+        &signer_keys,
+        commitment,
+        last_valid_slot,
+    )
 }
 
-async fn finalize_program_with_commitment(
-    client: &mut BanksClient,
+fn finalize_program_with_commitment(
+    client: &RpcClient,
     loader_id: &Pubkey,
     funder_keypair: &Keypair,
     program_keypair: &Keypair,
-    commitment: CommitmentLevel,
-) -> transport::Result<()> {
+    commitment: CommitmentConfig,
+) -> ClientResult<Signature> {
     let ix = loader_instruction::finalize(&program_keypair.pubkey(), &loader_id);
     let message = Message::new(&[ix], Some(&funder_keypair.pubkey()));
-    let recent_blockhash = client.get_recent_blockhash().await?;
+    let (recent_blockhash, _fee_calculator) = client.get_recent_blockhash()?;
     let transaction = Transaction::new(
         &[funder_keypair, program_keypair],
         message,
         recent_blockhash,
     );
-    client
-        .process_transaction_with_commitment(transaction, commitment)
-        .await
+    client.send_and_confirm_transaction_with_spinner_and_commitment(&transaction, commitment)
 }
 
-// TODO: Add this to BanksClient
-async fn deploy_program_with_commitment(
-    client: &mut BanksClient,
+fn deploy_program_with_commitment(
+    client: &RpcClient,
     loader_id: &Pubkey,
     funder_keypair: &Keypair,
     program_keypair: &Keypair,
     program: Vec<u8>,
-    commitment: CommitmentLevel,
-) -> transport::Result<()> {
+    commitment: CommitmentConfig,
+) -> ClientResult<()> {
     create_program_account_with_commitment(
         client,
         loader_id,
@@ -123,8 +121,7 @@ async fn deploy_program_with_commitment(
         program_keypair,
         program.len(),
         commitment,
-    )
-    .await?;
+    )?;
     write_program_with_commitment(
         client,
         loader_id,
@@ -132,16 +129,14 @@ async fn deploy_program_with_commitment(
         program_keypair,
         program,
         commitment,
-    )
-    .await?;
+    )?;
     finalize_program_with_commitment(
         client,
         loader_id,
         funder_keypair,
         program_keypair,
         commitment,
-    )
-    .await?;
+    )?;
     Ok(())
 }
 
@@ -161,32 +156,28 @@ fn test_validator_e2e() {
 
     let program = load_program("../../target/deploy/spl_themis_ristretto.so");
 
-    Runtime::new().unwrap().block_on(async {
-        let mut banks_client = start_tcp_client(leader_data.rpc_banks).await.unwrap();
-        let program_keypair = Keypair::new();
-        deploy_program_with_commitment(
-            &mut banks_client,
-            &bpf_loader::id(),
-            &alice,
-            &program_keypair,
-            program,
-            CommitmentLevel::Recent,
-        )
-        .await
-        .unwrap();
+    let client = RpcClient::new_socket(leader_data.rpc);
+    let program_keypair = Keypair::new();
+    deploy_program_with_commitment(
+        &client,
+        &bpf_loader::id(),
+        &alice,
+        &program_keypair,
+        program,
+        CommitmentConfig::recent(),
+    )
+    .unwrap();
 
-        let policies = vec![1u64.into(), 2u64.into()];
-        test_e2e(
-            &mut banks_client,
-            &program_keypair.pubkey(),
-            alice,
-            policies,
-            10,
-            3u64.into(),
-        )
-        .await
-        .unwrap();
-    });
+    let policies = vec![1u64.into(), 2u64.into()];
+    test_e2e(
+        &client,
+        &program_keypair.pubkey(),
+        alice,
+        policies,
+        10,
+        3u64.into(),
+    )
+    .unwrap();
 
     // Explicit cleanup, otherwise "pure virtual method called" crash in Docker
     server.close().unwrap();
