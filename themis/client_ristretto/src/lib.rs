@@ -3,7 +3,6 @@ use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
 use elgamal_ristretto::{/*ciphertext::Ciphertext,*/ private::SecretKey, public::PublicKey};
-use rayon::prelude::*;
 use solana_client::{client_error::Result as ClientResult, rpc_client::RpcClient};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
@@ -167,101 +166,141 @@ pub fn send_and_confirm_transactions_with_spinner<T: solana_sdk::signers::Signer
     }
 }
 
-/// For a single user, create interactions, calculate the aggregate, submit a proof, and verify it.
+/// For each user, create interactions, calculate the aggregate, submit a proof, and verify it.
 fn run_user_workflow(
     client: &RpcClient,
     program_id: &Pubkey,
-    sender_keypair: &Keypair,
+    sender_keypairs: &[Keypair],
     (_sk, pk): (SecretKey, PublicKey),
     interactions: Vec<(RistrettoPoint, RistrettoPoint)>,
     policies_pubkey: Pubkey,
     _expected_scalar_aggregate: Scalar,
-) -> ClientResult<u64> {
-    let sender_pubkey = sender_keypair.pubkey();
+) -> ClientResult<usize> {
     let mut num_transactions = 0;
+    let keys: Vec<_> = sender_keypairs
+        .iter()
+        .map(|sender_keypair| (sender_keypair, Keypair::new()))
+        .collect();
 
-    // Create the users account
-    let user_keypair = Keypair::new();
-    let user_pubkey = user_keypair.pubkey();
-    let ixs = instruction::create_user_account(
-        program_id,
-        &sender_pubkey,
-        &user_pubkey,
-        sol_to_lamports(0.001),
-        pk,
-    );
-    let msg = Message::new(&ixs, Some(&sender_pubkey));
-    let (recent_blockhash, _fee_calculator) = client.get_recent_blockhash()?;
-    let tx = Transaction::new(&[sender_keypair, &user_keypair], msg, recent_blockhash);
-    assert_transaction_size(&tx);
-    client
-        .send_and_confirm_transaction_with_spinner_and_commitment(&tx, CommitmentConfig::recent())
-        .unwrap();
-    num_transactions += 1;
+    // Create each user's accounts
+    let (recent_blockhash, _fee_calculator, last_valid_slot) = client
+        .get_recent_blockhash_with_commitment(CommitmentConfig::default())?
+        .value;
+    let txs: Vec<_> = keys
+        .iter()
+        .map(|(sender_keypair, user_keypair)| {
+            let sender_pubkey = sender_keypair.pubkey();
+            let user_pubkey = user_keypair.pubkey();
+            let ixs = instruction::create_user_account(
+                program_id,
+                &sender_pubkey,
+                &user_pubkey,
+                sol_to_lamports(0.001),
+                pk,
+            );
+            let msg = Message::new(&ixs, Some(&sender_pubkey));
+            Transaction::new(&[sender_keypair, user_keypair], msg, recent_blockhash)
+        })
+        .collect();
+    num_transactions += txs.len();
+
+    // TODO: pass signer for each transaction to send_and_confirm_transactions_with_spinner
+    let signer_keys: Vec<&Keypair> = vec![];
+    send_and_confirm_transactions_with_spinner(
+        client,
+        txs,
+        &signer_keys,
+        CommitmentConfig::recent(),
+        last_valid_slot,
+    )
+    .unwrap();
 
     // Send one interaction at a time to stay under the BPF instruction limit
-    for (i, interaction) in interactions.into_iter().enumerate() {
-        let interactions = vec![(i as u8, interaction)];
-        let ix = instruction::submit_interactions(
-            program_id,
-            &user_pubkey,
-            &policies_pubkey,
-            interactions,
-        );
-        let msg = Message::new(&[ix], Some(&sender_pubkey));
-        let (recent_blockhash, _fee_calculator) = client.get_recent_blockhash()?;
-        let tx = Transaction::new(&[sender_keypair, &user_keypair], msg, recent_blockhash);
-        assert_transaction_size(&tx);
-        client
-            .send_and_confirm_transaction_with_spinner_and_commitment(
-                &tx,
-                CommitmentConfig::recent(),
-            )
-            .unwrap();
-        num_transactions += 1;
-    }
+    let (recent_blockhash, _fee_calculator, last_valid_slot) = client
+        .get_recent_blockhash_with_commitment(CommitmentConfig::default())?
+        .value;
+    let txs: Vec<_> = keys.iter().flat_map(|(sender_keypair, user_keypair)| {
+        let sender_pubkey = sender_keypair.pubkey();
+        let user_pubkey = user_keypair.pubkey();
+        interactions
+            .iter()
+            .enumerate()
+            .map(|(i, interaction)| {
+                let interactions = vec![(i as u8, *interaction)];
+                let ix = instruction::submit_interactions(
+                    program_id,
+                    &user_pubkey,
+                    &policies_pubkey,
+                    interactions,
+                );
+                let msg = Message::new(&[ix], Some(&sender_pubkey));
+                Transaction::new(&[sender_keypair, user_keypair], msg, recent_blockhash)
+            }).collect::<Vec<_>>()
+    }).collect();
+    num_transactions += txs.len();
+    send_and_confirm_transactions_with_spinner(
+        client,
+        txs,
+        &signer_keys,
+        CommitmentConfig::recent(),
+        last_valid_slot,
+    )
+    .unwrap();
 
-    //let user_account = client
-    //    .get_account_with_commitment(
-    //        user_pubkey,
-    //        CommitmentConfig::recent(),
-    //    )
-    //    .unwrap()
-    //    .unwrap();
-    //let user = User::deserialize(&user_account.data).unwrap();
-    //let ciphertext = Ciphertext {
-    //    points: user.fetch_encrypted_aggregate(),
-    //    pk,
-    //};
+    let (recent_blockhash, _fee_calculator, last_valid_slot) = client
+        .get_recent_blockhash_with_commitment(CommitmentConfig::default())?
+        .value;
+    let txs: Vec<_> = keys
+        .iter()
+        .map(|(sender_keypair, user_keypair)| {
+            let sender_pubkey = sender_keypair.pubkey();
+            let user_pubkey = user_keypair.pubkey();
+            //let user_account = client
+            //    .get_account_with_commitment(
+            //        user_pubkey,
+            //        CommitmentConfig::recent(),
+            //    )
+            //    .unwrap()
+            //    .unwrap();
+            //let user = User::deserialize(&user_account.data).unwrap();
+            //let ciphertext = Ciphertext {
+            //    points: user.fetch_encrypted_aggregate(),
+            //    pk,
+            //};
 
-    //let decrypted_aggregate = sk.decrypt(&ciphertext);
-    let decrypted_aggregate = RISTRETTO_BASEPOINT_POINT;
-    //let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
-    //assert_eq!(scalar_aggregate, expected_scalar_aggregate);
+            //let decrypted_aggregate = sk.decrypt(&ciphertext);
+            let decrypted_aggregate = RISTRETTO_BASEPOINT_POINT;
+            //let scalar_aggregate = recover_scalar(decrypted_aggregate, 16);
+            //assert_eq!(scalar_aggregate, expected_scalar_aggregate);
 
-    //let ((announcement_g, announcement_ctx), response) =
-    //    sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
-    let ((announcement_g, announcement_ctx), response) = (
-        (RISTRETTO_BASEPOINT_POINT, RISTRETTO_BASEPOINT_POINT),
-        0u64.into(),
-    );
+            //let ((announcement_g, announcement_ctx), response) =
+            //    sk.prove_correct_decryption_no_Merlin(&ciphertext, &decrypted_aggregate).unwrap();
+            let ((announcement_g, announcement_ctx), response) = (
+                (RISTRETTO_BASEPOINT_POINT, RISTRETTO_BASEPOINT_POINT),
+                0u64.into(),
+            );
 
-    let ix = instruction::submit_proof_decryption(
-        program_id,
-        &user_pubkey,
-        decrypted_aggregate,
-        announcement_g,
-        announcement_ctx,
-        response,
-    );
-    let msg = Message::new(&[ix], Some(&sender_pubkey));
-    let (recent_blockhash, _fee_calculator) = client.get_recent_blockhash()?;
-    let tx = Transaction::new(&[sender_keypair, &user_keypair], msg, recent_blockhash);
-    assert_transaction_size(&tx);
-    client
-        .send_and_confirm_transaction_with_spinner_and_commitment(&tx, CommitmentConfig::recent())
-        .unwrap();
-    num_transactions += 1;
+            let ix = instruction::submit_proof_decryption(
+                program_id,
+                &user_pubkey,
+                decrypted_aggregate,
+                announcement_g,
+                announcement_ctx,
+                response,
+            );
+            let msg = Message::new(&[ix], Some(&sender_pubkey));
+            Transaction::new(&[sender_keypair, user_keypair], msg, recent_blockhash)
+        })
+        .collect();
+    num_transactions += txs.len();
+    send_and_confirm_transactions_with_spinner(
+        client,
+        txs,
+        &signer_keys,
+        CommitmentConfig::recent(),
+        last_valid_slot,
+    )
+    .unwrap();
 
     //let user_account = client.get_account_with_commitment(user_pubkey, CommitmentConfig::recent()).unwrap().unwrap();
     //let user = User::deserialize(&user_account.data).unwrap();
@@ -349,27 +388,19 @@ pub fn test_e2e(
         .map(|_| pk.encrypt(&RISTRETTO_BASEPOINT_POINT).points)
         .collect();
 
-    let results: Vec<_> = feepayers
-        .par_iter()
-        .map(move |feepayer_keypair| {
-            run_user_workflow(
-                client,
-                program_id,
-                feepayer_keypair,
-                (sk.clone(), pk),
-                interactions.clone(),
-                policies_pubkey,
-                expected_scalar_aggregate,
-            )
-        })
-        .collect();
+    let num_transactions = run_user_workflow(
+        client,
+        program_id,
+        &feepayers,
+        (sk.clone(), pk),
+        interactions.clone(),
+        policies_pubkey,
+        expected_scalar_aggregate,
+    )
+    .unwrap();
     let elapsed = now.elapsed();
     println!("Benchmark complete.");
 
-    let num_transactions = results
-        .into_iter()
-        .map(|result| result.unwrap())
-        .sum::<u64>();
     println!(
         "{} transactions in {:?} ({} TPS)",
         num_transactions,
