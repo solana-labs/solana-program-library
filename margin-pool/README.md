@@ -27,4 +27,19 @@ For example:
 * Cost to go long `10btc = 50,000,000/40 - (1000000 + 10*20,000) = 50,000 = 4x leverage`
 * Cost to go long `1btc = 50,000,000/49 - (1000000 + 1*20,000) = 408.1632653061 = 49x leverage`
 
+Position:
 
+* Collateral, intial deposit to open the position.
+* Borrow amount, the size of the position.
+* Position token, represents the position opened by the user.
+* Borrow token, this token covers the risk and generates yield.  Yield is split with the pool based on the ratio of collateral / borrow.
+
+Position can be reduced by burning the Position token and repaying the debt.
+
+Liqudiations:
+
+Positions can be liquidated in order of least collaterlized to most collaterlized.
+
+Debt Pools:
+
+Since liquidations are ordered, the A or B debt can be sold as aggregated debt. Yield is split between the LP pool and debt pools by the collateral atio.

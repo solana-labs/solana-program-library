@@ -24,26 +24,27 @@ pub enum MarginPoolInstruction {
         nonce: u8,
     },
 
-    ///   Open/Fund a position.
+    ///   Fundn a position.
     ///
     ///   0. `[]` MarginPool
     ///   1. `[]` $authority
     ///   4. `[]` Swap Market
-    ///   4. `[writable]` MarginPool::Position state, uninitialized to open a position.
+    ///   4. `[writable]` MarginPool::Position state, uninitialized on first use.
+    ///   4. `[writable]` Position mint
     ///   2. `[writable]` token_X SOURCE Account, amount is transferable by $authority.
     ///   3. `[writable]` token_LP LP account to borrow from.
     ///   4. `[writable]` token_Y Base Account to deposit into, owned by $authority.
+    ///   4. `[writable]` Position token to deposit into, owned by user.
     ///   8. '[]` Token program id
+    ///   9. '[]` Token swap program id
     FundPosition {
         /// SOURCE amount
         amount_in: u64,
-        /// BORROW amount
-        borrow: u64,
         /// Minimum amount DESTINATION token to output, prevents excessive slippage
         minimum_amount_out: u64,
     },
 
-    ///   Close/Reduce a position.
+    ///   Reduce a position.
     ///
     ///   0. `[]` MarginPool
     ///   1. `[]` $authority
@@ -53,12 +54,15 @@ pub enum MarginPoolInstruction {
     ///   3. `[writable]` token_Y Base Account.
     ///   4. `[writable]` token_X DESTINATION Account.
     ///   8. '[]` Token program id
-    ClosePosition {
+    ReducePosition {
         /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
         amount_in: u64,
         /// Minimum amount of DESTINATION token to output, prevents excessive slippage
         minimum_amount_out: u64,
     },
+
+    /// Force position liquidation
+    Liquidate,
 
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
