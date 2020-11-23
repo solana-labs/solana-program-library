@@ -426,7 +426,7 @@ mod tests {
 
     #[test]
     fn constant_product_swap_no_fee() {
-        const POOL_AMOUNTS: &'static [u128] = &[
+        const POOL_AMOUNTS: &[u128] = &[
             100,
             10_000,
             1_000_000,
@@ -437,7 +437,7 @@ mod tests {
             10_000_000_000_000_000,
             1_000_000_000_000_000_000,
         ];
-        const SWAP_AMOUNTS: &'static [u128] = &[
+        const SWAP_AMOUNTS: &[u128] = &[
             100,
             1_000,
             10_000,
@@ -449,7 +449,7 @@ mod tests {
             10_000_000_000,
             100_000_000_000,
         ];
-        const AMP_FACTORS: &'static [u64] = &[1, 10, 20, 50, 75, 100, 125, 150];
+        const AMP_FACTORS: &[u64] = &[1, 10, 20, 50, 75, 100, 125, 150];
 
         for swap_source_amount in POOL_AMOUNTS {
             for swap_destination_amount in POOL_AMOUNTS {
