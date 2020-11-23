@@ -76,7 +76,7 @@ fn do_process_instruction(instruction: Instruction, accounts: &[AccountInfo]) ->
         .collect::<Vec<_>>();
     let account_infos = account_data
         .iter_mut()
-        .map(AccountData::into_account_info)
+        .map(AccountData::as_account_info)
         .collect::<Vec<_>>();
     let res = if instruction.program_id == spl_token_swap::id() {
         spl_token_swap::processor::Processor::process(
@@ -136,15 +136,15 @@ impl AccountData {
 
     pub fn new_from_account_info(account_info: &AccountInfo) -> Self {
         Self {
-            key: account_info.key.clone(),
-            lamports: account_info.lamports.borrow().clone(),
+            key: *account_info.key,
+            lamports: **account_info.lamports.borrow(),
             data: account_info.data.borrow().to_vec(),
-            program_id: account_info.owner.clone(),
+            program_id: *account_info.owner,
             is_signer: account_info.is_signer,
         }
     }
 
-    pub fn into_account_info(&mut self) -> AccountInfo {
+    pub fn as_account_info(&mut self) -> AccountInfo {
         AccountInfo::new(
             &self.key,
             self.is_signer,
@@ -192,7 +192,7 @@ pub fn create_token_account(
     let mut account_data = AccountData::new(TokenAccount::LEN, spl_token::id());
     let mut account = TokenAccount::default();
     account.state = TokenAccountState::Initialized;
-    account.mint = mint_account.key.clone();
+    account.mint = mint_account.key;
     account.owner = *owner;
     account.amount = amount;
     mint.supply += amount;
@@ -260,14 +260,14 @@ impl TokenSwapAccountInfo {
         do_process_instruction(
             init_instruction,
             &[
-                swap_account.into_account_info(),
-                authority_account.into_account_info(),
-                token_a_account.into_account_info(),
-                token_b_account.into_account_info(),
-                pool_mint_account.into_account_info(),
-                pool_fee_account.into_account_info(),
-                pool_token_account.into_account_info(),
-                token_program_account.into_account_info(),
+                swap_account.as_account_info(),
+                authority_account.as_account_info(),
+                token_a_account.as_account_info(),
+                token_b_account.as_account_info(),
+                pool_mint_account.as_account_info(),
+                pool_fee_account.as_account_info(),
+                pool_token_account.as_account_info(),
+                token_program_account.as_account_info(),
             ],
         )
         .unwrap();
@@ -326,9 +326,9 @@ impl TokenSwapAccountInfo {
             )
             .unwrap(),
             &[
-                token_a_account.into_account_info(),
-                self.authority_account.into_account_info(),
-                self.user_account.into_account_info(),
+                token_a_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                self.user_account.as_account_info(),
             ],
         )
         .unwrap();
@@ -351,16 +351,16 @@ impl TokenSwapAccountInfo {
         do_process_instruction(
             swap_instruction,
             &[
-                self.swap_account.into_account_info(),
-                self.authority_account.into_account_info(),
-                token_a_account.into_account_info(),
-                self.token_a_account.into_account_info(),
-                self.token_b_account.into_account_info(),
-                token_b_account.into_account_info(),
-                self.pool_mint_account.into_account_info(),
-                self.pool_fee_account.into_account_info(),
-                self.token_program_account.into_account_info(),
-                self.pool_token_account.into_account_info(),
+                self.swap_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                token_a_account.as_account_info(),
+                self.token_a_account.as_account_info(),
+                self.token_b_account.as_account_info(),
+                token_b_account.as_account_info(),
+                self.pool_mint_account.as_account_info(),
+                self.pool_fee_account.as_account_info(),
+                self.token_program_account.as_account_info(),
+                self.pool_token_account.as_account_info(),
             ],
         )
     }
@@ -382,9 +382,9 @@ impl TokenSwapAccountInfo {
             )
             .unwrap(),
             &[
-                token_b_account.into_account_info(),
-                self.authority_account.into_account_info(),
-                self.user_account.into_account_info(),
+                token_b_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                self.user_account.as_account_info(),
             ],
         )
         .unwrap();
@@ -408,16 +408,16 @@ impl TokenSwapAccountInfo {
         do_process_instruction(
             swap_instruction,
             &[
-                self.swap_account.into_account_info(),
-                self.authority_account.into_account_info(),
-                token_b_account.into_account_info(),
-                self.token_b_account.into_account_info(),
-                self.token_a_account.into_account_info(),
-                token_a_account.into_account_info(),
-                self.pool_mint_account.into_account_info(),
-                self.pool_fee_account.into_account_info(),
-                self.token_program_account.into_account_info(),
-                self.pool_token_account.into_account_info(),
+                self.swap_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                token_b_account.as_account_info(),
+                self.token_b_account.as_account_info(),
+                self.token_a_account.as_account_info(),
+                token_a_account.as_account_info(),
+                self.pool_mint_account.as_account_info(),
+                self.pool_fee_account.as_account_info(),
+                self.token_program_account.as_account_info(),
+                self.pool_token_account.as_account_info(),
             ],
         )
     }
@@ -440,9 +440,9 @@ impl TokenSwapAccountInfo {
             )
             .unwrap(),
             &[
-                token_a_account.into_account_info(),
-                self.authority_account.into_account_info(),
-                self.user_account.into_account_info(),
+                token_a_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                self.user_account.as_account_info(),
             ],
         )
         .unwrap();
@@ -458,9 +458,9 @@ impl TokenSwapAccountInfo {
             )
             .unwrap(),
             &[
-                token_b_account.into_account_info(),
-                self.authority_account.into_account_info(),
-                self.user_account.into_account_info(),
+                token_b_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                self.user_account.as_account_info(),
             ],
         )
         .unwrap();
@@ -489,15 +489,15 @@ impl TokenSwapAccountInfo {
         do_process_instruction(
             deposit_instruction,
             &[
-                self.swap_account.into_account_info(),
-                self.authority_account.into_account_info(),
-                token_a_account.into_account_info(),
-                token_b_account.into_account_info(),
-                self.token_a_account.into_account_info(),
-                self.token_b_account.into_account_info(),
-                self.pool_mint_account.into_account_info(),
-                pool_account.into_account_info(),
-                self.token_program_account.into_account_info(),
+                self.swap_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                token_a_account.as_account_info(),
+                token_b_account.as_account_info(),
+                self.token_a_account.as_account_info(),
+                self.token_b_account.as_account_info(),
+                self.pool_mint_account.as_account_info(),
+                pool_account.as_account_info(),
+                self.token_program_account.as_account_info(),
             ],
         )
     }
@@ -526,9 +526,9 @@ impl TokenSwapAccountInfo {
             )
             .unwrap(),
             &[
-                pool_account.into_account_info(),
-                self.authority_account.into_account_info(),
-                self.user_account.into_account_info(),
+                pool_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                self.user_account.as_account_info(),
             ],
         )
         .unwrap();
@@ -552,16 +552,16 @@ impl TokenSwapAccountInfo {
         do_process_instruction(
             withdraw_instruction,
             &[
-                self.swap_account.into_account_info(),
-                self.authority_account.into_account_info(),
-                self.pool_mint_account.into_account_info(),
-                pool_account.into_account_info(),
-                self.token_a_account.into_account_info(),
-                self.token_b_account.into_account_info(),
-                token_a_account.into_account_info(),
-                token_b_account.into_account_info(),
-                self.pool_fee_account.into_account_info(),
-                self.token_program_account.into_account_info(),
+                self.swap_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                self.pool_mint_account.as_account_info(),
+                pool_account.as_account_info(),
+                self.token_a_account.as_account_info(),
+                self.token_b_account.as_account_info(),
+                token_a_account.as_account_info(),
+                token_b_account.as_account_info(),
+                self.pool_fee_account.as_account_info(),
+                self.token_program_account.as_account_info(),
             ],
         )
     }
