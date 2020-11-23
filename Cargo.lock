@@ -60,12 +60,9 @@ checksum = "bf8dcb5b4bbaa28653b647d8c77bd4ed40183b48882e130c1f1ffb73de069fd7"
 
 [[package]]
 name = "arbitrary"
-version = "0.4.7"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db55d72333851e17d572bec876e390cd3b11eb1ef53ae821dd9f3b653d2b4569"
-dependencies = [
- "derive_arbitrary",
-]
+checksum = "64cf76cb6e2222ed0ea86b2b0ee2f71c96ec6edd5af42e84d59160e91b836ec4"
 
 [[package]]
 name = "arrayref"
@@ -760,13 +757,13 @@ dependencies = [
 
 [[package]]
 name = "derive_arbitrary"
-version = "0.4.7"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1a012b5e473dc912f0db0546a1c9c6a194ce8494feb66fa0237160926f9e0e6"
+checksum = "ee59be49500bcc07644c5274dc79079059090d1d2b5889c6e5a04fc73229f485"
 dependencies = [
- "proc-macro2 1.0.24",
- "quote 1.0.7",
- "syn 1.0.48",
+ "proc-macro2 0.4.30",
+ "syn 0.14.9",
+ "synstructure 0.9.0",
 ]
 
 [[package]]
@@ -927,7 +924,7 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.48",
- "synstructure",
+ "synstructure 0.12.4",
 ]
 
 [[package]]
@@ -1279,6 +1276,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "honggfuzz"
+version = "0.5.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24c27b4aa3049d6d10d8e33d52c9d03ca9aec18f8a449b246f8c4a5b0c10fb34"
+dependencies = [
+ "arbitrary",
+ "lazy_static",
+ "memmap",
+]
+
+[[package]]
 name = "http"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1534,16 +1542,6 @@ name = "libc"
 version = "0.2.76"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "755456fae044e6fa1ebbbd1b3e902ae19e73097ed4ed87bb79934a867c007bc3"
-
-[[package]]
-name = "libfuzzer-sys"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcf184a4b6b274f82a5df6b357da6055d3e82272327bba281c28bbba6f1664ef"
-dependencies = [
- "arbitrary",
- "cc",
-]
 
 [[package]]
 name = "libloading"
@@ -3508,6 +3506,7 @@ version = "0.1.0"
 dependencies = [
  "arbitrary",
  "arrayref",
+ "derive_arbitrary",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -3521,7 +3520,8 @@ name = "spl-token-swap-fuzz"
 version = "0.0.0"
 dependencies = [
  "arbitrary",
- "libfuzzer-sys",
+ "derive_arbitrary",
+ "honggfuzz",
  "solana-program",
  "spl-token 3.0.0",
  "spl-token-swap",
@@ -3590,6 +3590,17 @@ checksum = "a7973cce6668464ea31f176d85b13c7ab3bba2cb3b77a2ed26abd7801688010a"
 
 [[package]]
 name = "syn"
+version = "0.14.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "261ae9ecaa397c42b960649561949d69311f08eeaea86a65696e6e46517cf741"
+dependencies = [
+ "proc-macro2 0.4.30",
+ "quote 0.6.13",
+ "unicode-xid 0.1.0",
+]
+
+[[package]]
+name = "syn"
 version = "0.15.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ca4b3b69a77cbe1ffc9e198781b7acb0c7365a883670e8f1c1bc66fba79a5c5"
@@ -3608,6 +3619,18 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.7",
  "unicode-xid 0.2.0",
+]
+
+[[package]]
+name = "synstructure"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85bb9b7550d063ea184027c9b8c20ac167cd36d3e06b3a40bceb9d746dc1a7b7"
+dependencies = [
+ "proc-macro2 0.4.30",
+ "quote 0.6.13",
+ "syn 0.14.9",
+ "unicode-xid 0.1.0",
 ]
 
 [[package]]
@@ -4469,7 +4492,7 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.48",
- "synstructure",
+ "synstructure 0.12.4",
 ]
 
 [[package]]

@@ -1,4 +1,3 @@
-#![no_main]
 
 use spl_token_swap_fuzz::{get_token_balance, AccountData, TokenSwapAccountInfo};
 
@@ -13,9 +12,11 @@ use spl_token_swap::{
 
 use spl_token::error::TokenError;
 
-use arbitrary::Arbitrary;
-use libfuzzer_sys::fuzz_target;
+use derive_arbitrary::Arbitrary;
+//use libfuzzer_sys::fuzz_target;
 use std::collections::{HashMap, HashSet};
+
+#[macro_use] extern crate honggfuzz;
 
 #[derive(Debug, Arbitrary, Clone)]
 enum FuzzInstruction {
@@ -56,9 +57,13 @@ const INITIAL_SWAP_TOKEN_B_AMOUNT: u64 = 300_000_000_000;
 const INITIAL_USER_TOKEN_A_AMOUNT: u64 = 1_000_000_000;
 const INITIAL_USER_TOKEN_B_AMOUNT: u64 = 3_000_000_000;
 
-fuzz_target!(|fuzz_instructions: Vec<FuzzInstruction>| {
-    run_fuzz_instructions(fuzz_instructions)
-});
+fn main() {
+    loop {
+        fuzz!(|fuzz_instructions: Vec<FuzzInstruction>| {
+            run_fuzz_instructions(fuzz_instructions)
+        });
+    }
+}
 
 fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
     let trade_fee_numerator = 25;

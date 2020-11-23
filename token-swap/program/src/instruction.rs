@@ -13,8 +13,8 @@ use solana_program::{
 use std::convert::TryInto;
 use std::mem::size_of;
 
-#[cfg(feature = "fuzz")]
-use arbitrary::Arbitrary;
+#[cfg(fuzzing)]
+use derive_arbitrary::Arbitrary;
 
 /// Initialize instruction data
 #[repr(C)]
@@ -28,7 +28,7 @@ pub struct Initialize {
 }
 
 /// Swap instruction data
-#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[cfg_attr(fuzzing, derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Swap {
@@ -39,7 +39,7 @@ pub struct Swap {
 }
 
 /// Deposit instruction data
-#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[cfg_attr(fuzzing, derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Deposit {
@@ -53,7 +53,7 @@ pub struct Deposit {
 }
 
 /// Withdraw instruction data
-#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[cfg_attr(fuzzing, derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Withdraw {
