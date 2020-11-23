@@ -18,10 +18,6 @@ spl-token = { version = "3.0", path = "../../../token/program", features = [ "no
 path = ".."
 features = ["fuzz", "no-entrypoint"]
 
-# Prevent this from interfering with workspaces
-[workspace]
-members = ["."]
-
 [[bin]]
 name = "instructions"
 path = "fuzz_targets/instructions.rs"
