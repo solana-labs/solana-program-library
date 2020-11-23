@@ -180,7 +180,7 @@ impl Model {
                     self.amp_factor,
                     self.balances.to_vec(),
                     self.n_coins,
-                    self.fee, 
+                    self.fee,
                     self.target_prices.to_vec(),
                     self.pool_tokens,
                 ),
