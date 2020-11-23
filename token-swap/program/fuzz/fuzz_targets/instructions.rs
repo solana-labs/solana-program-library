@@ -127,20 +127,44 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
     let mut withdrawn_token_a_account = token_swap.create_token_a_account(0);
     let mut withdrawn_token_b_account = token_swap.create_token_b_account(0);
     for mut pool_account in pool_accounts.values_mut() {
-        token_swap.withdraw_all(
+        token_swap
+            .withdraw_all(
+                &mut pool_account,
+                &mut withdrawn_token_a_account,
+                &mut withdrawn_token_b_account,
+            )
+            .unwrap();
+    }
+    let mut pool_account = token_swap.pool_token_account.clone();
+    token_swap
+        .withdraw_all(
             &mut pool_account,
             &mut withdrawn_token_a_account,
             &mut withdrawn_token_b_account,
-        ).unwrap();
-    }
-    let mut pool_account = token_swap.pool_token_account.clone();
-    token_swap.withdraw_all(&mut pool_account, &mut withdrawn_token_a_account, &mut withdrawn_token_b_account).unwrap();
+        )
+        .unwrap();
     let mut fee_account = token_swap.pool_fee_account.clone();
-    token_swap.withdraw_all(&mut fee_account, &mut withdrawn_token_a_account, &mut withdrawn_token_b_account).unwrap();
+    token_swap
+        .withdraw_all(
+            &mut fee_account,
+            &mut withdrawn_token_a_account,
+            &mut withdrawn_token_b_account,
+        )
+        .unwrap();
 
-    let after_total_token_a = token_a_accounts.values().map(get_token_balance).sum::<u64>() + get_token_balance(&withdrawn_token_a_account) + get_token_balance(&token_swap.token_a_account);
+    let after_total_token_a = token_a_accounts
+        .values()
+        .map(get_token_balance)
+        .sum::<u64>()
+        + get_token_balance(&withdrawn_token_a_account)
+        + get_token_balance(&token_swap.token_a_account);
     assert_eq!(before_total_token_a, after_total_token_a);
-    let after_total_token_b = token_b_accounts.values().map(get_token_balance).sum::<u64>() + get_token_balance(&withdrawn_token_b_account) + get_token_balance(&token_swap.token_b_account);
+    let after_total_token_b = token_b_accounts
+        .values()
+        .map(get_token_balance)
+        .sum::<u64>()
+        + get_token_balance(&withdrawn_token_b_account)
+        + get_token_balance(&token_swap.token_b_account);
     assert_eq!(before_total_token_b, after_total_token_b);
 }
 
