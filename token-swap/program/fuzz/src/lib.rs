@@ -507,8 +507,14 @@ impl TokenSwapAccountInfo {
         pool_account: &mut AccountData,
         token_a_account: &mut AccountData,
         token_b_account: &mut AccountData,
-        instruction: Withdraw,
+        mut instruction: Withdraw,
     ) -> ProgramResult {
+        let pool_token_amount = get_token_balance(&pool_account);
+        // special logic to avoid withdrawing down to 1 pool token, which
+        // eventually causes an error on withdrawing all
+        if pool_token_amount.saturating_sub(instruction.pool_token_amount) == 1 {
+            instruction.pool_token_amount = pool_token_amount;
+        }
         do_process_instruction(
             approve(
                 &self.token_program_account.key,
