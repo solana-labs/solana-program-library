@@ -176,9 +176,11 @@ pub struct TokenSwapAccountInfo {
 
 pub fn create_mint(owner: &Pubkey) -> AccountData {
     let mut account_data = AccountData::new(Mint::LEN, spl_token::id());
-    let mut mint = Mint::default();
-    mint.is_initialized = true;
-    mint.mint_authority = COption::Some(*owner);
+    let mint = Mint {
+        is_initialized: true,
+        mint_authority: COption::Some(*owner),
+        ..Default::default()
+    };
     Mint::pack(mint, &mut account_data.data[..]).unwrap();
     account_data
 }
@@ -190,11 +192,13 @@ pub fn create_token_account(
 ) -> AccountData {
     let mut mint = Mint::unpack(&mint_account.data).unwrap();
     let mut account_data = AccountData::new(TokenAccount::LEN, spl_token::id());
-    let mut account = TokenAccount::default();
-    account.state = TokenAccountState::Initialized;
-    account.mint = mint_account.key;
-    account.owner = *owner;
-    account.amount = amount;
+    let account = TokenAccount {
+        state: TokenAccountState::Initialized,
+        mint: mint_account.key,
+        owner: *owner,
+        amount,
+        ..Default::default()
+    };
     mint.supply += amount;
     Mint::pack(mint, &mut mint_account.data[..]).unwrap();
     TokenAccount::pack(account, &mut account_data.data[..]).unwrap();
