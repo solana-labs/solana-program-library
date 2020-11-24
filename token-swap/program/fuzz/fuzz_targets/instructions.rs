@@ -12,7 +12,7 @@ use spl_token_swap::{
 
 use spl_token::error::TokenError;
 
-use derive_arbitrary::Arbitrary;
+use arbitrary::Arbitrary;
 //use libfuzzer_sys::fuzz_target;
 use std::collections::{HashMap, HashSet};
 

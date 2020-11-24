@@ -14,7 +14,7 @@ use std::convert::TryInto;
 use std::mem::size_of;
 
 #[cfg(fuzzing)]
-use derive_arbitrary::Arbitrary;
+use arbitrary::Arbitrary;
 
 /// Initialize instruction data
 #[repr(C)]

@@ -6,15 +6,14 @@ publish = false
 edition = "2018"
 
 [dependencies]
-honggfuzz = { version = "=0.5.45" }
-arbitrary = { version = "=0.2.0" }
-derive_arbitrary = { version = "=0.2.0" }
+honggfuzz = { version = "0.5" }
+arbitrary = { version = "0.4", features = ["derive"] }
 solana-program = "1.4.8"
 spl-token = { version = "3.0", path = "../../../token/program", features = [ "no-entrypoint" ] }
 
 [dependencies.spl-token-swap]
 path = ".."
-features = ["fuzz", "no-entrypoint"]
+features = ["no-entrypoint"]
 
 [[bin]]
 name = "instructions"
