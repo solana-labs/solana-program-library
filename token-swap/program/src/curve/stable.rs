@@ -1,6 +1,8 @@
 //! The curve.fi invariant calculator.
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::ptr_offset_with_cast)]
+#![allow(clippy::unknown_clippy_lints)]
+#![allow(clippy::manual_range_contains)]
 
 use solana_program::{
     program_error::ProgramError,
@@ -39,7 +41,6 @@ pub struct StableCurve {
 }
 
 construct_uint! {
-    #[allow(clippy::ptr_offset_with_cast)]
     pub struct U256(4);
 }
 
