@@ -1,10 +1,10 @@
 //! The curve.fi invariant calculator.
 
-use uint::construct_uint;
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
 };
+use uint::construct_uint;
 
 use crate::curve::calculator::{calculate_fee, CurveCalculator, DynPack, SwapResult};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
@@ -37,7 +37,7 @@ pub struct StableCurve {
 }
 
 construct_uint! {
-	pub struct U256(4);
+    pub struct U256(4);
 }
 
 fn checked_u8_power(a: &U256, b: u8) -> Option<U256> {
