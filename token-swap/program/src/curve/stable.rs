@@ -1,6 +1,6 @@
 //! The curve.fi invariant calculator.
 
-use primitive_types::U256;
+use uint::construct_uint;
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
@@ -34,6 +34,10 @@ pub struct StableCurve {
     pub host_fee_denominator: u64,
     /// Amplifier constant
     pub amp: u64,
+}
+
+construct_uint! {
+	pub struct U256(4);
 }
 
 fn checked_u8_power(a: &U256, b: u8) -> Option<U256> {
