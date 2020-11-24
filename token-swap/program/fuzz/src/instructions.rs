@@ -1,5 +1,3 @@
-#[macro_use] extern crate honggfuzz;
-
 use spl_token_swap_fuzz::{get_token_balance, AccountData, TokenSwapAccountInfo};
 
 use spl_token_swap::{
@@ -12,6 +10,8 @@ use spl_token_swap::{
 };
 
 use spl_token::error::TokenError;
+
+use honggfuzz::fuzz;
 
 use arbitrary::Arbitrary;
 use std::collections::{HashMap, HashSet};

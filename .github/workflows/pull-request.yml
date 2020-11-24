@@ -209,6 +209,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_STABLE }}

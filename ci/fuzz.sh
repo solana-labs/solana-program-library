@@ -13,6 +13,7 @@ fi
 for fuzz_target in ${fuzz_targets[@]}; do
   HFUZZ_RUN_ARGS="--run_time 30 --exit_upon_crash" cargo hfuzz run $fuzz_target
 
+  # Until https://github.com/rust-fuzz/honggfuzz-rs/issues/16 is resolved,
   # hfuzz does not return an error code on crash, so look for a crash artifact
   for crash_file in ./hfuzz_workspace/"$fuzz_target"/*.fuzz; do
     # Check if the glob gets expanded to existing files.
