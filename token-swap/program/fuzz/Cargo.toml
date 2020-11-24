@@ -16,7 +16,7 @@ path = ".."
 features = ["no-entrypoint"]
 
 [[bin]]
-name = "instructions"
-path = "fuzz_targets/instructions.rs"
+name = "token-swap-instructions"
+path = "src/instructions.rs"
 test = false
 doc = false
