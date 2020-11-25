@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        fuzz-target: [token-swap-instructions]
+        fuzz_target: [token-swap-instructions]
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
