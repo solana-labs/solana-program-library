@@ -3,8 +3,7 @@ use solana_bpf_loader_program::{
     serialization::{deserialize_parameters, serialize_parameters},
 };
 use solana_program::{
-    bpf_loader, entrypoint::SUCCESS, instruction::InstructionError, program_error::ProgramError,
-    pubkey::Pubkey,
+    bpf_loader, entrypoint::SUCCESS, program_error::ProgramError, pubkey::Pubkey,
 };
 use solana_rbpf::vm::EbpfVm;
 use solana_sdk::{
@@ -26,7 +25,7 @@ fn run_program(
     program_id: &Pubkey,
     parameter_accounts: &[KeyedAccount],
     instruction_data: &[u8],
-) -> Result<u64, InstructionError> {
+) -> u64 {
     let program_account = Account {
         data: load_program("../../target/deploy/spl_shared_memory.so"),
         ..Account::default()
@@ -58,7 +57,7 @@ fn run_program(
             .unwrap()
     );
     deserialize_parameters(&loader_id, parameter_accounts, &parameter_bytes).unwrap();
-    Ok(vm.get_total_instruction_count())
+    vm.get_total_instruction_count()
 }
 
 #[test]
@@ -74,7 +73,7 @@ fn assert_instruction_count() {
     let content = vec![42; NUM_TO_SHARE];
     let mut instruction_data = OFFSET.to_le_bytes().to_vec();
     instruction_data.extend_from_slice(&content);
-    let share_count = run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+    let share_count = run_program(&program_id, &parameter_accounts[..], &instruction_data);
     const BASELINE_COUNT: u64 = 1474; // 113 if NUM_TO_SHARE is 8
     println!(
         "BPF instructions executed {:?} (expected {:?})",
