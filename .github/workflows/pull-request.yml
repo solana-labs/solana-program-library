@@ -259,4 +259,4 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Run fuzz target
-        run: ./ci/fuzz.sh ${{ matrix.fuzz_target }}
+        run: ./ci/fuzz.sh ${{ matrix.fuzz_target }} 30 # 30 seconds, just to check everything is ok
