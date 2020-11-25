@@ -206,6 +206,9 @@ jobs:
 
   fuzz:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fuzz-target: [token-swap-instructions]
     steps:
       - uses: actions/checkout@v2
 
@@ -255,5 +258,5 @@ jobs:
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Run each fuzz target
-        run: ./ci/fuzz.sh
+      - name: Run fuzz target
+        run: ./ci/fuzz.sh ${{ matrix.fuzz_target }}
