@@ -13,20 +13,11 @@ use bincode::deserialize;
 const TEST_STAKE_AMOUNT: u64 = 100;
 
 fn program_test() -> ProgramTest {
-    let mut pc = ProgramTest::new(
+    ProgramTest::new(
         "spl_stake_pool",
         id(),
         processor!(processor::Processor::process),
-    );
-
-    // Add SPL Token program
-    pc.add_program(
-        "spl_token",
-        spl_token::id(),
-        processor!(spl_token::processor::Processor::process),
-    );
-
-    pc
+    )
 }
 
 async fn create_mint(
