@@ -18,20 +18,11 @@ use spl_feature_proposal::{instruction::*, state::*, *};
 use std::io;
 
 fn program_test() -> ProgramTest {
-    let mut pc = ProgramTest::new(
+    ProgramTest::new(
         "spl_feature_proposal",
         id(),
         processor!(processor::process_instruction),
-    );
-
-    // Add SPL Token program
-    pc.add_program(
-        "spl_token",
-        spl_token::id(),
-        processor!(spl_token::processor::Processor::process),
-    );
-
-    pc
+    )
 }
 
 /// Fetch and unpack account data
