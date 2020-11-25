@@ -1,6 +1,6 @@
 [package]
 name = "spl-feature-proposal-cli"
-version = "1.0.0"
+version = "1.1.0"
 description = "SPL Feature Proposal Command-line Utility"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
