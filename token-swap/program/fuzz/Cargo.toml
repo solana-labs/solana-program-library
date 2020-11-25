@@ -1,9 +1,12 @@
 [package]
 name = "spl-token-swap-fuzz"
-version = "0.0.0"
-authors = ["Automatically generated"]
-publish = false
+version = "0.0.1"
+description = "Solana Program Library Token Swap Fuzzer"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
 edition = "2018"
+publish = false
 
 [dependencies]
 honggfuzz = { version = "0.5" }

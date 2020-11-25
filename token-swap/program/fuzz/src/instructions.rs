@@ -1,4 +1,7 @@
-use spl_token_swap_fuzz::{get_token_balance, AccountData, TokenSwapAccountInfo};
+use spl_token_swap_fuzz::{
+    native_account_data::NativeAccountData, native_token::get_token_balance,
+    native_token_swap::NativeTokenSwap,
+};
 
 use spl_token_swap::{
     curve::{
@@ -85,16 +88,16 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
             host_fee_denominator,
         }),
     };
-    let mut token_swap = TokenSwapAccountInfo::new(
+    let mut token_swap = NativeTokenSwap::new(
         swap_curve,
         INITIAL_SWAP_TOKEN_A_AMOUNT,
         INITIAL_SWAP_TOKEN_B_AMOUNT,
     );
 
     // keep track of all accounts, including swap accounts
-    let mut token_a_accounts: HashMap<AccountId, AccountData> = HashMap::new();
-    let mut token_b_accounts: HashMap<AccountId, AccountData> = HashMap::new();
-    let mut pool_accounts: HashMap<AccountId, AccountData> = HashMap::new();
+    let mut token_a_accounts: HashMap<AccountId, NativeAccountData> = HashMap::new();
+    let mut token_b_accounts: HashMap<AccountId, NativeAccountData> = HashMap::new();
+    let mut pool_accounts: HashMap<AccountId, NativeAccountData> = HashMap::new();
 
     // to ensure that we never create or remove base tokens
     let before_total_token_a =
@@ -173,10 +176,10 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
 
 fn run_fuzz_instruction(
     fuzz_instruction: FuzzInstruction,
-    token_swap: &mut TokenSwapAccountInfo,
-    token_a_accounts: &mut HashMap<AccountId, AccountData>,
-    token_b_accounts: &mut HashMap<AccountId, AccountData>,
-    pool_accounts: &mut HashMap<AccountId, AccountData>,
+    token_swap: &mut NativeTokenSwap,
+    token_a_accounts: &mut HashMap<AccountId, NativeAccountData>,
+    token_b_accounts: &mut HashMap<AccountId, NativeAccountData>,
+    pool_accounts: &mut HashMap<AccountId, NativeAccountData>,
 ) {
     let result = match fuzz_instruction {
         FuzzInstruction::Swap {
