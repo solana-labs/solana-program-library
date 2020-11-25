@@ -81,7 +81,7 @@ fn compute_d(leverage: u64, amount_a: u128, amount_b: u128) -> Option<u128> {
                 break;
             }
         }
-        Some(u128::try_from(d).ok()?)
+        u128::try_from(d).ok()
     }
 }
 
@@ -123,7 +123,7 @@ fn compute_new_destination_amount(
             break;
         }
     }
-    Some(u128::try_from(y).ok()?)
+    u128::try_from(y).ok()
 }
 
 impl CurveCalculator for StableCurve {
