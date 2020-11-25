@@ -1,14 +1,10 @@
 //! The curve.fi invariant calculator.
-#![allow(clippy::assign_op_pattern)]
-#![allow(clippy::ptr_offset_with_cast)]
-#![allow(clippy::unknown_clippy_lints)]
-#![allow(clippy::manual_range_contains)]
 
+use crate::curve::math::U256;
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
 };
-use uint::construct_uint;
 
 use crate::curve::calculator::{calculate_fee, CurveCalculator, DynPack, SwapResult};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
@@ -40,43 +36,15 @@ pub struct StableCurve {
     pub amp: u64,
 }
 
-construct_uint! {
-    pub struct U256(4);
-}
-
-fn checked_u8_power(a: &U256, b: u8) -> Option<U256> {
-    let mut result = *a;
-    for _ in 1..b {
-        result = result.checked_mul(*a)?;
-    }
-    Some(result)
-}
-
-fn checked_u8_mul(a: &U256, b: u8) -> Option<U256> {
-    let mut result = *a;
-    for _ in 1..b {
-        result = result.checked_add(*a)?;
-    }
-    Some(result)
-}
-
-fn almost_equal(a: &U256, b: &U256) -> bool {
-    if a > b {
-        a - b <= U256::one()
-    } else {
-        b - a <= U256::one()
-    }
-}
-
 /// d = (leverage * sum_x + d_product * n_coins) * initial_d / ((leverage - 1) * initial_d + (n_coins + 1) * d_product)
 fn calculate_step(initial_d: &U256, leverage: u64, sum_x: u128, d_product: &U256) -> Option<U256> {
     let leverage_mul = U256::from(leverage).checked_mul(sum_x.into())?;
-    let d_p_mul = checked_u8_mul(d_product, N_COINS)?;
+    let d_p_mul = d_product.checked_u8_mul(N_COINS)?;
 
     let l_val = leverage_mul.checked_add(d_p_mul)?.checked_mul(*initial_d)?;
 
-    let leverage_sub = initial_d.checked_mul((leverage - 1).into())?;
-    let n_coins_sum = checked_u8_mul(&d_product, N_COINS + 1)?;
+    let leverage_sub = initial_d.checked_mul((leverage.checked_sub(1)?).into())?;
+    let n_coins_sum = d_product.checked_u8_mul(N_COINS.checked_add(1)?)?;
 
     let r_val = leverage_sub.checked_add(n_coins_sum)?;
 
@@ -87,8 +55,8 @@ fn calculate_step(initial_d: &U256, leverage: u64, sum_x: u128, d_product: &U256
 /// Equation:
 /// A * sum(x_i) * n**n + D = A * D * n**n + D**(n+1) / (n**n * prod(x_i))
 fn compute_d(leverage: u64, amount_a: u128, amount_b: u128) -> Option<u128> {
-    let amount_a_times_coins = checked_u8_mul(&amount_a.into(), N_COINS)?;
-    let amount_b_times_coins = checked_u8_mul(&amount_b.into(), N_COINS)?;
+    let amount_a_times_coins = U256::from(amount_a).checked_u8_mul(N_COINS)?;
+    let amount_b_times_coins = U256::from(amount_b).checked_u8_mul(N_COINS)?;
     let sum_x = amount_a.checked_add(amount_b)?; // sum(x_i), a.k.a S
     if sum_x == 0 {
         Some(0)
@@ -109,11 +77,11 @@ fn compute_d(leverage: u64, amount_a: u128, amount_b: u128) -> Option<u128> {
             //d = (leverage * sum_x + d_p * n_coins) * d / ((leverage - 1) * d + (n_coins + 1) * d_p);
             d = calculate_step(&d, leverage, sum_x, &d_product)?;
             // Equality with the precision of 1
-            if almost_equal(&d, &d_previous) {
+            if d.almost_equal(&d_previous)? {
                 break;
             }
         }
-        Some(d.as_u128())
+        Some(u128::try_from(d).ok()?)
     }
 }
 
@@ -133,8 +101,13 @@ fn compute_new_destination_amount(
 
     // sum' = prod' = x
     // c =  D ** (n + 1) / (n ** (2 * n) * prod' * A)
-    let c = checked_u8_power(&d_val, N_COINS + 1)?
-        .checked_div(checked_u8_mul(&new_source_amount, N_COINS_SQUARED)?.checked_mul(leverage)?)?;
+    let c = d_val
+        .checked_u8_power(N_COINS.checked_add(1)?)?
+        .checked_div(
+            new_source_amount
+                .checked_u8_mul(N_COINS_SQUARED)?
+                .checked_mul(leverage)?,
+        )?;
 
     // b = sum' - (A*n**n - 1) * D / (A * n**n)
     let b = new_source_amount.checked_add(d_val.checked_div(leverage)?)?;
@@ -144,13 +117,13 @@ fn compute_new_destination_amount(
     let mut y = d_val;
     for _ in 0..32 {
         y_prev = y;
-        y = (checked_u8_power(&y, 2)?.checked_add(c)?)
-            .checked_div(checked_u8_mul(&y, 2)?.checked_add(b)?.checked_sub(d_val)?)?;
-        if almost_equal(&y, &y_prev) {
+        y = (y.checked_u8_power(2)?.checked_add(c)?)
+            .checked_div(y.checked_u8_mul(2)?.checked_add(b)?.checked_sub(d_val)?)?;
+        if y.almost_equal(&y_prev)? {
             break;
         }
     }
-    Some(y.as_u128())
+    Some(u128::try_from(y).ok()?)
 }
 
 impl CurveCalculator for StableCurve {
@@ -169,7 +142,7 @@ impl CurveCalculator for StableCurve {
             .checked_sub(trade_fee)?
             .checked_sub(owner_fee)?;
 
-        let leverage = self.amp * N_COINS as u64;
+        let leverage = self.amp.checked_mul(N_COINS as u64)?;
 
         let new_destination_amount = compute_new_destination_amount(
             leverage,
@@ -299,7 +272,7 @@ impl DynPack for StableCurve {
 mod tests {
     use super::*;
     use crate::curve::calculator::INITIAL_SWAP_POOL_AMOUNT;
-    use sim::Model;
+    use sim::StableSwapModel;
 
     #[test]
     fn initial_pool_amount() {
@@ -477,7 +450,7 @@ mod tests {
                             source_amount, swap_source_amount, swap_destination_amount
                         );
 
-                        let model: Model = Model::new(
+                        let model: StableSwapModel = StableSwapModel::new(
                             curve.amp.into(),
                             vec![*swap_source_amount, *swap_destination_amount],
                             N_COINS,

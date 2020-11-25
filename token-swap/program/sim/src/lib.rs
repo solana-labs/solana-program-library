@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::prelude::*;
 
 const FILE_NAME: &str = "simulation.py";
-const FILE_PATH: &str = "lib/sim/simulation.py";
+const FILE_PATH: &str = "sim/simulation.py";
 const MODULE_NAME: &str = "simulation";
 
 const DEFAULT_POOL_TOKENS: u128 = 0;
@@ -12,7 +12,7 @@ const DEFAULT_TARGET_PRICE: u128 = 1000000000000000000;
 pub const MODEL_FEE_NUMERATOR: u128 = 1;
 pub const MODEL_FEE_DENOMINATOR: u128 = 1000;
 
-pub struct Model {
+pub struct StableSwapModel {
     py_src: String,
     pub amp_factor: u128,
     pub balances: Vec<u128>,
@@ -22,14 +22,9 @@ pub struct Model {
     pub pool_tokens: u128,
 }
 
-impl Model {
-    pub fn new(amp_factor: u128, balances: Vec<u128>, n_coins: u8) -> Model {
-        let src_file = File::open(FILE_PATH);
-        let mut src_file = match src_file {
-            Ok(file) => file,
-            Err(error) => {panic!("{:?}\n Please run `curl -L
-            https://raw.githubusercontent.com/curvefi/curve-contract/master/tests/simulation.py > sim/lib/simulation.py`", error)}
-        };
+impl StableSwapModel {
+    pub fn new(amp_factor: u128, balances: Vec<u128>, n_coins: u8) -> StableSwapModel {
+        let mut src_file = File::open(FILE_PATH).unwrap();
         let mut src_content = String::new();
         let _ = src_file.read_to_string(&mut src_content);
 
@@ -49,13 +44,8 @@ impl Model {
         balances: Vec<u128>,
         n_coins: u8,
         pool_token_amount: u128,
-    ) -> Model {
-        let src_file = File::open(FILE_PATH);
-        let mut src_file = match src_file {
-            Ok(file) => file,
-            Err(error) => {panic!("{:?}\n Please run `curl -L
-            https://raw.githubusercontent.com/curvefi/curve-contract/master/tests/simulation.py > sim/lib/simulation.py`", error)}
-        };
+    ) -> StableSwapModel {
+        let mut src_file = File::open(FILE_PATH).unwrap();
         let mut src_content = String::new();
         let _ = src_file.read_to_string(&mut src_content);
 
@@ -196,7 +186,7 @@ impl Model {
             Ok(v) => v.extract(),
             Err(e) => {
                 e.print_and_set_sys_last_vars(py);
-                panic!("Python exeuction failed.")
+                panic!("Python execution failed.")
             }
         }
     }
