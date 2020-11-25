@@ -18,9 +18,11 @@ num-traits = "0.2"
 solana-program = "1.4.9"
 spl-token = { version = "3.0", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
+uint = "0.8"
 
 [dev-dependencies]
 solana-sdk = "1.4.9"
+sim =  { path = "./sim" }
 
 [lib]
 crate-type = ["cdylib", "lib"]
