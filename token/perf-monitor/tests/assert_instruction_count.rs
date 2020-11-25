@@ -7,7 +7,6 @@ use solana_sdk::{
     account::{create_account, Account as SolanaAccount},
     bpf_loader,
     entrypoint::SUCCESS,
-    instruction::InstructionError,
     keyed_account::KeyedAccount,
     process_instruction::MockInvokeContext,
     program_option::COption,
@@ -33,7 +32,7 @@ fn run_program(
     program_id: &Pubkey,
     parameter_accounts: &[KeyedAccount],
     instruction_data: &[u8],
-) -> Result<u64, InstructionError> {
+) -> u64 {
     let program_account = SolanaAccount {
         data: load_program("../../target/deploy/spl_token.so"),
         ..SolanaAccount::default()
@@ -65,7 +64,7 @@ fn run_program(
         vm.execute_program(parameter_bytes.as_mut_slice(), &[], &[heap_region])
     );
     deserialize_parameters(&loader_id, parameter_accounts, &parameter_bytes).unwrap();
-    Ok(vm.get_total_instruction_count())
+    vm.get_total_instruction_count()
 }
 
 #[test]
@@ -95,7 +94,7 @@ fn assert_instruction_count() {
         KeyedAccount::new(&rent_key, false, &rent_account),
     ];
     let initialize_mint_count =
-        run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+        run_program(&program_id, &parameter_accounts[..], &instruction_data);
 
     // Create source account
     let instruction_data = TokenInstruction::InitializeAccount.pack();
@@ -105,8 +104,7 @@ fn assert_instruction_count() {
         KeyedAccount::new(&owner_key, false, &owner_account),
         KeyedAccount::new(&rent_key, false, &rent_account),
     ];
-    let mintto_count =
-        run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+    let mintto_count = run_program(&program_id, &parameter_accounts[..], &instruction_data);
 
     // Create destination account
     let instruction_data = TokenInstruction::InitializeAccount.pack();
@@ -116,7 +114,7 @@ fn assert_instruction_count() {
         KeyedAccount::new(&owner_key, false, &owner_account),
         KeyedAccount::new(&rent_key, false, &rent_account),
     ];
-    let _ = run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+    let _ = run_program(&program_id, &parameter_accounts[..], &instruction_data);
 
     // MintTo source account
     let instruction_data = TokenInstruction::MintTo { amount: 100 }.pack();
@@ -126,7 +124,7 @@ fn assert_instruction_count() {
         KeyedAccount::new(&owner_key, true, &owner_account),
     ];
     let initialize_account_count =
-        run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+        run_program(&program_id, &parameter_accounts[..], &instruction_data);
 
     // Transfer from source to destination
     let instruction = TokenInstruction::Transfer { amount: 100 };
@@ -136,8 +134,7 @@ fn assert_instruction_count() {
         KeyedAccount::new(&destination_key, false, &destination_account),
         KeyedAccount::new(&owner_key, true, &owner_account),
     ];
-    let transfer_count =
-        run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+    let transfer_count = run_program(&program_id, &parameter_accounts[..], &instruction_data);
 
     const BASELINE_NEW_MINT_COUNT: u64 = 4000; // last known 3802
     const BASELINE_INITIALIZE_ACCOUNT_COUNT: u64 = 6500; // last known 6445
