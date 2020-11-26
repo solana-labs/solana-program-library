@@ -391,12 +391,80 @@ fn pool_tokens_to_stake_amount(pool_data: &StakePool, tokens: u64) -> u64 {
         .unwrap() as u64
 }
 
+struct WithdrawAccount {
+    pubkey: Pubkey,
+    account: Account,
+    amount: u64,
+}
+
+fn prepare_withdraw_accounts(
+    config: &Config,
+    pool_withdraw_authority: &Pubkey,
+    amount: u64,
+) -> Result<Vec<WithdrawAccount>, Error> {
+    let mut accounts = get_authority_accounts(config, &pool_withdraw_authority);
+    if accounts.is_empty() {
+        return Err("No accounts found.".to_string().into());
+    }
+    // Sort from lowest to highest balance
+    accounts.sort_by(|a, b| a.1.lamports.cmp(&b.1.lamports));
+
+    // Prepare the list of accounts to withdraw from
+    let mut withdraw_from: Vec<WithdrawAccount> = vec![];
+    let mut remaining_amount = amount;
+
+    // First use largest amounts
+    while !accounts.is_empty() && accounts.last().unwrap().1.lamports < remaining_amount {
+        let (pubkey, account) = accounts.last().unwrap();
+
+        // Those accounts will be withdrawn completely with `claim` instruction
+        withdraw_from.push(WithdrawAccount {
+            pubkey: *pubkey,
+            account: account.clone(),
+            amount: account.lamports,
+        });
+        remaining_amount -= account.lamports;
+        accounts.pop();
+    }
+    if remaining_amount > 0 {
+        // Add first amount larger or equal to the remaining amount
+        for (pubkey, account) in accounts {
+            if account.lamports < remaining_amount {
+                continue;
+            }
+
+            // This account will be withdrawn partially (if remaining_amount < account.lamports), so we put it first
+            withdraw_from.insert(
+                0,
+                WithdrawAccount {
+                    pubkey,
+                    account,
+                    amount: remaining_amount,
+                },
+            );
+            remaining_amount = 0;
+            break;
+        }
+    }
+
+    // Not enough stake to withdraw the specified amount
+    if remaining_amount > 0 {
+        return Err(format!(
+            "No stake accounts found in this pool with enough balance to withdraw {} SOL.",
+            lamports_to_sol(amount)
+        )
+        .into());
+    }
+
+    Ok(withdraw_from)
+}
+
 fn command_withdraw(
     config: &Config,
     pool: &Pubkey,
     amount: u64,
     burn_from: &Pubkey,
-    stake_receiver: &Option<Pubkey>,
+    stake_receiver_param: &Option<Pubkey>,
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
@@ -433,131 +501,124 @@ fn command_withdraw(
         .into());
     }
 
-    let mut accounts = get_authority_accounts(config, &pool_withdraw_authority);
-    if accounts.is_empty() {
-        return Err("No accounts found.".to_string().into());
-    }
-    // Sort from lowest to highest balance
-    accounts.sort_by(|a, b| a.1.lamports.cmp(&b.1.lamports));
+    // Get the list of accounts to withdraw from
+    let withdraw_from: Vec<WithdrawAccount> =
+        prepare_withdraw_accounts(config, &pool_withdraw_authority, amount)?;
 
-    for (stake_pubkey, account) in accounts {
-        if account.lamports < amount {
-            continue;
-        }
-        // Account found to claim or withdraw
-        println!("Withdrawing from account {}", stake_pubkey);
+    // Construct transaction to withdraw from withdraw_from account list
+    let mut instructions: Vec<Instruction> = vec![];
+    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    let stake_receiver_account = Keypair::new(); // Will be added to signers if creating new account
 
-        let mut instructions: Vec<Instruction> = vec![];
-        let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
+    let mut total_rent_free_balances: u64 = 0;
 
-        let stake_receiver_account = Keypair::new();
+    // Calculate amount of tokens to burn
+    let tokens_to_burn = stake_amount_to_pool_tokens(&pool_data, amount);
 
-        let mut total_rent_free_balances: u64 = 0;
+    instructions.push(
+        // Approve spending token
+        approve_token(
+            &spl_token::id(),
+            &burn_from,
+            &pool_withdraw_authority,
+            &config.owner.pubkey(),
+            &[],
+            tokens_to_burn,
+        )?,
+    );
 
-        // Calculate amount of tokens to burn
-        let tokens_to_burn = stake_amount_to_pool_tokens(&pool_data, amount);
+    // Use separate mutable variable because withdraw might create a new account
+    let mut stake_receiver: Option<Pubkey> = *stake_receiver_param;
 
-        instructions.push(
-            // Approve spending token
-            approve_token(
-                &spl_token::id(),
-                &burn_from,
-                &pool_withdraw_authority,
-                &config.owner.pubkey(),
-                &[],
-                tokens_to_burn,
-            )?,
+    // Go through prepared accounts and withdraw/claim them
+    for withdraw_stake in withdraw_from {
+        println!(
+            "Withdrawing from account {}, amount {} SOL",
+            withdraw_stake.pubkey,
+            lamports_to_sol(withdraw_stake.amount)
         );
 
-        if amount == account.lamports {
-            // Claim to get whole account
-            instructions.push(claim(
-                &spl_stake_pool::id(),
-                &pool,
-                &pool_withdraw_authority,
-                &stake_pubkey,
-                &config.owner.pubkey(),
-                &burn_from,
-                &pool_data.pool_mint,
-                &spl_token::id(),
-                &stake_program_id(),
-            )?);
-            // Merge into stake_receiver (if present)
-            if let Some(merge_into) = stake_receiver {
-                instructions.push(merge_stake(
-                    &merge_into,
-                    &stake_pubkey,
-                    &config.owner.pubkey(),
-                ));
-            }
-        } else {
+        if withdraw_stake.amount < withdraw_stake.account.lamports {
             // Withdraw to split account
-            let stake_receiver: Pubkey = match stake_receiver {
-                Some(value) => *value,
-                None => {
-                    // Account for tokens not specified, creating one
-                    println!(
-                        "Creating account to receive stake {}",
-                        stake_receiver_account.pubkey()
-                    );
-
-                    let stake_receiver_account_balance = config
-                        .rpc_client
-                        .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?;
-
-                    instructions.push(
-                        // Creating new account
-                        system_instruction::create_account(
-                            &config.fee_payer.pubkey(),
-                            &stake_receiver_account.pubkey(),
-                            stake_receiver_account_balance,
-                            STAKE_STATE_LEN as u64,
-                            &stake_program_id(),
-                        ),
-                    );
-
-                    signers.push(&stake_receiver_account);
-
-                    total_rent_free_balances += stake_receiver_account_balance;
-
+            if stake_receiver == None {
+                // Account for tokens not specified, creating one
+                println!(
+                    "Creating account to receive stake {}",
                     stake_receiver_account.pubkey()
-                }
-            };
+                );
+
+                let stake_receiver_account_balance = config
+                    .rpc_client
+                    .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?;
+
+                instructions.push(
+                    // Creating new account
+                    system_instruction::create_account(
+                        &config.fee_payer.pubkey(),
+                        &stake_receiver_account.pubkey(),
+                        stake_receiver_account_balance,
+                        STAKE_STATE_LEN as u64,
+                        &stake_program_id(),
+                    ),
+                );
+
+                signers.push(&stake_receiver_account);
+
+                total_rent_free_balances += stake_receiver_account_balance;
+
+                stake_receiver = Some(stake_receiver_account.pubkey());
+            }
 
             instructions.push(withdraw(
                 &spl_stake_pool::id(),
                 &pool,
                 &pool_withdraw_authority,
-                &stake_pubkey,
-                &stake_receiver,
+                &withdraw_stake.pubkey,
+                &stake_receiver.unwrap(), // Cannot be none at this point
                 &config.owner.pubkey(),
                 &burn_from,
                 &pool_data.pool_mint,
                 &spl_token::id(),
                 &stake_program_id(),
-                amount,
+                withdraw_stake.amount,
             )?);
+        } else {
+            // Claim to get whole account
+            instructions.push(claim(
+                &spl_stake_pool::id(),
+                &pool,
+                &pool_withdraw_authority,
+                &withdraw_stake.pubkey,
+                &config.owner.pubkey(),
+                &burn_from,
+                &pool_data.pool_mint,
+                &spl_token::id(),
+                &stake_program_id(),
+            )?);
+
+            // Merge into stake_receiver
+            if let Some(merge_into) = stake_receiver {
+                instructions.push(merge_stake(
+                    &merge_into,
+                    &withdraw_stake.pubkey,
+                    &config.owner.pubkey(),
+                ));
+            }
         }
-
-        let mut transaction =
-            Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
-
-        let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-        check_fee_payer_balance(
-            config,
-            total_rent_free_balances + fee_calculator.calculate_fee(&transaction.message()),
-        )?;
-        unique_signers!(signers);
-        transaction.sign(&signers, recent_blockhash);
-
-        return Ok(Some(transaction));
     }
 
-    Err(format!(
-        "No stake accounts found in this pool with enough balance to withdraw {} SOL.",
-        lamports_to_sol(amount)
-    )
-    .into())
+    let mut transaction =
+        Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(
+        config,
+        total_rent_free_balances + fee_calculator.calculate_fee(&transaction.message()),
+    )?;
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+
+    Ok(Some(transaction))
 }
 
 fn command_set_staking_auth(
