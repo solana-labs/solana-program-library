@@ -307,14 +307,7 @@ fn process_propose(
         let mut file = File::create(&distribution_file)?;
         file.write_all(b"recipient,amount\n")?;
         for (node_address, activated_stake) in distribution {
-            file.write_all(
-                format!(
-                    "{},{}\n",
-                    node_address,
-                    spl_feature_proposal::amount_to_ui_amount(activated_stake)
-                )
-                .as_bytes(),
-            )?;
+            file.write_all(format!("{},{}\n", node_address, activated_stake).as_bytes())?;
         }
     }
 
