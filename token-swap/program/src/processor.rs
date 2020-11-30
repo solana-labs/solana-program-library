@@ -1602,7 +1602,7 @@ mod tests {
                 &accounts.authority_key,
                 token_a_amount,
             );
-            token_a_account.owner = SWAP_PROGRAM_ID.clone();
+            token_a_account.owner = SWAP_PROGRAM_ID;
             let old_account = accounts.token_a_account;
             accounts.token_a_account = token_a_account;
             assert_eq!(
@@ -1622,7 +1622,7 @@ mod tests {
                 &accounts.authority_key,
                 token_b_amount,
             );
-            token_b_account.owner = SWAP_PROGRAM_ID.clone();
+            token_b_account.owner = SWAP_PROGRAM_ID;
             let old_account = accounts.token_b_account;
             accounts.token_b_account = token_b_account;
             assert_eq!(
