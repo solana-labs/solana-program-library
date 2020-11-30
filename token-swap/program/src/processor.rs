@@ -297,6 +297,9 @@ impl Processor {
         if *pool_fee_account_info.key != token_swap.pool_fee_account {
             return Err(SwapError::IncorrectFeeAccount.into());
         }
+        if *token_program_info.key != token_swap.token_program_id {
+            return Err(SwapError::IncorrectTokenProgramId.into());
+        }
 
         let source_account = Self::unpack_token_account(&swap_source_info.data.borrow())?;
         let dest_account = Self::unpack_token_account(&swap_destination_info.data.borrow())?;
@@ -424,6 +427,9 @@ impl Processor {
         if token_b_info.key == source_b_info.key {
             return Err(SwapError::InvalidInput.into());
         }
+        if *token_program_info.key != token_swap.token_program_id {
+            return Err(SwapError::IncorrectTokenProgramId.into());
+        }
 
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
         let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
@@ -526,6 +532,9 @@ impl Processor {
         }
         if token_b_info.key == dest_token_b_info.key {
             return Err(SwapError::InvalidInput.into());
+        }
+        if *token_program_info.key != token_swap.token_program_id {
+            return Err(SwapError::IncorrectTokenProgramId.into());
         }
 
         let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
@@ -719,6 +728,9 @@ impl PrintProgramError for SwapError {
             SwapError::InvalidFee => {
                 msg!("Error: The provided fee does not match the program owner's constraints")
             }
+            SwapError::IncorrectTokenProgramId => {
+                msg!("Error: The provided token program does not match the token program expected by the swap")
+            },
         }
     }
 }
@@ -2399,7 +2411,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let wrong_key = Pubkey::new_unique();
             assert_eq!(
-                Err(ProgramError::InvalidAccountData),
+                Err(SwapError::IncorrectTokenProgramId.into()),
                 do_process_instruction(
                     deposit(
                         &SWAP_PROGRAM_ID,
@@ -3024,7 +3036,7 @@ mod tests {
             );
             let wrong_key = Pubkey::new_unique();
             assert_eq!(
-                Err(ProgramError::InvalidAccountData),
+                Err(SwapError::IncorrectTokenProgramId.into()),
                 do_process_instruction(
                     withdraw(
                         &SWAP_PROGRAM_ID,
@@ -3933,7 +3945,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             let wrong_program_id = Pubkey::new_unique();
             assert_eq!(
-                Err(ProgramError::InvalidAccountData),
+                Err(SwapError::IncorrectTokenProgramId.into()),
                 do_process_instruction(
                     swap(
                         &SWAP_PROGRAM_ID,
