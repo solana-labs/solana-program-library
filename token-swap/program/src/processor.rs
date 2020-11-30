@@ -178,6 +178,12 @@ impl Processor {
             return Err(SwapError::InvalidOwner.into());
         }
 
+        if *token_a_info.owner != *token_program_info.key {
+            return Err(SwapError::InvalidTokenAccount.into());
+        }
+        if *token_b_info.owner != *token_program_info.key {
+            return Err(SwapError::InvalidTokenAccount.into());
+        }
         if token_a.mint == token_b.mint {
             return Err(SwapError::RepeatedMint.into());
         }
@@ -730,6 +736,9 @@ impl PrintProgramError for SwapError {
             }
             SwapError::IncorrectTokenProgramId => {
                 msg!("Error: The provided token program does not match the token program expected by the swap")
+            },
+            SwapError::InvalidTokenAccount => {
+                info!("Error: The provided token account is not owned by the expected token program")
             },
         }
     }
@@ -1581,6 +1590,46 @@ mod tests {
             accounts.pool_mint_account = old_mint;
         }
 
+        // token A account owned by wrong program
+        {
+            let (_token_a_key, mut token_a_account) = mint_token(
+                &TOKEN_PROGRAM_ID,
+                &accounts.token_a_mint_key,
+                &mut accounts.token_a_mint_account,
+                &user_key,
+                &accounts.authority_key,
+                token_a_amount,
+            );
+            token_a_account.owner = SWAP_PROGRAM_ID.clone();
+            let old_account = accounts.token_a_account;
+            accounts.token_a_account = token_a_account;
+            assert_eq!(
+                Err(SwapError::InvalidTokenAccount.into()),
+                accounts.initialize_swap()
+            );
+            accounts.token_a_account = old_account;
+        }
+
+        // token B account owned by wrong program
+        {
+            let (_token_b_key, mut token_b_account) = mint_token(
+                &TOKEN_PROGRAM_ID,
+                &accounts.token_b_mint_key,
+                &mut accounts.token_b_mint_account,
+                &user_key,
+                &accounts.authority_key,
+                token_b_amount,
+            );
+            token_b_account.owner = SWAP_PROGRAM_ID.clone();
+            let old_account = accounts.token_b_account;
+            accounts.token_b_account = token_b_account;
+            assert_eq!(
+                Err(SwapError::InvalidTokenAccount.into()),
+                accounts.initialize_swap()
+            );
+            accounts.token_b_account = old_account;
+        }
+
         // empty token A account
         {
             let (_token_a_key, token_a_account) = mint_token(
@@ -1831,7 +1880,7 @@ mod tests {
         {
             let wrong_program_id = Pubkey::new_unique();
             assert_eq!(
-                Err(ProgramError::InvalidAccountData),
+                Err(SwapError::InvalidTokenAccount.into()),
                 do_process_instruction(
                     initialize(
                         &SWAP_PROGRAM_ID,

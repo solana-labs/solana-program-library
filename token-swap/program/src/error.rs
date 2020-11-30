@@ -82,6 +82,9 @@ pub enum SwapError {
     /// The provided token program does not match the token program expected by the swap
     #[error("The provided token program does not match the token program expected by the swap")]
     IncorrectTokenProgramId,
+    /// The provided token account is not owned by the expected token program
+    #[error("The provided token account is not owned by the expected token program")]
+    InvalidTokenAccount,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {
