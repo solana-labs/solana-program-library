@@ -14,7 +14,7 @@
 if [[ -n $SOLANA_VERSION ]]; then
   solana_version="$SOLANA_VERSION"
 else
-  solana_version=v1.4.7
+  solana_version=v1.4.9
 fi
 
 export solana_version="$solana_version"

@@ -1,16 +1,17 @@
 //! The curve.fi invariant calculator.
 
+use crate::curve::math::U256;
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use crate::curve::calculator::{
-    calculate_fee, map_zero_to_none, CurveCalculator, DynPack, SwapResult,
-};
+use crate::curve::calculator::{calculate_fee, CurveCalculator, DynPack, SwapResult};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use num_traits::checked_pow;
 use std::convert::TryFrom;
+
+const N_COINS: u8 = 2;
+const N_COINS_SQUARED: u8 = 4;
 
 /// StableCurve struct implementing CurveCalculator
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -36,20 +37,14 @@ pub struct StableCurve {
 }
 
 /// d = (leverage * sum_x + d_product * n_coins) * initial_d / ((leverage - 1) * initial_d + (n_coins + 1) * d_product)
-fn calculate_step(
-    initial_d: u128,
-    leverage: u128,
-    sum_x: u128,
-    d_product: u128,
-    n_coins: u128,
-) -> Option<u128> {
-    let leverage_mul = leverage.checked_mul(sum_x)?;
-    let d_p_mul = d_product.checked_mul(n_coins)?;
+fn calculate_step(initial_d: &U256, leverage: u64, sum_x: u128, d_product: &U256) -> Option<U256> {
+    let leverage_mul = U256::from(leverage).checked_mul(sum_x.into())?;
+    let d_p_mul = d_product.checked_u8_mul(N_COINS)?;
 
-    let l_val = leverage_mul.checked_add(d_p_mul)?.checked_mul(initial_d)?;
+    let l_val = leverage_mul.checked_add(d_p_mul)?.checked_mul(*initial_d)?;
 
-    let leverage_sub = leverage.checked_sub(1)?.checked_mul(initial_d)?;
-    let n_coins_sum = n_coins.checked_add(1)?.checked_mul(d_product)?;
+    let leverage_sub = initial_d.checked_mul((leverage.checked_sub(1)?).into())?;
+    let n_coins_sum = d_product.checked_u8_mul(N_COINS.checked_add(1)?)?;
 
     let r_val = leverage_sub.checked_add(n_coins_sum)?;
 
@@ -59,20 +54,18 @@ fn calculate_step(
 /// Compute stable swap invariant (D)
 /// Equation:
 /// A * sum(x_i) * n**n + D = A * D * n**n + D**(n+1) / (n**n * prod(x_i))
-fn compute_d(amp: u128, amount_a: u128, amount_b: u128) -> Option<u128> {
-    // XXX: Curve uses u256
-    let n_coins: u128 = 2; // n
-    let amount_a_times_coins = amount_a.checked_mul(n_coins)?;
-    let amount_b_times_coins = amount_b.checked_mul(n_coins)?;
+fn compute_d(leverage: u64, amount_a: u128, amount_b: u128) -> Option<u128> {
+    let amount_a_times_coins = U256::from(amount_a).checked_u8_mul(N_COINS)?;
+    let amount_b_times_coins = U256::from(amount_b).checked_u8_mul(N_COINS)?;
     let sum_x = amount_a.checked_add(amount_b)?; // sum(x_i), a.k.a S
     if sum_x == 0 {
         Some(0)
     } else {
-        let mut d_previous: u128;
-        let mut d = sum_x;
-        let leverage = amp.checked_mul(n_coins)?; // A * n
-                                                  // Newton's method to approximate D
-        for _ in 0..128 {
+        let mut d_previous: U256;
+        let mut d: U256 = sum_x.into();
+
+        // Newton's method to approximate D
+        for _ in 0..32 {
             let mut d_product = d;
             d_product = d_product
                 .checked_mul(d)?
@@ -82,17 +75,13 @@ fn compute_d(amp: u128, amount_a: u128, amount_b: u128) -> Option<u128> {
                 .checked_div(amount_b_times_coins)?;
             d_previous = d;
             //d = (leverage * sum_x + d_p * n_coins) * d / ((leverage - 1) * d + (n_coins + 1) * d_p);
-            d = calculate_step(d, leverage, sum_x, d_product, n_coins)?;
+            d = calculate_step(&d, leverage, sum_x, &d_product)?;
             // Equality with the precision of 1
-            if d > d_product {
-                if d.checked_sub(d_previous)? <= 1 {
-                    break;
-                }
-            } else if d_previous.checked_sub(d)? <= 1 {
+            if d.almost_equal(&d_previous)? {
                 break;
             }
         }
-        Some(d)
+        u128::try_from(d).ok()
     }
 }
 
@@ -100,35 +89,41 @@ fn compute_d(amp: u128, amount_a: u128, amount_b: u128) -> Option<u128> {
 /// Solve for y:
 /// y**2 + y * (sum' - (A*n**n - 1) * D / (A * n**n)) = D ** (n + 1) / (n ** (2 * n) * prod' * A)
 /// y**2 + b*y = c
-fn compute_new_destination_amount(amp: u128, new_source_amount: u128, d_val: u128) -> Option<u128> {
-    // XXX: Curve uses u256
-    let n_coins: u128 = 2;
-    let leverage = amp.checked_mul(n_coins)?; // A * n
+fn compute_new_destination_amount(
+    leverage: u64,
+    new_source_amount: u128,
+    d_val: u128,
+) -> Option<u128> {
+    // Upscale to U256
+    let leverage: U256 = leverage.into();
+    let new_source_amount: U256 = new_source_amount.into();
+    let d_val: U256 = d_val.into();
 
     // sum' = prod' = x
     // c =  D ** (n + 1) / (n ** (2 * n) * prod' * A)
-    let c = checked_pow(d_val, n_coins.checked_add(1)? as usize)?.checked_div(
-        new_source_amount.checked_mul(checked_pow(n_coins, 2)?.checked_mul(leverage)?)?,
-    )?;
+    let c = d_val
+        .checked_u8_power(N_COINS.checked_add(1)?)?
+        .checked_div(
+            new_source_amount
+                .checked_u8_mul(N_COINS_SQUARED)?
+                .checked_mul(leverage)?,
+        )?;
+
     // b = sum' - (A*n**n - 1) * D / (A * n**n)
-    let b = new_source_amount.checked_add(d_val.checked_div(leverage)?)?; // d is subtracted on line 82
+    let b = new_source_amount.checked_add(d_val.checked_div(leverage)?)?;
 
     // Solve for y by approximating: y**2 + b*y = c
-    let mut y_prev: u128;
+    let mut y_prev: U256;
     let mut y = d_val;
-    for _ in 0..128 {
+    for _ in 0..32 {
         y_prev = y;
-        y = (checked_pow(y, 2)?.checked_add(c)?)
-            .checked_div(y.checked_mul(2)?.checked_add(b)?.checked_sub(d_val)?)?;
-        if y > y_prev {
-            if y.checked_sub(y_prev)? <= 1 {
-                break;
-            }
-        } else if y_prev.checked_sub(y)? <= 1 {
+        y = (y.checked_u8_power(2)?.checked_add(c)?)
+            .checked_div(y.checked_u8_mul(2)?.checked_add(b)?.checked_sub(d_val)?)?;
+        if y.almost_equal(&y_prev)? {
             break;
         }
     }
-    Some(y)
+    u128::try_from(y).ok()
 }
 
 impl CurveCalculator for StableCurve {
@@ -147,18 +142,17 @@ impl CurveCalculator for StableCurve {
             .checked_sub(trade_fee)?
             .checked_sub(owner_fee)?;
 
+        let leverage = self.amp.checked_mul(N_COINS as u64)?;
+
         let new_destination_amount = compute_new_destination_amount(
-            self.amp as u128,
+            leverage,
             new_source_amount_less_fee,
-            compute_d(
-                self.amp as u128,
-                swap_source_amount,
-                swap_destination_amount,
-            )?,
+            compute_d(leverage, swap_source_amount, swap_destination_amount)?,
         )?;
 
-        let amount_swapped =
-            map_zero_to_none(swap_destination_amount.checked_sub(new_destination_amount)?)?;
+        //let amount_swapped =
+        //    map_zero_to_none(swap_destination_amount.checked_sub(new_destination_amount.as_u128())?)?;
+        let amount_swapped = swap_destination_amount.checked_sub(new_destination_amount)?;
         let new_source_amount = swap_source_amount.checked_add(source_amount)?;
         Some(SwapResult {
             new_source_amount,
@@ -278,6 +272,7 @@ impl DynPack for StableCurve {
 mod tests {
     use super::*;
     use crate::curve::calculator::INITIAL_SWAP_POOL_AMOUNT;
+    use sim::StableSwapModel;
 
     #[test]
     fn initial_pool_amount() {
@@ -412,20 +407,84 @@ mod tests {
 
     #[test]
     fn constant_product_swap_no_fee() {
-        let source_amount: u128 = 100;
-        let swap_source_amount: u128 = 1000;
-        let swap_destination_amount: u128 = 50000;
-        let curve = StableCurve {
-            amp: 1,
-            ..Default::default()
-        };
+        const POOL_AMOUNTS: &[u128] = &[
+            100,
+            10_000,
+            1_000_000,
+            100_000_000,
+            10_000_000_000,
+            1_000_000_000_000,
+            100_000_000_000_000,
+            10_000_000_000_000_000,
+            1_000_000_000_000_000_000,
+        ];
+        const SWAP_AMOUNTS: &[u128] = &[
+            100,
+            1_000,
+            10_000,
+            100_000,
+            1_000_000,
+            10_000_000,
+            100_000_000,
+            1_000_000_000,
+            10_000_000_000,
+            100_000_000_000,
+        ];
+        const AMP_FACTORS: &[u64] = &[1, 10, 20, 50, 75, 100, 125, 150];
 
-        let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount)
-            .unwrap();
-        assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 2083);
-        assert_eq!(result.new_destination_amount, 47917);
+        for swap_source_amount in POOL_AMOUNTS {
+            for swap_destination_amount in POOL_AMOUNTS {
+                for source_amount in SWAP_AMOUNTS {
+                    for amp in AMP_FACTORS {
+                        let curve = StableCurve {
+                            amp: *amp,
+                            ..Default::default()
+                        };
+
+                        if *source_amount >= *swap_source_amount {
+                            continue;
+                        }
+
+                        println!(
+                            "trying: source_amount={}, swap_source_amount={}, swap_destination_amount={}", 
+                            source_amount, swap_source_amount, swap_destination_amount
+                        );
+
+                        let model: StableSwapModel = StableSwapModel::new(
+                            curve.amp.into(),
+                            vec![*swap_source_amount, *swap_destination_amount],
+                            N_COINS,
+                        );
+
+                        let result = curve.swap(
+                            *source_amount,
+                            *swap_source_amount,
+                            *swap_destination_amount,
+                        );
+
+                        let result = result.unwrap();
+                        let sim_result = model.sim_exchange(0, 1, *source_amount);
+
+                        println!(
+                            "result={}, sim_result={}",
+                            result.amount_swapped, sim_result
+                        );
+                        let diff = (sim_result as i128 - result.amount_swapped as i128).abs();
+
+                        assert!(
+                            diff <= 1,
+                            "result={}, sim_result={}, amp={}, source_amount={}, swap_source_amount={}, swap_destination_amount={}",
+                            result.amount_swapped,
+                            sim_result,
+                            amp,
+                            source_amount,
+                            swap_source_amount,
+                            swap_destination_amount
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]

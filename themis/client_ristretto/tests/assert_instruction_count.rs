@@ -11,7 +11,6 @@ use solana_sdk::{
     account::Account,
     bpf_loader,
     entrypoint::SUCCESS,
-    instruction::InstructionError,
     keyed_account::KeyedAccount,
     process_instruction::{BpfComputeBudget, MockInvokeContext},
     pubkey::Pubkey,
@@ -34,7 +33,7 @@ fn run_program(
     program_id: &Pubkey,
     parameter_accounts: &[KeyedAccount],
     instruction_data: &[u8],
-) -> Result<u64, InstructionError> {
+) -> u64 {
     let mut program_account = Account::default();
     program_account.data = load_program("../../target/deploy/spl_themis_ristretto.so");
     let loader_id = bpf_loader::id();
@@ -69,7 +68,7 @@ fn run_program(
             .unwrap()
     );
     deserialize_parameters(&loader_id, parameter_accounts, &parameter_bytes).unwrap();
-    Ok(vm.get_total_instruction_count())
+    vm.get_total_instruction_count()
 }
 
 #[test]
@@ -207,7 +206,7 @@ fn assert_instruction_count() {
     .unwrap();
     let parameter_accounts = vec![KeyedAccount::new(&policies_key, false, &policies_account)];
     let initialize_policies_count =
-        run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+        run_program(&program_id, &parameter_accounts[..], &instruction_data);
 
     // Create user account
     let user_key = Pubkey::new_unique();
@@ -218,7 +217,7 @@ fn assert_instruction_count() {
         .unwrap();
     let parameter_accounts = vec![KeyedAccount::new(&user_key, false, &user_account)];
     let initialize_user_count =
-        run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+        run_program(&program_id, &parameter_accounts[..], &instruction_data);
 
     // Calculate Aggregate
     let instruction_data = ThemisInstruction::SubmitInteractions {
@@ -231,7 +230,7 @@ fn assert_instruction_count() {
         KeyedAccount::new(&policies_key, false, &policies_account),
     ];
     let calculate_aggregate_count =
-        run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+        run_program(&program_id, &parameter_accounts[..], &instruction_data);
 
     // Submit proof decryption
     let user = User::deserialize(&user_account.try_borrow().unwrap().data).unwrap();
@@ -258,7 +257,7 @@ fn assert_instruction_count() {
     .unwrap();
     let parameter_accounts = vec![KeyedAccount::new(&user_key, true, &user_account)];
     let proof_decryption_count =
-        run_program(&program_id, &parameter_accounts[..], &instruction_data).unwrap();
+        run_program(&program_id, &parameter_accounts[..], &instruction_data);
 
     const BASELINE_NEW_POLICIES_COUNT: u64 = 80_000; // last known 3,354
     const BASELINE_INITIALIZE_USER_COUNT: u64 = 22_000; // last known 19,746

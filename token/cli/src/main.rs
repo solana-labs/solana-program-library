@@ -10,7 +10,9 @@ use solana_account_decoder::{
 use solana_clap_utils::{
     fee_payer::fee_payer_arg,
     input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, signer_of, value_of},
-    input_validators::{is_amount, is_parsable, is_url, is_valid_pubkey, is_valid_signer},
+    input_validators::{
+        is_amount, is_amount_or_all, is_parsable, is_url, is_valid_pubkey, is_valid_signer,
+    },
     keypair::{pubkey_from_path, signer_from_path, DefaultSigner},
     nonce::*,
     offline::{self, *},
@@ -18,8 +20,7 @@ use solana_clap_utils::{
 };
 use solana_cli_output::{display::println_name_value, return_signers, OutputFormat};
 use solana_client::{
-    blockhash_query::BlockhashQuery, rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig,
-    rpc_request::TokenAccountsFilter,
+    blockhash_query::BlockhashQuery, rpc_client::RpcClient, rpc_request::TokenAccountsFilter,
 };
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
 use solana_sdk::{
@@ -144,7 +145,6 @@ struct Config<'a> {
     verbose: bool,
     owner: Pubkey,
     fee_payer: Pubkey,
-    commitment_config: CommitmentConfig,
     default_signer: DefaultSigner,
     nonce_account: Option<Pubkey>,
     nonce_authority: Option<Pubkey>,
@@ -163,10 +163,7 @@ fn new_throwaway_signer() -> (Option<Box<dyn Signer>>, Option<Pubkey>) {
 }
 
 fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
-    let balance = config
-        .rpc_client
-        .get_balance_with_commitment(&config.fee_payer, config.commitment_config)?
-        .value;
+    let balance = config.rpc_client.get_balance(&config.fee_payer)?;
     if balance < required_balance {
         Err(format!(
             "Fee payer, {}, has insufficient balance: {} required, {} available",
@@ -181,10 +178,7 @@ fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(),
 }
 
 fn check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
-    let balance = config
-        .rpc_client
-        .get_balance_with_commitment(&config.owner, config.commitment_config)?
-        .value;
+    let balance = config.rpc_client.get_balance(&config.owner)?;
     if balance < required_balance {
         Err(format!(
             "Owner, {}, has insufficient balance: {} required, {} available",
@@ -306,7 +300,7 @@ fn command_create_account(
 
     if let Some(account_data) = config
         .rpc_client
-        .get_account_with_commitment(&account, config.commitment_config)?
+        .get_account_with_commitment(&account, config.rpc_client.commitment())?
         .value
     {
         if !(account_data.owner == system_program::id() && system_account_ok) {
@@ -405,8 +399,7 @@ fn resolve_mint_info(
     if !config.sign_only {
         let source_account = config
             .rpc_client
-            .get_token_account_with_commitment(&token_account, config.commitment_config)?
-            .value
+            .get_token_account(&token_account)?
             .ok_or_else(|| format!("Could not find token account {}", token_account))?;
         Ok((
             Pubkey::from_str(&source_account.mint)?,
@@ -423,16 +416,35 @@ fn resolve_mint_info(
 fn command_transfer(
     config: &Config,
     sender: Pubkey,
-    ui_amount: f64,
+    ui_amount: Option<f64>,
     recipient: Pubkey,
     fund_recipient: bool,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
 ) -> CommandResult {
+    let sender_balance = config
+        .rpc_client
+        .get_token_account_balance(&sender)
+        .map_err(|err| {
+            format!(
+                "Error: Failed to get token balance of sender address {}: {}",
+                sender, err
+            )
+        })?
+        .ui_amount;
+    let ui_amount = ui_amount.unwrap_or(sender_balance);
+
     println!(
         "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
         ui_amount, sender, recipient
     );
+    if ui_amount > sender_balance {
+        return Err(format!(
+            "Error: Sender has insufficient funds, current balance is {}",
+            sender_balance
+        )
+        .into());
+    }
 
     let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, mint_address, mint_decimals)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
@@ -443,7 +455,7 @@ fn command_transfer(
 
     if let Some(account_data) = config
         .rpc_client
-        .get_account_with_commitment(&recipient, config.commitment_config)?
+        .get_account_with_commitment(&recipient, config.rpc_client.commitment())?
         .value
     {
         if account_data.owner == system_program::id() {
@@ -455,7 +467,10 @@ fn command_transfer(
 
             let needs_funding = if let Some(recipient_token_account_data) = config
                 .rpc_client
-                .get_account_with_commitment(&recipient_token_account, config.commitment_config)?
+                .get_account_with_commitment(
+                    &recipient_token_account,
+                    config.rpc_client.commitment(),
+                )?
                 .value
             {
                 if recipient_token_account_data.owner == system_program::id() {
@@ -628,12 +643,7 @@ fn command_unwrap(config: &Config, address: Pubkey) -> CommandResult {
     if !config.sign_only {
         println!(
             "  Amount: {} SOL",
-            lamports_to_sol(
-                config
-                    .rpc_client
-                    .get_balance_with_commitment(&address, config.commitment_config)?
-                    .value
-            ),
+            lamports_to_sol(config.rpc_client.get_balance(&address)?),
         );
     }
     println!("  Recipient: {}", &config.owner);
@@ -681,8 +691,7 @@ fn command_revoke(config: &Config, account: Pubkey, delegate: Option<Pubkey>) ->
     let delegate = if !config.sign_only {
         let source_account = config
             .rpc_client
-            .get_token_account_with_commitment(&account, config.commitment_config)?
-            .value
+            .get_token_account(&account)?
             .ok_or_else(|| format!("Could not find token account {}", account))?;
         if let Some(string) = source_account.delegate {
             Some(Pubkey::from_str(&string)?)
@@ -715,8 +724,7 @@ fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> Comma
     if !config.sign_only {
         let source_account = config
             .rpc_client
-            .get_token_account_with_commitment(&account, config.commitment_config)?
-            .value
+            .get_token_account(&account)?
             .ok_or_else(|| format!("Could not find token account {}", account))?;
 
         if !source_account.is_native && source_account.token_amount.ui_amount > 0.0 {
@@ -739,10 +747,7 @@ fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> Comma
 }
 
 fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
-    let balance = config
-        .rpc_client
-        .get_token_account_balance_with_commitment(&address, config.commitment_config)?
-        .value;
+    let balance = config.rpc_client.get_token_account_balance(&address)?;
 
     if config.verbose {
         println!("ui amount: {}", balance.ui_amount);
@@ -755,33 +760,31 @@ fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
 }
 
 fn command_supply(config: &Config, address: Pubkey) -> CommandResult {
-    let supply = config
-        .rpc_client
-        .get_token_supply_with_commitment(&address, config.commitment_config)?
-        .value;
+    let supply = config.rpc_client.get_token_supply(&address)?;
 
     println!("{}", supply.ui_amount);
     Ok(None)
 }
 
 fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
-    let accounts = config
-        .rpc_client
-        .get_token_accounts_by_owner_with_commitment(
-            &config.owner,
-            match token {
-                Some(token) => TokenAccountsFilter::Mint(token),
-                None => TokenAccountsFilter::ProgramId(spl_token::id()),
-            },
-            config.commitment_config,
-        )?
-        .value;
+    let accounts = config.rpc_client.get_token_accounts_by_owner(
+        &config.owner,
+        match token {
+            Some(token) => TokenAccountsFilter::Mint(token),
+            None => TokenAccountsFilter::ProgramId(spl_token::id()),
+        },
+    )?;
     if accounts.is_empty() {
         println!("None");
     }
 
-    println!("Account                                      Token                                        Balance");
-    println!("-------------------------------------------------------------------------------------------------");
+    if token.is_some() {
+        println!("Account                                      Balance");
+        println!("----------------------------------------------------");
+    } else {
+        println!("Account                                      Token                                        Balance");
+        println!("-------------------------------------------------------------------------------------------------");
+    }
     for keyed_account in accounts {
         let address = keyed_account.pubkey;
 
@@ -799,13 +802,20 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                         } else {
                             "".to_string()
                         };
-                        println!(
-                            "{:<44} {:<44} {}{}",
-                            address,
-                            ui_token_account.mint,
-                            ui_token_account.token_amount.ui_amount,
-                            maybe_frozen
-                        )
+                        if token.is_some() {
+                            println!(
+                                "{:<44} {}{}",
+                                address, ui_token_account.token_amount.ui_amount, maybe_frozen
+                            )
+                        } else {
+                            println!(
+                                "{:<44} {:<44} {}{}",
+                                address,
+                                ui_token_account.mint,
+                                ui_token_account.token_amount.ui_amount,
+                                maybe_frozen
+                            )
+                        }
                     }
                     Ok(_) => println!("{:<44} Unsupported token account", address),
                     Err(err) => println!("{:<44} Account parse failure: {}", address, err),
@@ -820,14 +830,10 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
 
 fn command_gc(config: &Config) -> CommandResult {
     println!("Fetching token accounts");
-    let accounts = config
-        .rpc_client
-        .get_token_accounts_by_owner_with_commitment(
-            &config.owner,
-            TokenAccountsFilter::ProgramId(spl_token::id()),
-            config.commitment_config,
-        )?
-        .value;
+    let accounts = config.rpc_client.get_token_accounts_by_owner(
+        &config.owner,
+        TokenAccountsFilter::ProgramId(spl_token::id()),
+    )?;
     if accounts.is_empty() {
         println!("Nothing to do");
         return Ok(None);
@@ -972,11 +978,7 @@ fn stringify_ui_token_amount_trimmed(amount: &UiTokenAmount) -> String {
 }
 
 fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
-    let account = config
-        .rpc_client
-        .get_token_account_with_commitment(&address, config.commitment_config)?
-        .value
-        .unwrap();
+    let account = config.rpc_client.get_token_account(&address)?.unwrap();
     println!();
     println_name_value("Address:", &address.to_string());
     println_name_value(
@@ -1010,11 +1012,7 @@ fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
 }
 
 fn get_multisig(config: &Config, address: &Pubkey) -> Result<Multisig, Error> {
-    let account = config
-        .rpc_client
-        .get_account_with_commitment(&address, config.commitment_config)?
-        .value
-        .ok_or(format!("account does not exist: {}", address))?;
+    let account = config.rpc_client.get_account(&address)?;
     Multisig::unpack(&account.data).map_err(|e| e.into())
 }
 
@@ -1275,12 +1273,12 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(is_amount)
+                        .validator(is_amount_or_all)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
                         .required(true)
-                        .help("Amount to send, in tokens"),
+                        .help("Amount to send, in tokens; accepts keyword ALL"),
                 )
                 .arg(
                     Arg::with_name("recipient")
@@ -1676,11 +1674,13 @@ fn main() {
         let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
 
         Config {
-            rpc_client: RpcClient::new(json_rpc_url),
+            rpc_client: RpcClient::new_with_commitment(
+                json_rpc_url,
+                CommitmentConfig::single_gossip(),
+            ),
             verbose,
             owner,
             fee_payer,
-            commitment_config: CommitmentConfig::single_gossip(),
             default_signer,
             nonce_account,
             nonce_authority,
@@ -1792,7 +1792,11 @@ fn main() {
             let sender = pubkey_of_signer(arg_matches, "sender", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+
+            let amount = match matches.value_of("amount").unwrap() {
+                "ALL" => None,
+                amount => Some(amount.parse::<f64>().unwrap()),
+            };
             let recipient = pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -1953,7 +1957,10 @@ fn main() {
                 };
                 let (recent_blockhash, fee_calculator) = config
                     .blockhash_query
-                    .get_blockhash_and_fee_calculator(&config.rpc_client, config.commitment_config)
+                    .get_blockhash_and_fee_calculator(
+                        &config.rpc_client,
+                        config.rpc_client.commitment(),
+                    )
                     .unwrap_or_else(|e| {
                         eprintln!("error: {}", e);
                         exit(1);
@@ -1975,14 +1982,7 @@ fn main() {
                     transaction.try_sign(&signer_info.signers, recent_blockhash)?;
                     let signature = config
                         .rpc_client
-                        .send_and_confirm_transaction_with_spinner_and_config(
-                            &transaction,
-                            config.commitment_config,
-                            RpcSendTransactionConfig {
-                                preflight_commitment: Some(config.commitment_config.commitment),
-                                ..RpcSendTransactionConfig::default()
-                            },
-                        )?;
+                        .send_and_confirm_transaction_with_spinner(&transaction)?;
                     println!("Signature: {}", signature);
                 }
             }
