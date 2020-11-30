@@ -616,7 +616,7 @@ fn command_withdraw(
                         &withdraw_stake.pubkey,
                         &config.owner.pubkey(),
                     ));
-                },
+                }
                 None => {
                     // Save last account to merge into for the next claim
                     stake_receiver = Some(withdraw_stake.pubkey);
