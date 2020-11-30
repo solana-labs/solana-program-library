@@ -19,6 +19,7 @@ use {
     },
     spl_feature_proposal::state::{AcceptanceCriteria, FeatureProposal},
     std::{
+        collections::HashMap,
         fs::File,
         io::Write,
         time::{Duration, SystemTime, UNIX_EPOCH},
@@ -281,12 +282,18 @@ fn process_propose(
     println!("Acceptance Token Address: {}", acceptance_token_address);
 
     let vote_accounts = rpc_client.get_vote_accounts()?;
-    let distribution = vote_accounts
+    let mut distribution = HashMap::new();
+    for (pubkey, activated_stake) in vote_accounts
         .current
         .into_iter()
         .chain(vote_accounts.delinquent)
         .map(|vote_account| (vote_account.node_pubkey, vote_account.activated_stake))
-        .collect::<Vec<_>>();
+    {
+        distribution
+            .entry(pubkey)
+            .and_modify(|e| *e += activated_stake)
+            .or_insert(activated_stake);
+    }
 
     let tokens_to_mint: u64 = distribution.iter().map(|x| x.1).sum();
     let tokens_required = tokens_to_mint * percent_stake_required as u64 / 100;
@@ -306,7 +313,7 @@ fn process_propose(
     {
         let mut file = File::create(&distribution_file)?;
         file.write_all(b"recipient,amount\n")?;
-        for (node_address, activated_stake) in distribution {
+        for (node_address, activated_stake) in distribution.iter() {
             file.write_all(format!("{},{}\n", node_address, activated_stake).as_bytes())?;
         }
     }
