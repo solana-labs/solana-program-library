@@ -15,6 +15,7 @@ members = [
   "themis/program_ristretto",
   "token-lending/program",
   "token-swap/program",
+  "token-swap/program/fuzz",
   "token/cli",
   "token/perf-monitor",
   "token/program",

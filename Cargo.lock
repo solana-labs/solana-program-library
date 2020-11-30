@@ -59,6 +59,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf8dcb5b4bbaa28653b647d8c77bd4ed40183b48882e130c1f1ffb73de069fd7"
 
 [[package]]
+name = "arbitrary"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db55d72333851e17d572bec876e390cd3b11eb1ef53ae821dd9f3b653d2b4569"
+dependencies = [
+ "derive_arbitrary",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -690,13 +699,12 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "2.1.0"
-source = "git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff#60efef3553d6bf3d7f3b09b5f97acd54d72529ff"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
 dependencies = [
- "borsh",
  "byteorder",
  "digest 0.8.1",
  "rand_core",
- "serde",
  "subtle 2.2.3",
  "zeroize",
 ]
@@ -704,12 +712,13 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d85653f070353a16313d0046f173f70d1aadd5b42600a14de626f0dfb3473a5"
+source = "git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff#60efef3553d6bf3d7f3b09b5f97acd54d72529ff"
 dependencies = [
+ "borsh",
  "byteorder",
  "digest 0.8.1",
  "rand_core",
+ "serde",
  "subtle 2.2.3",
  "zeroize",
 ]
@@ -743,6 +752,17 @@ name = "derivative"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb582b60359da160a9477ee80f15c8d784c477e69c217ef2cdd4169c24ea380f"
+dependencies = [
+ "proc-macro2 1.0.24",
+ "quote 1.0.7",
+ "syn 1.0.48",
+]
+
+[[package]]
+name = "derive_arbitrary"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1a012b5e473dc912f0db0546a1c9c6a194ce8494feb66fa0237160926f9e0e6"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.7",
@@ -1256,6 +1276,17 @@ dependencies = [
  "digest 0.8.1",
  "generic-array 0.12.3",
  "hmac",
+]
+
+[[package]]
+name = "honggfuzz"
+version = "0.5.51"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f085725a5828d7e959f014f624773094dfe20acc91be310ef106923c30594bc"
+dependencies = [
+ "arbitrary",
+ "lazy_static",
+ "memmap",
 ]
 
 [[package]]
@@ -3490,6 +3521,7 @@ dependencies = [
 name = "spl-token-swap"
 version = "0.1.0"
 dependencies = [
+ "arbitrary",
  "arrayref",
  "num-derive",
  "num-traits",
@@ -3497,6 +3529,17 @@ dependencies = [
  "solana-sdk",
  "spl-token 3.0.0",
  "thiserror",
+]
+
+[[package]]
+name = "spl-token-swap-fuzz"
+version = "0.0.1"
+dependencies = [
+ "arbitrary",
+ "honggfuzz",
+ "solana-program",
+ "spl-token 3.0.0",
+ "spl-token-swap",
 ]
 
 [[package]]

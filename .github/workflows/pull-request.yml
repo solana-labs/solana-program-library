@@ -15,6 +15,7 @@ jobs:
       - js-test-token
       - js-test-token-swap
       - js-test-token-lending
+      - fuzz
     steps:
       - run: echo "Done"
 
@@ -200,3 +201,60 @@ jobs:
           name: programs
           path: target/bpfel-unknown-unknown/release
       - run: ./ci/js-test-token-lending.sh
+
+  fuzz:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fuzz_target: [token-swap-instructions]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          override: true
+          profile: minimal
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-fuzz-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-fuzz-
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/cargo-hfuzz
+            ~/.cargo/bin/cargo-honggfuzz
+          key: cargo-fuzz-bins-${{ runner.os }}
+          restore-keys: |
+            cargo-fuzz-bins-${{ runner.os }}-
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache
+          key: solana-${{ env.SOLANA_VERSION }}
+          restore-keys: |
+            solana-
+
+      - name: Install dependencies
+        run: |
+          ./ci/install-build-deps.sh
+          ./ci/install-program-deps.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Run fuzz target
+        run: ./ci/fuzz.sh ${{ matrix.fuzz_target }} 30 # 30 seconds, just to check everything is ok

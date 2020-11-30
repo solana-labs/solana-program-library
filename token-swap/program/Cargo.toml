@@ -10,6 +10,7 @@ edition = "2018"
 [features]
 no-entrypoint = []
 production = []
+fuzz = ["arbitrary"]
 
 [dependencies]
 arrayref = "0.3.6"
@@ -19,6 +20,7 @@ solana-program = "1.4.9"
 spl-token = { version = "3.0", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 uint = "0.8"
+arbitrary = { version = "0.4", features = ["derive"], optional = true }
 
 [dev-dependencies]
 solana-sdk = "1.4.9"
