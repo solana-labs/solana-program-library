@@ -406,45 +406,57 @@ fn prepare_withdraw_accounts(
     if accounts.is_empty() {
         return Err("No accounts found.".to_string().into());
     }
-    // Sort from lowest to highest balance
-    accounts.sort_by(|a, b| a.1.lamports.cmp(&b.1.lamports));
+    // Sort from highest to lowest balance
+    accounts.sort_by(|a, b| b.1.lamports.cmp(&a.1.lamports));
 
     // Prepare the list of accounts to withdraw from
     let mut withdraw_from: Vec<WithdrawAccount> = vec![];
     let mut remaining_amount = amount;
 
-    // First use largest amounts
-    while !accounts.is_empty() && accounts.last().unwrap().1.lamports < remaining_amount {
-        let (pubkey, account) = accounts.last().unwrap();
+    let mut split_candidate: Option<WithdrawAccount> = None;
 
-        // Those accounts will be withdrawn completely with `claim` instruction
-        withdraw_from.push(WithdrawAccount {
-            pubkey: *pubkey,
-            account: account.clone(),
-            amount: account.lamports,
-        });
-        remaining_amount -= account.lamports;
-        accounts.pop();
-    }
-    if remaining_amount > 0 {
-        // Add first amount larger or equal to the remaining amount
-        for (pubkey, account) in accounts {
-            if account.lamports < remaining_amount {
-                continue;
+    // If amount to withdraw is more than the largest account
+    // then use up all the large accounts first
+    // Then either find the smallest account with balance more than remaining
+    // or find account to claim with exactly the same balance as remaining
+    for (pubkey, account) in accounts {
+        if account.lamports <= remaining_amount {
+            if split_candidate.is_some() {
+                // If there is an active split candidate and current account is smaller than remaining
+                // then break to use split candidate
+                if account.lamports < remaining_amount {
+                    break;
+                }
+                // Otherwise (account balance == remaining) procede with `claim`
             }
-
-            // This account will be withdrawn partially (if remaining_amount < account.lamports), so we put it first
-            withdraw_from.insert(
-                0,
-                WithdrawAccount {
-                    pubkey,
-                    account,
-                    amount: remaining_amount,
-                },
-            );
-            remaining_amount = 0;
-            break;
+            // Those accounts will be withdrawn completely with `claim` instruction
+            withdraw_from.push(WithdrawAccount {
+                pubkey,
+                account: account.clone(),
+                amount: account.lamports,
+            });
+            remaining_amount -= account.lamports;
+            if remaining_amount == 0 {
+                // We filled all the balance, ignore split candidate
+                split_candidate = None;
+                break;
+            }
+        } else {
+            // Save the last account with balance more than remaining as a candidate for split
+            split_candidate = Some(WithdrawAccount {
+                pubkey,
+                account,
+                amount: remaining_amount,
+            });
         }
+    }
+
+    // If there is a pending account to split, add it to the list
+    if let Some(withdraw) = split_candidate {
+        remaining_amount -= withdraw.amount;
+
+        // This account will be withdrawn partially (if remaining_amount < account.lamports), so we put it first
+        withdraw_from.insert(0, withdraw);
     }
 
     // Not enough stake to withdraw the specified amount
@@ -540,7 +552,7 @@ fn command_withdraw(
 
         if withdraw_stake.amount < withdraw_stake.account.lamports {
             // Withdraw to split account
-            if stake_receiver == None {
+            if stake_receiver.is_none() {
                 // Account for tokens not specified, creating one
                 println!(
                     "Creating account to receive stake {}",
@@ -596,13 +608,19 @@ fn command_withdraw(
                 &stake_program_id(),
             )?);
 
-            // Merge into stake_receiver
-            if let Some(merge_into) = stake_receiver {
-                instructions.push(merge_stake(
-                    &merge_into,
-                    &withdraw_stake.pubkey,
-                    &config.owner.pubkey(),
-                ));
+            match stake_receiver {
+                Some(merge_into) => {
+                    // Merge into stake_receiver
+                    instructions.push(merge_stake(
+                        &merge_into,
+                        &withdraw_stake.pubkey,
+                        &config.owner.pubkey(),
+                    ));
+                },
+                None => {
+                    // Save last account to merge into for the next claim
+                    stake_receiver = Some(withdraw_stake.pubkey);
+                }
             }
         }
     }
