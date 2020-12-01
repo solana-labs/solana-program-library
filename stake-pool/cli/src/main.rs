@@ -1083,67 +1083,83 @@ mod tests {
         let mut result: Vec<(Pubkey, Account)> = Vec::with_capacity(lamports.len());
 
         for (index, balance) in lamports.iter().enumerate() {
-            result.push(
-                (
-                    Pubkey::new_from_array([index as u8; 32]),
-                    Account::new(*balance, 0, &PK_OWNER),
-                )
-            );
+            result.push((
+                Pubkey::new_from_array([index as u8; 32]),
+                Account::new(*balance, 0, &PK_OWNER),
+            ));
         }
         result
     }
 
-    fn pick_with_balance(test_list: &Vec<(Pubkey, Account)>, balance: u64, withdraw: u64) -> WithdrawAccount {
+    fn pick_with_balance(
+        test_list: &Vec<(Pubkey, Account)>,
+        balance: u64,
+        withdraw: u64,
+    ) -> WithdrawAccount {
         for (pubkey, account) in test_list {
             if account.lamports == balance {
                 return WithdrawAccount {
                     pubkey: *pubkey,
                     account: account.clone(),
-                    amount: withdraw
+                    amount: withdraw,
                 };
             }
         }
 
         panic!();
     }
-    
+
     #[test]
     fn test_pick_withdraw_accounts() {
         let mut test_list = lamports_to_accounts(&[2, 7, 8, 5, 3, 10]);
-        assert_eq!(pick_withdraw_accounts(&mut test_list, 5).unwrap(), vec![
-            pick_with_balance(&test_list, 5, 5),
-        ]);
+        assert_eq!(
+            pick_withdraw_accounts(&mut test_list, 5).unwrap(),
+            vec![pick_with_balance(&test_list, 5, 5),]
+        );
 
         let mut test_list = lamports_to_accounts(&[2, 7, 8, 5, 3, 10]);
-        assert_eq!(pick_withdraw_accounts(&mut test_list, 13).unwrap(), vec![
-            pick_with_balance(&test_list, 10, 10),
-            pick_with_balance(&test_list, 3, 3),
-        ]);
+        assert_eq!(
+            pick_withdraw_accounts(&mut test_list, 13).unwrap(),
+            vec![
+                pick_with_balance(&test_list, 10, 10),
+                pick_with_balance(&test_list, 3, 3),
+            ]
+        );
 
         let mut test_list = lamports_to_accounts(&[2, 7, 8, 5, 3, 10]);
-        assert_eq!(pick_withdraw_accounts(&mut test_list, 14).unwrap(), vec![
-            pick_with_balance(&test_list, 5, 4),    // Partial should always be the first
-            pick_with_balance(&test_list, 10, 10),
-        ]);
+        assert_eq!(
+            pick_withdraw_accounts(&mut test_list, 14).unwrap(),
+            vec![
+                pick_with_balance(&test_list, 5, 4), // Partial should always be the first
+                pick_with_balance(&test_list, 10, 10),
+            ]
+        );
 
         let mut test_list = lamports_to_accounts(&[2, 7, 8, 5, 3, 10]);
-        assert_eq!(pick_withdraw_accounts(&mut test_list, 19).unwrap(), vec![
-            pick_with_balance(&test_list, 2, 1),    // Partial should always be the first
-            pick_with_balance(&test_list, 10, 10),
-            pick_with_balance(&test_list, 8, 8),
-        ]);
+        assert_eq!(
+            pick_withdraw_accounts(&mut test_list, 19).unwrap(),
+            vec![
+                pick_with_balance(&test_list, 2, 1), // Partial should always be the first
+                pick_with_balance(&test_list, 10, 10),
+                pick_with_balance(&test_list, 8, 8),
+            ]
+        );
 
         let mut test_list = lamports_to_accounts(&[5, 4, 3]);
-        assert_eq!(pick_withdraw_accounts(&mut test_list, 1).unwrap(), vec![
-            pick_with_balance(&test_list, 3, 1),
-        ]);
+        assert_eq!(
+            pick_withdraw_accounts(&mut test_list, 1).unwrap(),
+            vec![pick_with_balance(&test_list, 3, 1),]
+        );
 
         let mut test_list = lamports_to_accounts(&[5, 3, 4]);
-        assert_eq!(pick_withdraw_accounts(&mut test_list, 12).unwrap(), vec![
-            pick_with_balance(&test_list, 5, 5),
-            pick_with_balance(&test_list, 4, 4),
-            pick_with_balance(&test_list, 3, 3),
-        ]);
+        assert_eq!(
+            pick_withdraw_accounts(&mut test_list, 12).unwrap(),
+            vec![
+                pick_with_balance(&test_list, 5, 5),
+                pick_with_balance(&test_list, 4, 4),
+                pick_with_balance(&test_list, 3, 3),
+            ]
+        );
 
         let mut test_list = lamports_to_accounts(&[5, 3, 4]);
         assert!(pick_withdraw_accounts(&mut test_list, 13).err().is_some());
