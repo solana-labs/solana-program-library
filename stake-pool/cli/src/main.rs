@@ -1092,7 +1092,7 @@ mod tests {
     }
 
     fn pick_with_balance(
-        test_list: &Vec<(Pubkey, Account)>,
+        test_list: &[(Pubkey, Account)],
         balance: u64,
         withdraw: u64,
     ) -> WithdrawAccount {
