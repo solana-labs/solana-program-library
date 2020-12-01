@@ -284,6 +284,9 @@ impl Processor {
         let pool_fee_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
+        if swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
 
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
@@ -430,6 +433,9 @@ impl Processor {
         let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
+        if swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
@@ -533,6 +539,9 @@ impl Processor {
         let pool_fee_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
+        if swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
@@ -2258,6 +2267,38 @@ mod tests {
 
         accounts.initialize_swap().unwrap();
 
+        // wrong owner for swap account
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let old_swap_account = accounts.swap_account;
+            let mut wrong_swap_account = old_swap_account.clone();
+            wrong_swap_account.owner = TOKEN_PROGRAM_ID;
+            accounts.swap_account = wrong_swap_account;
+            assert_eq!(
+                Err(ProgramError::IncorrectProgramId),
+                accounts.deposit(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    pool_amount.try_into().unwrap(),
+                    deposit_a,
+                    deposit_b,
+                )
+            );
+            accounts.swap_account = old_swap_account;
+        }
+
         // wrong nonce for authority_key
         {
             let (
@@ -2831,6 +2872,38 @@ mod tests {
         }
 
         accounts.initialize_swap().unwrap();
+
+        // wrong owner for swap account
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, initial_a, initial_b, 0);
+            let old_swap_account = accounts.swap_account;
+            let mut wrong_swap_account = old_swap_account.clone();
+            wrong_swap_account.owner = TOKEN_PROGRAM_ID;
+            accounts.swap_account = wrong_swap_account;
+            assert_eq!(
+                Err(ProgramError::IncorrectProgramId),
+                accounts.withdraw(
+                    &withdrawer_key,
+                    &pool_key,
+                    &mut pool_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    withdraw_amount.try_into().unwrap(),
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
+                )
+            );
+            accounts.swap_account = old_swap_account;
+        }
 
         // wrong nonce for authority_key
         {
@@ -3975,6 +4048,37 @@ mod tests {
         }
 
         accounts.initialize_swap().unwrap();
+
+        // wrong swap account program id
+        {
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                _pool_key,
+                _pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+            let old_swap_account = accounts.swap_account;
+            let mut wrong_swap_account = old_swap_account.clone();
+            wrong_swap_account.owner = TOKEN_PROGRAM_ID;
+            accounts.swap_account = wrong_swap_account;
+            assert_eq!(
+                Err(ProgramError::IncorrectProgramId),
+                accounts.swap(
+                    &swapper_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &swap_token_a_key,
+                    &swap_token_b_key,
+                    &token_b_key,
+                    &mut token_b_account,
+                    initial_a,
+                    minimum_token_b_amount,
+                )
+            );
+            accounts.swap_account = old_swap_account;
+        }
 
         // wrong nonce
         {
