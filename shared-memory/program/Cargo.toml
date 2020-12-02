@@ -9,7 +9,7 @@ edition = "2018"
 
 [dependencies]
 arrayref = "0.3.6"
-solana-program = "1.4.9"
+solana-program = "1.4.13"
 
 [dev-dependencies]
 solana-bpf-loader-program = "1.4.9"
