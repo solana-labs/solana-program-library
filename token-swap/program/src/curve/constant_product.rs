@@ -355,7 +355,13 @@ mod tests {
         assert_eq!(curve, unpacked);
     }
 
-    fn test_truncation(curve: &ConstantProductCurve, source_amount: u128, swap_source_amount: u128, swap_destination_amount: u128, expected: Option<u128>) {
+    fn test_truncation(
+        curve: &ConstantProductCurve,
+        source_amount: u128,
+        swap_source_amount: u128,
+        swap_destination_amount: u128,
+        expected: Option<u128>,
+    ) {
         let result = curve.swap(source_amount, swap_source_amount, swap_destination_amount);
         let amount_swapped = if let Some(result) = result {
             Some(result.amount_swapped)
@@ -394,7 +400,13 @@ mod tests {
             (12u128, 20_000u128, 30_000u128, Some(14u128)), // spot: 10 * 3 / 2 = 15
         ];
         for (source_amount, swap_source_amount, swap_destination_amount, expected) in tests.iter() {
-            test_truncation(&curve, *source_amount, *swap_source_amount, *swap_destination_amount, *expected);
+            test_truncation(
+                &curve,
+                *source_amount,
+                *swap_source_amount,
+                *swap_destination_amount,
+                *expected,
+            );
         }
     }
 }
