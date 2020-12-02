@@ -40,7 +40,11 @@ const TOLERANCE_AMOUNT: u128 = 1;
 const RELATIVE_TOLERANCE: u128 = 1_000_000;
 
 /// Do calculation both ways without fees, make sure the number is roughly the same
-fn check_truncation(source_amount: u128, swap_source_amount: u128, swap_destination_amount: u128) -> Option<()> {
+fn check_truncation(
+    source_amount: u128,
+    swap_source_amount: u128,
+    swap_destination_amount: u128,
+) -> Option<()> {
     // calculate one way
     let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
     let new_source_amount = swap_source_amount.checked_add(source_amount)?;
@@ -66,7 +70,10 @@ fn check_truncation(source_amount: u128, swap_source_amount: u128, swap_destinat
         source_amount.checked_sub(check_amount_swapped)?
     };
 
-    let tolerance = std::cmp::max(TOLERANCE_AMOUNT, source_amount.checked_div(RELATIVE_TOLERANCE)?);
+    let tolerance = std::cmp::max(
+        TOLERANCE_AMOUNT,
+        source_amount.checked_div(RELATIVE_TOLERANCE)?,
+    );
 
     if difference > tolerance {
         None
@@ -88,10 +95,11 @@ impl CurveCalculator for ConstantProductCurve {
         let trade_fee = self.trading_fee(source_amount)?;
         let owner_fee = self.owner_trading_fee(source_amount)?;
 
-        let source_amount_less_fee = source_amount.checked_sub(trade_fee)?.checked_sub(owner_fee)?;
+        let source_amount_less_fee = source_amount
+            .checked_sub(trade_fee)?
+            .checked_sub(owner_fee)?;
         let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
-        let new_source_amount_less_fee = swap_source_amount
-            .checked_add(source_amount_less_fee)?;
+        let new_source_amount_less_fee = swap_source_amount.checked_add(source_amount_less_fee)?;
         let new_destination_amount = invariant.checked_div(new_source_amount_less_fee)?;
         let amount_swapped =
             map_zero_to_none(swap_destination_amount.checked_sub(new_destination_amount)?)?;
@@ -395,13 +403,13 @@ mod tests {
     #[test]
     fn constant_product_swap_truncation() {
         let trade_fee_numerator = 25;
-        let trade_fee_denominator =  10000;
-        let owner_trade_fee_numerator =  5;
-        let owner_trade_fee_denominator =  10000;
-        let owner_withdraw_fee_numerator =  0;
-        let owner_withdraw_fee_denominator =  0;
-        let host_fee_numerator =  20;
-        let host_fee_denominator =  100;
+        let trade_fee_denominator = 10000;
+        let owner_trade_fee_numerator = 5;
+        let owner_trade_fee_denominator = 10000;
+        let owner_withdraw_fee_numerator = 0;
+        let owner_withdraw_fee_denominator = 0;
+        let host_fee_numerator = 20;
+        let host_fee_denominator = 100;
         let curve = ConstantProductCurve {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -415,8 +423,7 @@ mod tests {
         let swap_source_amount: u128 = 70000000000;
         let swap_destination_amount: u128 = 4000000;
         let source_amount: u128 = 10;
-        let result = curve
-            .swap(source_amount, swap_source_amount, swap_destination_amount);
+        let result = curve.swap(source_amount, swap_source_amount, swap_destination_amount);
         assert!(result.is_none());
     }
 }
