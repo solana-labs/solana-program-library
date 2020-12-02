@@ -32,56 +32,6 @@ pub struct ConstantProductCurve {
     pub host_fee_denominator: u64,
 }
 
-/// Minimum tolerance for slippage in truncation check
-const TOLERANCE_AMOUNT: u128 = 1;
-/// Maximum tolerance for slippage in trucation check, as a fraction of tokens
-/// swapped in.  In testing, that only happened when trading more than 1 billion
-/// tokens.
-const RELATIVE_TOLERANCE: u128 = 1_000_000;
-
-/// Do calculation both ways without fees, make sure the number is roughly the same
-fn check_truncation(
-    source_amount: u128,
-    swap_source_amount: u128,
-    swap_destination_amount: u128,
-) -> Option<()> {
-    // calculate one way
-    let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
-    let new_source_amount = swap_source_amount.checked_add(source_amount)?;
-    let new_destination_amount = invariant.checked_div(new_source_amount)?;
-    let amount_swapped =
-        map_zero_to_none(swap_destination_amount.checked_sub(new_destination_amount)?)?;
-
-    // back the other way
-    let invariant = new_source_amount.checked_mul(new_destination_amount)?;
-    let check_destination_amount = new_destination_amount.checked_add(amount_swapped)?;
-    let check_source_amount = invariant.checked_div(check_destination_amount)?;
-    let check_amount_swapped =
-        map_zero_to_none(new_source_amount.checked_sub(check_source_amount)?)?;
-
-    // To see if the numbers are "reasonable", we check for some small slippage.
-    // In most calculations, there will be 1 token of slippage from going both ways,
-    // and that's fine.
-    // For calculations with larger amounts, we can get to slippage amounts
-    // greater than 1 token, so we can use a relative difference too.
-    let difference = if check_amount_swapped > source_amount {
-        check_amount_swapped.checked_sub(source_amount)?
-    } else {
-        source_amount.checked_sub(check_amount_swapped)?
-    };
-
-    let tolerance = std::cmp::max(
-        TOLERANCE_AMOUNT,
-        source_amount.checked_div(RELATIVE_TOLERANCE)?,
-    );
-
-    if difference > tolerance {
-        None
-    } else {
-        Some(())
-    }
-}
-
 impl CurveCalculator for ConstantProductCurve {
     /// Constant product swap ensures x * y = constant
     fn swap(
@@ -90,7 +40,6 @@ impl CurveCalculator for ConstantProductCurve {
         swap_source_amount: u128,
         swap_destination_amount: u128,
     ) -> Option<SwapResult> {
-        check_truncation(source_amount, swap_source_amount, swap_destination_amount)?;
         // debit the fee to calculate the amount swapped
         let trade_fee = self.trading_fee(source_amount)?;
         let owner_fee = self.owner_trading_fee(source_amount)?;
@@ -100,7 +49,13 @@ impl CurveCalculator for ConstantProductCurve {
             .checked_sub(owner_fee)?;
         let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
         let new_source_amount_less_fee = swap_source_amount.checked_add(source_amount_less_fee)?;
-        let new_destination_amount = invariant.checked_div(new_source_amount_less_fee)?;
+        let mut new_destination_amount = invariant.checked_div(new_source_amount_less_fee)?;
+        // Ceiling the destination amount if there's any remainder, which will
+        // almost always be the case.
+        let remainder = invariant.checked_rem_euclid(new_source_amount_less_fee)?;
+        if remainder > 0 {
+            new_destination_amount = new_destination_amount.checked_add(1)?;
+        }
         let amount_swapped =
             map_zero_to_none(swap_destination_amount.checked_sub(new_destination_amount)?)?;
 
@@ -307,8 +262,8 @@ mod tests {
             .swap(source_amount, swap_source_amount, swap_destination_amount)
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 4505);
-        assert_eq!(result.new_destination_amount, 45495);
+        assert_eq!(result.amount_swapped, 4504);
+        assert_eq!(result.new_destination_amount, 45496);
         assert_eq!(result.trade_fee, 1);
         assert_eq!(result.owner_fee, 0);
     }
@@ -341,8 +296,8 @@ mod tests {
             .swap(source_amount, swap_source_amount, swap_destination_amount)
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 4505);
-        assert_eq!(result.new_destination_amount, 45495);
+        assert_eq!(result.amount_swapped, 4504);
+        assert_eq!(result.new_destination_amount, 45496);
         assert_eq!(result.trade_fee, 0);
         assert_eq!(result.owner_fee, 1);
     }
@@ -357,8 +312,8 @@ mod tests {
             .swap(source_amount, swap_source_amount, swap_destination_amount)
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 4546);
-        assert_eq!(result.new_destination_amount, 45454);
+        assert_eq!(result.amount_swapped, 4545);
+        assert_eq!(result.new_destination_amount, 45455);
     }
 
     #[test]
@@ -400,6 +355,16 @@ mod tests {
         assert_eq!(curve, unpacked);
     }
 
+    fn test_truncation(curve: &ConstantProductCurve, source_amount: u128, swap_source_amount: u128, swap_destination_amount: u128, expected: Option<u128>) {
+        let result = curve.swap(source_amount, swap_source_amount, swap_destination_amount);
+        let amount_swapped = if let Some(result) = result {
+            Some(result.amount_swapped)
+        } else {
+            None
+        };
+        assert_eq!(amount_swapped, expected);
+    }
+
     #[test]
     fn constant_product_swap_truncation() {
         let trade_fee_numerator = 25;
@@ -420,10 +385,16 @@ mod tests {
             host_fee_numerator,
             host_fee_denominator,
         };
-        let swap_source_amount: u128 = 70000000000;
-        let swap_destination_amount: u128 = 4000000;
-        let source_amount: u128 = 10;
-        let result = curve.swap(source_amount, swap_source_amount, swap_destination_amount);
-        assert!(result.is_none());
+        // for these tests, since the amounts are so small, 12 tokens in
+        // becomes 10 after fees
+        let tests = [
+            (12u128, 70_000_000_000u128, 4_000_000u128, None), // spot: 10 * 4m / 70b = 0
+            (12u128, 4_000_000u128, 70_000_000_000u128, Some(174999u128)), // spot: 10 * 70b / 4m = 175000
+            (12u128, 30_000u128, 20_000u128, Some(6u128)), // spot: 10 * 2 / 3 = 6.6666
+            (12u128, 20_000u128, 30_000u128, Some(14u128)), // spot: 10 * 3 / 2 = 15
+        ];
+        for (source_amount, swap_source_amount, swap_destination_amount, expected) in tests.iter() {
+            test_truncation(&curve, *source_amount, *swap_source_amount, *swap_destination_amount, *expected);
+        }
     }
 }
