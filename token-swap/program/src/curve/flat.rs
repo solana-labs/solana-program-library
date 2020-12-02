@@ -52,6 +52,7 @@ impl CurveCalculator for FlatCurve {
         Some(SwapResult {
             new_source_amount,
             new_destination_amount,
+            source_amount_swapped: source_amount,
             amount_swapped,
             trade_fee,
             owner_fee,

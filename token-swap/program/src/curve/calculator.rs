@@ -43,6 +43,8 @@ pub struct SwapResult {
     pub new_source_amount: u128,
     /// New amount of destination token
     pub new_destination_amount: u128,
+    /// Amount of source token swapped
+    pub source_amount_swapped: u128,
     /// Amount of destination token swapped
     pub amount_swapped: u128,
     /// Amount of source tokens going to pool holders

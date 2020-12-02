@@ -346,7 +346,7 @@ impl Processor {
             swap_source_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            amount_in,
+            to_u64(result.source_amount_swapped)?,
         )?;
         Self::token_transfer(
             swap_info.key,
@@ -3769,7 +3769,7 @@ mod tests {
         let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
         assert_eq!(
             token_b.amount,
-            initial_b + to_u64(first_swap_amount).unwrap() - b_to_a_amount
+            initial_b + to_u64(first_swap_amount).unwrap() - to_u64(results.source_amount_swapped).unwrap()
         );
 
         let second_fee = swap_curve

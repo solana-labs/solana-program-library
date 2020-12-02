@@ -157,6 +157,7 @@ impl CurveCalculator for StableCurve {
         Some(SwapResult {
             new_source_amount,
             new_destination_amount,
+            source_amount_swapped: source_amount,
             amount_swapped,
             trade_fee,
             owner_fee,
@@ -446,7 +447,7 @@ mod tests {
                         }
 
                         println!(
-                            "trying: source_amount={}, swap_source_amount={}, swap_destination_amount={}", 
+                            "trying: source_amount={}, swap_source_amount={}, swap_destination_amount={}",
                             source_amount, swap_source_amount, swap_destination_amount
                         );
 
