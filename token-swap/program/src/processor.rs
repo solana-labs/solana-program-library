@@ -3769,7 +3769,8 @@ mod tests {
         let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
         assert_eq!(
             token_b.amount,
-            initial_b + to_u64(first_swap_amount).unwrap() - to_u64(results.source_amount_swapped).unwrap()
+            initial_b + to_u64(first_swap_amount).unwrap()
+                - to_u64(results.source_amount_swapped).unwrap()
         );
 
         let second_fee = swap_curve

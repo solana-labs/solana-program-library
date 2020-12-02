@@ -48,7 +48,8 @@ impl CurveCalculator for ConstantProductCurve {
             .checked_sub(trade_fee)?
             .checked_sub(owner_fee)?;
         let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
-        let mut new_source_amount_less_fee = swap_source_amount.checked_add(source_amount_less_fee)?;
+        let mut new_source_amount_less_fee =
+            swap_source_amount.checked_add(source_amount_less_fee)?;
         let mut new_destination_amount = invariant.checked_div(new_source_amount_less_fee)?;
         // Ceiling the destination amount if there's any remainder, which will
         // almost always be the case.
@@ -71,8 +72,7 @@ impl CurveCalculator for ConstantProductCurve {
             map_zero_to_none(swap_destination_amount.checked_sub(new_destination_amount)?)?;
 
         // actually add the whole amount coming in
-        let new_source_amount = swap_source_amount
-            .checked_add(source_amount_swapped)?;
+        let new_source_amount = swap_source_amount.checked_add(source_amount_swapped)?;
 
         Some(SwapResult {
             new_source_amount,
@@ -376,8 +376,9 @@ mod tests {
         expected_source_amount_swapped: u128,
         expected_destination_amount_swapped: u128,
     ) {
-        let result = curve.swap(source_amount, swap_source_amount, swap_destination_amount
-        ).unwrap();
+        let result = curve
+            .swap(source_amount, swap_source_amount, swap_destination_amount)
+            .unwrap();
         assert_eq!(result.source_amount_swapped, expected_source_amount_swapped);
         assert_eq!(result.amount_swapped, expected_destination_amount_swapped)
     }
@@ -403,18 +404,33 @@ mod tests {
             host_fee_denominator,
         };
         // much too small
-        assert!(curve.swap(12u128, 70_000_000_000u128, 4_000_000u128).is_none()); // spot: 10 * 4m / 70b = 0
+        assert!(curve
+            .swap(12u128, 70_000_000_000u128, 4_000_000u128)
+            .is_none()); // spot: 10 * 4m / 70b = 0
 
         // for these tests, since the amounts are so small, 2 tokens should be
         // subtracted from the actual calculation for fees
         let tests = [
-            (12u128, 4_000_000u128, 70_000_000_000u128, 12u128, 174999u128), // spot: 10 * 70b / 4m = 175000
+            (
+                12u128,
+                4_000_000u128,
+                70_000_000_000u128,
+                12u128,
+                174999u128,
+            ), // spot: 10 * 70b / 4m = 175000
             (12u128, 30_000u128, 20_000u128, 12u128, 6u128), // spot: 10 * 2 / 3 = 6.6666
             (11u128, 30_000u128, 20_000u128, 10u128, 5u128), // spot: 9 * 2 / 3 = 6, can also get 6 tokens out with 8 in
             (12u128, 20_000u128, 30_000u128, 12u128, 14u128), // spot: 10 * 3 / 2 = 15
             (102u128, 60_000u128, 30_000u128, 101u128, 49u128), // spot: 100 * 3 / 6 = 50, can also get 49 tokens out with 99 in
         ];
-        for (source_amount, swap_source_amount, swap_destination_amount, expected_source_amount, expected_destination_amount) in tests.iter() {
+        for (
+            source_amount,
+            swap_source_amount,
+            swap_destination_amount,
+            expected_source_amount,
+            expected_destination_amount,
+        ) in tests.iter()
+        {
             test_truncation(
                 &curve,
                 *source_amount,
