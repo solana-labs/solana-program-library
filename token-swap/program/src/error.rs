@@ -82,6 +82,12 @@ pub enum SwapError {
     /// The provided token program does not match the token program expected by the swap
     #[error("The provided token program does not match the token program expected by the swap")]
     IncorrectTokenProgramId,
+    /// The provided curve type is not supported by the program owner
+    #[error("The provided curve type is not supported by the program owner")]
+    UnsupportedCurveType,
+    /// The provided curve parameters are invalid
+    #[error("The provided curve parameters are invalid")]
+    InvalidCurve,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

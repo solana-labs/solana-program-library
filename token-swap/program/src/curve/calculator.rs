@@ -1,5 +1,6 @@
 //! Swap calculations
 
+use crate::error::SwapError;
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
@@ -7,26 +8,6 @@ use std::fmt::Debug;
 /// Note that on Ethereum, Uniswap uses the geometric mean of all provided
 /// input amounts, and Balancer uses 100 * 10 ^ 18.
 pub const INITIAL_SWAP_POOL_AMOUNT: u128 = 1_000_000_000;
-
-/// Helper function for calculating swap fee
-pub fn calculate_fee(
-    token_amount: u128,
-    fee_numerator: u128,
-    fee_denominator: u128,
-) -> Option<u128> {
-    if fee_numerator == 0 || token_amount == 0 {
-        Some(0)
-    } else {
-        let fee = token_amount
-            .checked_mul(fee_numerator)?
-            .checked_div(fee_denominator)?;
-        if fee == 0 {
-            Some(1) // minimum fee of one token
-        } else {
-            Some(fee)
-        }
-    }
-}
 
 /// Helper function for mapping to SwapError::CalculationFailure
 pub fn map_zero_to_none(x: u128) -> Option<u128> {
@@ -37,23 +18,18 @@ pub fn map_zero_to_none(x: u128) -> Option<u128> {
     }
 }
 
-/// Encodes all results of swapping from a source token to a destination token
-pub struct SwapResult {
-    /// New amount of source token
-    pub new_source_amount: u128,
-    /// New amount of destination token
-    pub new_destination_amount: u128,
-    /// Amount of source token swapped (includes fees)
-    pub source_amount_swapped: u128,
-    /// Amount of destination token swapped
-    pub destination_amount_swapped: u128,
-    /// Amount of source tokens going to pool holders
-    pub trade_fee: u128,
-    /// Amount of source tokens going to owner
-    pub owner_fee: u128,
+/// Trade direction, since curves can calculate differently
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TradeDirection {
+    /// Input token A, output token B
+    AtoB,
+    /// Input token B, output token A
+    BtoA,
 }
 
 /// Encodes all results of swapping from a source token to a destination token
+#[derive(Debug, PartialEq)]
 pub struct SwapWithoutFeesResult {
     /// Amount of source token swapped
     pub source_amount_swapped: u128,
@@ -77,82 +53,8 @@ pub trait CurveCalculator: Debug + DynPack {
         source_amount: u128,
         swap_source_amount: u128,
         swap_destination_amount: u128,
+        trade_direction: TradeDirection,
     ) -> Option<SwapWithoutFeesResult>;
-
-    /// Subtract fees and calculate how much destination token will be provided
-    /// given an amount of source token.
-    fn swap(
-        &self,
-        source_amount: u128,
-        swap_source_amount: u128,
-        swap_destination_amount: u128,
-    ) -> Option<SwapResult> {
-        // debit the fee to calculate the amount swapped
-        let trade_fee = self.trading_fee(source_amount)?;
-        let owner_fee = self.owner_trading_fee(source_amount)?;
-
-        let total_fees = trade_fee.checked_add(owner_fee)?;
-        let source_amount_less_fees = source_amount.checked_sub(total_fees)?;
-
-        let SwapWithoutFeesResult {
-            source_amount_swapped,
-            destination_amount_swapped,
-        } = self.swap_without_fees(
-            source_amount_less_fees,
-            swap_source_amount,
-            swap_destination_amount,
-        )?;
-
-        let source_amount_swapped = source_amount_swapped.checked_add(total_fees)?;
-        Some(SwapResult {
-            new_source_amount: swap_source_amount.checked_add(source_amount_swapped)?,
-            new_destination_amount: swap_destination_amount
-                .checked_sub(destination_amount_swapped)?,
-            source_amount_swapped,
-            destination_amount_swapped,
-            trade_fee,
-            owner_fee,
-        })
-    }
-
-    /// Calculate the withdraw fee in pool tokens
-    /// Default implementation assumes no fee
-    fn owner_withdraw_fee(&self, _pool_tokens: u128) -> Option<u128> {
-        Some(0)
-    }
-
-    /// Calculate the trading fee in trading tokens
-    /// Default implementation assumes no fee
-    fn trading_fee(&self, _trading_tokens: u128) -> Option<u128> {
-        Some(0)
-    }
-
-    /// Calculate the trading fee in trading tokens
-    /// Default implementation assumes no fee
-    fn owner_trading_fee(&self, _trading_tokens: u128) -> Option<u128> {
-        Some(0)
-    }
-
-    /// Calculate the pool token equivalent of the owner fee on trade
-    /// See the math at: https://balancer.finance/whitepaper/#single-asset-deposit
-    /// For the moment, we do an approximation for the square root.  For numbers
-    /// just above 1, simply dividing by 2 brings you very close to the correct
-    /// value.
-    fn owner_fee_to_pool_tokens(
-        &self,
-        owner_fee: u128,
-        trading_token_amount: u128,
-        pool_supply: u128,
-        tokens_in_pool: u128,
-    ) -> Option<u128> {
-        // Get the trading fee incurred if the owner fee is swapped for the other side
-        let trade_fee = self.trading_fee(owner_fee)?;
-        let owner_fee = owner_fee.checked_sub(trade_fee)?;
-        pool_supply
-            .checked_mul(owner_fee)?
-            .checked_div(trading_token_amount)?
-            .checked_div(tokens_in_pool)
-    }
 
     /// Get the supply for a new pool
     /// The default implementation is a Balancer-style fixed initial supply
@@ -176,9 +78,6 @@ pub trait CurveCalculator: Debug + DynPack {
             .and_then(map_zero_to_none)
     }
 
-    /// Calculate the host fee based on the owner fee, only used in production
-    /// situations where a program is hosted by multiple frontends
-    fn host_fee(&self, _owner_fee: u128) -> Option<u128> {
-        Some(0)
-    }
+    /// Validate that the given curve has no bad parameters
+    fn validate(&self) -> Result<(), SwapError>;
 }

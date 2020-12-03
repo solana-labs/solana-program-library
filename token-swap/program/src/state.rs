@@ -1,6 +1,6 @@
 //! State transition types
 
-use crate::curve::base::SwapCurve;
+use crate::curve::{base::SwapCurve, fees::Fees};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     program_error::ProgramError,
@@ -41,6 +41,9 @@ pub struct SwapInfo {
     /// Pool token account to receive trading and / or withdrawal fees
     pub pool_fee_account: Pubkey,
 
+    /// All fee information
+    pub fees: Fees,
+
     /// Swap curve parameters, to be unpacked and used by the SwapCurve, which
     /// calculates swaps, deposits, and withdrawals
     pub swap_curve: SwapCurve,
@@ -68,8 +71,9 @@ impl Pack for SwapInfo {
             token_a_mint,
             token_b_mint,
             pool_fee_account,
+            fees,
             swap_curve,
-        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 73];
+        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 9];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
@@ -79,6 +83,7 @@ impl Pack for SwapInfo {
         token_a_mint.copy_from_slice(self.token_a_mint.as_ref());
         token_b_mint.copy_from_slice(self.token_b_mint.as_ref());
         pool_fee_account.copy_from_slice(self.pool_fee_account.as_ref());
+        self.fees.pack_into_slice(&mut fees[..]);
         self.swap_curve.pack_into_slice(&mut swap_curve[..]);
     }
 
@@ -96,8 +101,9 @@ impl Pack for SwapInfo {
             token_a_mint,
             token_b_mint,
             pool_fee_account,
+            fees,
             swap_curve,
-        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 73];
+        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 9];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -112,6 +118,7 @@ impl Pack for SwapInfo {
             token_a_mint: Pubkey::new_from_array(*token_a_mint),
             token_b_mint: Pubkey::new_from_array(*token_b_mint),
             pool_fee_account: Pubkey::new_from_array(*pool_fee_account),
+            fees: Fees::unpack_from_slice(fees)?,
             swap_curve: SwapCurve::unpack_from_slice(swap_curve)?,
         })
     }
@@ -152,7 +159,7 @@ mod tests {
         let host_fee_numerator = 5;
         let host_fee_denominator = 20;
         let amp: u64 = 1;
-        let calculator = Box::new(StableCurve {
+        let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
@@ -161,8 +168,8 @@ mod tests {
             owner_withdraw_fee_denominator,
             host_fee_numerator,
             host_fee_denominator,
-            amp,
-        });
+        };
+        let calculator = Box::new(StableCurve { amp });
         let swap_curve = SwapCurve {
             curve_type,
             calculator,
@@ -178,6 +185,7 @@ mod tests {
             token_a_mint,
             token_b_mint,
             pool_fee_account,
+            fees,
             swap_curve,
         };
 
@@ -196,7 +204,6 @@ mod tests {
         packed.extend_from_slice(&token_a_mint_raw);
         packed.extend_from_slice(&token_b_mint_raw);
         packed.extend_from_slice(&pool_fee_account_raw);
-        packed.push(curve_type_raw);
         packed.extend_from_slice(&trade_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&trade_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&owner_trade_fee_numerator.to_le_bytes());
@@ -205,6 +212,7 @@ mod tests {
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
+        packed.push(curve_type_raw);
         packed.extend_from_slice(&amp.to_le_bytes());
         let unpacked = SwapInfo::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
