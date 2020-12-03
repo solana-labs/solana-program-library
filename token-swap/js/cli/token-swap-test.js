@@ -65,7 +65,7 @@ let currentFeeAmount = 0;
 // need to get slightly tweaked in the two cases.
 const SWAP_AMOUNT_IN = 100000;
 const SWAP_AMOUNT_OUT = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 90661 : 90674;
-const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22272 : 22276;
+const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22271 : 22275;
 const HOST_SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS
   ? Math.floor((SWAP_FEE * HOST_FEE_NUMERATOR) / HOST_FEE_DENOMINATOR)
   : 0;
@@ -232,7 +232,6 @@ export async function createTokenSwap(): Promise<void> {
     tokenSwapProgramId,
     tokenProgramId,
     nonce,
-    CURVE_TYPE,
     TRADING_FEE_NUMERATOR,
     TRADING_FEE_DENOMINATOR,
     OWNER_TRADING_FEE_NUMERATOR,
@@ -241,6 +240,7 @@ export async function createTokenSwap(): Promise<void> {
     OWNER_WITHDRAW_FEE_DENOMINATOR,
     HOST_FEE_NUMERATOR,
     HOST_FEE_DENOMINATOR,
+    CURVE_TYPE,
   );
 
   console.log('loading token swap');
@@ -258,7 +258,6 @@ export async function createTokenSwap(): Promise<void> {
   assert(fetchedTokenSwap.mintB.equals(mintB.publicKey));
   assert(fetchedTokenSwap.poolToken.equals(tokenPool.publicKey));
   assert(fetchedTokenSwap.feeAccount.equals(feeAccount));
-  assert(CURVE_TYPE == fetchedTokenSwap.curveType);
   assert(
     TRADING_FEE_NUMERATOR == fetchedTokenSwap.tradeFeeNumerator.toNumber(),
   );
@@ -285,6 +284,7 @@ export async function createTokenSwap(): Promise<void> {
   assert(
     HOST_FEE_DENOMINATOR == fetchedTokenSwap.hostFeeDenominator.toNumber(),
   );
+  assert(CURVE_TYPE == fetchedTokenSwap.curveType);
 }
 
 export async function deposit(): Promise<void> {

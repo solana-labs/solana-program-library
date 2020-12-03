@@ -29,7 +29,6 @@ declare module '@solana/spl-token-swap' {
       tokenAccountB: PublicKey,
       mintA: PublicKey,
       mintB: PublicKey,
-      curveType: number,
       tradeFeeNumerator: Numberu64,
       tradeFeeDenominator: Numberu64,
       ownerTradeFeeNumerator: Numberu64,
@@ -38,6 +37,7 @@ declare module '@solana/spl-token-swap' {
       ownerWithdrawFeeDenominator: Numberu64,
       hostFeeNumerator: Numberu64,
       hostFeeDenominator: Numberu64,
+      curveType: number,
       payer: Account,
     ): TokenSwap;
 
@@ -56,7 +56,6 @@ declare module '@solana/spl-token-swap' {
       tokenProgramId: PublicKey,
       swapProgramId: PublicKey,
       nonce: number,
-      curveType: number,
       tradeFeeNumerator: number,
       tradeFeeDenominator: number,
       ownerTradeFeeNumerator: number,
@@ -65,6 +64,7 @@ declare module '@solana/spl-token-swap' {
       ownerWithdrawFeeDenominator: number,
       hostFeeNumerator: number,
       hostFeeDenominator: number,
+      curveType: number,
     ): TransactionInstruction;
 
     static loadTokenSwap(
@@ -89,7 +89,6 @@ declare module '@solana/spl-token-swap' {
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       nonce: number,
-      curveType: number,
       tradeFeeNumerator: number,
       tradeFeeDenominator: number,
       ownerTradeFeeNumerator: number,
@@ -98,6 +97,7 @@ declare module '@solana/spl-token-swap' {
       ownerWithdrawFeeDenominator: number,
       hostFeeNumerator: number,
       hostFeeDenominator: number,
+      curveType: number,
     ): Promise<TokenSwap>;
 
     swap(
