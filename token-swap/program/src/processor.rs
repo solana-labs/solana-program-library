@@ -761,11 +761,6 @@ impl PrintProgramError for SwapError {
             }
             SwapError::IncorrectTokenProgramId => {
                 msg!("Error: The provided token program does not match the token program expected by the swap")
-            },
-            SwapError::InvalidTokenAccount => {
-                msg!(
-                    "Error: The provided token account is not owned by the expected token program"
-                )
             }
         }
     }
