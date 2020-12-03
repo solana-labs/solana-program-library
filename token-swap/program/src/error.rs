@@ -79,6 +79,9 @@ pub enum SwapError {
     /// The provided fee does not match the program owner's constraints
     #[error("The provided fee does not match the program owner's constraints")]
     InvalidFee,
+    /// The provided token program does not match the token program expected by the swap
+    #[error("The provided token program does not match the token program expected by the swap")]
+    IncorrectTokenProgramId,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

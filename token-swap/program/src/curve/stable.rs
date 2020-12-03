@@ -6,7 +6,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use crate::curve::calculator::{calculate_fee, CurveCalculator, DynPack, SwapResult};
+use crate::curve::calculator::{calculate_fee, CurveCalculator, DynPack, SwapWithoutFeesResult};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::TryFrom;
 
@@ -128,38 +128,26 @@ fn compute_new_destination_amount(
 
 impl CurveCalculator for StableCurve {
     /// Stable curve
-    fn swap(
+    fn swap_without_fees(
         &self,
         source_amount: u128,
         swap_source_amount: u128,
         swap_destination_amount: u128,
-    ) -> Option<SwapResult> {
-        let trade_fee = self.trading_fee(source_amount)?;
-        let owner_fee = self.owner_trading_fee(source_amount)?;
-
-        let new_source_amount_less_fee = swap_source_amount
-            .checked_add(source_amount)?
-            .checked_sub(trade_fee)?
-            .checked_sub(owner_fee)?;
-
+    ) -> Option<SwapWithoutFeesResult> {
         let leverage = self.amp.checked_mul(N_COINS as u64)?;
 
+        let new_source_amount = swap_source_amount.checked_add(source_amount)?;
         let new_destination_amount = compute_new_destination_amount(
             leverage,
-            new_source_amount_less_fee,
+            new_source_amount,
             compute_d(leverage, swap_source_amount, swap_destination_amount)?,
         )?;
 
-        //let amount_swapped =
-        //    map_zero_to_none(swap_destination_amount.checked_sub(new_destination_amount.as_u128())?)?;
         let amount_swapped = swap_destination_amount.checked_sub(new_destination_amount)?;
-        let new_source_amount = swap_source_amount.checked_add(source_amount)?;
-        Some(SwapResult {
-            new_source_amount,
-            new_destination_amount,
-            amount_swapped,
-            trade_fee,
-            owner_fee,
+
+        Some(SwapWithoutFeesResult {
+            source_amount_swapped: source_amount,
+            destination_amount_swapped: amount_swapped,
         })
     }
 
@@ -364,7 +352,7 @@ mod tests {
             .swap(source_amount, swap_source_amount, swap_destination_amount)
             .unwrap();
         assert_eq!(result.new_source_amount, 1_100);
-        assert_eq!(result.amount_swapped, 2_063);
+        assert_eq!(result.destination_amount_swapped, 2_063);
         assert_eq!(result.new_destination_amount, 47_937);
         assert_eq!(result.trade_fee, 1);
         assert_eq!(result.owner_fee, 0);
@@ -399,7 +387,7 @@ mod tests {
             .swap(source_amount, swap_source_amount, swap_destination_amount)
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 2024);
+        assert_eq!(result.destination_amount_swapped, 2024);
         assert_eq!(result.new_destination_amount, 47976);
         assert_eq!(result.trade_fee, 1);
         assert_eq!(result.owner_fee, 2);
@@ -446,7 +434,7 @@ mod tests {
                         }
 
                         println!(
-                            "trying: source_amount={}, swap_source_amount={}, swap_destination_amount={}", 
+                            "trying: source_amount={}, swap_source_amount={}, swap_destination_amount={}",
                             source_amount, swap_source_amount, swap_destination_amount
                         );
 
@@ -467,14 +455,15 @@ mod tests {
 
                         println!(
                             "result={}, sim_result={}",
-                            result.amount_swapped, sim_result
+                            result.destination_amount_swapped, sim_result
                         );
-                        let diff = (sim_result as i128 - result.amount_swapped as i128).abs();
+                        let diff =
+                            (sim_result as i128 - result.destination_amount_swapped as i128).abs();
 
                         assert!(
                             diff <= 1,
                             "result={}, sim_result={}, amp={}, source_amount={}, swap_source_amount={}, swap_destination_amount={}",
-                            result.amount_swapped,
+                            result.destination_amount_swapped,
                             sim_result,
                             amp,
                             source_amount,

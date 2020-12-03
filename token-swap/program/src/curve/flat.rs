@@ -5,7 +5,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use crate::curve::calculator::{calculate_fee, CurveCalculator, DynPack, SwapResult};
+use crate::curve::calculator::{calculate_fee, CurveCalculator, DynPack, SwapWithoutFeesResult};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::TryFrom;
 
@@ -32,29 +32,15 @@ pub struct FlatCurve {
 
 impl CurveCalculator for FlatCurve {
     /// Flat curve swap always returns 1:1 (minus fee)
-    fn swap(
+    fn swap_without_fees(
         &self,
         source_amount: u128,
-        swap_source_amount: u128,
-        swap_destination_amount: u128,
-    ) -> Option<SwapResult> {
-        // debit the fee to calculate the amount swapped
-        let trade_fee = self.trading_fee(source_amount)?;
-        let owner_fee = self.owner_trading_fee(source_amount)?;
-
-        let amount_swapped = source_amount
-            .checked_sub(trade_fee)?
-            .checked_sub(owner_fee)?;
-        let new_destination_amount = swap_destination_amount.checked_sub(amount_swapped)?;
-
-        // actually add the whole amount coming in
-        let new_source_amount = swap_source_amount.checked_add(source_amount)?;
-        Some(SwapResult {
-            new_source_amount,
-            new_destination_amount,
-            amount_swapped,
-            trade_fee,
-            owner_fee,
+        _swap_source_amount: u128,
+        _swap_destination_amount: u128,
+    ) -> Option<SwapWithoutFeesResult> {
+        Some(SwapWithoutFeesResult {
+            source_amount_swapped: source_amount,
+            destination_amount_swapped: source_amount,
         })
     }
 
@@ -191,7 +177,7 @@ mod tests {
             .unwrap();
         let amount_swapped = 97;
         assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, amount_swapped);
+        assert_eq!(result.destination_amount_swapped, amount_swapped);
         assert_eq!(result.trade_fee, 1);
         assert_eq!(result.owner_fee, 2);
         assert_eq!(

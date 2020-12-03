@@ -8,7 +8,7 @@ use std::fmt::Debug;
 /// input amounts, and Balancer uses 100 * 10 ^ 18.
 pub const INITIAL_SWAP_POOL_AMOUNT: u128 = 1_000_000_000;
 
-/// Helper function for calcuating swap fee
+/// Helper function for calculating swap fee
 pub fn calculate_fee(
     token_amount: u128,
     fee_numerator: u128,
@@ -43,12 +43,22 @@ pub struct SwapResult {
     pub new_source_amount: u128,
     /// New amount of destination token
     pub new_destination_amount: u128,
+    /// Amount of source token swapped (includes fees)
+    pub source_amount_swapped: u128,
     /// Amount of destination token swapped
-    pub amount_swapped: u128,
+    pub destination_amount_swapped: u128,
     /// Amount of source tokens going to pool holders
     pub trade_fee: u128,
     /// Amount of source tokens going to owner
     pub owner_fee: u128,
+}
+
+/// Encodes all results of swapping from a source token to a destination token
+pub struct SwapWithoutFeesResult {
+    /// Amount of source token swapped
+    pub source_amount_swapped: u128,
+    /// Amount of destination token swapped
+    pub destination_amount_swapped: u128,
 }
 
 /// Trait for packing of trait objects, required because structs that implement
@@ -62,12 +72,48 @@ pub trait DynPack {
 pub trait CurveCalculator: Debug + DynPack {
     /// Calculate how much destination token will be provided given an amount
     /// of source token.
+    fn swap_without_fees(
+        &self,
+        source_amount: u128,
+        swap_source_amount: u128,
+        swap_destination_amount: u128,
+    ) -> Option<SwapWithoutFeesResult>;
+
+    /// Subtract fees and calculate how much destination token will be provided
+    /// given an amount of source token.
     fn swap(
         &self,
         source_amount: u128,
         swap_source_amount: u128,
         swap_destination_amount: u128,
-    ) -> Option<SwapResult>;
+    ) -> Option<SwapResult> {
+        // debit the fee to calculate the amount swapped
+        let trade_fee = self.trading_fee(source_amount)?;
+        let owner_fee = self.owner_trading_fee(source_amount)?;
+
+        let total_fees = trade_fee.checked_add(owner_fee)?;
+        let source_amount_less_fees = source_amount.checked_sub(total_fees)?;
+
+        let SwapWithoutFeesResult {
+            source_amount_swapped,
+            destination_amount_swapped,
+        } = self.swap_without_fees(
+            source_amount_less_fees,
+            swap_source_amount,
+            swap_destination_amount,
+        )?;
+
+        let source_amount_swapped = source_amount_swapped.checked_add(total_fees)?;
+        Some(SwapResult {
+            new_source_amount: swap_source_amount.checked_add(source_amount_swapped)?,
+            new_destination_amount: swap_destination_amount
+                .checked_sub(destination_amount_swapped)?,
+            source_amount_swapped,
+            destination_amount_swapped,
+            trade_fee,
+            owner_fee,
+        })
+    }
 
     /// Calculate the withdraw fee in pool tokens
     /// Default implementation assumes no fee
