@@ -4,7 +4,7 @@ use crate::*;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    info,
+    msg,
     program::{invoke, invoke_signed},
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -35,7 +35,7 @@ pub fn process_instruction(
         program_id,
     );
     if associated_token_address != *associated_token_account_info.key {
-        info!("Error: Associated address does not match seed derivation");
+        msg!("Error: Associated address does not match seed derivation");
         return Err(ProgramError::InvalidSeeds);
     }
 
@@ -54,10 +54,10 @@ pub fn process_instruction(
         .saturating_sub(associated_token_account_info.lamports());
 
     if required_lamports > 0 {
-        info!(&format!(
+        msg!(
             "Transfer {} lamports to the associated token account",
             required_lamports
-        ));
+        );
         invoke(
             &system_instruction::transfer(
                 &funder_info.key,
@@ -72,7 +72,7 @@ pub fn process_instruction(
         )?;
     }
 
-    info!("Allocate space for the associated token account");
+    msg!("Allocate space for the associated token account");
     invoke_signed(
         &system_instruction::allocate(
             associated_token_account_info.key,
@@ -85,7 +85,7 @@ pub fn process_instruction(
         &[&associated_token_account_signer_seeds],
     )?;
 
-    info!("Assign the associated token account to the SPL Token program");
+    msg!("Assign the associated token account to the SPL Token program");
     invoke_signed(
         &system_instruction::assign(associated_token_account_info.key, &spl_token::id()),
         &[
@@ -95,7 +95,7 @@ pub fn process_instruction(
         &[&associated_token_account_signer_seeds],
     )?;
 
-    info!("Initialize the associated token account");
+    msg!("Initialize the associated token account");
     invoke(
         &spl_token::instruction::initialize_account(
             &spl_token::id(),

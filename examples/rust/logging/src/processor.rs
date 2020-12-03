@@ -3,8 +3,8 @@
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
-    info,
     log::{sol_log_compute_units, sol_log_params, sol_log_slice},
+    msg,
     pubkey::Pubkey,
 };
 
@@ -15,19 +15,22 @@ pub fn process_instruction(
     instruction_data: &[u8],
 ) -> ProgramResult {
     // Log a string
-    info!("static string");
+    msg!("static string");
 
     // Log 5 numbers as u64s in hexadecimal format
-    info!(
+    msg!(
         instruction_data[0],
-        instruction_data[1], instruction_data[2], instruction_data[3], instruction_data[4]
+        instruction_data[1],
+        instruction_data[2],
+        instruction_data[3],
+        instruction_data[4]
     );
 
     // Log a slice
     sol_log_slice(instruction_data);
 
     // Log a formatted message, use with caution can be expensive
-    info!(&format!("formatted {}: {:?}", "message", instruction_data));
+    msg!("formatted {}: {:?}", "message", instruction_data);
 
     // Log a public key
     program_id.log();

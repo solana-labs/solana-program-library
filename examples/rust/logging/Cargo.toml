@@ -13,11 +13,11 @@ no-entrypoint = []
 test-bpf = []
 
 [dependencies]
-solana-program = "1.4.13"
+solana-program = "1.4.14"
 
 [dev-dependencies]
-solana-program-test = "1.4.9"
-solana-sdk = "1.4.9"
+solana-program-test = "1.4.14"
+solana-sdk = "1.4.14"
 tokio = { version = "0.3", features = ["macros"]}
 
 [lib]

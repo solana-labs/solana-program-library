@@ -3,8 +3,8 @@
 use crate::{state::AcceptanceCriteria, *};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
-    info,
     instruction::{AccountMeta, Instruction},
+    msg,
     program_error::ProgramError,
     program_pack::{Pack, Sealed},
     pubkey::Pubkey,
@@ -86,10 +86,10 @@ impl Pack for FeatureProposalInstruction {
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
         Self::deserialize(&mut mut_src).map_err(|err| {
-            info!(&format!(
+            msg!(
                 "Error: failed to deserialize feature proposal instruction: {}",
                 err
-            ));
+            );
             ProgramError::InvalidInstructionData
         })
     }
