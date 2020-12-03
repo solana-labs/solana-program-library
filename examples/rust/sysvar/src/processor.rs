@@ -3,7 +3,7 @@
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    info,
+    msg,
     pubkey::Pubkey,
     sysvar::{clock::Clock, Sysvar},
 };
@@ -25,7 +25,7 @@ pub fn process_instruction(
     let clock = Clock::from_account_info(&clock_sysvar_info)?;
 
     // Note: `format!` can be very expensive, use cautiously
-    info!(&format!("{:?}", clock));
+    msg!("{:?}", clock);
 
     Ok(())
 }

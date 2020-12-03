@@ -9,7 +9,7 @@ use crate::{
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
-    entrypoint::ProgramResult, info, program::invoke_signed, program_error::PrintProgramError,
+    entrypoint::ProgramResult, msg, program::invoke_signed, program_error::PrintProgramError,
     program_error::ProgramError, program_pack::Pack, pubkey::Pubkey,
 };
 use std::convert::TryFrom;
@@ -582,27 +582,27 @@ impl Processor {
         let instruction = StakePoolInstruction::deserialize(input)?;
         match instruction {
             StakePoolInstruction::Initialize(init) => {
-                info!("Instruction: Init");
+                msg!("Instruction: Init");
                 Self::process_initialize(program_id, init, accounts)
             }
             StakePoolInstruction::Deposit => {
-                info!("Instruction: Deposit");
+                msg!("Instruction: Deposit");
                 Self::process_deposit(program_id, accounts)
             }
             StakePoolInstruction::Withdraw(amount) => {
-                info!("Instruction: Withdraw");
+                msg!("Instruction: Withdraw");
                 Self::process_withdraw(program_id, amount, accounts)
             }
             StakePoolInstruction::Claim => {
-                info!("Instruction: Claim");
+                msg!("Instruction: Claim");
                 Self::process_claim(program_id, accounts)
             }
             StakePoolInstruction::SetStakingAuthority => {
-                info!("Instruction: SetStakingAuthority");
+                msg!("Instruction: SetStakingAuthority");
                 Self::process_set_staking_auth(program_id, accounts)
             }
             StakePoolInstruction::SetOwner => {
-                info!("Instruction: SetOwner");
+                msg!("Instruction: SetOwner");
                 Self::process_set_owner(program_id, accounts)
             }
         }
@@ -615,19 +615,19 @@ impl PrintProgramError for Error {
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
         match self {
-            Error::AlreadyInUse => info!("Error: AlreadyInUse"),
-            Error::InvalidProgramAddress => info!("Error: InvalidProgramAddress"),
-            Error::InvalidOwner => info!("Error: InvalidOwner"),
-            Error::ExpectedToken => info!("Error: ExpectedToken"),
-            Error::ExpectedAccount => info!("Error: ExpectedAccount"),
-            Error::InvalidSupply => info!("Error: InvalidSupply"),
-            Error::InvalidDelegate => info!("Error: InvalidDelegate"),
-            Error::InvalidState => info!("Error: InvalidState"),
-            Error::InvalidInput => info!("Error: InvalidInput"),
-            Error::InvalidOutput => info!("Error: InvalidOutput"),
-            Error::CalculationFailure => info!("Error: CalculationFailure"),
-            Error::FeeTooHigh => info!("Error: FeeTooHigh"),
-            Error::WrongAccountMint => info!("Error: WrongAccountMint"),
+            Error::AlreadyInUse => msg!("Error: AlreadyInUse"),
+            Error::InvalidProgramAddress => msg!("Error: InvalidProgramAddress"),
+            Error::InvalidOwner => msg!("Error: InvalidOwner"),
+            Error::ExpectedToken => msg!("Error: ExpectedToken"),
+            Error::ExpectedAccount => msg!("Error: ExpectedAccount"),
+            Error::InvalidSupply => msg!("Error: InvalidSupply"),
+            Error::InvalidDelegate => msg!("Error: InvalidDelegate"),
+            Error::InvalidState => msg!("Error: InvalidState"),
+            Error::InvalidInput => msg!("Error: InvalidInput"),
+            Error::InvalidOutput => msg!("Error: InvalidOutput"),
+            Error::CalculationFailure => msg!("Error: CalculationFailure"),
+            Error::FeeTooHigh => msg!("Error: FeeTooHigh"),
+            Error::WrongAccountMint => msg!("Error: WrongAccountMint"),
         }
     }
 }
@@ -671,7 +671,7 @@ mod tests {
             account_infos: &[AccountInfo],
             signers_seeds: &[&[&[u8]]],
         ) -> ProgramResult {
-            info!("TestSyscallStubs::sol_invoke_signed()");
+            msg!("TestSyscallStubs::sol_invoke_signed()");
 
             let mut new_account_infos = vec![];
             for meta in instruction.accounts.iter() {

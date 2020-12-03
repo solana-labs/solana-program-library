@@ -10,7 +10,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
-    info,
+    msg,
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
     program_pack::{IsInitialized, Pack},
@@ -628,70 +628,70 @@ impl Processor {
                 mint_authority,
                 freeze_authority,
             } => {
-                info!("Instruction: InitializeMint");
+                msg!("Instruction: InitializeMint");
                 Self::process_initialize_mint(accounts, decimals, mint_authority, freeze_authority)
             }
             TokenInstruction::InitializeAccount => {
-                info!("Instruction: InitializeAccount");
+                msg!("Instruction: InitializeAccount");
                 Self::process_initialize_account(accounts)
             }
             TokenInstruction::InitializeMultisig { m } => {
-                info!("Instruction: InitializeMultisig");
+                msg!("Instruction: InitializeMultisig");
                 Self::process_initialize_multisig(accounts, m)
             }
             TokenInstruction::Transfer { amount } => {
-                info!("Instruction: Transfer");
+                msg!("Instruction: Transfer");
                 Self::process_transfer(program_id, accounts, amount, None)
             }
             TokenInstruction::Approve { amount } => {
-                info!("Instruction: Approve");
+                msg!("Instruction: Approve");
                 Self::process_approve(program_id, accounts, amount, None)
             }
             TokenInstruction::Revoke => {
-                info!("Instruction: Revoke");
+                msg!("Instruction: Revoke");
                 Self::process_revoke(program_id, accounts)
             }
             TokenInstruction::SetAuthority {
                 authority_type,
                 new_authority,
             } => {
-                info!("Instruction: SetAuthority");
+                msg!("Instruction: SetAuthority");
                 Self::process_set_authority(program_id, accounts, authority_type, new_authority)
             }
             TokenInstruction::MintTo { amount } => {
-                info!("Instruction: MintTo");
+                msg!("Instruction: MintTo");
                 Self::process_mint_to(program_id, accounts, amount, None)
             }
             TokenInstruction::Burn { amount } => {
-                info!("Instruction: Burn");
+                msg!("Instruction: Burn");
                 Self::process_burn(program_id, accounts, amount, None)
             }
             TokenInstruction::CloseAccount => {
-                info!("Instruction: CloseAccount");
+                msg!("Instruction: CloseAccount");
                 Self::process_close_account(program_id, accounts)
             }
             TokenInstruction::FreezeAccount => {
-                info!("Instruction: FreezeAccount");
+                msg!("Instruction: FreezeAccount");
                 Self::process_toggle_freeze_account(program_id, accounts, true)
             }
             TokenInstruction::ThawAccount => {
-                info!("Instruction: FreezeAccount");
+                msg!("Instruction: FreezeAccount");
                 Self::process_toggle_freeze_account(program_id, accounts, false)
             }
             TokenInstruction::Transfer2 { amount, decimals } => {
-                info!("Instruction: Transfer");
+                msg!("Instruction: Transfer");
                 Self::process_transfer(program_id, accounts, amount, Some(decimals))
             }
             TokenInstruction::Approve2 { amount, decimals } => {
-                info!("Instruction: Approve");
+                msg!("Instruction: Approve");
                 Self::process_approve(program_id, accounts, amount, Some(decimals))
             }
             TokenInstruction::MintTo2 { amount, decimals } => {
-                info!("Instruction: MintTo");
+                msg!("Instruction: MintTo");
                 Self::process_mint_to(program_id, accounts, amount, Some(decimals))
             }
             TokenInstruction::Burn2 { amount, decimals } => {
-                info!("Instruction: Burn");
+                msg!("Instruction: Burn");
                 Self::process_burn(program_id, accounts, amount, Some(decimals))
             }
         }
@@ -741,37 +741,35 @@ impl PrintProgramError for TokenError {
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
         match self {
-            TokenError::NotRentExempt => {
-                info!("Error: Lamport balance below rent-exempt threshold")
-            }
-            TokenError::InsufficientFunds => info!("Error: insufficient funds"),
-            TokenError::InvalidMint => info!("Error: Invalid Mint"),
-            TokenError::MintMismatch => info!("Error: Account not associated with this Mint"),
-            TokenError::OwnerMismatch => info!("Error: owner does not match"),
-            TokenError::FixedSupply => info!("Error: the total supply of this token is fixed"),
-            TokenError::AlreadyInUse => info!("Error: account or token already in use"),
+            TokenError::NotRentExempt => msg!("Error: Lamport balance below rent-exempt threshold"),
+            TokenError::InsufficientFunds => msg!("Error: insufficient funds"),
+            TokenError::InvalidMint => msg!("Error: Invalid Mint"),
+            TokenError::MintMismatch => msg!("Error: Account not associated with this Mint"),
+            TokenError::OwnerMismatch => msg!("Error: owner does not match"),
+            TokenError::FixedSupply => msg!("Error: the total supply of this token is fixed"),
+            TokenError::AlreadyInUse => msg!("Error: account or token already in use"),
             TokenError::InvalidNumberOfProvidedSigners => {
-                info!("Error: Invalid number of provided signers")
+                msg!("Error: Invalid number of provided signers")
             }
             TokenError::InvalidNumberOfRequiredSigners => {
-                info!("Error: Invalid number of required signers")
+                msg!("Error: Invalid number of required signers")
             }
             TokenError::NativeNotSupported => {
-                info!("Error: Instruction does not support native tokens")
+                msg!("Error: Instruction does not support native tokens")
             }
             TokenError::NonNativeHasBalance => {
-                info!("Error: Non-native account can only be closed if its balance is zero")
+                msg!("Error: Non-native account can only be closed if its balance is zero")
             }
-            TokenError::InvalidInstruction => info!("Error: Invalid instruction"),
-            TokenError::InvalidState => info!("Error: Invalid account state for operation"),
-            TokenError::Overflow => info!("Error: Operation overflowed"),
+            TokenError::InvalidInstruction => msg!("Error: Invalid instruction"),
+            TokenError::InvalidState => msg!("Error: Invalid account state for operation"),
+            TokenError::Overflow => msg!("Error: Operation overflowed"),
             TokenError::AuthorityTypeNotSupported => {
-                info!("Error: Account does not support specified authority type")
+                msg!("Error: Account does not support specified authority type")
             }
-            TokenError::MintCannotFreeze => info!("Error: This token mint cannot freeze accounts"),
-            TokenError::AccountFrozen => info!("Error: Account is frozen"),
+            TokenError::MintCannotFreeze => msg!("Error: This token mint cannot freeze accounts"),
+            TokenError::AccountFrozen => msg!("Error: Account is frozen"),
             TokenError::MintDecimalsMismatch => {
-                info!("Error: decimals different from the Mint decimals")
+                msg!("Error: decimals different from the Mint decimals")
             }
         }
     }

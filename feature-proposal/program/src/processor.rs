@@ -6,7 +6,7 @@ use solana_program::{
     clock::Clock,
     entrypoint::ProgramResult,
     feature::{self, Feature},
-    info,
+    msg,
     program::{invoke, invoke_signed},
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -29,7 +29,7 @@ pub fn process_instruction(
             tokens_to_mint,
             acceptance_criteria,
         } => {
-            info!("FeatureProposalInstruction::Propose");
+            msg!("FeatureProposalInstruction::Propose");
 
             let funder_info = next_account_info(account_info_iter)?;
             let feature_proposal_info = next_account_info(account_info_iter)?;
@@ -45,28 +45,28 @@ pub fn process_instruction(
             let (mint_address, mint_bump_seed) =
                 get_mint_address_with_seed(feature_proposal_info.key);
             if mint_address != *mint_info.key {
-                info!("Error: mint address derivation mismatch");
+                msg!("Error: mint address derivation mismatch");
                 return Err(ProgramError::InvalidArgument);
             }
 
             let (distributor_token_address, distributor_token_bump_seed) =
                 get_distributor_token_address_with_seed(feature_proposal_info.key);
             if distributor_token_address != *distributor_token_info.key {
-                info!("Error: distributor token address derivation mismatch");
+                msg!("Error: distributor token address derivation mismatch");
                 return Err(ProgramError::InvalidArgument);
             }
 
             let (acceptance_token_address, acceptance_token_bump_seed) =
                 get_acceptance_token_address_with_seed(feature_proposal_info.key);
             if acceptance_token_address != *acceptance_token_info.key {
-                info!("Error: acceptance token address derivation mismatch");
+                msg!("Error: acceptance token address derivation mismatch");
                 return Err(ProgramError::InvalidArgument);
             }
 
             let (feature_id_address, feature_id_bump_seed) =
                 get_feature_id_address_with_seed(feature_proposal_info.key);
             if feature_id_address != *feature_id_info.key {
-                info!("Error: feature-id address derivation mismatch");
+                msg!("Error: feature-id address derivation mismatch");
                 return Err(ProgramError::InvalidArgument);
             }
 
@@ -94,7 +94,7 @@ pub fn process_instruction(
                 &[feature_id_bump_seed],
             ];
 
-            info!("Creating feature proposal account");
+            msg!("Creating feature proposal account");
             invoke(
                 &system_instruction::create_account(
                     funder_info.key,
@@ -112,7 +112,7 @@ pub fn process_instruction(
             FeatureProposal::Pending(acceptance_criteria)
                 .pack_into_slice(&mut feature_proposal_info.data.borrow_mut());
 
-            info!("Creating mint");
+            msg!("Creating mint");
             invoke_signed(
                 &system_instruction::create_account(
                     funder_info.key,
@@ -129,7 +129,7 @@ pub fn process_instruction(
                 &[&mint_signer_seeds],
             )?;
 
-            info!("Initializing mint");
+            msg!("Initializing mint");
             invoke(
                 &spl_token::instruction::initialize_mint(
                     &spl_token::id(),
@@ -145,7 +145,7 @@ pub fn process_instruction(
                 ],
             )?;
 
-            info!("Creating distributor token account");
+            msg!("Creating distributor token account");
             invoke_signed(
                 &system_instruction::create_account(
                     funder_info.key,
@@ -162,7 +162,7 @@ pub fn process_instruction(
                 &[&distributor_token_signer_seeds],
             )?;
 
-            info!("Initializing distributor token account");
+            msg!("Initializing distributor token account");
             invoke(
                 &spl_token::instruction::initialize_account(
                     &spl_token::id(),
@@ -179,7 +179,7 @@ pub fn process_instruction(
                 ],
             )?;
 
-            info!("Creating acceptance token account");
+            msg!("Creating acceptance token account");
             invoke_signed(
                 &system_instruction::create_account(
                     funder_info.key,
@@ -196,7 +196,7 @@ pub fn process_instruction(
                 &[&acceptance_token_signer_seeds],
             )?;
 
-            info!("Initializing acceptance token account");
+            msg!("Initializing acceptance token account");
             invoke(
                 &spl_token::instruction::initialize_account(
                     &spl_token::id(),
@@ -245,7 +245,7 @@ pub fn process_instruction(
 
             // Mint `tokens_to_mint` tokens into `distributor_token_account` owned by
             // `feature_proposal`
-            info!(&format!("Minting {} tokens", tokens_to_mint));
+            msg!("Minting {} tokens", tokens_to_mint);
             invoke_signed(
                 &spl_token::instruction::mint_to(
                     &spl_token::id(),
@@ -265,7 +265,7 @@ pub fn process_instruction(
 
             // Fully fund the feature id account so the `Tally` instruction will not require any
             // lamports from the caller
-            info!("Funding feature id account");
+            msg!("Funding feature id account");
             invoke(
                 &system_instruction::transfer(
                     funder_info.key,
@@ -279,7 +279,7 @@ pub fn process_instruction(
                 ],
             )?;
 
-            info!("Allocating feature id account");
+            msg!("Allocating feature id account");
             invoke_signed(
                 &system_instruction::allocate(feature_id_info.key, Feature::size_of() as u64),
                 &[feature_id_info.clone(), system_program_info.clone()],
@@ -288,7 +288,7 @@ pub fn process_instruction(
         }
 
         FeatureProposalInstruction::Tally => {
-            info!("FeatureProposalInstruction::Tally");
+            msg!("FeatureProposalInstruction::Tally");
 
             let feature_proposal_info = next_account_info(account_info_iter)?;
             let feature_proposal_state =
@@ -307,14 +307,14 @@ pub fn process_instruction(
                     let acceptance_token_address =
                         get_acceptance_token_address(feature_proposal_info.key);
                     if acceptance_token_address != *acceptance_token_info.key {
-                        info!("Error: acceptance token address derivation mismatch");
+                        msg!("Error: acceptance token address derivation mismatch");
                         return Err(ProgramError::InvalidArgument);
                     }
 
                     let (feature_id_address, feature_id_bump_seed) =
                         get_feature_id_address_with_seed(feature_proposal_info.key);
                     if feature_id_address != *feature_id_info.key {
-                        info!("Error: feature-id address derivation mismatch");
+                        msg!("Error: feature-id address derivation mismatch");
                         return Err(ProgramError::InvalidArgument);
                     }
 
@@ -325,40 +325,40 @@ pub fn process_instruction(
                     ];
 
                     if clock.unix_timestamp >= acceptance_criteria.deadline {
-                        info!("Feature proposal expired");
+                        msg!("Feature proposal expired");
                         FeatureProposal::Expired
                             .pack_into_slice(&mut feature_proposal_info.data.borrow_mut());
                         return Ok(());
                     }
 
-                    info!("Unpacking acceptance token account");
+                    msg!("Unpacking acceptance token account");
                     let acceptance_token =
                         spl_token::state::Account::unpack(&acceptance_token_info.data.borrow())?;
 
-                    info!(&format!(
+                    msg!(
                             "Feature proposal has received {} tokens, and {} tokens required for acceptance",
                             acceptance_token.amount, acceptance_criteria.tokens_required
-                        ));
+                        );
                     if acceptance_token.amount < acceptance_criteria.tokens_required {
-                        info!("Activation threshold has not been reached");
+                        msg!("Activation threshold has not been reached");
                         return Ok(());
                     }
 
-                    info!("Assigning feature id account");
+                    msg!("Assigning feature id account");
                     invoke_signed(
                         &system_instruction::assign(feature_id_info.key, &feature::id()),
                         &[feature_id_info.clone(), system_program_info.clone()],
                         &[&feature_id_signer_seeds],
                     )?;
 
-                    info!("Feature proposal accepted");
+                    msg!("Feature proposal accepted");
                     FeatureProposal::Accepted {
                         tokens_upon_acceptance: acceptance_token.amount,
                     }
                     .pack_into_slice(&mut feature_proposal_info.data.borrow_mut());
                 }
                 _ => {
-                    info!("Error: feature proposal account not in the pending state");
+                    msg!("Error: feature proposal account not in the pending state");
                     return Err(ProgramError::InvalidAccountData);
                 }
             }

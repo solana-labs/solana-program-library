@@ -12,7 +12,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
-    info,
+    msg,
     program::invoke_signed,
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
@@ -625,14 +625,14 @@ impl Processor {
         let instruction = SwapInstruction::unpack(input)?;
         match instruction {
             SwapInstruction::Initialize(Initialize { nonce, swap_curve }) => {
-                info!("Instruction: Init");
+                msg!("Instruction: Init");
                 Self::process_initialize(program_id, nonce, swap_curve, accounts, fee_constraints)
             }
             SwapInstruction::Swap(Swap {
                 amount_in,
                 minimum_amount_out,
             }) => {
-                info!("Instruction: Swap");
+                msg!("Instruction: Swap");
                 Self::process_swap(program_id, amount_in, minimum_amount_out, accounts)
             }
             SwapInstruction::Deposit(Deposit {
@@ -640,7 +640,7 @@ impl Processor {
                 maximum_token_a_amount,
                 maximum_token_b_amount,
             }) => {
-                info!("Instruction: Deposit");
+                msg!("Instruction: Deposit");
                 Self::process_deposit(
                     program_id,
                     pool_token_amount,
@@ -654,7 +654,7 @@ impl Processor {
                 minimum_token_a_amount,
                 minimum_token_b_amount,
             }) => {
-                info!("Instruction: Withdraw");
+                msg!("Instruction: Withdraw");
                 Self::process_withdraw(
                     program_id,
                     pool_token_amount,
@@ -673,53 +673,51 @@ impl PrintProgramError for SwapError {
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
         match self {
-            SwapError::AlreadyInUse => info!("Error: Swap account already in use"),
+            SwapError::AlreadyInUse => msg!("Error: Swap account already in use"),
             SwapError::InvalidProgramAddress => {
-                info!("Error: Invalid program address generated from nonce and key")
+                msg!("Error: Invalid program address generated from nonce and key")
             }
             SwapError::InvalidOwner => {
-                info!("Error: The input account owner is not the program address")
+                msg!("Error: The input account owner is not the program address")
             }
             SwapError::InvalidOutputOwner => {
-                info!("Error: Output pool account owner cannot be the program address")
+                msg!("Error: Output pool account owner cannot be the program address")
             }
-            SwapError::ExpectedMint => {
-                info!("Error: Deserialized account is not an SPL Token mint")
-            }
+            SwapError::ExpectedMint => msg!("Error: Deserialized account is not an SPL Token mint"),
             SwapError::ExpectedAccount => {
-                info!("Error: Deserialized account is not an SPL Token account")
+                msg!("Error: Deserialized account is not an SPL Token account")
             }
-            SwapError::EmptySupply => info!("Error: Input token account empty"),
-            SwapError::InvalidSupply => info!("Error: Pool token mint has a non-zero supply"),
-            SwapError::RepeatedMint => info!("Error: Swap input token accounts have the same mint"),
-            SwapError::InvalidDelegate => info!("Error: Token account has a delegate"),
-            SwapError::InvalidInput => info!("Error: InvalidInput"),
+            SwapError::EmptySupply => msg!("Error: Input token account empty"),
+            SwapError::InvalidSupply => msg!("Error: Pool token mint has a non-zero supply"),
+            SwapError::RepeatedMint => msg!("Error: Swap input token accounts have the same mint"),
+            SwapError::InvalidDelegate => msg!("Error: Token account has a delegate"),
+            SwapError::InvalidInput => msg!("Error: InvalidInput"),
             SwapError::IncorrectSwapAccount => {
-                info!("Error: Address of the provided swap token account is incorrect")
+                msg!("Error: Address of the provided swap token account is incorrect")
             }
             SwapError::IncorrectPoolMint => {
-                info!("Error: Address of the provided pool token mint is incorrect")
+                msg!("Error: Address of the provided pool token mint is incorrect")
             }
-            SwapError::InvalidOutput => info!("Error: InvalidOutput"),
-            SwapError::CalculationFailure => info!("Error: CalculationFailure"),
-            SwapError::InvalidInstruction => info!("Error: InvalidInstruction"),
+            SwapError::InvalidOutput => msg!("Error: InvalidOutput"),
+            SwapError::CalculationFailure => msg!("Error: CalculationFailure"),
+            SwapError::InvalidInstruction => msg!("Error: InvalidInstruction"),
             SwapError::ExceededSlippage => {
-                info!("Error: Swap instruction exceeds desired slippage limit")
+                msg!("Error: Swap instruction exceeds desired slippage limit")
             }
-            SwapError::InvalidCloseAuthority => info!("Error: Token account has a close authority"),
+            SwapError::InvalidCloseAuthority => msg!("Error: Token account has a close authority"),
             SwapError::InvalidFreezeAuthority => {
-                info!("Error: Pool token mint has a freeze authority")
+                msg!("Error: Pool token mint has a freeze authority")
             }
-            SwapError::IncorrectFeeAccount => info!("Error: Pool fee token account incorrect"),
+            SwapError::IncorrectFeeAccount => msg!("Error: Pool fee token account incorrect"),
             SwapError::ZeroTradingTokens => {
-                info!("Error: Given pool token amount results in zero trading tokens")
+                msg!("Error: Given pool token amount results in zero trading tokens")
             }
-            SwapError::FeeCalculationFailure => info!(
+            SwapError::FeeCalculationFailure => msg!(
                 "Error: The fee calculation failed due to overflow, underflow, or unexpected 0"
             ),
-            SwapError::ConversionFailure => info!("Error: Conversion to or from u64 failed."),
+            SwapError::ConversionFailure => msg!("Error: Conversion to or from u64 failed."),
             SwapError::InvalidFee => {
-                info!("Error: The provided fee does not match the program owner's constraints")
+                msg!("Error: The provided fee does not match the program owner's constraints")
             }
         }
     }
@@ -765,7 +763,7 @@ mod tests {
             account_infos: &[AccountInfo],
             signers_seeds: &[&[&[u8]]],
         ) -> ProgramResult {
-            info!("TestSyscallStubs::sol_invoke_signed()");
+            msg!("TestSyscallStubs::sol_invoke_signed()");
 
             let mut new_account_infos = vec![];
 

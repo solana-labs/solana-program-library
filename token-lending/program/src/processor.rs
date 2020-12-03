@@ -3,7 +3,7 @@
 use crate::error::LendingError;
 use num_traits::FromPrimitive;
 use solana_program::{
-    account_info::AccountInfo, decode_error::DecodeError, entrypoint::ProgramResult, info,
+    account_info::AccountInfo, decode_error::DecodeError, entrypoint::ProgramResult, msg,
     program_error::PrintProgramError, pubkey::Pubkey,
 };
 
@@ -27,7 +27,7 @@ impl PrintProgramError for LendingError {
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
         match self {
-            LendingError::AlreadyInUse => info!("Error: Lending account already in use"),
+            LendingError::AlreadyInUse => msg!("Error: Lending account already in use"),
         }
     }
 }

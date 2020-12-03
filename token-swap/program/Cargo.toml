@@ -16,14 +16,14 @@ fuzz = ["arbitrary"]
 arrayref = "0.3.6"
 num-derive = "0.3"
 num-traits = "0.2"
-solana-program = "1.4.13"
+solana-program = "1.4.14"
 spl-token = { version = "3.0", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 uint = "0.8"
 arbitrary = { version = "0.4", features = ["derive"], optional = true }
 
 [dev-dependencies]
-solana-sdk = "1.4.9"
+solana-sdk = "1.4.14"
 sim =  { path = "./sim" }
 
 [lib]

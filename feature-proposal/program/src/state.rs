@@ -2,7 +2,7 @@
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     clock::UnixTimestamp,
-    info,
+    msg,
     program_error::ProgramError,
     program_pack::{Pack, Sealed},
 };
@@ -47,10 +47,10 @@ impl Pack for FeatureProposal {
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
         Self::deserialize(&mut mut_src).map_err(|err| {
-            info!(&format!(
+            msg!(
                 "Error: failed to deserialize feature proposal account: {}",
                 err
-            ));
+            );
             ProgramError::InvalidAccountData
         })
     }
