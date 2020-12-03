@@ -4146,13 +4146,8 @@ mod tests {
         let user_key = Pubkey::new_unique();
         let swapper_key = Pubkey::new_unique();
 
-        let mut accounts = SwapAccountInfo::new(
-            &user_key,
-            fees,
-            swap_curve,
-            token_a_amount,
-            token_b_amount,
-        );
+        let mut accounts =
+            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
 
         accounts.initialize_swap().unwrap();
 
