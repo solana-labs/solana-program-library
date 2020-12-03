@@ -336,7 +336,7 @@ impl Processor {
                 to_u128(dest_account.amount)?,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
-        if result.amount_swapped < to_u128(minimum_amount_out)? {
+        if result.destination_amount_swapped < to_u128(minimum_amount_out)? {
             return Err(SwapError::ExceededSlippage.into());
         }
         Self::token_transfer(
@@ -355,7 +355,7 @@ impl Processor {
             destination_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            to_u64(result.amount_swapped)?,
+            to_u64(result.destination_amount_swapped)?,
         )?;
 
         // mint pool tokens equivalent to the owner fee
@@ -3696,7 +3696,7 @@ mod tests {
         let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
         assert_eq!(
             token_b.amount,
-            initial_b + to_u64(results.amount_swapped).unwrap()
+            initial_b + to_u64(results.destination_amount_swapped).unwrap()
         );
 
         let first_fee = swap_curve
@@ -3715,7 +3715,7 @@ mod tests {
             TryInto::<u64>::try_into(first_fee).unwrap()
         );
 
-        let first_swap_amount = results.amount_swapped;
+        let first_swap_amount = results.destination_amount_swapped;
 
         // swap the other way
         let pool_mint = spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
@@ -3756,7 +3756,7 @@ mod tests {
         let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
         assert_eq!(
             token_a.amount,
-            initial_a - a_to_b_amount + to_u64(results.amount_swapped).unwrap()
+            initial_a - a_to_b_amount + to_u64(results.destination_amount_swapped).unwrap()
         );
 
         let swap_token_b =

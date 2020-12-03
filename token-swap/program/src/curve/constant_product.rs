@@ -6,7 +6,7 @@ use solana_program::{
 };
 
 use crate::curve::calculator::{
-    calculate_fee, map_zero_to_none, CurveCalculator, DynPack, SwapResult,
+    calculate_fee, map_zero_to_none, CurveCalculator, DynPack, SwapWithoutFeesResult,
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::TryFrom;
@@ -34,53 +34,38 @@ pub struct ConstantProductCurve {
 
 impl CurveCalculator for ConstantProductCurve {
     /// Constant product swap ensures x * y = constant
-    fn swap(
+    fn swap_without_fees(
         &self,
         source_amount: u128,
         swap_source_amount: u128,
         swap_destination_amount: u128,
-    ) -> Option<SwapResult> {
-        // debit the fee to calculate the amount swapped
-        let trade_fee = self.trading_fee(source_amount)?;
-        let owner_fee = self.owner_trading_fee(source_amount)?;
-
-        let source_amount_less_fee = source_amount
-            .checked_sub(trade_fee)?
-            .checked_sub(owner_fee)?;
+    ) -> Option<SwapWithoutFeesResult> {
         let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
-        let mut new_source_amount_less_fee =
-            swap_source_amount.checked_add(source_amount_less_fee)?;
-        let mut new_destination_amount = invariant.checked_div(new_source_amount_less_fee)?;
+
+        let mut new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
+        let mut new_swap_destination_amount = invariant.checked_div(new_swap_source_amount)?;
+
         // Ceiling the destination amount if there's any remainder, which will
         // almost always be the case.
-        let remainder = invariant.checked_rem_euclid(new_source_amount_less_fee)?;
+        let remainder = invariant.checked_rem(new_swap_source_amount)?;
         if remainder > 0 {
-            new_destination_amount = new_destination_amount.checked_add(1)?;
+            new_swap_destination_amount = new_swap_destination_amount.checked_add(1)?;
             // now calculate the minimum amount of source token needed to get
             // the destination amount to avoid taking too much from users
-            new_source_amount_less_fee = invariant.checked_div(new_destination_amount)?;
-            let remainder = invariant.checked_rem_euclid(new_destination_amount)?;
+            new_swap_source_amount = invariant.checked_div(new_swap_destination_amount)?;
+            let remainder = invariant.checked_rem(new_swap_destination_amount)?;
             if remainder > 0 {
-                new_source_amount_less_fee = new_source_amount_less_fee.checked_add(1)?;
+                new_swap_source_amount = new_swap_source_amount.checked_add(1)?;
             }
         }
-        let source_amount_swapped = new_source_amount_less_fee
-            .checked_add(trade_fee)?
-            .checked_add(owner_fee)?
-            .checked_sub(swap_source_amount)?;
-        let amount_swapped =
-            map_zero_to_none(swap_destination_amount.checked_sub(new_destination_amount)?)?;
 
-        // actually add the whole amount coming in
-        let new_source_amount = swap_source_amount.checked_add(source_amount_swapped)?;
+        let source_amount_swapped = new_swap_source_amount.checked_sub(swap_source_amount)?;
+        let destination_amount_swapped =
+            map_zero_to_none(swap_destination_amount.checked_sub(new_swap_destination_amount)?)?;
 
-        Some(SwapResult {
-            new_source_amount,
-            new_destination_amount,
+        Some(SwapWithoutFeesResult {
             source_amount_swapped,
-            amount_swapped,
-            trade_fee,
-            owner_fee,
+            destination_amount_swapped,
         })
     }
 
@@ -275,7 +260,7 @@ mod tests {
             .swap(source_amount, swap_source_amount, swap_destination_amount)
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 4504);
+        assert_eq!(result.destination_amount_swapped, 4504);
         assert_eq!(result.new_destination_amount, 45496);
         assert_eq!(result.trade_fee, 1);
         assert_eq!(result.owner_fee, 0);
@@ -309,7 +294,7 @@ mod tests {
             .swap(source_amount, swap_source_amount, swap_destination_amount)
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 4504);
+        assert_eq!(result.destination_amount_swapped, 4504);
         assert_eq!(result.new_destination_amount, 45496);
         assert_eq!(result.trade_fee, 0);
         assert_eq!(result.owner_fee, 1);
@@ -325,7 +310,7 @@ mod tests {
             .swap(source_amount, swap_source_amount, swap_destination_amount)
             .unwrap();
         assert_eq!(result.new_source_amount, 1100);
-        assert_eq!(result.amount_swapped, 4545);
+        assert_eq!(result.destination_amount_swapped, 4545);
         assert_eq!(result.new_destination_amount, 45455);
     }
 
@@ -376,52 +361,40 @@ mod tests {
         expected_source_amount_swapped: u128,
         expected_destination_amount_swapped: u128,
     ) {
+        let invariant = swap_source_amount * swap_destination_amount;
         let result = curve
             .swap(source_amount, swap_source_amount, swap_destination_amount)
             .unwrap();
         assert_eq!(result.source_amount_swapped, expected_source_amount_swapped);
-        assert_eq!(result.amount_swapped, expected_destination_amount_swapped)
+        assert_eq!(
+            result.destination_amount_swapped,
+            expected_destination_amount_swapped
+        );
+        let new_invariant = (swap_source_amount + result.source_amount_swapped)
+            * (swap_destination_amount - result.destination_amount_swapped);
+        assert!(new_invariant >= invariant);
     }
 
     #[test]
-    fn constant_product_swap_truncation() {
-        let trade_fee_numerator = 25;
-        let trade_fee_denominator = 10000;
-        let owner_trade_fee_numerator = 5;
-        let owner_trade_fee_denominator = 10000;
-        let owner_withdraw_fee_numerator = 0;
-        let owner_withdraw_fee_denominator = 0;
-        let host_fee_numerator = 20;
-        let host_fee_denominator = 100;
-        let curve = ConstantProductCurve {
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        };
+    fn constant_product_swap_rounding() {
+        let curve = ConstantProductCurve::default();
+
         // much too small
         assert!(curve
-            .swap(12u128, 70_000_000_000u128, 4_000_000u128)
+            .swap_without_fees(10, 70_000_000_000, 4_000_000)
             .is_none()); // spot: 10 * 4m / 70b = 0
 
-        // for these tests, since the amounts are so small, 2 tokens should be
-        // subtracted from the actual calculation for fees
-        let tests = [
-            (
-                12u128,
-                4_000_000u128,
-                70_000_000_000u128,
-                12u128,
-                174999u128,
-            ), // spot: 10 * 70b / 4m = 175000
-            (12u128, 30_000u128, 20_000u128, 12u128, 6u128), // spot: 10 * 2 / 3 = 6.6666
-            (11u128, 30_000u128, 20_000u128, 10u128, 5u128), // spot: 9 * 2 / 3 = 6, can also get 6 tokens out with 8 in
-            (12u128, 20_000u128, 30_000u128, 12u128, 14u128), // spot: 10 * 3 / 2 = 15
-            (102u128, 60_000u128, 30_000u128, 101u128, 49u128), // spot: 100 * 3 / 6 = 50, can also get 49 tokens out with 99 in
+        let tests: &[(u128, u128, u128, u128, u128)] = &[
+            (10, 4_000_000, 70_000_000_000, 10, 174_999), // spot: 10 * 70b / ~4m = 174,999.99
+            (20, 30_000 - 20, 10_000, 18, 6), // spot: 20 * 1 / 3.000 = 6.6667 (source can be 18 to get 6 dest.)
+            (19, 30_000 - 20, 10_000, 18, 6), // spot: 19 * 1 / 2.999 = 6.3334 (source can be 18 to get 6 dest.)
+            (18, 30_000 - 20, 10_000, 18, 6), // spot: 18 * 1 / 2.999 = 6.0001
+            (10, 20_000, 30_000, 10, 14),     // spot: 10 * 3 / 2.0010 = 14.99
+            (10, 20_000 - 9, 30_000, 10, 14), // spot: 10 * 3 / 2.0001 = 14.999
+            (10, 20_000 - 10, 30_000, 10, 15), // spot: 10 * 3 / 2.0000 = 15
+            (100, 60_000, 30_000, 99, 49), // spot: 100 * 3 / 6.001 = 49.99 (source can be 99 to get 49 dest.)
+            (99, 60_000, 30_000, 99, 49),  // spot: 99 * 3 / 6.001 = 49.49
+            (98, 60_000, 30_000, 97, 48), // spot: 98 * 3 / 6.001 = 48.99 (source can be 97 to get 48 dest.)
         ];
         for (
             source_amount,
