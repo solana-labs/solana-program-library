@@ -16,6 +16,41 @@ use crate::{
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ConstantProductCurve {}
 
+/// The constant product swap calculation, factored out of its class for reuse
+pub fn swap(
+    source_amount: u128,
+    swap_source_amount: u128,
+    swap_destination_amount: u128,
+) -> Option<SwapWithoutFeesResult> {
+    let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
+
+    let mut new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
+    let mut new_swap_destination_amount = invariant.checked_div(new_swap_source_amount)?;
+
+    // Ceiling the destination amount if there's any remainder, which will
+    // almost always be the case.
+    let remainder = invariant.checked_rem(new_swap_source_amount)?;
+    if remainder > 0 {
+        new_swap_destination_amount = new_swap_destination_amount.checked_add(1)?;
+        // now calculate the minimum amount of source token needed to get
+        // the destination amount to avoid taking too much from users
+        new_swap_source_amount = invariant.checked_div(new_swap_destination_amount)?;
+        let remainder = invariant.checked_rem(new_swap_destination_amount)?;
+        if remainder > 0 {
+            new_swap_source_amount = new_swap_source_amount.checked_add(1)?;
+        }
+    }
+
+    let source_amount_swapped = new_swap_source_amount.checked_sub(swap_source_amount)?;
+    let destination_amount_swapped =
+        map_zero_to_none(swap_destination_amount.checked_sub(new_swap_destination_amount)?)?;
+
+    Some(SwapWithoutFeesResult {
+        source_amount_swapped,
+        destination_amount_swapped,
+    })
+}
+
 impl CurveCalculator for ConstantProductCurve {
     /// Constant product swap ensures x * y = constant
     fn swap_without_fees(
@@ -25,33 +60,7 @@ impl CurveCalculator for ConstantProductCurve {
         swap_destination_amount: u128,
         _trade_direction: TradeDirection,
     ) -> Option<SwapWithoutFeesResult> {
-        let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
-
-        let mut new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
-        let mut new_swap_destination_amount = invariant.checked_div(new_swap_source_amount)?;
-
-        // Ceiling the destination amount if there's any remainder, which will
-        // almost always be the case.
-        let remainder = invariant.checked_rem(new_swap_source_amount)?;
-        if remainder > 0 {
-            new_swap_destination_amount = new_swap_destination_amount.checked_add(1)?;
-            // now calculate the minimum amount of source token needed to get
-            // the destination amount to avoid taking too much from users
-            new_swap_source_amount = invariant.checked_div(new_swap_destination_amount)?;
-            let remainder = invariant.checked_rem(new_swap_destination_amount)?;
-            if remainder > 0 {
-                new_swap_source_amount = new_swap_source_amount.checked_add(1)?;
-            }
-        }
-
-        let source_amount_swapped = new_swap_source_amount.checked_sub(swap_source_amount)?;
-        let destination_amount_swapped =
-            map_zero_to_none(swap_destination_amount.checked_sub(new_swap_destination_amount)?)?;
-
-        Some(SwapWithoutFeesResult {
-            source_amount_swapped,
-            destination_amount_swapped,
-        })
+        swap(source_amount, swap_source_amount, swap_destination_amount)
     }
 
     fn validate(&self) -> Result<(), SwapError> {

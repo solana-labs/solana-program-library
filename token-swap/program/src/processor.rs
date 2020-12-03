@@ -805,9 +805,11 @@ fn to_u64(val: u128) -> Result<u64, SwapError> {
 mod tests {
     use super::*;
     use crate::{
-        curve::base::CurveType,
         curve::calculator::{CurveCalculator, INITIAL_SWAP_POOL_AMOUNT},
-        curve::{constant_price::ConstantPriceCurve, constant_product::ConstantProductCurve},
+        curve::{
+            base::CurveType, constant_price::ConstantPriceCurve,
+            constant_product::ConstantProductCurve, offset::OffsetCurve,
+        },
         instruction::{deposit, initialize, swap, withdraw},
     };
     use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
@@ -3694,11 +3696,11 @@ mod tests {
         fees: Fees,
         curve_type: CurveType,
         calculator: Box<dyn CurveCalculator>,
+        token_a_amount: u64,
+        token_b_amount: u64,
     ) {
         let user_key = Pubkey::new_unique();
         let swapper_key = Pubkey::new_unique();
-        let token_a_amount = 10_000_000_000u64;
-        let token_b_amount = 50_000_000_000u64;
 
         let swap_curve = SwapCurve {
             curve_type,
@@ -3867,7 +3869,8 @@ mod tests {
     }
 
     #[test]
-    fn test_valid_swap_curves() {
+    fn test_valid_swap_curves_all_fees() {
+        // All fees
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 10;
         let owner_trade_fee_numerator = 1;
@@ -3886,17 +3889,39 @@ mod tests {
             host_fee_numerator,
             host_fee_denominator,
         };
+
+        let token_a_amount = 10_000_000_000;
+        let token_b_amount = 50_000_000_000;
+
         check_valid_swap_curve(
             fees.clone(),
             CurveType::ConstantProduct,
             Box::new(ConstantProductCurve {}),
+            token_a_amount,
+            token_b_amount,
         );
         let token_b_price = 1;
         check_valid_swap_curve(
-            fees,
+            fees.clone(),
             CurveType::ConstantPrice,
             Box::new(ConstantPriceCurve { token_b_price }),
+            token_a_amount,
+            token_b_amount,
         );
+        let token_b_offset = 10_000_000_000;
+        check_valid_swap_curve(
+            fees,
+            CurveType::Offset,
+            Box::new(OffsetCurve { token_b_offset }),
+            token_a_amount,
+            token_b_amount,
+        );
+    }
+
+    #[test]
+    fn test_valid_swap_curves_trade_fee_only() {
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 10;
         let owner_trade_fee_numerator = 0;
         let owner_trade_fee_denominator = 0;
         let owner_withdraw_fee_numerator = 0;
@@ -3913,10 +3938,32 @@ mod tests {
             host_fee_numerator,
             host_fee_denominator,
         };
+
+        let token_a_amount = 10_000_000_000;
+        let token_b_amount = 50_000_000_000;
+
         check_valid_swap_curve(
-            fees,
+            fees.clone(),
             CurveType::ConstantProduct,
             Box::new(ConstantProductCurve {}),
+            token_a_amount,
+            token_b_amount,
+        );
+        let token_b_price = 1_000;
+        check_valid_swap_curve(
+            fees.clone(),
+            CurveType::ConstantPrice,
+            Box::new(ConstantPriceCurve { token_b_price }),
+            token_a_amount,
+            token_b_amount / token_b_price,
+        );
+        let token_b_offset = 10_000_000_000;
+        check_valid_swap_curve(
+            fees,
+            CurveType::Offset,
+            Box::new(OffsetCurve { token_b_offset }),
+            token_a_amount,
+            token_b_amount,
         );
     }
 
@@ -4063,6 +4110,131 @@ mod tests {
         assert_eq!(
             total_fee,
             host_fee_account.amount + owner_fee_account.amount
+        );
+    }
+
+    #[test]
+    fn test_overdraw_offset_curve() {
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 10;
+        let owner_trade_fee_numerator = 1;
+        let owner_trade_fee_denominator = 30;
+        let owner_withdraw_fee_numerator = 1;
+        let owner_withdraw_fee_denominator = 30;
+        let host_fee_numerator = 10;
+        let host_fee_denominator = 100;
+
+        let token_a_amount = 1_000_000_000;
+        let token_b_amount = 1_000;
+
+        let fees = Fees {
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
+        };
+
+        let token_b_offset = 2_000_000;
+        let swap_curve = SwapCurve {
+            curve_type: CurveType::Offset,
+            calculator: Box::new(OffsetCurve { token_b_offset }),
+        };
+        let user_key = Pubkey::new_unique();
+        let swapper_key = Pubkey::new_unique();
+
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+        );
+
+        accounts.initialize_swap().unwrap();
+
+        let swap_token_a_key = accounts.token_a_key;
+        let swap_token_b_key = accounts.token_b_key;
+        let initial_a = 1_000_000;
+        let initial_b = 1_000;
+
+        let (
+            token_a_key,
+            mut token_a_account,
+            token_b_key,
+            mut token_b_account,
+            _pool_key,
+            _pool_account,
+        ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+
+        // swap a to b way, fails, there's no liquidity
+        let a_to_b_amount = initial_a;
+        let minimum_token_b_amount = 0;
+
+        assert_eq!(
+            Err(SwapError::ZeroTradingTokens.into()),
+            accounts.swap(
+                &swapper_key,
+                &token_a_key,
+                &mut token_a_account,
+                &swap_token_a_key,
+                &swap_token_b_key,
+                &token_b_key,
+                &mut token_b_account,
+                a_to_b_amount,
+                minimum_token_b_amount,
+            )
+        );
+
+        // swap b to a, succeeds at offset price
+        let b_to_a_amount = initial_b;
+        let minimum_token_a_amount = 0;
+        accounts
+            .swap(
+                &swapper_key,
+                &token_b_key,
+                &mut token_b_account,
+                &swap_token_b_key,
+                &swap_token_a_key,
+                &token_a_key,
+                &mut token_a_account,
+                b_to_a_amount,
+                minimum_token_a_amount,
+            )
+            .unwrap();
+
+        // try a to b again, succeeds due to new liquidity
+        accounts
+            .swap(
+                &swapper_key,
+                &token_a_key,
+                &mut token_a_account,
+                &swap_token_a_key,
+                &swap_token_b_key,
+                &token_b_key,
+                &mut token_b_account,
+                a_to_b_amount,
+                minimum_token_b_amount,
+            )
+            .unwrap();
+
+        // try a to b again, fails due to no more liquidity
+        assert_eq!(
+            Err(SwapError::ZeroTradingTokens.into()),
+            accounts.swap(
+                &swapper_key,
+                &token_a_key,
+                &mut token_a_account,
+                &swap_token_a_key,
+                &swap_token_b_key,
+                &token_b_key,
+                &mut token_b_account,
+                a_to_b_amount,
+                minimum_token_b_amount,
+            )
         );
     }
 
