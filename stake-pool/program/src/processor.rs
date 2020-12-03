@@ -410,6 +410,18 @@ impl Processor {
             stake_program_info.clone(),
         )?;
 
+        Self::stake_authorize(
+            stake_pool_info.key,
+            stake_split_to.clone(),
+            withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            user_stake_authority.key,
+            stake::StakeAuthorize::Staker,
+            reserved.clone(),
+            stake_program_info.clone(),
+        )?;
+
         Self::token_burn(
             stake_pool_info.key,
             token_program_info.clone(),
@@ -478,6 +490,18 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
             user_stake_authority.key,
             stake::StakeAuthorize::Withdrawer,
+            reserved.clone(),
+            stake_program_info.clone(),
+        )?;
+
+        Self::stake_authorize(
+            stake_pool_info.key,
+            stake_to_claim.clone(),
+            withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            user_stake_authority.key,
+            stake::StakeAuthorize::Staker,
             reserved.clone(),
             stake_program_info.clone(),
         )?;
