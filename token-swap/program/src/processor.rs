@@ -199,12 +199,7 @@ impl Processor {
         if token_a.mint == token_b.mint {
             return Err(SwapError::RepeatedMint.into());
         }
-        if token_b.amount == 0 {
-            return Err(SwapError::EmptySupply.into());
-        }
-        if token_a.amount == 0 {
-            return Err(SwapError::EmptySupply.into());
-        }
+        swap_curve.calculator.validate_supply(token_a.amount, token_b.amount)?;
         if token_a.delegate.is_some() {
             return Err(SwapError::InvalidDelegate.into());
         }
@@ -373,12 +368,13 @@ impl Processor {
         let source_account =
             Self::unpack_token_account(swap_source_info, &token_swap.token_program_id)?;
         let mut pool_token_amount = token_swap
-            .fees
-            .owner_fee_to_pool_tokens(
+            .swap_curve
+            .trading_tokens_to_pool_tokens(
                 result.owner_fee,
                 to_u128(source_account.amount)?,
                 to_u128(pool_mint.supply)?,
                 to_u128(TOKENS_IN_POOL)?,
+                &token_swap.fees,
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
         if pool_token_amount > 0 {
@@ -3781,12 +3777,13 @@ mod tests {
             initial_b + to_u64(results.destination_amount_swapped).unwrap()
         );
 
-        let first_fee = fees
-            .owner_fee_to_pool_tokens(
+        let first_fee = swap_curve
+            .trading_tokens_to_pool_tokens(
                 results.owner_fee,
                 token_a_amount.try_into().unwrap(),
                 initial_supply.try_into().unwrap(),
                 TOKENS_IN_POOL.try_into().unwrap(),
+                &fees,
             )
             .unwrap();
         let fee_account =
@@ -3855,12 +3852,13 @@ mod tests {
                 - to_u64(results.source_amount_swapped).unwrap()
         );
 
-        let second_fee = fees
-            .owner_fee_to_pool_tokens(
+        let second_fee = swap_curve
+            .trading_tokens_to_pool_tokens(
                 results.owner_fee,
                 token_b_amount.try_into().unwrap(),
                 initial_supply.try_into().unwrap(),
                 TOKENS_IN_POOL.try_into().unwrap(),
+                &fees,
             )
             .unwrap();
         let fee_account =
@@ -4106,7 +4104,7 @@ mod tests {
         let host_fee_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
         let owner_fee_account =
             spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
-        let total_fee = host_fee_account.amount * host_fee_denominator / host_fee_numerator;
+        let total_fee = owner_fee_account.amount * host_fee_denominator / (host_fee_denominator - host_fee_numerator);
         assert_eq!(
             total_fee,
             host_fee_account.amount + owner_fee_account.amount
@@ -4125,7 +4123,7 @@ mod tests {
         let host_fee_denominator = 100;
 
         let token_a_amount = 1_000_000_000;
-        let token_b_amount = 1_000;
+        let token_b_amount = 0;
 
         let fees = Fees {
             trade_fee_numerator,
@@ -4153,7 +4151,7 @@ mod tests {
 
         let swap_token_a_key = accounts.token_a_key;
         let swap_token_b_key = accounts.token_b_key;
-        let initial_a = 1_000_000;
+        let initial_a = 500_000;
         let initial_b = 1_000;
 
         let (

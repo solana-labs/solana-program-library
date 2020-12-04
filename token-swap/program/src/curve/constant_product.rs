@@ -14,7 +14,7 @@ use crate::{
 
 /// ConstantProductCurve struct implementing CurveCalculator
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct ConstantProductCurve {}
+pub struct ConstantProductCurve;
 
 /// The constant product swap calculation, factored out of its class for reuse
 pub fn swap(

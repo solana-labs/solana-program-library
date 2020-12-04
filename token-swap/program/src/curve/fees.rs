@@ -107,27 +107,6 @@ impl Fees {
         )
     }
 
-    /// Calculate the pool token equivalent of the owner fee on trade
-    /// See the math at: https://balancer.finance/whitepaper/#single-asset-deposit
-    /// For the moment, we do an approximation for the square root.  For numbers
-    /// just above 1, simply dividing by 2 brings you very close to the correct
-    /// value.
-    pub fn owner_fee_to_pool_tokens(
-        &self,
-        owner_fee: u128,
-        trading_token_amount: u128,
-        pool_supply: u128,
-        tokens_in_pool: u128,
-    ) -> Option<u128> {
-        // Get the trading fee incurred if the owner fee is swapped for the other side
-        let trade_fee = self.trading_fee(owner_fee)?;
-        let owner_fee = owner_fee.checked_sub(trade_fee)?;
-        pool_supply
-            .checked_mul(owner_fee)?
-            .checked_div(trading_token_amount)?
-            .checked_div(tokens_in_pool)
-    }
-
     /// Validate that the fees are reasonable
     pub fn validate(&self) -> Result<(), SwapError> {
         validate_fraction(self.trade_fee_numerator, self.trade_fee_denominator)?;

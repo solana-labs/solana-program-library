@@ -99,6 +99,30 @@ impl SwapCurve {
             owner_fee,
         })
     }
+
+    /// Calculate the pool token equivalent of the owner fee on trade
+    /// See the math at: https://balancer.finance/whitepaper/#single-asset-deposit
+    /// For the moment, we do an approximation for the square root.  For numbers
+    /// just above 1, simply dividing by 2 brings you very close to the correct
+    /// value.
+    pub fn trading_tokens_to_pool_tokens(
+        &self,
+        source_amount: u128,
+        swap_source_amount: u128,
+        pool_supply: u128,
+        tokens_in_pool: u128,
+        fees: &Fees,
+    ) -> Option<u128> {
+        // Get the trading fee incurred if the owner fee is swapped for the other side
+        let trade_fee = fees.trading_fee(source_amount)?;
+        let source_amount = source_amount.checked_sub(trade_fee)?;
+        let new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
+        pool_supply
+            .checked_mul(source_amount)?
+            .checked_div(new_swap_source_amount)?
+            .checked_div(tokens_in_pool)
+    }
+
 }
 
 /// Default implementation for SwapCurve cannot be derived because of

@@ -81,4 +81,16 @@ pub trait CurveCalculator: Debug + DynPack {
 
     /// Validate that the given curve has no bad parameters
     fn validate(&self) -> Result<(), SwapError>;
+
+    /// Validate the given supply on init, helpful for curves that do or don't
+    /// allow zero supply on one side
+    fn validate_supply(&self, token_a_amount: u64, token_b_amount: u64) -> Result<(), SwapError> {
+        if token_a_amount == 0 {
+            return Err(SwapError::EmptySupply.into());
+        }
+        if token_b_amount == 0 {
+            return Err(SwapError::EmptySupply.into());
+        }
+        Ok(())
+    }
 }
