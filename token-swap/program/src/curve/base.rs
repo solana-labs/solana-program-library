@@ -122,7 +122,6 @@ impl SwapCurve {
             .checked_div(new_swap_source_amount)?
             .checked_div(tokens_in_pool)
     }
-
 }
 
 /// Default implementation for SwapCurve cannot be derived because of

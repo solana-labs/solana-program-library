@@ -199,7 +199,9 @@ impl Processor {
         if token_a.mint == token_b.mint {
             return Err(SwapError::RepeatedMint.into());
         }
-        swap_curve.calculator.validate_supply(token_a.amount, token_b.amount)?;
+        swap_curve
+            .calculator
+            .validate_supply(token_a.amount, token_b.amount)?;
         if token_a.delegate.is_some() {
             return Err(SwapError::InvalidDelegate.into());
         }
@@ -4104,7 +4106,8 @@ mod tests {
         let host_fee_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
         let owner_fee_account =
             spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
-        let total_fee = owner_fee_account.amount * host_fee_denominator / (host_fee_denominator - host_fee_numerator);
+        let total_fee = owner_fee_account.amount * host_fee_denominator
+            / (host_fee_denominator - host_fee_numerator);
         assert_eq!(
             total_fee,
             host_fee_account.amount + owner_fee_account.amount
