@@ -57,10 +57,10 @@ impl IsInitialized for SwapInfo {
 }
 
 impl Pack for SwapInfo {
-    const LEN: usize = 299;
+    const LEN: usize = 323;
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 299];
+        let output = array_mut_ref![output, 0, 323];
         let (
             is_initialized,
             nonce,
@@ -73,7 +73,7 @@ impl Pack for SwapInfo {
             pool_fee_account,
             fees,
             swap_curve,
-        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 9];
+        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
@@ -89,7 +89,7 @@ impl Pack for SwapInfo {
 
     /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 299];
+        let input = array_ref![input, 0, 323];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
@@ -103,7 +103,7 @@ impl Pack for SwapInfo {
             pool_fee_account,
             fees,
             swap_curve,
-        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 9];
+        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -214,6 +214,7 @@ mod tests {
         packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
         packed.push(curve_type_raw);
         packed.extend_from_slice(&amp.to_le_bytes());
+        packed.extend_from_slice(&[0u8; 24]);
         let unpacked = SwapInfo::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
 
