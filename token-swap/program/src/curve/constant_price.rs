@@ -65,7 +65,7 @@ impl CurveCalculator for ConstantPriceCurve {
 
     fn validate_supply(&self, token_a_amount: u64, _token_b_amount: u64) -> Result<(), SwapError> {
         if token_a_amount == 0 {
-            return Err(SwapError::EmptySupply.into());
+            return Err(SwapError::EmptySupply);
         }
         Ok(())
     }

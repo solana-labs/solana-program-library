@@ -86,10 +86,10 @@ pub trait CurveCalculator: Debug + DynPack {
     /// allow zero supply on one side
     fn validate_supply(&self, token_a_amount: u64, token_b_amount: u64) -> Result<(), SwapError> {
         if token_a_amount == 0 {
-            return Err(SwapError::EmptySupply.into());
+            return Err(SwapError::EmptySupply);
         }
         if token_b_amount == 0 {
-            return Err(SwapError::EmptySupply.into());
+            return Err(SwapError::EmptySupply);
         }
         Ok(())
     }
