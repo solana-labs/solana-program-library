@@ -101,10 +101,8 @@ impl SwapCurve {
     }
 
     /// Calculate the pool token equivalent of the owner fee on trade
-    /// See the math at: https://balancer.finance/whitepaper/#single-asset-deposit
-    /// For the moment, we do an approximation for the square root.  For numbers
-    /// just above 1, simply dividing by 2 brings you very close to the correct
-    /// value.
+    /// See the concept for the calculation at:
+    /// https://balancer.finance/whitepaper/#single-asset-deposit
     pub fn trading_tokens_to_pool_tokens(
         &self,
         source_amount: u128,
