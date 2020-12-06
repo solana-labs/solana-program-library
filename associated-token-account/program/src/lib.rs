@@ -48,8 +48,8 @@ pub fn get_associated_token_address(
 ///   2. `[]` Wallet address for the new associated token account
 ///   3. `[]` The token mint for the new associated token account
 ///   4. `[]` System program
-///   4. `[]` SPL Token program
-///   5. `[]` Rent sysvar
+///   5. `[]` SPL Token program
+///   6. `[]` Rent sysvar
 ///
 pub fn create_associated_token_account(
     funding_address: &Pubkey,
