@@ -46,7 +46,9 @@ impl CurveCalculator for ConstantPriceCurve {
         let token_b_pool_tokens = pool_tokens.checked_sub(token_a_pool_tokens)?;
 
         let token_b_price = self.token_b_price as u128;
-        let total_value = swap_token_b_amount.checked_mul(token_b_price)?.checked_add(swap_token_a_amount)?;
+        let total_value = swap_token_b_amount
+            .checked_mul(token_b_price)?
+            .checked_add(swap_token_a_amount)?;
 
         let token_a_amount = token_a_pool_tokens
             .checked_mul(total_value)?
@@ -73,9 +75,15 @@ impl CurveCalculator for ConstantPriceCurve {
         pool_supply: u128,
     ) -> Option<u128> {
         let token_b_price = self.token_b_price as u128;
-        let given_value = token_b_amount.checked_mul(token_b_price)?.checked_add(token_a_amount)?;
-        let total_value = swap_token_b_amount.checked_mul(token_b_price)?.checked_add(swap_token_a_amount)?;
-        pool_supply.checked_mul(given_value)?.checked_div(total_value)
+        let given_value = token_b_amount
+            .checked_mul(token_b_price)?
+            .checked_add(token_a_amount)?;
+        let total_value = swap_token_b_amount
+            .checked_mul(token_b_price)?
+            .checked_add(swap_token_a_amount)?;
+        pool_supply
+            .checked_mul(given_value)?
+            .checked_div(total_value)
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -163,29 +171,55 @@ mod tests {
         assert_eq!(curve, unpacked);
     }
 
+    fn check_pool_token_conversion(token_b_price: u128, swap_token_a_amount: u128, swap_token_b_amount: u128, token_b_amount: u128) {
+        let token_a_amount = token_b_amount * token_b_price;
+        let curve = ConstantPriceCurve {
+            token_b_price: token_b_price as u64,
+        };
+        let pool_supply = curve.new_pool_supply();
+        let pool_tokens = curve
+            .trading_tokens_to_pool_tokens(
+                token_a_amount,
+                swap_token_a_amount,
+                token_b_amount,
+                swap_token_b_amount,
+                pool_supply,
+            )
+            .unwrap();
+        let results = curve
+            .pool_tokens_to_trading_tokens(
+                pool_tokens,
+                pool_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+            )
+            .unwrap();
+        assert!(results.token_a_amount <= token_a_amount); // as long as we don't create more value, we're good
+        assert_eq!(results.token_b_amount, token_b_amount);
+    }
+
     #[test]
     fn pool_token_conversion() {
-        let token_b_price = 10_000;
-        let swap_token_a_amount = 1_000_000;
-        let swap_token_b_amount = 1;
-        let curve = ConstantPriceCurve { token_b_price: token_b_price as u64 };
-        let token_b_amount = 10;
-        let token_a_amount = token_b_amount * token_b_price;
-        let pool_supply = curve.new_pool_supply();
-        let pool_tokens = curve.trading_tokens_to_pool_tokens(
-            token_a_amount,
-            swap_token_a_amount,
-            token_b_amount,
-            swap_token_b_amount,
-            pool_supply,
-        ).unwrap();
-        let results = curve.pool_tokens_to_trading_tokens(
-            pool_tokens,
-            pool_supply,
+        let tests: &[(u128, u128, u128, u128)] = &[
+            (10_000, 1_000_000, 1, 10),
+            (10, 1_000, 100, 1),
+            (1_251, 30, 1_288, 1_225),
+            (1_000_251, 0, 1_288, 1),
+            (1_000_000_000_000, 212, 10_000, 1),
+        ];
+        for (
+            token_b_price,
             swap_token_a_amount,
             swap_token_b_amount,
-        ).unwrap();
-        assert_eq!(results.token_a_amount, token_a_amount - 1); // as long as we don't create more, we're good
-        assert_eq!(results.token_b_amount, token_b_amount);
+            token_b_amount
+        ) in tests.iter()
+        {
+            check_pool_token_conversion(
+                *token_b_price,
+                *swap_token_a_amount,
+                *swap_token_b_amount,
+                *token_b_amount
+            );
+        }
     }
 }
