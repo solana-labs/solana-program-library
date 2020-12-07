@@ -6,6 +6,9 @@ cd "$(dirname "$0")/.."
 source ./ci/rust-version.sh stable
 source ./ci/solana-version.sh install
 
+git clone https://github.com/solana-labs/solana.git
+sed -i s/v2.3.2/v2.3.3/ solana/sdk/bpf/scripts/install.sh 
+
 export RUSTFLAGS="-D warnings"
 export RUSTBACKTRACE=1
 
