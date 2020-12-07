@@ -125,7 +125,8 @@ impl SwapCurve {
             swap_token_a_amount,
             token_b_amount,
             swap_token_b_amount,
-            pool_supply)
+            pool_supply,
+        )
     }
 }
 

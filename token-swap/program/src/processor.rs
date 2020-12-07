@@ -368,31 +368,24 @@ impl Processor {
         let destination_account =
             Self::unpack_token_account(swap_destination_info, &token_swap.token_program_id)?;
         let mut pool_token_amount = match trade_direction {
-            TradeDirection::AtoB => {
-                token_swap
-                    .swap_curve
-                    .trading_tokens_to_pool_tokens(
-                        result.owner_fee,
-                        to_u128(source_account.amount)?,
-                        0u128,
-                        to_u128(destination_account.amount)?,
-                        to_u128(pool_mint.supply)?,
-                        &token_swap.fees,
-                    )
-            },
-            TradeDirection::BtoA => {
-                token_swap
-                    .swap_curve
-                    .trading_tokens_to_pool_tokens(
-                        0u128,
-                        to_u128(destination_account.amount)?,
-                        result.owner_fee,
-                        to_u128(source_account.amount)?,
-                        to_u128(pool_mint.supply)?,
-                        &token_swap.fees,
-                    )
-            },
-        }.ok_or(SwapError::FeeCalculationFailure)?;
+            TradeDirection::AtoB => token_swap.swap_curve.trading_tokens_to_pool_tokens(
+                result.owner_fee,
+                to_u128(source_account.amount)?,
+                0u128,
+                to_u128(destination_account.amount)?,
+                to_u128(pool_mint.supply)?,
+                &token_swap.fees,
+            ),
+            TradeDirection::BtoA => token_swap.swap_curve.trading_tokens_to_pool_tokens(
+                0u128,
+                to_u128(destination_account.amount)?,
+                result.owner_fee,
+                to_u128(source_account.amount)?,
+                to_u128(pool_mint.supply)?,
+                &token_swap.fees,
+            ),
+        }
+        .ok_or(SwapError::FeeCalculationFailure)?;
 
         if pool_token_amount > 0 {
             // Allow error to fall through
@@ -3589,9 +3582,15 @@ mod tests {
                 token_b_amount - to_u64(results.token_b_amount).unwrap()
             );
             let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
-            assert_eq!(token_a.amount, initial_a + to_u64(results.token_a_amount).unwrap());
+            assert_eq!(
+                token_a.amount,
+                initial_a + to_u64(results.token_a_amount).unwrap()
+            );
             let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
-            assert_eq!(token_b.amount, initial_b + to_u64(results.token_b_amount).unwrap());
+            assert_eq!(
+                token_b.amount,
+                initial_b + to_u64(results.token_b_amount).unwrap()
+            );
             let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
             assert_eq!(
                 pool_account.amount,
@@ -3878,7 +3877,7 @@ mod tests {
             token_b_amount,
         );
         check_valid_swap_curve(
-            fees.clone(),
+            fees,
             CurveType::ConstantPrice,
             Box::new(ConstantPriceCurve {}),
             token_a_amount,
@@ -3918,7 +3917,7 @@ mod tests {
             token_b_amount,
         );
         check_valid_swap_curve(
-            fees.clone(),
+            fees,
             CurveType::ConstantPrice,
             Box::new(ConstantPriceCurve {}),
             token_a_amount,

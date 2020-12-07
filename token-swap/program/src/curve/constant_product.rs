@@ -101,17 +101,20 @@ mod tests {
         assert_eq!(calculator.new_pool_supply(), INITIAL_SWAP_POOL_AMOUNT);
     }
 
-    fn check_pool_token_rate(token_a: u128, token_b: u128,deposit: u128, supply: u128, expected_a: u128, expected_b: u128) {
+    fn check_pool_token_rate(
+        token_a: u128,
+        token_b: u128,
+        deposit: u128,
+        supply: u128,
+        expected_a: u128,
+        expected_b: u128,
+    ) {
         let calculator = ConstantProductCurve {};
-        let results = calculator.pool_tokens_to_trading_tokens(deposit, supply, token_a, token_b).unwrap();
-        assert_eq!(
-            results.token_a_amount,
-            expected_a
-        );
-        assert_eq!(
-            results.token_b_amount,
-            expected_b
-        );
+        let results = calculator
+            .pool_tokens_to_trading_tokens(deposit, supply, token_a, token_b)
+            .unwrap();
+        assert_eq!(results.token_a_amount, expected_a);
+        assert_eq!(results.token_b_amount, expected_b);
     }
 
     #[test]

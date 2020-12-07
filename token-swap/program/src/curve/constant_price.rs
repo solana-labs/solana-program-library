@@ -1,9 +1,7 @@
 //! Simple constant price swap curve, set at init
 
 use crate::{
-    curve::calculator::{
-        CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection,
-    },
+    curve::calculator::{CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection},
     error::SwapError,
 };
 use solana_program::{
@@ -61,8 +59,7 @@ impl Pack for ConstantPriceCurve {
 }
 
 impl DynPack for ConstantPriceCurve {
-    fn pack_into_slice(&self, _output: &mut [u8]) {
-    }
+    fn pack_into_slice(&self, _output: &mut [u8]) {}
 }
 
 #[cfg(test)]
