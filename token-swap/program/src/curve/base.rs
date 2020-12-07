@@ -10,6 +10,7 @@ use crate::curve::{
     constant_price::ConstantPriceCurve,
     constant_product::ConstantProductCurve,
     fees::Fees,
+    offset::OffsetCurve,
     stable::StableCurve,
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
@@ -24,8 +25,10 @@ pub enum CurveType {
     ConstantProduct,
     /// Flat line, always providing 1:1 from one token to another
     ConstantPrice,
-    /// Stable, Like uniswap, but with wide zone of 1:1 instead of one point
+    /// Stable, like uniswap, but with wide zone of 1:1 instead of one point
     Stable,
+    /// Offset curve, like Uniswap, but the token B side has a faked offset
+    Offset,
 }
 
 /// Encodes all results of swapping from a source token to a destination token
@@ -181,6 +184,7 @@ impl Pack for SwapCurve {
                     Box::new(ConstantPriceCurve::unpack_from_slice(calculator)?)
                 }
                 CurveType::Stable => Box::new(StableCurve::unpack_from_slice(calculator)?),
+                CurveType::Offset => Box::new(OffsetCurve::unpack_from_slice(calculator)?),
             },
         })
     }
@@ -210,6 +214,7 @@ impl TryFrom<u8> for CurveType {
             0 => Ok(CurveType::ConstantProduct),
             1 => Ok(CurveType::ConstantPrice),
             2 => Ok(CurveType::Stable),
+            3 => Ok(CurveType::Offset),
             _ => Err(ProgramError::InvalidAccountData),
         }
     }

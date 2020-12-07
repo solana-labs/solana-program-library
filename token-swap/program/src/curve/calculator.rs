@@ -11,7 +11,7 @@ pub const INITIAL_SWAP_POOL_AMOUNT: u128 = 1_000_000_000;
 
 /// Hardcode the number of token types in a pool, used to calculate the
 /// equivalent pool tokens for the owner trading fee.
-const TOKENS_IN_POOL: u128 = 2;
+pub const TOKENS_IN_POOL: u128 = 2;
 
 /// Helper function for mapping to SwapError::CalculationFailure
 pub fn map_zero_to_none(x: u128) -> Option<u128> {
