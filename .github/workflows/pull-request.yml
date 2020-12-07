@@ -60,8 +60,6 @@ jobs:
             ~/.cargo/git
             target
           key: cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-clippy-
 
       - name: Install dependencies
         run: ./ci/install-build-deps.sh
@@ -103,16 +101,12 @@ jobs:
           path: |
             ~/.cargo/bin/rustfilt
           key: cargo-bpf-bins-${{ runner.os }}
-          restore-keys: |
-            cargo-bpf-bins-${{ runner.os }}-
 
       - uses: actions/cache@v2
         with:
           path: |
             ~/.cache
           key: solana-${{ env.SOLANA_VERSION }}
-          restore-keys: |
-            solana-
 
       - name: Install dependencies
         run: |
@@ -145,8 +139,6 @@ jobs:
         with:
           path: ~/.npm
           key: node-token-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            node-token-
       - name: Download programs
         uses: actions/download-artifact@v2
         with:
@@ -169,8 +161,6 @@ jobs:
         with:
           path: ~/.npm
           key: node-token-swap-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            node-token-swap-
       - name: Download programs
         uses: actions/download-artifact@v2
         with:
@@ -193,8 +183,6 @@ jobs:
         with:
           path: ~/.npm
           key: node-token-lending-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            node-token-lending-
       - name: Download programs
         uses: actions/download-artifact@v2
         with:
@@ -230,8 +218,6 @@ jobs:
             ~/.cargo/git
             target
           key: cargo-fuzz-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-fuzz-
 
       - uses: actions/cache@v2
         with:
@@ -239,16 +225,12 @@ jobs:
             ~/.cargo/bin/cargo-hfuzz
             ~/.cargo/bin/cargo-honggfuzz
           key: cargo-fuzz-bins-${{ runner.os }}
-          restore-keys: |
-            cargo-fuzz-bins-${{ runner.os }}-
 
       - uses: actions/cache@v2
         with:
           path: |
             ~/.cache
           key: solana-${{ env.SOLANA_VERSION }}
-          restore-keys: |
-            solana-
 
       - name: Install dependencies
         run: |
