@@ -1,7 +1,9 @@
 //! Simple constant price swap curve, set at init
 
 use crate::{
-    curve::calculator::{CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection},
+    curve::calculator::{
+        CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection, TradingTokenResult,
+    },
     error::SwapError,
 };
 use solana_program::{
@@ -26,6 +28,54 @@ impl CurveCalculator for ConstantPriceCurve {
             source_amount_swapped: source_amount,
             destination_amount_swapped: source_amount,
         })
+    }
+
+    /// Get the amount of trading tokens for the given amount of pool tokens,
+    /// provided the total trading tokens and supply of pool tokens.
+    /// For the constant price curve, the total value of the pool is weighted
+    /// by the price of token B.
+    fn pool_tokens_to_trading_tokens(
+        &self,
+        pool_tokens: u128,
+        pool_token_supply: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+    ) -> Option<TradingTokenResult> {
+        // Split the pool tokens in half, send half as token A, half as token B
+        let token_a_pool_tokens = pool_tokens.checked_div(2)?;
+        let token_b_pool_tokens = pool_tokens.checked_sub(token_a_pool_tokens)?;
+
+        let token_b_price = self.token_b_price as u128;
+        let total_value = swap_token_b_amount.checked_mul(token_b_price)?.checked_add(swap_token_a_amount)?;
+
+        let token_a_amount = token_a_pool_tokens
+            .checked_mul(total_value)?
+            .checked_div(pool_token_supply)?;
+        let token_b_amount = token_b_pool_tokens
+            .checked_mul(total_value)?
+            .checked_div(token_b_price)?
+            .checked_div(pool_token_supply)?;
+        Some(TradingTokenResult {
+            token_a_amount,
+            token_b_amount,
+        })
+    }
+
+    /// Get the amount of pool tokens for the given amount of token A and B
+    /// For the constant price curve, the total value of the pool is weighted
+    /// by the price of token B.
+    fn trading_tokens_to_pool_tokens(
+        &self,
+        token_a_amount: u128,
+        swap_token_a_amount: u128,
+        token_b_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+    ) -> Option<u128> {
+        let token_b_price = self.token_b_price as u128;
+        let given_value = token_b_amount.checked_mul(token_b_price)?.checked_add(token_a_amount)?;
+        let total_value = swap_token_b_amount.checked_mul(token_b_price)?.checked_add(swap_token_a_amount)?;
+        pool_supply.checked_mul(given_value)?.checked_div(total_value)
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -111,5 +161,31 @@ mod tests {
         let packed = vec![];
         let unpacked = ConstantPriceCurve::unpack(&packed).unwrap();
         assert_eq!(curve, unpacked);
+    }
+
+    #[test]
+    fn pool_token_conversion() {
+        let token_b_price = 10_000;
+        let swap_token_a_amount = 1_000_000;
+        let swap_token_b_amount = 1;
+        let curve = ConstantPriceCurve { token_b_price: token_b_price as u64 };
+        let token_b_amount = 10;
+        let token_a_amount = token_b_amount * token_b_price;
+        let pool_supply = curve.new_pool_supply();
+        let pool_tokens = curve.trading_tokens_to_pool_tokens(
+            token_a_amount,
+            swap_token_a_amount,
+            token_b_amount,
+            swap_token_b_amount,
+            pool_supply,
+        ).unwrap();
+        let results = curve.pool_tokens_to_trading_tokens(
+            pool_tokens,
+            pool_supply,
+            swap_token_a_amount,
+            swap_token_b_amount,
+        ).unwrap();
+        assert_eq!(results.token_a_amount, token_a_amount - 1); // as long as we don't create more, we're good
+        assert_eq!(results.token_b_amount, token_b_amount);
     }
 }
