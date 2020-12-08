@@ -97,7 +97,7 @@ impl SwapCurve {
         })
     }
 
-    /// Get the amount of pool tokens for the given amount of token A and B
+    /// Get the amount of pool tokens for the given amount of token A or B
     pub fn trading_tokens_to_pool_tokens(
         &self,
         source_amount: u128,

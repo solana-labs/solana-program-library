@@ -202,10 +202,9 @@ mod tests {
 
     #[test]
     fn trading_token_conversion() {
-        check_pool_token_rate(2, 0, 5, 10, 1, 0);
-        check_pool_token_rate(10, 0, 5, 10, 5, 0);
-        check_pool_token_rate(5, 0, 5, 10, 2, 0);
-        check_pool_token_rate(5, 0, 5, 10, 2, 0);
+        check_pool_token_rate(2, 49, 5, 10, 1, 24);
+        check_pool_token_rate(100, 202, 5, 101, 4, 10);
+        check_pool_token_rate(5, 501, 2, 10, 1, 100);
     }
 
     #[test]
