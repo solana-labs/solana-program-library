@@ -85,43 +85,27 @@ pub trait CurveCalculator: Debug + DynPack {
         &self,
         pool_tokens: u128,
         pool_token_supply: u128,
-        swap_token_a_amount: u128,
-        swap_token_b_amount: u128,
-    ) -> Option<TradingTokenResult> {
-        let token_a_amount = pool_tokens
-            .checked_mul(swap_token_a_amount)?
-            .checked_div(pool_token_supply)?;
-        let token_b_amount = pool_tokens
-            .checked_mul(swap_token_b_amount)?
-            .checked_div(pool_token_supply)?;
-        Some(TradingTokenResult {
-            token_a_amount,
-            token_b_amount,
-        })
+        swap_token_amount: u128,
+    ) -> Option<u128> {
+        pool_tokens
+            .checked_mul(swap_token_amount)?
+            .checked_div(pool_token_supply)
+            .and_then(map_zero_to_none)
     }
 
-    /// Get the amount of pool tokens for the given amount of token A and B
+    /// Get the amount of pool tokens for the given amount of token A or B
     /// See the concept for the calculation at:
     /// https://balancer.finance/whitepaper/#single-asset-deposit
     fn trading_tokens_to_pool_tokens(
         &self,
-        token_a_amount: u128,
-        swap_token_a_amount: u128,
-        token_b_amount: u128,
-        swap_token_b_amount: u128,
+        source_amount: u128,
+        swap_source_amount: u128,
         pool_supply: u128,
     ) -> Option<u128> {
-        let new_swap_token_a_amount = swap_token_a_amount.checked_add(token_a_amount)?;
-        let token_a_as_pool_tokens = pool_supply
-            .checked_mul(token_a_amount)?
-            .checked_div(new_swap_token_a_amount)?
-            .checked_div(TOKENS_IN_POOL)?;
-        let new_swap_token_b_amount = swap_token_b_amount.checked_add(token_b_amount)?;
-        let token_b_as_pool_tokens = pool_supply
-            .checked_mul(token_b_amount)?
-            .checked_div(new_swap_token_b_amount)?
-            .checked_div(TOKENS_IN_POOL)?;
-        token_a_as_pool_tokens.checked_add(token_b_as_pool_tokens)
+        pool_supply
+            .checked_mul(source_amount)?
+            .checked_div(swap_source_amount)?
+            .checked_div(TOKENS_IN_POOL)
     }
 
     /// Validate that the given curve has no bad parameters

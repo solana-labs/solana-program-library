@@ -103,34 +103,29 @@ mod tests {
 
     fn check_pool_token_rate(
         token_a: u128,
-        token_b: u128,
         deposit: u128,
         supply: u128,
         expected_a: u128,
-        expected_b: u128,
     ) {
         let calculator = ConstantProductCurve {};
         let results = calculator
-            .pool_tokens_to_trading_tokens(deposit, supply, token_a, token_b)
+            .pool_tokens_to_trading_tokens(deposit, supply, token_a)
             .unwrap();
-        assert_eq!(results.token_a_amount, expected_a);
-        assert_eq!(results.token_b_amount, expected_b);
+        assert_eq!(results, expected_a);
     }
 
     #[test]
     fn trading_token_conversion() {
-        check_pool_token_rate(2, 0, 5, 10, 1, 0);
-        check_pool_token_rate(10, 0, 5, 10, 5, 0);
-        check_pool_token_rate(5, 0, 5, 10, 2, 0);
-        check_pool_token_rate(5, 0, 5, 10, 2, 0);
+        check_pool_token_rate(2, 5, 10, 1);
+        check_pool_token_rate(10, 5, 10, 5);
+        check_pool_token_rate(5, 5, 10, 2);
+        check_pool_token_rate(5, 5, 10, 2);
     }
 
     #[test]
     fn fail_trading_token_conversion() {
         let calculator = ConstantProductCurve {};
-        let results = calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX, 0);
-        assert!(results.is_none());
-        let results = calculator.pool_tokens_to_trading_tokens(5, 10, 0, u128::MAX);
+        let results = calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX);
         assert!(results.is_none());
     }
 

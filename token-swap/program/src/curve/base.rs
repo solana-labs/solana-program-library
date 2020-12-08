@@ -97,34 +97,20 @@ impl SwapCurve {
         })
     }
 
-    /// Get the amount of pool tokens for the given amount of token A and B
+    /// Get the amount of pool tokens for the given amount of token A or B
     pub fn trading_tokens_to_pool_tokens(
         &self,
-        token_a_amount: u128,
-        swap_token_a_amount: u128,
-        token_b_amount: u128,
-        swap_token_b_amount: u128,
+        source_amount: u128,
+        swap_source_amount: u128,
         pool_supply: u128,
         fees: &Fees,
     ) -> Option<u128> {
         // Get the trading fee incurred if the owner fee is swapped for the other side
-        let token_a_amount = if token_a_amount > 0 {
-            let trade_fee = fees.trading_fee(token_a_amount)?;
-            token_a_amount.checked_sub(trade_fee)?
-        } else {
-            0
-        };
-        let token_b_amount = if token_b_amount > 0 {
-            let trade_fee = fees.trading_fee(token_b_amount)?;
-            token_b_amount.checked_sub(trade_fee)?
-        } else {
-            0
-        };
+        let trade_fee = fees.trading_fee(source_amount)?;
+        let source_amount = source_amount.checked_sub(trade_fee)?;
         self.calculator.trading_tokens_to_pool_tokens(
-            token_a_amount,
-            swap_token_a_amount,
-            token_b_amount,
-            swap_token_b_amount,
+            source_amount,
+            swap_source_amount,
             pool_supply,
         )
     }
