@@ -183,12 +183,7 @@ mod tests {
         assert_eq!(calculator.new_pool_supply(), INITIAL_SWAP_POOL_AMOUNT);
     }
 
-    fn check_pool_token_rate(
-        token_a: u128,
-        deposit: u128,
-        supply: u128,
-        expected_a: u128,
-    ) {
+    fn check_pool_token_rate(token_a: u128, deposit: u128, supply: u128, expected_a: u128) {
         let amp = 1;
         let calculator = StableCurve { amp };
         let results = calculator

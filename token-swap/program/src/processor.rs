@@ -365,7 +365,9 @@ impl Processor {
         // mint pool tokens equivalent to the owner fee
         let source_account =
             Self::unpack_token_account(swap_source_info, &token_swap.token_program_id)?;
-        let mut pool_token_amount = token_swap.swap_curve.trading_tokens_to_pool_tokens(
+        let mut pool_token_amount = token_swap
+            .swap_curve
+            .trading_tokens_to_pool_tokens(
                 result.owner_fee,
                 to_u128(source_account.amount)?,
                 to_u128(pool_mint.supply)?,
