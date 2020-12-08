@@ -5,7 +5,7 @@ use crate::native_processor::do_process_instruction;
 use crate::native_token;
 
 use spl_token_swap::{
-    curve::base::SwapCurve,
+    curve::{base::SwapCurve, fees::Fees},
     instruction::{self, Deposit, Swap, Withdraw},
     state::SwapInfo,
 };
@@ -20,6 +20,7 @@ pub struct NativeTokenSwap {
     pub user_account: NativeAccountData,
     pub nonce: u8,
     pub authority_account: NativeAccountData,
+    pub fees: Fees,
     pub swap_curve: SwapCurve,
     pub swap_account: NativeAccountData,
     pub pool_mint_account: NativeAccountData,
@@ -39,7 +40,12 @@ pub fn create_program_account(program_id: Pubkey) -> NativeAccountData {
 }
 
 impl NativeTokenSwap {
-    pub fn new(swap_curve: SwapCurve, token_a_amount: u64, token_b_amount: u64) -> Self {
+    pub fn new(
+        fees: Fees,
+        swap_curve: SwapCurve,
+        token_a_amount: u64,
+        token_b_amount: u64,
+    ) -> Self {
         let mut user_account = NativeAccountData::new(0, system_program::id());
         user_account.is_signer = true;
         let mut swap_account = NativeAccountData::new(SwapInfo::LEN, spl_token_swap::id());
@@ -79,6 +85,7 @@ impl NativeTokenSwap {
             &pool_fee_account.key,
             &pool_token_account.key,
             nonce,
+            fees.clone(),
             swap_curve.clone(),
         )
         .unwrap();
@@ -102,6 +109,7 @@ impl NativeTokenSwap {
             user_account,
             nonce,
             authority_account,
+            fees,
             swap_curve,
             swap_account,
             pool_mint_account,

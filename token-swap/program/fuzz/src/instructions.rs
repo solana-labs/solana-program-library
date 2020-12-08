@@ -7,6 +7,7 @@ use spl_token_swap::{
     curve::{
         base::{CurveType, SwapCurve},
         constant_product::ConstantProductCurve,
+        fees::Fees,
     },
     error::SwapError,
     instruction::{Deposit, Swap, Withdraw},
@@ -75,20 +76,22 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
     let owner_withdraw_fee_denominator = 10000;
     let host_fee_numerator = 1;
     let host_fee_denominator = 5;
+    let fees = Fees {
+        trade_fee_numerator,
+        trade_fee_denominator,
+        owner_trade_fee_numerator,
+        owner_trade_fee_denominator,
+        owner_withdraw_fee_numerator,
+        owner_withdraw_fee_denominator,
+        host_fee_numerator,
+        host_fee_denominator,
+    };
     let swap_curve = SwapCurve {
         curve_type: CurveType::ConstantProduct,
-        calculator: Box::new(ConstantProductCurve {
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        }),
+        calculator: Box::new(ConstantProductCurve {}),
     };
     let mut token_swap = NativeTokenSwap::new(
+        fees,
         swap_curve,
         INITIAL_SWAP_TOKEN_A_AMOUNT,
         INITIAL_SWAP_TOKEN_B_AMOUNT,
