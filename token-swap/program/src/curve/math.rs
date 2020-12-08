@@ -68,7 +68,6 @@ fn zero() -> U256 {
 }
 
 impl PreciseNumber {
-
     /// Correction to apply to avoid truncation errors on division.  Since
     /// integer operations will always floor the result, we artifically bump it
     /// up by one half to get the expect result.
@@ -159,7 +158,9 @@ impl PreciseNumber {
     pub fn checked_mul(&self, rhs: &Self) -> Option<Self> {
         match self.value.checked_mul(rhs.value) {
             Some(v) => {
-                let value = v.checked_add(Self::rounding_correction())?.checked_div(one())?;
+                let value = v
+                    .checked_add(Self::rounding_correction())?
+                    .checked_div(one())?;
                 Some(Self { value })
             }
             None => {
@@ -313,9 +314,7 @@ impl PreciseNumber {
                 Some(num) => self.checked_div(&num)?,
                 None => Self::new(0)?,
             };
-            guess = first_term
-                .checked_add(&second_term)?
-                .checked_div(&root)?;
+            guess = first_term.checked_add(&second_term)?.checked_div(&root)?;
             if last_guess.almost_eq(&guess, precision) {
                 break;
             } else {
@@ -352,7 +351,8 @@ mod tests {
         check_pow_approximation(one * 4 / 5, one * 2 / 5, U256::from(9146101038u128)); // 0.9146101038
 
         // 10th root
-        check_pow_approximation(one / 2, one * 4 / 50, U256::from(9460576467u128)); // 0.9460576467
+        check_pow_approximation(one / 2, one * 4 / 50, U256::from(9460576467u128));
+        // 0.9460576467
     }
 
     fn check_pow_fraction(base: U256, exponent: U256, expected: U256, precision: U256) {
@@ -369,14 +369,33 @@ mod tests {
         let precision = U256::from(5_000_000); // correct to at least 3 decimal places
         let less_precision = precision * 100; // correct to at least 3 decimal places
         check_pow_fraction(one, one, one, precision);
-        check_pow_fraction(one * 20 / 13, one * 50 / 3, U256::from(1312_5344847391u128), precision); // 1312.5344847391
+        check_pow_fraction(
+            one * 20 / 13,
+            one * 50 / 3,
+            U256::from(1312_5344847391u128),
+            precision,
+        ); // 1312.5344847391
         check_pow_fraction(one * 2 / 7, one * 49 / 4, U256::from(2163), precision);
-        check_pow_fraction(one * 5000 / 5100, one / 9, U256::from(9978021269u128), precision); // 0.99780212695
-        // results get less accurate as the base gets further from 1, so allow
-        // for a greater margin of error
-        check_pow_fraction(one * 2, one * 27 / 5, U256::from(42_2242531447u128), less_precision); // 42.2242531447
-        check_pow_fraction(one * 18 / 10, one * 11 / 3, U256::from(8_6297692905u128), less_precision); // 8.629769290
-
+        check_pow_fraction(
+            one * 5000 / 5100,
+            one / 9,
+            U256::from(9978021269u128),
+            precision,
+        ); // 0.99780212695
+           // results get less accurate as the base gets further from 1, so allow
+           // for a greater margin of error
+        check_pow_fraction(
+            one * 2,
+            one * 27 / 5,
+            U256::from(42_2242531447u128),
+            less_precision,
+        ); // 42.2242531447
+        check_pow_fraction(
+            one * 18 / 10,
+            one * 11 / 3,
+            U256::from(8_6297692905u128),
+            less_precision,
+        ); // 8.629769290
     }
 
     #[test]
@@ -385,26 +404,42 @@ mod tests {
         let test = PreciseNumber::new(9).unwrap();
         let nth_root = PreciseNumber::new(2).unwrap();
         let guess = test.checked_div(&nth_root).unwrap();
-        let root = test.newtonian_root_approximation(&nth_root, guess).unwrap().to_imprecise().unwrap();
+        let root = test
+            .newtonian_root_approximation(&nth_root, guess)
+            .unwrap()
+            .to_imprecise()
+            .unwrap();
         assert_eq!(root, 3); // actually 3
 
         let test = PreciseNumber::new(101).unwrap();
         let nth_root = PreciseNumber::new(2).unwrap();
         let guess = test.checked_div(&nth_root).unwrap();
-        let root = test.newtonian_root_approximation(&nth_root, guess).unwrap().to_imprecise().unwrap();
+        let root = test
+            .newtonian_root_approximation(&nth_root, guess)
+            .unwrap()
+            .to_imprecise()
+            .unwrap();
         assert_eq!(root, 10); // actually 10.049875
 
         let test = PreciseNumber::new(1_000_000_000).unwrap();
         let nth_root = PreciseNumber::new(2).unwrap();
         let guess = test.checked_div(&nth_root).unwrap();
-        let root = test.newtonian_root_approximation(&nth_root, guess).unwrap().to_imprecise().unwrap();
+        let root = test
+            .newtonian_root_approximation(&nth_root, guess)
+            .unwrap()
+            .to_imprecise()
+            .unwrap();
         assert_eq!(root, 31_623); // actually 31622.7766
 
         // 5th root
         let test = PreciseNumber::new(500).unwrap();
         let nth_root = PreciseNumber::new(5).unwrap();
         let guess = test.checked_div(&nth_root).unwrap();
-        let root = test.newtonian_root_approximation(&nth_root, guess).unwrap().to_imprecise().unwrap();
+        let root = test
+            .newtonian_root_approximation(&nth_root, guess)
+            .unwrap()
+            .to_imprecise()
+            .unwrap();
         assert_eq!(root, 3); // actually 3.46572422
     }
 }

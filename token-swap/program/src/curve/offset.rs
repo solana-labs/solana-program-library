@@ -89,11 +89,11 @@ impl CurveCalculator for OffsetCurve {
         let two = PreciseNumber::new(2)?;
         let base = one.checked_add(&ratio)?;
         let guess = base.checked_div(&two)?;
-        let root = base.newtonian_root_approximation(&two, guess)?.checked_sub(&one)?;
+        let root = base
+            .newtonian_root_approximation(&two, guess)?
+            .checked_sub(&one)?;
         let pool_supply = PreciseNumber::new(pool_supply)?;
-        pool_supply
-            .checked_mul(&root)?
-            .to_imprecise()
+        pool_supply.checked_mul(&root)?.to_imprecise()
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -263,12 +263,8 @@ mod tests {
             (1_000_251, 1_000, 1_288, 100_000),
             (1_000_000_000_000, 212, 10_000, 100_000),
         ];
-        for (
-            token_b_offset,
-            swap_token_a_amount,
-            swap_token_b_amount,
-            token_a_amount,
-        ) in tests.iter()
+        for (token_b_offset, swap_token_a_amount, swap_token_b_amount, token_a_amount) in
+            tests.iter()
         {
             let curve = OffsetCurve {
                 token_b_offset: *token_b_offset,

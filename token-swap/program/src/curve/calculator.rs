@@ -1,8 +1,6 @@
 //! Swap calculations
 
-use crate::{
-    curve::math::PreciseNumber, error::SwapError
-};
+use crate::{curve::math::PreciseNumber, error::SwapError};
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
@@ -124,11 +122,11 @@ pub trait CurveCalculator: Debug + DynPack {
         let two = PreciseNumber::new(2)?;
         let base = one.checked_add(&ratio)?;
         let guess = base.checked_div(&two)?;
-        let root = base.newtonian_root_approximation(&two, guess)?.checked_sub(&one)?;
+        let root = base
+            .newtonian_root_approximation(&two, guess)?
+            .checked_sub(&one)?;
         let pool_supply = PreciseNumber::new(pool_supply)?;
-        pool_supply
-            .checked_mul(&root)?
-            .to_imprecise()
+        pool_supply.checked_mul(&root)?.to_imprecise()
     }
 
     /// Validate that the given curve has no bad parameters
@@ -216,7 +214,13 @@ pub mod test {
             .unwrap();
 
         // They should be within 1 token because truncation
-        almost_equal(deposit_token_b.token_a_amount, deposit_token_a.token_a_amount);
-        almost_equal(deposit_token_b.token_b_amount, deposit_token_b.token_b_amount);
+        almost_equal(
+            deposit_token_b.token_a_amount,
+            deposit_token_a.token_a_amount,
+        );
+        almost_equal(
+            deposit_token_b.token_b_amount,
+            deposit_token_b.token_b_amount,
+        );
     }
 }
