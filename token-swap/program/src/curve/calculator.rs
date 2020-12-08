@@ -1,6 +1,8 @@
 //! Swap calculations
 
-use crate::error::SwapError;
+use crate::{
+    curve::math::PreciseNumber, error::SwapError
+};
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
@@ -115,6 +117,7 @@ pub trait CurveCalculator: Debug + DynPack {
             TradeDirection::AtoB => swap_token_a_amount,
             TradeDirection::BtoA => swap_token_b_amount,
         };
+        let new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
         pool_supply
             .checked_mul(source_amount)?
             .checked_div(swap_source_amount)?

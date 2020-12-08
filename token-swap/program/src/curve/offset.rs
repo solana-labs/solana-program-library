@@ -70,24 +70,22 @@ impl CurveCalculator for OffsetCurve {
     /// taking into account the offset
     fn trading_tokens_to_pool_tokens(
         &self,
-        token_a_amount: u128,
+        source_amount: u128,
         swap_token_a_amount: u128,
-        token_b_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
+        trade_direction: TradeDirection,
     ) -> Option<u128> {
         let token_b_offset = self.token_b_offset as u128;
-        let new_swap_token_a_amount = swap_token_a_amount.checked_add(token_a_amount)?;
-        let token_a_as_pool_tokens = pool_supply
-            .checked_mul(token_a_amount)?
-            .checked_div(new_swap_token_a_amount)?
-            .checked_div(TOKENS_IN_POOL)?;
-        let new_swap_token_b_amount = swap_token_b_amount.checked_add(token_b_amount)?;
-        let token_b_as_pool_tokens = pool_supply
-            .checked_mul(token_b_amount)?
-            .checked_div(new_swap_token_b_amount.checked_add(token_b_offset)?)?
-            .checked_div(TOKENS_IN_POOL)?;
-        token_a_as_pool_tokens.checked_add(token_b_as_pool_tokens)
+        let swap_source_amount = match trade_direction {
+            TradeDirection::AtoB => swap_token_a_amount,
+            TradeDirection::BtoA => swap_token_b_amount.checked_add(token_b_offset)?,
+        };
+        let new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
+        pool_supply
+            .checked_mul(source_amount)?
+            .checked_div(new_swap_source_amount)?
+            .checked_div(TOKENS_IN_POOL)
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -262,9 +260,9 @@ mod tests {
             .trading_tokens_to_pool_tokens(
                 token_a_amount,
                 swap_token_a_amount,
-                token_b_amount,
                 swap_token_b_amount,
                 pool_supply,
+                TradeDirection::AtoB,
             )
             .unwrap();
         let results = curve

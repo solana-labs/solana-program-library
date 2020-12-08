@@ -475,13 +475,16 @@ impl Processor {
         let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id)?;
         let pool_token_amount = to_u128(pool_token_amount)?;
         let pool_mint_supply = to_u128(pool_mint.supply)?;
+        let new_pool_mint_supply = pool_mint_supply
+            .checked_add(pool_token_amount)
+            .ok_or(SwapError::CalculationFailure)?;
 
         let calculator = token_swap.swap_curve.calculator;
 
         let results = calculator
             .pool_tokens_to_trading_tokens(
                 pool_token_amount,
-                pool_mint_supply,
+                new_pool_mint_supply,
                 to_u128(token_a.amount)?,
                 to_u128(token_b.amount)?,
             )
