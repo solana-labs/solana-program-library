@@ -19,7 +19,7 @@ use std::env;
 /// Since this struct needs to be created at compile-time, we only have access
 /// to const functions and constructors. Since SwapCurve contains a Box, it
 /// cannot be used, so we have to split the curves based on their types.
-pub struct FeeConstraints<'a> {
+pub struct SwapConstraints<'a> {
     /// Owner of the program
     pub owner_key: &'a str,
     /// Valid curve types
@@ -28,7 +28,7 @@ pub struct FeeConstraints<'a> {
     pub fees: &'a Fees,
 }
 
-impl<'a> FeeConstraints<'a> {
+impl<'a> SwapConstraints<'a> {
     /// Checks that the provided curve is valid for the given constraints
     pub fn validate_curve(&self, swap_curve: &SwapCurve) -> Result<(), ProgramError> {
         if self
@@ -71,10 +71,10 @@ const VALID_CURVE_TYPES: &[CurveType] = &[CurveType::ConstantPrice, CurveType::C
 /// Fee structure defined by program creator in order to enforce certain
 /// fees when others use the program.  Adds checks on pool creation and
 /// swapping to ensure the correct fees and account owners are passed.
-pub const FEE_CONSTRAINTS: Option<FeeConstraints> = {
+pub const SWAP_CONSTRAINTS: Option<SwapConstraints> = {
     #[cfg(feature = "production")]
     {
-        Some(FeeConstraints {
+        Some(SwapConstraints {
             owner_key: OWNER_KEY,
             valid_curve_types: VALID_CURVE_TYPES,
             fees: FEES,
@@ -119,41 +119,41 @@ mod tests {
             curve_type,
             calculator: Box::new(calculator.clone()),
         };
-        let fee_constraints = FeeConstraints {
+        let constraints = SwapConstraints {
             owner_key,
             valid_curve_types: &[curve_type],
             fees: &valid_fees,
         };
 
-        fee_constraints.validate_curve(&swap_curve).unwrap();
-        fee_constraints.validate_fees(&valid_fees).unwrap();
+        constraints.validate_curve(&swap_curve).unwrap();
+        constraints.validate_fees(&valid_fees).unwrap();
 
         let mut fees = valid_fees.clone();
         fees.trade_fee_numerator = trade_fee_numerator - 1;
         assert_eq!(
             Err(SwapError::InvalidFee.into()),
-            fee_constraints.validate_fees(&fees),
+            constraints.validate_fees(&fees),
         );
         fees.trade_fee_numerator = trade_fee_numerator;
 
         fees.trade_fee_denominator = trade_fee_denominator - 1;
         assert_eq!(
             Err(SwapError::InvalidFee.into()),
-            fee_constraints.validate_fees(&fees),
+            constraints.validate_fees(&fees),
         );
         fees.trade_fee_denominator = trade_fee_denominator;
 
         fees.owner_trade_fee_numerator = owner_trade_fee_numerator - 1;
         assert_eq!(
             Err(SwapError::InvalidFee.into()),
-            fee_constraints.validate_fees(&fees),
+            constraints.validate_fees(&fees),
         );
         fees.owner_trade_fee_numerator = owner_trade_fee_numerator;
 
         fees.owner_trade_fee_denominator = owner_trade_fee_denominator - 1;
         assert_eq!(
             Err(SwapError::InvalidFee.into()),
-            fee_constraints.validate_fees(&fees),
+            constraints.validate_fees(&fees),
         );
         fees.owner_trade_fee_denominator = owner_trade_fee_denominator;
 
@@ -163,7 +163,7 @@ mod tests {
         };
         assert_eq!(
             Err(SwapError::UnsupportedCurveType.into()),
-            fee_constraints.validate_curve(&swap_curve),
+            constraints.validate_curve(&swap_curve),
         );
     }
 }

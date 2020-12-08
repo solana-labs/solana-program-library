@@ -32,9 +32,9 @@ pub enum CurveType {
 #[derive(Debug, PartialEq)]
 pub struct SwapResult {
     /// New amount of source token
-    pub new_source_amount: u128,
+    pub new_swap_source_amount: u128,
     /// New amount of destination token
-    pub new_destination_amount: u128,
+    pub new_swap_destination_amount: u128,
     /// Amount of source token swapped (includes fees)
     pub source_amount_swapped: u128,
     /// Amount of destination token swapped
@@ -87,8 +87,8 @@ impl SwapCurve {
 
         let source_amount_swapped = source_amount_swapped.checked_add(total_fees)?;
         Some(SwapResult {
-            new_source_amount: swap_source_amount.checked_add(source_amount_swapped)?,
-            new_destination_amount: swap_destination_amount
+            new_swap_source_amount: swap_source_amount.checked_add(source_amount_swapped)?,
+            new_swap_destination_amount: swap_destination_amount
                 .checked_sub(destination_amount_swapped)?,
             source_amount_swapped,
             destination_amount_swapped,
@@ -275,9 +275,9 @@ mod tests {
                 &fees,
             )
             .unwrap();
-        assert_eq!(result.new_source_amount, 1100);
+        assert_eq!(result.new_swap_source_amount, 1100);
         assert_eq!(result.destination_amount_swapped, 4504);
-        assert_eq!(result.new_destination_amount, 45496);
+        assert_eq!(result.new_swap_destination_amount, 45496);
         assert_eq!(result.trade_fee, 1);
         assert_eq!(result.owner_fee, 0);
     }
@@ -320,9 +320,9 @@ mod tests {
                 &fees,
             )
             .unwrap();
-        assert_eq!(result.new_source_amount, 1100);
+        assert_eq!(result.new_swap_source_amount, 1100);
         assert_eq!(result.destination_amount_swapped, 4504);
-        assert_eq!(result.new_destination_amount, 45496);
+        assert_eq!(result.new_swap_destination_amount, 45496);
         assert_eq!(result.trade_fee, 0);
         assert_eq!(result.owner_fee, 1);
     }
@@ -347,8 +347,8 @@ mod tests {
                 &fees,
             )
             .unwrap();
-        assert_eq!(result.new_source_amount, 1100);
+        assert_eq!(result.new_swap_source_amount, 1100);
         assert_eq!(result.destination_amount_swapped, 4545);
-        assert_eq!(result.new_destination_amount, 45455);
+        assert_eq!(result.new_swap_destination_amount, 45455);
     }
 }

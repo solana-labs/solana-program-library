@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::constraints::{FeeConstraints, FEE_CONSTRAINTS};
+use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS};
 use crate::{
     curve::{base::SwapCurve, calculator::TradeDirection, fees::Fees},
     error::SwapError,
@@ -150,7 +150,7 @@ impl Processor {
         fees: Fees,
         swap_curve: SwapCurve,
         accounts: &[AccountInfo],
-        fee_constraints: &Option<FeeConstraints>,
+        swap_constraints: &Option<SwapConstraints>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
@@ -221,16 +221,16 @@ impl Processor {
             return Err(SwapError::IncorrectPoolMint.into());
         }
 
-        if let Some(fee_constraints) = fee_constraints {
-            let owner_key = fee_constraints
+        if let Some(swap_constraints) = swap_constraints {
+            let owner_key = swap_constraints
                 .owner_key
                 .parse::<Pubkey>()
                 .map_err(|_| SwapError::InvalidOwner)?;
             if fee_account.owner != owner_key {
                 return Err(SwapError::InvalidOwner.into());
             }
-            fee_constraints.validate_curve(&swap_curve)?;
-            fee_constraints.validate_fees(&fees)?;
+            swap_constraints.validate_curve(&swap_curve)?;
+            swap_constraints.validate_fees(&fees)?;
         }
         fees.validate()?;
         swap_curve.calculator.validate()?;
@@ -659,15 +659,15 @@ impl Processor {
 
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
-        Self::process_with_fee_constraints(program_id, accounts, input, &FEE_CONSTRAINTS)
+        Self::process_with_constraints(program_id, accounts, input, &SWAP_CONSTRAINTS)
     }
 
     /// Processes an instruction given extra constraint
-    pub fn process_with_fee_constraints(
+    pub fn process_with_constraints(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         input: &[u8],
-        fee_constraints: &Option<FeeConstraints>,
+        swap_constraints: &Option<SwapConstraints>,
     ) -> ProgramResult {
         let instruction = SwapInstruction::unpack(input)?;
         match instruction {
@@ -683,7 +683,7 @@ impl Processor {
                     fees,
                     swap_curve,
                     accounts,
-                    fee_constraints,
+                    swap_constraints,
                 )
             }
             SwapInstruction::Swap(Swap {
@@ -1303,7 +1303,7 @@ mod tests {
     fn do_process_instruction_with_fee_constraints(
         instruction: Instruction,
         accounts: Vec<&mut Account>,
-        fee_constraints: &Option<FeeConstraints>,
+        swap_constraints: &Option<SwapConstraints>,
     ) -> ProgramResult {
         test_syscall_stubs();
 
@@ -1318,11 +1318,11 @@ mod tests {
             .collect::<Vec<_>>();
         let mut account_infos = create_is_signer_account_infos(&mut meta);
         let res = if instruction.program_id == SWAP_PROGRAM_ID {
-            Processor::process_with_fee_constraints(
+            Processor::process_with_constraints(
                 &instruction.program_id,
                 &account_infos,
                 &instruction.data,
-                fee_constraints,
+                swap_constraints,
             )
         } else {
             spl_token::processor::Processor::process(
@@ -1357,7 +1357,7 @@ mod tests {
         instruction: Instruction,
         accounts: Vec<&mut Account>,
     ) -> ProgramResult {
-        do_process_instruction_with_fee_constraints(instruction, accounts, &FEE_CONSTRAINTS)
+        do_process_instruction_with_fee_constraints(instruction, accounts, &SWAP_CONSTRAINTS)
     }
 
     fn mint_token(
@@ -2033,7 +2033,7 @@ mod tests {
             };
             let owner_key = &new_key.to_string();
             let valid_curve_types = &[CurveType::ConstantProduct];
-            let constraints = Some(FeeConstraints {
+            let constraints = Some(SwapConstraints {
                 owner_key,
                 valid_curve_types,
                 fees: &fees,
@@ -2087,7 +2087,7 @@ mod tests {
             let host_fee_numerator = 20;
             let host_fee_denominator = 100;
             let fees = Fees {
-                trade_fee_numerator: trade_fee_numerator - 1,
+                trade_fee_numerator,
                 trade_fee_denominator,
                 owner_trade_fee_numerator,
                 owner_trade_fee_denominator,
@@ -2103,13 +2103,13 @@ mod tests {
             };
             let owner_key = &user_key.to_string();
             let valid_curve_types = &[CurveType::ConstantProduct];
-            let constraints = Some(FeeConstraints {
+            let constraints = Some(SwapConstraints {
                 owner_key,
                 valid_curve_types,
                 fees: &fees,
             });
             let mut bad_fees = fees.clone();
-            bad_fees.trade_fee_numerator = trade_fee_numerator;
+            bad_fees.trade_fee_numerator = trade_fee_numerator - 1;
             let mut accounts = SwapAccountInfo::new(
                 &user_key,
                 bad_fees,
@@ -2175,7 +2175,7 @@ mod tests {
             };
             let owner_key = &user_key.to_string();
             let valid_curve_types = &[CurveType::ConstantProduct];
-            let constraints = Some(FeeConstraints {
+            let constraints = Some(SwapConstraints {
                 owner_key,
                 valid_curve_types,
                 fees: &fees,
@@ -3740,7 +3740,7 @@ mod tests {
         let token_a_amount = swap_token_a.amount;
         assert_eq!(
             token_a_amount,
-            TryInto::<u64>::try_into(results.new_source_amount).unwrap()
+            TryInto::<u64>::try_into(results.new_swap_source_amount).unwrap()
         );
         let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
         assert_eq!(token_a.amount, initial_a - a_to_b_amount);
@@ -3750,7 +3750,7 @@ mod tests {
         let token_b_amount = swap_token_b.amount;
         assert_eq!(
             token_b_amount,
-            TryInto::<u64>::try_into(results.new_destination_amount).unwrap()
+            TryInto::<u64>::try_into(results.new_swap_destination_amount).unwrap()
         );
         let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
         assert_eq!(
@@ -3810,7 +3810,7 @@ mod tests {
         let token_a_amount = swap_token_a.amount;
         assert_eq!(
             token_a_amount,
-            TryInto::<u64>::try_into(results.new_destination_amount).unwrap()
+            TryInto::<u64>::try_into(results.new_swap_destination_amount).unwrap()
         );
         let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
         assert_eq!(
@@ -3823,7 +3823,7 @@ mod tests {
         let token_b_amount = swap_token_b.amount;
         assert_eq!(
             token_b_amount,
-            TryInto::<u64>::try_into(results.new_source_amount).unwrap()
+            TryInto::<u64>::try_into(results.new_swap_source_amount).unwrap()
         );
         let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
         assert_eq!(
@@ -3961,7 +3961,7 @@ mod tests {
 
         let owner_key_str = &owner_key.to_string();
         let valid_curve_types = &[CurveType::ConstantProduct];
-        let constraints = Some(FeeConstraints {
+        let constraints = Some(SwapConstraints {
             owner_key: owner_key_str,
             valid_curve_types,
             fees: &fees,
@@ -4607,7 +4607,7 @@ mod tests {
                 host_fee_numerator,
                 host_fee_denominator,
             };
-            let constraints = Some(FeeConstraints {
+            let constraints = Some(SwapConstraints {
                 owner_key,
                 valid_curve_types: &[],
                 fees: &fees,
@@ -4677,7 +4677,7 @@ mod tests {
                 host_fee_numerator,
                 host_fee_denominator,
             };
-            let constraints = Some(FeeConstraints {
+            let constraints = Some(SwapConstraints {
                 owner_key,
                 valid_curve_types: &[],
                 fees: &fees,

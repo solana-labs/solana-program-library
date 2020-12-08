@@ -62,7 +62,7 @@ pub fn calculate_fee(
 }
 
 fn validate_fraction(numerator: u64, denominator: u64) -> Result<(), SwapError> {
-    if numerator > denominator {
+    if numerator >= denominator {
         Err(SwapError::InvalidFee)
     } else {
         Ok(())
