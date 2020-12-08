@@ -117,11 +117,18 @@ pub trait CurveCalculator: Debug + DynPack {
             TradeDirection::AtoB => swap_token_a_amount,
             TradeDirection::BtoA => swap_token_b_amount,
         };
-        let new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
+        let swap_source_amount = PreciseNumber::new(swap_source_amount)?;
+        let source_amount = PreciseNumber::new(source_amount)?;
+        let ratio = source_amount.checked_div(&swap_source_amount)?;
+        let one = PreciseNumber::new(1)?;
+        let two = PreciseNumber::new(2)?;
+        let base = one.checked_add(&ratio)?;
+        let guess = base.checked_div(&two)?;
+        let root = base.newtonian_root_approximation(&two, guess)?.checked_sub(&one)?;
+        let pool_supply = PreciseNumber::new(pool_supply)?;
         pool_supply
-            .checked_mul(source_amount)?
-            .checked_div(swap_source_amount)?
-            .checked_div(TOKENS_IN_POOL)
+            .checked_mul(&root)?
+            .to_imprecise()
     }
 
     /// Validate that the given curve has no bad parameters

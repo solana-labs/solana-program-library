@@ -2340,9 +2340,11 @@ mod tests {
         let mut accounts =
             SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
 
-        let deposit_a = token_a_amount / 10;
-        let deposit_b = token_b_amount / 10;
+        // depositing 10% of the current pool amount means that our share will
+        // be 1 / 11 of the final pool amount
         let pool_amount = INITIAL_SWAP_POOL_AMOUNT / 10;
+        let deposit_a = token_a_amount / 11;
+        let deposit_b = token_b_amount / 11;
 
         // swap not initialized
         {
@@ -2863,6 +2865,7 @@ mod tests {
                 )
             );
         }
+
         // correctly deposit
         {
             let (
