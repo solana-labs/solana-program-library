@@ -3,7 +3,7 @@
 use crate::{
     curve::{
         calculator::{
-            CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection, TradingTokenResult,
+            TOKENS_IN_POOL, CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection, TradingTokenResult,
         },
         constant_product::swap,
     },
@@ -77,12 +77,16 @@ impl CurveCalculator for OffsetCurve {
         pool_supply: u128,
     ) -> Option<u128> {
         let token_b_offset = self.token_b_offset as u128;
+        let new_swap_token_a_amount = swap_token_a_amount.checked_add(token_a_amount)?;
         let token_a_as_pool_tokens = pool_supply
             .checked_mul(token_a_amount)?
-            .checked_div(swap_token_a_amount)?;
+            .checked_div(new_swap_token_a_amount)?
+            .checked_div(TOKENS_IN_POOL)?;
+        let new_swap_token_b_amount = swap_token_b_amount.checked_add(token_b_amount)?;
         let token_b_as_pool_tokens = pool_supply
             .checked_mul(token_b_amount)?
-            .checked_div(swap_token_b_amount.checked_add(token_b_offset)?)?;
+            .checked_div(new_swap_token_b_amount.checked_add(token_b_offset)?)?
+            .checked_div(TOKENS_IN_POOL)?;
         token_a_as_pool_tokens.checked_add(token_b_as_pool_tokens)
     }
 
