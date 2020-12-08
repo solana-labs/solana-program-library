@@ -83,6 +83,7 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
 export const CurveType = Object.freeze({
   ConstantProduct: 0, // Constant product curve, Uniswap-style
   ConstantPrice: 1, // Constant price curve, always X amount of A token for 1 B token, where X is defined at init
+  Offset: 3, // Offset curve, like Uniswap, but with an additional offset on the token B side
 });
 
 /**
