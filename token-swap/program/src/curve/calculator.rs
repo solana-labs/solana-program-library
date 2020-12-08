@@ -146,3 +146,77 @@ pub trait CurveCalculator: Debug + DynPack {
         Ok(())
     }
 }
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+
+    /// Check that two numbers are within 1 of each other
+    fn almost_equal(a: u128, b: u128) {
+        if a >= b {
+            assert!(a - b <= 1);
+        } else {
+            assert!(b - a <= 1);
+        }
+    }
+
+    pub fn check_pool_token_conversion(
+        curve: &dyn CurveCalculator,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        token_a_amount: u128,
+    ) {
+        // check that depositing token A is the same as swapping for token B
+        // and depositing the result
+        let swap_results = curve
+            .swap_without_fees(
+                token_a_amount,
+                swap_token_a_amount,
+                swap_token_b_amount,
+                TradeDirection::AtoB,
+            )
+            .unwrap();
+        let token_a_amount = swap_results.source_amount_swapped;
+        let token_b_amount = swap_results.destination_amount_swapped;
+        let pool_supply = curve.new_pool_supply();
+        let pool_tokens_from_a = curve
+            .trading_tokens_to_pool_tokens(
+                token_a_amount,
+                swap_token_a_amount + token_a_amount,
+                swap_token_b_amount,
+                pool_supply,
+                TradeDirection::AtoB,
+            )
+            .unwrap();
+        let pool_tokens_from_b = curve
+            .trading_tokens_to_pool_tokens(
+                token_b_amount,
+                swap_token_a_amount + token_a_amount,
+                swap_token_b_amount,
+                pool_supply,
+                TradeDirection::BtoA,
+            )
+            .unwrap();
+        let deposit_token_a = curve
+            .pool_tokens_to_trading_tokens(
+                pool_tokens_from_a,
+                pool_supply + pool_tokens_from_a,
+                swap_token_a_amount,
+                swap_token_b_amount,
+            )
+            .unwrap();
+
+        let deposit_token_b = curve
+            .pool_tokens_to_trading_tokens(
+                pool_tokens_from_b,
+                pool_supply + pool_tokens_from_b,
+                swap_token_a_amount,
+                swap_token_b_amount,
+            )
+            .unwrap();
+
+        // They should be within 1 token because truncation
+        almost_equal(deposit_token_b.token_a_amount, deposit_token_a.token_a_amount);
+        almost_equal(deposit_token_b.token_b_amount, deposit_token_b.token_b_amount);
+    }
+}

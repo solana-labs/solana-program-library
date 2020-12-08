@@ -143,6 +143,7 @@ impl DynPack for OffsetCurve {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::curve::calculator::test::check_pool_token_conversion;
 
     #[test]
     fn pack_curve() {
@@ -253,79 +254,30 @@ mod tests {
         assert_eq!(result.destination_amount_swapped, 499);
     }
 
-    fn check_pool_token_conversion(
-        token_b_offset: u128,
-        swap_token_a_amount: u128,
-        swap_token_b_amount: u128,
-        token_a_amount: u128,
-        token_b_amount: u128,
-    ) {
-        let curve = OffsetCurve {
-            token_b_offset: token_b_offset as u64,
-        };
-        let pool_supply = curve.new_pool_supply();
-        let pool_tokens = curve
-            .trading_tokens_to_pool_tokens(
-                token_a_amount,
-                swap_token_a_amount,
-                swap_token_b_amount,
-                pool_supply,
-                TradeDirection::AtoB,
-            )
-            .unwrap();
-        let results = curve
-            .pool_tokens_to_trading_tokens(
-                pool_tokens,
-                pool_supply,
-                swap_token_a_amount,
-                swap_token_b_amount,
-            )
-            .unwrap();
-        let swap_results = curve
-            .swap_without_fees(
-                results.token_a_amount,
-                swap_token_a_amount,
-                swap_token_b_amount,
-                TradeDirection::AtoB,
-            )
-            .unwrap();
-        assert!(swap_results.source_amount_swapped <= results.token_a_amount);
-        assert!(swap_results.destination_amount_swapped <= results.token_b_amount);
-        let swap_results = curve
-            .swap_without_fees(
-                results.token_b_amount,
-                swap_token_b_amount,
-                swap_token_a_amount,
-                TradeDirection::BtoA,
-            )
-            .unwrap();
-        assert!(swap_results.source_amount_swapped <= results.token_b_amount);
-        assert!(swap_results.destination_amount_swapped <= results.token_a_amount);
-    }
-
     #[test]
     fn pool_token_conversion() {
-        let tests: &[(u128, u128, u128, u128, u128)] = &[
-            (10_000, 1_000_000, 1, 100_000, 10),
-            (10, 1_000, 100, 100_000, 1),
-            (1_251, 30, 1_288, 100_000, 1_225),
-            (1_000_251, 1_000, 1_288, 100_000, 1),
-            (1_000_000_000_000, 212, 10_000, 100_000, 1),
+        let tests: &[(u64, u128, u128, u128)] = &[
+            (10_000, 1_000_000, 1, 100_000),
+            (10, 1_000, 100, 100),
+            (1_251, 30, 1_288, 100_000),
+            (1_000_251, 1_000, 1_288, 100_000),
+            (1_000_000_000_000, 212, 10_000, 100_000),
         ];
         for (
             token_b_offset,
             swap_token_a_amount,
             swap_token_b_amount,
             token_a_amount,
-            token_b_amount,
         ) in tests.iter()
         {
+            let curve = OffsetCurve {
+                token_b_offset: *token_b_offset,
+            };
             check_pool_token_conversion(
-                *token_b_offset,
+                &curve,
                 *swap_token_a_amount,
                 *swap_token_b_amount,
                 *token_a_amount,
-                *token_b_amount,
             );
         }
     }
