@@ -4928,19 +4928,18 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             assert_eq!(
                 Err(SwapError::UnsupportedCurveOperation.into()),
-                accounts
-                    .deposit(
-                        &swapper_key,
-                        &token_a_key,
-                        &mut token_a_account,
-                        &token_b_key,
-                        &mut token_b_account,
-                        &pool_key,
-                        &mut pool_account,
-                        pool_amount,
-                        initial_a,
-                        initial_b,
-                    )
+                accounts.deposit(
+                    &swapper_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    pool_amount,
+                    initial_a,
+                    initial_b,
+                )
             );
         }
     }
