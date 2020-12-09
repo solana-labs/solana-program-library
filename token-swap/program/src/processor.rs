@@ -146,6 +146,7 @@ impl Processor {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn check_accounts(
         token_swap: &SwapInfo,
         program_id: &Pubkey,
@@ -4509,7 +4510,7 @@ mod tests {
             let old_b_account = accounts.token_b_account;
 
             accounts.token_b_key = token_b_key;
-            accounts.token_b_account = token_b_account.clone();
+            accounts.token_b_account = token_b_account;
 
             // wrong swap token b account
             assert_eq!(
