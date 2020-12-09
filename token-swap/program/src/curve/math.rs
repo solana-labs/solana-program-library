@@ -57,7 +57,7 @@ pub struct PreciseNumber {
     pub value: U256,
 }
 
-/// The number 1 as a U256
+/// The precise-number 1 as a U256
 fn one() -> U256 {
     U256::from(ONE)
 }
@@ -101,7 +101,7 @@ impl PreciseNumber {
         U256::from(2 * ONE)
     }
 
-    /// Create a precise number from an imprecise u64, should always succeed
+    /// Create a precise number from an imprecise u128, should always succeed
     pub fn new(value: u128) -> Option<Self> {
         let value = U256::from(value).checked_mul(one())?;
         Some(Self { value })
@@ -367,7 +367,7 @@ mod tests {
     fn test_pow_fraction() {
         let one = one();
         let precision = U256::from(5_000_000); // correct to at least 3 decimal places
-        let less_precision = precision * 100; // correct to at least 3 decimal places
+        let less_precision = precision * 100; // correct to at least 1 decimal place
         check_pow_fraction(one, one, one, precision);
         check_pow_fraction(
             one * 20 / 13,
