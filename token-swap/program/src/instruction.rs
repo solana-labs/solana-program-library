@@ -68,6 +68,30 @@ pub struct Withdraw {
     pub minimum_token_b_amount: u64,
 }
 
+/// Deposit one exact in instruction data
+#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct DepositOneExactIn {
+    /// Token amount to deposit
+    pub source_token_amount: u64,
+    /// Pool token amount to receive in exchange. The amount is set by
+    /// the current exchange rate and size of the pool
+    pub minimum_pool_token_amount: u64,
+}
+
+/// Withdraw instruction data
+#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct WithdrawOneExactOut {
+    /// Amount of token A or B to receive
+    pub destination_token_amount: u64,
+    /// Maximum amount of pool tokens to burn. User receives an output of token A
+    /// or B based on the percentage of the pool tokens that are returned.
+    pub maximum_pool_token_amount: u64,
+}
+
 /// Instructions supported by the SwapInfo program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -127,6 +151,33 @@ pub enum SwapInstruction {
     ///   8. `[writable]` Fee account, to receive withdrawal fees
     ///   9. '[]` Token program id
     Withdraw(Withdraw),
+
+    ///   Deposit some tokens into the pool.  The output is a "pool" token
+    ///   representing ownership into the pool. Input token is converted at
+    ///   the current ratio.
+    ///
+    ///   0. `[]` Token-swap
+    ///   1. `[]` $authority
+    ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transferable by $authority,
+    ///   3. `[writable]` token_a Swap Account, may deposit INTO.
+    ///   4. `[writable]` token_b Swap Account, may deposit INTO.
+    ///   5. `[writable]` Pool MINT account, $authority is the owner.
+    ///   6. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   7. '[]` Token program id
+    DepositOneExactIn(DepositOneExactIn),
+
+    ///   Withdraw the token from the pool at the current ratio.
+    ///
+    ///   0. `[]` Token-swap
+    ///   1. `[]` $authority
+    ///   2. `[writable]` Pool mint account, $authority is the owner
+    ///   3. `[writable]` SOURCE Pool account, amount is transferable by $authority.
+    ///   4. `[writable]` token_a Swap Account to potentially withdraw from.
+    ///   5. `[writable]` token_b Swap Account to potentially withdraw from.
+    ///   6. `[writable]` token_(A|B) User Account to credit
+    ///   7. `[writable]` Fee account, to receive withdrawal fees
+    ///   8. '[]` Token program id
+    WithdrawOneExactOut(WithdrawOneExactOut),
 }
 
 impl SwapInstruction {
@@ -175,6 +226,22 @@ impl SwapInstruction {
                     pool_token_amount,
                     minimum_token_a_amount,
                     minimum_token_b_amount,
+                })
+            }
+            4 => {
+                let (source_token_amount, rest) = Self::unpack_u64(rest)?;
+                let (minimum_pool_token_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::DepositOneExactIn(DepositOneExactIn {
+                    source_token_amount,
+                    minimum_pool_token_amount,
+                })
+            }
+            5 => {
+                let (destination_token_amount, rest) = Self::unpack_u64(rest)?;
+                let (maximum_pool_token_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::WithdrawOneExactOut(WithdrawOneExactOut {
+                    destination_token_amount,
+                    maximum_pool_token_amount,
                 })
             }
             _ => return Err(SwapError::InvalidInstruction.into()),
@@ -240,6 +307,22 @@ impl SwapInstruction {
                 buf.extend_from_slice(&pool_token_amount.to_le_bytes());
                 buf.extend_from_slice(&minimum_token_a_amount.to_le_bytes());
                 buf.extend_from_slice(&minimum_token_b_amount.to_le_bytes());
+            }
+            Self::DepositOneExactIn(DepositOneExactIn {
+                source_token_amount,
+                minimum_pool_token_amount,
+            }) => {
+                buf.push(4);
+                buf.extend_from_slice(&source_token_amount.to_le_bytes());
+                buf.extend_from_slice(&minimum_pool_token_amount.to_le_bytes());
+            }
+            Self::WithdrawOneExactOut(WithdrawOneExactOut {
+                destination_token_amount,
+                maximum_pool_token_amount,
+            }) => {
+                buf.push(5);
+                buf.extend_from_slice(&destination_token_amount.to_le_bytes());
+                buf.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
             }
         }
         buf
@@ -358,6 +441,74 @@ pub fn withdraw(
     })
 }
 
+/// Creates a 'deposit_one_exact_in' instruction.
+pub fn deposit_one_exact_in(
+    program_id: &Pubkey,
+    token_program_id: &Pubkey,
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    source_token_pubkey: &Pubkey,
+    swap_token_a_pubkey: &Pubkey,
+    swap_token_b_pubkey: &Pubkey,
+    pool_mint_pubkey: &Pubkey,
+    destination_pubkey: &Pubkey,
+    instruction: DepositOneExactIn,
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::DepositOneExactIn(instruction).pack();
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*swap_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new(*source_token_pubkey, false),
+        AccountMeta::new(*swap_token_a_pubkey, false),
+        AccountMeta::new(*swap_token_b_pubkey, false),
+        AccountMeta::new(*pool_mint_pubkey, false),
+        AccountMeta::new(*destination_pubkey, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'withdraw_one_exact_out' instruction.
+pub fn withdraw_one_exact_out(
+    program_id: &Pubkey,
+    token_program_id: &Pubkey,
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    pool_mint_pubkey: &Pubkey,
+    fee_account_pubkey: &Pubkey,
+    pool_token_source_pubkey: &Pubkey,
+    swap_token_a_pubkey: &Pubkey,
+    swap_token_b_pubkey: &Pubkey,
+    destination_pubkey: &Pubkey,
+    instruction: WithdrawOneExactOut,
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::WithdrawOneExactOut(instruction).pack();
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*swap_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new(*pool_mint_pubkey, false),
+        AccountMeta::new(*pool_token_source_pubkey, false),
+        AccountMeta::new(*swap_token_a_pubkey, false),
+        AccountMeta::new(*swap_token_b_pubkey, false),
+        AccountMeta::new(*destination_pubkey, false),
+        AccountMeta::new(*fee_account_pubkey, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
 /// Creates a 'swap' instruction.
 pub fn swap(
     program_id: &Pubkey,
@@ -415,7 +566,7 @@ mod tests {
     use crate::curve::{base::CurveType, stable::StableCurve};
 
     #[test]
-    fn test_instruction_packing() {
+    fn pack_intialize() {
         let trade_fee_numerator: u64 = 1;
         let trade_fee_denominator: u64 = 4;
         let owner_trade_fee_numerator: u64 = 2;
@@ -465,7 +616,10 @@ mod tests {
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn pack_swap() {
         let amount_in: u64 = 2;
         let minimum_amount_out: u64 = 10;
         let check = SwapInstruction::Swap(Swap {
@@ -479,7 +633,10 @@ mod tests {
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn pack_deposit() {
         let pool_token_amount: u64 = 5;
         let maximum_token_a_amount: u64 = 10;
         let maximum_token_b_amount: u64 = 20;
@@ -496,7 +653,10 @@ mod tests {
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn pack_withdraw() {
         let pool_token_amount: u64 = 1212438012089;
         let minimum_token_a_amount: u64 = 102198761982612;
         let minimum_token_b_amount: u64 = 2011239855213;
@@ -510,6 +670,40 @@ mod tests {
         expect.extend_from_slice(&pool_token_amount.to_le_bytes());
         expect.extend_from_slice(&minimum_token_a_amount.to_le_bytes());
         expect.extend_from_slice(&minimum_token_b_amount.to_le_bytes());
+        assert_eq!(packed, expect);
+        let unpacked = SwapInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+    }
+
+    #[test]
+    fn pack_deposit_one_exact_in() {
+        let source_token_amount: u64 = 10;
+        let minimum_pool_token_amount: u64 = 5;
+        let check = SwapInstruction::DepositOneExactIn(DepositOneExactIn {
+            source_token_amount,
+            minimum_pool_token_amount,
+        });
+        let packed = check.pack();
+        let mut expect = vec![4];
+        expect.extend_from_slice(&source_token_amount.to_le_bytes());
+        expect.extend_from_slice(&minimum_pool_token_amount.to_le_bytes());
+        assert_eq!(packed, expect);
+        let unpacked = SwapInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+    }
+
+    #[test]
+    fn pack_withdraw_one_exact_out() {
+        let destination_token_amount: u64 = 102198761982612;
+        let maximum_pool_token_amount: u64 = 1212438012089;
+        let check = SwapInstruction::WithdrawOneExactOut(WithdrawOneExactOut {
+            destination_token_amount,
+            maximum_pool_token_amount,
+        });
+        let packed = check.pack();
+        let mut expect = vec![5];
+        expect.extend_from_slice(&destination_token_amount.to_le_bytes());
+        expect.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
