@@ -615,35 +615,39 @@ impl Processor {
         if token_a_amount < minimum_token_a_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
-        if token_a_amount == 0 {
+        if token_a_amount == 0 && token_a.amount != 0{
             return Err(SwapError::ZeroTradingTokens.into());
         }
         let token_b_amount = to_u64(results.token_b_amount)?;
         if token_b_amount < minimum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
-        if token_b_amount == 0 {
+        if token_b_amount == 0 && token_b.amount != 0{
             return Err(SwapError::ZeroTradingTokens.into());
         }
 
-        Self::token_transfer(
-            swap_info.key,
-            token_program_info.clone(),
-            token_a_info.clone(),
-            dest_token_a_info.clone(),
-            authority_info.clone(),
-            token_swap.nonce,
-            token_a_amount,
-        )?;
-        Self::token_transfer(
-            swap_info.key,
-            token_program_info.clone(),
-            token_b_info.clone(),
-            dest_token_b_info.clone(),
-            authority_info.clone(),
-            token_swap.nonce,
-            token_b_amount,
-        )?;
+        if token_a.amount > 0 {
+            Self::token_transfer(
+                swap_info.key,
+                token_program_info.clone(),
+                token_a_info.clone(),
+                dest_token_a_info.clone(),
+                authority_info.clone(),
+                token_swap.nonce,
+                token_a_amount,
+            )?;
+        }
+        if token_b.amount > 0 {
+            Self::token_transfer(
+                swap_info.key,
+                token_program_info.clone(),
+                token_b_info.clone(),
+                dest_token_b_info.clone(),
+                authority_info.clone(),
+                token_swap.nonce,
+                token_b_amount,
+            )?;
+        }
         if withdraw_fee > 0 {
             Self::token_transfer(
                 swap_info.key,
@@ -4902,5 +4906,84 @@ mod tests {
                 minimum_token_b_amount,
             )
         );
+    }
+
+    #[test]
+    fn test_withdraw_all_offset_curve() {
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 10;
+        let owner_trade_fee_numerator = 1;
+        let owner_trade_fee_denominator = 30;
+        let owner_withdraw_fee_numerator = 0;
+        let owner_withdraw_fee_denominator = 30;
+        let host_fee_numerator = 10;
+        let host_fee_denominator = 100;
+
+        let token_a_amount = 1_000_000_000;
+        let token_b_amount = 0;
+        let fees = Fees {
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
+        };
+
+        let token_b_offset = 2_000_000;
+        let swap_curve = SwapCurve {
+            curve_type: CurveType::Offset,
+            calculator: Box::new(OffsetCurve { token_b_offset }),
+        };
+        let total_pool = swap_curve.calculator.new_pool_supply();
+        let user_key = Pubkey::new_unique();
+        let withdrawer_key = Pubkey::new_unique();
+
+        let mut accounts =
+            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+
+        accounts.initialize_swap().unwrap();
+
+        let (
+            token_a_key,
+            mut token_a_account,
+            token_b_key,
+            mut token_b_account,
+            _pool_key,
+            _pool_account,
+        ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, 0, 0, 0);
+
+        let pool_key = accounts.pool_token_key;
+        let mut pool_account = accounts.pool_token_account.clone();
+
+        accounts
+            .withdraw(
+                &user_key,
+                &pool_key,
+                &mut pool_account,
+                &token_a_key,
+                &mut token_a_account,
+                &token_b_key,
+                &mut token_b_account,
+                total_pool.try_into().unwrap(),
+                0,
+                0,
+            )
+            .unwrap();
+
+        let token_a =
+            spl_token::state::Account::unpack(&token_a_account.data).unwrap();
+        assert_eq!(token_a.amount, token_a_amount);
+        let token_b =
+            spl_token::state::Account::unpack(&token_b_account.data).unwrap();
+        assert_eq!(token_b.amount, 0);
+        let swap_token_a =
+            spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+        assert_eq!(swap_token_a.amount, 0);
+        let swap_token_b =
+            spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
+        assert_eq!(swap_token_b.amount, 0);
     }
 }
