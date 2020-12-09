@@ -4,7 +4,10 @@ use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS};
 use crate::{
     curve::{base::SwapCurve, calculator::TradeDirection, fees::Fees},
     error::SwapError,
-    instruction::{Initialize, Swap, SwapInstruction, Deposit, DepositOneExactIn, Withdraw, WithdrawOneExactOut},
+    instruction::{
+        Deposit, DepositOneExactIn, Initialize, Swap, SwapInstruction, Withdraw,
+        WithdrawOneExactOut,
+    },
     state::SwapInfo,
 };
 use num_traits::FromPrimitive;
@@ -159,7 +162,9 @@ impl Processor {
         if swap_account_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
-        if *authority_info.key != Self::authority_id(program_id, swap_account_info.key, token_swap.nonce)? {
+        if *authority_info.key
+            != Self::authority_id(program_id, swap_account_info.key, token_swap.nonce)?
+        {
             return Err(SwapError::InvalidProgramAddress.into());
         }
         if *token_a_info.key != token_swap.token_a {
@@ -508,7 +513,7 @@ impl Processor {
             token_program_info,
             Some(source_a_info),
             Some(source_b_info),
-            None
+            None,
         )?;
 
         let token_a = Self::unpack_token_account(token_a_info, &token_swap.token_program_id)?;
@@ -748,7 +753,7 @@ impl Processor {
             token_program_info,
             source_a_info,
             source_b_info,
-            None
+            None,
         )?;
 
         let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id)?;
@@ -785,7 +790,7 @@ impl Processor {
                     token_swap.nonce,
                     source_token_amount,
                 )?;
-            },
+            }
             TradeDirection::BtoA => {
                 Self::token_transfer(
                     swap_info.key,
@@ -830,7 +835,8 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
-        let destination_account = Self::unpack_token_account(destination_info, &token_swap.token_program_id)?;
+        let destination_account =
+            Self::unpack_token_account(destination_info, &token_swap.token_program_id)?;
         let swap_token_a =
             Self::unpack_token_account(swap_token_a_info, &token_swap.token_program_id)?;
         let swap_token_b =
@@ -866,17 +872,23 @@ impl Processor {
         let pool_mint_supply = to_u128(pool_mint.supply)?;
         let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
             TradeDirection::AtoB => (
-                to_u128(swap_token_a.amount
-                    .checked_sub(destination_token_amount)
-                    .ok_or(SwapError::CalculationFailure)?)?,
-                to_u128(swap_token_b.amount)?
+                to_u128(
+                    swap_token_a
+                        .amount
+                        .checked_sub(destination_token_amount)
+                        .ok_or(SwapError::CalculationFailure)?,
+                )?,
+                to_u128(swap_token_b.amount)?,
             ),
             TradeDirection::BtoA => (
                 to_u128(swap_token_a.amount)?,
-                to_u128(swap_token_b.amount
-                    .checked_sub(destination_token_amount)
-                    .ok_or(SwapError::CalculationFailure)?)?,
-            )
+                to_u128(
+                    swap_token_b
+                        .amount
+                        .checked_sub(destination_token_amount)
+                        .ok_or(SwapError::CalculationFailure)?,
+                )?,
+            ),
         };
 
         let burn_pool_token_amount = token_swap
@@ -922,7 +934,7 @@ impl Processor {
                     token_swap.nonce,
                     destination_token_amount,
                 )?;
-            },
+            }
             TradeDirection::BtoA => {
                 Self::token_transfer(
                     swap_info.key,
@@ -1136,7 +1148,9 @@ mod tests {
             base::CurveType, constant_price::ConstantPriceCurve,
             constant_product::ConstantProductCurve, offset::OffsetCurve,
         },
-        instruction::{deposit, initialize, swap, withdraw, deposit_one_exact_in, withdraw_one_exact_out},
+        instruction::{
+            deposit, deposit_one_exact_in, initialize, swap, withdraw, withdraw_one_exact_out,
+        },
     };
     use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
     use solana_sdk::account::{create_account, create_is_signer_account_infos, Account};
@@ -5250,7 +5264,9 @@ mod tests {
                 .swap_curve
                 .trading_tokens_to_pool_tokens(
                     destination_a_amount.try_into().unwrap(),
-                    (swap_token_a.amount - destination_a_amount).try_into().unwrap(),
+                    (swap_token_a.amount - destination_a_amount)
+                        .try_into()
+                        .unwrap(),
                     swap_token_b.amount.try_into().unwrap(),
                     pool_mint.supply.try_into().unwrap(),
                     TradeDirection::AtoB,
@@ -5274,15 +5290,9 @@ mod tests {
             let swap_token_a =
                 spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
 
-            assert_eq!(
-                swap_token_a.amount,
-                token_a_amount - destination_a_amount
-            );
+            assert_eq!(swap_token_a.amount, token_a_amount - destination_a_amount);
             let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
-            assert_eq!(
-                token_a.amount,
-                initial_a + destination_a_amount
-            );
+            assert_eq!(token_a.amount, initial_a + destination_a_amount);
 
             let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
             assert_eq!(
@@ -5291,10 +5301,7 @@ mod tests {
             );
             let fee_account =
                 spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
-            assert_eq!(
-                fee_account.amount,
-                to_u64(withdraw_fee).unwrap()
-            );
+            assert_eq!(fee_account.amount, to_u64(withdraw_fee).unwrap());
         }
 
         // correct withdrawal from fee account
@@ -5306,13 +5313,7 @@ mod tests {
                 _token_b_account,
                 _pool_key,
                 _pool_account,
-            ) = accounts.setup_token_accounts(
-                &user_key,
-                &withdrawer_key,
-                initial_a,
-                initial_b,
-                0,
-            );
+            ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, initial_a, initial_b, 0);
 
             let fee_a_amount = 2;
             let pool_fee_key = accounts.pool_fee_key;
@@ -5339,15 +5340,9 @@ mod tests {
             let swap_token_a =
                 spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
 
-            assert_eq!(
-                swap_token_a.amount,
-                token_a_amount - fee_a_amount
-            );
+            assert_eq!(swap_token_a.amount, token_a_amount - fee_a_amount);
             let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
-            assert_eq!(
-                token_a.amount,
-                initial_a + fee_a_amount
-            );
+            assert_eq!(token_a.amount, initial_a + fee_a_amount);
         }
     }
 
