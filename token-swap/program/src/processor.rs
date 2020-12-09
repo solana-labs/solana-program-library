@@ -448,6 +448,9 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
+        if !token_swap.swap_curve.calculator.allows_deposits() {
+            return Err(SwapError::UnsupportedCurveOperation.into());
+        }
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -799,6 +802,9 @@ impl PrintProgramError for SwapError {
             }
             SwapError::InvalidCurve => {
                 msg!("Error: The provided curve parameters are invalid")
+            }
+            SwapError::UnsupportedCurveOperation => {
+                msg!("Error: The operation cannot be performed on the given curve")
             }
         }
     }
@@ -4906,6 +4912,37 @@ mod tests {
                 minimum_token_b_amount,
             )
         );
+
+        // try to deposit, fails
+        {
+            let initial_a = 100;
+            let initial_b = 100;
+            let pool_amount = 100;
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+            assert_eq!(
+                Err(SwapError::UnsupportedCurveOperation.into()),
+                accounts
+                    .deposit(
+                        &swapper_key,
+                        &token_a_key,
+                        &mut token_a_account,
+                        &token_b_key,
+                        &mut token_b_account,
+                        &pool_key,
+                        &mut pool_account,
+                        pool_amount,
+                        initial_a,
+                        initial_b,
+                    )
+            );
+        }
     }
 
     #[test]

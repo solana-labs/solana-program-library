@@ -143,6 +143,12 @@ pub trait CurveCalculator: Debug + DynPack {
         }
         Ok(())
     }
+
+    /// Some curves will function best and prevent attacks if we prevent
+    /// deposits after initialization
+    fn allows_deposits(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

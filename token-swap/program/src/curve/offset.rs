@@ -110,6 +110,15 @@ impl CurveCalculator for OffsetCurve {
         }
         Ok(())
     }
+
+    /// Offset curves can cause arbitrage opportunities if outside users are
+    /// allowed to deposit.  For example, in the offset curve, if there's swap
+    /// with 1 million of token A against an offset of 2 million token B,
+    /// someone else can deposit 1 million A and 2 million B for LP tokens.
+    /// The pool creator can then use their LP tokens to steal the 2 million B,
+    fn allows_deposits(&self) -> bool {
+        false
+    }
 }
 
 /// IsInitialized is required to use `Pack::pack` and `Pack::unpack`
