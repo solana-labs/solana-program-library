@@ -2048,9 +2048,7 @@ mod tests {
             let token_b_price = 10_000;
             let swap_curve = SwapCurve {
                 curve_type: CurveType::ConstantPrice,
-                calculator: Box::new(ConstantPriceCurve {
-                    token_b_price,
-                }),
+                calculator: Box::new(ConstantPriceCurve { token_b_price }),
             };
             let mut accounts =
                 SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);

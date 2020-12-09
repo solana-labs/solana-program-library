@@ -2,15 +2,16 @@
 
 use crate::{
     curve::calculator::{
-        map_zero_to_none, CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection, TradingTokenResult,
+        map_zero_to_none, CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection,
+        TradingTokenResult,
     },
     error::SwapError,
 };
+use arrayref::{array_mut_ref, array_ref};
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
 };
-use arrayref::{array_mut_ref, array_ref};
 
 /// ConstantPriceCurve struct implementing CurveCalculator
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -166,9 +167,7 @@ mod tests {
         let swap_destination_amount: u128 = 0;
         let source_amount: u128 = 100;
         let token_b_price = 1;
-        let curve = ConstantPriceCurve {
-            token_b_price,
-        };
+        let curve = ConstantPriceCurve { token_b_price };
 
         let expected_result = SwapWithoutFeesResult {
             source_amount_swapped: source_amount,
@@ -199,9 +198,7 @@ mod tests {
     #[test]
     fn pack_flat_curve() {
         let token_b_price = 1_251_258;
-        let curve = ConstantPriceCurve {
-            token_b_price,
-        };
+        let curve = ConstantPriceCurve { token_b_price };
 
         let mut packed = [0u8; ConstantPriceCurve::LEN];
         Pack::pack_into_slice(&curve, &mut packed[..]);
@@ -222,7 +219,12 @@ mod tests {
         }
     }
 
-    fn check_pool_token_conversion(token_b_price: u128, swap_token_a_amount: u128, swap_token_b_amount: u128, token_b_amount: u128) {
+    fn check_pool_token_conversion(
+        token_b_price: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        token_b_amount: u128,
+    ) {
         let token_a_amount = token_b_amount * token_b_price;
         let curve = ConstantPriceCurve {
             token_b_price: token_b_price as u64,
@@ -254,7 +256,10 @@ mod tests {
                 swap_token_b_amount,
             )
             .unwrap();
-        almost_equal(results.token_a_amount / token_b_price, token_a_amount / token_b_price); // takes care of truncation issues
+        almost_equal(
+            results.token_a_amount / token_b_price,
+            token_a_amount / token_b_price,
+        ); // takes care of truncation issues
         almost_equal(results.token_b_amount, token_b_amount);
     }
 
@@ -267,18 +272,14 @@ mod tests {
             (1_000_251, 0, 1_288, 1),
             (1_000_000_000_000, 212, 10_000, 1),
         ];
-        for (
-            token_b_price,
-            swap_token_a_amount,
-            swap_token_b_amount,
-            token_b_amount
-        ) in tests.iter()
+        for (token_b_price, swap_token_a_amount, swap_token_b_amount, token_b_amount) in
+            tests.iter()
         {
             check_pool_token_conversion(
                 *token_b_price,
                 *swap_token_a_amount,
                 *swap_token_b_amount,
-                *token_b_amount
+                *token_b_amount,
             );
         }
     }
