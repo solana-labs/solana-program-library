@@ -85,12 +85,19 @@ pub trait CurveCalculator: Debug + DynPack {
         &self,
         pool_tokens: u128,
         pool_token_supply: u128,
-        swap_token_amount: u128,
-    ) -> Option<u128> {
-        pool_tokens
-            .checked_mul(swap_token_amount)?
-            .checked_div(pool_token_supply)
-            .and_then(map_zero_to_none)
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+    ) -> Option<TradingTokenResult> {
+        let token_a_amount = pool_tokens
+            .checked_mul(swap_token_a_amount)?
+            .checked_div(pool_token_supply)?;
+        let token_b_amount = pool_tokens
+            .checked_mul(swap_token_b_amount)?
+            .checked_div(pool_token_supply)?;
+        Some(TradingTokenResult {
+            token_a_amount,
+            token_b_amount,
+        })
     }
 
     /// Get the amount of pool tokens for the given amount of token A or B
@@ -99,9 +106,15 @@ pub trait CurveCalculator: Debug + DynPack {
     fn trading_tokens_to_pool_tokens(
         &self,
         source_amount: u128,
-        swap_source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
         pool_supply: u128,
+        trade_direction: TradeDirection,
     ) -> Option<u128> {
+        let swap_source_amount = match trade_direction {
+            TradeDirection::AtoB => swap_token_a_amount,
+            TradeDirection::BtoA => swap_token_b_amount,
+        };
         pool_supply
             .checked_mul(source_amount)?
             .checked_div(swap_source_amount)?

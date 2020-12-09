@@ -101,8 +101,10 @@ impl SwapCurve {
     pub fn trading_tokens_to_pool_tokens(
         &self,
         source_amount: u128,
-        swap_source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
         pool_supply: u128,
+        trade_direction: TradeDirection,
         fees: &Fees,
     ) -> Option<u128> {
         // Get the trading fee incurred if the owner fee is swapped for the other side
@@ -110,8 +112,10 @@ impl SwapCurve {
         let source_amount = source_amount.checked_sub(trade_fee)?;
         self.calculator.trading_tokens_to_pool_tokens(
             source_amount,
-            swap_source_amount,
+            swap_token_a_amount,
+            swap_token_b_amount,
             pool_supply,
+            trade_direction,
         )
     }
 }

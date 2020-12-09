@@ -183,28 +183,37 @@ mod tests {
         assert_eq!(calculator.new_pool_supply(), INITIAL_SWAP_POOL_AMOUNT);
     }
 
-    fn check_pool_token_rate(token_a: u128, deposit: u128, supply: u128, expected_a: u128) {
+    fn check_pool_token_rate(
+        token_a: u128,
+        token_b: u128,
+        deposit: u128,
+        supply: u128,
+        expected_a: u128,
+        expected_b: u128,
+    ) {
         let amp = 1;
         let calculator = StableCurve { amp };
         let results = calculator
-            .pool_tokens_to_trading_tokens(deposit, supply, token_a)
+            .pool_tokens_to_trading_tokens(deposit, supply, token_a, token_b)
             .unwrap();
-        assert_eq!(results, expected_a);
+        assert_eq!(results.token_a_amount, expected_a);
+        assert_eq!(results.token_b_amount, expected_b);
     }
 
     #[test]
     fn trading_token_conversion() {
-        check_pool_token_rate(2, 5, 10, 1);
-        check_pool_token_rate(10, 5, 10, 5);
-        check_pool_token_rate(5, 5, 10, 2);
-        check_pool_token_rate(5, 5, 10, 2);
+        check_pool_token_rate(2, 49, 5, 10, 1, 24);
+        check_pool_token_rate(100, 202, 5, 101, 4, 10);
+        check_pool_token_rate(5, 501, 2, 10, 1, 100);
     }
 
     #[test]
     fn fail_trading_token_conversion() {
         let amp = 1;
         let calculator = StableCurve { amp };
-        let results = calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX);
+        let results = calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX, 0);
+        assert!(results.is_none());
+        let results = calculator.pool_tokens_to_trading_tokens(5, 10, 0, u128::MAX);
         assert!(results.is_none());
     }
 

@@ -365,12 +365,20 @@ impl Processor {
         // mint pool tokens equivalent to the owner fee
         let source_account =
             Self::unpack_token_account(swap_source_info, &token_swap.token_program_id)?;
+        let destination_account =
+            Self::unpack_token_account(swap_destination_info, &token_swap.token_program_id)?;
+        let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
+            TradeDirection::AtoB => (source_account.amount, destination_account.amount),
+            TradeDirection::BtoA => (destination_account.amount, source_account.amount),
+        };
         let mut pool_token_amount = token_swap
             .swap_curve
             .trading_tokens_to_pool_tokens(
                 result.owner_fee,
-                to_u128(source_account.amount)?,
+                to_u128(swap_token_a_amount)?,
+                to_u128(swap_token_b_amount)?,
                 to_u128(pool_mint.supply)?,
+                trade_direction,
                 &token_swap.fees,
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
@@ -470,27 +478,27 @@ impl Processor {
 
         let calculator = token_swap.swap_curve.calculator;
 
-        let token_a_amount = calculator
+        let results = calculator
             .pool_tokens_to_trading_tokens(
                 pool_token_amount,
                 pool_mint_supply,
                 to_u128(token_a.amount)?,
-            )
-            .ok_or(SwapError::ZeroTradingTokens)?;
-        let token_a_amount = to_u64(token_a_amount)?;
-        if token_a_amount > maximum_token_a_amount {
-            return Err(SwapError::ExceededSlippage.into());
-        }
-        let token_b_amount = calculator
-            .pool_tokens_to_trading_tokens(
-                pool_token_amount,
-                pool_mint_supply,
                 to_u128(token_b.amount)?,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
-        let token_b_amount = to_u64(token_b_amount)?;
+        let token_a_amount = to_u64(results.token_a_amount)?;
+        if token_a_amount > maximum_token_a_amount {
+            return Err(SwapError::ExceededSlippage.into());
+        }
+        if token_a_amount == 0 {
+            return Err(SwapError::ZeroTradingTokens.into());
+        }
+        let token_b_amount = to_u64(results.token_b_amount)?;
         if token_b_amount > maximum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
+        }
+        if token_b_amount == 0 {
+            return Err(SwapError::ZeroTradingTokens.into());
         }
 
         Self::token_transfer(
@@ -591,29 +599,28 @@ impl Processor {
         let pool_token_amount = to_u128(pool_token_amount)?
             .checked_sub(withdraw_fee)
             .ok_or(SwapError::CalculationFailure)?;
-        let pool_mint_supply = to_u128(pool_mint.supply)?;
 
-        let token_a_amount = calculator
+        let results = calculator
             .pool_tokens_to_trading_tokens(
                 pool_token_amount,
-                pool_mint_supply,
+                to_u128(pool_mint.supply)?,
                 to_u128(token_a.amount)?,
-            )
-            .ok_or(SwapError::ZeroTradingTokens)?;
-        let token_a_amount = to_u64(token_a_amount)?;
-        if token_a_amount < minimum_token_a_amount {
-            return Err(SwapError::ExceededSlippage.into());
-        }
-        let token_b_amount = calculator
-            .pool_tokens_to_trading_tokens(
-                pool_token_amount,
-                pool_mint_supply,
                 to_u128(token_b.amount)?,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
-        let token_b_amount = to_u64(token_b_amount)?;
+        let token_a_amount = to_u64(results.token_a_amount)?;
+        if token_a_amount < minimum_token_a_amount {
+            return Err(SwapError::ExceededSlippage.into());
+        }
+        if token_a_amount == 0 {
+            return Err(SwapError::ZeroTradingTokens.into());
+        }
+        let token_b_amount = to_u64(results.token_b_amount)?;
         if token_b_amount < minimum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
+        }
+        if token_b_amount == 0 {
+            return Err(SwapError::ZeroTradingTokens.into());
         }
 
         Self::token_transfer(
@@ -3552,41 +3559,33 @@ mod tests {
             let pool_mint =
                 spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
             let withdraw_fee = accounts.fees.owner_withdraw_fee(withdraw_amount).unwrap();
-            let withdraw_token_a_amount = accounts
+            let results = accounts
                 .swap_curve
                 .calculator
                 .pool_tokens_to_trading_tokens(
                     withdraw_amount - withdraw_fee,
                     pool_mint.supply.try_into().unwrap(),
                     swap_token_a.amount.try_into().unwrap(),
-                )
-                .unwrap();
-            let withdraw_token_b_amount = accounts
-                .swap_curve
-                .calculator
-                .pool_tokens_to_trading_tokens(
-                    withdraw_amount - withdraw_fee,
-                    pool_mint.supply.try_into().unwrap(),
                     swap_token_b.amount.try_into().unwrap(),
                 )
                 .unwrap();
             assert_eq!(
                 swap_token_a.amount,
-                token_a_amount - to_u64(withdraw_token_a_amount).unwrap()
+                token_a_amount - to_u64(results.token_a_amount).unwrap()
             );
             assert_eq!(
                 swap_token_b.amount,
-                token_b_amount - to_u64(withdraw_token_b_amount).unwrap()
+                token_b_amount - to_u64(results.token_b_amount).unwrap()
             );
             let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
             assert_eq!(
                 token_a.amount,
-                initial_a + to_u64(withdraw_token_a_amount).unwrap()
+                initial_a + to_u64(results.token_a_amount).unwrap()
             );
             let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
             assert_eq!(
                 token_b.amount,
-                initial_b + to_u64(withdraw_token_b_amount).unwrap()
+                initial_b + to_u64(results.token_b_amount).unwrap()
             );
             let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
             assert_eq!(
@@ -3638,33 +3637,25 @@ mod tests {
                 spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
             let pool_mint =
                 spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
-            let token_a_amount = accounts
+            let results = accounts
                 .swap_curve
                 .calculator
                 .pool_tokens_to_trading_tokens(
                     pool_fee_amount.try_into().unwrap(),
                     pool_mint.supply.try_into().unwrap(),
                     swap_token_a.amount.try_into().unwrap(),
-                )
-                .unwrap();
-            let token_b_amount = accounts
-                .swap_curve
-                .calculator
-                .pool_tokens_to_trading_tokens(
-                    pool_fee_amount.try_into().unwrap(),
-                    pool_mint.supply.try_into().unwrap(),
                     swap_token_b.amount.try_into().unwrap(),
                 )
                 .unwrap();
             let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
             assert_eq!(
                 token_a.amount,
-                TryInto::<u64>::try_into(token_a_amount).unwrap()
+                TryInto::<u64>::try_into(results.token_a_amount).unwrap()
             );
             let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
             assert_eq!(
                 token_b.amount,
-                TryInto::<u64>::try_into(token_b_amount).unwrap()
+                TryInto::<u64>::try_into(results.token_b_amount).unwrap()
             );
         }
     }
@@ -3762,7 +3753,9 @@ mod tests {
             .trading_tokens_to_pool_tokens(
                 results.owner_fee,
                 token_a_amount.try_into().unwrap(),
+                token_b_amount.try_into().unwrap(),
                 initial_supply.try_into().unwrap(),
+                TradeDirection::AtoB,
                 &fees,
             )
             .unwrap();
@@ -3835,8 +3828,10 @@ mod tests {
         let second_fee = swap_curve
             .trading_tokens_to_pool_tokens(
                 results.owner_fee,
+                token_a_amount.try_into().unwrap(),
                 token_b_amount.try_into().unwrap(),
                 initial_supply.try_into().unwrap(),
+                TradeDirection::BtoA,
                 &fees,
             )
             .unwrap();
