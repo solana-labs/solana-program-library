@@ -615,14 +615,14 @@ impl Processor {
         if token_a_amount < minimum_token_a_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
-        if token_a_amount == 0 && token_a.amount != 0{
+        if token_a_amount == 0 && token_a.amount != 0 {
             return Err(SwapError::ZeroTradingTokens.into());
         }
         let token_b_amount = to_u64(results.token_b_amount)?;
         if token_b_amount < minimum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
-        if token_b_amount == 0 && token_b.amount != 0{
+        if token_b_amount == 0 && token_b.amount != 0 {
             return Err(SwapError::ZeroTradingTokens.into());
         }
 
@@ -4973,11 +4973,9 @@ mod tests {
             )
             .unwrap();
 
-        let token_a =
-            spl_token::state::Account::unpack(&token_a_account.data).unwrap();
+        let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
         assert_eq!(token_a.amount, token_a_amount);
-        let token_b =
-            spl_token::state::Account::unpack(&token_b_account.data).unwrap();
+        let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
         assert_eq!(token_b.amount, 0);
         let swap_token_a =
             spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
