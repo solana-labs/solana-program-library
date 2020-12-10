@@ -629,7 +629,8 @@ impl Processor {
             return Err(SwapError::ZeroTradingTokens.into());
         }
 
-        if token_a.amount > 0 {
+        let token_a_amount = std::cmp::min(token_a.amount, token_a_amount);
+        if token_a_amount > 0 {
             Self::token_transfer(
                 swap_info.key,
                 token_program_info.clone(),
@@ -640,7 +641,8 @@ impl Processor {
                 token_a_amount,
             )?;
         }
-        if token_b.amount > 0 {
+        let token_b_amount = std::cmp::min(token_b.amount, token_b_amount);
+        if token_b_amount > 0 {
             Self::token_transfer(
                 swap_info.key,
                 token_program_info.clone(),
@@ -4913,7 +4915,8 @@ mod tests {
             )
         );
 
-        // try to deposit, fails
+        // Try to deposit, fails because deposits are not allowed for offset
+        // curve swaps
         {
             let initial_a = 100;
             let initial_b = 100;
@@ -4956,7 +4959,7 @@ mod tests {
         let host_fee_denominator = 100;
 
         let token_a_amount = 1_000_000_000;
-        let token_b_amount = 0;
+        let token_b_amount = 10;
         let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
@@ -4994,6 +4997,10 @@ mod tests {
         let pool_key = accounts.pool_token_key;
         let mut pool_account = accounts.pool_token_account.clone();
 
+        // Withdraw takes all tokens for A and B.
+        // The curve's calculation for token B will say to transfer
+        // `token_b_offset + token_b_amount`, but only `token_b_amount` will be
+        // moved.
         accounts
             .withdraw(
                 &user_key,
@@ -5012,7 +5019,7 @@ mod tests {
         let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
         assert_eq!(token_a.amount, token_a_amount);
         let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
-        assert_eq!(token_b.amount, 0);
+        assert_eq!(token_b.amount, token_b_amount);
         let swap_token_a =
             spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
         assert_eq!(swap_token_a.amount, 0);
