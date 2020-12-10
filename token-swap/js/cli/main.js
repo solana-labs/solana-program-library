@@ -29,11 +29,11 @@ async function main() {
   await swap();
   console.log('Run test: create account, approve, swap all at once');
   await createAccountAndSwapAtomic();
-  console.log('Success\n');
   console.log('Run test: deposit one exact amount in');
   await depositOneExactIn();
   console.log('Run test: withrdaw one exact amount out');
   await withdrawOneExactOut();
+  console.log('Success\n');
 }
 
 main()
