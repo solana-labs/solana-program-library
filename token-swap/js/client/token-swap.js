@@ -876,7 +876,9 @@ export class TokenSwap {
       {
         instruction: 4, // DepositOneExactIn instruction
         sourceTokenAmount: new Numberu64(sourceTokenAmount).toBuffer(),
-        minimumPoolTokenAmount: new Numberu64(minimumPoolTokenAmount).toBuffer(),
+        minimumPoolTokenAmount: new Numberu64(
+          minimumPoolTokenAmount,
+        ).toBuffer(),
       },
       data,
     );
@@ -959,8 +961,12 @@ export class TokenSwap {
     dataLayout.encode(
       {
         instruction: 5, // WithdrawOneExactOut instruction
-        destinationTokenAmount: new Numberu64(destinationTokenAmount).toBuffer(),
-        maximumPoolTokenAmount: new Numberu64(maximumPoolTokenAmount).toBuffer(),
+        destinationTokenAmount: new Numberu64(
+          destinationTokenAmount,
+        ).toBuffer(),
+        maximumPoolTokenAmount: new Numberu64(
+          maximumPoolTokenAmount,
+        ).toBuffer(),
       },
       data,
     );

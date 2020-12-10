@@ -291,9 +291,15 @@ export async function deposit(): Promise<void> {
   const poolMintInfo = await tokenPool.getMintInfo();
   const supply = poolMintInfo.supply.toNumber();
   const swapTokenA = await mintA.getAccountInfo(tokenAccountA);
-  const tokenA = Math.floor((swapTokenA.amount.toNumber() * POOL_TOKEN_AMOUNT) / (supply + POOL_TOKEN_AMOUNT));
+  const tokenA = Math.floor(
+    (swapTokenA.amount.toNumber() * POOL_TOKEN_AMOUNT) /
+      (supply + POOL_TOKEN_AMOUNT),
+  );
   const swapTokenB = await mintB.getAccountInfo(tokenAccountB);
-  const tokenB = Math.floor((swapTokenB.amount.toNumber() * POOL_TOKEN_AMOUNT) / (supply + POOL_TOKEN_AMOUNT));
+  const tokenB = Math.floor(
+    (swapTokenB.amount.toNumber() * POOL_TOKEN_AMOUNT) /
+      (supply + POOL_TOKEN_AMOUNT),
+  );
 
   console.log('Creating depositor token a account');
   const userAccountA = await mintA.createAccount(owner.publicKey);
@@ -525,9 +531,10 @@ export async function swap(): Promise<void> {
 function tradingTokensToPoolTokens(
   sourceAmount: number,
   swapSourceAmount: number,
-  poolAmount: number): number
-{
-  const tradingFee = (sourceAmount / 2) * (TRADING_FEE_NUMERATOR / TRADING_FEE_DENOMINATOR);
+  poolAmount: number,
+): number {
+  const tradingFee =
+    (sourceAmount / 2) * (TRADING_FEE_NUMERATOR / TRADING_FEE_DENOMINATOR);
   const sourceAmountPostFee = sourceAmount - tradingFee;
   const root = Math.sqrt(sourceAmountPostFee / swapSourceAmount + 1);
   return Math.floor(poolAmount * (root - 1));
@@ -540,9 +547,17 @@ export async function depositOneExactIn(): Promise<void> {
   const poolMintInfo = await tokenPool.getMintInfo();
   const supply = poolMintInfo.supply.toNumber();
   const swapTokenA = await mintA.getAccountInfo(tokenAccountA);
-  const poolTokenA = tradingTokensToPoolTokens(depositAmount, swapTokenA.amount.toNumber(), supply);
+  const poolTokenA = tradingTokensToPoolTokens(
+    depositAmount,
+    swapTokenA.amount.toNumber(),
+    supply,
+  );
   const swapTokenB = await mintB.getAccountInfo(tokenAccountB);
-  const poolTokenB = tradingTokensToPoolTokens(depositAmount, swapTokenB.amount.toNumber(), supply);
+  const poolTokenB = tradingTokensToPoolTokens(
+    depositAmount,
+    swapTokenB.amount.toNumber(),
+    supply,
+  );
 
   console.log('Creating depositor token a account');
   const userAccountA = await mintA.createAccount(owner.publicKey);
@@ -597,18 +612,28 @@ export async function withdrawOneExactOut(): Promise<void> {
 
   const swapTokenA = await mintA.getAccountInfo(tokenAccountA);
   const swapTokenAPost = swapTokenA.amount.toNumber() - withdrawAmount;
-  const poolTokenA = tradingTokensToPoolTokens(withdrawAmount, swapTokenAPost, supply);
+  const poolTokenA = tradingTokensToPoolTokens(
+    withdrawAmount,
+    swapTokenAPost,
+    supply,
+  );
   let adjustedPoolTokenA = poolTokenA * roundingAmount;
   if (OWNER_WITHDRAW_FEE_NUMERATOR !== 0) {
-    adjustedPoolTokenA *=  (1 + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR);
+    adjustedPoolTokenA *=
+      1 + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR;
   }
 
   const swapTokenB = await mintB.getAccountInfo(tokenAccountB);
   const swapTokenBPost = swapTokenB.amount.toNumber() - withdrawAmount;
-  const poolTokenB = tradingTokensToPoolTokens(withdrawAmount, swapTokenBPost, supply);
+  const poolTokenB = tradingTokensToPoolTokens(
+    withdrawAmount,
+    swapTokenBPost,
+    supply,
+  );
   let adjustedPoolTokenB = poolTokenB * roundingAmount;
   if (OWNER_WITHDRAW_FEE_NUMERATOR !== 0) {
-    adjustedPoolTokenB *=  (1 + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR);
+    adjustedPoolTokenB *=
+      1 + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR;
   }
 
   console.log('Creating withdraw token a account');
@@ -657,5 +682,8 @@ export async function withdrawOneExactOut(): Promise<void> {
   assert(info.amount.toNumber() == currentSwapTokenB - withdrawAmount);
   currentSwapTokenB += withdrawAmount;
   info = await tokenPool.getAccountInfo(tokenAccountPool);
-  assert(info.amount.toNumber() >= poolTokenAmount - adjustedPoolTokenA - adjustedPoolTokenB);
+  assert(
+    info.amount.toNumber() >=
+      poolTokenAmount - adjustedPoolTokenA - adjustedPoolTokenB,
+  );
 }
