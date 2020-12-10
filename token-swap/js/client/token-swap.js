@@ -816,4 +816,170 @@ export class TokenSwap {
       data,
     });
   }
+
+  /**
+   * Deposit one side of tokens into the pool
+   * @param userAccount User account to deposit token A or B
+   * @param poolAccount User account to receive pool tokens
+   * @param sourceTokenAmount The amount of token A or B to deposit
+   * @param minimumPoolTokenAmount Minimum amount of pool tokens to mint
+   */
+  async depositOneExactIn(
+    userAccount: PublicKey,
+    poolAccount: PublicKey,
+    sourceTokenAmount: number | Numberu64,
+    minimumPoolTokenAmount: number | Numberu64,
+  ): Promise<TransactionSignature> {
+    return await sendAndConfirmTransaction(
+      'depositOneExactIn',
+      this.connection,
+      new Transaction().add(
+        TokenSwap.depositOneExactInInstruction(
+          this.tokenSwap,
+          this.authority,
+          userAccount,
+          this.tokenAccountA,
+          this.tokenAccountB,
+          this.poolToken,
+          poolAccount,
+          this.swapProgramId,
+          this.tokenProgramId,
+          sourceTokenAmount,
+          minimumPoolTokenAmount,
+        ),
+      ),
+      this.payer,
+    );
+  }
+
+  static depositOneExactInInstruction(
+    tokenSwap: PublicKey,
+    authority: PublicKey,
+    source: PublicKey,
+    intoA: PublicKey,
+    intoB: PublicKey,
+    poolToken: PublicKey,
+    poolAccount: PublicKey,
+    swapProgramId: PublicKey,
+    tokenProgramId: PublicKey,
+    sourceTokenAmount: number | Numberu64,
+    minimumPoolTokenAmount: number | Numberu64,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      Layout.uint64('sourceTokenAmount'),
+      Layout.uint64('minimumPoolTokenAmount'),
+    ]);
+
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 4, // DepositOneExactIn instruction
+        sourceTokenAmount: new Numberu64(sourceTokenAmount).toBuffer(),
+        minimumPoolTokenAmount: new Numberu64(minimumPoolTokenAmount).toBuffer(),
+      },
+      data,
+    );
+
+    const keys = [
+      {pubkey: tokenSwap, isSigner: false, isWritable: false},
+      {pubkey: authority, isSigner: false, isWritable: false},
+      {pubkey: source, isSigner: false, isWritable: true},
+      {pubkey: intoA, isSigner: false, isWritable: true},
+      {pubkey: intoB, isSigner: false, isWritable: true},
+      {pubkey: poolToken, isSigner: false, isWritable: true},
+      {pubkey: poolAccount, isSigner: false, isWritable: true},
+      {pubkey: tokenProgramId, isSigner: false, isWritable: false},
+    ];
+    return new TransactionInstruction({
+      keys,
+      programId: swapProgramId,
+      data,
+    });
+  }
+
+  /**
+   * Withdraw tokens from the pool
+   *
+   * @param userAccount User account to receive token A or B
+   * @param poolAccount User account to burn pool token
+   * @param destinationTokenAmount The amount of token A or B to withdraw
+   * @param maximumPoolTokenAmount Maximum amount of pool tokens to burn
+   */
+  async withdrawOneExactOut(
+    userAccount: PublicKey,
+    poolAccount: PublicKey,
+    destinationTokenAmount: number | Numberu64,
+    maximumPoolTokenAmount: number | Numberu64,
+  ): Promise<TransactionSignature> {
+    return await sendAndConfirmTransaction(
+      'withdrawOneExactOut',
+      this.connection,
+      new Transaction().add(
+        TokenSwap.withdrawOneExactOutInstruction(
+          this.tokenSwap,
+          this.authority,
+          this.poolToken,
+          this.feeAccount,
+          poolAccount,
+          this.tokenAccountA,
+          this.tokenAccountB,
+          userAccount,
+          this.swapProgramId,
+          this.tokenProgramId,
+          destinationTokenAmount,
+          maximumPoolTokenAmount,
+        ),
+      ),
+      this.payer,
+    );
+  }
+
+  static withdrawOneExactOutInstruction(
+    tokenSwap: PublicKey,
+    authority: PublicKey,
+    poolMint: PublicKey,
+    feeAccount: PublicKey,
+    sourcePoolAccount: PublicKey,
+    fromA: PublicKey,
+    fromB: PublicKey,
+    userAccount: PublicKey,
+    swapProgramId: PublicKey,
+    tokenProgramId: PublicKey,
+    destinationTokenAmount: number | Numberu64,
+    maximumPoolTokenAmount: number | Numberu64,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([
+      BufferLayout.u8('instruction'),
+      Layout.uint64('destinationTokenAmount'),
+      Layout.uint64('maximumPoolTokenAmount'),
+    ]);
+
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 5, // WithdrawOneExactOut instruction
+        destinationTokenAmount: new Numberu64(destinationTokenAmount).toBuffer(),
+        maximumPoolTokenAmount: new Numberu64(maximumPoolTokenAmount).toBuffer(),
+      },
+      data,
+    );
+
+    const keys = [
+      {pubkey: tokenSwap, isSigner: false, isWritable: false},
+      {pubkey: authority, isSigner: false, isWritable: false},
+      {pubkey: poolMint, isSigner: false, isWritable: true},
+      {pubkey: sourcePoolAccount, isSigner: false, isWritable: true},
+      {pubkey: fromA, isSigner: false, isWritable: true},
+      {pubkey: fromB, isSigner: false, isWritable: true},
+      {pubkey: userAccount, isSigner: false, isWritable: true},
+      {pubkey: feeAccount, isSigner: false, isWritable: true},
+      {pubkey: tokenProgramId, isSigner: false, isWritable: false},
+    ];
+    return new TransactionInstruction({
+      keys,
+      programId: swapProgramId,
+      data,
+    });
+  }
 }

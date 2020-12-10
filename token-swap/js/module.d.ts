@@ -178,5 +178,48 @@ declare module '@solana/spl-token-swap' {
       minimumTokenA: number | Numberu64,
       minimumTokenB: number | Numberu64,
     ): TransactionInstruction;
+
+    depositOneExactIn(
+      userAccount: PublicKey,
+      poolAccount: PublicKey,
+      sourceTokenAmount: number | Numberu64,
+      minimumPoolTokenAmount: number | Numberu64,
+    ): Promise<TransactionSignature>;
+
+    static depositOneExactInInstruction(
+      tokenSwap: PublicKey,
+      authority: PublicKey,
+      source: PublicKey,
+      intoA: PublicKey,
+      intoB: PublicKey,
+      poolToken: PublicKey,
+      poolAccount: PublicKey,
+      swapProgramId: PublicKey,
+      tokenProgramId: PublicKey,
+      sourceTokenAmount: number | Numberu64,
+      minimumPoolTokenAmount: number | Numberu64,
+    ): TransactionInstruction;
+
+    withdrawOneExactOut(
+      userAccount: PublicKey,
+      poolAccount: PublicKey,
+      destinationTokenAmount: number | Numberu64,
+      maximumPoolTokenAmount: number | Numberu64,
+    ): Promise<TransactionSignature>;
+
+    static withdrawOneExactOutInstruction(
+      tokenSwap: PublicKey,
+      authority: PublicKey,
+      poolMint: PublicKey,
+      feeAccount: PublicKey,
+      sourcePoolAccount: PublicKey,
+      fromA: PublicKey,
+      fromB: PublicKey,
+      userAccount: PublicKey,
+      swapProgramId: PublicKey,
+      tokenProgramId: PublicKey,
+      destinationTokenAmount: number | Numberu64,
+      maximumPoolTokenAmount: number | Numberu64,
+    ): TransactionInstruction;
   }
 }
