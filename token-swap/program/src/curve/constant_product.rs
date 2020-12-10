@@ -93,7 +93,7 @@ impl DynPack for ConstantProductCurve {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::calculator::INITIAL_SWAP_POOL_AMOUNT;
+    use crate::curve::calculator::{test::check_pool_token_conversion, INITIAL_SWAP_POOL_AMOUNT};
 
     #[test]
     fn initial_pool_amount() {
@@ -210,6 +210,26 @@ mod tests {
                 *swap_destination_amount,
                 *expected_source_amount,
                 *expected_destination_amount,
+            );
+        }
+    }
+
+    #[test]
+    fn pool_token_conversion() {
+        let tests: &[(u128, u128, u128)] = &[
+            (1_000_000, 2400112, 100_000),
+            (1_000, 100, 100),
+            (30, 1_288, 100_000),
+            (1_000, 1_288, 100_000),
+            (212, 10_000, 100_000),
+        ];
+        for (swap_token_a_amount, swap_token_b_amount, token_a_amount) in tests.iter() {
+            let curve = ConstantProductCurve {};
+            check_pool_token_conversion(
+                &curve,
+                *swap_token_a_amount,
+                *swap_token_b_amount,
+                *token_a_amount,
             );
         }
     }
