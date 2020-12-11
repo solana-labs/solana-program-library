@@ -86,12 +86,8 @@ impl CurveCalculator for OffsetCurve {
         let source_amount = PreciseNumber::new(source_amount)?;
         let ratio = source_amount.checked_div(&swap_source_amount)?;
         let one = PreciseNumber::new(1)?;
-        let two = PreciseNumber::new(2)?;
         let base = one.checked_add(&ratio)?;
-        let guess = base.checked_div(&two)?;
-        let root = base
-            .newtonian_root_approximation(&two, guess)?
-            .checked_sub(&one)?;
+        let root = base.sqrt()?.checked_sub(&one)?;
         let pool_supply = PreciseNumber::new(pool_supply)?;
         pool_supply.checked_mul(&root)?.to_imprecise()
     }
