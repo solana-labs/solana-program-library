@@ -394,11 +394,9 @@ impl PreciseNumber {
         }
         let two = PreciseNumber::new(2)?;
         let one = PreciseNumber::new(1)?;
-        let guess = if self.value > one.value {
-            self.checked_div(&two)? // guess half of number
-        } else {
-            self.checked_add(&one)?.checked_div(&two)? // guess average of 1 and number
-        };
+        // A good initial guess is the average of the interval that contains the
+        // input number.  For all numbers, that will be between 1 and the given number.
+        let guess = self.checked_add(&one)?.checked_div(&two)?;
         self.newtonian_root_approximation(&two, guess, Self::MAX_APPROXIMATION_ITERATIONS)
     }
 }
@@ -440,7 +438,6 @@ mod tests {
         let exponent = PreciseNumber { value: exponent };
         let power = base.checked_pow_fraction(&exponent).unwrap();
         let expected = PreciseNumber { value: expected };
-        println!("calculated: {} expected: {}", power.value, expected.value);
         assert!(power.almost_eq(&expected, precision));
     }
 
