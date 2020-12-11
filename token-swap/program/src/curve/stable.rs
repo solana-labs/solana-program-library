@@ -174,6 +174,7 @@ impl DynPack for StableCurve {
 mod tests {
     use super::*;
     use crate::curve::calculator::INITIAL_SWAP_POOL_AMOUNT;
+    use proptest::prelude::*;
     use sim::StableSwapModel;
 
     #[test]
@@ -217,84 +218,47 @@ mod tests {
         assert!(results.is_none());
     }
 
-    #[test]
-    fn constant_product_swap_no_fee() {
-        const POOL_AMOUNTS: &[u128] = &[
-            100,
-            10_000,
-            1_000_000,
-            100_000_000,
-            10_000_000_000,
-            1_000_000_000_000,
-            100_000_000_000_000,
-            10_000_000_000_000_000,
-            1_000_000_000_000_000_000,
-        ];
-        const SWAP_AMOUNTS: &[u128] = &[
-            100,
-            1_000,
-            10_000,
-            100_000,
-            1_000_000,
-            10_000_000,
-            100_000_000,
-            1_000_000_000,
-            10_000_000_000,
-            100_000_000_000,
-        ];
-        const AMP_FACTORS: &[u64] = &[1, 10, 20, 50, 75, 100, 125, 150];
+    proptest! {
+        #[test]
+        fn constant_product_swap_no_fee(
+            swap_source_amount in 100..1_000_000_000_000_000_000u128,
+            swap_destination_amount in 100..1_000_000_000_000_000_000u128,
+            source_amount in 100..100_000_000_000u128,
+            amp in 1..150u64
+        ) {
+            prop_assume!(source_amount < swap_source_amount);
 
-        for swap_source_amount in POOL_AMOUNTS {
-            for swap_destination_amount in POOL_AMOUNTS {
-                for source_amount in SWAP_AMOUNTS {
-                    for amp in AMP_FACTORS {
-                        let curve = StableCurve { amp: *amp };
+            let curve = StableCurve { amp };
 
-                        if *source_amount >= *swap_source_amount {
-                            continue;
-                        }
+            let model: StableSwapModel = StableSwapModel::new(
+                curve.amp.into(),
+                vec![swap_source_amount, swap_destination_amount],
+                N_COINS,
+            );
 
-                        println!(
-                            "trying: source_amount={}, swap_source_amount={}, swap_destination_amount={}",
-                            source_amount, swap_source_amount, swap_destination_amount
-                        );
+            let result = curve.swap_without_fees(
+                source_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                TradeDirection::AtoB,
+            );
 
-                        let model: StableSwapModel = StableSwapModel::new(
-                            curve.amp.into(),
-                            vec![*swap_source_amount, *swap_destination_amount],
-                            N_COINS,
-                        );
+            let result = result.unwrap();
+            let sim_result = model.sim_exchange(0, 1, source_amount);
 
-                        let result = curve.swap_without_fees(
-                            *source_amount,
-                            *swap_source_amount,
-                            *swap_destination_amount,
-                            TradeDirection::AtoB,
-                        );
+            let diff =
+                (sim_result as i128 - result.destination_amount_swapped as i128).abs();
 
-                        let result = result.unwrap();
-                        let sim_result = model.sim_exchange(0, 1, *source_amount);
-
-                        println!(
-                            "result={}, sim_result={}",
-                            result.destination_amount_swapped, sim_result
-                        );
-                        let diff =
-                            (sim_result as i128 - result.destination_amount_swapped as i128).abs();
-
-                        assert!(
-                            diff <= 1,
-                            "result={}, sim_result={}, amp={}, source_amount={}, swap_source_amount={}, swap_destination_amount={}",
-                            result.destination_amount_swapped,
-                            sim_result,
-                            amp,
-                            source_amount,
-                            swap_source_amount,
-                            swap_destination_amount
-                        );
-                    }
-                }
-            }
+            assert!(
+                diff <= 1,
+                "result={}, sim_result={}, amp={}, source_amount={}, swap_source_amount={}, swap_destination_amount={}",
+                result.destination_amount_swapped,
+                sim_result,
+                amp,
+                source_amount,
+                swap_source_amount,
+                swap_destination_amount
+            );
         }
     }
 
