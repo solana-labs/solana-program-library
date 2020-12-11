@@ -110,8 +110,14 @@ impl SwapCurve {
         trade_direction: TradeDirection,
         fees: &Fees,
     ) -> Option<u128> {
-        // Get the trading fee incurred if the owner fee is swapped for the other side
-        let trade_fee = fees.trading_fee(source_amount)?;
+        // Get the trading fee incurred if *half* the source amount is swapped
+        // for the other side. Reference at:
+        // https://github.com/balancer-labs/balancer-core/blob/f4ed5d65362a8d6cec21662fb6eae233b0babc1f/contracts/BMath.sol#L117
+        if source_amount == 0 {
+            return Some(0);
+        }
+        let half_source_amount = std::cmp::max(1, source_amount.checked_div(2)?);
+        let trade_fee = fees.trading_fee(half_source_amount)?;
         let source_amount = source_amount.checked_sub(trade_fee)?;
         self.calculator.trading_tokens_to_pool_tokens(
             source_amount,
