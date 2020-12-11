@@ -51,7 +51,7 @@ pub const MAX_WEIGHT: u8 = 100;
 pub const MIN_WEIGHT: u8 = 1;
 
 /// Struct encapsulating a fixed-point number that allows for decimal calculations
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PreciseNumber {
     /// Wrapper over the inner value, which is multiplied by ONE
     pub value: U256,
@@ -133,11 +133,6 @@ impl PreciseNumber {
         difference.value < precision
     }
 
-    /// Checks that two PreciseNumbers are equal
-    pub fn eq(&self, rhs: &Self) -> bool {
-        self.value == rhs.value
-    }
-
     /// Checks that a number is less than another
     pub fn less_than(&self, rhs: &Self) -> bool {
         self.value < rhs.value
@@ -166,7 +161,7 @@ impl PreciseNumber {
 
     /// Performs a checked division on two precise numbers
     pub fn checked_div(&self, rhs: &Self) -> Option<Self> {
-        if rhs.eq(&Self::zero()) {
+        if *rhs == Self::zero() {
             return None;
         }
         match self.value.checked_mul(one()) {
@@ -281,7 +276,7 @@ impl PreciseNumber {
         assert!(self.value >= Self::min_pow_base());
         assert!(self.value <= Self::max_pow_base());
         let one = Self::one();
-        if exponent.eq(&Self::zero()) {
+        if *exponent == Self::zero() {
             return Some(one);
         }
         let mut precise_guess = one.clone();
@@ -337,12 +332,17 @@ impl PreciseNumber {
     /// https://en.wikipedia.org/wiki/Newton%27s_method
     /// NOTE: this function is private because its accurate range and precision
     /// have not been established.
-    fn newtonian_root_approximation(&self, root: &Self, mut guess: Self, iterations: u128) -> Option<Self> {
+    fn newtonian_root_approximation(
+        &self,
+        root: &Self,
+        mut guess: Self,
+        iterations: u128,
+    ) -> Option<Self> {
         let zero = Self::zero();
-        if self.eq(&zero) {
+        if *self == zero {
             return Some(zero);
         }
-        if root.eq(&zero) {
+        if *root == zero {
             return None;
         }
         let one = Self::new(1)?;
@@ -371,19 +371,25 @@ impl PreciseNumber {
     /// Based on testing around the limits, this base is the smallest value that
     /// provides an epsilon 11 digits
     fn minimum_sqrt_base() -> Self {
-        Self { value: U256::from(0) }
+        Self {
+            value: U256::from(0),
+        }
     }
 
     /// Based on testing around the limits, this base is the smallest value that
     /// provides an epsilon of 11 digits
     fn maximum_sqrt_base() -> Self {
-        Self { value: U256::from(u128::MAX) }
+        Self {
+            value: U256::from(u128::MAX),
+        }
     }
 
     /// Approximate the square root using Newton's method.  Based on testing,
     /// this provides a precision of 11 digits for inputs between 0 and u128::MAX
     pub fn sqrt(&self) -> Option<Self> {
-        if self.less_than(&Self::minimum_sqrt_base()) || self.greater_than(&Self::maximum_sqrt_base()) {
+        if self.less_than(&Self::minimum_sqrt_base())
+            || self.greater_than(&Self::maximum_sqrt_base())
+        {
             return None;
         }
         let two = PreciseNumber::new(2)?;
@@ -480,7 +486,11 @@ mod tests {
         let nth_root = PreciseNumber::new(2).unwrap();
         let guess = test.checked_div(&nth_root).unwrap();
         let root = test
-            .newtonian_root_approximation(&nth_root, guess, PreciseNumber::MAX_APPROXIMATION_ITERATIONS)
+            .newtonian_root_approximation(
+                &nth_root,
+                guess,
+                PreciseNumber::MAX_APPROXIMATION_ITERATIONS,
+            )
             .unwrap()
             .to_imprecise()
             .unwrap();
@@ -490,7 +500,11 @@ mod tests {
         let nth_root = PreciseNumber::new(2).unwrap();
         let guess = test.checked_div(&nth_root).unwrap();
         let root = test
-            .newtonian_root_approximation(&nth_root, guess, PreciseNumber::MAX_APPROXIMATION_ITERATIONS)
+            .newtonian_root_approximation(
+                &nth_root,
+                guess,
+                PreciseNumber::MAX_APPROXIMATION_ITERATIONS,
+            )
             .unwrap()
             .to_imprecise()
             .unwrap();
@@ -500,7 +514,11 @@ mod tests {
         let nth_root = PreciseNumber::new(2).unwrap();
         let guess = test.checked_div(&nth_root).unwrap();
         let root = test
-            .newtonian_root_approximation(&nth_root, guess, PreciseNumber::MAX_APPROXIMATION_ITERATIONS)
+            .newtonian_root_approximation(
+                &nth_root,
+                guess,
+                PreciseNumber::MAX_APPROXIMATION_ITERATIONS,
+            )
             .unwrap()
             .to_imprecise()
             .unwrap();
@@ -511,7 +529,11 @@ mod tests {
         let nth_root = PreciseNumber::new(5).unwrap();
         let guess = test.checked_div(&nth_root).unwrap();
         let root = test
-            .newtonian_root_approximation(&nth_root, guess, PreciseNumber::MAX_APPROXIMATION_ITERATIONS)
+            .newtonian_root_approximation(
+                &nth_root,
+                guess,
+                PreciseNumber::MAX_APPROXIMATION_ITERATIONS,
+            )
             .unwrap()
             .to_imprecise()
             .unwrap();
@@ -519,20 +541,33 @@ mod tests {
     }
 
     fn check_square_root(check: &PreciseNumber) {
-        let epsilon = PreciseNumber { value: U256::from(10) }; // correct within 11 digits
+        let epsilon = PreciseNumber {
+            value: U256::from(10),
+        }; // correct within 11 digits
         let one = PreciseNumber::one();
         let one_plus_epsilon = one.checked_add(&epsilon).unwrap();
         let one_minus_epsilon = one.checked_sub(&epsilon).unwrap();
         let approximate_root = check.sqrt().unwrap();
-        let lower_bound = approximate_root.checked_mul(&one_minus_epsilon).unwrap().checked_pow(2).unwrap();
-        let upper_bound = approximate_root.checked_mul(&one_plus_epsilon).unwrap().checked_pow(2).unwrap();
+        let lower_bound = approximate_root
+            .checked_mul(&one_minus_epsilon)
+            .unwrap()
+            .checked_pow(2)
+            .unwrap();
+        let upper_bound = approximate_root
+            .checked_mul(&one_plus_epsilon)
+            .unwrap()
+            .checked_pow(2)
+            .unwrap();
         assert!(check.less_than_or_equal(&upper_bound));
         assert!(check.greater_than_or_equal(&lower_bound));
     }
 
     #[test]
     fn test_square_root_min_max() {
-        let test_roots = [PreciseNumber::minimum_sqrt_base(), PreciseNumber::maximum_sqrt_base()];
+        let test_roots = [
+            PreciseNumber::minimum_sqrt_base(),
+            PreciseNumber::maximum_sqrt_base(),
+        ];
         for i in test_roots.iter() {
             check_square_root(i);
         }
