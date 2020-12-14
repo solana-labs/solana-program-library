@@ -380,7 +380,7 @@ impl PreciseNumber {
     /// provides an epsilon of 11 digits
     fn maximum_sqrt_base() -> Self {
         Self {
-            value: U256::from(u128::MAX),
+            value: U256::from(std::u128::MAX),
         }
     }
 
