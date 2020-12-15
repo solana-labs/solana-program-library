@@ -5,8 +5,8 @@ use crate::{
     curve::{base::SwapCurve, calculator::TradeDirection, fees::Fees},
     error::SwapError,
     instruction::{
-        DepositAllTokenTypes, DepositOneExactIn, Initialize, Swap, SwapInstruction, WithdrawAllTokenTypes,
-        WithdrawOneExactOut,
+        DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
+        SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
     },
     state::SwapInfo,
 };
@@ -481,7 +481,7 @@ impl Processor {
     }
 
     /// Processes an [DepositAllTokenTypes](enum.Instruction.html).
-    pub fn process_deposit(
+    pub fn process_deposit_all_token_types(
         program_id: &Pubkey,
         pool_token_amount: u64,
         maximum_token_a_amount: u64,
@@ -583,7 +583,7 @@ impl Processor {
     }
 
     /// Processes an [WithdrawAllTokenTypes](enum.Instruction.html).
-    pub fn process_withdraw(
+    pub fn process_withdraw_all_token_types(
         program_id: &Pubkey,
         pool_token_amount: u64,
         minimum_token_a_amount: u64,
@@ -706,8 +706,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes DepositOneExactIn
-    pub fn process_deposit_one_exact_in(
+    /// Processes DepositSingleTokenTypeExactAmountIn
+    pub fn process_deposit_single_token_type_exact_amount_in(
         program_id: &Pubkey,
         source_token_amount: u64,
         minimum_pool_token_amount: u64,
@@ -817,8 +817,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [WithdrawAllTokenTypes](enum.Instruction.html).
-    pub fn process_withdraw_one_exact_out(
+    /// Processes a [WithdrawSingleTokenTypeExactAmountOut](enum.Instruction.html).
+    pub fn process_withdraw_single_token_type_exact_amount_out(
         program_id: &Pubkey,
         destination_token_amount: u64,
         maximum_pool_token_amount: u64,
@@ -1014,7 +1014,7 @@ impl Processor {
                 maximum_token_b_amount,
             }) => {
                 msg!("Instruction: DepositAllTokenTypes");
-                Self::process_deposit(
+                Self::process_deposit_all_token_types(
                     program_id,
                     pool_token_amount,
                     maximum_token_a_amount,
@@ -1028,7 +1028,7 @@ impl Processor {
                 minimum_token_b_amount,
             }) => {
                 msg!("Instruction: WithdrawAllTokenTypes");
-                Self::process_withdraw(
+                Self::process_withdraw_all_token_types(
                     program_id,
                     pool_token_amount,
                     minimum_token_a_amount,
@@ -1036,24 +1036,28 @@ impl Processor {
                     accounts,
                 )
             }
-            SwapInstruction::DepositOneExactIn(DepositOneExactIn {
-                source_token_amount,
-                minimum_pool_token_amount,
-            }) => {
-                msg!("Instruction: DepositOneExactIn");
-                Self::process_deposit_one_exact_in(
+            SwapInstruction::DepositSingleTokenTypeExactAmountIn(
+                DepositSingleTokenTypeExactAmountIn {
+                    source_token_amount,
+                    minimum_pool_token_amount,
+                },
+            ) => {
+                msg!("Instruction: DepositSingleTokenTypeExactAmountIn");
+                Self::process_deposit_single_token_type_exact_amount_in(
                     program_id,
                     source_token_amount,
                     minimum_pool_token_amount,
                     accounts,
                 )
             }
-            SwapInstruction::WithdrawOneExactOut(WithdrawOneExactOut {
-                destination_token_amount,
-                maximum_pool_token_amount,
-            }) => {
-                msg!("Instruction: WithdrawOneExactOut");
-                Self::process_withdraw_one_exact_out(
+            SwapInstruction::WithdrawSingleTokenTypeExactAmountOut(
+                WithdrawSingleTokenTypeExactAmountOut {
+                    destination_token_amount,
+                    maximum_pool_token_amount,
+                },
+            ) => {
+                msg!("Instruction: WithdrawSingleTokenTypeExactAmountOut");
+                Self::process_withdraw_single_token_type_exact_amount_out(
                     program_id,
                     destination_token_amount,
                     maximum_pool_token_amount,
@@ -1675,7 +1679,7 @@ mod tests {
                     &self.token_b_key,
                     &self.pool_mint_key,
                     &deposit_pool_key,
-                    DepositOneExactIn {
+                    DepositSingleTokenTypeExactAmountIn {
                         source_token_amount,
                         minimum_pool_token_amount,
                     },
@@ -1736,7 +1740,7 @@ mod tests {
                     &self.token_a_key,
                     &self.token_b_key,
                     &destination_key,
-                    WithdrawOneExactOut {
+                    WithdrawSingleTokenTypeExactAmountOut {
                         destination_token_amount,
                         maximum_pool_token_amount,
                     },
@@ -4408,7 +4412,7 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
-                        DepositOneExactIn {
+                        DepositSingleTokenTypeExactAmountIn {
                             source_token_amount: deposit_a,
                             minimum_pool_token_amount: pool_amount,
                         },
@@ -4452,7 +4456,7 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
-                        DepositOneExactIn {
+                        DepositSingleTokenTypeExactAmountIn {
                             source_token_amount: deposit_a,
                             minimum_pool_token_amount: pool_amount,
                         },
@@ -4970,7 +4974,7 @@ mod tests {
                         &accounts.token_a_key,
                         &accounts.token_b_key,
                         &token_a_key,
-                        WithdrawOneExactOut {
+                        WithdrawSingleTokenTypeExactAmountOut {
                             destination_token_amount: destination_a_amount,
                             maximum_pool_token_amount,
                         }
@@ -5022,7 +5026,7 @@ mod tests {
                         &accounts.token_a_key,
                         &accounts.token_b_key,
                         &token_a_key,
-                        WithdrawOneExactOut {
+                        WithdrawSingleTokenTypeExactAmountOut {
                             destination_token_amount: destination_a_amount,
                             maximum_pool_token_amount,
                         }

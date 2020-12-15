@@ -271,8 +271,12 @@ fn get_total_token_a_amount(fuzz_instructions: &[FuzzInstruction]) -> u64 {
     for fuzz_instruction in fuzz_instructions.iter() {
         match fuzz_instruction {
             FuzzInstruction::Swap { token_a_id, .. } => token_a_ids.insert(token_a_id),
-            FuzzInstruction::DepositAllTokenTypes { token_a_id, .. } => token_a_ids.insert(token_a_id),
-            FuzzInstruction::WithdrawAllTokenTypes { token_a_id, .. } => token_a_ids.insert(token_a_id),
+            FuzzInstruction::DepositAllTokenTypes { token_a_id, .. } => {
+                token_a_ids.insert(token_a_id)
+            }
+            FuzzInstruction::WithdrawAllTokenTypes { token_a_id, .. } => {
+                token_a_ids.insert(token_a_id)
+            }
         };
     }
     (token_a_ids.len() as u64) * INITIAL_USER_TOKEN_A_AMOUNT
@@ -283,8 +287,12 @@ fn get_total_token_b_amount(fuzz_instructions: &[FuzzInstruction]) -> u64 {
     for fuzz_instruction in fuzz_instructions.iter() {
         match fuzz_instruction {
             FuzzInstruction::Swap { token_b_id, .. } => token_b_ids.insert(token_b_id),
-            FuzzInstruction::DepositAllTokenTypes { token_b_id, .. } => token_b_ids.insert(token_b_id),
-            FuzzInstruction::WithdrawAllTokenTypes { token_b_id, .. } => token_b_ids.insert(token_b_id),
+            FuzzInstruction::DepositAllTokenTypes { token_b_id, .. } => {
+                token_b_ids.insert(token_b_id)
+            }
+            FuzzInstruction::WithdrawAllTokenTypes { token_b_id, .. } => {
+                token_b_ids.insert(token_b_id)
+            }
         };
     }
     (token_b_ids.len() as u64) * INITIAL_USER_TOKEN_B_AMOUNT

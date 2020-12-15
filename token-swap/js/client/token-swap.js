@@ -824,17 +824,17 @@ export class TokenSwap {
    * @param sourceTokenAmount The amount of token A or B to deposit
    * @param minimumPoolTokenAmount Minimum amount of pool tokens to mint
    */
-  async depositOneExactIn(
+  async depositSingleTokenTypeExactAmountIn(
     userAccount: PublicKey,
     poolAccount: PublicKey,
     sourceTokenAmount: number | Numberu64,
     minimumPoolTokenAmount: number | Numberu64,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
-      'depositOneExactIn',
+      'depositSingleTokenTypeExactAmountIn',
       this.connection,
       new Transaction().add(
-        TokenSwap.depositOneExactInInstruction(
+        TokenSwap.depositSingleTokenTypeExactAmountInInstruction(
           this.tokenSwap,
           this.authority,
           userAccount,
@@ -852,7 +852,7 @@ export class TokenSwap {
     );
   }
 
-  static depositOneExactInInstruction(
+  static depositSingleTokenTypeExactAmountInInstruction(
     tokenSwap: PublicKey,
     authority: PublicKey,
     source: PublicKey,
@@ -874,7 +874,7 @@ export class TokenSwap {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 4, // DepositOneExactIn instruction
+        instruction: 4, // depositSingleTokenTypeExactAmountIn instruction
         sourceTokenAmount: new Numberu64(sourceTokenAmount).toBuffer(),
         minimumPoolTokenAmount: new Numberu64(
           minimumPoolTokenAmount,
@@ -908,17 +908,17 @@ export class TokenSwap {
    * @param destinationTokenAmount The amount of token A or B to withdraw
    * @param maximumPoolTokenAmount Maximum amount of pool tokens to burn
    */
-  async withdrawOneExactOut(
+  async withdrawSingleTokenTypeExactAmountOut(
     userAccount: PublicKey,
     poolAccount: PublicKey,
     destinationTokenAmount: number | Numberu64,
     maximumPoolTokenAmount: number | Numberu64,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
-      'withdrawOneExactOut',
+      'withdrawSingleTokenTypeExactAmountOut',
       this.connection,
       new Transaction().add(
-        TokenSwap.withdrawOneExactOutInstruction(
+        TokenSwap.withdrawSingleTokenTypeExactAmountOutInstruction(
           this.tokenSwap,
           this.authority,
           this.poolToken,
@@ -937,7 +937,7 @@ export class TokenSwap {
     );
   }
 
-  static withdrawOneExactOutInstruction(
+  static withdrawSingleTokenTypeExactAmountOutInstruction(
     tokenSwap: PublicKey,
     authority: PublicKey,
     poolMint: PublicKey,
@@ -960,7 +960,7 @@ export class TokenSwap {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 5, // WithdrawOneExactOut instruction
+        instruction: 5, // withdrawSingleTokenTypeExactAmountOut instruction
         destinationTokenAmount: new Numberu64(
           destinationTokenAmount,
         ).toBuffer(),

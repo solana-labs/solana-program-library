@@ -540,7 +540,7 @@ function tradingTokensToPoolTokens(
   return Math.floor(poolAmount * (root - 1));
 }
 
-export async function depositOneExactIn(): Promise<void> {
+export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
   // Pool token amount to deposit on one side
   const depositAmount = 10000;
 
@@ -571,7 +571,7 @@ export async function depositOneExactIn(): Promise<void> {
   const newAccountPool = await tokenPool.createAccount(owner.publicKey);
 
   console.log('Depositing token A into swap');
-  await tokenSwap.depositOneExactIn(
+  await tokenSwap.depositSingleTokenTypeExactAmountIn(
     userAccountA,
     newAccountPool,
     depositAmount,
@@ -586,7 +586,7 @@ export async function depositOneExactIn(): Promise<void> {
   currentSwapTokenA += depositAmount;
 
   console.log('Depositing token B into swap');
-  await tokenSwap.depositOneExactIn(
+  await tokenSwap.depositSingleTokenTypeExactAmountIn(
     userAccountB,
     newAccountPool,
     depositAmount,
@@ -602,7 +602,7 @@ export async function depositOneExactIn(): Promise<void> {
   assert(info.amount.toNumber() >= poolTokenA + poolTokenB);
 }
 
-export async function withdrawOneExactOut(): Promise<void> {
+export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   // Pool token amount to withdraw on one side
   const withdrawAmount = 50000;
   const roundingAmount = 1.0001; // make math a little easier
@@ -652,7 +652,7 @@ export async function withdrawOneExactOut(): Promise<void> {
   );
 
   console.log('Withdrawing token A only');
-  await tokenSwap.withdrawOneExactOut(
+  await tokenSwap.withdrawSingleTokenTypeExactAmountOut(
     userAccountA,
     tokenAccountPool,
     withdrawAmount,
@@ -669,7 +669,7 @@ export async function withdrawOneExactOut(): Promise<void> {
   assert(info.amount.toNumber() >= poolTokenAmount - adjustedPoolTokenA);
 
   console.log('Withdrawing token B only');
-  await tokenSwap.withdrawOneExactOut(
+  await tokenSwap.withdrawSingleTokenTypeExactAmountOut(
     userAccountB,
     tokenAccountPool,
     withdrawAmount,
