@@ -182,7 +182,7 @@ pub mod test {
     /// some point, meaning we can't have perfect equality.
     /// We guarantee that the relative error between depositing one side and
     /// performing a swap plus deposit will be at most some epsilon provided by
-    /// the curve.  Most curves work guarantee accuracy within 0.5%.
+    /// the curve. Most curves guarantee accuracy within 0.5%.
     pub fn check_pool_token_conversion(
         curve: &dyn CurveCalculator,
         source_token_amount: u128,
