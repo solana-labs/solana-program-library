@@ -54,11 +54,11 @@ pub struct DepositAllTokenTypes {
     pub maximum_token_b_amount: u64,
 }
 
-/// Withdraw instruction data
+/// WithdrawAllTokenTypes instruction data
 #[cfg_attr(feature = "fuzz", derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
-pub struct Withdraw {
+pub struct WithdrawAllTokenTypes {
     /// Amount of pool tokens to burn. User receives an output of token a
     /// and b based on the percentage of the pool tokens that are returned.
     pub pool_token_amount: u64,
@@ -80,7 +80,7 @@ pub struct DepositOneExactIn {
     pub minimum_pool_token_amount: u64,
 }
 
-/// Withdraw instruction data
+/// WithdrawAllTokenTypes instruction data
 #[cfg_attr(feature = "fuzz", derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
@@ -139,7 +139,9 @@ pub enum SwapInstruction {
     ///   8. '[]` Token program id
     DepositAllTokenTypes(DepositAllTokenTypes),
 
-    ///   Withdraw the token from the pool at the current ratio.
+    ///   Withdraw both types of tokens from the pool at the current ratio, given
+    ///   pool tokens.  The pool tokens are burned in exchange for an equivalent
+    ///   amount of token A and B.
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
@@ -151,11 +153,11 @@ pub enum SwapInstruction {
     ///   7. `[writable]` token_b user Account to credit.
     ///   8. `[writable]` Fee account, to receive withdrawal fees
     ///   9. '[]` Token program id
-    Withdraw(Withdraw),
+    WithdrawAllTokenTypes(WithdrawAllTokenTypes),
 
-    ///   DepositAllTokenTypes some tokens into the pool.  The output is a "pool" token
-    ///   representing ownership into the pool. Input token is converted at
-    ///   the current ratio.
+    ///   Deposit one type of tokens into the pool.  The output is a "pool" token
+    ///   representing ownership into the pool. Input token is converted as if
+    ///   a swap and deposit all token types were performed.
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
@@ -167,7 +169,8 @@ pub enum SwapInstruction {
     ///   7. '[]` Token program id
     DepositOneExactIn(DepositOneExactIn),
 
-    ///   Withdraw the token from the pool at the current ratio.
+    ///   Withdraw one token type from the pool at the current ratio given the
+    ///   exact amount out expected.
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
@@ -223,7 +226,7 @@ impl SwapInstruction {
                 let (pool_token_amount, rest) = Self::unpack_u64(rest)?;
                 let (minimum_token_a_amount, rest) = Self::unpack_u64(rest)?;
                 let (minimum_token_b_amount, _rest) = Self::unpack_u64(rest)?;
-                Self::Withdraw(Withdraw {
+                Self::WithdrawAllTokenTypes(WithdrawAllTokenTypes {
                     pool_token_amount,
                     minimum_token_a_amount,
                     minimum_token_b_amount,
@@ -299,7 +302,7 @@ impl SwapInstruction {
                 buf.extend_from_slice(&maximum_token_a_amount.to_le_bytes());
                 buf.extend_from_slice(&maximum_token_b_amount.to_le_bytes());
             }
-            Self::Withdraw(Withdraw {
+            Self::WithdrawAllTokenTypes(WithdrawAllTokenTypes {
                 pool_token_amount,
                 minimum_token_a_amount,
                 minimum_token_b_amount,
@@ -418,9 +421,9 @@ pub fn withdraw(
     swap_token_b_pubkey: &Pubkey,
     destination_token_a_pubkey: &Pubkey,
     destination_token_b_pubkey: &Pubkey,
-    instruction: Withdraw,
+    instruction: WithdrawAllTokenTypes,
 ) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Withdraw(instruction).pack();
+    let data = SwapInstruction::WithdrawAllTokenTypes(instruction).pack();
 
     let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
@@ -661,7 +664,7 @@ mod tests {
         let pool_token_amount: u64 = 1212438012089;
         let minimum_token_a_amount: u64 = 102198761982612;
         let minimum_token_b_amount: u64 = 2011239855213;
-        let check = SwapInstruction::Withdraw(Withdraw {
+        let check = SwapInstruction::WithdrawAllTokenTypes(WithdrawAllTokenTypes {
             pool_token_amount,
             minimum_token_a_amount,
             minimum_token_b_amount,

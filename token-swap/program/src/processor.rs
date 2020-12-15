@@ -5,7 +5,7 @@ use crate::{
     curve::{base::SwapCurve, calculator::TradeDirection, fees::Fees},
     error::SwapError,
     instruction::{
-        DepositAllTokenTypes, DepositOneExactIn, Initialize, Swap, SwapInstruction, Withdraw,
+        DepositAllTokenTypes, DepositOneExactIn, Initialize, Swap, SwapInstruction, WithdrawAllTokenTypes,
         WithdrawOneExactOut,
     },
     state::SwapInfo,
@@ -582,7 +582,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [Withdraw](enum.Instruction.html).
+    /// Processes an [WithdrawAllTokenTypes](enum.Instruction.html).
     pub fn process_withdraw(
         program_id: &Pubkey,
         pool_token_amount: u64,
@@ -817,7 +817,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [Withdraw](enum.Instruction.html).
+    /// Processes an [WithdrawAllTokenTypes](enum.Instruction.html).
     pub fn process_withdraw_one_exact_out(
         program_id: &Pubkey,
         destination_token_amount: u64,
@@ -1022,12 +1022,12 @@ impl Processor {
                     accounts,
                 )
             }
-            SwapInstruction::Withdraw(Withdraw {
+            SwapInstruction::WithdrawAllTokenTypes(WithdrawAllTokenTypes {
                 pool_token_amount,
                 minimum_token_a_amount,
                 minimum_token_b_amount,
             }) => {
-                msg!("Instruction: Withdraw");
+                msg!("Instruction: WithdrawAllTokenTypes");
                 Self::process_withdraw(
                     program_id,
                     pool_token_amount,
@@ -1613,7 +1613,7 @@ mod tests {
                     &self.token_b_key,
                     &token_a_key,
                     &token_b_key,
-                    Withdraw {
+                    WithdrawAllTokenTypes {
                         pool_token_amount,
                         minimum_token_a_amount,
                         minimum_token_b_amount,
@@ -3728,7 +3728,7 @@ mod tests {
                         &accounts.token_b_key,
                         &token_a_key,
                         &token_b_key,
-                        Withdraw {
+                        WithdrawAllTokenTypes {
                             pool_token_amount: withdraw_amount.try_into().unwrap(),
                             minimum_token_a_amount,
                             minimum_token_b_amount,
@@ -3783,7 +3783,7 @@ mod tests {
                         &accounts.token_b_key,
                         &token_a_key,
                         &token_b_key,
-                        Withdraw {
+                        WithdrawAllTokenTypes {
                             pool_token_amount: withdraw_amount.try_into().unwrap(),
                             minimum_token_a_amount,
                             minimum_token_b_amount,
@@ -6621,7 +6621,7 @@ mod tests {
         let pool_key = accounts.pool_token_key;
         let mut pool_account = accounts.pool_token_account.clone();
 
-        // Withdraw takes all tokens for A and B.
+        // WithdrawAllTokenTypes takes all tokens for A and B.
         // The curve's calculation for token B will say to transfer
         // `token_b_offset + token_b_amount`, but only `token_b_amount` will be
         // moved.

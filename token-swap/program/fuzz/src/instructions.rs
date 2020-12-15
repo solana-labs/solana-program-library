@@ -10,7 +10,7 @@ use spl_token_swap::{
         fees::Fees,
     },
     error::SwapError,
-    instruction::{DepositAllTokenTypes, Swap, Withdraw},
+    instruction::{DepositAllTokenTypes, Swap, WithdrawAllTokenTypes},
 };
 
 use spl_token::error::TokenError;
@@ -34,11 +34,11 @@ enum FuzzInstruction {
         pool_token_id: AccountId,
         instruction: DepositAllTokenTypes,
     },
-    Withdraw {
+    WithdrawAllTokenTypes {
         token_a_id: AccountId,
         token_b_id: AccountId,
         pool_token_id: AccountId,
-        instruction: Withdraw,
+        instruction: WithdrawAllTokenTypes,
     },
 }
 
@@ -228,7 +228,7 @@ fn run_fuzz_instruction(
                 instruction,
             )
         }
-        FuzzInstruction::Withdraw {
+        FuzzInstruction::WithdrawAllTokenTypes {
             token_a_id,
             token_b_id,
             pool_token_id,
@@ -272,7 +272,7 @@ fn get_total_token_a_amount(fuzz_instructions: &[FuzzInstruction]) -> u64 {
         match fuzz_instruction {
             FuzzInstruction::Swap { token_a_id, .. } => token_a_ids.insert(token_a_id),
             FuzzInstruction::DepositAllTokenTypes { token_a_id, .. } => token_a_ids.insert(token_a_id),
-            FuzzInstruction::Withdraw { token_a_id, .. } => token_a_ids.insert(token_a_id),
+            FuzzInstruction::WithdrawAllTokenTypes { token_a_id, .. } => token_a_ids.insert(token_a_id),
         };
     }
     (token_a_ids.len() as u64) * INITIAL_USER_TOKEN_A_AMOUNT
@@ -284,7 +284,7 @@ fn get_total_token_b_amount(fuzz_instructions: &[FuzzInstruction]) -> u64 {
         match fuzz_instruction {
             FuzzInstruction::Swap { token_b_id, .. } => token_b_ids.insert(token_b_id),
             FuzzInstruction::DepositAllTokenTypes { token_b_id, .. } => token_b_ids.insert(token_b_id),
-            FuzzInstruction::Withdraw { token_b_id, .. } => token_b_ids.insert(token_b_id),
+            FuzzInstruction::WithdrawAllTokenTypes { token_b_id, .. } => token_b_ids.insert(token_b_id),
         };
     }
     (token_b_ids.len() as u64) * INITIAL_USER_TOKEN_B_AMOUNT
