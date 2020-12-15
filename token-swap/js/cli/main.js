@@ -9,8 +9,8 @@ import {
   createAccountAndSwapAtomic,
   createTokenSwap,
   swap,
-  deposit,
-  withdraw,
+  depositAllTokenTypes,
+  withdrawAllTokenTypes,
   depositOneExactIn,
   withdrawOneExactOut,
 } from './token-swap-test';
@@ -21,10 +21,10 @@ async function main() {
   await loadPrograms();
   console.log('Run test: createTokenSwap');
   await createTokenSwap();
-  console.log('Run test: deposit');
-  await deposit();
-  console.log('Run test: withdraw');
-  await withdraw();
+  console.log('Run test: deposit all token types');
+  await depositAllTokenTypes();
+  console.log('Run test: withdraw all token types');
+  await withdrawAllTokenTypes();
   console.log('Run test: swap');
   await swap();
   console.log('Run test: create account, approve, swap all at once');

@@ -287,7 +287,7 @@ export async function createTokenSwap(): Promise<void> {
   assert(CURVE_TYPE == fetchedTokenSwap.curveType);
 }
 
-export async function deposit(): Promise<void> {
+export async function depositAllTokenTypes(): Promise<void> {
   const poolMintInfo = await tokenPool.getMintInfo();
   const supply = poolMintInfo.supply.toNumber();
   const swapTokenA = await mintA.getAccountInfo(tokenAccountA);
@@ -313,7 +313,7 @@ export async function deposit(): Promise<void> {
   const newAccountPool = await tokenPool.createAccount(owner.publicKey);
 
   console.log('Depositing into swap');
-  await tokenSwap.deposit(
+  await tokenSwap.depositAllTokenTypes(
     userAccountA,
     userAccountB,
     newAccountPool,
@@ -337,7 +337,7 @@ export async function deposit(): Promise<void> {
   assert(info.amount.toNumber() == POOL_TOKEN_AMOUNT);
 }
 
-export async function withdraw(): Promise<void> {
+export async function withdrawAllTokenTypes(): Promise<void> {
   const poolMintInfo = await tokenPool.getMintInfo();
   const supply = poolMintInfo.supply.toNumber();
   let swapTokenA = await mintA.getAccountInfo(tokenAccountA);
@@ -372,7 +372,7 @@ export async function withdraw(): Promise<void> {
   );
 
   console.log('Withdrawing pool tokens for A and B tokens');
-  await tokenSwap.withdraw(
+  await tokenSwap.withdrawAllTokenTypes(
     userAccountA,
     userAccountB,
     tokenAccountPool,

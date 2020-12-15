@@ -126,7 +126,7 @@ declare module '@solana/spl-token-swap' {
       minimumAmountOut: number | Numberu64,
     ): TransactionInstruction;
 
-    deposit(
+    depositAllTokenTypes(
       userAccountA: PublicKey,
       userAccountB: PublicKey,
       poolAccount: PublicKey,
@@ -135,7 +135,7 @@ declare module '@solana/spl-token-swap' {
       maximumTokenB: number | Numberu64,
     ): Promise<TransactionSignature>;
 
-    static depositInstruction(
+    static depositAllTokenTypesInstruction(
       tokenSwap: PublicKey,
       authority: PublicKey,
       sourceA: PublicKey,
@@ -151,7 +151,7 @@ declare module '@solana/spl-token-swap' {
       maximumTokenB: number | Numberu64,
     ): TransactionInstruction;
 
-    withdraw(
+    withdrawAllTokenTypes(
       userAccountA: PublicKey,
       userAccountB: PublicKey,
       poolAccount: PublicKey,
@@ -160,7 +160,7 @@ declare module '@solana/spl-token-swap' {
       minimumTokenB: number | Numberu64,
     ): Promise<TransactionSignature>;
 
-    static withdrawInstruction(
+    static withdrawAllTokenTypesInstruction(
       tokenSwap: PublicKey,
       authority: PublicKey,
       poolMint: PublicKey,

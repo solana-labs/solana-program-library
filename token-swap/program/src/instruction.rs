@@ -40,11 +40,11 @@ pub struct Swap {
     pub minimum_amount_out: u64,
 }
 
-/// Deposit instruction data
+/// DepositAllTokenTypes instruction data
 #[cfg_attr(feature = "fuzz", derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
-pub struct Deposit {
+pub struct DepositAllTokenTypes {
     /// Pool token amount to transfer. token_a and token_b amount are set by
     /// the current exchange rate and size of the pool
     pub pool_token_amount: u64,
@@ -68,7 +68,7 @@ pub struct Withdraw {
     pub minimum_token_b_amount: u64,
 }
 
-/// Deposit one exact in instruction data
+/// Deposit one token type, exact amount in instruction data
 #[cfg_attr(feature = "fuzz", derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
@@ -124,8 +124,9 @@ pub enum SwapInstruction {
     ///   9. `[optional, writable]` Host fee account to receive additional trading fees
     Swap(Swap),
 
-    ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
-    ///   into the pool. Inputs are converted to the current ratio.
+    ///   Deposit both types of tokens into the pool.  The output is a "pool"
+    ///   token representing ownership in the pool. Inputs are converted to
+    ///   the current ratio.
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` $authority
@@ -136,7 +137,7 @@ pub enum SwapInstruction {
     ///   6. `[writable]` Pool MINT account, $authority is the owner.
     ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
     ///   8. '[]` Token program id
-    Deposit(Deposit),
+    DepositAllTokenTypes(DepositAllTokenTypes),
 
     ///   Withdraw the token from the pool at the current ratio.
     ///
@@ -152,7 +153,7 @@ pub enum SwapInstruction {
     ///   9. '[]` Token program id
     Withdraw(Withdraw),
 
-    ///   Deposit some tokens into the pool.  The output is a "pool" token
+    ///   DepositAllTokenTypes some tokens into the pool.  The output is a "pool" token
     ///   representing ownership into the pool. Input token is converted at
     ///   the current ratio.
     ///
@@ -212,7 +213,7 @@ impl SwapInstruction {
                 let (pool_token_amount, rest) = Self::unpack_u64(rest)?;
                 let (maximum_token_a_amount, rest) = Self::unpack_u64(rest)?;
                 let (maximum_token_b_amount, _rest) = Self::unpack_u64(rest)?;
-                Self::Deposit(Deposit {
+                Self::DepositAllTokenTypes(DepositAllTokenTypes {
                     pool_token_amount,
                     maximum_token_a_amount,
                     maximum_token_b_amount,
@@ -288,7 +289,7 @@ impl SwapInstruction {
                 buf.extend_from_slice(&amount_in.to_le_bytes());
                 buf.extend_from_slice(&minimum_amount_out.to_le_bytes());
             }
-            Self::Deposit(Deposit {
+            Self::DepositAllTokenTypes(DepositAllTokenTypes {
                 pool_token_amount,
                 maximum_token_a_amount,
                 maximum_token_b_amount,
@@ -381,9 +382,9 @@ pub fn deposit(
     swap_token_b_pubkey: &Pubkey,
     pool_mint_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
-    instruction: Deposit,
+    instruction: DepositAllTokenTypes,
 ) -> Result<Instruction, ProgramError> {
-    let data = SwapInstruction::Deposit(instruction).pack();
+    let data = SwapInstruction::DepositAllTokenTypes(instruction).pack();
 
     let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
@@ -640,7 +641,7 @@ mod tests {
         let pool_token_amount: u64 = 5;
         let maximum_token_a_amount: u64 = 10;
         let maximum_token_b_amount: u64 = 20;
-        let check = SwapInstruction::Deposit(Deposit {
+        let check = SwapInstruction::DepositAllTokenTypes(DepositAllTokenTypes {
             pool_token_amount,
             maximum_token_a_amount,
             maximum_token_b_amount,

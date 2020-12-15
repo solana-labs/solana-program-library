@@ -5,7 +5,7 @@ use crate::{
     curve::{base::SwapCurve, calculator::TradeDirection, fees::Fees},
     error::SwapError,
     instruction::{
-        Deposit, DepositOneExactIn, Initialize, Swap, SwapInstruction, Withdraw,
+        DepositAllTokenTypes, DepositOneExactIn, Initialize, Swap, SwapInstruction, Withdraw,
         WithdrawOneExactOut,
     },
     state::SwapInfo,
@@ -480,7 +480,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [Deposit](enum.Instruction.html).
+    /// Processes an [DepositAllTokenTypes](enum.Instruction.html).
     pub fn process_deposit(
         program_id: &Pubkey,
         pool_token_amount: u64,
@@ -1008,12 +1008,12 @@ impl Processor {
                 msg!("Instruction: Swap");
                 Self::process_swap(program_id, amount_in, minimum_amount_out, accounts)
             }
-            SwapInstruction::Deposit(Deposit {
+            SwapInstruction::DepositAllTokenTypes(DepositAllTokenTypes {
                 pool_token_amount,
                 maximum_token_a_amount,
                 maximum_token_b_amount,
             }) => {
-                msg!("Instruction: Deposit");
+                msg!("Instruction: DepositAllTokenTypes");
                 Self::process_deposit(
                     program_id,
                     pool_token_amount,
@@ -1545,7 +1545,7 @@ mod tests {
                     &self.token_b_key,
                     &self.pool_mint_key,
                     &depositor_pool_key,
-                    Deposit {
+                    DepositAllTokenTypes {
                         pool_token_amount,
                         maximum_token_a_amount,
                         maximum_token_b_amount,
@@ -3074,7 +3074,7 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
-                        Deposit {
+                        DepositAllTokenTypes {
                             pool_token_amount: pool_amount.try_into().unwrap(),
                             maximum_token_a_amount: deposit_a,
                             maximum_token_b_amount: deposit_b,
@@ -3121,7 +3121,7 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
-                        Deposit {
+                        DepositAllTokenTypes {
                             pool_token_amount: pool_amount.try_into().unwrap(),
                             maximum_token_a_amount: deposit_a,
                             maximum_token_b_amount: deposit_b,

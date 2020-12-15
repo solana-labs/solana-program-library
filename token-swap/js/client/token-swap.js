@@ -638,7 +638,7 @@ export class TokenSwap {
    * @param maximumTokenA The maximum amount of token A to deposit
    * @param maximumTokenB The maximum amount of token B to deposit
    */
-  async deposit(
+  async depositAllTokenTypes(
     userAccountA: PublicKey,
     userAccountB: PublicKey,
     poolAccount: PublicKey,
@@ -647,10 +647,10 @@ export class TokenSwap {
     maximumTokenB: number | Numberu64,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
-      'deposit',
+      'depositAllTokenTypes',
       this.connection,
       new Transaction().add(
-        TokenSwap.depositInstruction(
+        TokenSwap.depositAllTokenTypesInstruction(
           this.tokenSwap,
           this.authority,
           userAccountA,
@@ -670,7 +670,7 @@ export class TokenSwap {
     );
   }
 
-  static depositInstruction(
+  static depositAllTokenTypesInstruction(
     tokenSwap: PublicKey,
     authority: PublicKey,
     sourceA: PublicKey,
@@ -731,7 +731,7 @@ export class TokenSwap {
    * @param minimumTokenA The minimum amount of token A to withdraw
    * @param minimumTokenB The minimum amount of token B to withdraw
    */
-  async withdraw(
+  async withdrawAllTokenTypes(
     userAccountA: PublicKey,
     userAccountB: PublicKey,
     poolAccount: PublicKey,
@@ -743,7 +743,7 @@ export class TokenSwap {
       'withdraw',
       this.connection,
       new Transaction().add(
-        TokenSwap.withdrawInstruction(
+        TokenSwap.withdrawAllTokenTypesInstruction(
           this.tokenSwap,
           this.authority,
           this.poolToken,
@@ -764,7 +764,7 @@ export class TokenSwap {
     );
   }
 
-  static withdrawInstruction(
+  static withdrawAllTokenTypesInstruction(
     tokenSwap: PublicKey,
     authority: PublicKey,
     poolMint: PublicKey,

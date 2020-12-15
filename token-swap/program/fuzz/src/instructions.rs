@@ -10,7 +10,7 @@ use spl_token_swap::{
         fees::Fees,
     },
     error::SwapError,
-    instruction::{Deposit, Swap, Withdraw},
+    instruction::{DepositAllTokenTypes, Swap, Withdraw},
 };
 
 use spl_token::error::TokenError;
@@ -28,11 +28,11 @@ enum FuzzInstruction {
         trade_direction: TradeDirection,
         instruction: Swap,
     },
-    Deposit {
+    DepositAllTokenTypes {
         token_a_id: AccountId,
         token_b_id: AccountId,
         pool_token_id: AccountId,
-        instruction: Deposit,
+        instruction: DepositAllTokenTypes,
     },
     Withdraw {
         token_a_id: AccountId,
@@ -206,7 +206,7 @@ fn run_fuzz_instruction(
                 }
             }
         }
-        FuzzInstruction::Deposit {
+        FuzzInstruction::DepositAllTokenTypes {
             token_a_id,
             token_b_id,
             pool_token_id,
@@ -271,7 +271,7 @@ fn get_total_token_a_amount(fuzz_instructions: &[FuzzInstruction]) -> u64 {
     for fuzz_instruction in fuzz_instructions.iter() {
         match fuzz_instruction {
             FuzzInstruction::Swap { token_a_id, .. } => token_a_ids.insert(token_a_id),
-            FuzzInstruction::Deposit { token_a_id, .. } => token_a_ids.insert(token_a_id),
+            FuzzInstruction::DepositAllTokenTypes { token_a_id, .. } => token_a_ids.insert(token_a_id),
             FuzzInstruction::Withdraw { token_a_id, .. } => token_a_ids.insert(token_a_id),
         };
     }
@@ -283,7 +283,7 @@ fn get_total_token_b_amount(fuzz_instructions: &[FuzzInstruction]) -> u64 {
     for fuzz_instruction in fuzz_instructions.iter() {
         match fuzz_instruction {
             FuzzInstruction::Swap { token_b_id, .. } => token_b_ids.insert(token_b_id),
-            FuzzInstruction::Deposit { token_b_id, .. } => token_b_ids.insert(token_b_id),
+            FuzzInstruction::DepositAllTokenTypes { token_b_id, .. } => token_b_ids.insert(token_b_id),
             FuzzInstruction::Withdraw { token_b_id, .. } => token_b_ids.insert(token_b_id),
         };
     }
