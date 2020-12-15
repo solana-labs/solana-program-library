@@ -1,6 +1,9 @@
 //! Swap calculations
 
-use crate::{curve::math::PreciseNumber, error::SwapError};
+use crate::{
+    curve::math::{PreciseNumber, U256},
+    error::SwapError,
+};
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
@@ -165,6 +168,16 @@ pub trait CurveCalculator: Debug + DynPack {
     fn allows_deposits(&self) -> bool {
         true
     }
+
+    /// Calculates the total value of the curve given the liquidity parameters.
+    ///
+    /// This is mostly useful for invariant testing the curves, to make sure
+    /// that value is not lost on any trade.
+    ///
+    /// The default implementation for this function gives the Uniswap invariant
+    fn total_value(&self, swap_token_a_amount: u128, swap_token_b_amount: u128) -> Option<U256> {
+        U256::from(swap_token_a_amount).checked_mul(U256::from(swap_token_b_amount))
+    }
 }
 
 /// Test helpers for curves
@@ -261,5 +274,46 @@ pub mod test {
             pool_tokens_total_separate - pool_tokens_from_one_side
         };
         assert!(difference <= epsilon);
+    }
+
+    pub fn check_curve_value_from_swap(
+        curve: &dyn CurveCalculator,
+        source_token_amount: u128,
+        swap_source_amount: u128,
+        swap_destination_amount: u128,
+        trade_direction: TradeDirection,
+    ) {
+        let results = curve
+            .swap_without_fees(
+                source_token_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                trade_direction,
+            )
+            .unwrap();
+
+        let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
+            TradeDirection::AtoB => (swap_source_amount, swap_destination_amount),
+            TradeDirection::BtoA => (swap_destination_amount, swap_source_amount),
+        };
+        let previous_value = curve
+            .total_value(swap_token_a_amount, swap_token_b_amount)
+            .unwrap();
+
+        let new_swap_source_amount = swap_source_amount
+            .checked_add(results.source_amount_swapped)
+            .unwrap();
+        let new_swap_destination_amount = swap_destination_amount
+            .checked_sub(results.destination_amount_swapped)
+            .unwrap();
+        let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
+            TradeDirection::AtoB => (new_swap_source_amount, new_swap_destination_amount),
+            TradeDirection::BtoA => (new_swap_destination_amount, new_swap_source_amount),
+        };
+
+        let new_value = curve
+            .total_value(swap_token_a_amount, swap_token_b_amount)
+            .unwrap();
+        assert!(new_value >= previous_value);
     }
 }
