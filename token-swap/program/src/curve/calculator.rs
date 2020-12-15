@@ -24,7 +24,6 @@ pub fn map_zero_to_none(x: u128) -> Option<u128> {
 
 /// The direction of a trade, since curves can be specialized to treat each
 /// token differently (by adding offsets or weights)
-#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TradeDirection {
