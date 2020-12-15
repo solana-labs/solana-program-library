@@ -145,7 +145,7 @@ pub trait CurveCalculator: Debug + DynPack {
     /// Validate that the given curve has no invalid parameters
     fn validate(&self) -> Result<(), SwapError>;
 
-    /// Validate the given supply on inititialization. This is useful for curves
+    /// Validate the given supply on initialization. This is useful for curves
     /// that allow zero supply on one or both sides, since the standard constant
     /// product curve must have a non-zero supply on both sides.
     fn validate_supply(&self, token_a_amount: u64, token_b_amount: u64) -> Result<(), SwapError> {
