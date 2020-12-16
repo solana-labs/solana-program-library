@@ -318,24 +318,25 @@ mod tests {
         fn pool_token_conversion_b_to_a(
             // in the pool token conversion calcs, we simulate trading half of
             // source_token_amount, so this needs to be at least 2
-            source_token_amount in 2..u64::MAX,
+            source_token_amount in 2..u32::MAX, // kept small to avoid proptest rejections
             swap_source_amount in 1..u64::MAX,
-            swap_destination_amount in 1..u128::MAX, // NOTE: this is bumped up to avoid too many proptest rejections
-            token_b_price in 1..u64::MAX,
+            swap_destination_amount in 1..u64::MAX,
+            token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
         ) {
             let curve = ConstantPriceCurve {
-                token_b_price,
+                token_b_price: token_b_price as u64,
             };
-            // The constant price curve needs to have enough destination amount
-            // on the other side to complete the swap
             let token_b_price = token_b_price as u128;
             let source_token_amount = source_token_amount as u128;
             let swap_source_amount = swap_source_amount as u128;
-            prop_assume!(token_b_price * source_token_amount <= swap_destination_amount);
+            let swap_destination_amount = swap_destination_amount as u128;
+            // The constant price curve needs to have enough destination amount
+            // on the other side to complete the swap
+            prop_assume!(token_b_price * source_token_amount / 2 <= swap_destination_amount);
 
             // basis points guarantee, much higher than other calcs due to potential
             // truncation from huge token b prices
-            let basis_points_guarantee = 2000;
+            let basis_points_guarantee = 50;
             check_pool_token_conversion(
                 &curve,
                 source_token_amount,
