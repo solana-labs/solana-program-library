@@ -287,13 +287,19 @@ export async function createTokenSwap(): Promise<void> {
   assert(CURVE_TYPE == fetchedTokenSwap.curveType);
 }
 
-export async function deposit(): Promise<void> {
+export async function depositAllTokenTypes(): Promise<void> {
   const poolMintInfo = await tokenPool.getMintInfo();
   const supply = poolMintInfo.supply.toNumber();
   const swapTokenA = await mintA.getAccountInfo(tokenAccountA);
-  const tokenA = Math.floor((swapTokenA.amount.toNumber() * POOL_TOKEN_AMOUNT) / (supply + POOL_TOKEN_AMOUNT));
+  const tokenA = Math.floor(
+    (swapTokenA.amount.toNumber() * POOL_TOKEN_AMOUNT) /
+      (supply + POOL_TOKEN_AMOUNT),
+  );
   const swapTokenB = await mintB.getAccountInfo(tokenAccountB);
-  const tokenB = Math.floor((swapTokenB.amount.toNumber() * POOL_TOKEN_AMOUNT) / (supply + POOL_TOKEN_AMOUNT));
+  const tokenB = Math.floor(
+    (swapTokenB.amount.toNumber() * POOL_TOKEN_AMOUNT) /
+      (supply + POOL_TOKEN_AMOUNT),
+  );
 
   console.log('Creating depositor token a account');
   const userAccountA = await mintA.createAccount(owner.publicKey);
@@ -307,7 +313,7 @@ export async function deposit(): Promise<void> {
   const newAccountPool = await tokenPool.createAccount(owner.publicKey);
 
   console.log('Depositing into swap');
-  await tokenSwap.deposit(
+  await tokenSwap.depositAllTokenTypes(
     userAccountA,
     userAccountB,
     newAccountPool,
@@ -331,7 +337,7 @@ export async function deposit(): Promise<void> {
   assert(info.amount.toNumber() == POOL_TOKEN_AMOUNT);
 }
 
-export async function withdraw(): Promise<void> {
+export async function withdrawAllTokenTypes(): Promise<void> {
   const poolMintInfo = await tokenPool.getMintInfo();
   const supply = poolMintInfo.supply.toNumber();
   let swapTokenA = await mintA.getAccountInfo(tokenAccountA);
@@ -366,7 +372,7 @@ export async function withdraw(): Promise<void> {
   );
 
   console.log('Withdrawing pool tokens for A and B tokens');
-  await tokenSwap.withdraw(
+  await tokenSwap.withdrawAllTokenTypes(
     userAccountA,
     userAccountB,
     tokenAccountPool,
@@ -463,6 +469,12 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
     owner,
     newAccount,
   );
+
+  let info;
+  info = await mintA.getAccountInfo(tokenAccountA);
+  currentSwapTokenA = info.amount.toNumber();
+  info = await mintB.getAccountInfo(tokenAccountB);
+  currentSwapTokenB = info.amount.toNumber();
 }
 
 export async function swap(): Promise<void> {
@@ -514,4 +526,164 @@ export async function swap(): Promise<void> {
     info = await tokenPool.getAccountInfo(poolAccount);
     assert(info.amount.toNumber() == HOST_SWAP_FEE);
   }
+}
+
+function tradingTokensToPoolTokens(
+  sourceAmount: number,
+  swapSourceAmount: number,
+  poolAmount: number,
+): number {
+  const tradingFee =
+    (sourceAmount / 2) * (TRADING_FEE_NUMERATOR / TRADING_FEE_DENOMINATOR);
+  const sourceAmountPostFee = sourceAmount - tradingFee;
+  const root = Math.sqrt(sourceAmountPostFee / swapSourceAmount + 1);
+  return Math.floor(poolAmount * (root - 1));
+}
+
+export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
+  // Pool token amount to deposit on one side
+  const depositAmount = 10000;
+
+  const poolMintInfo = await tokenPool.getMintInfo();
+  const supply = poolMintInfo.supply.toNumber();
+  const swapTokenA = await mintA.getAccountInfo(tokenAccountA);
+  const poolTokenA = tradingTokensToPoolTokens(
+    depositAmount,
+    swapTokenA.amount.toNumber(),
+    supply,
+  );
+  const swapTokenB = await mintB.getAccountInfo(tokenAccountB);
+  const poolTokenB = tradingTokensToPoolTokens(
+    depositAmount,
+    swapTokenB.amount.toNumber(),
+    supply,
+  );
+
+  console.log('Creating depositor token a account');
+  const userAccountA = await mintA.createAccount(owner.publicKey);
+  await mintA.mintTo(userAccountA, owner, [], depositAmount);
+  await mintA.approve(userAccountA, authority, owner, [], depositAmount);
+  console.log('Creating depositor token b account');
+  const userAccountB = await mintB.createAccount(owner.publicKey);
+  await mintB.mintTo(userAccountB, owner, [], depositAmount);
+  await mintB.approve(userAccountB, authority, owner, [], depositAmount);
+  console.log('Creating depositor pool token account');
+  const newAccountPool = await tokenPool.createAccount(owner.publicKey);
+
+  console.log('Depositing token A into swap');
+  await tokenSwap.depositSingleTokenTypeExactAmountIn(
+    userAccountA,
+    newAccountPool,
+    depositAmount,
+    poolTokenA,
+  );
+
+  let info;
+  info = await mintA.getAccountInfo(userAccountA);
+  assert(info.amount.toNumber() == 0);
+  info = await mintA.getAccountInfo(tokenAccountA);
+  assert(info.amount.toNumber() == currentSwapTokenA + depositAmount);
+  currentSwapTokenA += depositAmount;
+
+  console.log('Depositing token B into swap');
+  await tokenSwap.depositSingleTokenTypeExactAmountIn(
+    userAccountB,
+    newAccountPool,
+    depositAmount,
+    poolTokenB,
+  );
+
+  info = await mintB.getAccountInfo(userAccountB);
+  assert(info.amount.toNumber() == 0);
+  info = await mintB.getAccountInfo(tokenAccountB);
+  assert(info.amount.toNumber() == currentSwapTokenB + depositAmount);
+  currentSwapTokenB += depositAmount;
+  info = await tokenPool.getAccountInfo(newAccountPool);
+  assert(info.amount.toNumber() >= poolTokenA + poolTokenB);
+}
+
+export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
+  // Pool token amount to withdraw on one side
+  const withdrawAmount = 50000;
+  const roundingAmount = 1.0001; // make math a little easier
+
+  const poolMintInfo = await tokenPool.getMintInfo();
+  const supply = poolMintInfo.supply.toNumber();
+
+  const swapTokenA = await mintA.getAccountInfo(tokenAccountA);
+  const swapTokenAPost = swapTokenA.amount.toNumber() - withdrawAmount;
+  const poolTokenA = tradingTokensToPoolTokens(
+    withdrawAmount,
+    swapTokenAPost,
+    supply,
+  );
+  let adjustedPoolTokenA = poolTokenA * roundingAmount;
+  if (OWNER_WITHDRAW_FEE_NUMERATOR !== 0) {
+    adjustedPoolTokenA *=
+      1 + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR;
+  }
+
+  const swapTokenB = await mintB.getAccountInfo(tokenAccountB);
+  const swapTokenBPost = swapTokenB.amount.toNumber() - withdrawAmount;
+  const poolTokenB = tradingTokensToPoolTokens(
+    withdrawAmount,
+    swapTokenBPost,
+    supply,
+  );
+  let adjustedPoolTokenB = poolTokenB * roundingAmount;
+  if (OWNER_WITHDRAW_FEE_NUMERATOR !== 0) {
+    adjustedPoolTokenB *=
+      1 + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR;
+  }
+
+  console.log('Creating withdraw token a account');
+  const userAccountA = await mintA.createAccount(owner.publicKey);
+  console.log('Creating withdraw token b account');
+  const userAccountB = await mintB.createAccount(owner.publicKey);
+  console.log('Creating withdraw pool token account');
+  const poolAccount = await tokenPool.getAccountInfo(tokenAccountPool);
+  const poolTokenAmount = poolAccount.amount.toNumber();
+  await tokenPool.approve(
+    tokenAccountPool,
+    authority,
+    owner,
+    [],
+    adjustedPoolTokenA + adjustedPoolTokenB,
+  );
+
+  console.log('Withdrawing token A only');
+  await tokenSwap.withdrawSingleTokenTypeExactAmountOut(
+    userAccountA,
+    tokenAccountPool,
+    withdrawAmount,
+    adjustedPoolTokenA,
+  );
+
+  let info;
+  info = await mintA.getAccountInfo(userAccountA);
+  assert(info.amount.toNumber() == withdrawAmount);
+  info = await mintA.getAccountInfo(tokenAccountA);
+  assert(info.amount.toNumber() == currentSwapTokenA - withdrawAmount);
+  currentSwapTokenA += withdrawAmount;
+  info = await tokenPool.getAccountInfo(tokenAccountPool);
+  assert(info.amount.toNumber() >= poolTokenAmount - adjustedPoolTokenA);
+
+  console.log('Withdrawing token B only');
+  await tokenSwap.withdrawSingleTokenTypeExactAmountOut(
+    userAccountB,
+    tokenAccountPool,
+    withdrawAmount,
+    adjustedPoolTokenB,
+  );
+
+  info = await mintB.getAccountInfo(userAccountB);
+  assert(info.amount.toNumber() == withdrawAmount);
+  info = await mintB.getAccountInfo(tokenAccountB);
+  assert(info.amount.toNumber() == currentSwapTokenB - withdrawAmount);
+  currentSwapTokenB += withdrawAmount;
+  info = await tokenPool.getAccountInfo(tokenAccountPool);
+  assert(
+    info.amount.toNumber() >=
+      poolTokenAmount - adjustedPoolTokenA - adjustedPoolTokenB,
+  );
 }

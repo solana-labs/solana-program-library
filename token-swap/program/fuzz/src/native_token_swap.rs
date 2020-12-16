@@ -6,7 +6,7 @@ use crate::native_token;
 
 use spl_token_swap::{
     curve::{base::SwapCurve, fees::Fees},
-    instruction::{self, Deposit, Swap, Withdraw},
+    instruction::{self, DepositAllTokenTypes, Swap, WithdrawAllTokenTypes},
     state::SwapInfo,
 };
 
@@ -261,7 +261,7 @@ impl NativeTokenSwap {
         token_a_account: &mut NativeAccountData,
         token_b_account: &mut NativeAccountData,
         pool_account: &mut NativeAccountData,
-        mut instruction: Deposit,
+        mut instruction: DepositAllTokenTypes,
     ) -> ProgramResult {
         do_process_instruction(
             approve(
@@ -341,7 +341,7 @@ impl NativeTokenSwap {
         pool_account: &mut NativeAccountData,
         token_a_account: &mut NativeAccountData,
         token_b_account: &mut NativeAccountData,
-        mut instruction: Withdraw,
+        mut instruction: WithdrawAllTokenTypes,
     ) -> ProgramResult {
         let pool_token_amount = native_token::get_token_balance(&pool_account);
         // special logic to avoid withdrawing down to 1 pool token, which
@@ -408,7 +408,7 @@ impl NativeTokenSwap {
     ) -> ProgramResult {
         let pool_token_amount = native_token::get_token_balance(&pool_account);
         if pool_token_amount > 0 {
-            let instruction = Withdraw {
+            let instruction = WithdrawAllTokenTypes {
                 pool_token_amount,
                 minimum_token_a_amount: 0,
                 minimum_token_b_amount: 0,
