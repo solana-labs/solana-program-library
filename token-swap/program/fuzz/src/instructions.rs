@@ -138,12 +138,12 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
         }
     }
 
-    let pool_shares = [&token_swap.pool_token_account, &token_swap.pool_fee_account]
+    let pool_tokens = [&token_swap.pool_token_account, &token_swap.pool_fee_account]
         .iter()
         .map(|&x| get_token_balance(x))
         .sum::<u64>() as u128;
     let initial_pool_token_amount =
-        pool_shares + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
+        pool_tokens + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
     let initial_swap_token_a_amount = get_token_balance(&token_swap.token_a_account) as u128;
     let initial_swap_token_b_amount = get_token_balance(&token_swap.token_b_account) as u128;
 
@@ -163,19 +163,17 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
         );
     }
 
-    let pool_shares = [&token_swap.pool_token_account, &token_swap.pool_fee_account]
+    let pool_tokens = [&token_swap.pool_token_account, &token_swap.pool_fee_account]
         .iter()
         .map(|&x| get_token_balance(x))
         .sum::<u64>() as u128;
-    let pool_token_amount = pool_shares + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
+    let pool_token_amount = pool_tokens + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
     let swap_token_a_amount = get_token_balance(&token_swap.token_a_account) as u128;
     let swap_token_b_amount = get_token_balance(&token_swap.token_b_account) as u128;
 
-    println!("{} {} {}", initial_swap_token_a_amount, initial_swap_token_b_amount, initial_pool_token_amount);
-    println!("{} {} {}", swap_token_a_amount, swap_token_b_amount, pool_token_amount);
-    let lost_a_per_share = initial_swap_token_a_amount * pool_token_amount > swap_token_a_amount * initial_pool_token_amount;
-    let lost_b_per_share = initial_swap_token_b_amount * pool_token_amount > swap_token_b_amount * initial_pool_token_amount;
-    assert!(!(lost_a_per_share && lost_b_per_share));
+    let lost_a_value = initial_swap_token_a_amount * pool_token_amount > swap_token_a_amount * initial_pool_token_amount;
+    let lost_b_value = initial_swap_token_b_amount * pool_token_amount > swap_token_b_amount * initial_pool_token_amount;
+    assert!(!(lost_a_value && lost_b_value));
 
     // check total token a and b amounts
     let after_total_token_a = token_a_accounts
@@ -250,12 +248,8 @@ fn run_fuzz_instruction(
             trade_direction,
             instruction,
         } => {
-            let mut token_a_account = token_a_accounts
-                .entry(token_a_id)
-                .or_insert_with(|| unreachable!());
-            let mut token_b_account = token_b_accounts
-                .entry(token_b_id)
-                .or_insert_with(|| unreachable!());
+            let mut token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
+            let mut token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
             match trade_direction {
                 TradeDirection::AtoB => {
                     token_swap.swap_a_to_b(&mut token_a_account, &mut token_b_account, instruction)
@@ -271,15 +265,9 @@ fn run_fuzz_instruction(
             pool_token_id,
             instruction,
         } => {
-            let mut token_a_account = token_a_accounts
-                .entry(token_a_id)
-                .or_insert_with(|| unreachable!());
-            let mut token_b_account = token_b_accounts
-                .entry(token_b_id)
-                .or_insert_with(|| unreachable!());
-            let mut pool_account = pool_accounts
-                .entry(pool_token_id)
-                .or_insert_with(|| unreachable!());
+            let mut token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
+            let mut token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
+            let mut pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
             token_swap.deposit(
                 &mut token_a_account,
                 &mut token_b_account,
@@ -293,15 +281,9 @@ fn run_fuzz_instruction(
             pool_token_id,
             instruction,
         } => {
-            let mut token_a_account = token_a_accounts
-                .entry(token_a_id)
-                .or_insert_with(|| unreachable!());
-            let mut token_b_account = token_b_accounts
-                .entry(token_b_id)
-                .or_insert_with(|| unreachable!());
-            let mut pool_account = pool_accounts
-                .entry(pool_token_id)
-                .or_insert_with(|| unreachable!());
+            let mut token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
+            let mut token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
+            let mut pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
             token_swap.withdraw(
                 &mut pool_account,
                 &mut token_a_account,

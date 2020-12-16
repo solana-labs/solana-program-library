@@ -49,13 +49,19 @@ impl U256 {
 /// calculation.
 ///
 /// For example, 400 / 32 = 12, with a remainder cutting off 0.5 of amount.
-/// If we ceiling the quotient to 13, then we say 400 / 32 = 13, which
-/// also cuts off value.  We calculate the other way around and again check
-/// for a remainder: 400 / 13 = 30, with a remainder of 0.77, and we ceiling
-/// that value again.  This gives us a final calculation of 400 / 31 = 13, which
-/// provides a ceiling calculation without cutting off more value than needed.
+/// If we simply ceiling the quotient to 13, then we're saying 400 / 32 = 13, which
+/// also cuts off value.  To improve this result, we calculate the other way
+/// around and again check for a remainder: 400 / 13 = 30, with a remainder of
+/// 0.77, and we ceiling that value again.  This gives us a final calculation
+/// of 400 / 31 = 13, which provides a ceiling calculation without cutting off
+/// more value than needed.
+///
+/// This calculation fails if the divisor is larger than the dividend, to avoid
+/// having a result like: 1 / 1000 = 1.
 pub fn ceiling_division(dividend: u128, mut divisor: u128) -> Option<(u128, u128)> {
     let mut quotient = dividend.checked_div(divisor)?;
+    // Avoid dividing a small number by a big one and returning 1, and instead
+    // fail.
     if quotient == 0 {
         return None;
     }
