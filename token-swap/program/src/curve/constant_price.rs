@@ -165,8 +165,9 @@ impl DynPack for ConstantPriceCurve {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::calculator::test::{
-        check_pool_token_conversion, CONVERSION_BASIS_POINTS_GUARANTEE,
+    use crate::curve::calculator::{
+        test::{check_pool_token_conversion, CONVERSION_BASIS_POINTS_GUARANTEE},
+        INITIAL_SWAP_POOL_AMOUNT,
     };
     use proptest::prelude::*;
 
@@ -291,6 +292,7 @@ mod tests {
             source_token_amount in 2..u64::MAX,
             swap_source_amount in 1..u64::MAX,
             swap_destination_amount in 1..u64::MAX,
+            pool_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
             token_b_price in 1..u64::MAX,
         ) {
             let traded_source_amount = source_token_amount / 2;
@@ -308,6 +310,7 @@ mod tests {
                 swap_source_amount as u128,
                 swap_destination_amount as u128,
                 TradeDirection::AtoB,
+                pool_supply,
                 CONVERSION_BASIS_POINTS_GUARANTEE,
             );
         }
@@ -321,6 +324,7 @@ mod tests {
             source_token_amount in 2..u32::MAX, // kept small to avoid proptest rejections
             swap_source_amount in 1..u64::MAX,
             swap_destination_amount in 1..u64::MAX,
+            pool_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
             token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
         ) {
             let curve = ConstantPriceCurve {
@@ -340,6 +344,7 @@ mod tests {
                 swap_source_amount,
                 swap_destination_amount,
                 TradeDirection::BtoA,
+                pool_supply,
                 CONVERSION_BASIS_POINTS_GUARANTEE,
             );
         }

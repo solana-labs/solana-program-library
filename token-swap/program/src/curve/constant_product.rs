@@ -230,6 +230,7 @@ mod tests {
             source_token_amount in 2..u64::MAX,
             swap_source_amount in 1..u64::MAX,
             swap_destination_amount in 1..u64::MAX,
+            pool_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
         ) {
             let curve = ConstantProductCurve {};
             check_pool_token_conversion(
@@ -238,6 +239,7 @@ mod tests {
                 swap_source_amount as u128,
                 swap_destination_amount as u128,
                 TradeDirection::AtoB,
+                pool_supply,
                 CONVERSION_BASIS_POINTS_GUARANTEE,
             );
 
@@ -247,6 +249,7 @@ mod tests {
                 swap_source_amount as u128,
                 swap_destination_amount as u128,
                 TradeDirection::BtoA,
+                pool_supply,
                 CONVERSION_BASIS_POINTS_GUARANTEE,
             );
         }

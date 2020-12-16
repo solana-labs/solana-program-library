@@ -112,10 +112,11 @@ pub trait CurveCalculator: Debug + DynPack {
     }
 
     /// Get the amount of pool tokens for the given amount of token A or B.
-    /// This is used to do single-sided deposits or withdrawals, which
-    /// essentially performs a swap followed by a deposit, or a withdrawal
-    /// followed by a swap.  Because a swap is implicitly performed, this will
-    /// change the balance in the pool.
+    ///
+    /// This is used for single-sided deposits or withdrawals and owner trade
+    /// fee calculation. It essentially performs a swap followed by a deposit,
+    /// or a withdrawal followed by a swap.  Because a swap is implicitly
+    /// performed, this will change the spot price of the pool.
     ///
     /// See more background for the calculation at:
     /// https://balancer.finance/whitepaper/#single-asset-deposit
@@ -188,6 +189,7 @@ pub mod test {
         swap_source_amount: u128,
         swap_destination_amount: u128,
         trade_direction: TradeDirection,
+        pool_supply: u128,
         epsilon_in_basis_points: u128,
     ) {
         let amount_to_swap = source_token_amount / 2;
@@ -199,7 +201,6 @@ pub mod test {
                 trade_direction,
             )
             .unwrap();
-        let pool_supply = u64::MAX as u128;
         let opposite_direction = trade_direction.opposite();
         let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
             TradeDirection::AtoB => (swap_source_amount, swap_destination_amount),
