@@ -26,6 +26,11 @@ pub struct OffsetCurve {
 
 impl CurveCalculator for OffsetCurve {
     /// Constant product swap ensures token a * (token b + offset) = constant
+    /// This is guaranteed to work for all values such that:
+    ///  - 1 <= source_amount <= u64::MAX
+    ///  - 1 <= (swap_source_amount * (swap_destination_amount + token_b_offset)) <= u128::MAX
+    /// If the offset and token B are both close to u64::MAX, there can be
+    /// overflow errors with the invariant.
     fn swap_without_fees(
         &self,
         source_amount: u128,
@@ -148,7 +153,11 @@ impl DynPack for OffsetCurve {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::calculator::test::check_pool_token_conversion;
+    use crate::curve::calculator::{
+        test::{check_pool_token_conversion, CONVERSION_BASIS_POINTS_GUARANTEE},
+        INITIAL_SWAP_POOL_AMOUNT,
+    };
+    use proptest::prelude::*;
 
     #[test]
     fn pack_curve() {
@@ -259,26 +268,75 @@ mod tests {
         assert_eq!(result.destination_amount_swapped, 499);
     }
 
-    #[test]
-    fn pool_token_conversion() {
-        let tests: &[(u64, u128, u128, u128)] = &[
-            (10_000, 1_000_000, 1, 100_000),
-            (10, 1_000, 100, 100),
-            (1_251, 30, 1_288, 100_000),
-            (1_000_251, 1_000, 1_288, 100_000),
-            (1_000_000_000_000, 212, 10_000, 100_000),
-        ];
-        for (token_b_offset, swap_token_a_amount, swap_token_b_amount, token_a_amount) in
-            tests.iter()
-        {
+    proptest! {
+        #[test]
+        fn pool_token_conversion_a_to_b(
+            // in the pool token conversion calcs, we simulate trading half of
+            // source_token_amount, so this needs to be at least 2
+            source_token_amount in 2..u64::MAX,
+            swap_source_amount in 1..u64::MAX,
+            swap_destination_amount in 1..u64::MAX,
+            pool_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
+            token_b_offset in 1..u64::MAX,
+        ) {
             let curve = OffsetCurve {
-                token_b_offset: *token_b_offset,
+                token_b_offset,
+            };
+            // In order for the swap to succeed, we need to make
+            // sure that we don't overdraw on the token B side, ie.
+            // (B + offset) - (B + offset) * A / (A + A_in) <= B
+            // which reduces to
+            // A_in * offset <= A * B
+            let source_token_amount = source_token_amount as u128;
+            let swap_source_amount = swap_source_amount as u128;
+            let swap_destination_amount = swap_destination_amount as u128;
+            let token_b_offset = token_b_offset as u128;
+
+            prop_assume!(
+                (source_token_amount / 2 * token_b_offset) <=
+                (swap_source_amount * swap_destination_amount));
+
+            // The invariant needs to fit in a u128.
+            // invariant = swap_source_amount * (swap_destination_amount + token_b_offset)
+            prop_assume!(!(swap_destination_amount + token_b_offset).overflowing_mul(swap_source_amount).1);
+            check_pool_token_conversion(
+                &curve,
+                source_token_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                TradeDirection::AtoB,
+                pool_supply,
+                CONVERSION_BASIS_POINTS_GUARANTEE,
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn pool_token_conversion_b_to_a(
+            // in the pool token conversion calcs, we simulate trading half of
+            // source_token_amount, so this needs to be at least 2
+            source_token_amount in 2..u64::MAX,
+            swap_source_amount in 1..u64::MAX,
+            swap_destination_amount in 1..u64::MAX,
+            pool_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
+            token_b_offset in 1..u64::MAX,
+        ) {
+            // The invariant needs to fit in a u128, so keep token b side
+            // under u64::MAX.
+            // invariant = swap_destination_amount * (swap_source_amount + token_b_offset)
+            prop_assume!(!swap_source_amount.overflowing_add(token_b_offset).1);
+            let curve = OffsetCurve {
+                token_b_offset,
             };
             check_pool_token_conversion(
                 &curve,
-                *swap_token_a_amount,
-                *swap_token_b_amount,
-                *token_a_amount,
+                source_token_amount as u128,
+                swap_source_amount as u128,
+                swap_destination_amount as u128,
+                TradeDirection::BtoA,
+                pool_supply,
+                CONVERSION_BASIS_POINTS_GUARANTEE,
             );
         }
     }

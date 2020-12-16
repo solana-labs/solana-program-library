@@ -5,6 +5,7 @@ use crate::{
         map_zero_to_none, CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection,
         TradingTokenResult,
     },
+    curve::math::U256,
     error::SwapError,
 };
 use arrayref::{array_mut_ref, array_ref};
@@ -38,7 +39,7 @@ impl CurveCalculator for ConstantPriceCurve {
                 let mut source_amount_swapped = source_amount;
 
                 // if there is a remainder from buying token B, floor
-                // token_a_amount provided to avoid taking too many tokens, but
+                // token_a_amount to avoid taking too many tokens, but
                 // don't recalculate the fees
                 let remainder = source_amount_swapped.checked_rem(token_b_price)?;
                 if remainder > 0 {
@@ -100,17 +101,21 @@ impl CurveCalculator for ConstantPriceCurve {
         pool_supply: u128,
         trade_direction: TradeDirection,
     ) -> Option<u128> {
-        let token_b_price = self.token_b_price as u128;
+        let token_b_price = U256::from(self.token_b_price);
         let given_value = match trade_direction {
-            TradeDirection::AtoB => source_amount,
-            TradeDirection::BtoA => source_amount.checked_mul(token_b_price)?,
+            TradeDirection::AtoB => U256::from(source_amount),
+            TradeDirection::BtoA => U256::from(source_amount).checked_mul(token_b_price)?,
         };
-        let total_value = swap_token_b_amount
+        let total_value = U256::from(swap_token_b_amount)
             .checked_mul(token_b_price)?
-            .checked_add(swap_token_a_amount)?;
-        pool_supply
-            .checked_mul(given_value)?
-            .checked_div(total_value)
+            .checked_add(U256::from(swap_token_a_amount))?;
+        let pool_supply = U256::from(pool_supply);
+        Some(
+            pool_supply
+                .checked_mul(given_value)?
+                .checked_div(total_value)?
+                .as_u128(),
+        )
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -160,6 +165,11 @@ impl DynPack for ConstantPriceCurve {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::curve::calculator::{
+        test::{check_pool_token_conversion, CONVERSION_BASIS_POINTS_GUARANTEE},
+        INITIAL_SWAP_POOL_AMOUNT,
+    };
+    use proptest::prelude::*;
 
     #[test]
     fn swap_calculation_no_price() {
@@ -209,79 +219,6 @@ mod tests {
         packed.extend_from_slice(&token_b_price.to_le_bytes());
         let unpacked = ConstantPriceCurve::unpack(&packed).unwrap();
         assert_eq!(curve, unpacked);
-    }
-
-    fn almost_equal(a: u128, b: u128) {
-        if a >= b {
-            assert!(a - b <= 1);
-        } else {
-            assert!(b - a <= 1);
-        }
-    }
-
-    fn check_pool_token_conversion(
-        token_b_price: u128,
-        swap_token_a_amount: u128,
-        swap_token_b_amount: u128,
-        token_b_amount: u128,
-    ) {
-        let token_a_amount = token_b_amount * token_b_price;
-        let curve = ConstantPriceCurve {
-            token_b_price: token_b_price as u64,
-        };
-        let pool_supply = curve.new_pool_supply();
-        let pool_tokens_from_a = curve
-            .trading_tokens_to_pool_tokens(
-                token_a_amount,
-                swap_token_a_amount,
-                swap_token_b_amount,
-                pool_supply,
-                TradeDirection::AtoB,
-            )
-            .unwrap();
-        let pool_tokens_from_b = curve
-            .trading_tokens_to_pool_tokens(
-                token_b_amount,
-                swap_token_a_amount,
-                swap_token_b_amount,
-                pool_supply,
-                TradeDirection::BtoA,
-            )
-            .unwrap();
-        let results = curve
-            .pool_tokens_to_trading_tokens(
-                pool_tokens_from_a + pool_tokens_from_b,
-                pool_supply,
-                swap_token_a_amount,
-                swap_token_b_amount,
-            )
-            .unwrap();
-        almost_equal(
-            results.token_a_amount / token_b_price,
-            token_a_amount / token_b_price,
-        ); // takes care of truncation issues
-        almost_equal(results.token_b_amount, token_b_amount);
-    }
-
-    #[test]
-    fn pool_token_conversion() {
-        let tests: &[(u128, u128, u128, u128)] = &[
-            (10_000, 1_000_000, 1, 10),
-            (10, 1_000, 100, 1),
-            (1_251, 30, 1_288, 1_225),
-            (1_000_251, 0, 1_288, 1),
-            (1_000_000_000_000, 212, 10_000, 1),
-        ];
-        for (token_b_price, swap_token_a_amount, swap_token_b_amount, token_b_amount) in
-            tests.iter()
-        {
-            check_pool_token_conversion(
-                *token_b_price,
-                *swap_token_a_amount,
-                *swap_token_b_amount,
-                *token_b_amount,
-            );
-        }
     }
 
     #[test]
@@ -345,5 +282,71 @@ mod tests {
             .unwrap();
         assert_eq!(result.source_amount_swapped, token_b_price);
         assert_eq!(result.destination_amount_swapped, 1u128);
+    }
+
+    proptest! {
+        #[test]
+        fn pool_token_conversion_a_to_b(
+            // in the pool token conversion calcs, we simulate trading half of
+            // source_token_amount, so this needs to be at least 2
+            source_token_amount in 2..u64::MAX,
+            swap_source_amount in 1..u64::MAX,
+            swap_destination_amount in 1..u64::MAX,
+            pool_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
+            token_b_price in 1..u64::MAX,
+        ) {
+            let traded_source_amount = source_token_amount / 2;
+            // Make sure that the trade yields at least 1 token B
+            prop_assume!(traded_source_amount / token_b_price >= 1);
+            // Make sure there's enough tokens to get back on the other side
+            prop_assume!(traded_source_amount / token_b_price <= swap_destination_amount);
+
+            let curve = ConstantPriceCurve {
+                token_b_price,
+            };
+            check_pool_token_conversion(
+                &curve,
+                source_token_amount as u128,
+                swap_source_amount as u128,
+                swap_destination_amount as u128,
+                TradeDirection::AtoB,
+                pool_supply,
+                CONVERSION_BASIS_POINTS_GUARANTEE,
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn pool_token_conversion_b_to_a(
+            // in the pool token conversion calcs, we simulate trading half of
+            // source_token_amount, so this needs to be at least 2
+            source_token_amount in 2..u32::MAX, // kept small to avoid proptest rejections
+            swap_source_amount in 1..u64::MAX,
+            swap_destination_amount in 1..u64::MAX,
+            pool_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
+            token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
+        ) {
+            let curve = ConstantPriceCurve {
+                token_b_price: token_b_price as u64,
+            };
+            let token_b_price = token_b_price as u128;
+            let source_token_amount = source_token_amount as u128;
+            let swap_source_amount = swap_source_amount as u128;
+            let swap_destination_amount = swap_destination_amount as u128;
+            // The constant price curve needs to have enough destination amount
+            // on the other side to complete the swap
+            prop_assume!(token_b_price * source_token_amount / 2 <= swap_destination_amount);
+
+            check_pool_token_conversion(
+                &curve,
+                source_token_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                TradeDirection::BtoA,
+                pool_supply,
+                CONVERSION_BASIS_POINTS_GUARANTEE,
+            );
+        }
     }
 }

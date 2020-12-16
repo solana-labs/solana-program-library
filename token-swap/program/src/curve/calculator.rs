@@ -33,6 +33,17 @@ pub enum TradeDirection {
     BtoA,
 }
 
+impl TradeDirection {
+    /// Given a trade direction, gives the opposite direction of the trade, so
+    /// A to B becomes B to A, and vice versa
+    pub fn opposite(&self) -> TradeDirection {
+        match self {
+            TradeDirection::AtoB => TradeDirection::BtoA,
+            TradeDirection::BtoA => TradeDirection::AtoB,
+        }
+    }
+}
+
 /// Encodes all results of swapping from a source token to a destination token
 #[derive(Debug, PartialEq)]
 pub struct SwapWithoutFeesResult {
@@ -100,8 +111,14 @@ pub trait CurveCalculator: Debug + DynPack {
         })
     }
 
-    /// Get the amount of pool tokens for the given amount of token A or B
-    /// See the concept for the calculation at:
+    /// Get the amount of pool tokens for the given amount of token A or B.
+    ///
+    /// This is used for single-sided deposits or withdrawals and owner trade
+    /// fee calculation. It essentially performs a swap followed by a deposit,
+    /// or a withdrawal followed by a swap.  Because a swap is implicitly
+    /// performed, this will change the spot price of the pool.
+    ///
+    /// See more background for the calculation at:
     /// https://balancer.finance/whitepaper/#single-asset-deposit
     fn trading_tokens_to_pool_tokens(
         &self,
@@ -125,11 +142,12 @@ pub trait CurveCalculator: Debug + DynPack {
         pool_supply.checked_mul(&root)?.to_imprecise()
     }
 
-    /// Validate that the given curve has no bad parameters
+    /// Validate that the given curve has no invalid parameters
     fn validate(&self) -> Result<(), SwapError>;
 
-    /// Validate the given supply on init, helpful for curves that do or don't
-    /// allow zero supply on one side
+    /// Validate the given supply on initialization. This is useful for curves
+    /// that allow zero supply on one or both sides, since the standard constant
+    /// product curve must have a non-zero supply on both sides.
     fn validate_supply(&self, token_a_amount: u64, token_b_amount: u64) -> Result<(), SwapError> {
         if token_a_amount == 0 {
             return Err(SwapError::EmptySupply);
@@ -140,89 +158,108 @@ pub trait CurveCalculator: Debug + DynPack {
         Ok(())
     }
 
-    /// Some curves will function best and prevent attacks if we prevent
-    /// deposits after initialization
+    /// Some curves function best and prevent attacks if we prevent deposits
+    /// after initialization.  For example, the offset curve in `offset.rs`,
+    /// which fakes supply on one side of the swap, allows the swap creator
+    /// to steal value from all other depositors.
     fn allows_deposits(&self) -> bool {
         true
     }
 }
 
-#[cfg(test)]
+/// Test helpers for curves
+#[cfg(any(test, fuzzing))]
 pub mod test {
     use super::*;
 
-    /// Check that two numbers are within 1 of each other
-    fn almost_equal(a: u128, b: u128) {
-        if a >= b {
-            assert!(a - b <= 1);
-        } else {
-            assert!(b - a <= 1);
-        }
-    }
+    /// The epsilon for most curves when performing the conversion test,
+    /// comparing a one-sided deposit to a swap + deposit.
+    pub const CONVERSION_BASIS_POINTS_GUARANTEE: u128 = 50;
 
+    /// Test function to check that depositing token A is the same as swapping
+    /// half for token B and depositing both.
+    /// Since calculations use unsigned integers, there will be truncation at
+    /// some point, meaning we can't have perfect equality.
+    /// We guarantee that the relative error between depositing one side and
+    /// performing a swap plus deposit will be at most some epsilon provided by
+    /// the curve. Most curves guarantee accuracy within 0.5%.
     pub fn check_pool_token_conversion(
         curve: &dyn CurveCalculator,
-        swap_token_a_amount: u128,
-        swap_token_b_amount: u128,
-        token_a_amount: u128,
+        source_token_amount: u128,
+        swap_source_amount: u128,
+        swap_destination_amount: u128,
+        trade_direction: TradeDirection,
+        pool_supply: u128,
+        epsilon_in_basis_points: u128,
     ) {
-        // check that depositing token A is the same as swapping for token B
-        // and depositing the result
-        let swap_results = curve
+        let amount_to_swap = source_token_amount / 2;
+        let results = curve
             .swap_without_fees(
-                token_a_amount,
+                amount_to_swap,
+                swap_source_amount,
+                swap_destination_amount,
+                trade_direction,
+            )
+            .unwrap();
+        let opposite_direction = trade_direction.opposite();
+        let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
+            TradeDirection::AtoB => (swap_source_amount, swap_destination_amount),
+            TradeDirection::BtoA => (swap_destination_amount, swap_source_amount),
+        };
+
+        // base amount
+        let pool_tokens_from_one_side = curve
+            .trading_tokens_to_pool_tokens(
+                source_token_amount,
                 swap_token_a_amount,
                 swap_token_b_amount,
-                TradeDirection::AtoB,
-            )
-            .unwrap();
-        let token_a_amount = swap_results.source_amount_swapped;
-        let token_b_amount = swap_results.destination_amount_swapped;
-        let pool_supply = curve.new_pool_supply();
-        let pool_tokens_from_a = curve
-            .trading_tokens_to_pool_tokens(
-                token_a_amount,
-                swap_token_a_amount + token_a_amount,
-                swap_token_b_amount,
                 pool_supply,
-                TradeDirection::AtoB,
-            )
-            .unwrap();
-        let pool_tokens_from_b = curve
-            .trading_tokens_to_pool_tokens(
-                token_b_amount,
-                swap_token_a_amount + token_a_amount,
-                swap_token_b_amount,
-                pool_supply,
-                TradeDirection::BtoA,
-            )
-            .unwrap();
-        let deposit_token_a = curve
-            .pool_tokens_to_trading_tokens(
-                pool_tokens_from_a,
-                pool_supply + pool_tokens_from_a,
-                swap_token_a_amount,
-                swap_token_b_amount,
+                trade_direction,
             )
             .unwrap();
 
-        let deposit_token_b = curve
-            .pool_tokens_to_trading_tokens(
-                pool_tokens_from_b,
-                pool_supply + pool_tokens_from_b,
+        // perform both separately, updating amounts accordingly
+        let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
+            TradeDirection::AtoB => (
+                swap_source_amount + results.source_amount_swapped,
+                swap_destination_amount - results.destination_amount_swapped,
+            ),
+            TradeDirection::BtoA => (
+                swap_destination_amount - results.destination_amount_swapped,
+                swap_source_amount + results.source_amount_swapped,
+            ),
+        };
+        let pool_tokens_from_source = curve
+            .trading_tokens_to_pool_tokens(
+                source_token_amount - results.source_amount_swapped,
                 swap_token_a_amount,
                 swap_token_b_amount,
+                pool_supply,
+                trade_direction,
+            )
+            .unwrap();
+        let pool_tokens_from_destination = curve
+            .trading_tokens_to_pool_tokens(
+                results.destination_amount_swapped,
+                swap_token_a_amount,
+                swap_token_b_amount,
+                pool_supply + pool_tokens_from_source,
+                opposite_direction,
             )
             .unwrap();
 
-        // They should be within 1 token because truncation
-        almost_equal(
-            deposit_token_b.token_a_amount,
-            deposit_token_a.token_a_amount,
+        let pool_tokens_total_separate = pool_tokens_from_source + pool_tokens_from_destination;
+
+        // slippage due to rounding or truncation errors
+        let epsilon = std::cmp::max(
+            1,
+            pool_tokens_total_separate * epsilon_in_basis_points / 10000,
         );
-        almost_equal(
-            deposit_token_b.token_b_amount,
-            deposit_token_b.token_b_amount,
-        );
+        let difference = if pool_tokens_from_one_side >= pool_tokens_total_separate {
+            pool_tokens_from_one_side - pool_tokens_total_separate
+        } else {
+            pool_tokens_total_separate - pool_tokens_from_one_side
+        };
+        assert!(difference <= epsilon);
     }
 }

@@ -16,7 +16,11 @@ use crate::{
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ConstantProductCurve;
 
-/// The constant product swap calculation, factored out of its class for reuse
+/// The constant product swap calculation, factored out of its class for reuse.
+///
+/// This is guaranteed to work for all values such that:
+///  - 1 <= swap_source_amount * swap_destination_amount <= u128::MAX
+///  - 1 <= source_amount <= u64::MAX
 pub fn swap(
     source_amount: u128,
     swap_source_amount: u128,
@@ -93,7 +97,11 @@ impl DynPack for ConstantProductCurve {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::calculator::{test::check_pool_token_conversion, INITIAL_SWAP_POOL_AMOUNT};
+    use crate::curve::calculator::{
+        test::{check_pool_token_conversion, CONVERSION_BASIS_POINTS_GUARANTEE},
+        INITIAL_SWAP_POOL_AMOUNT,
+    };
+    use proptest::prelude::*;
 
     #[test]
     fn initial_pool_amount() {
@@ -214,22 +222,35 @@ mod tests {
         }
     }
 
-    #[test]
-    fn pool_token_conversion() {
-        let tests: &[(u128, u128, u128)] = &[
-            (1_000_000, 2400112, 100_000),
-            (1_000, 100, 100),
-            (30, 1_288, 100_000),
-            (1_000, 1_288, 100_000),
-            (212, 10_000, 100_000),
-        ];
-        for (swap_token_a_amount, swap_token_b_amount, token_a_amount) in tests.iter() {
+    proptest! {
+        #[test]
+        fn pool_token_conversion(
+            // in the pool token conversion calcs, we simulate trading half of
+            // source_token_amount, so this needs to be at least 2
+            source_token_amount in 2..u64::MAX,
+            swap_source_amount in 1..u64::MAX,
+            swap_destination_amount in 1..u64::MAX,
+            pool_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
+        ) {
             let curve = ConstantProductCurve {};
             check_pool_token_conversion(
                 &curve,
-                *swap_token_a_amount,
-                *swap_token_b_amount,
-                *token_a_amount,
+                source_token_amount as u128,
+                swap_source_amount as u128,
+                swap_destination_amount as u128,
+                TradeDirection::AtoB,
+                pool_supply,
+                CONVERSION_BASIS_POINTS_GUARANTEE,
+            );
+
+            check_pool_token_conversion(
+                &curve,
+                source_token_amount as u128,
+                swap_source_amount as u128,
+                swap_destination_amount as u128,
+                TradeDirection::BtoA,
+                pool_supply,
+                CONVERSION_BASIS_POINTS_GUARANTEE,
             );
         }
     }
