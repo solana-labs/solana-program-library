@@ -11,7 +11,7 @@ edition = "2018"
 no-entrypoint = []
 
 [dependencies]
-solana-program = "1.4.14"
+solana-program = "1.4.17"
 
 [lib]
 crate-type = ["cdylib", "lib"]
