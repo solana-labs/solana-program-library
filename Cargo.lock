@@ -2886,7 +2886,7 @@ dependencies = [
  "solana-sdk",
  "solana-stake-program",
  "solana-vote-program",
- "spl-token 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token 3.0.0",
  "thiserror",
  "zstd",
 ]
@@ -3419,7 +3419,7 @@ dependencies = [
  "solana-stake-program",
  "solana-vote-program",
  "spl-memo 2.0.0",
- "spl-token 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token 3.0.0",
  "thiserror",
 ]
 
@@ -3491,7 +3491,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token 3.0.0",
+ "spl-token 3.0.1",
  "tokio 0.3.5",
 ]
 
@@ -3555,7 +3555,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token 3.0.0",
+ "spl-token 3.0.1",
  "tokio 0.3.5",
 ]
 
@@ -3614,7 +3614,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token 3.0.0",
+ "spl-token 3.0.1",
  "thiserror",
  "tokio 0.3.5",
 ]
@@ -3634,7 +3634,7 @@ dependencies = [
  "solana-program",
  "solana-sdk",
  "spl-stake-pool",
- "spl-token 3.0.0",
+ "spl-token 3.0.1",
 ]
 
 [[package]]
@@ -3656,19 +3656,6 @@ dependencies = [
 [[package]]
 name = "spl-token"
 version = "3.0.0"
-dependencies = [
- "arrayref",
- "num-derive",
- "num-traits",
- "num_enum",
- "solana-program",
- "solana-sdk",
- "thiserror",
-]
-
-[[package]]
-name = "spl-token"
-version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f77fa0b41cbc82d1d7c8f2d914b49e9a1a7b6e32af952d03383fb989c42bc89"
 dependencies = [
@@ -3677,6 +3664,19 @@ dependencies = [
  "num-traits",
  "num_enum",
  "solana-program",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-token"
+version = "3.0.1"
+dependencies = [
+ "arrayref",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program",
+ "solana-sdk",
  "thiserror",
 ]
 
@@ -3696,7 +3696,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "spl-associated-token-account",
- "spl-token 3.0.0",
+ "spl-token 3.0.1",
 ]
 
 [[package]]
@@ -3723,7 +3723,7 @@ dependencies = [
  "sim",
  "solana-program",
  "solana-sdk",
- "spl-token 3.0.0",
+ "spl-token 3.0.1",
  "thiserror",
  "uint",
 ]
@@ -3735,7 +3735,7 @@ dependencies = [
  "arbitrary",
  "honggfuzz",
  "solana-program",
- "spl-token 3.0.0",
+ "spl-token 3.0.1",
  "spl-token-swap",
 ]
 
@@ -3761,7 +3761,7 @@ dependencies = [
  "solana-runtime",
  "solana-sdk",
  "solana_rbpf",
- "spl-token 3.0.0",
+ "spl-token 3.0.1",
 ]
 
 [[package]]
@@ -3926,7 +3926,7 @@ version = "0.1.0"
 dependencies = [
  "solana-sdk",
  "spl-memo 2.0.1",
- "spl-token 3.0.0",
+ "spl-token 3.0.1",
  "spl-token-swap",
  "spl-token-v3",
 ]
