@@ -1,6 +1,9 @@
 //! Swap calculations
 
-use crate::{curve::math::{ceiling_division, PreciseNumber}, error::SwapError};
+use crate::{
+    curve::math::{ceiling_division, PreciseNumber},
+    error::SwapError,
+};
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
@@ -99,16 +102,14 @@ pub trait CurveCalculator: Debug + DynPack {
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
     ) -> Option<TradingTokenResult> {
-        let (token_a_amount, _) =
-            ceiling_division(
-                pool_tokens.checked_mul(swap_token_a_amount)?,
-                pool_token_supply
-            )?;
-        let (token_b_amount, _) =
-            ceiling_division(
-                pool_tokens.checked_mul(swap_token_b_amount)?,
-                pool_token_supply
-            )?;
+        let (token_a_amount, _) = ceiling_division(
+            pool_tokens.checked_mul(swap_token_a_amount)?,
+            pool_token_supply,
+        )?;
+        let (token_b_amount, _) = ceiling_division(
+            pool_tokens.checked_mul(swap_token_b_amount)?,
+            pool_token_supply,
+        )?;
         Some(TradingTokenResult {
             token_a_amount,
             token_b_amount,

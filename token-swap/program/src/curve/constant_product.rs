@@ -30,7 +30,8 @@ pub fn swap(
     let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
 
     let new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
-    let (new_swap_destination_amount, new_swap_source_amount) = ceiling_division(invariant, new_swap_source_amount)?;
+    let (new_swap_destination_amount, new_swap_source_amount) =
+        ceiling_division(invariant, new_swap_source_amount)?;
 
     let source_amount_swapped = new_swap_source_amount.checked_sub(swap_source_amount)?;
     let destination_amount_swapped =

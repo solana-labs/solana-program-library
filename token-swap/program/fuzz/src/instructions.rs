@@ -167,12 +167,15 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
         .iter()
         .map(|&x| get_token_balance(x))
         .sum::<u64>() as u128;
-    let pool_token_amount = pool_tokens + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
+    let pool_token_amount =
+        pool_tokens + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
     let swap_token_a_amount = get_token_balance(&token_swap.token_a_account) as u128;
     let swap_token_b_amount = get_token_balance(&token_swap.token_b_account) as u128;
 
-    let lost_a_value = initial_swap_token_a_amount * pool_token_amount > swap_token_a_amount * initial_pool_token_amount;
-    let lost_b_value = initial_swap_token_b_amount * pool_token_amount > swap_token_b_amount * initial_pool_token_amount;
+    let lost_a_value = initial_swap_token_a_amount * pool_token_amount
+        > swap_token_a_amount * initial_pool_token_amount;
+    let lost_b_value = initial_swap_token_b_amount * pool_token_amount
+        > swap_token_b_amount * initial_pool_token_amount;
     assert!(!(lost_a_value && lost_b_value));
 
     // check total token a and b amounts
