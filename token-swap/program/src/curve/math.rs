@@ -56,6 +56,9 @@ impl U256 {
 /// provides a ceiling calculation without cutting off more value than needed.
 pub fn ceiling_division(dividend: u128, mut divisor: u128) -> Option<(u128, u128)> {
     let mut quotient = dividend.checked_div(divisor)?;
+    if quotient == 0 {
+        return None;
+    }
 
     // Ceiling the destination amount if there's any remainder, which will
     // almost always be the case.
