@@ -98,7 +98,10 @@ impl DynPack for ConstantProductCurve {
 mod tests {
     use super::*;
     use crate::curve::calculator::{
-        test::{check_curve_value_from_swap, check_pool_token_conversion, CONVERSION_BASIS_POINTS_GUARANTEE},
+        test::{
+            check_curve_value_from_swap, check_pool_token_conversion,
+            CONVERSION_BASIS_POINTS_GUARANTEE,
+        },
         INITIAL_SWAP_POOL_AMOUNT,
     };
     use proptest::prelude::*;

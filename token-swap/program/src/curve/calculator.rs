@@ -1,9 +1,6 @@
 //! Swap calculations
 
-use crate::{
-    curve::math::{PreciseNumber, U256},
-    error::SwapError,
-};
+use crate::{curve::math::PreciseNumber, error::SwapError};
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
@@ -169,14 +166,31 @@ pub trait CurveCalculator: Debug + DynPack {
         true
     }
 
-    /// Calculates the total value of the curve given the liquidity parameters.
+    /// Calculates the total normalized value of the curve given the liquidity
+    /// parameters.
     ///
-    /// This is mostly useful for invariant testing the curves, to make sure
-    /// that value is not lost on any trade.
+    /// This value must have the dimension of `tokens ^ 1` For example, the
+    /// standard Uniswap invariant has dimension `tokens ^ 2` since we are
+    /// multiplying two token values together.  In order to normalize it, we
+    /// also need to take the square root.
     ///
-    /// The default implementation for this function gives the Uniswap invariant
-    fn total_value(&self, swap_token_a_amount: u128, swap_token_b_amount: u128) -> Option<U256> {
-        U256::from(swap_token_a_amount).checked_mul(U256::from(swap_token_b_amount))
+    /// This is useful for testing the curves, to make sure that value is not
+    /// lost on any trade.  It can also be used to find out the relative value
+    /// of pool tokens or liquidity tokens.
+    ///
+    /// The default implementation for this function gives the square root of
+    /// the Uniswap invariant.
+    fn normalized_value(
+        &self,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+    ) -> Option<u128> {
+        let swap_token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
+        let swap_token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
+        swap_token_a_amount
+            .checked_mul(&swap_token_b_amount)?
+            .sqrt()?
+            .to_imprecise()
     }
 }
 
@@ -297,7 +311,7 @@ pub mod test {
             TradeDirection::BtoA => (swap_destination_amount, swap_source_amount),
         };
         let previous_value = curve
-            .total_value(swap_token_a_amount, swap_token_b_amount)
+            .normalized_value(swap_token_a_amount, swap_token_b_amount)
             .unwrap();
 
         let new_swap_source_amount = swap_source_amount
@@ -312,8 +326,12 @@ pub mod test {
         };
 
         let new_value = curve
-            .total_value(swap_token_a_amount, swap_token_b_amount)
+            .normalized_value(swap_token_a_amount, swap_token_b_amount)
             .unwrap();
         assert!(new_value >= previous_value);
+
+        let epsilon = 1; // Extremely close!
+        let difference = new_value - previous_value;
+        assert!(difference <= epsilon);
     }
 }

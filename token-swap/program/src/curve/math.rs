@@ -379,9 +379,7 @@ impl PreciseNumber {
     /// Based on testing around the limits, this base is the smallest value that
     /// provides an epsilon of 11 digits
     fn maximum_sqrt_base() -> Self {
-        Self {
-            value: U256::from(std::u128::MAX),
-        }
+        Self::new(std::u128::MAX).unwrap()
     }
 
     /// Approximate the square root using Newton's method.  Based on testing,
