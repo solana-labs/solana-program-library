@@ -142,10 +142,10 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
         .iter()
         .map(|&x| get_token_balance(x))
         .sum::<u64>() as u128;
-    let initial_shares =
+    let initial_pool_token_amount =
         pool_shares + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
-    let initial_basket_a = get_token_balance(&token_swap.token_a_account) as u128;
-    let initial_basket_b = get_token_balance(&token_swap.token_b_account) as u128;
+    let initial_swap_token_a_amount = get_token_balance(&token_swap.token_a_account) as u128;
+    let initial_swap_token_b_amount = get_token_balance(&token_swap.token_b_account) as u128;
 
     // to ensure that we never create or remove base tokens
     let before_total_token_a =
@@ -167,12 +167,14 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
         .iter()
         .map(|&x| get_token_balance(x))
         .sum::<u64>() as u128;
-    let shares = pool_shares + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
-    let basket_a = get_token_balance(&token_swap.token_a_account) as u128;
-    let basket_b = get_token_balance(&token_swap.token_b_account) as u128;
+    let pool_token_amount = pool_shares + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
+    let swap_token_a_amount = get_token_balance(&token_swap.token_a_account) as u128;
+    let swap_token_b_amount = get_token_balance(&token_swap.token_b_account) as u128;
 
-    let lost_a_per_share = initial_basket_a * shares > basket_a * initial_shares;
-    let lost_b_per_share = initial_basket_b * shares > basket_b * initial_shares;
+    println!("{} {} {}", initial_swap_token_a_amount, initial_swap_token_b_amount, initial_pool_token_amount);
+    println!("{} {} {}", swap_token_a_amount, swap_token_b_amount, pool_token_amount);
+    let lost_a_per_share = initial_swap_token_a_amount * pool_token_amount > swap_token_a_amount * initial_pool_token_amount;
+    let lost_b_per_share = initial_swap_token_b_amount * pool_token_amount > swap_token_b_amount * initial_pool_token_amount;
     assert!(!(lost_a_per_share && lost_b_per_share));
 
     // check total token a and b amounts
