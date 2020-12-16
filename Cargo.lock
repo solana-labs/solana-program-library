@@ -3486,7 +3486,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "spl-associated-token-account"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "solana-program",
  "solana-program-test",
