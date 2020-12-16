@@ -334,16 +334,13 @@ mod tests {
             // on the other side to complete the swap
             prop_assume!(token_b_price * source_token_amount / 2 <= swap_destination_amount);
 
-            // basis points guarantee, much higher than other calcs due to potential
-            // truncation from huge token b prices
-            let basis_points_guarantee = 50;
             check_pool_token_conversion(
                 &curve,
                 source_token_amount,
                 swap_source_amount,
                 swap_destination_amount,
                 TradeDirection::BtoA,
-                basis_points_guarantee,
+                CONVERSION_BASIS_POINTS_GUARANTEE,
             );
         }
     }
