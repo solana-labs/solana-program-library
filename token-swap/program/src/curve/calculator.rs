@@ -165,6 +165,33 @@ pub trait CurveCalculator: Debug + DynPack {
     fn allows_deposits(&self) -> bool {
         true
     }
+
+    /// Calculates the total normalized value of the curve given the liquidity
+    /// parameters.
+    ///
+    /// This value must have the dimension of `tokens ^ 1` For example, the
+    /// standard Uniswap invariant has dimension `tokens ^ 2` since we are
+    /// multiplying two token values together.  In order to normalize it, we
+    /// also need to take the square root.
+    ///
+    /// This is useful for testing the curves, to make sure that value is not
+    /// lost on any trade.  It can also be used to find out the relative value
+    /// of pool tokens or liquidity tokens.
+    ///
+    /// The default implementation for this function gives the square root of
+    /// the Uniswap invariant.
+    fn normalized_value(
+        &self,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+    ) -> Option<u128> {
+        let swap_token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
+        let swap_token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
+        swap_token_a_amount
+            .checked_mul(&swap_token_b_amount)?
+            .sqrt()?
+            .to_imprecise()
+    }
 }
 
 /// Test helpers for curves
@@ -260,6 +287,60 @@ pub mod test {
         } else {
             pool_tokens_total_separate - pool_tokens_from_one_side
         };
+        assert!(difference <= epsilon);
+    }
+
+    /// Test function checking that a swap never reduces the overall value of
+    /// the pool.
+    ///
+    /// Since curve calculations use unsigned integers, there is potential for
+    /// truncation at some point, meaning a potential for value to be lost in
+    /// either direction if too much is given to the swapper.
+    ///
+    /// This test guarantees that the relative change in value will be at most
+    /// 1 normalized token, and that the value will never decrease from a trade.
+    pub fn check_curve_value_from_swap(
+        curve: &dyn CurveCalculator,
+        source_token_amount: u128,
+        swap_source_amount: u128,
+        swap_destination_amount: u128,
+        trade_direction: TradeDirection,
+    ) {
+        let results = curve
+            .swap_without_fees(
+                source_token_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                trade_direction,
+            )
+            .unwrap();
+
+        let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
+            TradeDirection::AtoB => (swap_source_amount, swap_destination_amount),
+            TradeDirection::BtoA => (swap_destination_amount, swap_source_amount),
+        };
+        let previous_value = curve
+            .normalized_value(swap_token_a_amount, swap_token_b_amount)
+            .unwrap();
+
+        let new_swap_source_amount = swap_source_amount
+            .checked_add(results.source_amount_swapped)
+            .unwrap();
+        let new_swap_destination_amount = swap_destination_amount
+            .checked_sub(results.destination_amount_swapped)
+            .unwrap();
+        let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
+            TradeDirection::AtoB => (new_swap_source_amount, new_swap_destination_amount),
+            TradeDirection::BtoA => (new_swap_destination_amount, new_swap_source_amount),
+        };
+
+        let new_value = curve
+            .normalized_value(swap_token_a_amount, swap_token_b_amount)
+            .unwrap();
+        assert!(new_value >= previous_value);
+
+        let epsilon = 1; // Extremely close!
+        let difference = new_value - previous_value;
         assert!(difference <= epsilon);
     }
 }

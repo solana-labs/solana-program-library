@@ -132,6 +132,21 @@ impl CurveCalculator for ConstantPriceCurve {
         }
         Ok(())
     }
+
+    /// The total normalized value of the constant price curve adds the total
+    /// value of the token B side to the token A side.
+    ///
+    /// Note that since most other curves use a multiplicative invariant, ie.
+    /// `token_a * token_b`, whereas this one uses an addition,
+    /// ie. `token_a + token_b`.
+    fn normalized_value(
+        &self,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+    ) -> Option<u128> {
+        let swap_token_b_amount = swap_token_b_amount.checked_mul(self.token_b_price as u128)?;
+        swap_token_a_amount.checked_add(swap_token_b_amount)
+    }
 }
 
 /// IsInitialized is required to use `Pack::pack` and `Pack::unpack`
@@ -166,7 +181,10 @@ impl DynPack for ConstantPriceCurve {
 mod tests {
     use super::*;
     use crate::curve::calculator::{
-        test::{check_pool_token_conversion, CONVERSION_BASIS_POINTS_GUARANTEE},
+        test::{
+            check_curve_value_from_swap, check_pool_token_conversion,
+            CONVERSION_BASIS_POINTS_GUARANTEE,
+        },
         INITIAL_SWAP_POOL_AMOUNT,
     };
     use proptest::prelude::*;
@@ -346,6 +364,57 @@ mod tests {
                 TradeDirection::BtoA,
                 pool_supply,
                 CONVERSION_BASIS_POINTS_GUARANTEE,
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn curve_value_does_not_decrease_from_swap_a_to_b(
+            source_token_amount in 1..u64::MAX,
+            swap_source_amount in 1..u64::MAX,
+            swap_destination_amount in 1..u64::MAX,
+            token_b_price in 1..u64::MAX,
+        ) {
+            // Make sure that the trade yields at least 1 token B
+            prop_assume!(source_token_amount / token_b_price >= 1);
+            // Make sure there's enough tokens to get back on the other side
+            prop_assume!(source_token_amount / token_b_price <= swap_destination_amount);
+            let curve = ConstantPriceCurve { token_b_price };
+            check_curve_value_from_swap(
+                &curve,
+                source_token_amount as u128,
+                swap_source_amount as u128,
+                swap_destination_amount as u128,
+                TradeDirection::AtoB
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn curve_value_does_not_decrease_from_swap_b_to_a(
+            source_token_amount in 1..u32::MAX, // kept small to avoid proptest rejections
+            swap_source_amount in 1..u64::MAX,
+            swap_destination_amount in 1..u64::MAX,
+            token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
+        ) {
+            // The constant price curve needs to have enough destination amount
+            // on the other side to complete the swap
+            let curve = ConstantPriceCurve { token_b_price: token_b_price as u64 };
+            let token_b_price = token_b_price as u128;
+            let source_token_amount = source_token_amount as u128;
+            let swap_destination_amount = swap_destination_amount as u128;
+            let swap_source_amount = swap_source_amount as u128;
+            // The constant price curve needs to have enough destination amount
+            // on the other side to complete the swap
+            prop_assume!(token_b_price * source_token_amount <= swap_destination_amount);
+            check_curve_value_from_swap(
+                &curve,
+                source_token_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                TradeDirection::BtoA
             );
         }
     }

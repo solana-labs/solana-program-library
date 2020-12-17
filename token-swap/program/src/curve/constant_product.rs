@@ -98,7 +98,10 @@ impl DynPack for ConstantProductCurve {
 mod tests {
     use super::*;
     use crate::curve::calculator::{
-        test::{check_pool_token_conversion, CONVERSION_BASIS_POINTS_GUARANTEE},
+        test::{
+            check_curve_value_from_swap, check_pool_token_conversion,
+            CONVERSION_BASIS_POINTS_GUARANTEE,
+        },
         INITIAL_SWAP_POOL_AMOUNT,
     };
     use proptest::prelude::*;
@@ -251,6 +254,24 @@ mod tests {
                 TradeDirection::BtoA,
                 pool_supply,
                 CONVERSION_BASIS_POINTS_GUARANTEE,
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn curve_value_does_not_decrease_from_swap(
+            source_token_amount in 1..u64::MAX,
+            swap_source_amount in 1..u64::MAX,
+            swap_destination_amount in 1..u64::MAX,
+        ) {
+            let curve = ConstantProductCurve {};
+            check_curve_value_from_swap(
+                &curve,
+                source_token_amount as u128,
+                swap_source_amount as u128,
+                swap_destination_amount as u128,
+                TradeDirection::AtoB
             );
         }
     }
