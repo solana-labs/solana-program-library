@@ -63,9 +63,9 @@ let currentFeeAmount = 0;
 // Swap instruction constants
 // Because there is no withdraw fee in the production version, these numbers
 // need to get slightly tweaked in the two cases.
-const SWAP_AMOUNT_IN = 99999;
+const SWAP_AMOUNT_IN = 100000;
 const SWAP_AMOUNT_OUT = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 90661 : 90674;
-const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 21820 : 21823;
+const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22272 : 22276;
 const HOST_SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS
   ? Math.floor((SWAP_FEE * HOST_FEE_NUMERATOR) / HOST_FEE_DENOMINATOR)
   : 0;
@@ -292,13 +292,11 @@ export async function depositAllTokenTypes(): Promise<void> {
   const supply = poolMintInfo.supply.toNumber();
   const swapTokenA = await mintA.getAccountInfo(tokenAccountA);
   const tokenA = Math.floor(
-    (swapTokenA.amount.toNumber() * POOL_TOKEN_AMOUNT) /
-      (supply + POOL_TOKEN_AMOUNT),
+    (swapTokenA.amount.toNumber() * POOL_TOKEN_AMOUNT) / supply,
   );
   const swapTokenB = await mintB.getAccountInfo(tokenAccountB);
   const tokenB = Math.floor(
-    (swapTokenB.amount.toNumber() * POOL_TOKEN_AMOUNT) /
-      (supply + POOL_TOKEN_AMOUNT),
+    (swapTokenB.amount.toNumber() * POOL_TOKEN_AMOUNT) / supply,
   );
 
   console.log('Creating depositor token a account');
@@ -350,10 +348,10 @@ export async function withdrawAllTokenTypes(): Promise<void> {
     );
   }
   const poolTokenAmount = POOL_TOKEN_AMOUNT - feeAmount;
-  const tokenA = Math.floor(
+  const tokenA = Math.ceil(
     (swapTokenA.amount.toNumber() * poolTokenAmount) / supply,
   );
-  const tokenB = Math.floor(
+  const tokenB = Math.ceil(
     (swapTokenB.amount.toNumber() * poolTokenAmount) / supply,
   );
 
@@ -498,7 +496,9 @@ export async function swap(): Promise<void> {
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,
   );
+
   await sleep(500);
+
   let info;
   info = await mintA.getAccountInfo(userAccountA);
   assert(info.amount.toNumber() == 0);
