@@ -14,6 +14,7 @@ members = [
   "stake-pool/program",
   "themis/program_ristretto",
   "token-lending/program",
+  "token-lending/client",
   "token-swap/program",
   "token-swap/program/fuzz",
   "token/cli",
