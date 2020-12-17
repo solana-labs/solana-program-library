@@ -290,6 +290,15 @@ pub mod test {
         assert!(difference <= epsilon);
     }
 
+    /// Test function checking that a swap never reduces the overall value of
+    /// the pool.
+    ///
+    /// Since curve calculations use unsigned integers, there is potential for
+    /// truncation at some point, meaning a potential for value to be lost in
+    /// either direction if too much is given to the swapper.
+    ///
+    /// This test guarantees that the relative change in value will be at most
+    /// 1 normalized token, and that the value will never decrease from a trade.
     pub fn check_curve_value_from_swap(
         curve: &dyn CurveCalculator,
         source_token_amount: u128,
