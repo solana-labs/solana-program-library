@@ -522,16 +522,13 @@ impl Processor {
         let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id)?;
         let pool_token_amount = to_u128(pool_token_amount)?;
         let pool_mint_supply = to_u128(pool_mint.supply)?;
-        let new_pool_mint_supply = pool_mint_supply
-            .checked_add(pool_token_amount)
-            .ok_or(SwapError::CalculationFailure)?;
 
         let calculator = token_swap.swap_curve.calculator;
 
         let results = calculator
             .pool_tokens_to_trading_tokens(
                 pool_token_amount,
-                new_pool_mint_supply,
+                pool_mint_supply,
                 to_u128(token_a.amount)?,
                 to_u128(token_b.amount)?,
             )
@@ -550,6 +547,8 @@ impl Processor {
         if token_b_amount == 0 {
             return Err(SwapError::ZeroTradingTokens.into());
         }
+
+        let pool_token_amount = to_u64(pool_token_amount)?;
 
         Self::token_transfer(
             swap_info.key,
@@ -576,7 +575,7 @@ impl Processor {
             dest_info.clone(),
             authority_info.clone(),
             token_swap.nonce,
-            to_u64(pool_token_amount)?,
+            pool_token_amount,
         )?;
 
         Ok(())
@@ -2825,11 +2824,11 @@ mod tests {
         let mut accounts =
             SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
 
-        // depositing 10% of the current pool amount means that our share will
-        // be 1 / 11 of the final pool amount
+        // depositing 10% of the current pool amount in token A and B means
+        // that our pool tokens will be worth 1 / 10 of the current pool amount
         let pool_amount = INITIAL_SWAP_POOL_AMOUNT / 10;
-        let deposit_a = token_a_amount / 11;
-        let deposit_b = token_b_amount / 11;
+        let deposit_a = token_a_amount / 10;
+        let deposit_b = token_b_amount / 10;
 
         // swap not initialized
         {
@@ -3270,7 +3269,7 @@ mod tests {
                     &mut pool_account,
                     1,
                     deposit_a,
-                    deposit_b / 10,
+                    deposit_b,
                 )
             );
         }

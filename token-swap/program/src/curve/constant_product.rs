@@ -9,6 +9,7 @@ use crate::{
     curve::calculator::{
         map_zero_to_none, CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection,
     },
+    curve::math::ceiling_division,
     error::SwapError,
 };
 
@@ -28,22 +29,9 @@ pub fn swap(
 ) -> Option<SwapWithoutFeesResult> {
     let invariant = swap_source_amount.checked_mul(swap_destination_amount)?;
 
-    let mut new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
-    let mut new_swap_destination_amount = invariant.checked_div(new_swap_source_amount)?;
-
-    // Ceiling the destination amount if there's any remainder, which will
-    // almost always be the case.
-    let remainder = invariant.checked_rem(new_swap_source_amount)?;
-    if remainder > 0 {
-        new_swap_destination_amount = new_swap_destination_amount.checked_add(1)?;
-        // now calculate the minimum amount of source token needed to get
-        // the destination amount to avoid taking too much from users
-        new_swap_source_amount = invariant.checked_div(new_swap_destination_amount)?;
-        let remainder = invariant.checked_rem(new_swap_destination_amount)?;
-        if remainder > 0 {
-            new_swap_source_amount = new_swap_source_amount.checked_add(1)?;
-        }
-    }
+    let new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
+    let (new_swap_destination_amount, new_swap_source_amount) =
+        ceiling_division(invariant, new_swap_source_amount)?;
 
     let source_amount_swapped = new_swap_source_amount.checked_sub(swap_source_amount)?;
     let destination_amount_swapped =
@@ -130,9 +118,9 @@ mod tests {
 
     #[test]
     fn trading_token_conversion() {
-        check_pool_token_rate(2, 49, 5, 10, 1, 24);
-        check_pool_token_rate(100, 202, 5, 101, 4, 10);
-        check_pool_token_rate(5, 501, 2, 10, 1, 100);
+        check_pool_token_rate(2, 49, 5, 10, 1, 25);
+        check_pool_token_rate(100, 202, 5, 101, 5, 10);
+        check_pool_token_rate(5, 501, 2, 10, 1, 101);
     }
 
     #[test]
