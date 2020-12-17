@@ -144,8 +144,12 @@ impl CurveCalculator for ConstantPriceCurve {
     ) -> Option<u128> {
         let swap_token_b_value = swap_token_b_amount.checked_mul(self.token_b_price as u128)?;
         // special logic in case we're close to the limits, avoid overflowing u128
-        if swap_token_b_value.saturating_sub(u64::MAX.into()) > (u128::MAX.saturating_sub(u64::MAX.into())) {
-            swap_token_b_value.checked_div(2)?.checked_add(swap_token_a_amount.checked_div(2)?)
+        if swap_token_b_value.saturating_sub(u64::MAX.into())
+            > (u128::MAX.saturating_sub(u64::MAX.into()))
+        {
+            swap_token_b_value
+                .checked_div(2)?
+                .checked_add(swap_token_a_amount.checked_div(2)?)
         } else {
             swap_token_a_amount
                 .checked_add(swap_token_b_value)?
