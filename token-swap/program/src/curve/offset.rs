@@ -6,7 +6,7 @@ use crate::{
             CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection, TradingTokenResult,
         },
         constant_product::swap,
-        math::PreciseNumber,
+        math::{ceiling_division, PreciseNumber},
     },
     error::SwapError,
 };
@@ -60,12 +60,14 @@ impl CurveCalculator for OffsetCurve {
         swap_token_b_amount: u128,
     ) -> Option<TradingTokenResult> {
         let token_b_offset = self.token_b_offset as u128;
-        let token_a_amount = pool_tokens
-            .checked_mul(swap_token_a_amount)?
-            .checked_div(pool_token_supply)?;
-        let token_b_amount = pool_tokens
-            .checked_mul(swap_token_b_amount.checked_add(token_b_offset)?)?
-            .checked_div(pool_token_supply)?;
+        let (token_a_amount, _) = ceiling_division(
+            pool_tokens.checked_mul(swap_token_a_amount)?,
+            pool_token_supply,
+        )?;
+        let (token_b_amount, _) = ceiling_division(
+            pool_tokens.checked_mul(swap_token_b_amount.checked_add(token_b_offset)?)?,
+            pool_token_supply,
+        )?;
         Some(TradingTokenResult {
             token_a_amount,
             token_b_amount,

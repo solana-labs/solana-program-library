@@ -5,7 +5,7 @@ use crate::{
         map_zero_to_none, CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection,
         TradingTokenResult,
     },
-    curve::math::U256,
+    curve::math::{ceiling_division, U256},
     error::SwapError,
 };
 use arrayref::{array_mut_ref, array_ref};
@@ -77,13 +77,16 @@ impl CurveCalculator for ConstantPriceCurve {
             .checked_mul(token_b_price)?
             .checked_add(swap_token_a_amount)?;
 
-        let token_a_amount = token_a_pool_tokens
-            .checked_mul(total_value)?
-            .checked_div(pool_token_supply)?;
-        let token_b_amount = token_b_pool_tokens
-            .checked_mul(total_value)?
-            .checked_div(token_b_price)?
-            .checked_div(pool_token_supply)?;
+        let (token_a_amount, _) = ceiling_division(
+            token_a_pool_tokens.checked_mul(total_value)?,
+            pool_token_supply,
+        )?;
+        let (token_b_amount, _) = ceiling_division(
+            token_b_pool_tokens
+                .checked_mul(total_value)?
+                .checked_div(token_b_price)?,
+            pool_token_supply,
+        )?;
         Some(TradingTokenResult {
             token_a_amount,
             token_b_amount,

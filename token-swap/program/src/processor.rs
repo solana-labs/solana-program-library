@@ -2824,8 +2824,8 @@ mod tests {
         let mut accounts =
             SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
 
-        // depositing 10% of the current pool amount means that our share will
-        // be 1 / 10 of the final pool amount
+        // depositing 10% of the current pool amount in token A and B means
+        // that our pool tokens will be worth 1 / 10 of the current pool amount
         let pool_amount = INITIAL_SWAP_POOL_AMOUNT / 10;
         let deposit_a = token_a_amount / 10;
         let deposit_b = token_b_amount / 10;
