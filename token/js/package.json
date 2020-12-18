@@ -26,6 +26,7 @@
   "scripts": {
     "build": "rollup -c",
     "start": "babel-node cli/main.js",
+    "start-with-test-validator": "start-server-and-test 'solana-test-validator --reset --quiet' http://localhost:8899/health start",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
     "flow": "flow",
@@ -36,10 +37,6 @@
     "cluster:devnet": "cp cluster-devnet.env .env",
     "cluster:testnet": "cp cluster-testnet.env .env",
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env",
-    "localnet:update": "solana-localnet update",
-    "localnet:up": "rm -f client/util/store/config.json; set -x; solana-localnet down; set -e; solana-localnet up",
-    "localnet:down": "solana-localnet down",
-    "localnet:logs": "solana-localnet logs -f",
     "pretty": "prettier --check '{,cli*/**/}*.[jt]s'",
     "pretty:fix": "prettier --write '{,cli*/**/}*.[jt]s'"
   },
@@ -70,6 +67,7 @@
     "prettier": "^2.0.5",
     "rollup": "^2.23.0",
     "rollup-plugin-copy": "^3.3.0",
+    "start-server-and-test": "^1.11.6",
     "watch": "^1.0.2"
   },
   "engines": {
