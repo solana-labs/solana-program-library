@@ -2,7 +2,7 @@ use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
 };
-use solana_program_test::{processor, BanksClientExt, ProgramTest};
+use solana_program_test::{processor, ProgramTest};
 use solana_sdk::{account::Account, signature::Signer, transaction::Transaction};
 use spl_example_transfer_lamports::processor::process_instruction;
 use std::str::FromStr;
