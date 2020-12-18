@@ -35,6 +35,7 @@ use spl_stake_pool::{
     stake::StakeAuthorize,
     state::StakePool,
     state::State as PoolState,
+    state::ValidatorStakeList,
 };
 use spl_token::{
     self, instruction::approve as approve_token, instruction::initialize_account,
@@ -128,6 +129,8 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
     let pool_account = Keypair::new();
     println!("Creating stake pool {}", pool_account.pubkey());
 
+    let validator_stake_list = Keypair::new();
+
     let mint_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(TokenMint::LEN)?;
@@ -137,8 +140,13 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
     let pool_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(PoolState::LEN)?;
-    let total_rent_free_balances =
-        mint_account_balance + pool_fee_account_balance + pool_account_balance;
+    let validator_stake_list_balance = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(ValidatorStakeList::LEN)?;
+    let total_rent_free_balances = mint_account_balance
+        + pool_fee_account_balance
+        + pool_account_balance
+        + validator_stake_list_balance;
 
     let default_decimals = native_mint::DECIMALS;
 
@@ -179,6 +187,14 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
                 PoolState::LEN as u64,
                 &spl_stake_pool::id(),
             ),
+            // Validator stake account list storage
+            system_instruction::create_account(
+                &config.fee_payer.pubkey(),
+                &validator_stake_list.pubkey(),
+                validator_stake_list_balance,
+                ValidatorStakeList::LEN as u64,
+                &spl_stake_pool::id(),
+            ),
             // Initialize pool token mint account
             initialize_mint(
                 &spl_token::id(),
@@ -199,6 +215,7 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
                 &spl_stake_pool::id(),
                 &pool_account.pubkey(),
                 &config.owner.pubkey(),
+                &validator_stake_list.pubkey(),
                 &mint_account.pubkey(),
                 &pool_fee_account.pubkey(),
                 &spl_token::id(),
@@ -216,6 +233,7 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
     let mut signers = vec![
         config.fee_payer.as_ref(),
         &pool_account,
+        &validator_stake_list,
         &mint_account,
         &pool_fee_account,
     ];

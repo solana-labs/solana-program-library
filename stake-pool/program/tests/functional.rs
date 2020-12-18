@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+//#![cfg(feature = "test-bpf")]
 
 use solana_program::{hash::Hash, program_pack::Pack, pubkey::Pubkey, system_instruction};
 use solana_program_test::*;
@@ -93,12 +93,14 @@ async fn create_stake_pool(
     payer: &Keypair,
     recent_blockhash: &Hash,
     stake_pool: &Keypair,
+    validator_stake_list: &Keypair,
     pool_mint: &Pubkey,
     pool_token_account: &Pubkey,
     owner: &Pubkey,
 ) {
     let rent = banks_client.get_rent().await.unwrap();
-    let rent = rent.minimum_balance(state::State::LEN);
+    let rent_stake_pool = rent.minimum_balance(state::State::LEN);
+    let rent_validator_stake_list = rent.minimum_balance(state::ValidatorStakeList::LEN);
     let numerator = 1;
     let denominator = 100;
     let fee = instruction::Fee {
@@ -112,14 +114,22 @@ async fn create_stake_pool(
             system_instruction::create_account(
                 &payer.pubkey(),
                 &stake_pool.pubkey(),
-                rent,
+                rent_stake_pool,
                 state::State::LEN as u64,
+                &id(),
+            ),
+            system_instruction::create_account(
+                &payer.pubkey(),
+                &validator_stake_list.pubkey(),
+                rent_validator_stake_list,
+                state::ValidatorStakeList::LEN as u64,
                 &id(),
             ),
             instruction::initialize(
                 &id(),
                 &stake_pool.pubkey(),
                 owner,
+                &validator_stake_list.pubkey(),
                 pool_mint,
                 pool_token_account,
                 &spl_token::id(),
@@ -129,7 +139,10 @@ async fn create_stake_pool(
         ],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[payer, stake_pool], *recent_blockhash);
+    transaction.sign(
+        &[payer, stake_pool, validator_stake_list],
+        *recent_blockhash,
+    );
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
@@ -161,6 +174,7 @@ async fn create_stake_account(
 
 struct StakePoolAccounts {
     pub stake_pool: Keypair,
+    pub validator_stake_list: Keypair,
     pub pool_mint: Keypair,
     pub pool_fee_account: Keypair,
     pub owner: Pubkey,
@@ -171,6 +185,7 @@ struct StakePoolAccounts {
 impl StakePoolAccounts {
     pub fn new() -> Self {
         let stake_pool = Keypair::new();
+        let validator_stake_list = Keypair::new();
         let stake_pool_address = &stake_pool.pubkey();
         let (withdraw_authority, _) = Pubkey::find_program_address(
             &[&stake_pool_address.to_bytes()[..32], b"withdraw"],
@@ -186,6 +201,7 @@ impl StakePoolAccounts {
 
         Self {
             stake_pool,
+            validator_stake_list,
             pool_mint,
             pool_fee_account,
             owner,
@@ -222,6 +238,7 @@ impl StakePoolAccounts {
             &payer,
             &recent_blockhash,
             &self.stake_pool,
+            &self.validator_stake_list,
             &self.pool_mint.pubkey(),
             &self.pool_fee_account.pubkey(),
             &self.owner,
@@ -274,6 +291,16 @@ async fn test_stake_pool_initialize() {
         .expect("stake pool not none");
     assert_eq!(stake_pool.data.len(), state::State::LEN);
     assert_eq!(stake_pool.owner, id());
+
+    // Validator stake list storage initialized
+    let validator_stake_list = banks_client
+        .get_account(stake_pool_accounts.validator_stake_list.pubkey())
+        .await
+        .expect("get_account")
+        .expect("validator stake list not none");
+    let validator_stake_list =
+        state::ValidatorStakeList::deserialize(validator_stake_list.data.as_slice()).unwrap();
+    assert_eq!(validator_stake_list.is_initialized, true);
 }
 
 #[tokio::test]

@@ -36,9 +36,10 @@ pub enum StakePoolInstruction {
     ///
     ///   0. `[w]` New StakePool to create.
     ///   1. `[]` Owner
-    ///   2. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
-    ///   3. `[]` Pool Account to deposit the generated fee for owner.
-    ///   4. `[]` Token program id
+    ///   2. `[w]` Uninitialized validator stake list storage account
+    ///   3. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
+    ///   4. `[]` Pool Account to deposit the generated fee for owner.
+    ///   5. `[]` Token program id
     Initialize(InitArgs),
 
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
@@ -179,6 +180,7 @@ pub fn initialize(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     owner: &Pubkey,
+    validator_stake_list: &Pubkey,
     pool_mint: &Pubkey,
     owner_pool_account: &Pubkey,
     token_program_id: &Pubkey,
@@ -189,6 +191,7 @@ pub fn initialize(
     let accounts = vec![
         AccountMeta::new(*stake_pool, true),
         AccountMeta::new_readonly(*owner, false),
+        AccountMeta::new(*validator_stake_list, false),
         AccountMeta::new_readonly(*pool_mint, false),
         AccountMeta::new_readonly(*owner_pool_account, false),
         AccountMeta::new_readonly(*token_program_id, false),
