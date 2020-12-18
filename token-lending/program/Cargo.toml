@@ -9,6 +9,7 @@ edition = "2018"
 
 [features]
 no-entrypoint = []
+test-bpf = []
 
 [dependencies]
 arrayref = "0.3.6"
