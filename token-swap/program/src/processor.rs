@@ -1153,7 +1153,8 @@ mod tests {
             constant_product::ConstantProductCurve, offset::OffsetCurve,
         },
         instruction::{
-            deposit, deposit_one_exact_in, initialize, swap, withdraw, withdraw_one_exact_out,
+            deposit_all_token_types, deposit_single_token_type_exact_amount_in, initialize, swap,
+            withdraw_all_token_types, withdraw_single_token_type_exact_amount_out,
         },
     };
     use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
@@ -1487,7 +1488,7 @@ mod tests {
         }
 
         #[allow(clippy::too_many_arguments)]
-        pub fn deposit(
+        pub fn deposit_all_token_types(
             &mut self,
             depositor_key: &Pubkey,
             depositor_token_a_key: &Pubkey,
@@ -1537,7 +1538,7 @@ mod tests {
             .unwrap();
 
             do_process_instruction(
-                deposit(
+                deposit_all_token_types(
                     &SWAP_PROGRAM_ID,
                     &TOKEN_PROGRAM_ID,
                     &self.swap_key,
@@ -1570,7 +1571,7 @@ mod tests {
         }
 
         #[allow(clippy::too_many_arguments)]
-        pub fn withdraw(
+        pub fn withdraw_all_token_types(
             &mut self,
             user_key: &Pubkey,
             pool_key: &Pubkey,
@@ -1604,7 +1605,7 @@ mod tests {
 
             // withdraw token a and b correctly
             do_process_instruction(
-                withdraw(
+                withdraw_all_token_types(
                     &SWAP_PROGRAM_ID,
                     &TOKEN_PROGRAM_ID,
                     &self.swap_key,
@@ -1639,7 +1640,7 @@ mod tests {
         }
 
         #[allow(clippy::too_many_arguments)]
-        pub fn deposit_one_exact_in(
+        pub fn deposit_single_token_type_exact_amount_in(
             &mut self,
             depositor_key: &Pubkey,
             deposit_account_key: &Pubkey,
@@ -1668,7 +1669,7 @@ mod tests {
             .unwrap();
 
             do_process_instruction(
-                deposit_one_exact_in(
+                deposit_single_token_type_exact_amount_in(
                     &SWAP_PROGRAM_ID,
                     &TOKEN_PROGRAM_ID,
                     &self.swap_key,
@@ -1698,7 +1699,7 @@ mod tests {
         }
 
         #[allow(clippy::too_many_arguments)]
-        pub fn withdraw_one_exact_out(
+        pub fn withdraw_single_token_type_exact_amount_out(
             &mut self,
             user_key: &Pubkey,
             pool_key: &Pubkey,
@@ -1728,7 +1729,7 @@ mod tests {
             .unwrap();
 
             do_process_instruction(
-                withdraw_one_exact_out(
+                withdraw_single_token_type_exact_amount_out(
                     &SWAP_PROGRAM_ID,
                     &TOKEN_PROGRAM_ID,
                     &self.swap_key,
@@ -2842,7 +2843,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
                 Err(ProgramError::UninitializedAccount),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -2875,7 +2876,7 @@ mod tests {
             accounts.swap_account = wrong_swap_account;
             assert_eq!(
                 Err(ProgramError::IncorrectProgramId),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -2909,7 +2910,7 @@ mod tests {
             accounts.authority_key = bad_authority_key;
             assert_eq!(
                 Err(SwapError::InvalidProgramAddress.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -2943,7 +2944,7 @@ mod tests {
             );
             assert_eq!(
                 Err(TokenError::InsufficientFunds.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -2976,7 +2977,7 @@ mod tests {
             );
             assert_eq!(
                 Err(TokenError::InsufficientFunds.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -3003,7 +3004,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
                 Err(TokenError::MintMismatch.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_b_key,
                     &mut token_b_account,
@@ -3038,7 +3039,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
                 Err(TokenError::MintMismatch.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -3066,7 +3067,7 @@ mod tests {
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
-                    deposit(
+                    deposit_all_token_types(
                         &SWAP_PROGRAM_ID,
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
@@ -3113,7 +3114,7 @@ mod tests {
             assert_eq!(
                 Err(SwapError::IncorrectTokenProgramId.into()),
                 do_process_instruction(
-                    deposit(
+                    deposit_all_token_types(
                         &SWAP_PROGRAM_ID,
                         &wrong_key,
                         &accounts.swap_key,
@@ -3166,7 +3167,7 @@ mod tests {
             // wrong swap token a account
             assert_eq!(
                 Err(SwapError::IncorrectSwapAccount.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -3192,7 +3193,7 @@ mod tests {
             // wrong swap token b account
             assert_eq!(
                 Err(SwapError::IncorrectSwapAccount.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -3229,7 +3230,7 @@ mod tests {
 
             assert_eq!(
                 Err(SwapError::IncorrectPoolMint.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -3259,7 +3260,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
                 Err(SwapError::ZeroTradingTokens.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -3287,7 +3288,7 @@ mod tests {
             // maximum A amount in too low
             assert_eq!(
                 Err(SwapError::ExceededSlippage.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -3303,7 +3304,7 @@ mod tests {
             // maximum B amount in too low
             assert_eq!(
                 Err(SwapError::ExceededSlippage.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -3335,7 +3336,7 @@ mod tests {
             let authority_key = accounts.authority_key;
             assert_eq!(
                 Err(SwapError::InvalidInput.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &authority_key,
                     &swap_token_a_key,
                     &mut swap_token_a_account,
@@ -3361,7 +3362,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             accounts
-                .deposit(
+                .deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -3451,7 +3452,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, initial_a, initial_b, 0);
             assert_eq!(
                 Err(ProgramError::UninitializedAccount),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3484,7 +3485,7 @@ mod tests {
             accounts.swap_account = wrong_swap_account;
             assert_eq!(
                 Err(ProgramError::IncorrectProgramId),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3518,7 +3519,7 @@ mod tests {
             accounts.authority_key = bad_authority_key;
             assert_eq!(
                 Err(SwapError::InvalidProgramAddress.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3552,7 +3553,7 @@ mod tests {
             );
             assert_eq!(
                 Err(TokenError::InsufficientFunds.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3585,7 +3586,7 @@ mod tests {
             );
             assert_eq!(
                 Err(TokenError::MintMismatch.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3632,7 +3633,7 @@ mod tests {
             );
             assert_eq!(
                 Err(TokenError::MintMismatch.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &wrong_token_a_key,
                     &mut wrong_token_a_account,
@@ -3683,7 +3684,7 @@ mod tests {
             accounts.pool_fee_key = wrong_pool_key;
             assert_eq!(
                 Err(SwapError::IncorrectFeeAccount.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3719,7 +3720,7 @@ mod tests {
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
-                    withdraw(
+                    withdraw_all_token_types(
                         &SWAP_PROGRAM_ID,
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
@@ -3774,7 +3775,7 @@ mod tests {
             assert_eq!(
                 Err(SwapError::IncorrectTokenProgramId.into()),
                 do_process_instruction(
-                    withdraw(
+                    withdraw_all_token_types(
                         &SWAP_PROGRAM_ID,
                         &wrong_key,
                         &accounts.swap_key,
@@ -3835,7 +3836,7 @@ mod tests {
             // wrong swap token a account
             assert_eq!(
                 Err(SwapError::IncorrectSwapAccount.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3861,7 +3862,7 @@ mod tests {
             // wrong swap token b account
             assert_eq!(
                 Err(SwapError::IncorrectSwapAccount.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3904,7 +3905,7 @@ mod tests {
 
             assert_eq!(
                 Err(SwapError::IncorrectPoolMint.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3940,7 +3941,7 @@ mod tests {
             );
             assert_eq!(
                 Err(SwapError::ZeroTradingTokens.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3974,7 +3975,7 @@ mod tests {
             // minimum A amount out too high
             assert_eq!(
                 Err(SwapError::ExceededSlippage.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -3990,7 +3991,7 @@ mod tests {
             // minimum B amount out too high
             assert_eq!(
                 Err(SwapError::ExceededSlippage.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -4025,7 +4026,7 @@ mod tests {
             let mut swap_token_a_account = accounts.get_token_account(&swap_token_a_key).clone();
             assert_eq!(
                 Err(SwapError::InvalidInput.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -4042,7 +4043,7 @@ mod tests {
             let mut swap_token_b_account = accounts.get_token_account(&swap_token_b_key).clone();
             assert_eq!(
                 Err(SwapError::InvalidInput.into()),
-                accounts.withdraw(
+                accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -4075,7 +4076,7 @@ mod tests {
             );
 
             accounts
-                .withdraw(
+                .withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -4154,7 +4155,7 @@ mod tests {
             let pool_fee_amount = fee_account.amount;
 
             accounts
-                .withdraw(
+                .withdraw_all_token_types(
                     &user_key,
                     &pool_fee_key,
                     &mut pool_fee_account,
@@ -4248,7 +4249,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
                 Err(ProgramError::UninitializedAccount),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4278,7 +4279,7 @@ mod tests {
             accounts.swap_account = wrong_swap_account;
             assert_eq!(
                 Err(ProgramError::IncorrectProgramId),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4309,7 +4310,7 @@ mod tests {
             accounts.authority_key = bad_authority_key;
             assert_eq!(
                 Err(SwapError::InvalidProgramAddress.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4340,7 +4341,7 @@ mod tests {
             );
             assert_eq!(
                 Err(TokenError::InsufficientFunds.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4352,7 +4353,7 @@ mod tests {
             );
             assert_eq!(
                 Err(TokenError::InsufficientFunds.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_b_key,
                     &mut token_b_account,
@@ -4376,7 +4377,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
                 Err(TokenError::MintMismatch.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4401,7 +4402,7 @@ mod tests {
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
-                    deposit_one_exact_in(
+                    deposit_single_token_type_exact_amount_in(
                         &SWAP_PROGRAM_ID,
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
@@ -4445,7 +4446,7 @@ mod tests {
             assert_eq!(
                 Err(SwapError::IncorrectTokenProgramId.into()),
                 do_process_instruction(
-                    deposit_one_exact_in(
+                    deposit_single_token_type_exact_amount_in(
                         &SWAP_PROGRAM_ID,
                         &wrong_key,
                         &accounts.swap_key,
@@ -4495,7 +4496,7 @@ mod tests {
             // wrong swap token a account
             assert_eq!(
                 Err(SwapError::IncorrectSwapAccount.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4518,7 +4519,7 @@ mod tests {
             // wrong swap token b account
             assert_eq!(
                 Err(SwapError::IncorrectSwapAccount.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4552,7 +4553,7 @@ mod tests {
 
             assert_eq!(
                 Err(SwapError::IncorrectPoolMint.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4580,7 +4581,7 @@ mod tests {
             // minimum pool amount too high
             assert_eq!(
                 Err(SwapError::ExceededSlippage.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4593,7 +4594,7 @@ mod tests {
             // minimum pool amount too high
             assert_eq!(
                 Err(SwapError::ExceededSlippage.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_b_key,
                     &mut token_b_account,
@@ -4622,7 +4623,7 @@ mod tests {
             let authority_key = accounts.authority_key;
             assert_eq!(
                 Err(SwapError::InvalidInput.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &authority_key,
                     &swap_token_a_key,
                     &mut swap_token_a_account,
@@ -4634,7 +4635,7 @@ mod tests {
             );
             assert_eq!(
                 Err(SwapError::InvalidInput.into()),
-                accounts.deposit_one_exact_in(
+                accounts.deposit_single_token_type_exact_amount_in(
                     &authority_key,
                     &swap_token_b_key,
                     &mut swap_token_b_account,
@@ -4657,7 +4658,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             accounts
-                .deposit_one_exact_in(
+                .deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4676,7 +4677,7 @@ mod tests {
             assert_eq!(token_a.amount, 0);
 
             accounts
-                .deposit_one_exact_in(
+                .deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_b_key,
                     &mut token_b_account,
@@ -4759,7 +4760,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, initial_a, initial_b, 0);
             assert_eq!(
                 Err(ProgramError::UninitializedAccount),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -4789,7 +4790,7 @@ mod tests {
             accounts.swap_account = wrong_swap_account;
             assert_eq!(
                 Err(ProgramError::IncorrectProgramId),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -4820,7 +4821,7 @@ mod tests {
             accounts.authority_key = bad_authority_key;
             assert_eq!(
                 Err(SwapError::InvalidProgramAddress.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -4851,7 +4852,7 @@ mod tests {
             );
             assert_eq!(
                 Err(TokenError::InsufficientFunds.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -4881,7 +4882,7 @@ mod tests {
             );
             assert_eq!(
                 Err(TokenError::MintMismatch.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -4929,7 +4930,7 @@ mod tests {
             accounts.pool_fee_key = wrong_pool_key;
             assert_eq!(
                 Err(SwapError::IncorrectFeeAccount.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -4962,7 +4963,7 @@ mod tests {
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
-                    withdraw_one_exact_out(
+                    withdraw_single_token_type_exact_amount_out(
                         &SWAP_PROGRAM_ID,
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
@@ -5014,7 +5015,7 @@ mod tests {
             assert_eq!(
                 Err(SwapError::IncorrectTokenProgramId.into()),
                 do_process_instruction(
-                    withdraw_one_exact_out(
+                    withdraw_single_token_type_exact_amount_out(
                         &SWAP_PROGRAM_ID,
                         &wrong_key,
                         &accounts.swap_key,
@@ -5072,7 +5073,7 @@ mod tests {
             // wrong swap token a account
             assert_eq!(
                 Err(SwapError::IncorrectSwapAccount.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -5095,7 +5096,7 @@ mod tests {
             // wrong swap token b account
             assert_eq!(
                 Err(SwapError::IncorrectSwapAccount.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -5135,7 +5136,7 @@ mod tests {
 
             assert_eq!(
                 Err(SwapError::IncorrectPoolMint.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -5170,7 +5171,7 @@ mod tests {
             // maximum pool token amount too low
             assert_eq!(
                 Err(SwapError::ExceededSlippage.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -5182,7 +5183,7 @@ mod tests {
             );
             assert_eq!(
                 Err(SwapError::ExceededSlippage.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -5214,7 +5215,7 @@ mod tests {
             let mut swap_token_a_account = accounts.get_token_account(&swap_token_a_key).clone();
             assert_eq!(
                 Err(SwapError::InvalidInput.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -5228,7 +5229,7 @@ mod tests {
             let mut swap_token_b_account = accounts.get_token_account(&swap_token_b_key).clone();
             assert_eq!(
                 Err(SwapError::InvalidInput.into()),
-                accounts.withdraw_one_exact_out(
+                accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -5280,7 +5281,7 @@ mod tests {
             let withdraw_fee = accounts.fees.owner_withdraw_fee(pool_token_amount).unwrap();
 
             accounts
-                .withdraw_one_exact_out(
+                .withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
                     &mut pool_account,
@@ -5330,7 +5331,7 @@ mod tests {
 
             let token_a_amount = swap_token_a.amount;
             accounts
-                .withdraw_one_exact_out(
+                .withdraw_single_token_type_exact_amount_out(
                     &user_key,
                     &pool_fee_key,
                     &mut pool_fee_account,
@@ -6558,7 +6559,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             assert_eq!(
                 Err(SwapError::UnsupportedCurveOperation.into()),
-                accounts.deposit(
+                accounts.deposit_all_token_types(
                     &swapper_key,
                     &token_a_key,
                     &mut token_a_account,
@@ -6629,7 +6630,7 @@ mod tests {
         // `token_b_offset + token_b_amount`, but only `token_b_amount` will be
         // moved.
         accounts
-            .withdraw(
+            .withdraw_all_token_types(
                 &user_key,
                 &pool_key,
                 &mut pool_account,

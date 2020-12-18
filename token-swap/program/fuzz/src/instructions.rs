@@ -10,7 +10,10 @@ use spl_token_swap::{
         fees::Fees,
     },
     error::SwapError,
-    instruction::{DepositAllTokenTypes, Swap, WithdrawAllTokenTypes},
+    instruction::{
+        DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Swap, WithdrawAllTokenTypes,
+        WithdrawSingleTokenTypeExactAmountOut,
+    },
 };
 
 use spl_token::error::TokenError;
@@ -39,6 +42,18 @@ enum FuzzInstruction {
         token_b_id: AccountId,
         pool_token_id: AccountId,
         instruction: WithdrawAllTokenTypes,
+    },
+    DepositSingleTokenTypeExactAmountIn {
+        token_account_id: AccountId,
+        trade_direction: TradeDirection,
+        pool_token_id: AccountId,
+        instruction: DepositSingleTokenTypeExactAmountIn,
+    },
+    WithdrawSingleTokenTypeExactAmountOut {
+        token_account_id: AccountId,
+        trade_direction: TradeDirection,
+        pool_token_id: AccountId,
+        instruction: WithdrawSingleTokenTypeExactAmountOut,
     },
 }
 
@@ -109,28 +124,52 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
                 token_a_id,
                 token_b_id,
                 ..
-            } => (token_a_id, token_b_id, None),
+            } => (Some(token_a_id), Some(token_b_id), None),
 
             FuzzInstruction::DepositAllTokenTypes {
                 token_a_id,
                 token_b_id,
                 pool_token_id,
                 ..
-            } => (token_a_id, token_b_id, Some(pool_token_id)),
+            } => (Some(token_a_id), Some(token_b_id), Some(pool_token_id)),
 
             FuzzInstruction::WithdrawAllTokenTypes {
                 token_a_id,
                 token_b_id,
                 pool_token_id,
                 ..
-            } => (token_a_id, token_b_id, Some(pool_token_id)),
+            } => (Some(token_a_id), Some(token_b_id), Some(pool_token_id)),
+
+            FuzzInstruction::DepositSingleTokenTypeExactAmountIn {
+                token_account_id,
+                trade_direction,
+                pool_token_id,
+                ..
+            } => match trade_direction {
+                TradeDirection::AtoB => (Some(token_account_id), None, Some(pool_token_id)),
+                TradeDirection::BtoA => (None, Some(token_account_id), Some(pool_token_id)),
+            },
+
+            FuzzInstruction::WithdrawSingleTokenTypeExactAmountOut {
+                token_account_id,
+                trade_direction,
+                pool_token_id,
+                ..
+            } => match trade_direction {
+                TradeDirection::AtoB => (Some(token_account_id), None, Some(pool_token_id)),
+                TradeDirection::BtoA => (None, Some(token_account_id), Some(pool_token_id)),
+            },
         };
-        token_a_accounts
-            .entry(token_a_id)
-            .or_insert_with(|| token_swap.create_token_a_account(INITIAL_USER_TOKEN_A_AMOUNT));
-        token_b_accounts
-            .entry(token_b_id)
-            .or_insert_with(|| token_swap.create_token_b_account(INITIAL_USER_TOKEN_B_AMOUNT));
+        if let Some(token_a_id) = token_a_id {
+            token_a_accounts
+                .entry(token_a_id)
+                .or_insert_with(|| token_swap.create_token_a_account(INITIAL_USER_TOKEN_A_AMOUNT));
+        }
+        if let Some(token_b_id) = token_b_id {
+            token_b_accounts
+                .entry(token_b_id)
+                .or_insert_with(|| token_swap.create_token_b_account(INITIAL_USER_TOKEN_B_AMOUNT));
+        }
         if let Some(pool_token_id) = pool_token_id {
             pool_accounts
                 .entry(pool_token_id)
@@ -271,7 +310,7 @@ fn run_fuzz_instruction(
             let mut token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
             let mut token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
             let mut pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
-            token_swap.deposit(
+            token_swap.deposit_all_token_types(
                 &mut token_a_account,
                 &mut token_b_account,
                 &mut pool_account,
@@ -287,10 +326,44 @@ fn run_fuzz_instruction(
             let mut token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
             let mut token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
             let mut pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
-            token_swap.withdraw(
+            token_swap.withdraw_all_token_types(
                 &mut pool_account,
                 &mut token_a_account,
                 &mut token_b_account,
+                instruction,
+            )
+        }
+        FuzzInstruction::DepositSingleTokenTypeExactAmountIn {
+            token_account_id,
+            trade_direction,
+            pool_token_id,
+            instruction,
+        } => {
+            let mut source_token_account = match trade_direction {
+                TradeDirection::AtoB => token_a_accounts.get_mut(&token_account_id).unwrap(),
+                TradeDirection::BtoA => token_b_accounts.get_mut(&token_account_id).unwrap(),
+            };
+            let mut pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
+            token_swap.deposit_single_token_type_exact_amount_in(
+                &mut source_token_account,
+                &mut pool_account,
+                instruction,
+            )
+        }
+        FuzzInstruction::WithdrawSingleTokenTypeExactAmountOut {
+            token_account_id,
+            trade_direction,
+            pool_token_id,
+            instruction,
+        } => {
+            let mut destination_token_account = match trade_direction {
+                TradeDirection::AtoB => token_a_accounts.get_mut(&token_account_id).unwrap(),
+                TradeDirection::BtoA => token_b_accounts.get_mut(&token_account_id).unwrap(),
+            };
+            let mut pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
+            token_swap.withdraw_single_token_type_exact_amount_out(
+                &mut pool_account,
+                &mut destination_token_account,
                 instruction,
             )
         }
@@ -321,6 +394,22 @@ fn get_total_token_a_amount(fuzz_instructions: &[FuzzInstruction]) -> u64 {
             FuzzInstruction::WithdrawAllTokenTypes { token_a_id, .. } => {
                 token_a_ids.insert(token_a_id)
             }
+            FuzzInstruction::DepositSingleTokenTypeExactAmountIn {
+                token_account_id,
+                trade_direction,
+                ..
+            } => match trade_direction {
+                TradeDirection::AtoB => token_a_ids.insert(token_account_id),
+                _ => false,
+            },
+            FuzzInstruction::WithdrawSingleTokenTypeExactAmountOut {
+                token_account_id,
+                trade_direction,
+                ..
+            } => match trade_direction {
+                TradeDirection::AtoB => token_a_ids.insert(token_account_id),
+                _ => false,
+            },
         };
     }
     (token_a_ids.len() as u64) * INITIAL_USER_TOKEN_A_AMOUNT
@@ -337,6 +426,22 @@ fn get_total_token_b_amount(fuzz_instructions: &[FuzzInstruction]) -> u64 {
             FuzzInstruction::WithdrawAllTokenTypes { token_b_id, .. } => {
                 token_b_ids.insert(token_b_id)
             }
+            FuzzInstruction::DepositSingleTokenTypeExactAmountIn {
+                token_account_id,
+                trade_direction,
+                ..
+            } => match trade_direction {
+                TradeDirection::BtoA => token_b_ids.insert(token_account_id),
+                _ => false,
+            },
+            FuzzInstruction::WithdrawSingleTokenTypeExactAmountOut {
+                token_account_id,
+                trade_direction,
+                ..
+            } => match trade_direction {
+                TradeDirection::BtoA => token_b_ids.insert(token_account_id),
+                _ => false,
+            },
         };
     }
     (token_b_ids.len() as u64) * INITIAL_USER_TOKEN_B_AMOUNT

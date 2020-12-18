@@ -6,7 +6,10 @@ use crate::native_token;
 
 use spl_token_swap::{
     curve::{base::SwapCurve, fees::Fees},
-    instruction::{self, DepositAllTokenTypes, Swap, WithdrawAllTokenTypes},
+    instruction::{
+        self, DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Swap,
+        WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
+    },
     state::SwapInfo,
 };
 
@@ -256,7 +259,7 @@ impl NativeTokenSwap {
         )
     }
 
-    pub fn deposit(
+    pub fn deposit_all_token_types(
         &mut self,
         token_a_account: &mut NativeAccountData,
         token_b_account: &mut NativeAccountData,
@@ -305,7 +308,7 @@ impl NativeTokenSwap {
             instruction.pool_token_amount = 2;
         }
 
-        let deposit_instruction = instruction::deposit(
+        let deposit_instruction = instruction::deposit_all_token_types(
             &spl_token_swap::id(),
             &spl_token::id(),
             &self.swap_account.key,
@@ -336,7 +339,7 @@ impl NativeTokenSwap {
         )
     }
 
-    pub fn withdraw(
+    pub fn withdraw_all_token_types(
         &mut self,
         pool_account: &mut NativeAccountData,
         token_a_account: &mut NativeAccountData,
@@ -367,7 +370,7 @@ impl NativeTokenSwap {
         )
         .unwrap();
 
-        let withdraw_instruction = instruction::withdraw(
+        let withdraw_instruction = instruction::withdraw_all_token_types(
             &spl_token_swap::id(),
             &spl_token::id(),
             &self.swap_account.key,
@@ -400,6 +403,126 @@ impl NativeTokenSwap {
         )
     }
 
+    pub fn deposit_single_token_type_exact_amount_in(
+        &mut self,
+        source_token_account: &mut NativeAccountData,
+        pool_account: &mut NativeAccountData,
+        mut instruction: DepositSingleTokenTypeExactAmountIn,
+    ) -> ProgramResult {
+        do_process_instruction(
+            approve(
+                &self.token_program_account.key,
+                &source_token_account.key,
+                &self.authority_account.key,
+                &self.user_account.key,
+                &[],
+                instruction.source_token_amount,
+            )
+            .unwrap(),
+            &[
+                source_token_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                self.user_account.as_account_info(),
+            ],
+        )
+        .unwrap();
+
+        // special logic: if we only deposit 1 pool token, we can't withdraw it
+        // because we incur a withdrawal fee, so we hack it to not be 1
+        if instruction.minimum_pool_token_amount < 2 {
+            instruction.minimum_pool_token_amount = 2;
+        }
+
+        let deposit_instruction = instruction::deposit_single_token_type_exact_amount_in(
+            &spl_token_swap::id(),
+            &spl_token::id(),
+            &self.swap_account.key,
+            &self.authority_account.key,
+            &source_token_account.key,
+            &self.token_a_account.key,
+            &self.token_b_account.key,
+            &self.pool_mint_account.key,
+            &pool_account.key,
+            instruction,
+        )
+        .unwrap();
+
+        do_process_instruction(
+            deposit_instruction,
+            &[
+                self.swap_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                source_token_account.as_account_info(),
+                self.token_a_account.as_account_info(),
+                self.token_b_account.as_account_info(),
+                self.pool_mint_account.as_account_info(),
+                pool_account.as_account_info(),
+                self.token_program_account.as_account_info(),
+            ],
+        )
+    }
+
+    pub fn withdraw_single_token_type_exact_amount_out(
+        &mut self,
+        pool_account: &mut NativeAccountData,
+        destination_token_account: &mut NativeAccountData,
+        mut instruction: WithdrawSingleTokenTypeExactAmountOut,
+    ) -> ProgramResult {
+        let pool_token_amount = native_token::get_token_balance(&pool_account);
+        // special logic to avoid withdrawing down to 1 pool token, which
+        // eventually causes an error on withdrawing all
+        if pool_token_amount.saturating_sub(instruction.maximum_pool_token_amount) == 1 {
+            instruction.maximum_pool_token_amount = pool_token_amount;
+        }
+        do_process_instruction(
+            approve(
+                &self.token_program_account.key,
+                &pool_account.key,
+                &self.authority_account.key,
+                &self.user_account.key,
+                &[],
+                instruction.maximum_pool_token_amount,
+            )
+            .unwrap(),
+            &[
+                pool_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                self.user_account.as_account_info(),
+            ],
+        )
+        .unwrap();
+
+        let withdraw_instruction = instruction::withdraw_single_token_type_exact_amount_out(
+            &spl_token_swap::id(),
+            &spl_token::id(),
+            &self.swap_account.key,
+            &self.authority_account.key,
+            &self.pool_mint_account.key,
+            &self.pool_fee_account.key,
+            &pool_account.key,
+            &self.token_a_account.key,
+            &self.token_b_account.key,
+            &destination_token_account.key,
+            instruction,
+        )
+        .unwrap();
+
+        do_process_instruction(
+            withdraw_instruction,
+            &[
+                self.swap_account.as_account_info(),
+                self.authority_account.as_account_info(),
+                self.pool_mint_account.as_account_info(),
+                pool_account.as_account_info(),
+                self.token_a_account.as_account_info(),
+                self.token_b_account.as_account_info(),
+                destination_token_account.as_account_info(),
+                self.pool_fee_account.as_account_info(),
+                self.token_program_account.as_account_info(),
+            ],
+        )
+    }
+
     pub fn withdraw_all(
         &mut self,
         mut pool_account: &mut NativeAccountData,
@@ -413,7 +536,7 @@ impl NativeTokenSwap {
                 minimum_token_a_amount: 0,
                 minimum_token_b_amount: 0,
             };
-            self.withdraw(
+            self.withdraw_all_token_types(
                 &mut pool_account,
                 &mut token_a_account,
                 &mut token_b_account,

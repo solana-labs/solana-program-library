@@ -375,8 +375,8 @@ pub fn initialize(
     })
 }
 
-/// Creates a 'deposit' instruction.
-pub fn deposit(
+/// Creates a 'deposit_all_token_types' instruction.
+pub fn deposit_all_token_types(
     program_id: &Pubkey,
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
@@ -410,8 +410,8 @@ pub fn deposit(
     })
 }
 
-/// Creates a 'withdraw' instruction.
-pub fn withdraw(
+/// Creates a 'withdraw_all_token_types' instruction.
+pub fn withdraw_all_token_types(
     program_id: &Pubkey,
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
@@ -447,8 +447,8 @@ pub fn withdraw(
     })
 }
 
-/// Creates a 'deposit_one_exact_in' instruction.
-pub fn deposit_one_exact_in(
+/// Creates a 'deposit_single_token_type_exact_amount_in' instruction.
+pub fn deposit_single_token_type_exact_amount_in(
     program_id: &Pubkey,
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
@@ -480,8 +480,8 @@ pub fn deposit_one_exact_in(
     })
 }
 
-/// Creates a 'withdraw_one_exact_out' instruction.
-pub fn withdraw_one_exact_out(
+/// Creates a 'withdraw_single_token_type_exact_amount_out' instruction.
+pub fn withdraw_single_token_type_exact_amount_out(
     program_id: &Pubkey,
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
