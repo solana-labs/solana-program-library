@@ -123,11 +123,11 @@ async function GetPrograms(
   } catch (err) {
     tokenProgramId = await loadProgram(
       connection,
-      "../../target/deploy/spl_token.so"
+      "../../target/bpfel-unknown-unknown/release/spl_token.so"
     );
     tokenLendingProgramId = await loadProgram(
       connection,
-      "../../target/deploy/spl_token_lending.so"
+      "../../target/bpfel-unknown-unknown/release/spl_token_lending.so"
     );
     await store.save("config.json", {
       tokenProgramId: tokenProgramId.toString(),
