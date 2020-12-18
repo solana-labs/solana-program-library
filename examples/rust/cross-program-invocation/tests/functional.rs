@@ -7,7 +7,7 @@ use solana_program::{
     rent::Rent,
     system_program,
 };
-use solana_program_test::{processor, BanksClientExt, ProgramTest};
+use solana_program_test::{processor, ProgramTest};
 use solana_sdk::{account::Account, signature::Signer, transaction::Transaction};
 use spl_example_cross_program_invocation::processor::{process_instruction, SIZE};
 use std::str::FromStr;

@@ -1,5 +1,5 @@
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
-use solana_program_test::{processor, BanksClientExt, ProgramTest};
+use solana_program_test::{processor, ProgramTest};
 use solana_sdk::{signature::Signer, transaction::Transaction};
 use spl_example_custom_heap::processor::process_instruction;
 use std::str::FromStr;
