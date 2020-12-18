@@ -26,10 +26,7 @@
   "rules": {
     "no-console": 0,
     "semi": 0,
-    "template-curly-spacing": [
-      2,
-      "always"
-    ],
+    "template-curly-spacing": ["error", "never"],
     "@typescript-eslint/no-explicit-any": 0
   }
 }
