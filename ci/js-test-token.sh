@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 
-set -ex
-cd "$(dirname "$0")"
-cd ../token/js
+set -e
+cd "$(dirname "$0")/.."
+source ./ci/solana-version.sh install
 
+set -x
+cd token/js
 npm install
 npm run lint
 npm run flow
 npx tsc module.d.ts
-npm run cluster:localnet
-npm run localnet:update
-npm run localnet:up
-npm run start
-PROGRAM_VERSION=2.0.4 npm run start
-npm run localnet:down
+npm run start-with-test-validator
+PROGRAM_VERSION=2.0.4 npm run start-with-test-validator
