@@ -203,6 +203,7 @@ pub trait CurveCalculator: Debug + DynPack {
 #[cfg(any(test, fuzzing))]
 pub mod test {
     use super::*;
+    use crate::curve::math::U256;
 
     /// The epsilon for most curves when performing the conversion test,
     /// comparing a one-sided deposit to a swap + deposit.
@@ -347,5 +348,55 @@ pub mod test {
         let epsilon = 1; // Extremely close!
         let difference = new_value - previous_value;
         assert!(difference <= epsilon);
+    }
+
+    /// Test function checking that a deposit never reduces the value of pool
+    /// tokens.
+    ///
+    /// Since curve calculations use unsigned integers, there is potential for
+    /// truncation at some point, meaning a potential for value to be lost if
+    /// too much is given to the depositor.
+    pub fn check_pool_value_from_deposit(
+        curve: &dyn CurveCalculator,
+        pool_token_amount: u128,
+        pool_token_supply: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+    ) {
+        let deposit_result = curve
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+            )
+            .unwrap();
+        let new_swap_token_a_amount = swap_token_a_amount + deposit_result.token_a_amount;
+        let new_swap_token_b_amount = swap_token_b_amount + deposit_result.token_b_amount;
+        let new_pool_token_supply = pool_token_supply + pool_token_amount;
+
+        // the following inequality must hold:
+        // new_token_a / new_pool_token_supply >= token_a / pool_token_supply
+        // which reduces to:
+        // new_token_a * pool_token_supply >= token_a * new_pool_token_supply
+
+        // These numbers can be just slightly above u64 after the deposit, which
+        // means that their multiplication can be just above the range of u128.
+        // For ease of testing, we bump these up to U256.
+        let pool_token_supply = U256::from(pool_token_supply);
+        let new_pool_token_supply = U256::from(new_pool_token_supply);
+        let swap_token_a_amount = U256::from(swap_token_a_amount);
+        let new_swap_token_a_amount = U256::from(new_swap_token_a_amount);
+        let swap_token_b_amount = U256::from(swap_token_b_amount);
+        let new_swap_token_b_amount = U256::from(new_swap_token_b_amount);
+
+        assert!(
+            new_swap_token_a_amount * pool_token_supply
+                >= swap_token_a_amount * new_pool_token_supply
+        );
+        assert!(
+            new_swap_token_b_amount * pool_token_supply
+                >= swap_token_b_amount * new_pool_token_supply
+        );
     }
 }

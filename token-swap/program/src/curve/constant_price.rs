@@ -68,21 +68,13 @@ impl CurveCalculator for ConstantPriceCurve {
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
     ) -> Option<TradingTokenResult> {
-        // Split the pool tokens in half, send half as token A, half as token B
-        let token_a_pool_tokens = pool_tokens.checked_div(2)?;
-        let token_b_pool_tokens = pool_tokens.checked_sub(token_a_pool_tokens)?;
-
         let token_b_price = self.token_b_price as u128;
-        let total_value = swap_token_b_amount
-            .checked_mul(token_b_price)?
-            .checked_add(swap_token_a_amount)?;
+        let total_value = self.normalized_value(swap_token_a_amount, swap_token_b_amount)?;
 
-        let (token_a_amount, _) = ceiling_division(
-            token_a_pool_tokens.checked_mul(total_value)?,
-            pool_token_supply,
-        )?;
+        let (token_a_amount, _) =
+            ceiling_division(pool_tokens.checked_mul(total_value)?, pool_token_supply)?;
         let (token_b_amount, _) = ceiling_division(
-            token_b_pool_tokens
+            pool_tokens
                 .checked_mul(total_value)?
                 .checked_div(token_b_price)?,
             pool_token_supply,
@@ -142,13 +134,27 @@ impl CurveCalculator for ConstantPriceCurve {
     /// Note that since most other curves use a multiplicative invariant, ie.
     /// `token_a * token_b`, whereas this one uses an addition,
     /// ie. `token_a + token_b`.
+    ///
+    /// At the end, we divide by 2 to normalize the value between the two token
+    /// types.
     fn normalized_value(
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
     ) -> Option<u128> {
-        let swap_token_b_amount = swap_token_b_amount.checked_mul(self.token_b_price as u128)?;
-        swap_token_a_amount.checked_add(swap_token_b_amount)
+        let swap_token_b_value = swap_token_b_amount.checked_mul(self.token_b_price as u128)?;
+        // special logic in case we're close to the limits, avoid overflowing u128
+        if swap_token_b_value.saturating_sub(std::u64::MAX.into())
+            > (std::u128::MAX.saturating_sub(std::u64::MAX.into()))
+        {
+            swap_token_b_value
+                .checked_div(2)?
+                .checked_add(swap_token_a_amount.checked_div(2)?)
+        } else {
+            swap_token_a_amount
+                .checked_add(swap_token_b_value)?
+                .checked_div(2)
+        }
     }
 }
 
@@ -419,6 +425,57 @@ mod tests {
                 swap_destination_amount,
                 TradeDirection::BtoA
             );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn curve_value_does_not_decrease_from_deposit(
+            pool_token_amount in 2..u64::MAX, // minimum 2 to splitting on deposit
+            pool_token_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
+            swap_token_a_amount in 1..u64::MAX,
+            swap_token_b_amount in 1..u32::MAX, // kept small to avoid proptest rejections
+            token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
+        ) {
+            let curve = ConstantPriceCurve { token_b_price: token_b_price as u64 };
+            let pool_token_amount = pool_token_amount as u128;
+            let pool_token_supply = pool_token_supply as u128;
+            let swap_token_a_amount = swap_token_a_amount as u128;
+            let swap_token_b_amount = swap_token_b_amount as u128;
+            let token_b_price = token_b_price as u128;
+
+            let value = curve.normalized_value(swap_token_a_amount, swap_token_b_amount).unwrap();
+
+            // Make sure we trade at least one of each token
+            prop_assume!(pool_token_amount * value >= 2 * token_b_price * pool_token_supply);
+            let deposit_result = curve
+                .pool_tokens_to_trading_tokens(
+                    pool_token_amount,
+                    pool_token_supply,
+                    swap_token_a_amount,
+                    swap_token_b_amount,
+                )
+                .unwrap();
+            let new_swap_token_a_amount = swap_token_a_amount + deposit_result.token_a_amount;
+            let new_swap_token_b_amount = swap_token_b_amount + deposit_result.token_b_amount;
+            let new_pool_token_supply = pool_token_supply + pool_token_amount;
+
+            let new_value = curve.normalized_value(new_swap_token_a_amount, new_swap_token_b_amount).unwrap();
+
+            // the following inequality must hold:
+            // new_value / new_pool_token_supply >= value / pool_token_supply
+            // which reduces to:
+            // new_value * pool_token_supply >= value * new_pool_token_supply
+
+            // These numbers can be just slightly above u64 after the deposit, which
+            // means that their multiplication can be just above the range of u128.
+            // For ease of testing, we bump these up to U256.
+            let pool_token_supply = U256::from(pool_token_supply);
+            let new_pool_token_supply = U256::from(new_pool_token_supply);
+            let value = U256::from(value);
+            let new_value = U256::from(new_value);
+
+            assert!(new_value * pool_token_supply >= value * new_pool_token_supply);
         }
     }
 }

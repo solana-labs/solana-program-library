@@ -174,7 +174,7 @@ mod tests {
     use crate::curve::calculator::{
         test::{
             check_curve_value_from_swap, check_pool_token_conversion,
-            CONVERSION_BASIS_POINTS_GUARANTEE,
+            check_pool_value_from_deposit, CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         INITIAL_SWAP_POOL_AMOUNT,
     };
@@ -427,6 +427,39 @@ mod tests {
                 swap_source_amount as u128,
                 swap_destination_amount as u128,
                 TradeDirection::BtoA
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn curve_value_does_not_decrease_from_deposit(
+            pool_token_amount in 1..u64::MAX,
+            pool_token_supply in 1..u64::MAX,
+            swap_token_a_amount in 1..u64::MAX,
+            swap_token_b_amount in 1..u64::MAX,
+            token_b_offset in 1..u64::MAX,
+        ) {
+            let curve = OffsetCurve { token_b_offset };
+            let pool_token_amount = pool_token_amount as u128;
+            let pool_token_supply = pool_token_supply as u128;
+            let swap_token_a_amount = swap_token_a_amount as u128;
+            let swap_token_b_amount = swap_token_b_amount as u128;
+            let token_b_offset = token_b_offset as u128;
+
+            // For ease of calc, make sure the token B side stays within u64
+            prop_assume!(token_b_offset + swap_token_b_amount <= u64::MAX.into());
+
+            // Make sure we will get at least one trading token out for each
+            // side, otherwise the calculation fails
+            prop_assume!(pool_token_amount * swap_token_a_amount / pool_token_supply >= 1);
+            prop_assume!(pool_token_amount * (swap_token_b_amount + token_b_offset) / pool_token_supply >= 1);
+            check_pool_value_from_deposit(
+                &curve,
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
             );
         }
     }
