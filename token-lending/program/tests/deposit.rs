@@ -28,7 +28,7 @@ async fn test_success() {
             liquidity_amount: 10_000 * FRACTIONAL_TO_USDC,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
-            config: TEST_RESERVE_CONFIG.clone(),
+            config: TEST_RESERVE_CONFIG,
             ..AddReserveArgs::default()
         },
     );

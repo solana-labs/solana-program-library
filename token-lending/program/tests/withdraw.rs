@@ -40,7 +40,7 @@ async fn test_success() {
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             collateral_amount: WITHDRAW_COLLATERAL_AMOUNT,
-            config: TEST_RESERVE_CONFIG.clone(),
+            config: TEST_RESERVE_CONFIG,
             ..AddReserveArgs::default()
         },
     );

@@ -46,7 +46,7 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            config: TEST_RESERVE_CONFIG.clone(),
+            config: TEST_RESERVE_CONFIG,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -61,7 +61,7 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            config: TEST_RESERVE_CONFIG.clone(),
+            config: TEST_RESERVE_CONFIG,
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_decimals: 9,
             liquidity_mint_pubkey: spl_token::native_mint::id(),

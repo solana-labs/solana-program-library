@@ -89,7 +89,7 @@ async fn test_already_initialized() {
             liquidity_amount: 42,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
-            config: TEST_RESERVE_CONFIG.clone(),
+            config: TEST_RESERVE_CONFIG,
             ..AddReserveArgs::default()
         },
     );
@@ -100,7 +100,7 @@ async fn test_already_initialized() {
         &[init_reserve(
             spl_token_lending::id(),
             42,
-            TEST_RESERVE_CONFIG.clone(),
+            TEST_RESERVE_CONFIG,
             usdc_reserve.user_liquidity_account,
             usdc_reserve.user_collateral_account,
             usdc_reserve.pubkey,

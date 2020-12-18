@@ -3,6 +3,7 @@
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::ptr_offset_with_cast)]
 #![allow(clippy::reversed_empty_ranges)]
+#![allow(clippy::manual_range_contains)]
 
 use std::fmt;
 use uint::construct_uint;

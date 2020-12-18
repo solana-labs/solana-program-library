@@ -37,8 +37,8 @@ async fn test_success() {
         processor!(process_instruction),
     );
 
-    const OBLIGATION_USDC_LOAN: u64 = 1 * FRACTIONAL_TO_USDC;
-    const OBLIGATION_SOL_COLLATERAL: u64 = 1 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATE;
+    const OBLIGATION_USDC_LOAN: u64 = FRACTIONAL_TO_USDC;
+    const OBLIGATION_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATE * LAMPORTS_TO_SOL;
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::add_sol_usdc_dex_market(&mut test);
@@ -50,7 +50,7 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            config: TEST_RESERVE_CONFIG.clone(),
+            config: TEST_RESERVE_CONFIG,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -65,7 +65,7 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            config: TEST_RESERVE_CONFIG.clone(),
+            config: TEST_RESERVE_CONFIG,
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_decimals: 9,
             liquidity_mint_pubkey: spl_token::native_mint::id(),

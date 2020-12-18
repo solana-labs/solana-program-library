@@ -132,7 +132,6 @@ pub fn add_obligation(
             borrowed_liquidity_wads,
             borrow_reserve: borrow_reserve.pubkey,
             token_mint: token_mint_pubkey,
-            ..Obligation::default()
         },
         &spl_token_lending::id(),
     );
@@ -226,9 +225,8 @@ pub fn add_reserve(
             collateral_mint: collateral_mint_pubkey,
             collateral_supply: collateral_supply_pubkey,
             dex_market: dex_market_pubkey.into(),
-            config: config.clone(),
+            config,
             state: reserve_state,
-            ..Reserve::default()
         },
         &spl_token_lending::id(),
     );
@@ -533,6 +531,7 @@ pub struct TestReserve {
 }
 
 impl TestReserve {
+    #[allow(clippy::too_many_arguments)]
     pub async fn init(
         banks_client: &mut BanksClient,
         lending_market: &TestLendingMarket,
