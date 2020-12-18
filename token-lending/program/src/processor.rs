@@ -599,9 +599,6 @@ fn process_borrow(
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
     let mut obligation = Obligation::unpack_unchecked(&obligation_info.data.borrow())?;
-    if !obligation_info.is_signer {
-        return Err(LendingError::InvalidSigner.into());
-    }
     let reusing_obligation = obligation.is_initialized();
     if reusing_obligation {
         if &obligation.token_mint != obligation_token_mint_info.key {

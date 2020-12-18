@@ -493,12 +493,7 @@ impl TestLendingMarket {
 
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
         transaction.sign(
-            &vec![
-                payer,
-                user_accounts_owner,
-                &obligation.keypair,
-                &memory_keypair,
-            ],
+            &vec![payer, user_accounts_owner, &memory_keypair],
             recent_blockhash,
         );
 

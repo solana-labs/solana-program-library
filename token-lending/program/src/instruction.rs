@@ -96,7 +96,7 @@ pub enum LendingInstruction {
     ///   3. `[writable]` Deposit reserve collateral supply SPL Token account
     ///   4. `[writable]` Borrow reserve account.
     ///   5. `[writable]` Borrow reserve liquidity supply SPL Token account
-    ///   6. `[writable, signer]` Obligation
+    ///   6. `[writable]` Obligation
     ///   7. `[writable]` Obligation token mint
     ///   8. `[writable]` Obligation token output
     ///   9. `[]` Obligation token owner
@@ -465,7 +465,7 @@ pub fn borrow_reserve_liquidity(
             AccountMeta::new(deposit_reserve_collateral_supply_pubkey, false),
             AccountMeta::new(borrow_reserve_pubkey, false),
             AccountMeta::new(borrow_reserve_liquidity_supply_pubkey, false),
-            AccountMeta::new(obligation_pubkey, true),
+            AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new(obligation_token_mint_pubkey, false),
             AccountMeta::new(obligation_token_output_pubkey, false),
             AccountMeta::new_readonly(obligation_token_owner_pubkey, false),
