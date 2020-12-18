@@ -1,17 +1,13 @@
-use solana_bpf_loader_program::{
-    create_vm,
-    serialization::{deserialize_parameters, serialize_parameters},
-};
+use solana_bpf_loader_program::serialization::serialize_parameters;
 use solana_program::{
     bpf_loader, entrypoint::SUCCESS, program_error::ProgramError, pubkey::Pubkey,
 };
-use solana_rbpf::vm::EbpfVm;
-use solana_sdk::{
-    account::Account, keyed_account::KeyedAccount, process_instruction::MockInvokeContext,
-};
+use solana_sdk::{account::Account, keyed_account::KeyedAccount};
 use spl_shared_memory::entrypoint;
-use std::{fs::File, io::Read};
 
+// TODO: Rework `assert_instruction_count` test to use solana-program-test, avoiding the need to
+// link directly with the BPF VM
+/*
 fn load_program(name: &str) -> Vec<u8> {
     let mut file =
         File::open(&name).unwrap_or_else(|err| panic!("Unable to open {}: {}", name, err));
@@ -85,6 +81,7 @@ fn assert_instruction_count() {
     );
     assert!(share_count <= BASELINE_COUNT);
 }
+*/
 
 #[test]
 fn test_share_data() {

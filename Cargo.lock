@@ -3784,18 +3784,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl_token_perf_monitor"
-version = "0.0.1"
-dependencies = [
- "rand",
- "solana-bpf-loader-program",
- "solana-runtime",
- "solana-sdk",
- "solana_rbpf 0.1.34",
- "spl-token 3.0.1",
-]
-
-[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -17,7 +17,6 @@ members = [
   "token-swap/program",
   "token-swap/program/fuzz",
   "token/cli",
-  "token/perf-monitor",
   "token/program",
   "token/program-v3",
   "utils/cgen",
@@ -25,4 +24,5 @@ members = [
 ]
 exclude = [
   "themis/client_ristretto",
+  "token/perf-monitor", # TODO: Rework perf-monitor to use solana-program-test, avoiding the need to link directly with the BPF VM
 ]
