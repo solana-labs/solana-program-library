@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
 import fs from "mz/fs";
 import {
   Account,
@@ -6,7 +9,9 @@ import {
   PublicKey,
   BPF_LOADER_PROGRAM_ID,
 } from "@solana/web3.js";
+import { Token } from "@solana/spl-token";
 
+import { LendingMarket } from "../client";
 import { Store } from "../client/util/store";
 import { newAccountWithLamports } from "../client/util/new-account-with-lamports";
 import { url } from "../client/util/url";
@@ -22,12 +27,45 @@ async function getConnection(): Promise<Connection> {
   return connection;
 }
 
+let tokenProgramId: PublicKey;
+let tokenLendingProgramId: PublicKey;
+
 export async function loadPrograms(): Promise<void> {
   const connection = await getConnection();
-  const [tokenProgramId, tokenSwapProgramId] = await GetPrograms(connection);
+  ({ tokenProgramId, tokenLendingProgramId } = await GetPrograms(connection));
 
-  console.log("Token Program ID", tokenProgramId.toString());
-  console.log("Token-swap Program ID", tokenSwapProgramId.toString());
+  console.log("SPL Token Program ID", tokenProgramId.toString());
+  console.log("SPL Token Lending Program ID", tokenLendingProgramId.toString());
+}
+
+export async function createLendingMarket(): Promise<void> {
+  const connection = await getConnection();
+
+  const payer = await newAccountWithLamports(
+    connection,
+    100000000000 /* wag */
+  );
+
+  console.log("creating quote token mint");
+  const quoteMintAuthority = new Account();
+  const quoteTokenMint = await Token.createMint(
+    connection,
+    payer,
+    quoteMintAuthority.publicKey,
+    null,
+    2,
+    tokenProgramId
+  );
+
+  const lendingMarketAccount = new Account();
+  await LendingMarket.create({
+    connection,
+    tokenProgramId,
+    lendingProgramId: tokenLendingProgramId,
+    quoteTokenMint: quoteTokenMint.publicKey,
+    lendingMarketAccount,
+    payer,
+  });
 }
 
 async function loadProgram(
@@ -63,13 +101,16 @@ async function loadProgram(
 
 async function GetPrograms(
   connection: Connection
-): Promise<[PublicKey, PublicKey]> {
+): Promise<{
+  tokenProgramId: PublicKey;
+  tokenLendingProgramId: PublicKey;
+}> {
   const store = new Store();
   let tokenProgramId = null;
   let tokenLendingProgramId = null;
   try {
     const config = await store.load("config.json");
-    console.log("Using pre-loaded Token and Token-lending programs");
+    console.log("Using pre-loaded programs");
     console.log(
       "  Note: To reload programs remove client/util/store/config.json"
     );
@@ -90,8 +131,8 @@ async function GetPrograms(
     );
     await store.save("config.json", {
       tokenProgramId: tokenProgramId.toString(),
-      tokenSwapProgramId: tokenLendingProgramId.toString(),
+      tokenLendingProgramId: tokenLendingProgramId.toString(),
     });
   }
-  return [tokenProgramId, tokenLendingProgramId];
+  return { tokenProgramId, tokenLendingProgramId };
 }

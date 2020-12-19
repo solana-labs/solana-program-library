@@ -38,11 +38,14 @@
     "localnet:logs": "solana-localnet logs -f"
   },
   "dependencies": {
-    "@solana/web3.js": "^0.87.0"
+    "@solana/spl-token": "0.0.13",
+    "@solana/web3.js": "^0.87.0",
+    "bn.js": "^5.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^17.0.0",
     "@tsconfig/recommended": "^1.0.1",
+    "@types/bn.js": "^4.11.6",
     "@types/eslint": "^7.2.5",
     "@types/eslint-plugin-prettier": "^3.1.0",
     "@types/mkdirp": "^1.0.1",
