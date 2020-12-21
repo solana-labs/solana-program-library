@@ -33,6 +33,21 @@ pub struct LendingMarket {
     pub token_program_id: Pubkey,
 }
 
+/// Additional fee information on a reserve
+///
+/// These exist separately from interest accrual fees, and are specifically for
+/// the program owner and frontend host.  The fees are paid out as a percentage
+/// of collateral token amounts during repayments and liquidations.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ReserveFees {
+    /// Fee assessed on `RepayReserveLiquidity`, expressed in basis points (0.01% = 1bp)
+    pub repay_fee_basis_points: u16,
+    /// Fee assessed on `LiquidateObligation`, expressed in basis points (0.01% = 1bp)
+    pub liquidate_fee_basis_points: u16,
+    /// Amount of fee going to host account, if provided in liquidate and repay
+    pub host_fee_percentage: u8,
+}
+
 /// Reserve configuration values
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ReserveConfig {
@@ -50,6 +65,8 @@ pub struct ReserveConfig {
     pub optimal_borrow_rate: u8,
     /// Max borrow APY
     pub max_borrow_rate: u8,
+    /// Program owner fees assessed, separate from gains due to interest accrual
+    pub fees: ReserveFees,
 }
 
 /// Reserve state
@@ -97,6 +114,8 @@ pub struct Reserve {
     /// Reserve collateral supply
     /// Collateral is stored rather than burned to keep an accurate total collateral supply
     pub collateral_supply: Pubkey,
+    /// Collateral account receiving owner fees on liquidate and repay
+    pub collateral_fees_receiver: Pubkey,
     /// Dex market state account
     pub dex_market: COption<Pubkey>,
 
@@ -294,9 +313,9 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 260;
+const RESERVE_LEN: usize = 297;
 impl Pack for Reserve {
-    const LEN: usize = 260;
+    const LEN: usize = 297;
 
     /// Unpacks a byte buffer into a [ReserveInfo](struct.ReserveInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
@@ -310,6 +329,7 @@ impl Pack for Reserve {
             liquidity_supply,
             collateral_mint,
             collateral_supply,
+            collateral_fees_receiver,
             dex_market,
             optimal_utilization_rate,
             loan_to_value_ratio,
@@ -318,11 +338,16 @@ impl Pack for Reserve {
             min_borrow_rate,
             optimal_borrow_rate,
             max_borrow_rate,
+            repay_fee_basis_points,
+            liquidate_fee_basis_points,
+            host_fee_percentage,
             cumulative_borrow_rate,
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
-        ) = array_refs![input, 8, 32, 32, 1, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 16, 16, 8, 8];
+        ) = array_refs![
+            input, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 16, 16, 8, 8
+        ];
         Ok(Self {
             lending_market: Pubkey::new_from_array(*lending_market),
             liquidity_mint: Pubkey::new_from_array(*liquidity_mint),
@@ -330,6 +355,7 @@ impl Pack for Reserve {
             liquidity_supply: Pubkey::new_from_array(*liquidity_supply),
             collateral_mint: Pubkey::new_from_array(*collateral_mint),
             collateral_supply: Pubkey::new_from_array(*collateral_supply),
+            collateral_fees_receiver: Pubkey::new_from_array(*collateral_fees_receiver),
             dex_market: unpack_coption_key(dex_market)?,
             config: ReserveConfig {
                 optimal_utilization_rate: u8::from_le_bytes(*optimal_utilization_rate),
@@ -339,6 +365,11 @@ impl Pack for Reserve {
                 min_borrow_rate: u8::from_le_bytes(*min_borrow_rate),
                 optimal_borrow_rate: u8::from_le_bytes(*optimal_borrow_rate),
                 max_borrow_rate: u8::from_le_bytes(*max_borrow_rate),
+                fees: ReserveFees {
+                    repay_fee_basis_points: u16::from_le_bytes(*repay_fee_basis_points),
+                    liquidate_fee_basis_points: u16::from_le_bytes(*liquidate_fee_basis_points),
+                    host_fee_percentage: u8::from_le_bytes(*host_fee_percentage),
+                },
             },
             state: ReserveState {
                 last_update_slot: u64::from_le_bytes(*last_update_slot),
@@ -360,6 +391,7 @@ impl Pack for Reserve {
             liquidity_supply,
             collateral_mint,
             collateral_supply,
+            collateral_fees_receiver,
             dex_market,
             optimal_utilization_rate,
             loan_to_value_ratio,
@@ -368,12 +400,15 @@ impl Pack for Reserve {
             min_borrow_rate,
             optimal_borrow_rate,
             max_borrow_rate,
+            repay_fee_basis_points,
+            liquidate_fee_basis_points,
+            host_fee_percentage,
             cumulative_borrow_rate,
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
         ) = mut_array_refs![
-            output, 8, 32, 32, 1, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 16, 16, 8, 8
+            output, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 16, 16, 8, 8
         ];
         *last_update_slot = self.state.last_update_slot.to_le_bytes();
         lending_market.copy_from_slice(self.lending_market.as_ref());
@@ -382,6 +417,7 @@ impl Pack for Reserve {
         liquidity_supply.copy_from_slice(self.liquidity_supply.as_ref());
         collateral_mint.copy_from_slice(self.collateral_mint.as_ref());
         collateral_supply.copy_from_slice(self.collateral_supply.as_ref());
+        collateral_fees_receiver.copy_from_slice(self.collateral_fees_receiver.as_ref());
         pack_coption_key(&self.dex_market, dex_market);
         *optimal_utilization_rate = self.config.optimal_utilization_rate.to_le_bytes();
         *loan_to_value_ratio = self.config.loan_to_value_ratio.to_le_bytes();
@@ -390,6 +426,9 @@ impl Pack for Reserve {
         *min_borrow_rate = self.config.min_borrow_rate.to_le_bytes();
         *optimal_borrow_rate = self.config.optimal_borrow_rate.to_le_bytes();
         *max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();
+        *repay_fee_basis_points = self.config.fees.repay_fee_basis_points.to_le_bytes();
+        *liquidate_fee_basis_points = self.config.fees.liquidate_fee_basis_points.to_le_bytes();
+        *host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
         pack_decimal(
             self.state.cumulative_borrow_rate_wads,
             cumulative_borrow_rate,

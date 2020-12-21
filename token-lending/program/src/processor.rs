@@ -135,6 +135,7 @@ fn process_init_reserve(
     let reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let reserve_collateral_mint_info = next_account_info(account_info_iter)?;
     let reserve_collateral_supply_info = next_account_info(account_info_iter)?;
+    let reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
@@ -223,6 +224,14 @@ fn process_init_reserve(
     })?;
 
     spl_token_init_account(TokenInitializeAccountParams {
+        account: reserve_collateral_fees_receiver_info.clone(),
+        mint: reserve_collateral_mint_info.clone(),
+        owner: lending_market_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_id.clone(),
+    })?;
+
+    spl_token_init_account(TokenInitializeAccountParams {
         account: destination_collateral_info.clone(),
         mint: reserve_collateral_mint_info.clone(),
         owner: lending_market_authority_info.clone(),
@@ -258,6 +267,7 @@ fn process_init_reserve(
             liquidity_supply: *reserve_liquidity_supply_info.key,
             collateral_mint: *reserve_collateral_mint_info.key,
             collateral_supply: *reserve_collateral_supply_info.key,
+            collateral_fees_receiver: *reserve_collateral_fees_receiver_info.key,
             dex_market,
             state: reserve_state,
             config,
@@ -726,6 +736,8 @@ fn process_repay(
     let repay_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
+    let withdraw_reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
+    let _withdraw_reserve_collateral_host_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_token_mint_info = next_account_info(account_info_iter)?;
     let obligation_token_input_info = next_account_info(account_info_iter)?;
@@ -790,6 +802,12 @@ fn process_repay(
         msg!("Invalid withdraw reserve collateral supply account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if &withdraw_reserve.collateral_fees_receiver
+        != withdraw_reserve_collateral_fees_receiver_info.key
+    {
+        msg!("Invalid withdraw reserve collateral fees receiver account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
     if &repay_reserve.liquidity_supply == source_liquidity_info.key {
         msg!("Cannot use repay reserve liquidity supply as source account input");
         return Err(LendingError::InvalidAccountInput.into());
@@ -823,6 +841,8 @@ fn process_repay(
         let token_amount: Decimal = repay_pct * obligation_mint.supply;
         token_amount.round_u64()
     };
+
+    // TODO fees
 
     obligation.borrowed_liquidity_wads -= repay_amount;
     obligation.deposited_collateral_tokens -= collateral_withdraw_amount;
@@ -865,6 +885,8 @@ fn process_repay(
         token_program: token_program_id.clone(),
     })?;
 
+    // TODO fees
+
     Ok(())
 }
 
@@ -885,6 +907,8 @@ fn process_liquidate(
     let repay_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
+    let withdraw_reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
+    let _withdraw_reserve_collateral_host_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
@@ -944,6 +968,12 @@ fn process_liquidate(
     }
     if &withdraw_reserve.collateral_supply != withdraw_reserve_collateral_supply_info.key {
         msg!("Invalid withdraw reserve collateral supply account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &withdraw_reserve.collateral_fees_receiver
+        != withdraw_reserve_collateral_fees_receiver_info.key
+    {
+        msg!("Invalid withdraw reserve collateral fees receiver account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &repay_reserve.liquidity_supply == source_liquidity_info.key {
@@ -1022,6 +1052,8 @@ fn process_liquidate(
         .deposited_collateral_tokens
         .min(repay_amount_as_collateral + liquidation_bonus_amount);
 
+    // TODO fees
+
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
     Reserve::pack(
         withdraw_reserve,
@@ -1059,6 +1091,8 @@ fn process_liquidate(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
+
+    // TODO fees
 
     Ok(())
 }

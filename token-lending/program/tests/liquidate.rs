@@ -118,6 +118,8 @@ async fn test_success() {
                 usdc_reserve.liquidity_supply,
                 sol_reserve.pubkey,
                 sol_reserve.collateral_supply,
+                sol_reserve.collateral_fees_receiver,
+                sol_reserve.collateral_host,
                 obligation.keypair.pubkey(),
                 lending_market.keypair.pubkey(),
                 lending_market.authority,
