@@ -28,12 +28,14 @@ HFUZZ_RUN_ARGS="--run_time $run_time --exit_upon_crash" cargo hfuzz run $fuzz_ta
 
 # Until https://github.com/rust-fuzz/honggfuzz-rs/issues/16 is resolved,
 # hfuzz does not return an error code on crash, so look for a crash artifact
+exit_status=0
 for crash_file in ./hfuzz_workspace/"$fuzz_target"/*.fuzz; do
   # Check if the glob gets expanded to existing files.
   if [[ -e "$crash_file" ]]; then
-    echo ".fuzz file $crash_file found, meaning some error occurred, exiting"
-    exit 1
+    echo ".fuzz file $crash_file found, meaning some error occurred, try to reproduce locall with the contents of the file:"
+    cat "$crash_file"
+    exit_status=1
   fi
-  # Break early -- we just need one iteration to see if a failure occurred
-  break
 done
+
+exit $exit_status
