@@ -62,19 +62,11 @@ pub fn setup_test() -> (ProgramTest, LendingTest) {
     let usdc_mint = add_usdc_mint(&mut test);
     let srm_mint = add_srm_mint(&mut test);
 
-    let sol_usdc_dex_market = TestDexMarket::setup(
-        &mut test,
-        "sol_usdc",
-        SOL_USDC_BIDS,
-        SOL_USDC_ASKS,
-    );
+    let sol_usdc_dex_market =
+        TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
 
-    let srm_usdc_dex_market = TestDexMarket::setup(
-        &mut test,
-        "srm_usdc",
-        SRM_USDC_BIDS,
-        SRM_USDC_ASKS,
-    );
+    let srm_usdc_dex_market =
+        TestDexMarket::setup(&mut test, "srm_usdc", SRM_USDC_BIDS, SRM_USDC_ASKS);
 
     (
         test,
@@ -890,7 +882,7 @@ impl TestDexMarket {
         test: &mut ProgramTest,
         name: &str,
         bids_pubkey: &str,
-        asks_pubkey: &str
+        asks_pubkey: &str,
     ) -> TestDexMarket {
         let pubkey = Pubkey::new_unique();
         let bids_pubkey = Pubkey::from_str(bids_pubkey).unwrap();

@@ -24,7 +24,8 @@ async fn test_success() {
     );
 
     let user_accounts_owner = Keypair::new();
-    let sol_usdc_dex_market = TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
+    let sol_usdc_dex_market =
+        TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
@@ -79,7 +80,8 @@ async fn test_already_initialized() {
     );
 
     let user_accounts_owner = Keypair::new();
-    let sol_usdc_dex_market = TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
+    let sol_usdc_dex_market =
+        TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 

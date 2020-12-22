@@ -3,9 +3,7 @@ mod helpers;
 use helpers::genesis::GenesisAccounts;
 use helpers::*;
 use solana_sdk::signature::Keypair;
-use spl_token_lending::{
-    instruction::BorrowAmountType, state::INITIAL_COLLATERAL_RATE,
-};
+use spl_token_lending::{instruction::BorrowAmountType, state::INITIAL_COLLATERAL_RATE};
 
 #[tokio::test]
 async fn test_success() {
@@ -182,7 +180,8 @@ async fn test_success() {
                 dex_market: &sol_usdc_dex_market,
                 borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
                 amount: lamports_to_usdc_fractional(
-                    usdc_reserve.config.loan_to_value_ratio as u64 * USER_SOL_COLLATERAL_LAMPORTS / 100,
+                    usdc_reserve.config.loan_to_value_ratio as u64 * USER_SOL_COLLATERAL_LAMPORTS
+                        / 100,
                 ),
                 user_accounts_owner: &user_accounts_owner,
                 obligation: Some(obligation),
@@ -197,9 +196,11 @@ async fn test_success() {
             &user_accounts_owner,
             &payer,
             &usdc_reserve,
-            2 * INITIAL_COLLATERAL_RATE * lamports_to_usdc_fractional(
-                usdc_reserve.config.loan_to_value_ratio as u64 * USER_SOL_COLLATERAL_LAMPORTS / 100,
-            ),
+            2 * INITIAL_COLLATERAL_RATE
+                * lamports_to_usdc_fractional(
+                    usdc_reserve.config.loan_to_value_ratio as u64 * USER_SOL_COLLATERAL_LAMPORTS
+                        / 100,
+                ),
         )
         .await;
 
@@ -213,9 +214,12 @@ async fn test_success() {
                 borrow_reserve: &sol_reserve,
                 dex_market: &sol_usdc_dex_market,
                 borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
-                amount: INITIAL_COLLATERAL_RATE * lamports_to_usdc_fractional(
-                    usdc_reserve.config.loan_to_value_ratio as u64 * USER_SOL_COLLATERAL_LAMPORTS / 100,
-                ),
+                amount: INITIAL_COLLATERAL_RATE
+                    * lamports_to_usdc_fractional(
+                        usdc_reserve.config.loan_to_value_ratio as u64
+                            * USER_SOL_COLLATERAL_LAMPORTS
+                            / 100,
+                    ),
                 user_accounts_owner: &user_accounts_owner,
                 obligation: None,
             },
@@ -232,9 +236,12 @@ async fn test_success() {
                 borrow_reserve: &srm_reserve,
                 dex_market: &srm_usdc_dex_market,
                 borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
-                amount: INITIAL_COLLATERAL_RATE * lamports_to_usdc_fractional(
-                    usdc_reserve.config.loan_to_value_ratio as u64 * USER_SOL_COLLATERAL_LAMPORTS / 100,
-                ),
+                amount: INITIAL_COLLATERAL_RATE
+                    * lamports_to_usdc_fractional(
+                        usdc_reserve.config.loan_to_value_ratio as u64
+                            * USER_SOL_COLLATERAL_LAMPORTS
+                            / 100,
+                    ),
                 user_accounts_owner: &user_accounts_owner,
                 obligation: None,
             },
