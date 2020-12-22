@@ -10,6 +10,7 @@ edition = "2018"
 [features]
 no-entrypoint = []
 test-bpf = []
+test-dump-genesis-accounts = []
 
 [dependencies]
 arrayref = "0.3.6"

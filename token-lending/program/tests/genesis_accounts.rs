@@ -8,7 +8,7 @@ use spl_token_lending::{
 };
 
 #[tokio::test]
-async fn create_genesis_accounts() {
+async fn test_success() {
     let (mut test, lending) = setup_test();
 
     let LendingTest {
@@ -260,5 +260,8 @@ async fn create_genesis_accounts() {
     srm_usdc_dex_market
         .add_to_genesis(&mut banks_client, &mut genesis_accounts)
         .await;
+
+    // Only dump the accounts if the feature is specified
+    #[cfg(feature = "test-dump-genesis-accounts")]
     genesis_accounts.write_yaml();
 }
