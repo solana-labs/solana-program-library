@@ -4,7 +4,7 @@ use crate::{
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
     math::{Decimal, Rate},
-    state::{TOTAL_BASIS_POINTS, LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState},
+    state::{LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState, TOTAL_BASIS_POINTS},
 };
 use arrayref::{array_refs, mut_array_refs};
 use num_traits::FromPrimitive;
@@ -860,16 +860,20 @@ fn process_repay(
 
     let repay_fee_rate = withdraw_reserve.config.fees.repay_fee_basis_points as u64;
     let repay_fee = if repay_fee_rate > 0 {
-        std::cmp::max(1, collateral_withdraw_amount * repay_fee_rate / TOTAL_BASIS_POINTS)
+        std::cmp::max(
+            1,
+            collateral_withdraw_amount * repay_fee_rate / TOTAL_BASIS_POINTS,
+        )
     } else {
         0
     };
     let host_fee_rate = withdraw_reserve.config.fees.host_fee_percentage as u64;
-    let host_fee = if host_fee_rate > 0 && *withdraw_reserve_collateral_host_info.key != Pubkey::default() {
-        std::cmp::max(1, repay_fee * host_fee_rate / 100)
-    } else {
-        0
-    };
+    let host_fee =
+        if host_fee_rate > 0 && *withdraw_reserve_collateral_host_info.key != Pubkey::default() {
+            std::cmp::max(1, repay_fee * host_fee_rate / 100)
+        } else {
+            0
+        };
     // update amount actually withdrawn
     let collateral_withdraw_amount = collateral_withdraw_amount - repay_fee;
     let owner_fee = repay_fee - host_fee;
@@ -1117,15 +1121,19 @@ fn process_liquidate(
 
     // calculate fees
     let liquidate_fee = if liquidate_fee_rate > 0 {
-        std::cmp::max(1, collateral_withdraw_amount * liquidate_fee_rate / TOTAL_BASIS_POINTS)
+        std::cmp::max(
+            1,
+            collateral_withdraw_amount * liquidate_fee_rate / TOTAL_BASIS_POINTS,
+        )
     } else {
         0
     };
-    let host_fee = if host_fee_rate > 0 && *withdraw_reserve_collateral_host_info.key != Pubkey::default() {
-        std::cmp::max(1, liquidate_fee * host_fee_rate / 100)
-    } else {
-        0
-    };
+    let host_fee =
+        if host_fee_rate > 0 && *withdraw_reserve_collateral_host_info.key != Pubkey::default() {
+            std::cmp::max(1, liquidate_fee * host_fee_rate / 100)
+        } else {
+            0
+        };
 
     // update amount actually withdrawn
     let collateral_withdraw_amount = collateral_withdraw_amount - liquidate_fee;
