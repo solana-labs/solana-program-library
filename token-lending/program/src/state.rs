@@ -22,6 +22,9 @@ pub const INITIAL_COLLATERAL_RATE: u64 = 5;
 pub const SLOTS_PER_YEAR: u64 =
     DEFAULT_TICKS_PER_SECOND / DEFAULT_TICKS_PER_SLOT * SECONDS_PER_DAY * 365;
 
+/// Total basis points in 1
+pub const TOTAL_BASIS_POINTS: u64 = 10_000;
+
 /// Lending market state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LendingMarket {
