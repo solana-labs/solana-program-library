@@ -42,6 +42,36 @@ pub enum StakePoolInstruction {
     ///   5. `[]` Token program id
     Initialize(InitArgs),
 
+    ///   Adds validator stake account to the pool
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[s]` Owner
+    ///   2. `[]` Stake pool deposit authority
+    ///   3. `[]` Stake pool withdraw authority
+    ///   4. `[w]` Validator stake list storage account
+    ///   5. `[w]` Stake account to join the pool, its withdraw authority should be set to stake pool deposit
+    ///   6. `[w]` User account to receive pool tokens
+    ///   7. `[w]` Pool token mint account
+    ///   8. `[]` Clock sysvar (required)
+    ///   9. `[]` Pool token program id,
+    ///  10. `[]` Stake program id,
+    JoinPool,
+
+    ///   Removes validator stake account from the pool
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[s]` Owner
+    ///   2. `[]` Stake pool withdraw authority
+    ///   3. `[]` New withdraw/staker authority to set in the stake account
+    ///   4. `[w]` Validator stake list storage account
+    ///   5. `[w]` Stake account to leave the pool
+    ///   6. `[w]` User account with pool tokens to burn from
+    ///   7. `[w]` Pool token mint account
+    ///   8. '[]' Sysvar clock account (reserved for future use)
+    ///   9. `[]` Pool token program id
+    ///  10. `[]` Stake program id,
+    LeavePool,
+
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
     ///
@@ -119,14 +149,16 @@ impl StakePoolInstruction {
                 let val: &InitArgs = unpack(input)?;
                 Self::Initialize(*val)
             }
-            1 => Self::Deposit,
-            2 => {
+            1 => Self::JoinPool,
+            2 => Self::LeavePool,
+            3 => Self::Deposit,
+            4 => {
                 let val: &u64 = unpack(input)?;
                 Self::Withdraw(*val)
             }
-            3 => Self::Claim,
-            4 => Self::SetStakingAuthority,
-            5 => Self::SetOwner,
+            5 => Self::Claim,
+            6 => Self::SetStakingAuthority,
+            7 => Self::SetOwner,
             _ => return Err(ProgramError::InvalidAccountData),
         })
     }
@@ -142,23 +174,29 @@ impl StakePoolInstruction {
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut InitArgs) };
                 *value = *init;
             }
-            Self::Deposit => {
+            Self::JoinPool => {
                 output[0] = 1;
             }
-            Self::Withdraw(val) => {
+            Self::LeavePool => {
                 output[0] = 2;
+            }
+            Self::Deposit => {
+                output[0] = 3;
+            }
+            Self::Withdraw(val) => {
+                output[0] = 4;
                 #[allow(clippy::cast_ptr_alignment)]
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
                 *value = *val;
             }
             Self::Claim => {
-                output[0] = 3;
+                output[0] = 5;
             }
             Self::SetStakingAuthority => {
-                output[0] = 4;
+                output[0] = 6;
             }
             Self::SetOwner => {
-                output[0] = 5;
+                output[0] = 7;
             }
         }
         Ok(output)
@@ -203,7 +241,75 @@ pub fn initialize(
     })
 }
 
-/// Creates a 'deposit' instruction.
+/// Creates `JoinPool` instruction (add new validator stake account to the pool)
+pub fn join_pool(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    owner: &Pubkey,
+    stake_pool_deposit: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    validator_stake_list: &Pubkey,
+    stake_account: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    stake_program_id: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*owner, true),
+        AccountMeta::new_readonly(*stake_pool_deposit, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
+        AccountMeta::new(*validator_stake_list, false),
+        AccountMeta::new(*stake_account, false),
+        AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*stake_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::JoinPool.serialize()?,
+    })
+}
+
+/// Creates `LeavePool` instruction (remove validator stake account from the pool)
+pub fn leave_pool(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    owner: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    new_stake_authority: &Pubkey,
+    validator_stake_list: &Pubkey,
+    stake_account: &Pubkey,
+    burn_from: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    stake_program_id: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*owner, true),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
+        AccountMeta::new_readonly(*new_stake_authority, false),
+        AccountMeta::new(*validator_stake_list, false),
+        AccountMeta::new(*stake_account, false),
+        AccountMeta::new(*burn_from, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*stake_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::LeavePool.serialize()?,
+    })
+}
+
+/// Creates a 'Deposit' instruction.
 pub fn deposit(
     program_id: &Pubkey,
     stake_pool: &Pubkey,

@@ -1,9 +1,13 @@
 //! State transition types
 
-use crate::error::Error;
+use crate::error::StakePoolError;
 use crate::instruction::{unpack, Fee};
+use crate::processor::Processor;
 use core::convert::TryInto;
-use solana_program::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
+use solana_program::{
+    account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
+    pubkey::Pubkey,
+};
 use std::mem::size_of;
 
 /// Initialized program details.
@@ -56,6 +60,48 @@ impl StakePool {
         pool_amount
             .checked_mul(self.fee.numerator as u128)?
             .checked_div(self.fee.denominator as u128)
+    }
+
+    /// Checks withdraw authority
+    pub fn check_authority_withdraw(
+        &self,
+        authority_to_check: &Pubkey,
+        program_id: &Pubkey,
+        stake_pool_key: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        Processor::check_authority(
+            authority_to_check,
+            program_id,
+            stake_pool_key,
+            Processor::AUTHORITY_WITHDRAW,
+            self.withdraw_bump_seed,
+        )
+    }
+    /// Checks deposit authority
+    pub fn check_authority_deposit(
+        &self,
+        authority_to_check: &Pubkey,
+        program_id: &Pubkey,
+        stake_pool_key: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        Processor::check_authority(
+            authority_to_check,
+            program_id,
+            stake_pool_key,
+            Processor::AUTHORITY_DEPOSIT,
+            self.deposit_bump_seed,
+        )
+    }
+
+    /// Check owner validity and signature
+    pub fn check_owner(&self, owner_info: &AccountInfo) -> Result<(), ProgramError> {
+        if *owner_info.key != self.owner {
+            return Err(StakePoolError::WrongOwner.into());
+        }
+        if !owner_info.is_signer {
+            return Err(StakePoolError::SignatureMissing.into());
+        }
+        Ok(())
     }
 }
 
@@ -114,7 +160,7 @@ impl State {
         if let State::Init(swap) = &self {
             Ok(*swap)
         } else {
-            Err(Error::InvalidState.into())
+            Err(StakePoolError::InvalidState.into())
         }
     }
 }
@@ -135,8 +181,8 @@ pub struct ValidatorStakeList {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ValidatorStakeInfo {
-    /// Account pubkey
-    pub account: Pubkey,
+    /// Validator account pubkey
+    pub validator_account: Pubkey,
 
     /// Account balance in lamports
     pub balance: u64,
@@ -269,17 +315,17 @@ mod test {
             is_initialized: true,
             validators: vec![
                 ValidatorStakeInfo {
-                    account: Pubkey::new_from_array([1; 32]),
+                    validator_account: Pubkey::new_from_array([1; 32]),
                     balance: 123456789,
                     last_update_epoch: 987654321,
                 },
                 ValidatorStakeInfo {
-                    account: Pubkey::new_from_array([2; 32]),
+                    validator_account: Pubkey::new_from_array([2; 32]),
                     balance: 998877665544,
                     last_update_epoch: 11223445566,
                 },
                 ValidatorStakeInfo {
-                    account: Pubkey::new_from_array([3; 32]),
+                    validator_account: Pubkey::new_from_array([3; 32]),
                     balance: 0,
                     last_update_epoch: 999999999999999,
                 },
