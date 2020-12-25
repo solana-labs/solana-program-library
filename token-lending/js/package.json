@@ -57,7 +57,7 @@
     "@typescript-eslint/parser": "^4.11.0",
     "dotenv": "^8.2.0",
     "eslint": "^7.13.0",
-    "eslint-config-prettier": "^6.15.0",
+    "eslint-config-prettier": "^7.1.0",
     "eslint-plugin-prettier": "^3.2.0",
     "prettier": "^2.2.1",
     "rollup": "^2.34.1",
