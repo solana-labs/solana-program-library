@@ -3681,6 +3681,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "solana-vote-program",
  "spl-token 3.0.1",
  "thiserror",
  "tokio 0.3.5",

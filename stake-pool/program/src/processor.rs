@@ -331,6 +331,8 @@ impl Processor {
         }
 
         // Check stake account address validity
+        // Commented until stake account creation is added to the stake-pool
+        /*
         if Self::find_stake_address_for_validator(
             &program_id,
             &validator_account,
@@ -338,7 +340,7 @@ impl Processor {
         ) != *stake_account_info.key
         {
             return Err(StakePoolError::InvalidStakeAccountAddress.into());
-        }
+        }*/
 
         // Update Withdrawer and Staker authority to the program withdraw authority
         for authority in &[
@@ -462,6 +464,8 @@ impl Processor {
         }
 
         // Check stake account address validity
+        // Commented until stake account creation is added to the stake-pool
+        /*
         if Self::find_stake_address_for_validator(
             &program_id,
             &validator_account,
@@ -470,6 +474,7 @@ impl Processor {
         {
             return Err(StakePoolError::InvalidStakeAccountAddress.into());
         }
+        */
 
         // Update Withdrawer and Staker authority to the provided authority
         for authority in &[
