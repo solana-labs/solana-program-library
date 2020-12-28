@@ -43,7 +43,8 @@ async fn test_success() {
     const OBLIGATION_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATE * LAMPORTS_TO_SOL;
 
     let user_accounts_owner = Keypair::new();
-    let sol_usdc_dex_market = TestDexMarket::add_sol_usdc_dex_market(&mut test);
+    let sol_usdc_dex_market =
+        TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 

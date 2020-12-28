@@ -5,7 +5,7 @@ use solana_program::{program_option::COption, program_pack::Pack, pubkey::Pubkey
 use solana_program_test::*;
 use solana_sdk::{
     account::Account,
-    signature::{Keypair, Signer},
+    signature::{read_keypair_file, Keypair, Signer},
     system_instruction::create_account,
     transaction::Transaction,
 };
@@ -25,6 +25,8 @@ use spl_token_lending::{
     },
 };
 use std::str::FromStr;
+pub mod genesis;
+use genesis::GenesisAccounts;
 
 pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     optimal_utilization_rate: 80,
@@ -36,17 +38,45 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     max_borrow_rate: 30,
 };
 
-pub fn setup_test() -> (ProgramTest, TestDexMarket, TestQuoteMint) {
+pub const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+pub const SRM_MINT: &str = "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt";
+pub const SOL_USDC_BIDS: &str = "4VndUfHkmh6RWTQbXSVjY3wbSfqGjoPbuPHMoatV272H";
+pub const SOL_USDC_ASKS: &str = "6LTxKpMyGnbHM5rRx7f3eZHF9q3gnUBV5ucXF9LvrB3M";
+pub const SRM_USDC_BIDS: &str = "DkxpXtF1EyjHomQcEhH54498gdhUN3t1sZCjReFNYZZn";
+pub const SRM_USDC_ASKS: &str = "DRqgRZqfdD6PLHKSU7ydyVXWMUpvkqhzLZ1JSKn1iB1K";
+
+pub struct LendingTest {
+    pub sol_usdc_dex_market: TestDexMarket,
+    pub srm_usdc_dex_market: TestDexMarket,
+    pub usdc_mint: TestQuoteMint,
+    pub srm_mint: TestQuoteMint,
+}
+
+pub fn setup_test() -> (ProgramTest, LendingTest) {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
         processor!(process_instruction),
     );
 
-    let sol_usdc_dex_market = TestDexMarket::add_sol_usdc_dex_market(&mut test);
     let usdc_mint = add_usdc_mint(&mut test);
+    let srm_mint = add_srm_mint(&mut test);
 
-    (test, sol_usdc_dex_market, usdc_mint)
+    let sol_usdc_dex_market =
+        TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
+
+    let srm_usdc_dex_market =
+        TestDexMarket::setup(&mut test, "srm_usdc", SRM_USDC_BIDS, SRM_USDC_ASKS);
+
+    (
+        test,
+        LendingTest {
+            sol_usdc_dex_market,
+            srm_usdc_dex_market,
+            usdc_mint,
+            srm_mint,
+        },
+    )
 }
 
 trait AddPacked {
@@ -145,6 +175,7 @@ pub fn add_obligation(
 
 #[derive(Default)]
 pub struct AddReserveArgs {
+    pub name: String,
     pub config: ReserveConfig,
     pub liquidity_amount: u64,
     pub liquidity_mint_pubkey: Pubkey,
@@ -162,6 +193,7 @@ pub fn add_reserve(
     args: AddReserveArgs,
 ) -> TestReserve {
     let AddReserveArgs {
+        name,
         config,
         liquidity_amount,
         liquidity_mint_pubkey,
@@ -257,6 +289,7 @@ pub fn add_reserve(
     );
 
     TestReserve {
+        name,
         pubkey: reserve_pubkey,
         lending_market: lending_market.keypair.pubkey(),
         config,
@@ -293,7 +326,7 @@ impl TestLendingMarket {
         quote_token_mint: Pubkey,
         payer: &Keypair,
     ) -> Self {
-        let keypair = Keypair::new();
+        let keypair = read_keypair_file("tests/fixtures/lending_market.json").unwrap();
         let pubkey = keypair.pubkey();
         let (authority_pubkey, _bump_seed) =
             Pubkey::find_program_address(&[&pubkey.to_bytes()[..32]], &spl_token_lending::id());
@@ -509,9 +542,21 @@ impl TestLendingMarket {
             .unwrap();
         LendingMarket::unpack(&lending_market_account.data[..]).unwrap()
     }
+
+    pub async fn add_to_genesis(
+        &self,
+        banks_client: &mut BanksClient,
+        genesis_accounts: &mut GenesisAccounts,
+    ) {
+        println!("lending_market: {}", self.keypair.pubkey());
+        genesis_accounts
+            .fetch_and_insert(banks_client, self.keypair.pubkey())
+            .await;
+    }
 }
 
 pub struct TestReserve {
+    pub name: String,
     pub pubkey: Pubkey,
     pub lending_market: Pubkey,
     pub config: ReserveConfig,
@@ -528,6 +573,7 @@ pub struct TestReserve {
 impl TestReserve {
     #[allow(clippy::too_many_arguments)]
     pub async fn init(
+        name: String,
         banks_client: &mut BanksClient,
         lending_market: &TestLendingMarket,
         reserve_amount: u64,
@@ -550,14 +596,26 @@ impl TestReserve {
             None
         };
 
-        let config = ReserveConfig {
-            optimal_utilization_rate: 80,
-            loan_to_value_ratio: 50,
-            liquidation_bonus: 5,
-            liquidation_threshold: 0,
-            min_borrow_rate: 0,
-            optimal_borrow_rate: 4,
-            max_borrow_rate: 30,
+        let config = if &name == "usdc" {
+            ReserveConfig {
+                optimal_utilization_rate: 80,
+                loan_to_value_ratio: 75,
+                liquidation_bonus: 5,
+                liquidation_threshold: 80,
+                min_borrow_rate: 0,
+                optimal_borrow_rate: 4,
+                max_borrow_rate: 30,
+            }
+        } else {
+            ReserveConfig {
+                optimal_utilization_rate: 0,
+                loan_to_value_ratio: 75,
+                liquidation_bonus: 10,
+                liquidation_threshold: 80,
+                min_borrow_rate: 0,
+                optimal_borrow_rate: 2,
+                max_borrow_rate: 15,
+            }
         };
 
         let liquidity_mint_account = banks_client
@@ -650,6 +708,7 @@ impl TestReserve {
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 
         Self {
+            name,
             pubkey: reserve_pubkey,
             lending_market: lending_market.keypair.pubkey(),
             config,
@@ -662,6 +721,52 @@ impl TestReserve {
             user_collateral_account: user_collateral_token_keypair.pubkey(),
             dex_market: dex_market_pubkey,
         }
+    }
+
+    pub async fn add_to_genesis(
+        &self,
+        banks_client: &mut BanksClient,
+        genesis_accounts: &mut GenesisAccounts,
+    ) {
+        println!("{}_reserve: {}", self.name, self.pubkey);
+        genesis_accounts
+            .fetch_and_insert(banks_client, self.pubkey)
+            .await;
+        println!("{}_collateral_mint: {}", self.name, self.collateral_mint);
+        genesis_accounts
+            .fetch_and_insert(banks_client, self.collateral_mint)
+            .await;
+        println!(
+            "{}_collateral_supply: {}",
+            self.name, self.collateral_supply
+        );
+        genesis_accounts
+            .fetch_and_insert(banks_client, self.collateral_supply)
+            .await;
+        if &self.name != "sol" {
+            println!("{}_liquidity_mint: {}", self.name, self.liquidity_mint);
+            genesis_accounts
+                .fetch_and_insert(banks_client, self.liquidity_mint)
+                .await;
+        }
+        println!("{}_liquidity_supply: {}", self.name, self.liquidity_supply);
+        genesis_accounts
+            .fetch_and_insert(banks_client, self.liquidity_supply)
+            .await;
+        println!(
+            "{}_user_collateral: {}",
+            self.name, self.user_collateral_account
+        );
+        genesis_accounts
+            .fetch_and_insert(banks_client, self.user_collateral_account)
+            .await;
+        println!(
+            "{}_user_liquidity: {}",
+            self.name, self.user_liquidity_account
+        );
+        genesis_accounts
+            .fetch_and_insert(banks_client, self.user_liquidity_account)
+            .await;
     }
 
     pub async fn get_state(&self, banks_client: &mut BanksClient) -> Reserve {
@@ -718,6 +823,7 @@ impl TestObligation {
 }
 
 pub struct TestDexMarket {
+    pub name: String,
     pub pubkey: Pubkey,
     pub bids_pubkey: Pubkey,
     pub asks_pubkey: Pubkey,
@@ -731,7 +837,28 @@ pub struct TestQuoteMint {
 
 pub fn add_usdc_mint(test: &mut ProgramTest) -> TestQuoteMint {
     let authority = Keypair::new();
-    let pubkey = Pubkey::from_str("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v").unwrap();
+    let pubkey = Pubkey::from_str(USDC_MINT).unwrap();
+    let decimals = 6;
+    test.add_packable_account(
+        pubkey,
+        &Mint {
+            is_initialized: true,
+            mint_authority: COption::Some(authority.pubkey()),
+            decimals,
+            ..Mint::default()
+        },
+        &spl_token::id(),
+    );
+    TestQuoteMint {
+        pubkey,
+        authority,
+        decimals,
+    }
+}
+
+pub fn add_srm_mint(test: &mut ProgramTest) -> TestQuoteMint {
+    let authority = Keypair::new();
+    let pubkey = Pubkey::from_str(SRM_MINT).unwrap();
     let decimals = 6;
     test.add_packable_account(
         pubkey,
@@ -751,36 +878,61 @@ pub fn add_usdc_mint(test: &mut ProgramTest) -> TestQuoteMint {
 }
 
 impl TestDexMarket {
-    pub fn add_sol_usdc_dex_market(test: &mut ProgramTest) -> TestDexMarket {
+    pub fn setup(
+        test: &mut ProgramTest,
+        name: &str,
+        bids_pubkey: &str,
+        asks_pubkey: &str,
+    ) -> TestDexMarket {
         let pubkey = Pubkey::new_unique();
+        let bids_pubkey = Pubkey::from_str(bids_pubkey).unwrap();
+        let asks_pubkey = Pubkey::from_str(asks_pubkey).unwrap();
         test.add_account_with_file_data(
             pubkey,
             u32::MAX as u64,
             Pubkey::new(&[0; 32]),
-            "sol_usdc_dex_market.bin",
+            &format!("{}_dex_market.bin", name),
         );
 
-        let bids_pubkey = Pubkey::from_str("4VndUfHkmh6RWTQbXSVjY3wbSfqGjoPbuPHMoatV272H").unwrap();
         test.add_account_with_file_data(
             bids_pubkey,
             u32::MAX as u64,
             Pubkey::new(&[0; 32]),
-            "sol_usdc_dex_market_bids.bin",
+            &format!("{}_dex_market_bids.bin", name),
         );
 
-        let asks_pubkey = Pubkey::from_str("6LTxKpMyGnbHM5rRx7f3eZHF9q3gnUBV5ucXF9LvrB3M").unwrap();
         test.add_account_with_file_data(
             asks_pubkey,
             u32::MAX as u64,
             Pubkey::new(&[0; 32]),
-            "sol_usdc_dex_market_asks.bin",
+            &format!("{}_dex_market_asks.bin", name),
         );
 
         Self {
+            name: name.to_string(),
             pubkey,
             bids_pubkey,
             asks_pubkey,
         }
+    }
+
+    pub async fn add_to_genesis(
+        &self,
+        banks_client: &mut BanksClient,
+        genesis_accounts: &mut GenesisAccounts,
+    ) {
+        println!("{}_dex_market: {}", self.name, self.pubkey);
+        genesis_accounts
+            .fetch_and_insert(banks_client, self.pubkey)
+            .await;
+        println!("{}_dex_market_bids: {}", self.name, self.bids_pubkey);
+        genesis_accounts
+            .fetch_and_insert(banks_client, self.bids_pubkey)
+            .await;
+        println!("{}_dex_market_asks: {}", self.name, self.asks_pubkey);
+        genesis_accounts
+            .fetch_and_insert(banks_client, self.asks_pubkey)
+            .await;
     }
 }
 
