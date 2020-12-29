@@ -172,9 +172,9 @@ export async function mintTo(): Promise<void> {
   assert(accountInfo.amount.toNumber() === 1000);
 }
 
-export async function mintTo2(): Promise<void> {
+export async function mintToChecked(): Promise<void> {
   assert(
-    await didThrow(testToken, testToken.mintTo2, [
+    await didThrow(testToken, testToken.mintToChecked, [
       testAccount,
       testMintAuthority,
       [],
@@ -183,7 +183,7 @@ export async function mintTo2(): Promise<void> {
     ]),
   );
 
-  await testToken.mintTo2(testAccount, testMintAuthority, [], 1000, 2);
+  await testToken.mintToChecked(testAccount, testMintAuthority, [], 1000, 2);
 
   const mintInfo = await testToken.getMintInfo();
   assert(mintInfo.supply.toNumber() === 2000);
@@ -208,12 +208,12 @@ export async function transfer(): Promise<void> {
   assert(testAccountInfo.amount.toNumber() === 1900);
 }
 
-export async function transfer2(): Promise<void> {
+export async function transferChecked(): Promise<void> {
   const destOwner = new Account();
   const dest = await testToken.createAccount(destOwner.publicKey);
 
   assert(
-    await didThrow(testToken, testToken.transfer2, [
+    await didThrow(testToken, testToken.transferChecked, [
       testAccount,
       dest,
       testAccountOwner,
@@ -223,7 +223,14 @@ export async function transfer2(): Promise<void> {
     ]),
   );
 
-  await testToken.transfer2(testAccount, dest, testAccountOwner, [], 100, 2);
+  await testToken.transferChecked(
+    testAccount,
+    dest,
+    testAccountOwner,
+    [],
+    100,
+    2,
+  );
 
   const mintInfo = await testToken.getMintInfo();
   assert(mintInfo.supply.toNumber() === 2000);
@@ -337,12 +344,12 @@ export async function burn(): Promise<void> {
   assert(accountInfo.amount.toNumber() == amount - 1);
 }
 
-export async function burn2(): Promise<void> {
+export async function burnChecked(): Promise<void> {
   let accountInfo = await testToken.getAccountInfo(testAccount);
   const amount = accountInfo.amount.toNumber();
 
   assert(
-    await didThrow(testToken, testToken.burn2, [
+    await didThrow(testToken, testToken.burnChecked, [
       testAccount,
       testAccountOwner,
       [],
@@ -351,7 +358,7 @@ export async function burn2(): Promise<void> {
     ]),
   );
 
-  await testToken.burn2(testAccount, testAccountOwner, [], 1, 2);
+  await testToken.burnChecked(testAccount, testAccountOwner, [], 1, 2);
 
   accountInfo = await testToken.getAccountInfo(testAccount);
   assert(accountInfo.amount.toNumber() == amount - 1);

@@ -1093,7 +1093,7 @@ export class Token {
    * @param amount Number of tokens to transfer
    * @param decimals Number of decimals in transfer amount
    */
-  async transfer2(
+  async transferChecked(
     source: PublicKey,
     destination: PublicKey,
     owner: any,
@@ -1111,10 +1111,10 @@ export class Token {
       signers = multiSigners;
     }
     return await sendAndConfirmTransaction(
-      'Transfer2',
+      'TransferChecked',
       this.connection,
       new Transaction().add(
-        Token.createTransfer2Instruction(
+        Token.createTransferCheckedInstruction(
           this.programId,
           source,
           this.publicKey,
@@ -1141,7 +1141,7 @@ export class Token {
    * @param amount Maximum number of tokens the delegate may transfer
    * @param decimals Number of decimals in approve amount
    */
-  async approve2(
+  async approveChecked(
     account: PublicKey,
     delegate: PublicKey,
     owner: any,
@@ -1159,10 +1159,10 @@ export class Token {
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
-      'Approve2',
+      'ApproveChecked',
       this.connection,
       new Transaction().add(
-        Token.createApprove2Instruction(
+        Token.createApproveCheckedInstruction(
           this.programId,
           account,
           this.publicKey,
@@ -1187,7 +1187,7 @@ export class Token {
    * @param amount Amount to mint
    * @param decimals Number of decimals in amount to mint
    */
-  async mintTo2(
+  async mintToChecked(
     dest: PublicKey,
     authority: any,
     multiSigners: Array<Account>,
@@ -1204,10 +1204,10 @@ export class Token {
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
-      'MintTo2',
+      'MintToChecked',
       this.connection,
       new Transaction().add(
-        Token.createMintTo2Instruction(
+        Token.createMintToCheckedInstruction(
           this.programId,
           this.publicKey,
           dest,
@@ -1231,7 +1231,7 @@ export class Token {
    * @param amount Amount to burn
    * @param decimals Number of decimals in amount to burn
    */
-  async burn2(
+  async burnChecked(
     account: PublicKey,
     owner: any,
     multiSigners: Array<Account>,
@@ -1248,10 +1248,10 @@ export class Token {
       signers = multiSigners;
     }
     await sendAndConfirmTransaction(
-      'Burn2',
+      'BurnChecked',
       this.connection,
       new Transaction().add(
-        Token.createBurn2Instruction(
+        Token.createBurnCheckedInstruction(
           this.programId,
           this.publicKey,
           account,
@@ -1839,7 +1839,7 @@ export class Token {
   }
 
   /**
-   * Construct a Transfer2 instruction
+   * Construct a TransferChecked instruction
    *
    * @param programId SPL Token program account
    * @param source Source account
@@ -1850,7 +1850,7 @@ export class Token {
    * @param amount Number of tokens to transfer
    * @param decimals Number of decimals in transfer amount
    */
-  static createTransfer2Instruction(
+  static createTransferCheckedInstruction(
     programId: PublicKey,
     source: PublicKey,
     mint: PublicKey,
@@ -1869,7 +1869,7 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 12, // Transfer2 instruction
+        instruction: 12, // TransferChecked instruction
         amount: new u64(amount).toBuffer(),
         decimals,
       },
@@ -1905,7 +1905,7 @@ export class Token {
   }
 
   /**
-   * Construct an Approve2 instruction
+   * Construct an ApproveChecked instruction
    *
    * @param programId SPL Token program account
    * @param account Public key of the account
@@ -1916,7 +1916,7 @@ export class Token {
    * @param amount Maximum number of tokens the delegate may transfer
    * @param decimals Number of decimals in approve amount
    */
-  static createApprove2Instruction(
+  static createApproveCheckedInstruction(
     programId: PublicKey,
     account: PublicKey,
     mint: PublicKey,
@@ -1935,7 +1935,7 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 13, // Approve2 instruction
+        instruction: 13, // ApproveChecked instruction
         amount: new u64(amount).toBuffer(),
         decimals,
       },
@@ -1968,7 +1968,7 @@ export class Token {
   }
 
   /**
-   * Construct a MintTo2 instruction
+   * Construct a MintToChecked instruction
    *
    * @param programId SPL Token program account
    * @param mint Public key of the mint
@@ -1978,7 +1978,7 @@ export class Token {
    * @param amount Amount to mint
    * @param decimals Number of decimals in amount to mint
    */
-  static createMintTo2Instruction(
+  static createMintToCheckedInstruction(
     programId: PublicKey,
     mint: PublicKey,
     dest: PublicKey,
@@ -1996,7 +1996,7 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 14, // MintTo2 instruction
+        instruction: 14, // MintToChecked instruction
         amount: new u64(amount).toBuffer(),
         decimals,
       },
@@ -2032,7 +2032,7 @@ export class Token {
   }
 
   /**
-   * Construct a Burn2 instruction
+   * Construct a BurnChecked instruction
    *
    * @param programId SPL Token program account
    * @param mint Mint for the account
@@ -2041,7 +2041,7 @@ export class Token {
    * @param multiSigners Signing accounts if `authority` is a multiSig
    * @param amount amount to burn
    */
-  static createBurn2Instruction(
+  static createBurnCheckedInstruction(
     programId: PublicKey,
     mint: PublicKey,
     account: PublicKey,
@@ -2059,7 +2059,7 @@ export class Token {
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
       {
-        instruction: 15, // Burn2 instruction
+        instruction: 15, // BurnChecked instruction
         amount: new u64(amount).toBuffer(),
         decimals,
       },
