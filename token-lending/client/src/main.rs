@@ -60,8 +60,7 @@ pub fn main() {
         optimal_borrow_rate: 4,
         max_borrow_rate: 30,
         fees: ReserveFees {
-            repay_fee_basis_points: 30,
-            liquidate_fee_basis_points: 50,
+            borrow_fee_wad: 100_000_000_000_000, // 1 bp
             host_fee_percentage: 20,
         },
     };
@@ -87,8 +86,7 @@ pub fn main() {
         optimal_borrow_rate: 2,
         max_borrow_rate: 15,
         fees: ReserveFees {
-            repay_fee_basis_points: 40,
-            liquidate_fee_basis_points: 70,
+            borrow_fee_wad: 1_000_000_000_000, // 0.01 bp
             host_fee_percentage: 20,
         },
     };
@@ -114,8 +112,7 @@ pub fn main() {
         optimal_borrow_rate: 2,
         max_borrow_rate: 15,
         fees: ReserveFees {
-            repay_fee_basis_points: 35,
-            liquidate_fee_basis_points: 60,
+            borrow_fee_wad: 10_000_000_000_000, // 0.1 bp
             host_fee_percentage: 25,
         },
     };

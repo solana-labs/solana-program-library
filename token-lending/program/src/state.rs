@@ -53,7 +53,11 @@ pub struct ReserveFees {
 
 impl ReserveFees {
     /// Calculate the owner and host fees on borrow
-    pub fn calculate_borrow_fees(&self, collateral_amount: u64, host_pubkey: &Pubkey) -> (u64, u64) {
+    pub fn calculate_borrow_fees(
+        &self,
+        collateral_amount: u64,
+        host_pubkey: &Pubkey,
+    ) -> (u64, u64) {
         let borrow_fee_rate = Rate::new(self.borrow_fee_wad, SCALE);
         let host_fee_rate = self.host_fee_percentage as u64;
         if borrow_fee_rate > Rate::zero() {
@@ -63,13 +67,12 @@ impl ReserveFees {
             } else {
                 1 // 1 token to owner, nothing else
             };
-            let borrow_fee =
-                std::cmp::max(
-                    minimum_fee,
-                    (borrow_fee_rate * collateral_amount).round_u64(),
-                );
+            let borrow_fee = std::cmp::max(
+                minimum_fee,
+                (borrow_fee_rate * collateral_amount).round_u64(),
+            );
             let host_fee = if need_to_assess_host_fee {
-                    std::cmp::max(1, borrow_fee * host_fee_rate / 100)
+                std::cmp::max(1, borrow_fee * host_fee_rate / 100)
             } else {
                 0
             };

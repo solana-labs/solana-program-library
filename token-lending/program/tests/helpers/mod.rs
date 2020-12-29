@@ -38,7 +38,8 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     optimal_borrow_rate: 4,
     max_borrow_rate: 30,
     fees: ReserveFees {
-        borrow_fee_wad: 100_000_000_000, /// 0.00001% (Aave borrow fee)
+        borrow_fee_wad: 100_000_000_000,
+        /// 0.00001% (Aave borrow fee)
         host_fee_percentage: 20,
     },
 };
@@ -650,7 +651,8 @@ impl TestReserve {
                 optimal_borrow_rate: 2,
                 max_borrow_rate: 15,
                 fees: ReserveFees {
-                    borrow_fee_wad: 100_000_000_000, /// 0.00001% (Aave borrow fee)
+                    borrow_fee_wad: 100_000_000_000,
+                    /// 0.00001% (Aave borrow fee)
                     host_fee_percentage: 20,
                 },
             }

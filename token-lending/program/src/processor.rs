@@ -616,7 +616,10 @@ fn process_borrow(
         }
     };
 
-    let (borrow_fee, host_fee) = deposit_reserve.config.fees.calculate_borrow_fees(collateral_deposit_amount, deposit_reserve_collateral_host_info.key);
+    let (borrow_fee, host_fee) = deposit_reserve.config.fees.calculate_borrow_fees(
+        collateral_deposit_amount,
+        deposit_reserve_collateral_host_info.key,
+    );
     // update amount actually deposited
     let collateral_deposit_amount = collateral_deposit_amount - borrow_fee;
     let owner_fee = borrow_fee - host_fee;
@@ -760,7 +763,6 @@ fn process_borrow(
             token_program: token_program_id.clone(),
         })?;
     }
-
 
     Ok(())
 }
