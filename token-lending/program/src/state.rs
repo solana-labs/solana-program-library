@@ -2,7 +2,7 @@
 
 use crate::{
     error::LendingError,
-    math::{Decimal, Rate},
+    math::{Decimal, Rate, SCALE},
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
@@ -22,9 +22,6 @@ pub const INITIAL_COLLATERAL_RATE: u64 = 5;
 pub const SLOTS_PER_YEAR: u64 =
     DEFAULT_TICKS_PER_SECOND / DEFAULT_TICKS_PER_SLOT * SECONDS_PER_DAY * 365;
 
-/// Total basis points in 1
-pub const TOTAL_BASIS_POINTS: u64 = 10_000;
-
 /// Lending market state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LendingMarket {
@@ -43,12 +40,44 @@ pub struct LendingMarket {
 /// of collateral token amounts during repayments and liquidations.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ReserveFees {
-    /// Fee assessed on `RepayReserveLiquidity`, expressed in basis points (0.01% = 1bp)
-    pub repay_fee_basis_points: u16,
-    /// Fee assessed on `LiquidateObligation`, expressed in basis points (0.01% = 1bp)
-    pub liquidate_fee_basis_points: u16,
+    /// Fee assessed on `BorrowReserveLiquidity`, expressed as a Wad.
+    /// Must be between 0 and 10^18, such that 10^18 = 1.  A few examples for
+    /// clarity:
+    /// 1% = 10_000_000_000_000_000
+    /// 0.01% (1 basis point) = 100_000_000_000_000
+    /// 0.00001% (Aave borrow fee) = 100_000_000_000
+    pub borrow_fee_wad: u64,
     /// Amount of fee going to host account, if provided in liquidate and repay
     pub host_fee_percentage: u8,
+}
+
+impl ReserveFees {
+    /// Calculate the owner and host fees on borrow
+    pub fn calculate_borrow_fees(&self, collateral_amount: u64, host_pubkey: &Pubkey) -> (u64, u64) {
+        let borrow_fee_rate = Rate::new(self.borrow_fee_wad, SCALE);
+        let host_fee_rate = self.host_fee_percentage as u64;
+        if borrow_fee_rate > Rate::zero() {
+            let need_to_assess_host_fee = host_fee_rate > 0 && *host_pubkey != Pubkey::default();
+            let minimum_fee = if need_to_assess_host_fee {
+                2 // 1 token to owner, 1 to host
+            } else {
+                1 // 1 token to owner, nothing else
+            };
+            let borrow_fee =
+                std::cmp::max(
+                    minimum_fee,
+                    (borrow_fee_rate * collateral_amount).round_u64(),
+                );
+            let host_fee = if need_to_assess_host_fee {
+                    std::cmp::max(1, borrow_fee * host_fee_rate / 100)
+            } else {
+                0
+            };
+            (borrow_fee, host_fee)
+        } else {
+            (0, 0)
+        }
+    }
 }
 
 /// Reserve configuration values
@@ -316,9 +345,9 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 297;
+const RESERVE_LEN: usize = 301;
 impl Pack for Reserve {
-    const LEN: usize = 297;
+    const LEN: usize = 301;
 
     /// Unpacks a byte buffer into a [ReserveInfo](struct.ReserveInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
@@ -341,15 +370,14 @@ impl Pack for Reserve {
             min_borrow_rate,
             optimal_borrow_rate,
             max_borrow_rate,
-            repay_fee_basis_points,
-            liquidate_fee_basis_points,
+            borrow_fee_wad,
             host_fee_percentage,
             cumulative_borrow_rate,
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
         ) = array_refs![
-            input, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 16, 16, 8, 8
+            input, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8
         ];
         Ok(Self {
             lending_market: Pubkey::new_from_array(*lending_market),
@@ -369,8 +397,7 @@ impl Pack for Reserve {
                 optimal_borrow_rate: u8::from_le_bytes(*optimal_borrow_rate),
                 max_borrow_rate: u8::from_le_bytes(*max_borrow_rate),
                 fees: ReserveFees {
-                    repay_fee_basis_points: u16::from_le_bytes(*repay_fee_basis_points),
-                    liquidate_fee_basis_points: u16::from_le_bytes(*liquidate_fee_basis_points),
+                    borrow_fee_wad: u64::from_le_bytes(*borrow_fee_wad),
                     host_fee_percentage: u8::from_le_bytes(*host_fee_percentage),
                 },
             },
@@ -403,15 +430,14 @@ impl Pack for Reserve {
             min_borrow_rate,
             optimal_borrow_rate,
             max_borrow_rate,
-            repay_fee_basis_points,
-            liquidate_fee_basis_points,
+            borrow_fee_wad,
             host_fee_percentage,
             cumulative_borrow_rate,
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
         ) = mut_array_refs![
-            output, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 16, 16, 8, 8
+            output, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8
         ];
         *last_update_slot = self.state.last_update_slot.to_le_bytes();
         lending_market.copy_from_slice(self.lending_market.as_ref());
@@ -429,8 +455,7 @@ impl Pack for Reserve {
         *min_borrow_rate = self.config.min_borrow_rate.to_le_bytes();
         *optimal_borrow_rate = self.config.optimal_borrow_rate.to_le_bytes();
         *max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();
-        *repay_fee_basis_points = self.config.fees.repay_fee_basis_points.to_le_bytes();
-        *liquidate_fee_basis_points = self.config.fees.liquidate_fee_basis_points.to_le_bytes();
+        *borrow_fee_wad = self.config.fees.borrow_fee_wad.to_le_bytes();
         *host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
         pack_decimal(
             self.state.cumulative_borrow_rate_wads,

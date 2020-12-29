@@ -38,8 +38,7 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     optimal_borrow_rate: 4,
     max_borrow_rate: 30,
     fees: ReserveFees {
-        repay_fee_basis_points: 30,
-        liquidate_fee_basis_points: 50,
+        borrow_fee_wad: 100_000_000_000, /// 0.00001% (Aave borrow fee)
         host_fee_percentage: 20,
     },
 };
@@ -545,6 +544,8 @@ impl TestLendingMarket {
                     borrow_reserve.user_liquidity_account,
                     deposit_reserve.pubkey,
                     deposit_reserve.collateral_supply,
+                    deposit_reserve.collateral_fees_receiver,
+                    deposit_reserve.collateral_host,
                     borrow_reserve.pubkey,
                     borrow_reserve.liquidity_supply,
                     self.keypair.pubkey(),
@@ -649,8 +650,7 @@ impl TestReserve {
                 optimal_borrow_rate: 2,
                 max_borrow_rate: 15,
                 fees: ReserveFees {
-                    repay_fee_basis_points: 30,
-                    liquidate_fee_basis_points: 50,
+                    borrow_fee_wad: 100_000_000_000, /// 0.00001% (Aave borrow fee)
                     host_fee_percentage: 20,
                 },
             }

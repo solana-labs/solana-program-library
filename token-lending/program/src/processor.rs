@@ -3,8 +3,8 @@
 use crate::{
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
-    math::{Decimal, Rate},
-    state::{LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState, TOTAL_BASIS_POINTS},
+    math::{Decimal, Rate, WAD},
+    state::{LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState},
 };
 use arrayref::{array_refs, mut_array_refs};
 use num_traits::FromPrimitive;
@@ -126,12 +126,8 @@ fn process_init_reserve(
         msg!("Optimal borrow rate must be less than the max borrow rate");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.fees.repay_fee_basis_points as u64 > TOTAL_BASIS_POINTS {
+    if config.fees.borrow_fee_wad > WAD {
         msg!("Repay fee in basis points must be in range [0, 10_000]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.fees.liquidate_fee_basis_points as u64 > TOTAL_BASIS_POINTS {
-        msg!("Liquidation fee in basis points must be in range [0, 10_000]");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.fees.host_fee_percentage > 100 {
@@ -476,6 +472,8 @@ fn process_borrow(
     let destination_liquidity_info = next_account_info(account_info_iter)?;
     let deposit_reserve_info = next_account_info(account_info_iter)?;
     let deposit_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
+    let deposit_reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
+    let deposit_reserve_collateral_host_info = next_account_info(account_info_iter)?;
     let borrow_reserve_info = next_account_info(account_info_iter)?;
     let borrow_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
@@ -536,6 +534,12 @@ fn process_borrow(
     }
     if &deposit_reserve.collateral_supply == source_collateral_info.key {
         msg!("Cannot use deposit reserve collateral supply as source account input");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &deposit_reserve.collateral_fees_receiver
+        != deposit_reserve_collateral_fees_receiver_info.key
+    {
+        msg!("Invalid deposit reserve collateral fees receiver account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &borrow_reserve.liquidity_supply == destination_liquidity_info.key {
@@ -611,6 +615,11 @@ fn process_borrow(
             (borrow_amount, collateral_deposit_amount)
         }
     };
+
+    let (borrow_fee, host_fee) = deposit_reserve.config.fees.calculate_borrow_fees(collateral_deposit_amount, deposit_reserve_collateral_host_info.key);
+    // update amount actually deposited
+    let collateral_deposit_amount = collateral_deposit_amount - borrow_fee;
+    let owner_fee = borrow_fee - host_fee;
 
     borrow_reserve.state.add_borrow(borrow_amount)?;
 
@@ -728,6 +737,31 @@ fn process_borrow(
         token_program: token_program_id.clone(),
     })?;
 
+    // transfer owner fees
+    if owner_fee > 0 {
+        spl_token_transfer(TokenTransferParams {
+            source: deposit_reserve_collateral_supply_info.clone(),
+            destination: deposit_reserve_collateral_fees_receiver_info.clone(),
+            amount: owner_fee,
+            authority: lending_market_authority_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
+    }
+
+    // transfer host fees
+    if host_fee > 0 {
+        spl_token_transfer(TokenTransferParams {
+            source: deposit_reserve_collateral_supply_info.clone(),
+            destination: deposit_reserve_collateral_host_info.clone(),
+            amount: host_fee,
+            authority: lending_market_authority_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
+    }
+
+
     Ok(())
 }
 
@@ -748,8 +782,6 @@ fn process_repay(
     let repay_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
-    let withdraw_reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
-    let withdraw_reserve_collateral_host_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_token_mint_info = next_account_info(account_info_iter)?;
     let obligation_token_input_info = next_account_info(account_info_iter)?;
@@ -814,12 +846,6 @@ fn process_repay(
         msg!("Invalid withdraw reserve collateral supply account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &withdraw_reserve.collateral_fees_receiver
-        != withdraw_reserve_collateral_fees_receiver_info.key
-    {
-        msg!("Invalid withdraw reserve collateral fees receiver account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
     if &repay_reserve.liquidity_supply == source_liquidity_info.key {
         msg!("Cannot use repay reserve liquidity supply as source account input");
         return Err(LendingError::InvalidAccountInput.into());
@@ -858,26 +884,6 @@ fn process_repay(
     obligation.deposited_collateral_tokens -= collateral_withdraw_amount;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
-    let repay_fee_rate = withdraw_reserve.config.fees.repay_fee_basis_points as u64;
-    let repay_fee = if repay_fee_rate > 0 {
-        std::cmp::max(
-            1,
-            collateral_withdraw_amount * repay_fee_rate / TOTAL_BASIS_POINTS,
-        )
-    } else {
-        0
-    };
-    let host_fee_rate = withdraw_reserve.config.fees.host_fee_percentage as u64;
-    let host_fee =
-        if host_fee_rate > 0 && *withdraw_reserve_collateral_host_info.key != Pubkey::default() {
-            std::cmp::max(1, repay_fee * host_fee_rate / 100)
-        } else {
-            0
-        };
-    // update amount actually withdrawn
-    let collateral_withdraw_amount = collateral_withdraw_amount - repay_fee;
-    let owner_fee = repay_fee - host_fee;
-
     let (lending_market_authority_pubkey, bump_seed) =
         Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id);
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
@@ -915,30 +921,6 @@ fn process_repay(
         token_program: token_program_id.clone(),
     })?;
 
-    // transfer owner fees
-    if owner_fee > 0 {
-        spl_token_transfer(TokenTransferParams {
-            source: withdraw_reserve_collateral_supply_info.clone(),
-            destination: withdraw_reserve_collateral_fees_receiver_info.clone(),
-            amount: owner_fee,
-            authority: lending_market_authority_info.clone(),
-            authority_signer_seeds,
-            token_program: token_program_id.clone(),
-        })?;
-    }
-
-    // transfer host fees
-    if host_fee > 0 {
-        spl_token_transfer(TokenTransferParams {
-            source: withdraw_reserve_collateral_supply_info.clone(),
-            destination: withdraw_reserve_collateral_host_info.clone(),
-            amount: host_fee,
-            authority: lending_market_authority_info.clone(),
-            authority_signer_seeds,
-            token_program: token_program_id.clone(),
-        })?;
-    }
-
     Ok(())
 }
 
@@ -959,8 +941,6 @@ fn process_liquidate(
     let repay_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
-    let withdraw_reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
-    let withdraw_reserve_collateral_host_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
@@ -1020,12 +1000,6 @@ fn process_liquidate(
     }
     if &withdraw_reserve.collateral_supply != withdraw_reserve_collateral_supply_info.key {
         msg!("Invalid withdraw reserve collateral supply account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &withdraw_reserve.collateral_fees_receiver
-        != withdraw_reserve_collateral_fees_receiver_info.key
-    {
-        msg!("Invalid withdraw reserve collateral fees receiver account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &repay_reserve.liquidity_supply == source_liquidity_info.key {
@@ -1104,10 +1078,6 @@ fn process_liquidate(
         .deposited_collateral_tokens
         .min(repay_amount_as_collateral + liquidation_bonus_amount);
 
-    // Get fee rates before reserve gets moved in `pack`
-    let liquidate_fee_rate = withdraw_reserve.config.fees.liquidate_fee_basis_points as u64;
-    let host_fee_rate = withdraw_reserve.config.fees.host_fee_percentage as u64;
-
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
     Reserve::pack(
         withdraw_reserve,
@@ -1118,26 +1088,6 @@ fn process_liquidate(
     obligation.borrowed_liquidity_wads -= repay_amount;
     obligation.deposited_collateral_tokens -= collateral_withdraw_amount;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
-
-    // calculate fees
-    let liquidate_fee = if liquidate_fee_rate > 0 {
-        std::cmp::max(
-            1,
-            collateral_withdraw_amount * liquidate_fee_rate / TOTAL_BASIS_POINTS,
-        )
-    } else {
-        0
-    };
-    let host_fee =
-        if host_fee_rate > 0 && *withdraw_reserve_collateral_host_info.key != Pubkey::default() {
-            std::cmp::max(1, liquidate_fee * host_fee_rate / 100)
-        } else {
-            0
-        };
-
-    // update amount actually withdrawn
-    let collateral_withdraw_amount = collateral_withdraw_amount - liquidate_fee;
-    let owner_fee = liquidate_fee - host_fee;
 
     let (lending_market_authority_pubkey, bump_seed) =
         Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id);
@@ -1165,30 +1115,6 @@ fn process_liquidate(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
-
-    // transfer owner fees
-    if owner_fee > 0 {
-        spl_token_transfer(TokenTransferParams {
-            source: withdraw_reserve_collateral_supply_info.clone(),
-            destination: withdraw_reserve_collateral_fees_receiver_info.clone(),
-            amount: owner_fee,
-            authority: lending_market_authority_info.clone(),
-            authority_signer_seeds,
-            token_program: token_program_id.clone(),
-        })?;
-    }
-
-    // transfer host fees
-    if host_fee > 0 {
-        spl_token_transfer(TokenTransferParams {
-            source: withdraw_reserve_collateral_supply_info.clone(),
-            destination: withdraw_reserve_collateral_host_info.clone(),
-            amount: host_fee,
-            authority: lending_market_authority_info.clone(),
-            authority_signer_seeds,
-            token_program: token_program_id.clone(),
-        })?;
-    }
 
     Ok(())
 }
