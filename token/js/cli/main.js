@@ -9,15 +9,15 @@ import {
   createMint,
   createAccount,
   transfer,
-  transfer2,
+  transferChecked,
   approveRevoke,
   failOnApproveOverspend,
   setAuthority,
   mintTo,
-  mintTo2,
+  mintToChecked,
   multisig,
   burn,
-  burn2,
+  burnChecked,
   freezeThawAccount,
   closeAccount,
   nativeToken,
@@ -32,12 +32,12 @@ async function main() {
   await createAccount();
   console.log('Run test: mintTo');
   await mintTo();
-  console.log('Run test: mintTo2');
-  await mintTo2();
+  console.log('Run test: mintToChecked');
+  await mintToChecked();
   console.log('Run test: transfer');
   await transfer();
-  console.log('Run test: transfer2');
-  await transfer2();
+  console.log('Run test: transferChecked');
+  await transferChecked();
   console.log('Run test: approveRevoke');
   await approveRevoke();
   console.log('Run test: failOnApproveOverspend');
@@ -46,8 +46,8 @@ async function main() {
   await setAuthority();
   console.log('Run test: burn');
   await burn();
-  console.log('Run test: burn2');
-  await burn2();
+  console.log('Run test: burnChecked');
+  await burnChecked();
   console.log('Run test: freezeThawAccount');
   await freezeThawAccount();
   console.log('Run test: closeAccount');
