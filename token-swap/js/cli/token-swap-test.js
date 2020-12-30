@@ -136,11 +136,11 @@ async function GetPrograms(
   } catch (err) {
     tokenProgramId = await loadProgram(
       connection,
-      '../../target/bpfel-unknown-unknown/release/spl_token.so',
+      '../../target/deploy/spl_token.so',
     );
     tokenSwapProgramId = await loadProgram(
       connection,
-      '../../target/bpfel-unknown-unknown/release/spl_token_swap.so',
+      '../../target/deploy/spl_token_swap.so',
     );
     await store.save('config.json', {
       tokenProgramId: tokenProgramId.toString(),
