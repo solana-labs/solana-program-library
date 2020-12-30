@@ -10,13 +10,13 @@ use spl_token_swap::{
         self, DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Swap,
         WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
     },
-    state::SwapInfo,
+    state::SwapVersion,
 };
 
 use spl_token::instruction::approve;
 
 use solana_program::{
-    bpf_loader, entrypoint::ProgramResult, program_pack::Pack, pubkey::Pubkey, system_program,
+    bpf_loader, entrypoint::ProgramResult, pubkey::Pubkey, system_program,
 };
 
 pub struct NativeTokenSwap {
@@ -51,7 +51,7 @@ impl NativeTokenSwap {
     ) -> Self {
         let mut user_account = NativeAccountData::new(0, system_program::id());
         user_account.is_signer = true;
-        let mut swap_account = NativeAccountData::new(SwapInfo::LEN, spl_token_swap::id());
+        let mut swap_account = NativeAccountData::new(SwapVersion::LATEST_LEN, spl_token_swap::id());
         let (authority_key, nonce) = Pubkey::find_program_address(
             &[&swap_account.key.to_bytes()[..]],
             &spl_token_swap::id(),
