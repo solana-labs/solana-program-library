@@ -78,10 +78,13 @@ async fn test_success() {
         &mut test,
         &user_accounts_owner,
         &lending_market,
-        &usdc_reserve,
-        &sol_reserve,
-        OBLIGATION_COLLATERAL,
-        Decimal::from(OBLIGATION_LOAN),
+        AddObligationArgs {
+            slots_elapsed: 0,
+            borrow_reserve: &usdc_reserve,
+            collateral_reserve: &sol_reserve,
+            collateral_amount: OBLIGATION_COLLATERAL,
+            borrowed_liquidity_wads: Decimal::from(OBLIGATION_LOAN),
+        },
     );
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
