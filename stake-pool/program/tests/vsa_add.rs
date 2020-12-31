@@ -4,12 +4,12 @@ mod helpers;
 
 use helpers::*;
 
+use bincode::deserialize;
 use solana_sdk::signature::{Keypair, Signer};
 use spl_stake_pool::*;
-use bincode::deserialize;
 
 #[tokio::test]
-async fn test_stake_pool_join() {
+async fn test_add_validator_stake_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -19,8 +19,10 @@ async fn test_stake_pool_join() {
     let user = Keypair::new();
 
     let user_stake =
-        StakeAccount::new_with_target_authority(&stake_pool_accounts.deposit_authority);
-    user_stake.create_and_delegate(&mut banks_client, &payer, &recent_blockhash).await;
+        StakeAccount::new_with_target_authority(&stake_pool_accounts.deposit_authority, &stake_pool_accounts.stake_pool.pubkey());
+    user_stake
+        .create_and_delegate(&mut banks_client, &payer, &recent_blockhash)
+        .await;
 
     // make pool token account
     let user_pool_account = Keypair::new();
@@ -34,24 +36,24 @@ async fn test_stake_pool_join() {
     )
     .await;
     let error = stake_pool_accounts
-        .join_pool(
+        .add_validator_stake_account(
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            &user_stake.stake_account.pubkey(),
+            &user_stake.stake_account,
             &user_pool_account.pubkey(),
         )
         .await;
     assert!(error.is_none());
 
     let stake_account_balance = banks_client
-        .get_account(user_stake.stake_account.pubkey())
+        .get_account(user_stake.stake_account)
         .await
         .unwrap()
         .unwrap()
         .lamports;
     let deposit_tokens = stake_account_balance; // For now 1:1 math
-    // Check token account balance
+                                                // Check token account balance
     let token_balance = get_token_balance(&mut banks_client, &user_pool_account.pubkey()).await;
     assert_eq!(token_balance, deposit_tokens);
 
@@ -77,7 +79,7 @@ async fn test_stake_pool_join() {
 
     // Check of stake account authority has changed
     let stake = banks_client
-        .get_account(user_stake.stake_account.pubkey())
+        .get_account(user_stake.stake_account)
         .await
         .expect("get_account")
         .expect("stake not none");

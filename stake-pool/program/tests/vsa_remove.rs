@@ -2,14 +2,14 @@
 
 mod helpers;
 
+use bincode::deserialize;
 use helpers::*;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use spl_stake_pool::*;
-use bincode::deserialize;
 
 #[tokio::test]
-async fn test_stake_pool_leave() {
+async fn test_remove_validator_stake_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -19,8 +19,10 @@ async fn test_stake_pool_leave() {
     let user = Keypair::new();
 
     let user_stake =
-        StakeAccount::new_with_target_authority(&stake_pool_accounts.deposit_authority);
-    user_stake.create_and_delegate(&mut banks_client, &payer, &recent_blockhash).await;
+        StakeAccount::new_with_target_authority(&stake_pool_accounts.deposit_authority, &stake_pool_accounts.stake_pool.pubkey());
+    user_stake
+        .create_and_delegate(&mut banks_client, &payer, &recent_blockhash)
+        .await;
 
     // make pool token account
     let user_pool_account = Keypair::new();
@@ -34,32 +36,35 @@ async fn test_stake_pool_leave() {
     )
     .await;
     let error = stake_pool_accounts
-        .join_pool(
+        .add_validator_stake_account(
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            &user_stake.stake_account.pubkey(),
+            &user_stake.stake_account,
             &user_pool_account.pubkey(),
         )
         .await;
     assert!(error.is_none());
 
     let tokens_to_burn = get_token_balance(&mut banks_client, &user_pool_account.pubkey()).await;
-    delegate_tokens(&mut banks_client,
+    delegate_tokens(
+        &mut banks_client,
         &payer,
         &recent_blockhash,
-        &user_pool_account.pubkey(), 
-        &user, 
-        &stake_pool_accounts.withdraw_authority, 
-        tokens_to_burn).await;
+        &user_pool_account.pubkey(),
+        &user,
+        &stake_pool_accounts.withdraw_authority,
+        tokens_to_burn,
+    )
+    .await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
-        .leave_pool(
+        .remove_validator_stake_account(
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            &user_stake.stake_account.pubkey(),
+            &user_stake.stake_account,
             &user_pool_account.pubkey(),
             &new_authority,
         )
@@ -88,21 +93,15 @@ async fn test_stake_pool_leave() {
 
     // Check of stake account authority has changed
     let stake = banks_client
-        .get_account(user_stake.stake_account.pubkey())
+        .get_account(user_stake.stake_account)
         .await
         .expect("get_account")
         .expect("stake not none");
     let stake_state = deserialize::<stake::StakeState>(&stake.data).unwrap();
     match stake_state {
         stake::StakeState::Stake(meta, _) => {
-            assert_eq!(
-                &meta.authorized.staker,
-                &new_authority
-            );
-            assert_eq!(
-                &meta.authorized.withdrawer,
-                &new_authority
-            );
+            assert_eq!(&meta.authorized.staker, &new_authority);
+            assert_eq!(&meta.authorized.withdrawer, &new_authority);
         }
         _ => panic!(),
     }

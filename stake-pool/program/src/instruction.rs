@@ -42,6 +42,19 @@ pub enum StakePoolInstruction {
     ///   5. `[]` Token program id
     Initialize(InitArgs),
 
+    ///   Creates new program account for accumulating stakes for a particular validator
+    ///
+    ///   0. `[]` Stake pool account this stake will belong to
+    ///   1. `[ws]` Funding account (must be a system account)
+    ///   2. `[w]` Stake account to be created
+    ///   3. `[]` Validator this stake account will vote for
+    ///   4. `[]` Stake authority for the new stake account
+    ///   5. `[]` Withdraw authority for the new stake account
+    ///   6. `[]` Rent sysvar
+    ///   7. `[]` System program
+    ///   8. `[]` Stake program
+    CreateValidatorStakeAccount,
+
     ///   Adds validator stake account to the pool
     ///
     ///   0. `[w]` Stake pool
@@ -49,13 +62,13 @@ pub enum StakePoolInstruction {
     ///   2. `[]` Stake pool deposit authority
     ///   3. `[]` Stake pool withdraw authority
     ///   4. `[w]` Validator stake list storage account
-    ///   5. `[w]` Stake account to join the pool, its withdraw authority should be set to stake pool deposit
+    ///   5. `[w]` Stake account to add to the pool, its withdraw authority should be set to stake pool deposit
     ///   6. `[w]` User account to receive pool tokens
     ///   7. `[w]` Pool token mint account
     ///   8. `[]` Clock sysvar (required)
     ///   9. `[]` Pool token program id,
     ///  10. `[]` Stake program id,
-    JoinPool,
+    AddValidatorStakeAccount,
 
     ///   Removes validator stake account from the pool
     ///
@@ -64,13 +77,13 @@ pub enum StakePoolInstruction {
     ///   2. `[]` Stake pool withdraw authority
     ///   3. `[]` New withdraw/staker authority to set in the stake account
     ///   4. `[w]` Validator stake list storage account
-    ///   5. `[w]` Stake account to leave the pool
+    ///   5. `[w]` Stake account to remove from the pool
     ///   6. `[w]` User account with pool tokens to burn from
     ///   7. `[w]` Pool token mint account
     ///   8. '[]' Sysvar clock account (reserved for future use)
     ///   9. `[]` Pool token program id
     ///  10. `[]` Stake program id,
-    LeavePool,
+    RemoveValidatorStakeAccount,
 
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
@@ -149,16 +162,17 @@ impl StakePoolInstruction {
                 let val: &InitArgs = unpack(input)?;
                 Self::Initialize(*val)
             }
-            1 => Self::JoinPool,
-            2 => Self::LeavePool,
-            3 => Self::Deposit,
-            4 => {
+            1 => Self::CreateValidatorStakeAccount,
+            2 => Self::AddValidatorStakeAccount,
+            3 => Self::RemoveValidatorStakeAccount,
+            4 => Self::Deposit,
+            5 => {
                 let val: &u64 = unpack(input)?;
                 Self::Withdraw(*val)
             }
-            5 => Self::Claim,
-            6 => Self::SetStakingAuthority,
-            7 => Self::SetOwner,
+            6 => Self::Claim,
+            7 => Self::SetStakingAuthority,
+            8 => Self::SetOwner,
             _ => return Err(ProgramError::InvalidAccountData),
         })
     }
@@ -174,29 +188,32 @@ impl StakePoolInstruction {
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut InitArgs) };
                 *value = *init;
             }
-            Self::JoinPool => {
+            Self::CreateValidatorStakeAccount => {
                 output[0] = 1;
             }
-            Self::LeavePool => {
+            Self::AddValidatorStakeAccount => {
                 output[0] = 2;
             }
-            Self::Deposit => {
+            Self::RemoveValidatorStakeAccount => {
                 output[0] = 3;
             }
-            Self::Withdraw(val) => {
+            Self::Deposit => {
                 output[0] = 4;
+            }
+            Self::Withdraw(val) => {
+                output[0] = 5;
                 #[allow(clippy::cast_ptr_alignment)]
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
                 *value = *val;
             }
             Self::Claim => {
-                output[0] = 5;
-            }
-            Self::SetStakingAuthority => {
                 output[0] = 6;
             }
-            Self::SetOwner => {
+            Self::SetStakingAuthority => {
                 output[0] = 7;
+            }
+            Self::SetOwner => {
+                output[0] = 8;
             }
         }
         Ok(output)
@@ -241,8 +258,38 @@ pub fn initialize(
     })
 }
 
-/// Creates `JoinPool` instruction (add new validator stake account to the pool)
-pub fn join_pool(
+/// Creates `CreateValidatorStakeAccount` instruction (create new stake account for the validator)
+pub fn create_validator_stake_account(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    funder: &Pubkey,
+    stake_account: &Pubkey,
+    validator: &Pubkey,
+    stake_authority: &Pubkey,
+    withdraw_authority: &Pubkey,
+    system_program_id: &Pubkey,
+    stake_program_id: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new(*funder, true),
+        AccountMeta::new(*stake_account, false),
+        AccountMeta::new_readonly(*validator, false),
+        AccountMeta::new_readonly(*stake_authority, false),
+        AccountMeta::new_readonly(*withdraw_authority, false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*system_program_id, false),
+        AccountMeta::new_readonly(*stake_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::CreateValidatorStakeAccount.serialize()?,
+    })
+}
+
+/// Creates `AddValidatorStakeAccount` instruction (add new validator stake account to the pool)
+pub fn add_validator_stake_account(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     owner: &Pubkey,
@@ -271,12 +318,12 @@ pub fn join_pool(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::JoinPool.serialize()?,
+        data: StakePoolInstruction::AddValidatorStakeAccount.serialize()?,
     })
 }
 
-/// Creates `LeavePool` instruction (remove validator stake account from the pool)
-pub fn leave_pool(
+/// Creates `RemoveValidatorStakeAccount` instruction (remove validator stake account from the pool)
+pub fn remove_validator_stake_account(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     owner: &Pubkey,
@@ -305,7 +352,7 @@ pub fn leave_pool(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::LeavePool.serialize()?,
+        data: StakePoolInstruction::RemoveValidatorStakeAccount.serialize()?,
     })
 }
 

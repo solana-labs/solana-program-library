@@ -260,7 +260,7 @@ pub fn create_account(
 }
 
 /// FIXME copied from the stake program
-fn initialize(stake_pubkey: &Pubkey, authorized: &Authorized, lockup: &Lockup) -> Instruction {
+pub fn initialize(stake_pubkey: &Pubkey, authorized: &Authorized, lockup: &Lockup) -> Instruction {
     Instruction::new(
         id(),
         &StakeInstruction::Initialize(*authorized, *lockup),

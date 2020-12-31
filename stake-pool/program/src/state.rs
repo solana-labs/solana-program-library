@@ -14,6 +14,8 @@ use std::mem::size_of;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct StakePool {
+    /// Pool version
+    pub version: u8,
     /// Owner authority
     /// allows for updating the staking authority
     pub owner: Pubkey,

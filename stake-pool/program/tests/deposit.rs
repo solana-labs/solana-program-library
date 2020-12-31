@@ -24,7 +24,7 @@ async fn test_stake_pool_deposit() {
         staker: stake_pool_accounts.deposit_authority,
         withdrawer: stake_pool_accounts.deposit_authority,
     };
-    create_stake_account(
+    create_independent_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,
