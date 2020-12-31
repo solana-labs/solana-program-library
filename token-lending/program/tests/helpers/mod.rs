@@ -7,7 +7,7 @@ use solana_sdk::{
     account::Account,
     signature::{read_keypair_file, Keypair, Signer},
     system_instruction::create_account,
-    transaction::Transaction,
+    transaction::{Transaction, TransactionError},
 };
 use spl_token::{
     instruction::approve,
@@ -594,6 +594,7 @@ impl TestLendingMarket {
     }
 }
 
+#[derive(Debug)]
 pub struct TestReserve {
     pub name: String,
     pub pubkey: Pubkey,
@@ -618,12 +619,13 @@ impl TestReserve {
         banks_client: &mut BanksClient,
         lending_market: &TestLendingMarket,
         reserve_amount: u64,
+        config: ReserveConfig,
         liquidity_mint_pubkey: Pubkey,
         user_liquidity_account: Pubkey,
         payer: &Keypair,
         user_accounts_owner: &Keypair,
         dex_market: &TestDexMarket,
-    ) -> Self {
+    ) -> Result<Self, TransactionError> {
         let reserve_keypair = Keypair::new();
         let reserve_pubkey = reserve_keypair.pubkey();
         let collateral_mint_keypair = Keypair::new();
@@ -637,25 +639,6 @@ impl TestReserve {
             Some(dex_market.pubkey)
         } else {
             None
-        };
-
-        let config = if &name == "usdc" {
-            TEST_RESERVE_CONFIG
-        } else {
-            ReserveConfig {
-                optimal_utilization_rate: 0,
-                loan_to_value_ratio: 75,
-                liquidation_bonus: 10,
-                liquidation_threshold: 80,
-                min_borrow_rate: 0,
-                optimal_borrow_rate: 2,
-                max_borrow_rate: 15,
-                fees: ReserveFees {
-                    borrow_fee_wad: 100_000_000_000,
-                    /// 0.00001% (Aave borrow fee)
-                    host_fee_percentage: 20,
-                },
-            }
         };
 
         let liquidity_mint_account = banks_client
@@ -762,24 +745,26 @@ impl TestReserve {
             recent_blockhash,
         );
 
-        assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
-
-        Self {
-            name,
-            pubkey: reserve_pubkey,
-            lending_market: lending_market.keypair.pubkey(),
-            config,
-            liquidity_mint: liquidity_mint_pubkey,
-            liquidity_mint_decimals: liquidity_mint.decimals,
-            liquidity_supply: liquidity_supply_keypair.pubkey(),
-            collateral_mint: collateral_mint_keypair.pubkey(),
-            collateral_supply: collateral_supply_keypair.pubkey(),
-            collateral_fees_receiver: collateral_fees_receiver_keypair.pubkey(),
-            collateral_host: collateral_host_keypair.pubkey(),
-            user_liquidity_account,
-            user_collateral_account: user_collateral_token_keypair.pubkey(),
-            dex_market: dex_market_pubkey,
-        }
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .map(|_| Self {
+                name,
+                pubkey: reserve_pubkey,
+                lending_market: lending_market.keypair.pubkey(),
+                config,
+                liquidity_mint: liquidity_mint_pubkey,
+                liquidity_mint_decimals: liquidity_mint.decimals,
+                liquidity_supply: liquidity_supply_keypair.pubkey(),
+                collateral_mint: collateral_mint_keypair.pubkey(),
+                collateral_supply: collateral_supply_keypair.pubkey(),
+                collateral_fees_receiver: collateral_fees_receiver_keypair.pubkey(),
+                collateral_host: collateral_host_keypair.pubkey(),
+                user_liquidity_account,
+                user_collateral_account: user_collateral_token_keypair.pubkey(),
+                dex_market: dex_market_pubkey,
+            })
+            .map_err(|e| e.unwrap())
     }
 
     pub async fn add_to_genesis(

@@ -59,9 +59,10 @@ impl ReserveFees {
         host_pubkey: &Pubkey,
     ) -> (u64, u64) {
         let borrow_fee_rate = Rate::new(self.borrow_fee_wad, SCALE);
-        let host_fee_rate = self.host_fee_percentage as u64;
+        let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
         if borrow_fee_rate > Rate::zero() {
-            let need_to_assess_host_fee = host_fee_rate > 0 && *host_pubkey != Pubkey::default();
+            let need_to_assess_host_fee =
+                host_fee_rate > Rate::zero() && *host_pubkey != Pubkey::default();
             let minimum_fee = if need_to_assess_host_fee {
                 2 // 1 token to owner, 1 to host
             } else {
@@ -72,7 +73,7 @@ impl ReserveFees {
                 (borrow_fee_rate * collateral_amount).round_u64(),
             );
             let host_fee = if need_to_assess_host_fee {
-                std::cmp::max(1, borrow_fee * host_fee_rate / 100)
+                std::cmp::max(1, (host_fee_rate * borrow_fee).round_u64())
             } else {
                 0
             };
@@ -594,4 +595,88 @@ fn pack_decimal(decimal: Decimal, dst: &mut [u8; 16]) {
 
 fn unpack_decimal(src: &[u8; 16]) -> Decimal {
     Decimal::from_scaled_val(u128::from_le_bytes(*src))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::math::WAD;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn borrow_fee_calculation(
+            borrow_fee_wad in 0..WAD,
+            host_fee_percentage in 0..100u8,
+            borrow_amount in 0..u64::MAX,
+        ) {
+            let fees = ReserveFees {
+                borrow_fee_wad,
+                host_fee_percentage,
+            };
+            let (total_fee, host_fee) = fees.calculate_borrow_fees(
+                borrow_amount,
+                &Pubkey::new_unique(),
+            );
+
+            // the total fee can't be greater than the amount borrowed
+            assert!(total_fee <= borrow_amount);
+            // the host fee can't be greater than the total fee
+            assert!(host_fee <= total_fee);
+
+            // for all fee rates greater than 0, we must have some fee
+            if borrow_fee_wad > 0 {
+                assert!(total_fee > 0);
+            }
+
+            let host_fee_percentage = host_fee_percentage as u64;
+            if host_fee_percentage == 100 {
+                // if the host fee percentage is maxed at 100%, it should get all the fee
+                assert_eq!(host_fee, total_fee);
+            }
+
+            // if there's a host fee, it must be greater than 0
+            if host_fee_percentage > 0 {
+                assert!(host_fee > 0);
+            } else {
+                assert_eq!(host_fee, 0);
+            }
+        }
+    }
+
+    #[test]
+    fn borrow_fee_calculation_host() {
+        let fees = ReserveFees {
+            borrow_fee_wad: 10_000_000_000_000_000, // 1%
+            host_fee_percentage: 20,
+        };
+
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(1000, &Pubkey::new_unique());
+
+        assert_eq!(total_fee, 10); // 1% of 1000
+        assert_eq!(host_fee, 2); // 20% of 10
+    }
+
+    #[test]
+    fn borrow_fee_calculation_no_host() {
+        let fees = ReserveFees {
+            borrow_fee_wad: 10_000_000_000_000_000, // 1%
+            host_fee_percentage: 20,
+        };
+
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(1000, &Pubkey::default());
+
+        assert_eq!(total_fee, 10); // 1% of 1000
+        assert_eq!(host_fee, 0); // 0 host fee
+
+        let fees = ReserveFees {
+            borrow_fee_wad: 10_000_000_000_000_000, // 1%
+            host_fee_percentage: 0,
+        };
+
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(1000, &Pubkey::new_unique());
+
+        assert_eq!(total_fee, 10); // 1% of 1000
+        assert_eq!(host_fee, 0); // 0 host fee
+    }
 }
