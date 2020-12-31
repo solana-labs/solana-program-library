@@ -18,8 +18,10 @@ async fn test_add_validator_stake_account() {
 
     let user = Keypair::new();
 
-    let user_stake =
-        StakeAccount::new_with_target_authority(&stake_pool_accounts.deposit_authority, &stake_pool_accounts.stake_pool.pubkey());
+    let user_stake = StakeAccount::new_with_target_authority(
+        &stake_pool_accounts.deposit_authority,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
     user_stake
         .create_and_delegate(&mut banks_client, &payer, &recent_blockhash)
         .await;

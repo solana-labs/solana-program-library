@@ -243,19 +243,21 @@ pub async fn create_stake_account(
     withdraw_authority: &Pubkey,
 ) {
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::create_validator_stake_account(
-            &id(),
-            &stake_pool,
-            &payer.pubkey(),
-            &stake_account,
-            &validator,
-            &stake_authority,
-            &withdraw_authority,
-            &solana_program::system_program::id(),
-            &stake::id(),
-        )
-        .unwrap(),
-        system_instruction::transfer(&payer.pubkey(), &stake_account, TEST_STAKE_AMOUNT)],
+        &[
+            instruction::create_validator_stake_account(
+                &id(),
+                &stake_pool,
+                &payer.pubkey(),
+                &stake_account,
+                &validator,
+                &stake_authority,
+                &withdraw_authority,
+                &solana_program::system_program::id(),
+                &stake::id(),
+            )
+            .unwrap(),
+            system_instruction::transfer(&payer.pubkey(), &stake_account, TEST_STAKE_AMOUNT),
+        ],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[payer], *recent_blockhash);
@@ -310,7 +312,11 @@ pub struct StakeAccount {
 impl StakeAccount {
     pub fn new_with_target_authority(authority: &Pubkey, stake_pool: &Pubkey) -> Self {
         let validator = Keypair::new();
-        let (stake_account, _) = processor::Processor::find_stake_address_for_validator(&id(), &validator.pubkey(), stake_pool);
+        let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
+            &id(),
+            &validator.pubkey(),
+            stake_pool,
+        );
         StakeAccount {
             stake_account,
             target_authority: *authority,
