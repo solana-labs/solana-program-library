@@ -14,7 +14,7 @@ enum Side {
 }
 
 /// Input currency for trade simulator
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum Currency {
     Base,
     Quote,
@@ -96,18 +96,11 @@ impl<'a, 'b: 'a> TradeSimulator<'a, 'b> {
                 (Currency::Quote, dex_market.quote_lots, dex_market.base_lots)
             };
 
-        let order_book_side = if role == Role::Taker {
-            if input_currency == Currency::Base {
-                Side::Ask
-            } else {
-                Side::Bid
-            }
-        } else {
-            if input_currency == Currency::Base {
-                Side::Bid
-            } else {
-                Side::Ask
-            }
+        let order_book_side = match (role, input_currency) {
+            (Role::Taker, Currency::Base) => Side::Ask,
+            (Role::Taker, Currency::Quote) => Side::Bid,
+            (Role::Maker, Currency::Base) => Side::Bid,
+            (Role::Maker, Currency::Quote) => Side::Ask,
         };
 
         if order_book_side != dex_market_orders.side {
@@ -140,15 +133,12 @@ impl<'a, 'b: 'a> TradeSimulator<'a, 'b> {
         mut input_quantity: Decimal,
     ) -> Result<Decimal, ProgramError> {
         let mut output_quantity = Decimal::zero();
-        let mut orders = std::mem::replace(&mut self.orders, Orders::None).into_iter();
-
-        if cache_orders {
-            self.orders = Orders::Cached(VecDeque::new())
-        }
+        let mut order_cache = VecDeque::new();
 
         let zero = Decimal::zero();
         while input_quantity > zero {
-            let next_order = orders
+            let next_order = self
+                .orders
                 .next()
                 .ok_or_else(|| ProgramError::from(LendingError::DexOrderBookError))?;
 
@@ -167,9 +157,15 @@ impl<'a, 'b: 'a> TradeSimulator<'a, 'b> {
             input_quantity -= filled;
             output_quantity += output;
 
-            if let Orders::Cached(orders) = &mut self.orders {
-                orders.push_back(next_order);
+            if cache_orders {
+                order_cache.push_back(next_order);
             }
+        }
+
+        if cache_orders {
+            self.orders = Orders::Cached(order_cache)
+        } else {
+            self.orders = Orders::None
         }
 
         Ok(output_quantity)
