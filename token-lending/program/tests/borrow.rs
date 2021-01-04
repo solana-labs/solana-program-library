@@ -105,6 +105,8 @@ async fn test_success() {
         .calculate_borrow_fees(borrow_amount, &sol_reserve.collateral_host);
     let sol_fee_balance =
         get_token_balance(&mut banks_client, sol_reserve.collateral_fees_receiver).await;
+    assert!(total_fee > 0);
+    assert!(host_fee > 0);
     assert_eq!(total_fee - host_fee, sol_fee_balance);
     let sol_host_balance = get_token_balance(&mut banks_client, sol_reserve.collateral_host).await;
     assert_eq!(host_fee, sol_host_balance);

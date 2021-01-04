@@ -606,9 +606,9 @@ mod test {
     proptest! {
         #[test]
         fn borrow_fee_calculation(
-            borrow_fee_wad in 0..WAD,
-            host_fee_percentage in 0..100u8,
-            borrow_amount in 0..u64::MAX,
+            borrow_fee_wad in 0..=WAD,
+            host_fee_percentage in 0..=100u8,
+            borrow_amount in 0..=u64::MAX,
         ) {
             let fees = ReserveFees {
                 borrow_fee_wad,
@@ -619,8 +619,13 @@ mod test {
                 &Pubkey::new_unique(),
             );
 
-            // the total fee can't be greater than the amount borrowed
-            assert!(total_fee <= borrow_amount);
+            // The total fee can't be greater than the amount borrowed, as long
+            // as amount borrowed is greater than 1.
+            // At a borrow amount of 1, we can get a total fee of 2 if a host
+            // fee is also specified.
+            if borrow_amount > 1 {
+                assert!(total_fee <= borrow_amount);
+            }
             // the host fee can't be greater than the total fee
             assert!(host_fee <= total_fee);
 
@@ -629,14 +634,13 @@ mod test {
                 assert!(total_fee > 0);
             }
 
-            let host_fee_percentage = host_fee_percentage as u64;
             if host_fee_percentage == 100 {
                 // if the host fee percentage is maxed at 100%, it should get all the fee
                 assert_eq!(host_fee, total_fee);
             }
 
-            // if there's a host fee, it must be greater than 0
-            if host_fee_percentage > 0 {
+            // if there's a host fee and some borrow fee, host fee must be greater than 0
+            if host_fee_percentage > 0 && borrow_fee_wad > 0 {
                 assert!(host_fee > 0);
             } else {
                 assert_eq!(host_fee, 0);
