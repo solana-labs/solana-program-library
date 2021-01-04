@@ -381,9 +381,9 @@ dependencies = [
 
 [[package]]
 name = "cbindgen"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1df6a11bba1d7cab86c166cecf4cf8acd7d02b7b65924d81b33d27197f22ee35"
+checksum = "9344318b9c787667b95cd2c5124f5eaf2bde35e959dd01ea04fc5b234c542c11"
 dependencies = [
  "clap",
  "heck",
@@ -1996,11 +1996,11 @@ checksum = "1ab52be62400ca80aa00285d25253d7f7c437b7375c4de678f5405d3afe82ca5"
 
 [[package]]
 name = "once_cell"
-version = "1.4.0"
+version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b631f7e854af39a1739f401cf34a8a013dfe09eac4fa4dba91e9768bd28168d"
+checksum = "13bd41f508810a131401606d54ac32a467c97172d74ba7662562ebba5ad07fa0"
 dependencies = [
- "parking_lot 0.10.2",
+ "parking_lot 0.11.0",
 ]
 
 [[package]]
@@ -2972,7 +2972,7 @@ dependencies = [
  "solana-banks-interface",
  "solana-sdk",
  "tarpc",
- "tokio 0.3.5",
+ "tokio 0.3.6",
  "tokio-serde",
 ]
 
@@ -3003,7 +3003,7 @@ dependencies = [
  "solana-runtime",
  "solana-sdk",
  "tarpc",
- "tokio 0.3.5",
+ "tokio 0.3.6",
  "tokio-serde",
 ]
 
@@ -3289,7 +3289,7 @@ dependencies = [
  "solana-program",
  "solana-runtime",
  "solana-sdk",
- "tokio 0.3.5",
+ "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3560,7 +3560,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 3.0.1",
- "tokio 0.3.5",
+ "tokio 1.0.1",
 ]
 
 [[package]]
@@ -3570,7 +3570,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.5",
+ "tokio 1.0.1",
 ]
 
 [[package]]
@@ -3580,7 +3580,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.5",
+ "tokio 1.0.1",
 ]
 
 [[package]]
@@ -3590,7 +3590,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.5",
+ "tokio 1.0.1",
 ]
 
 [[package]]
@@ -3600,7 +3600,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.5",
+ "tokio 1.0.1",
 ]
 
 [[package]]
@@ -3610,7 +3610,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.5",
+ "tokio 1.0.1",
 ]
 
 [[package]]
@@ -3624,7 +3624,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 3.0.1",
- "tokio 0.3.5",
+ "tokio 1.0.1",
 ]
 
 [[package]]
@@ -3684,7 +3684,7 @@ dependencies = [
  "solana-sdk",
  "spl-token 3.0.1",
  "thiserror",
- "tokio 0.3.5",
+ "tokio 1.0.1",
 ]
 
 [[package]]
@@ -3785,7 +3785,7 @@ dependencies = [
  "solana-sdk",
  "spl-token 3.0.1",
  "thiserror",
- "tokio 0.3.5",
+ "tokio 1.0.1",
  "uint",
 ]
 
@@ -3939,7 +3939,7 @@ dependencies = [
  "serde",
  "static_assertions",
  "tarpc-plugins",
- "tokio 0.3.5",
+ "tokio 0.3.6",
  "tokio-serde",
  "tokio-util 0.4.0",
 ]
@@ -4122,24 +4122,35 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a12a3eb39ee2c231be64487f1fcbe726c8f2514876a55480a5ab8559fc374252"
+checksum = "720ba21c25078711bf456d607987d95bce90f7c3bea5abe1db587862e7a1e87c"
 dependencies = [
  "autocfg",
  "bytes 0.6.0",
  "futures-core",
- "lazy_static",
  "libc",
  "memchr",
  "mio 0.7.6",
  "num_cpus",
+ "once_cell",
  "parking_lot 0.11.0",
  "pin-project-lite 0.2.0",
  "signal-hook-registry",
  "slab",
- "tokio-macros",
+ "tokio-macros 0.3.1",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "tokio"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d258221f566b6c803c7b4714abadc080172b272090cdc5e244a6d4dd13c3a6bd"
+dependencies = [
+ "autocfg",
+ "pin-project-lite 0.2.0",
+ "tokio-macros 1.0.0",
 ]
 
 [[package]]
@@ -4200,6 +4211,17 @@ name = "tokio-macros"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21d30fdbb5dc2d8f91049691aa1a9d4d4ae422a21c334ce8936e5886d30c5c45"
+dependencies = [
+ "proc-macro2 1.0.24",
+ "quote 1.0.7",
+ "syn 1.0.48",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42517d2975ca3114b22a16192634e8241dc5cc1f130be194645970cc1c371494"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.7",
@@ -4362,7 +4384,7 @@ dependencies = [
  "futures-sink",
  "log",
  "pin-project-lite 0.1.7",
- "tokio 0.3.5",
+ "tokio 0.3.6",
 ]
 
 [[package]]

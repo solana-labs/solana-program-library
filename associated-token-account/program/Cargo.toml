@@ -18,7 +18,7 @@ spl-token = { version = "3.0", path = "../../token/program", features = ["no-ent
 [dev-dependencies]
 solana-program-test = "1.5.0"
 solana-sdk = "1.5.0"
-tokio = { version = "0.3", features = ["macros"]}
+tokio = { version = "1.0", features = ["macros"]}
 
 [lib]
 crate-type = ["cdylib", "lib"]
