@@ -60,7 +60,7 @@ impl ReserveFees {
     ) -> (u64, u64) {
         let borrow_fee_rate = Rate::new(self.borrow_fee_wad, SCALE);
         let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
-        if borrow_fee_rate > Rate::zero() {
+        if borrow_fee_rate > Rate::zero() && collateral_amount > 0 {
             let need_to_assess_host_fee =
                 host_fee_rate > Rate::zero() && *host_pubkey != Pubkey::default();
             let minimum_fee = if need_to_assess_host_fee {
@@ -646,6 +646,42 @@ mod test {
                 assert_eq!(host_fee, 0);
             }
         }
+    }
+
+    #[test]
+    fn borrow_fee_calculation_min_host() {
+        let fees = ReserveFees {
+            borrow_fee_wad: 10_000_000_000_000_000, // 1%
+            host_fee_percentage: 20,
+        };
+
+        // only 1 token borrowed, still get minimum fee of 2 tokens
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(1, &Pubkey::new_unique());
+        assert_eq!(total_fee, 2); // minimum of 2 tokens
+        assert_eq!(host_fee, 1); // minimum of 1 token
+
+        // 0 amount borrowed, 0 fee
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(0, &Pubkey::new_unique());
+        assert_eq!(total_fee, 0);
+        assert_eq!(host_fee, 0);
+    }
+
+    #[test]
+    fn borrow_fee_calculation_min_no_host() {
+        let fees = ReserveFees {
+            borrow_fee_wad: 10_000_000_000_000_000, // 1%
+            host_fee_percentage: 0,
+        };
+
+        // only 1 token borrowed, still get minimum fee of 2 tokens
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(1, &Pubkey::new_unique());
+        assert_eq!(total_fee, 1); // minimum of 1 token
+        assert_eq!(host_fee, 0);
+
+        // 0 amount borrowed, 0 fee
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(0, &Pubkey::new_unique());
+        assert_eq!(total_fee, 0);
+        assert_eq!(host_fee, 0);
     }
 
     #[test]
