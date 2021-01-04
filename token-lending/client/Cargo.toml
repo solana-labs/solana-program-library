@@ -9,7 +9,7 @@ edition = "2018"
 
 [dependencies]
 solana-client = "1.5.0"
-solana-program = "1.5.0"
+solana-program = "1.5.1"
 solana-sdk = "1.5.0"
 spl-token-lending = { path = "../program", features = [ "no-entrypoint" ] }
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
