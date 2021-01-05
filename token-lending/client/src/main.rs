@@ -265,7 +265,10 @@ pub fn create_reserve(
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(&vec![payer, &lending_market_keypair, &user_transfer_authority], recent_blockhash);
+    transaction.sign(
+        &vec![payer, &lending_market_keypair, &user_transfer_authority],
+        recent_blockhash,
+    );
 
     client.send_and_confirm_transaction(&transaction).unwrap();
 
