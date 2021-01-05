@@ -464,6 +464,7 @@ fn process_borrow(
     let obligation_token_owner_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let dex_market_info = next_account_info(account_info_iter)?;
     let dex_market_order_book_side_info = next_account_info(account_info_iter)?;
     let memory = next_account_info(account_info_iter)?;
@@ -645,8 +646,8 @@ fn process_borrow(
         source: source_collateral_info.clone(),
         destination: deposit_reserve_collateral_supply_info.clone(),
         amount: collateral_deposit_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 

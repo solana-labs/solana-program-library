@@ -103,13 +103,14 @@ pub enum LendingInstruction {
     ///   8. `[writable]` Obligation token output
     ///   9. `[]` Obligation token owner
     ///   10 `[]` Lending market account.
-    ///   11 `[]` Derived lending market authority ($authority).
-    ///   12 `[]` Dex market
-    ///   13 `[]` Dex market order book side
-    ///   14 `[]` Temporary memory
-    ///   15 `[]` Clock sysvar
-    ///   16 `[]` Rent sysvar
-    ///   17 '[]` Token program id
+    ///   11 `[]` Derived lending market authority.
+    ///   12 `[]` User transfer authority ($authority).
+    ///   13 `[]` Dex market
+    ///   14 `[]` Dex market order book side
+    ///   15 `[]` Temporary memory
+    ///   16 `[]` Clock sysvar
+    ///   17 `[]` Rent sysvar
+    ///   18 '[]` Token program id
     BorrowReserveLiquidity {
         // TODO: slippage constraint
         /// Amount whose usage depends on `amount_type`
@@ -454,6 +455,7 @@ pub fn borrow_reserve_liquidity(
     borrow_reserve_liquidity_supply_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_authority_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
     obligation_token_mint_pubkey: Pubkey,
     obligation_token_output_pubkey: Pubkey,
@@ -477,6 +479,7 @@ pub fn borrow_reserve_liquidity(
             AccountMeta::new_readonly(obligation_token_owner_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
             AccountMeta::new_readonly(dex_market_pubkey, false),
             AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
             AccountMeta::new_readonly(memory_pubkey, false),

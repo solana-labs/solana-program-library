@@ -407,6 +407,7 @@ impl TestLendingMarket {
     ) -> TestObligation {
         let rent = banks_client.get_rent().await.unwrap();
         let memory_keypair = Keypair::new();
+        let user_transfer_authority = Keypair::new();
 
         let BorrowArgs {
             borrow_reserve,
@@ -489,7 +490,7 @@ impl TestLendingMarket {
                 approve(
                     &spl_token::id(),
                     &deposit_reserve.user_collateral_account,
-                    &self.authority,
+                    &user_transfer_authority.pubkey(),
                     &user_accounts_owner.pubkey(),
                     &[],
                     approve_amount,
@@ -514,6 +515,7 @@ impl TestLendingMarket {
                     borrow_reserve.liquidity_supply,
                     self.keypair.pubkey(),
                     self.authority,
+                    user_transfer_authority.pubkey(),
                     obligation.keypair.pubkey(),
                     obligation.token_mint,
                     obligation.token_account,
@@ -528,7 +530,7 @@ impl TestLendingMarket {
 
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
         transaction.sign(
-            &vec![payer, user_accounts_owner, &memory_keypair],
+            &vec![payer, user_accounts_owner, &memory_keypair, &user_transfer_authority],
             recent_blockhash,
         );
 
