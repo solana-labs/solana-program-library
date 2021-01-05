@@ -177,14 +177,15 @@ pub enum SwapInstruction {
     ///   exact amount out expected.
     ///
     ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` Pool mint account, $authority is the owner
-    ///   3. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   4. `[writable]` token_a Swap Account to potentially withdraw from.
-    ///   5. `[writable]` token_b Swap Account to potentially withdraw from.
-    ///   6. `[writable]` token_(A|B) User Account to credit
-    ///   7. `[writable]` Fee account, to receive withdrawal fees
-    ///   8. '[]` Token program id
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` Pool mint account, swap authority is the owner
+    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user transfer authority.
+    ///   5. `[writable]` token_a Swap Account to potentially withdraw from.
+    ///   6. `[writable]` token_b Swap Account to potentially withdraw from.
+    ///   7. `[writable]` token_(A|B) User Account to credit
+    ///   8. `[writable]` Fee account, to receive withdrawal fees
+    ///   9. '[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
 }
 
@@ -496,6 +497,7 @@ pub fn withdraw_single_token_type_exact_amount_out(
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
     pool_mint_pubkey: &Pubkey,
     fee_account_pubkey: &Pubkey,
     pool_token_source_pubkey: &Pubkey,
@@ -509,6 +511,7 @@ pub fn withdraw_single_token_type_exact_amount_out(
     let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*pool_token_source_pubkey, false),
         AccountMeta::new(*swap_token_a_pubkey, false),

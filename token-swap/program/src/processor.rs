@@ -830,6 +830,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let swap_token_a_info = next_account_info(account_info_iter)?;
@@ -958,7 +959,7 @@ impl Processor {
                 token_program_info.clone(),
                 source_info.clone(),
                 pool_fee_account_info.clone(),
-                authority_info.clone(),
+                user_transfer_authority_info.clone(),
                 token_swap.nonce,
                 to_u64(withdraw_fee)?,
             )?;
@@ -968,7 +969,7 @@ impl Processor {
             token_program_info.clone(),
             source_info.clone(),
             pool_mint_info.clone(),
-            authority_info.clone(),
+            user_transfer_authority_info.clone(),
             token_swap.nonce,
             to_u64(burn_pool_token_amount)?,
         )?;
@@ -1725,12 +1726,13 @@ mod tests {
             destination_token_amount: u64,
             maximum_pool_token_amount: u64,
         ) -> ProgramResult {
-            // approve swap program to take out pool tokens
+            let user_transfer_authority_key = Pubkey::new_unique();
+            // approve user transfer authority to take out pool tokens
             do_process_instruction(
                 approve(
                     &TOKEN_PROGRAM_ID,
                     &pool_key,
-                    &self.authority_key,
+                    &user_transfer_authority_key,
                     &user_key,
                     &[],
                     maximum_pool_token_amount,
@@ -1750,6 +1752,7 @@ mod tests {
                     &TOKEN_PROGRAM_ID,
                     &self.swap_key,
                     &self.authority_key,
+                    &user_transfer_authority_key,
                     &self.pool_mint_key,
                     &self.pool_fee_key,
                     &pool_key,
@@ -1764,6 +1767,7 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
+                    &mut Account::default(),
                     &mut Account::default(),
                     &mut self.pool_mint_account,
                     &mut pool_account,
@@ -4991,6 +4995,7 @@ mod tests {
                 0,
                 maximum_pool_token_amount,
             );
+            let user_transfer_authority_key = Pubkey::new_unique();
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
@@ -4999,6 +5004,7 @@ mod tests {
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &user_transfer_authority_key,
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         &pool_key,
@@ -5013,6 +5019,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
@@ -5051,6 +5058,7 @@ mod tests {
                         &wrong_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &accounts.authority_key,
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         &pool_key,
@@ -5065,6 +5073,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
