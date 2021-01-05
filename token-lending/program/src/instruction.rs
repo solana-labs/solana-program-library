@@ -80,8 +80,9 @@ pub enum LendingInstruction {
     ///   3. `[writable]` Reserve collateral SPL Token mint.
     ///   4. `[writable]` Reserve liquidity supply SPL Token account.
     ///   5. `[]` Lending market account.
-    ///   6. `[]` Derived lending market authority ($authority).
-    ///   7. '[]` Token program id
+    ///   6. `[]` Derived lending market authority.
+    ///   7. `[]` User transfer authority ($authority).
+    ///   8. '[]` Token program id
     WithdrawReserveLiquidity {
         /// Amount of collateral to deposit in exchange for liquidity
         collateral_amount: u64,
@@ -419,6 +420,7 @@ pub fn withdraw_reserve_liquidity(
     reserve_liquidity_supply_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_authority_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -430,6 +432,7 @@ pub fn withdraw_reserve_liquidity(
             AccountMeta::new(reserve_liquidity_supply_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],

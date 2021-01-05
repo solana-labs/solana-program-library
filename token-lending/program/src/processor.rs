@@ -338,7 +338,7 @@ fn process_deposit(
         destination: reserve_liquidity_supply_info.clone(),
         amount: liquidity_amount,
         authority: user_transfer_authority_info.clone(),
-        authority_signer_seeds,
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
@@ -371,6 +371,7 @@ fn process_withdraw(
     let reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -431,8 +432,8 @@ fn process_withdraw(
         mint: reserve_collateral_mint_info.clone(),
         source: source_collateral_info.clone(),
         amount: collateral_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
