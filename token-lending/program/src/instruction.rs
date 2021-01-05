@@ -133,9 +133,10 @@ pub enum LendingInstruction {
     ///   7. `[writable]` Obligation token mint
     ///   8. `[writable]` Obligation token input, $authority can transfer calculated amount
     ///   9. `[]` Lending market account.
-    ///   10 `[]` Derived lending market authority ($authority).
-    ///   11 `[]` Clock sysvar
-    ///   12 `[]` Token program id
+    ///   10 `[]` Derived lending market authority.
+    ///   11 `[]` User transfer authority ($authority).
+    ///   12 `[]` Clock sysvar
+    ///   13 `[]` Token program id
     RepayReserveLiquidity {
         /// Amount of loan to repay
         liquidity_amount: u64,
@@ -511,6 +512,7 @@ pub fn repay_reserve_liquidity(
     obligation_output_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_authority_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -526,6 +528,7 @@ pub fn repay_reserve_liquidity(
             AccountMeta::new(obligation_output_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],

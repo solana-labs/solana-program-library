@@ -734,6 +734,7 @@ fn process_repay(
     let obligation_token_input_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -843,8 +844,8 @@ fn process_repay(
         source: source_liquidity_info.clone(),
         destination: repay_reserve_liquidity_supply_info.clone(),
         amount: rounded_repay_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
@@ -863,8 +864,8 @@ fn process_repay(
         mint: obligation_token_mint_info.clone(),
         source: obligation_token_input_info.clone(),
         amount: obligation_token_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
