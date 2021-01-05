@@ -503,7 +503,10 @@ pub fn borrow_reserve_liquidity(
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
     if let Some(deposit_reserve_collateral_host_pubkey) = deposit_reserve_collateral_host_pubkey {
-        accounts.push(AccountMeta::new(deposit_reserve_collateral_host_pubkey, false));
+        accounts.push(AccountMeta::new(
+            deposit_reserve_collateral_host_pubkey,
+            false,
+        ));
     }
     Instruction {
         program_id,

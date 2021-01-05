@@ -102,7 +102,8 @@ async fn test_success() {
     // check that fee accounts have been properly credited
     let (total_fee, host_fee) = TEST_RESERVE_CONFIG
         .fees
-        .calculate_borrow_fees(borrow_amount);
+        .calculate_borrow_fees(borrow_amount)
+        .unwrap();
     let sol_fee_balance =
         get_token_balance(&mut banks_client, sol_reserve.collateral_fees_receiver).await;
     assert!(total_fee > 0);

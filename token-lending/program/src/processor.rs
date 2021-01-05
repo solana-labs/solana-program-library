@@ -126,8 +126,8 @@ fn process_init_reserve(
         msg!("Optimal borrow rate must be less than the max borrow rate");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.fees.borrow_fee_wad > WAD {
-        msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000]");
+    if config.fees.borrow_fee_wad >= WAD {
+        msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000)");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.fees.host_fee_percentage > 100 {
@@ -615,9 +615,10 @@ fn process_borrow(
         }
     };
 
-    let (borrow_fee, host_fee) = deposit_reserve.config.fees.calculate_borrow_fees(
-        collateral_deposit_amount,
-    );
+    let (borrow_fee, host_fee) = deposit_reserve
+        .config
+        .fees
+        .calculate_borrow_fees(collateral_deposit_amount)?;
     // update amount actually deposited
     let collateral_deposit_amount = collateral_deposit_amount - borrow_fee;
     let owner_fee = borrow_fee - host_fee;
@@ -754,7 +755,9 @@ fn process_borrow(
     if host_fee > 0 {
         // if host specified, transfer to that account, otherwise transfer to
         // owner
-        let host_fee_recipient = if let Ok(deposit_reserve_collateral_host_info) = next_account_info(account_info_iter) {
+        let host_fee_recipient = if let Ok(deposit_reserve_collateral_host_info) =
+            next_account_info(account_info_iter)
+        {
             deposit_reserve_collateral_host_info
         } else {
             deposit_reserve_collateral_fees_receiver_info

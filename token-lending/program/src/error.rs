@@ -74,6 +74,9 @@ pub enum LendingError {
     /// Cannot liquidate healthy obligations
     #[error("Cannot liquidate healthy obligations")]
     HealthyObligation,
+    /// Borrow amount too small
+    #[error("Borrow amount too small")]
+    BorrowTooSmall,
 
     /// Dex order book error.
     #[error("Dex order book error")]

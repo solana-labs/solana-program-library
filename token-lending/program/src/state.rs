@@ -56,7 +56,7 @@ impl ReserveFees {
     pub fn calculate_borrow_fees(
         &self,
         collateral_amount: u64,
-    ) -> (u64, u64) {
+    ) -> Result<(u64, u64), ProgramError> {
         let borrow_fee_rate = Rate::new(self.borrow_fee_wad, SCALE);
         let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
         if borrow_fee_rate > Rate::zero() && collateral_amount > 0 {
@@ -75,9 +75,13 @@ impl ReserveFees {
             } else {
                 0
             };
-            (borrow_fee, host_fee)
+            if borrow_fee >= collateral_amount {
+                Err(LendingError::BorrowTooSmall.into())
+            } else {
+                Ok((borrow_fee, host_fee))
+            }
         } else {
-            (0, 0)
+            Ok((0, 0))
         }
     }
 }
@@ -604,23 +608,23 @@ mod test {
     proptest! {
         #[test]
         fn borrow_fee_calculation(
-            borrow_fee_wad in 0..=WAD,
+            borrow_fee_wad in 0..WAD, // at WAD, fee == borrow amount, which fails
             host_fee_percentage in 0..=100u8,
-            borrow_amount in 0..=u64::MAX,
+            borrow_amount in 3..=u64::MAX, // start at 3 to ensure calculation success
+                                           // 0, 1, and 2 are covered in the minimum tests
         ) {
             let fees = ReserveFees {
                 borrow_fee_wad,
                 host_fee_percentage,
             };
-            let (total_fee, host_fee) = fees.calculate_borrow_fees(borrow_amount);
+            let (total_fee, host_fee) = fees.calculate_borrow_fees(borrow_amount).unwrap();
 
             // The total fee can't be greater than the amount borrowed, as long
-            // as amount borrowed is greater than 1.
-            // At a borrow amount of 1, we can get a total fee of 2 if a host
+            // as amount borrowed is greater than 2.
+            // At a borrow amount of 2, we can get a total fee of 2 if a host
             // fee is also specified.
-            if borrow_amount > 1 {
-                assert!(total_fee <= borrow_amount);
-            }
+            assert!(total_fee <= borrow_amount);
+
             // the host fee can't be greater than the total fee
             assert!(host_fee <= total_fee);
 
@@ -650,13 +654,16 @@ mod test {
             host_fee_percentage: 20,
         };
 
-        // only 1 token borrowed, still get minimum fee of 2 tokens
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(1);
-        assert_eq!(total_fee, 2); // minimum of 2 tokens
-        assert_eq!(host_fee, 1); // minimum of 1 token
+        // only 2 tokens borrowed, get error
+        let err = fees.calculate_borrow_fees(2).unwrap_err();
+        assert_eq!(err, LendingError::BorrowTooSmall.into()); // minimum of 3 tokens
+
+        // only 1 token borrowed, get error
+        let err = fees.calculate_borrow_fees(1).unwrap_err();
+        assert_eq!(err, LendingError::BorrowTooSmall.into());
 
         // 0 amount borrowed, 0 fee
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(0);
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(0).unwrap();
         assert_eq!(total_fee, 0);
         assert_eq!(host_fee, 0);
     }
@@ -668,13 +675,17 @@ mod test {
             host_fee_percentage: 0,
         };
 
-        // only 1 token borrowed, still get minimum fee of 1 token
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(1);
-        assert_eq!(total_fee, 1); // minimum of 1 token
+        // only 2 tokens borrowed, ok
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(2).unwrap();
+        assert_eq!(total_fee, 1);
         assert_eq!(host_fee, 0);
 
+        // only 1 token borrowed, get error
+        let err = fees.calculate_borrow_fees(1).unwrap_err();
+        assert_eq!(err, LendingError::BorrowTooSmall.into()); // minimum of 2 tokens
+
         // 0 amount borrowed, 0 fee
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(0);
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(0).unwrap();
         assert_eq!(total_fee, 0);
         assert_eq!(host_fee, 0);
     }
@@ -686,7 +697,7 @@ mod test {
             host_fee_percentage: 20,
         };
 
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(1000);
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(1000).unwrap();
 
         assert_eq!(total_fee, 10); // 1% of 1000
         assert_eq!(host_fee, 2); // 20% of 10
@@ -699,7 +710,7 @@ mod test {
             host_fee_percentage: 0,
         };
 
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(1000);
+        let (total_fee, host_fee) = fees.calculate_borrow_fees(1000).unwrap();
 
         assert_eq!(total_fee, 10); // 1% of 1000
         assert_eq!(host_fee, 0); // 0 host fee
