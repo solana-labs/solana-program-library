@@ -153,12 +153,13 @@ pub enum LendingInstruction {
     ///   5. `[writable]` Withdraw reserve collateral supply SPL Token account
     ///   6. `[writable]` Obligation - initialized
     ///   7. `[]` Lending market account.
-    ///   8. `[]` Derived lending market authority ($authority).
-    ///   9. `[]` Dex market
-    ///   10 `[]` Dex market order book side
-    ///   11 `[]` Temporary memory
-    ///   12 `[]` Clock sysvar
-    ///   13 `[]` Token program id
+    ///   8. `[]` Derived lending market authority.
+    ///   9. `[]` User transfer authority ($authority).
+    ///   10 `[]` Dex market
+    ///   11 `[]` Dex market order book side
+    ///   12 `[]` Temporary memory
+    ///   13 `[]` Clock sysvar
+    ///   14 `[]` Token program id
     LiquidateObligation {
         /// Amount of loan to repay
         liquidity_amount: u64,
@@ -550,6 +551,7 @@ pub fn liquidate_obligation(
     obligation_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_authority_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
     dex_market_pubkey: Pubkey,
     dex_market_order_book_side_pubkey: Pubkey,
     memory_pubkey: Pubkey,
@@ -566,6 +568,7 @@ pub fn liquidate_obligation(
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
             AccountMeta::new_readonly(dex_market_pubkey, false),
             AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
             AccountMeta::new_readonly(memory_pubkey, false),
