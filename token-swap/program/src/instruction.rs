@@ -383,6 +383,7 @@ pub fn deposit_all_token_types(
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
     deposit_token_a_pubkey: &Pubkey,
     deposit_token_b_pubkey: &Pubkey,
     swap_token_a_pubkey: &Pubkey,
@@ -396,6 +397,7 @@ pub fn deposit_all_token_types(
     let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
         AccountMeta::new(*deposit_token_a_pubkey, false),
         AccountMeta::new(*deposit_token_b_pubkey, false),
         AccountMeta::new(*swap_token_a_pubkey, false),
