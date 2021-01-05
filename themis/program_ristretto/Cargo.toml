@@ -19,7 +19,7 @@ elgamal_ristretto = { git = "https://github.com/garious/elgamal", rev = "db1eef8
 getrandom = { version = "0.1.15", features = ["dummy"] }
 num-derive = "0.3"
 num-traits = "0.2"
-rand = "0.7.0"
+rand = "0.8.1"
 solana-program = "1.5.1"
 thiserror = "1.0"
 
