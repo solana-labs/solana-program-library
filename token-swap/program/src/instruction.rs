@@ -146,15 +146,16 @@ pub enum SwapInstruction {
     ///   amount of token A and B.
     ///
     ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` Pool mint account, $authority is the owner
-    ///   3. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   4. `[writable]` token_a Swap Account to withdraw FROM.
-    ///   5. `[writable]` token_b Swap Account to withdraw FROM.
-    ///   6. `[writable]` token_a user Account to credit.
-    ///   7. `[writable]` token_b user Account to credit.
-    ///   8. `[writable]` Fee account, to receive withdrawal fees
-    ///   9. '[]` Token program id
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` Pool mint account, swap authority is the owner
+    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user transfer authority.
+    ///   5. `[writable]` token_a Swap Account to withdraw FROM.
+    ///   6. `[writable]` token_b Swap Account to withdraw FROM.
+    ///   7. `[writable]` token_a user Account to credit.
+    ///   8. `[writable]` token_b user Account to credit.
+    ///   9. `[writable]` Fee account, to receive withdrawal fees
+    ///   10 '[]` Token program id
     WithdrawAllTokenTypes(WithdrawAllTokenTypes),
 
     ///   Deposit one type of tokens into the pool.  The output is a "pool" token
@@ -420,6 +421,7 @@ pub fn withdraw_all_token_types(
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
     pool_mint_pubkey: &Pubkey,
     fee_account_pubkey: &Pubkey,
     source_pubkey: &Pubkey,
@@ -434,6 +436,7 @@ pub fn withdraw_all_token_types(
     let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*source_pubkey, false),
         AccountMeta::new(*swap_token_a_pubkey, false),
