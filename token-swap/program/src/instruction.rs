@@ -163,13 +163,14 @@ pub enum SwapInstruction {
     ///   a swap and deposit all token types were performed.
     ///
     ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transferable by $authority,
-    ///   3. `[writable]` token_a Swap Account, may deposit INTO.
-    ///   4. `[writable]` token_b Swap Account, may deposit INTO.
-    ///   5. `[writable]` Pool MINT account, $authority is the owner.
-    ///   6. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   7. '[]` Token program id
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by user transfer authority,
+    ///   4. `[writable]` token_a Swap Account, may deposit INTO.
+    ///   5. `[writable]` token_b Swap Account, may deposit INTO.
+    ///   6. `[writable]` Pool MINT account, swap authority is the owner.
+    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   8. '[]` Token program id
     DepositSingleTokenTypeExactAmountIn(DepositSingleTokenTypeExactAmountIn),
 
     ///   Withdraw one token type from the pool at the current ratio given the
@@ -460,6 +461,7 @@ pub fn deposit_single_token_type_exact_amount_in(
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
     source_token_pubkey: &Pubkey,
     swap_token_a_pubkey: &Pubkey,
     swap_token_b_pubkey: &Pubkey,
@@ -472,6 +474,7 @@ pub fn deposit_single_token_type_exact_amount_in(
     let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
         AccountMeta::new(*source_token_pubkey, false),
         AccountMeta::new(*swap_token_a_pubkey, false),
         AccountMeta::new(*swap_token_b_pubkey, false),
