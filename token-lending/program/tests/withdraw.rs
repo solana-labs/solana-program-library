@@ -77,6 +77,9 @@ async fn test_success() {
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(&[&payer, &user_accounts_owner, &user_transfer_authority], recent_blockhash);
+    transaction.sign(
+        &[&payer, &user_accounts_owner, &user_transfer_authority],
+        recent_blockhash,
+    );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 }

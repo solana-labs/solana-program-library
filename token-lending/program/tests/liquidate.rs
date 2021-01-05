@@ -132,7 +132,12 @@ async fn test_success() {
     );
 
     transaction.sign(
-        &[&payer, &memory_keypair, &user_accounts_owner, &user_transfer_authority],
+        &[
+            &payer,
+            &memory_keypair,
+            &user_accounts_owner,
+            &user_transfer_authority,
+        ],
         recent_blockhash,
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());

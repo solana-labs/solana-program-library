@@ -394,7 +394,10 @@ impl TestLendingMarket {
         );
 
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
-        transaction.sign(&[payer, user_accounts_owner, &user_transfer_authority], recent_blockhash);
+        transaction.sign(
+            &[payer, user_accounts_owner, &user_transfer_authority],
+            recent_blockhash,
+        );
 
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
     }
@@ -530,7 +533,12 @@ impl TestLendingMarket {
 
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
         transaction.sign(
-            &vec![payer, user_accounts_owner, &memory_keypair, &user_transfer_authority],
+            &vec![
+                payer,
+                user_accounts_owner,
+                &memory_keypair,
+                &user_transfer_authority,
+            ],
             recent_blockhash,
         );
 

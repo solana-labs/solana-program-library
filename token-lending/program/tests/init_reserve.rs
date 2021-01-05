@@ -120,7 +120,10 @@ async fn test_already_initialized() {
         )],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &lending_market.keypair, &user_transfer_authority], recent_blockhash);
+    transaction.sign(
+        &[&payer, &lending_market.keypair, &user_transfer_authority],
+        recent_blockhash,
+    );
     assert_eq!(
         banks_client
             .process_transaction(transaction)
