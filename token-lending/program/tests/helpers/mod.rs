@@ -593,6 +593,7 @@ impl TestReserve {
         let collateral_supply_keypair = Keypair::new();
         let liquidity_supply_keypair = Keypair::new();
         let user_collateral_token_keypair = Keypair::new();
+        let user_transfer_authority_keypair = Keypair::new();
 
         let dex_market_pubkey = if liquidity_mint_pubkey != lending_market.quote_token_mint {
             Some(dex_market.pubkey)
@@ -635,7 +636,7 @@ impl TestReserve {
                 approve(
                     &spl_token::id(),
                     &user_liquidity_account,
-                    &lending_market.authority,
+                    &user_transfer_authority_keypair.pubkey(),
                     &user_accounts_owner.pubkey(),
                     &[],
                     reserve_amount,
@@ -688,6 +689,7 @@ impl TestReserve {
                     collateral_mint_keypair.pubkey(),
                     collateral_supply_keypair.pubkey(),
                     lending_market.keypair.pubkey(),
+                    user_transfer_authority_keypair.pubkey(),
                     dex_market_pubkey,
                 ),
             ],
@@ -705,6 +707,7 @@ impl TestReserve {
                 &collateral_supply_keypair,
                 &liquidity_supply_keypair,
                 &user_collateral_token_keypair,
+                &user_transfer_authority_keypair,
             ],
             recent_blockhash,
         );

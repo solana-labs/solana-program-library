@@ -41,11 +41,12 @@ pub enum LendingInstruction {
     ///   5. `[writable]` Reserve collateral SPL Token mint - uninitialized
     ///   6. `[writable]` Reserve collateral token supply - uninitialized
     ///   7. `[signer]` Lending market account.
-    ///   8. `[]` Derived lending market authority ($authority).
-    ///   9. `[]` Clock sysvar
-    ///   10 `[]` Rent sysvar
-    ///   11 '[]` Token program id
-    ///   12 `[optional]` Serum DEX market account. Not required for quote currency reserves. Must be initialized and match quote and base currency.
+    ///   8. `[]` Derived lending market authority.
+    ///   9. `[]` User transfer authority ($authority).
+    ///   10 `[]` Clock sysvar
+    ///   11 `[]` Rent sysvar
+    ///   12 '[]` Token program id
+    ///   13 `[optional]` Serum DEX market account. Not required for quote currency reserves. Must be initialized and match quote and base currency.
     InitReserve {
         /// Initial amount of liquidity to deposit into the new reserve
         liquidity_amount: u64,
@@ -345,6 +346,7 @@ pub fn init_reserve(
     reserve_collateral_mint_pubkey: Pubkey,
     reserve_collateral_supply_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
     dex_market_pubkey: Option<Pubkey>,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
@@ -359,6 +361,7 @@ pub fn init_reserve(
         AccountMeta::new(reserve_collateral_supply_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, true),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
