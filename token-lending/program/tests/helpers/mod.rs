@@ -365,12 +365,13 @@ impl TestLendingMarket {
         reserve: &TestReserve,
         amount: u64,
     ) {
+        let user_transfer_authority = Keypair::new();
         let mut transaction = Transaction::new_with_payer(
             &[
                 approve(
                     &spl_token::id(),
                     &reserve.user_liquidity_account,
-                    &self.authority,
+                    &user_transfer_authority.pubkey(),
                     &user_accounts_owner.pubkey(),
                     &[],
                     amount,
@@ -386,13 +387,14 @@ impl TestLendingMarket {
                     reserve.collateral_mint,
                     self.keypair.pubkey(),
                     self.authority,
+                    user_transfer_authority.pubkey(),
                 ),
             ],
             Some(&payer.pubkey()),
         );
 
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
-        transaction.sign(&[payer, user_accounts_owner], recent_blockhash);
+        transaction.sign(&[payer, user_accounts_owner, &user_transfer_authority], recent_blockhash);
 
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
     }

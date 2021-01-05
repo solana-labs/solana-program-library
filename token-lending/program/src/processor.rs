@@ -285,6 +285,7 @@ fn process_deposit(
     let reserve_collateral_mint_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -336,7 +337,7 @@ fn process_deposit(
         source: source_liquidity_info.clone(),
         destination: reserve_liquidity_supply_info.clone(),
         amount: liquidity_amount,
-        authority: lending_market_authority_info.clone(),
+        authority: user_transfer_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
