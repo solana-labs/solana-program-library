@@ -473,7 +473,6 @@ fn process_borrow(
     let deposit_reserve_info = next_account_info(account_info_iter)?;
     let deposit_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let deposit_reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
-    let deposit_reserve_collateral_host_info = next_account_info(account_info_iter)?;
     let borrow_reserve_info = next_account_info(account_info_iter)?;
     let borrow_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
@@ -618,7 +617,6 @@ fn process_borrow(
 
     let (borrow_fee, host_fee) = deposit_reserve.config.fees.calculate_borrow_fees(
         collateral_deposit_amount,
-        deposit_reserve_collateral_host_info.key,
     );
     // update amount actually deposited
     let collateral_deposit_amount = collateral_deposit_amount - borrow_fee;
@@ -754,9 +752,16 @@ fn process_borrow(
 
     // transfer host fees
     if host_fee > 0 {
+        // if host specified, transfer to that account, otherwise transfer to
+        // owner
+        let host_fee_recipient = if let Ok(deposit_reserve_collateral_host_info) = next_account_info(account_info_iter) {
+            deposit_reserve_collateral_host_info
+        } else {
+            deposit_reserve_collateral_fees_receiver_info
+        };
         spl_token_transfer(TokenTransferParams {
             source: deposit_reserve_collateral_supply_info.clone(),
-            destination: deposit_reserve_collateral_host_info.clone(),
+            destination: host_fee_recipient.clone(),
             amount: host_fee,
             authority: lending_market_authority_info.clone(),
             authority_signer_seeds,

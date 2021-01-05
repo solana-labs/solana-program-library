@@ -101,22 +101,21 @@ pub enum LendingInstruction {
     ///   3. `[writable]` Deposit reserve collateral supply SPL Token account
     ///   4. `[writable]` Deposit reserve collateral fee receiver account.
     ///                     Must be the fee account specified at InitReserve.
-    ///   5. `[writable]` Deposit reserve collateral host fee receiver account.
-    ///                     Can be any account or the empty account at `Pubkey::default`
-    ///   6. `[writable]` Borrow reserve account.
-    ///   7. `[writable]` Borrow reserve liquidity supply SPL Token account
-    ///   8. `[writable]` Obligation
-    ///   9. `[writable]` Obligation token mint
-    ///   10 `[writable]` Obligation token output
-    ///   11 `[]` Obligation token owner
-    ///   12 `[]` Lending market account.
-    ///   13 `[]` Derived lending market authority ($authority).
-    ///   14 `[]` Dex market
-    ///   15 `[]` Dex market order book side
-    ///   16 `[]` Temporary memory
-    ///   17 `[]` Clock sysvar
-    ///   18 `[]` Rent sysvar
-    ///   19 '[]` Token program id
+    ///   5. `[writable]` Borrow reserve account.
+    ///   6. `[writable]` Borrow reserve liquidity supply SPL Token account
+    ///   7. `[writable]` Obligation
+    ///   8. `[writable]` Obligation token mint
+    ///   9. `[writable]` Obligation token output
+    ///   10 `[]` Obligation token owner
+    ///   11 `[]` Lending market account.
+    ///   12 `[]` Derived lending market authority ($authority).
+    ///   13 `[]` Dex market
+    ///   14 `[]` Dex market order book side
+    ///   15 `[]` Temporary memory
+    ///   16 `[]` Clock sysvar
+    ///   17 `[]` Rent sysvar
+    ///   18 '[]` Token program id
+    ///   19 `[optional, writable]` Deposit reserve collateral host fee receiver account.
     BorrowReserveLiquidity {
         // TODO: slippage constraint
         /// Amount whose usage depends on `amount_type`
@@ -469,7 +468,6 @@ pub fn borrow_reserve_liquidity(
     deposit_reserve_pubkey: Pubkey,
     deposit_reserve_collateral_supply_pubkey: Pubkey,
     deposit_reserve_collateral_fees_receiver_pubkey: Pubkey,
-    deposit_reserve_collateral_host_pubkey: Pubkey,
     borrow_reserve_pubkey: Pubkey,
     borrow_reserve_liquidity_supply_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
@@ -481,31 +479,35 @@ pub fn borrow_reserve_liquidity(
     dex_market_pubkey: Pubkey,
     dex_market_order_book_side_pubkey: Pubkey,
     memory_pubkey: Pubkey,
+    deposit_reserve_collateral_host_pubkey: Option<Pubkey>,
 ) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(source_collateral_pubkey, false),
+        AccountMeta::new(destination_liquidity_pubkey, false),
+        AccountMeta::new(deposit_reserve_pubkey, false),
+        AccountMeta::new(deposit_reserve_collateral_supply_pubkey, false),
+        AccountMeta::new(deposit_reserve_collateral_fees_receiver_pubkey, false),
+        AccountMeta::new(borrow_reserve_pubkey, false),
+        AccountMeta::new(borrow_reserve_liquidity_supply_pubkey, false),
+        AccountMeta::new(obligation_pubkey, false),
+        AccountMeta::new(obligation_token_mint_pubkey, false),
+        AccountMeta::new(obligation_token_output_pubkey, false),
+        AccountMeta::new_readonly(obligation_token_owner_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(dex_market_pubkey, false),
+        AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
+        AccountMeta::new_readonly(memory_pubkey, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
+    if let Some(deposit_reserve_collateral_host_pubkey) = deposit_reserve_collateral_host_pubkey {
+        accounts.push(AccountMeta::new(deposit_reserve_collateral_host_pubkey, false));
+    }
     Instruction {
         program_id,
-        accounts: vec![
-            AccountMeta::new(source_collateral_pubkey, false),
-            AccountMeta::new(destination_liquidity_pubkey, false),
-            AccountMeta::new(deposit_reserve_pubkey, false),
-            AccountMeta::new(deposit_reserve_collateral_supply_pubkey, false),
-            AccountMeta::new(deposit_reserve_collateral_fees_receiver_pubkey, false),
-            AccountMeta::new(deposit_reserve_collateral_host_pubkey, false),
-            AccountMeta::new(borrow_reserve_pubkey, false),
-            AccountMeta::new(borrow_reserve_liquidity_supply_pubkey, false),
-            AccountMeta::new(obligation_pubkey, false),
-            AccountMeta::new(obligation_token_mint_pubkey, false),
-            AccountMeta::new(obligation_token_output_pubkey, false),
-            AccountMeta::new_readonly(obligation_token_owner_pubkey, false),
-            AccountMeta::new_readonly(lending_market_pubkey, false),
-            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
-            AccountMeta::new_readonly(dex_market_pubkey, false),
-            AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
-            AccountMeta::new_readonly(memory_pubkey, false),
-            AccountMeta::new_readonly(sysvar::clock::id(), false),
-            AccountMeta::new_readonly(sysvar::rent::id(), false),
-            AccountMeta::new_readonly(spl_token::id(), false),
-        ],
+        accounts,
         data: LendingInstruction::BorrowReserveLiquidity {
             amount,
             amount_type,
