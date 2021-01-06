@@ -541,6 +541,8 @@ export class TokenSwap {
    * @param poolSource Pool's source token account
    * @param poolDestination Pool's destination token account
    * @param userDestination User's destination token account
+   * @param hostFeeAccount Host account to gather fees
+   * @param userTransferAuthority Account delegated to transfer user's tokens
    * @param amountIn Amount to transfer from source account
    * @param minimumAmountOut Minimum amount of tokens the user will receive
    */
@@ -550,6 +552,7 @@ export class TokenSwap {
     poolDestination: PublicKey,
     userDestination: PublicKey,
     hostFeeAccount: ?PublicKey,
+    userTransferAuthority: Account,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
   ): Promise<TransactionSignature> {
@@ -560,6 +563,7 @@ export class TokenSwap {
         TokenSwap.swapInstruction(
           this.tokenSwap,
           this.authority,
+          userTransferAuthority.publicKey,
           userSource,
           poolSource,
           poolDestination,
@@ -574,12 +578,14 @@ export class TokenSwap {
         ),
       ),
       this.payer,
+      userTransferAuthority,
     );
   }
 
   static swapInstruction(
     tokenSwap: PublicKey,
     authority: PublicKey,
+    userTransferAuthority: PublicKey,
     userSource: PublicKey,
     poolSource: PublicKey,
     poolDestination: PublicKey,
@@ -611,6 +617,7 @@ export class TokenSwap {
     const keys = [
       {pubkey: tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
+      {pubkey: userTransferAuthority, isSigner: true, isWritable: false},
       {pubkey: userSource, isSigner: false, isWritable: true},
       {pubkey: poolSource, isSigner: false, isWritable: true},
       {pubkey: poolDestination, isSigner: false, isWritable: true},
@@ -634,6 +641,7 @@ export class TokenSwap {
    * @param userAccountA User account for token A
    * @param userAccountB User account for token B
    * @param poolAccount User account for pool token
+   * @param userTransferAuthority Account delegated to transfer user's tokens
    * @param poolTokenAmount Amount of pool tokens to mint
    * @param maximumTokenA The maximum amount of token A to deposit
    * @param maximumTokenB The maximum amount of token B to deposit
@@ -642,6 +650,7 @@ export class TokenSwap {
     userAccountA: PublicKey,
     userAccountB: PublicKey,
     poolAccount: PublicKey,
+    userTransferAuthority: Account,
     poolTokenAmount: number | Numberu64,
     maximumTokenA: number | Numberu64,
     maximumTokenB: number | Numberu64,
@@ -653,6 +662,7 @@ export class TokenSwap {
         TokenSwap.depositAllTokenTypesInstruction(
           this.tokenSwap,
           this.authority,
+          userTransferAuthority.publicKey,
           userAccountA,
           userAccountB,
           this.tokenAccountA,
@@ -667,12 +677,14 @@ export class TokenSwap {
         ),
       ),
       this.payer,
+      userTransferAuthority,
     );
   }
 
   static depositAllTokenTypesInstruction(
     tokenSwap: PublicKey,
     authority: PublicKey,
+    userTransferAuthority: PublicKey,
     sourceA: PublicKey,
     sourceB: PublicKey,
     intoA: PublicKey,
@@ -706,6 +718,7 @@ export class TokenSwap {
     const keys = [
       {pubkey: tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
+      {pubkey: userTransferAuthority, isSigner: true, isWritable: false},
       {pubkey: sourceA, isSigner: false, isWritable: true},
       {pubkey: sourceB, isSigner: false, isWritable: true},
       {pubkey: intoA, isSigner: false, isWritable: true},
@@ -727,6 +740,7 @@ export class TokenSwap {
    * @param userAccountA User account for token A
    * @param userAccountB User account for token B
    * @param poolAccount User account for pool token
+   * @param userTransferAuthority Account delegated to transfer user's tokens
    * @param poolTokenAmount Amount of pool tokens to burn
    * @param minimumTokenA The minimum amount of token A to withdraw
    * @param minimumTokenB The minimum amount of token B to withdraw
@@ -735,6 +749,7 @@ export class TokenSwap {
     userAccountA: PublicKey,
     userAccountB: PublicKey,
     poolAccount: PublicKey,
+    userTransferAuthority: Account,
     poolTokenAmount: number | Numberu64,
     minimumTokenA: number | Numberu64,
     minimumTokenB: number | Numberu64,
@@ -746,6 +761,7 @@ export class TokenSwap {
         TokenSwap.withdrawAllTokenTypesInstruction(
           this.tokenSwap,
           this.authority,
+          userTransferAuthority.publicKey,
           this.poolToken,
           this.feeAccount,
           poolAccount,
@@ -761,12 +777,14 @@ export class TokenSwap {
         ),
       ),
       this.payer,
+      userTransferAuthority,
     );
   }
 
   static withdrawAllTokenTypesInstruction(
     tokenSwap: PublicKey,
     authority: PublicKey,
+    userTransferAuthority: PublicKey,
     poolMint: PublicKey,
     feeAccount: PublicKey,
     sourcePoolAccount: PublicKey,
@@ -801,6 +819,7 @@ export class TokenSwap {
     const keys = [
       {pubkey: tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
+      {pubkey: userTransferAuthority, isSigner: true, isWritable: false},
       {pubkey: poolMint, isSigner: false, isWritable: true},
       {pubkey: sourcePoolAccount, isSigner: false, isWritable: true},
       {pubkey: fromA, isSigner: false, isWritable: true},
@@ -821,12 +840,14 @@ export class TokenSwap {
    * Deposit one side of tokens into the pool
    * @param userAccount User account to deposit token A or B
    * @param poolAccount User account to receive pool tokens
+   * @param userTransferAuthority Account delegated to transfer user's tokens
    * @param sourceTokenAmount The amount of token A or B to deposit
    * @param minimumPoolTokenAmount Minimum amount of pool tokens to mint
    */
   async depositSingleTokenTypeExactAmountIn(
     userAccount: PublicKey,
     poolAccount: PublicKey,
+    userTransferAuthority: Account,
     sourceTokenAmount: number | Numberu64,
     minimumPoolTokenAmount: number | Numberu64,
   ): Promise<TransactionSignature> {
@@ -837,6 +858,7 @@ export class TokenSwap {
         TokenSwap.depositSingleTokenTypeExactAmountInInstruction(
           this.tokenSwap,
           this.authority,
+          userTransferAuthority.publicKey,
           userAccount,
           this.tokenAccountA,
           this.tokenAccountB,
@@ -849,12 +871,14 @@ export class TokenSwap {
         ),
       ),
       this.payer,
+      userTransferAuthority,
     );
   }
 
   static depositSingleTokenTypeExactAmountInInstruction(
     tokenSwap: PublicKey,
     authority: PublicKey,
+    userTransferAuthority: PublicKey,
     source: PublicKey,
     intoA: PublicKey,
     intoB: PublicKey,
@@ -886,6 +910,7 @@ export class TokenSwap {
     const keys = [
       {pubkey: tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
+      {pubkey: userTransferAuthority, isSigner: true, isWritable: false},
       {pubkey: source, isSigner: false, isWritable: true},
       {pubkey: intoA, isSigner: false, isWritable: true},
       {pubkey: intoB, isSigner: false, isWritable: true},
@@ -905,12 +930,14 @@ export class TokenSwap {
    *
    * @param userAccount User account to receive token A or B
    * @param poolAccount User account to burn pool token
+   * @param userTransferAuthority Account delegated to transfer user's tokens
    * @param destinationTokenAmount The amount of token A or B to withdraw
    * @param maximumPoolTokenAmount Maximum amount of pool tokens to burn
    */
   async withdrawSingleTokenTypeExactAmountOut(
     userAccount: PublicKey,
     poolAccount: PublicKey,
+    userTransferAuthority: Account,
     destinationTokenAmount: number | Numberu64,
     maximumPoolTokenAmount: number | Numberu64,
   ): Promise<TransactionSignature> {
@@ -921,6 +948,7 @@ export class TokenSwap {
         TokenSwap.withdrawSingleTokenTypeExactAmountOutInstruction(
           this.tokenSwap,
           this.authority,
+          userTransferAuthority.publicKey,
           this.poolToken,
           this.feeAccount,
           poolAccount,
@@ -934,12 +962,14 @@ export class TokenSwap {
         ),
       ),
       this.payer,
+      userTransferAuthority,
     );
   }
 
   static withdrawSingleTokenTypeExactAmountOutInstruction(
     tokenSwap: PublicKey,
     authority: PublicKey,
+    userTransferAuthority: PublicKey,
     poolMint: PublicKey,
     feeAccount: PublicKey,
     sourcePoolAccount: PublicKey,
@@ -974,6 +1004,7 @@ export class TokenSwap {
     const keys = [
       {pubkey: tokenSwap, isSigner: false, isWritable: false},
       {pubkey: authority, isSigner: false, isWritable: false},
+      {pubkey: userTransferAuthority, isSigner: true, isWritable: false},
       {pubkey: poolMint, isSigner: false, isWritable: true},
       {pubkey: sourcePoolAccount, isSigner: false, isWritable: true},
       {pubkey: fromA, isSigner: false, isWritable: true},

@@ -329,6 +329,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let swap_source_info = next_account_info(account_info_iter)?;
         let swap_destination_info = next_account_info(account_info_iter)?;
@@ -403,7 +404,7 @@ impl Processor {
             token_program_info.clone(),
             source_info.clone(),
             swap_source_info.clone(),
-            authority_info.clone(),
+            user_transfer_authority_info.clone(),
             token_swap.nonce,
             to_u64(result.source_amount_swapped)?,
         )?;
@@ -491,6 +492,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let source_a_info = next_account_info(account_info_iter)?;
         let source_b_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
@@ -555,7 +557,7 @@ impl Processor {
             token_program_info.clone(),
             source_a_info.clone(),
             token_a_info.clone(),
-            authority_info.clone(),
+            user_transfer_authority_info.clone(),
             token_swap.nonce,
             token_a_amount,
         )?;
@@ -564,7 +566,7 @@ impl Processor {
             token_program_info.clone(),
             source_b_info.clone(),
             token_b_info.clone(),
-            authority_info.clone(),
+            user_transfer_authority_info.clone(),
             token_swap.nonce,
             token_b_amount,
         )?;
@@ -592,6 +594,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
@@ -688,7 +691,7 @@ impl Processor {
                 token_program_info.clone(),
                 source_info.clone(),
                 pool_fee_account_info.clone(),
-                authority_info.clone(),
+                user_transfer_authority_info.clone(),
                 token_swap.nonce,
                 to_u64(withdraw_fee)?,
             )?;
@@ -698,7 +701,7 @@ impl Processor {
             token_program_info.clone(),
             source_info.clone(),
             pool_mint_info.clone(),
-            authority_info.clone(),
+            user_transfer_authority_info.clone(),
             token_swap.nonce,
             to_u64(pool_token_amount)?,
         )?;
@@ -715,6 +718,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let swap_token_a_info = next_account_info(account_info_iter)?;
         let swap_token_b_info = next_account_info(account_info_iter)?;
@@ -786,7 +790,7 @@ impl Processor {
                     token_program_info.clone(),
                     source_info.clone(),
                     swap_token_a_info.clone(),
-                    authority_info.clone(),
+                    user_transfer_authority_info.clone(),
                     token_swap.nonce,
                     source_token_amount,
                 )?;
@@ -797,7 +801,7 @@ impl Processor {
                     token_program_info.clone(),
                     source_info.clone(),
                     swap_token_b_info.clone(),
-                    authority_info.clone(),
+                    user_transfer_authority_info.clone(),
                     token_swap.nonce,
                     source_token_amount,
                 )?;
@@ -826,6 +830,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
         let swap_token_a_info = next_account_info(account_info_iter)?;
@@ -954,7 +959,7 @@ impl Processor {
                 token_program_info.clone(),
                 source_info.clone(),
                 pool_fee_account_info.clone(),
-                authority_info.clone(),
+                user_transfer_authority_info.clone(),
                 token_swap.nonce,
                 to_u64(withdraw_fee)?,
             )?;
@@ -964,7 +969,7 @@ impl Processor {
             token_program_info.clone(),
             source_info.clone(),
             pool_mint_info.clone(),
-            authority_info.clone(),
+            user_transfer_authority_info.clone(),
             token_swap.nonce,
             to_u64(burn_pool_token_amount)?,
         )?;
@@ -1426,12 +1431,13 @@ mod tests {
             amount_in: u64,
             minimum_amount_out: u64,
         ) -> ProgramResult {
+            let user_transfer_key = Pubkey::new_unique();
             // approve moving from user source account
             do_process_instruction(
                 approve(
                     &TOKEN_PROGRAM_ID,
                     &user_source_key,
-                    &self.authority_key,
+                    &user_transfer_key,
                     &user_key,
                     &[],
                     amount_in,
@@ -1455,6 +1461,7 @@ mod tests {
                     &TOKEN_PROGRAM_ID,
                     &self.swap_key,
                     &self.authority_key,
+                    &user_transfer_key,
                     &user_source_key,
                     &swap_source_key,
                     &swap_destination_key,
@@ -1470,6 +1477,7 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
+                    &mut Account::default(),
                     &mut Account::default(),
                     &mut user_source_account,
                     &mut swap_source_account,
@@ -1501,11 +1509,12 @@ mod tests {
             maximum_token_a_amount: u64,
             maximum_token_b_amount: u64,
         ) -> ProgramResult {
+            let user_transfer_authority = Pubkey::new_unique();
             do_process_instruction(
                 approve(
                     &TOKEN_PROGRAM_ID,
                     &depositor_token_a_key,
-                    &self.authority_key,
+                    &user_transfer_authority,
                     &depositor_key,
                     &[],
                     maximum_token_a_amount,
@@ -1523,7 +1532,7 @@ mod tests {
                 approve(
                     &TOKEN_PROGRAM_ID,
                     &depositor_token_b_key,
-                    &self.authority_key,
+                    &user_transfer_authority,
                     &depositor_key,
                     &[],
                     maximum_token_b_amount,
@@ -1543,6 +1552,7 @@ mod tests {
                     &TOKEN_PROGRAM_ID,
                     &self.swap_key,
                     &self.authority_key,
+                    &user_transfer_authority,
                     &depositor_token_a_key,
                     &depositor_token_b_key,
                     &self.token_a_key,
@@ -1558,6 +1568,7 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
+                    &mut Account::default(),
                     &mut Account::default(),
                     &mut depositor_token_a_account,
                     &mut depositor_token_b_account,
@@ -1584,12 +1595,13 @@ mod tests {
             minimum_token_a_amount: u64,
             minimum_token_b_amount: u64,
         ) -> ProgramResult {
-            // approve swap program to take out pool tokens
+            let user_transfer_authority_key = Pubkey::new_unique();
+            // approve user transfer authority to take out pool tokens
             do_process_instruction(
                 approve(
                     &TOKEN_PROGRAM_ID,
                     &pool_key,
-                    &self.authority_key,
+                    &user_transfer_authority_key,
                     &user_key,
                     &[],
                     pool_token_amount,
@@ -1610,6 +1622,7 @@ mod tests {
                     &TOKEN_PROGRAM_ID,
                     &self.swap_key,
                     &self.authority_key,
+                    &user_transfer_authority_key,
                     &self.pool_mint_key,
                     &self.pool_fee_key,
                     &pool_key,
@@ -1626,6 +1639,7 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
+                    &mut Account::default(),
                     &mut Account::default(),
                     &mut self.pool_mint_account,
                     &mut pool_account,
@@ -1650,11 +1664,12 @@ mod tests {
             source_token_amount: u64,
             minimum_pool_token_amount: u64,
         ) -> ProgramResult {
+            let user_transfer_authority_key = Pubkey::new_unique();
             do_process_instruction(
                 approve(
                     &TOKEN_PROGRAM_ID,
                     &deposit_account_key,
-                    &self.authority_key,
+                    &user_transfer_authority_key,
                     &depositor_key,
                     &[],
                     source_token_amount,
@@ -1674,6 +1689,7 @@ mod tests {
                     &TOKEN_PROGRAM_ID,
                     &self.swap_key,
                     &self.authority_key,
+                    &user_transfer_authority_key,
                     &deposit_account_key,
                     &self.token_a_key,
                     &self.token_b_key,
@@ -1687,6 +1703,7 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
+                    &mut Account::default(),
                     &mut Account::default(),
                     &mut deposit_token_account,
                     &mut self.token_a_account,
@@ -1709,12 +1726,13 @@ mod tests {
             destination_token_amount: u64,
             maximum_pool_token_amount: u64,
         ) -> ProgramResult {
-            // approve swap program to take out pool tokens
+            let user_transfer_authority_key = Pubkey::new_unique();
+            // approve user transfer authority to take out pool tokens
             do_process_instruction(
                 approve(
                     &TOKEN_PROGRAM_ID,
                     &pool_key,
-                    &self.authority_key,
+                    &user_transfer_authority_key,
                     &user_key,
                     &[],
                     maximum_pool_token_amount,
@@ -1734,6 +1752,7 @@ mod tests {
                     &TOKEN_PROGRAM_ID,
                     &self.swap_key,
                     &self.authority_key,
+                    &user_transfer_authority_key,
                     &self.pool_mint_key,
                     &self.pool_fee_key,
                     &pool_key,
@@ -1748,6 +1767,7 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
+                    &mut Account::default(),
                     &mut Account::default(),
                     &mut self.pool_mint_account,
                     &mut pool_account,
@@ -3064,6 +3084,7 @@ mod tests {
                 pool_key,
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let user_transfer_authority_key = Pubkey::new_unique();
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
@@ -3072,6 +3093,7 @@ mod tests {
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &user_transfer_authority_key,
                         &token_a_key,
                         &token_b_key,
                         &accounts.token_a_key,
@@ -3087,6 +3109,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut token_a_account,
                         &mut token_b_account,
@@ -3119,6 +3142,7 @@ mod tests {
                         &wrong_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &accounts.authority_key,
                         &token_a_key,
                         &token_b_key,
                         &accounts.token_a_key,
@@ -3134,6 +3158,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut token_a_account,
                         &mut token_b_account,
@@ -3717,6 +3742,7 @@ mod tests {
                 0,
                 withdraw_amount.try_into().unwrap(),
             );
+            let user_transfer_authority_key = Pubkey::new_unique();
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
@@ -3725,6 +3751,7 @@ mod tests {
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &user_transfer_authority_key,
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         &pool_key,
@@ -3741,6 +3768,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
@@ -3780,6 +3808,7 @@ mod tests {
                         &wrong_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &accounts.authority_key,
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         &pool_key,
@@ -3796,6 +3825,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
@@ -4399,6 +4429,7 @@ mod tests {
                 pool_key,
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let user_transfer_authority_key = Pubkey::new_unique();
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
@@ -4407,6 +4438,7 @@ mod tests {
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &user_transfer_authority_key,
                         &token_a_key,
                         &accounts.token_a_key,
                         &accounts.token_b_key,
@@ -4420,6 +4452,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut token_a_account,
                         &mut accounts.token_a_account,
@@ -4451,6 +4484,7 @@ mod tests {
                         &wrong_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &accounts.authority_key,
                         &token_a_key,
                         &accounts.token_a_key,
                         &accounts.token_b_key,
@@ -4464,6 +4498,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut token_a_account,
                         &mut accounts.token_a_account,
@@ -4960,6 +4995,7 @@ mod tests {
                 0,
                 maximum_pool_token_amount,
             );
+            let user_transfer_authority_key = Pubkey::new_unique();
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
@@ -4968,6 +5004,7 @@ mod tests {
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &user_transfer_authority_key,
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         &pool_key,
@@ -4982,6 +5019,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
@@ -5020,6 +5058,7 @@ mod tests {
                         &wrong_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &accounts.authority_key,
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         &pool_key,
@@ -5034,6 +5073,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
@@ -5736,6 +5776,7 @@ mod tests {
                 &TOKEN_PROGRAM_ID,
                 &accounts.swap_key,
                 &accounts.authority_key,
+                &accounts.authority_key,
                 &token_a_key,
                 &accounts.token_a_key,
                 &accounts.token_b_key,
@@ -5751,6 +5792,7 @@ mod tests {
             .unwrap(),
             vec![
                 &mut accounts.swap_account,
+                &mut Account::default(),
                 &mut Account::default(),
                 &mut token_a_account,
                 &mut accounts.token_a_account,
@@ -5928,6 +5970,7 @@ mod tests {
                         &wrong_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &accounts.authority_key,
                         &token_a_key,
                         &accounts.token_a_key,
                         &accounts.token_b_key,
@@ -5943,6 +5986,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut token_a_account,
                         &mut accounts.token_a_account,
@@ -5992,6 +6036,7 @@ mod tests {
                 _pool_key,
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+            let user_transfer_key = Pubkey::new_unique();
             assert_eq!(
                 Err(SwapError::IncorrectSwapAccount.into()),
                 do_process_instruction(
@@ -6000,6 +6045,7 @@ mod tests {
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &user_transfer_key,
                         &token_a_key,
                         &token_a_key,
                         &token_b_key,
@@ -6015,6 +6061,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut token_a_account.clone(),
                         &mut token_a_account,
@@ -6158,6 +6205,7 @@ mod tests {
                 _pool_key,
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+            let user_transfer_key = Pubkey::new_unique();
             assert_eq!(
                 Err(TokenError::OwnerMismatch.into()),
                 do_process_instruction(
@@ -6166,6 +6214,7 @@ mod tests {
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &user_transfer_key,
                         &token_a_key,
                         &accounts.token_a_key,
                         &accounts.token_b_key,
@@ -6181,6 +6230,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut token_a_account,
                         &mut accounts.token_a_account,
@@ -6322,6 +6372,7 @@ mod tests {
                     &TOKEN_PROGRAM_ID,
                     &accounts.swap_key,
                     &accounts.authority_key,
+                    &accounts.authority_key,
                     &token_a_key,
                     &accounts.token_a_key,
                     &accounts.token_b_key,
@@ -6337,6 +6388,7 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut accounts.swap_account,
+                    &mut Account::default(),
                     &mut Account::default(),
                     &mut token_a_account,
                     &mut accounts.token_a_account,
@@ -6394,6 +6446,7 @@ mod tests {
                         &TOKEN_PROGRAM_ID,
                         &accounts.swap_key,
                         &accounts.authority_key,
+                        &accounts.authority_key,
                         &token_a_key,
                         &accounts.token_a_key,
                         &accounts.token_b_key,
@@ -6409,6 +6462,7 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut token_a_account,
                         &mut accounts.token_a_account,

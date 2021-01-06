@@ -99,29 +99,30 @@ pub enum SwapInstruction {
     ///   Initializes a new SwapInfo.
     ///
     ///   0. `[writable, signer]` New Token-swap to create.
-    ///   1. `[]` $authority derived from `create_program_address(&[Token-swap account])`
-    ///   2. `[]` token_a Account. Must be non zero, owned by $authority.
-    ///   3. `[]` token_b Account. Must be non zero, owned by $authority.
-    ///   4. `[writable]` Pool Token Mint. Must be empty, owned by $authority.
+    ///   1. `[]` swap authority derived from `create_program_address(&[Token-swap account])`
+    ///   2. `[]` token_a Account. Must be non zero, owned by swap authority.
+    ///   3. `[]` token_b Account. Must be non zero, owned by swap authority.
+    ///   4. `[writable]` Pool Token Mint. Must be empty, owned by swap authority.
     ///   5. `[]` Pool Token Account to deposit trading and withdraw fees.
-    ///   Must be empty, not owned by $authority
+    ///   Must be empty, not owned by swap authority
     ///   6. `[writable]` Pool Token Account to deposit the initial pool token
-    ///   supply.  Must be empty, not owned by $authority.
+    ///   supply.  Must be empty, not owned by swap authority.
     ///   7. '[]` Token program id
     Initialize(Initialize),
 
     ///   Swap the tokens in the pool.
     ///
     ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transferable by $authority,
-    ///   3. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
-    ///   4. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
-    ///   5. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
-    ///   6. `[writable]` Pool token mint, to generate trading fees
-    ///   7. `[writable]` Fee account, to receive trading fees
-    ///   8. '[]` Token program id
-    ///   9. `[optional, writable]` Host fee account to receive additional trading fees
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by user transfer authority,
+    ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
+    ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
+    ///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
+    ///   7. `[writable]` Pool token mint, to generate trading fees
+    ///   8. `[writable]` Fee account, to receive trading fees
+    ///   9. '[]` Token program id
+    ///   10 `[optional, writable]` Host fee account to receive additional trading fees
     Swap(Swap),
 
     ///   Deposit both types of tokens into the pool.  The output is a "pool"
@@ -129,14 +130,15 @@ pub enum SwapInstruction {
     ///   the current ratio.
     ///
     ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` token_a $authority can transfer amount,
-    ///   3. `[writable]` token_b $authority can transfer amount,
-    ///   4. `[writable]` token_a Base Account to deposit into.
-    ///   5. `[writable]` token_b Base Account to deposit into.
-    ///   6. `[writable]` Pool MINT account, $authority is the owner.
-    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   8. '[]` Token program id
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` token_a user transfer authority can transfer amount,
+    ///   4. `[writable]` token_b user transfer authority can transfer amount,
+    ///   5. `[writable]` token_a Base Account to deposit into.
+    ///   6. `[writable]` token_b Base Account to deposit into.
+    ///   7. `[writable]` Pool MINT account, swap authority is the owner.
+    ///   8. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   9. '[]` Token program id
     DepositAllTokenTypes(DepositAllTokenTypes),
 
     ///   Withdraw both types of tokens from the pool at the current ratio, given
@@ -144,15 +146,16 @@ pub enum SwapInstruction {
     ///   amount of token A and B.
     ///
     ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` Pool mint account, $authority is the owner
-    ///   3. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   4. `[writable]` token_a Swap Account to withdraw FROM.
-    ///   5. `[writable]` token_b Swap Account to withdraw FROM.
-    ///   6. `[writable]` token_a user Account to credit.
-    ///   7. `[writable]` token_b user Account to credit.
-    ///   8. `[writable]` Fee account, to receive withdrawal fees
-    ///   9. '[]` Token program id
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` Pool mint account, swap authority is the owner
+    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user transfer authority.
+    ///   5. `[writable]` token_a Swap Account to withdraw FROM.
+    ///   6. `[writable]` token_b Swap Account to withdraw FROM.
+    ///   7. `[writable]` token_a user Account to credit.
+    ///   8. `[writable]` token_b user Account to credit.
+    ///   9. `[writable]` Fee account, to receive withdrawal fees
+    ///   10 '[]` Token program id
     WithdrawAllTokenTypes(WithdrawAllTokenTypes),
 
     ///   Deposit one type of tokens into the pool.  The output is a "pool" token
@@ -160,27 +163,29 @@ pub enum SwapInstruction {
     ///   a swap and deposit all token types were performed.
     ///
     ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` token_(A|B) SOURCE Account, amount is transferable by $authority,
-    ///   3. `[writable]` token_a Swap Account, may deposit INTO.
-    ///   4. `[writable]` token_b Swap Account, may deposit INTO.
-    ///   5. `[writable]` Pool MINT account, $authority is the owner.
-    ///   6. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   7. '[]` Token program id
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by user transfer authority,
+    ///   4. `[writable]` token_a Swap Account, may deposit INTO.
+    ///   5. `[writable]` token_b Swap Account, may deposit INTO.
+    ///   6. `[writable]` Pool MINT account, swap authority is the owner.
+    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   8. '[]` Token program id
     DepositSingleTokenTypeExactAmountIn(DepositSingleTokenTypeExactAmountIn),
 
     ///   Withdraw one token type from the pool at the current ratio given the
     ///   exact amount out expected.
     ///
     ///   0. `[]` Token-swap
-    ///   1. `[]` $authority
-    ///   2. `[writable]` Pool mint account, $authority is the owner
-    ///   3. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   4. `[writable]` token_a Swap Account to potentially withdraw from.
-    ///   5. `[writable]` token_b Swap Account to potentially withdraw from.
-    ///   6. `[writable]` token_(A|B) User Account to credit
-    ///   7. `[writable]` Fee account, to receive withdrawal fees
-    ///   8. '[]` Token program id
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` Pool mint account, swap authority is the owner
+    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user transfer authority.
+    ///   5. `[writable]` token_a Swap Account to potentially withdraw from.
+    ///   6. `[writable]` token_b Swap Account to potentially withdraw from.
+    ///   7. `[writable]` token_(A|B) User Account to credit
+    ///   8. `[writable]` Fee account, to receive withdrawal fees
+    ///   9. '[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
 }
 
@@ -381,6 +386,7 @@ pub fn deposit_all_token_types(
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
     deposit_token_a_pubkey: &Pubkey,
     deposit_token_b_pubkey: &Pubkey,
     swap_token_a_pubkey: &Pubkey,
@@ -394,6 +400,7 @@ pub fn deposit_all_token_types(
     let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
         AccountMeta::new(*deposit_token_a_pubkey, false),
         AccountMeta::new(*deposit_token_b_pubkey, false),
         AccountMeta::new(*swap_token_a_pubkey, false),
@@ -416,6 +423,7 @@ pub fn withdraw_all_token_types(
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
     pool_mint_pubkey: &Pubkey,
     fee_account_pubkey: &Pubkey,
     source_pubkey: &Pubkey,
@@ -430,6 +438,7 @@ pub fn withdraw_all_token_types(
     let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*source_pubkey, false),
         AccountMeta::new(*swap_token_a_pubkey, false),
@@ -453,6 +462,7 @@ pub fn deposit_single_token_type_exact_amount_in(
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
     source_token_pubkey: &Pubkey,
     swap_token_a_pubkey: &Pubkey,
     swap_token_b_pubkey: &Pubkey,
@@ -465,6 +475,7 @@ pub fn deposit_single_token_type_exact_amount_in(
     let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
         AccountMeta::new(*source_token_pubkey, false),
         AccountMeta::new(*swap_token_a_pubkey, false),
         AccountMeta::new(*swap_token_b_pubkey, false),
@@ -486,6 +497,7 @@ pub fn withdraw_single_token_type_exact_amount_out(
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
     pool_mint_pubkey: &Pubkey,
     fee_account_pubkey: &Pubkey,
     pool_token_source_pubkey: &Pubkey,
@@ -499,6 +511,7 @@ pub fn withdraw_single_token_type_exact_amount_out(
     let accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*pool_token_source_pubkey, false),
         AccountMeta::new(*swap_token_a_pubkey, false),
@@ -521,6 +534,7 @@ pub fn swap(
     token_program_id: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
     source_pubkey: &Pubkey,
     swap_source_pubkey: &Pubkey,
     swap_destination_pubkey: &Pubkey,
@@ -535,6 +549,7 @@ pub fn swap(
     let mut accounts = vec![
         AccountMeta::new_readonly(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
         AccountMeta::new(*source_pubkey, false),
         AccountMeta::new(*swap_source_pubkey, false),
         AccountMeta::new(*swap_destination_pubkey, false),
