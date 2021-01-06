@@ -299,14 +299,27 @@ export async function depositAllTokenTypes(): Promise<void> {
     (swapTokenB.amount.toNumber() * POOL_TOKEN_AMOUNT) / supply,
   );
 
+  const userTransferAuthority = new Account();
   console.log('Creating depositor token a account');
   const userAccountA = await mintA.createAccount(owner.publicKey);
   await mintA.mintTo(userAccountA, owner, [], tokenA);
-  await mintA.approve(userAccountA, authority, owner, [], tokenA);
+  await mintA.approve(
+    userAccountA,
+    userTransferAuthority.publicKey,
+    owner,
+    [],
+    tokenA,
+  );
   console.log('Creating depositor token b account');
   const userAccountB = await mintB.createAccount(owner.publicKey);
   await mintB.mintTo(userAccountB, owner, [], tokenB);
-  await mintB.approve(userAccountB, authority, owner, [], tokenB);
+  await mintB.approve(
+    userAccountB,
+    userTransferAuthority.publicKey,
+    owner,
+    [],
+    tokenB,
+  );
   console.log('Creating depositor pool token account');
   const newAccountPool = await tokenPool.createAccount(owner.publicKey);
 
@@ -315,6 +328,7 @@ export async function depositAllTokenTypes(): Promise<void> {
     userAccountA,
     userAccountB,
     newAccountPool,
+    userTransferAuthority,
     POOL_TOKEN_AMOUNT,
     tokenA,
     tokenB,
@@ -360,10 +374,11 @@ export async function withdrawAllTokenTypes(): Promise<void> {
   console.log('Creating withdraw token B account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
 
+  const userTransferAuthority = new Account();
   console.log('Approving withdrawal from pool account');
   await tokenPool.approve(
     tokenAccountPool,
-    authority,
+    userTransferAuthority.publicKey,
     owner,
     [],
     POOL_TOKEN_AMOUNT,
@@ -374,6 +389,7 @@ export async function withdrawAllTokenTypes(): Promise<void> {
     userAccountA,
     userAccountB,
     tokenAccountPool,
+    userTransferAuthority,
     POOL_TOKEN_AMOUNT,
     tokenA,
     tokenB,
@@ -429,11 +445,12 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
     ),
   );
 
+  const userTransferAuthority = new Account();
   transaction.add(
     Token.createApproveInstruction(
       mintA.programId,
       userAccountA,
-      authority,
+      userTransferAuthority.publicKey,
       owner.publicKey,
       [owner],
       SWAP_AMOUNT_IN,
@@ -444,6 +461,7 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
     TokenSwap.swapInstruction(
       tokenSwap.tokenSwap,
       tokenSwap.authority,
+      userTransferAuthority.publicKey,
       userAccountA,
       tokenSwap.tokenAccountA,
       tokenSwap.tokenAccountB,
@@ -466,6 +484,7 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
     transaction,
     owner,
     newAccount,
+    userTransferAuthority,
   );
 
   let info;
@@ -479,7 +498,14 @@ export async function swap(): Promise<void> {
   console.log('Creating swap token a account');
   let userAccountA = await mintA.createAccount(owner.publicKey);
   await mintA.mintTo(userAccountA, owner, [], SWAP_AMOUNT_IN);
-  await mintA.approve(userAccountA, authority, owner, [], SWAP_AMOUNT_IN);
+  const userTransferAuthority = new Account();
+  await mintA.approve(
+    userAccountA,
+    userTransferAuthority.publicKey,
+    owner,
+    [],
+    SWAP_AMOUNT_IN,
+  );
   console.log('Creating swap token b account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
   let poolAccount = SWAP_PROGRAM_OWNER_FEE_ADDRESS
@@ -493,6 +519,7 @@ export async function swap(): Promise<void> {
     tokenAccountB,
     userAccountB,
     poolAccount,
+    userTransferAuthority,
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,
   );
@@ -559,14 +586,27 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
     supply,
   );
 
+  const userTransferAuthority = new Account();
   console.log('Creating depositor token a account');
   const userAccountA = await mintA.createAccount(owner.publicKey);
   await mintA.mintTo(userAccountA, owner, [], depositAmount);
-  await mintA.approve(userAccountA, authority, owner, [], depositAmount);
+  await mintA.approve(
+    userAccountA,
+    userTransferAuthority.publicKey,
+    owner,
+    [],
+    depositAmount,
+  );
   console.log('Creating depositor token b account');
   const userAccountB = await mintB.createAccount(owner.publicKey);
   await mintB.mintTo(userAccountB, owner, [], depositAmount);
-  await mintB.approve(userAccountB, authority, owner, [], depositAmount);
+  await mintB.approve(
+    userAccountB,
+    userTransferAuthority.publicKey,
+    owner,
+    [],
+    depositAmount,
+  );
   console.log('Creating depositor pool token account');
   const newAccountPool = await tokenPool.createAccount(owner.publicKey);
 
@@ -574,6 +614,7 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
   await tokenSwap.depositSingleTokenTypeExactAmountIn(
     userAccountA,
     newAccountPool,
+    userTransferAuthority,
     depositAmount,
     poolTokenA,
   );
@@ -589,6 +630,7 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
   await tokenSwap.depositSingleTokenTypeExactAmountIn(
     userAccountB,
     newAccountPool,
+    userTransferAuthority,
     depositAmount,
     poolTokenB,
   );
@@ -636,6 +678,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
       1 + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR;
   }
 
+  const userTransferAuthority = new Account();
   console.log('Creating withdraw token a account');
   const userAccountA = await mintA.createAccount(owner.publicKey);
   console.log('Creating withdraw token b account');
@@ -645,7 +688,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   const poolTokenAmount = poolAccount.amount.toNumber();
   await tokenPool.approve(
     tokenAccountPool,
-    authority,
+    userTransferAuthority.publicKey,
     owner,
     [],
     adjustedPoolTokenA + adjustedPoolTokenB,
@@ -655,6 +698,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   await tokenSwap.withdrawSingleTokenTypeExactAmountOut(
     userAccountA,
     tokenAccountPool,
+    userTransferAuthority,
     withdrawAmount,
     adjustedPoolTokenA,
   );
@@ -672,6 +716,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   await tokenSwap.withdrawSingleTokenTypeExactAmountOut(
     userAccountB,
     tokenAccountPool,
+    userTransferAuthority,
     withdrawAmount,
     adjustedPoolTokenB,
   );

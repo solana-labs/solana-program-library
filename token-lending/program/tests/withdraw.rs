@@ -49,12 +49,13 @@ async fn test_success() {
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
 
+    let user_transfer_authority = Keypair::new();
     let mut transaction = Transaction::new_with_payer(
         &[
             approve(
                 &spl_token::id(),
                 &usdc_reserve.user_collateral_account,
-                &lending_market.authority,
+                &user_transfer_authority.pubkey(),
                 &user_accounts_owner.pubkey(),
                 &[],
                 WITHDRAW_COLLATERAL_AMOUNT,
@@ -70,11 +71,15 @@ async fn test_success() {
                 usdc_reserve.liquidity_supply,
                 lending_market.keypair.pubkey(),
                 lending_market.authority,
+                user_transfer_authority.pubkey(),
             ),
         ],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    transaction.sign(
+        &[&payer, &user_accounts_owner, &user_transfer_authority],
+        recent_blockhash,
+    );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 }

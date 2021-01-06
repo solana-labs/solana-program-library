@@ -178,9 +178,7 @@ pub fn create_reserve(
     let collateral_fees_receiver_keypair = Keypair::new();
     let liquidity_supply_keypair = Keypair::new();
     let user_collateral_token_keypair = Keypair::new();
-
-    let (authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_keypair.pubkey().to_bytes()[..32]], &id());
+    let user_transfer_authority = Keypair::new();
 
     let liquidity_source_account = client.get_account(&liquidity_source_pubkey).unwrap();
     let liquidity_source_token = Token::unpack(&liquidity_source_account.data).unwrap();
@@ -262,7 +260,7 @@ pub fn create_reserve(
             approve(
                 &spl_token::id(),
                 &liquidity_source_pubkey,
-                &authority_pubkey,
+                &user_transfer_authority.pubkey(),
                 &payer.pubkey(),
                 &[],
                 liquidity_source_token.amount,
@@ -281,13 +279,17 @@ pub fn create_reserve(
                 collateral_supply_keypair.pubkey(),
                 collateral_fees_receiver_keypair.pubkey(),
                 lending_market_keypair.pubkey(),
+                user_transfer_authority.pubkey(),
                 dex_market_pubkey,
             ),
         ],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(&vec![payer, &lending_market_keypair], recent_blockhash);
+    transaction.sign(
+        &vec![payer, &lending_market_keypair, &user_transfer_authority],
+        recent_blockhash,
+    );
 
     client.send_and_confirm_transaction(&transaction).unwrap();
 

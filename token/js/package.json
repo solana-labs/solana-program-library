@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.10.5",
-    "@solana/web3.js": "^0.87.0",
+    "@solana/web3.js": "^0.88.0",
     "bn.js": "^5.0.0",
     "buffer-layout": "^1.2.0",
     "dotenv": "8.2.0",
@@ -61,7 +61,7 @@
     "babel-eslint": "^10.1.0",
     "eslint": "^7.4.0",
     "eslint-plugin-import": "^2.22.0",
-    "flow-bin": "0.138.0",
+    "flow-bin": "0.141.0",
     "flow-typed": "^3.2.0",
     "mz": "^2.7.0",
     "prettier": "^2.0.5",

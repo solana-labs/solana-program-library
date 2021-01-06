@@ -402,12 +402,13 @@ impl TestLendingMarket {
         reserve: &TestReserve,
         amount: u64,
     ) {
+        let user_transfer_authority = Keypair::new();
         let mut transaction = Transaction::new_with_payer(
             &[
                 approve(
                     &spl_token::id(),
                     &reserve.user_liquidity_account,
-                    &self.authority,
+                    &user_transfer_authority.pubkey(),
                     &user_accounts_owner.pubkey(),
                     &[],
                     amount,
@@ -423,13 +424,17 @@ impl TestLendingMarket {
                     reserve.collateral_mint,
                     self.keypair.pubkey(),
                     self.authority,
+                    user_transfer_authority.pubkey(),
                 ),
             ],
             Some(&payer.pubkey()),
         );
 
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
-        transaction.sign(&[payer, user_accounts_owner], recent_blockhash);
+        transaction.sign(
+            &[payer, user_accounts_owner, &user_transfer_authority],
+            recent_blockhash,
+        );
 
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
     }
@@ -442,6 +447,7 @@ impl TestLendingMarket {
     ) -> TestObligation {
         let rent = banks_client.get_rent().await.unwrap();
         let memory_keypair = Keypair::new();
+        let user_transfer_authority = Keypair::new();
 
         let BorrowArgs {
             borrow_reserve,
@@ -524,7 +530,7 @@ impl TestLendingMarket {
                 approve(
                     &spl_token::id(),
                     &deposit_reserve.user_collateral_account,
-                    &self.authority,
+                    &user_transfer_authority.pubkey(),
                     &user_accounts_owner.pubkey(),
                     &[],
                     approve_amount,
@@ -550,6 +556,7 @@ impl TestLendingMarket {
                     borrow_reserve.liquidity_supply,
                     self.keypair.pubkey(),
                     self.authority,
+                    user_transfer_authority.pubkey(),
                     obligation.keypair.pubkey(),
                     obligation.token_mint,
                     obligation.token_account,
@@ -565,7 +572,12 @@ impl TestLendingMarket {
 
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
         transaction.sign(
-            &vec![payer, user_accounts_owner, &memory_keypair],
+            &vec![
+                payer,
+                user_accounts_owner,
+                &memory_keypair,
+                &user_transfer_authority,
+            ],
             recent_blockhash,
         );
 
@@ -634,6 +646,7 @@ impl TestReserve {
         let collateral_host_keypair = Keypair::new();
         let liquidity_supply_keypair = Keypair::new();
         let user_collateral_token_keypair = Keypair::new();
+        let user_transfer_authority_keypair = Keypair::new();
 
         let dex_market_pubkey = if liquidity_mint_pubkey != lending_market.quote_token_mint {
             Some(dex_market.pubkey)
@@ -654,7 +667,7 @@ impl TestReserve {
                 approve(
                     &spl_token::id(),
                     &user_liquidity_account,
-                    &lending_market.authority,
+                    &user_transfer_authority_keypair.pubkey(),
                     &user_accounts_owner.pubkey(),
                     &[],
                     reserve_amount,
@@ -722,6 +735,7 @@ impl TestReserve {
                     collateral_supply_keypair.pubkey(),
                     collateral_fees_receiver_keypair.pubkey(),
                     lending_market.keypair.pubkey(),
+                    user_transfer_authority_keypair.pubkey(),
                     dex_market_pubkey,
                 ),
             ],
@@ -741,6 +755,7 @@ impl TestReserve {
                 &collateral_host_keypair,
                 &liquidity_supply_keypair,
                 &user_collateral_token_keypair,
+                &user_transfer_authority_keypair,
             ],
             recent_blockhash,
         );
