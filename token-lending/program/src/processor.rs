@@ -137,6 +137,7 @@ fn process_init_reserve(
     let reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
@@ -235,8 +236,8 @@ fn process_init_reserve(
         source: source_liquidity_info.clone(),
         destination: reserve_liquidity_supply_info.clone(),
         amount: liquidity_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
@@ -285,6 +286,7 @@ fn process_deposit(
     let reserve_collateral_mint_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -336,8 +338,8 @@ fn process_deposit(
         source: source_liquidity_info.clone(),
         destination: reserve_liquidity_supply_info.clone(),
         amount: liquidity_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
@@ -370,6 +372,7 @@ fn process_withdraw(
     let reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -430,8 +433,8 @@ fn process_withdraw(
         mint: reserve_collateral_mint_info.clone(),
         source: source_collateral_info.clone(),
         amount: collateral_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
@@ -462,6 +465,7 @@ fn process_borrow(
     let obligation_token_owner_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let dex_market_info = next_account_info(account_info_iter)?;
     let dex_market_order_book_side_info = next_account_info(account_info_iter)?;
     let memory = next_account_info(account_info_iter)?;
@@ -643,8 +647,8 @@ fn process_borrow(
         source: source_collateral_info.clone(),
         destination: deposit_reserve_collateral_supply_info.clone(),
         amount: collateral_deposit_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
@@ -731,6 +735,7 @@ fn process_repay(
     let obligation_token_input_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -840,8 +845,8 @@ fn process_repay(
         source: source_liquidity_info.clone(),
         destination: repay_reserve_liquidity_supply_info.clone(),
         amount: rounded_repay_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
@@ -860,8 +865,8 @@ fn process_repay(
         mint: obligation_token_mint_info.clone(),
         source: obligation_token_input_info.clone(),
         amount: obligation_token_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
@@ -888,6 +893,7 @@ fn process_liquidate(
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let dex_market_info = next_account_info(account_info_iter)?;
     let dex_market_order_book_side_info = next_account_info(account_info_iter)?;
     let memory = next_account_info(account_info_iter)?;
@@ -1045,8 +1051,8 @@ fn process_liquidate(
         source: source_liquidity_info.clone(),
         destination: repay_reserve_liquidity_supply_info.clone(),
         amount: rounded_repay_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 

@@ -80,6 +80,7 @@ async fn test_already_initialized() {
     );
 
     let user_accounts_owner = Keypair::new();
+    let user_transfer_authority = Keypair::new();
     let sol_usdc_dex_market =
         TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
     let usdc_mint = add_usdc_mint(&mut test);
@@ -114,11 +115,15 @@ async fn test_already_initialized() {
             usdc_reserve.collateral_mint,
             usdc_reserve.collateral_supply,
             lending_market.keypair.pubkey(),
+            user_transfer_authority.pubkey(),
             Some(sol_usdc_dex_market.pubkey),
         )],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &lending_market.keypair], recent_blockhash);
+    transaction.sign(
+        &[&payer, &lending_market.keypair, &user_transfer_authority],
+        recent_blockhash,
+    );
     assert_eq!(
         banks_client
             .process_transaction(transaction)

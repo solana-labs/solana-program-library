@@ -43,6 +43,7 @@ async fn test_success() {
     const OBLIGATION_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATE * LAMPORTS_TO_SOL;
 
     let user_accounts_owner = Keypair::new();
+    let user_transfer_authority = Keypair::new();
     let sol_usdc_dex_market =
         TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
     let usdc_mint = add_usdc_mint(&mut test);
@@ -103,7 +104,7 @@ async fn test_success() {
             approve(
                 &spl_token::id(),
                 &usdc_reserve.user_liquidity_account,
-                &lending_market.authority,
+                &user_transfer_authority.pubkey(),
                 &user_accounts_owner.pubkey(),
                 &[],
                 OBLIGATION_USDC_LOAN,
@@ -121,6 +122,7 @@ async fn test_success() {
                 obligation.keypair.pubkey(),
                 lending_market.keypair.pubkey(),
                 lending_market.authority,
+                user_transfer_authority.pubkey(),
                 sol_usdc_dex_market.pubkey,
                 sol_usdc_dex_market.bids_pubkey,
                 memory_keypair.pubkey(),
@@ -130,7 +132,12 @@ async fn test_success() {
     );
 
     transaction.sign(
-        &[&payer, &memory_keypair, &user_accounts_owner],
+        &[
+            &payer,
+            &memory_keypair,
+            &user_accounts_owner,
+            &user_transfer_authority,
+        ],
         recent_blockhash,
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
