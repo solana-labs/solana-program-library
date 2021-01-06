@@ -25,7 +25,8 @@ async fn test_success() {
         processor!(process_instruction),
     );
 
-    test.set_bpf_compute_max_units(500_000);
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(160_000);
 
     // set loan values to about 90% of collateral value so that it gets liquidated
     const USDC_LOAN: u64 = 2 * FRACTIONAL_TO_USDC;

@@ -1,7 +1,7 @@
 //! Program state processor
 
 use crate::{
-    dex_market::{DexMarket, Role, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
+    dex_market::{DexMarket, TradeAction, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
     math::{Decimal, Rate, WAD},
@@ -471,7 +471,7 @@ fn process_borrow(
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let dex_market_info = next_account_info(account_info_iter)?;
-    let dex_market_order_book_side_info = next_account_info(account_info_iter)?;
+    let dex_market_orders_info = next_account_info(account_info_iter)?;
     let memory = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let rent_info = next_account_info(account_info_iter)?;
@@ -555,18 +555,25 @@ fn process_borrow(
     let cumulative_borrow_rate = borrow_reserve.state.cumulative_borrow_rate_wads;
     let deposit_reserve_collateral_exchange_rate = deposit_reserve.state.collateral_exchange_rate();
 
+    let mut trade_simulator = TradeSimulator::new(
+        dex_market_info,
+        dex_market_orders_info,
+        memory,
+        &lending_market.quote_token_mint,
+    )?;
+
     let (borrow_amount, mut collateral_deposit_amount) = match amount_type {
         BorrowAmountType::LiquidityBorrowAmount => {
             let borrow_amount = amount;
-            let mut trade_simulator = TradeSimulator::new(
-                dex_market_info,
-                dex_market_order_book_side_info,
-                memory,
-                &borrow_reserve,
-                Role::Maker,
+
+            // Simulate buying `borrow_amount` of borrow reserve underlying tokens
+            //   to determine how much collateral is needed
+            let loan_in_deposit_underlying = trade_simulator.simulate_trade(
+                TradeAction::Buy,
+                Decimal::from(borrow_amount),
+                &borrow_reserve.liquidity_mint,
+                false,
             )?;
-            let loan_in_deposit_underlying =
-                trade_simulator.simulate_trade(Decimal::from(borrow_amount), false)?;
 
             let loan_in_deposit_collateral = deposit_reserve_collateral_exchange_rate
                 .decimal_liquidity_to_collateral(loan_in_deposit_underlying);
@@ -582,22 +589,22 @@ fn process_borrow(
         }
         BorrowAmountType::CollateralDepositAmount => {
             let collateral_deposit_amount = amount;
-            let mut trade_simulator = TradeSimulator::new(
-                dex_market_info,
-                dex_market_order_book_side_info,
-                memory,
-                &deposit_reserve,
-                Role::Taker,
-            )?;
 
             let loan_in_deposit_collateral: Decimal = Decimal::from(collateral_deposit_amount)
                 * Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
             let loan_in_deposit_underlying = deposit_reserve_collateral_exchange_rate
                 .decimal_collateral_to_liquidity(loan_in_deposit_collateral);
 
-            let borrow_amount = trade_simulator
-                .simulate_trade(loan_in_deposit_underlying, false)?
-                .round_u64();
+            // Simulate selling `loan_in_deposit_underlying` amount of deposit reserve underlying
+            //   tokens to determine how much to lend to the user
+            let borrow_amount = trade_simulator.simulate_trade(
+                TradeAction::Sell,
+                loan_in_deposit_underlying,
+                &deposit_reserve.liquidity_mint,
+                false,
+            )?;
+
+            let borrow_amount = borrow_amount.round_u64();
             if borrow_amount == 0 {
                 return Err(LendingError::InvalidAmount.into());
             }
@@ -941,7 +948,7 @@ fn process_liquidate(
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let dex_market_info = next_account_info(account_info_iter)?;
-    let dex_market_order_book_side_info = next_account_info(account_info_iter)?;
+    let dex_market_orders_info = next_account_info(account_info_iter)?;
     let memory = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
@@ -1028,10 +1035,9 @@ fn process_liquidate(
 
     let mut trade_simulator = TradeSimulator::new(
         dex_market_info,
-        dex_market_order_book_side_info,
+        dex_market_orders_info,
         memory,
-        &repay_reserve,
-        Role::Taker,
+        &lending_market.quote_token_mint,
     )?;
 
     // calculate obligation health
@@ -1040,7 +1046,12 @@ fn process_liquidate(
     let borrow_amount_as_collateral = withdraw_reserve_collateral_exchange_rate
         .liquidity_to_collateral(
             trade_simulator
-                .simulate_trade(obligation.borrowed_liquidity_wads, true)?
+                .simulate_trade(
+                    TradeAction::Sell,
+                    obligation.borrowed_liquidity_wads,
+                    &repay_reserve.liquidity_mint,
+                    true,
+                )?
                 .round_u64(),
         );
 
@@ -1063,7 +1074,12 @@ fn process_liquidate(
     // TODO: check math precision
     // calculate the amount of collateral that will be withdrawn
 
-    let withdraw_liquidity_amount = trade_simulator.simulate_trade(repay_amount, false)?;
+    let withdraw_liquidity_amount = trade_simulator.simulate_trade(
+        TradeAction::Sell,
+        repay_amount,
+        &repay_reserve.liquidity_mint,
+        false,
+    )?;
     let withdraw_amount_as_collateral = withdraw_reserve_collateral_exchange_rate
         .decimal_liquidity_to_collateral(withdraw_liquidity_amount)
         .round_u64();

@@ -1,32 +1,41 @@
 //! Dex market used for simulating trades
 
-use crate::{error::LendingError, math::Decimal, state::Reserve};
+use crate::{error::LendingError, math::Decimal};
 use arrayref::{array_refs, mut_array_refs};
 use serum_dex::critbit::Slab;
 use solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey};
 use std::{cell::RefMut, collections::VecDeque, convert::TryFrom};
 
 /// Side of the dex market order book
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum Side {
     Bid,
     Ask,
 }
 
-/// Input currency for trade simulator
+/// Market currency
 #[derive(Clone, Copy, PartialEq)]
 enum Currency {
     Base,
     Quote,
 }
 
-/// The role of the trader
+impl Currency {
+    fn opposite(&self) -> Self {
+        match self {
+            Currency::Base => Currency::Quote,
+            Currency::Quote => Currency::Base,
+        }
+    }
+}
+
+/// Trade action for trade simulator
 #[derive(PartialEq)]
-pub enum Role {
-    /// Trade as the taker. Buy from asks and Sell to bids.
-    Taker,
-    /// Trade as the maker. Sell as bidder and Buy as asker.
-    Maker,
+pub enum TradeAction {
+    /// Sell tokens
+    Sell,
+    /// Buy tokens
+    Buy,
 }
 
 /// Dex market order
@@ -36,13 +45,22 @@ struct Order {
 }
 
 /// Dex market orders used for simulating trades
-enum Orders<'a, 'b: 'a> {
-    DexMarket(DexMarketOrders<'a, 'b>),
+enum Orders<'a> {
+    DexMarket(DexMarketOrders<'a>),
     Cached(VecDeque<Order>),
     None,
 }
 
-impl Iterator for Orders<'_, '_> {
+impl Orders<'_> {
+    fn is_cacheable(&self) -> bool {
+        match &self {
+            Self::DexMarket(_) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Iterator for Orders<'_> {
     type Item = Order;
 
     fn next(&mut self) -> Option<Order> {
@@ -71,81 +89,89 @@ impl Iterator for Orders<'_, '_> {
 }
 
 /// Trade simulator
-pub struct TradeSimulator<'a, 'b: 'a> {
-    input_currency: Currency,
-    input_lots: u64,
-    output_lots: u64,
-    orders: Orders<'a, 'b>,
+pub struct TradeSimulator<'a> {
+    dex_market: DexMarket,
+    orders: Orders<'a>,
+    orders_side: Side,
+    quote_token_mint: &'a Pubkey,
 }
 
-impl<'a, 'b: 'a> TradeSimulator<'a, 'b> {
+impl<'a> TradeSimulator<'a> {
     /// Create a new TradeSimulator
     pub fn new(
         dex_market_info: &AccountInfo,
         dex_market_orders: &AccountInfo,
-        memory: &'a AccountInfo<'b>,
-        input_reserve: &Reserve,
-        role: Role,
+        memory: &'a AccountInfo,
+        quote_token_mint: &'a Pubkey,
     ) -> Result<Self, ProgramError> {
         let dex_market = DexMarket::new(dex_market_info);
         let dex_market_orders = DexMarketOrders::new(&dex_market, dex_market_orders, memory)?;
-        let (input_currency, input_lots, output_lots) =
-            if input_reserve.liquidity_mint == dex_market.base_mint {
-                (Currency::Base, dex_market.base_lots, dex_market.quote_lots)
-            } else {
-                (Currency::Quote, dex_market.quote_lots, dex_market.base_lots)
-            };
-
-        let order_book_side = match (role, input_currency) {
-            (Role::Taker, Currency::Base) => Side::Ask,
-            (Role::Taker, Currency::Quote) => Side::Bid,
-            (Role::Maker, Currency::Base) => Side::Bid,
-            (Role::Maker, Currency::Quote) => Side::Ask,
-        };
-
-        if order_book_side != dex_market_orders.side {
-            return Err(LendingError::DexInvalidOrderBookSide.into());
-        }
+        let orders_side = dex_market_orders.side;
 
         Ok(Self {
-            input_currency,
-            input_lots,
-            output_lots,
+            dex_market,
             orders: Orders::DexMarket(dex_market_orders),
+            orders_side,
+            quote_token_mint,
         })
     }
 
     /// Simulate a trade
     pub fn simulate_trade(
         &mut self,
-        amount: Decimal,
+        action: TradeAction,
+        quantity: Decimal,
+        token_mint: &Pubkey,
         cache_orders: bool,
     ) -> Result<Decimal, ProgramError> {
-        let input_quantity: Decimal = amount / self.input_lots;
-        let output_quantity = self.exchange_with_order_book(cache_orders, input_quantity)?;
-        Ok(output_quantity * self.output_lots)
+        let currency = if token_mint == self.quote_token_mint {
+            Currency::Quote
+        } else {
+            Currency::Base
+        };
+
+        let order_book_side = match (action, currency) {
+            (TradeAction::Buy, Currency::Base) => Side::Ask,
+            (TradeAction::Sell, Currency::Quote) => Side::Ask,
+            (TradeAction::Buy, Currency::Quote) => Side::Bid,
+            (TradeAction::Sell, Currency::Base) => Side::Bid,
+        };
+
+        if order_book_side != self.orders_side {
+            return Err(LendingError::DexInvalidOrderBookSide.into());
+        }
+
+        let input_quantity: Decimal = quantity / self.dex_market.get_lots(currency);
+        let output_quantity =
+            self.exchange_with_order_book(input_quantity, currency, cache_orders)?;
+        Ok(output_quantity * self.dex_market.get_lots(currency.opposite()))
     }
 
-    /// Calculate output quantity from input using order book depth
+    /// Exchange tokens by filling orders
     fn exchange_with_order_book(
         &mut self,
-        cache_orders: bool,
         mut input_quantity: Decimal,
+        currency: Currency,
+        cache_orders: bool,
     ) -> Result<Decimal, ProgramError> {
         let mut output_quantity = Decimal::zero();
         let mut order_cache = VecDeque::new();
+
+        if cache_orders && !self.orders.is_cacheable() {
+            return Err(LendingError::TradeSimulationError.into());
+        }
 
         let zero = Decimal::zero();
         while input_quantity > zero {
             let next_order = self
                 .orders
                 .next()
-                .ok_or_else(|| ProgramError::from(LendingError::DexOrderBookError))?;
+                .ok_or_else(|| ProgramError::from(LendingError::TradeSimulationError))?;
 
             let next_order_price = next_order.price;
             let base_quantity = next_order.quantity;
 
-            let (filled, output) = if self.input_currency == Currency::Base {
+            let (filled, output) = if currency == Currency::Base {
                 let filled = input_quantity.min(Decimal::from(base_quantity));
                 (filled, filled * next_order_price)
             } else {
@@ -173,18 +199,17 @@ impl<'a, 'b: 'a> TradeSimulator<'a, 'b> {
 }
 
 /// Dex market order account info
-pub struct DexMarketOrders<'a, 'b: 'a> {
+pub struct DexMarketOrders<'a> {
     heap: Option<RefMut<'a, Slab>>,
-    memory: &'a AccountInfo<'b>,
     side: Side,
 }
 
-impl<'a, 'b: 'a> DexMarketOrders<'a, 'b> {
+impl<'a> DexMarketOrders<'a> {
     /// Create a new DexMarketOrders
     pub fn new(
         dex_market: &DexMarket,
         orders: &AccountInfo,
-        memory: &'a AccountInfo<'b>,
+        memory: &'a AccountInfo,
     ) -> Result<Self, ProgramError> {
         let side = match orders.key {
             key if key == &dex_market.bids => Side::Bid,
@@ -205,14 +230,7 @@ impl<'a, 'b: 'a> DexMarketOrders<'a, 'b> {
             Slab::new(&mut bytes[start..end])
         }));
 
-        Ok(Self { heap, memory, side })
-    }
-}
-
-impl Drop for DexMarketOrders<'_, '_> {
-    fn drop(&mut self) {
-        self.heap.take();
-        fast_set(&mut self.memory.data.borrow_mut(), 0);
+        Ok(Self { heap, side })
     }
 }
 
@@ -226,7 +244,6 @@ const ASKS_OFFSET: usize = 39;
 
 /// Dex market info
 pub struct DexMarket {
-    base_mint: Pubkey,
     bids: Pubkey,
     asks: Pubkey,
     base_lots: u64,
@@ -237,18 +254,23 @@ impl DexMarket {
     /// Create a new DexMarket
     pub fn new(dex_market_info: &AccountInfo) -> Self {
         let dex_market_data = dex_market_info.data.borrow();
-        let base_mint = Self::pubkey_at_offset(&dex_market_data, BASE_MINT_OFFSET);
         let bids = Self::pubkey_at_offset(&dex_market_data, BIDS_OFFSET);
         let asks = Self::pubkey_at_offset(&dex_market_data, ASKS_OFFSET);
         let base_lots = Self::base_lots(&dex_market_data);
         let quote_lots = Self::quote_lots(&dex_market_data);
 
         Self {
-            base_mint,
             bids,
             asks,
             base_lots,
             quote_lots,
+        }
+    }
+
+    fn get_lots(&self, currency: Currency) -> u64 {
+        match currency {
+            Currency::Base => self.base_lots,
+            Currency::Quote => self.quote_lots,
         }
     }
 
@@ -286,19 +308,5 @@ fn fast_copy(mut src: &[u8], mut dst: &mut [u8]) {
     }
     unsafe {
         std::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), src.len());
-    }
-}
-
-/// A stack and instruction efficient memset
-fn fast_set(mut dst: &mut [u8], val: u8) {
-    const SET_SIZE: usize = 1024;
-    while dst.len() >= SET_SIZE {
-        #[allow(clippy::ptr_offset_with_cast)]
-        let (dst_word, dst_rem) = mut_array_refs![dst, SET_SIZE; ..;];
-        *dst_word = [val; SET_SIZE];
-        dst = dst_rem;
-    }
-    unsafe {
-        std::ptr::write_bytes(dst.as_mut_ptr(), val, dst.len());
     }
 }

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use assert_matches::*;
-use solana_program::{program_option::COption, program_pack::Pack, pubkey::Pubkey, system_program};
+use solana_program::{program_option::COption, program_pack::Pack, pubkey::Pubkey};
 use solana_program_test::*;
 use solana_sdk::{
     account::Account,
@@ -528,7 +528,7 @@ impl TestLendingMarket {
             user_accounts_owner,
         } = args;
 
-        let dex_market_orders_pubkey = if repay_reserve.dex_market.is_some() {
+        let dex_market_orders_pubkey = if repay_reserve.dex_market.is_none() {
             dex_market.asks_pubkey
         } else {
             dex_market.bids_pubkey
@@ -542,7 +542,7 @@ impl TestLendingMarket {
                     &memory_keypair.pubkey(),
                     0,
                     65548,
-                    &system_program::id(),
+                    &spl_token_lending::id(),
                 ),
                 approve(
                     &spl_token::id(),
@@ -601,7 +601,7 @@ impl TestLendingMarket {
             obligation,
         } = args;
 
-        let dex_market_orders_pubkey = if deposit_reserve.dex_market.is_some() {
+        let dex_market_orders_pubkey = if deposit_reserve.dex_market.is_none() {
             dex_market.asks_pubkey
         } else {
             dex_market.bids_pubkey
@@ -683,7 +683,7 @@ impl TestLendingMarket {
                     &memory_keypair.pubkey(),
                     0,
                     65548,
-                    &system_program::id(),
+                    &spl_token_lending::id(),
                 ),
                 borrow_reserve_liquidity(
                     spl_token_lending::id(),
