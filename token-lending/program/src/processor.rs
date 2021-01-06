@@ -3,7 +3,7 @@
 use crate::{
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
-    math::{Decimal, Rate},
+    math::{Decimal, Rate, WAD},
     state::{LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState},
 };
 use arrayref::{array_refs, mut_array_refs};
@@ -126,6 +126,14 @@ fn process_init_reserve(
         msg!("Optimal borrow rate must be less than the max borrow rate");
         return Err(LendingError::InvalidConfig.into());
     }
+    if config.fees.borrow_fee_wad >= WAD {
+        msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000)");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.fees.host_fee_percentage > 100 {
+        msg!("Host fee percentage must be in range [0, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
 
     let account_info_iter = &mut accounts.iter();
     let source_liquidity_info = next_account_info(account_info_iter)?;
@@ -135,6 +143,7 @@ fn process_init_reserve(
     let reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let reserve_collateral_mint_info = next_account_info(account_info_iter)?;
     let reserve_collateral_supply_info = next_account_info(account_info_iter)?;
+    let reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
@@ -224,6 +233,14 @@ fn process_init_reserve(
     })?;
 
     spl_token_init_account(TokenInitializeAccountParams {
+        account: reserve_collateral_fees_receiver_info.clone(),
+        mint: reserve_collateral_mint_info.clone(),
+        owner: lending_market_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_id.clone(),
+    })?;
+
+    spl_token_init_account(TokenInitializeAccountParams {
         account: destination_collateral_info.clone(),
         mint: reserve_collateral_mint_info.clone(),
         owner: lending_market_authority_info.clone(),
@@ -259,6 +276,7 @@ fn process_init_reserve(
             liquidity_supply: *reserve_liquidity_supply_info.key,
             collateral_mint: *reserve_collateral_mint_info.key,
             collateral_supply: *reserve_collateral_supply_info.key,
+            collateral_fees_receiver: *reserve_collateral_fees_receiver_info.key,
             dex_market,
             state: reserve_state,
             config,
@@ -457,6 +475,7 @@ fn process_borrow(
     let destination_liquidity_info = next_account_info(account_info_iter)?;
     let deposit_reserve_info = next_account_info(account_info_iter)?;
     let deposit_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
+    let deposit_reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
     let borrow_reserve_info = next_account_info(account_info_iter)?;
     let borrow_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
@@ -518,6 +537,12 @@ fn process_borrow(
     }
     if &deposit_reserve.collateral_supply == source_collateral_info.key {
         msg!("Cannot use deposit reserve collateral supply as source account input");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &deposit_reserve.collateral_fees_receiver
+        != deposit_reserve_collateral_fees_receiver_info.key
+    {
+        msg!("Invalid deposit reserve collateral fees receiver account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &borrow_reserve.liquidity_supply == destination_liquidity_info.key {
@@ -593,6 +618,14 @@ fn process_borrow(
             (borrow_amount, collateral_deposit_amount)
         }
     };
+
+    let (borrow_fee, host_fee) = deposit_reserve
+        .config
+        .fees
+        .calculate_borrow_fees(collateral_deposit_amount)?;
+    // update amount actually deposited
+    let collateral_deposit_amount = collateral_deposit_amount - borrow_fee;
+    let owner_fee = borrow_fee - host_fee;
 
     borrow_reserve.state.add_borrow(borrow_amount)?;
 
@@ -709,6 +742,39 @@ fn process_borrow(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
+
+    // transfer owner fees
+    if owner_fee > 0 {
+        spl_token_transfer(TokenTransferParams {
+            source: deposit_reserve_collateral_supply_info.clone(),
+            destination: deposit_reserve_collateral_fees_receiver_info.clone(),
+            amount: owner_fee,
+            authority: lending_market_authority_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
+    }
+
+    // transfer host fees
+    if host_fee > 0 {
+        // if host specified, transfer to that account, otherwise transfer to
+        // owner
+        let host_fee_recipient = if let Ok(deposit_reserve_collateral_host_info) =
+            next_account_info(account_info_iter)
+        {
+            deposit_reserve_collateral_host_info
+        } else {
+            deposit_reserve_collateral_fees_receiver_info
+        };
+        spl_token_transfer(TokenTransferParams {
+            source: deposit_reserve_collateral_supply_info.clone(),
+            destination: host_fee_recipient.clone(),
+            amount: host_fee,
+            authority: lending_market_authority_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
+    }
 
     Ok(())
 }

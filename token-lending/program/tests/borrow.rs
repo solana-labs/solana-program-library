@@ -66,6 +66,7 @@ async fn test_success() {
 
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
+    let borrow_amount = INITIAL_COLLATERAL_RATE * USER_SOL_COLLATERAL_LAMPORTS;
     let obligation = lending_market
         .borrow(
             &mut banks_client,
@@ -75,7 +76,7 @@ async fn test_success() {
                 borrow_reserve: &usdc_reserve,
                 dex_market: &sol_usdc_dex_market,
                 borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
-                amount: INITIAL_COLLATERAL_RATE * USER_SOL_COLLATERAL_LAMPORTS / 2,
+                amount: borrow_amount / 2,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: None,
             },
@@ -91,10 +92,23 @@ async fn test_success() {
                 borrow_reserve: &usdc_reserve,
                 dex_market: &sol_usdc_dex_market,
                 borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
-                amount: INITIAL_COLLATERAL_RATE * USER_SOL_COLLATERAL_LAMPORTS / 2,
+                amount: borrow_amount / 2,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: Some(obligation),
             },
         )
         .await;
+
+    // check that fee accounts have been properly credited
+    let (total_fee, host_fee) = TEST_RESERVE_CONFIG
+        .fees
+        .calculate_borrow_fees(borrow_amount)
+        .unwrap();
+    let sol_fee_balance =
+        get_token_balance(&mut banks_client, sol_reserve.collateral_fees_receiver).await;
+    assert!(total_fee > 0);
+    assert!(host_fee > 0);
+    assert_eq!(total_fee - host_fee, sol_fee_balance);
+    let sol_host_balance = get_token_balance(&mut banks_client, sol_reserve.collateral_host).await;
+    assert_eq!(host_fee, sol_host_balance);
 }

@@ -3777,6 +3777,7 @@ dependencies = [
  "log",
  "num-derive",
  "num-traits",
+ "proptest",
  "serde",
  "serde_yaml",
  "serum_dex",

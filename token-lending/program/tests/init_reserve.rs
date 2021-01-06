@@ -11,8 +11,10 @@ use solana_sdk::{
     transaction::{Transaction, TransactionError},
 };
 use spl_token_lending::{
-    error::LendingError, instruction::init_reserve, processor::process_instruction,
-    state::INITIAL_COLLATERAL_RATE,
+    error::LendingError,
+    instruction::init_reserve,
+    processor::process_instruction,
+    state::{ReserveFees, INITIAL_COLLATERAL_RATE},
 };
 
 #[tokio::test]
@@ -47,13 +49,15 @@ async fn test_success() {
         &mut banks_client,
         &lending_market,
         RESERVE_AMOUNT,
+        TEST_RESERVE_CONFIG,
         spl_token::native_mint::id(),
         sol_user_liquidity_account,
         &payer,
         &user_accounts_owner,
         &sol_usdc_dex_market,
     )
-    .await;
+    .await
+    .unwrap();
 
     sol_reserve.validate_state(&mut banks_client).await;
 
@@ -106,7 +110,7 @@ async fn test_already_initialized() {
         &[init_reserve(
             spl_token_lending::id(),
             42,
-            TEST_RESERVE_CONFIG,
+            usdc_reserve.config,
             usdc_reserve.user_liquidity_account,
             usdc_reserve.user_collateral_account,
             usdc_reserve.pubkey,
@@ -114,6 +118,7 @@ async fn test_already_initialized() {
             usdc_reserve.liquidity_supply,
             usdc_reserve.collateral_mint,
             usdc_reserve.collateral_supply,
+            usdc_reserve.collateral_fees_receiver,
             lending_market.keypair.pubkey(),
             user_transfer_authority.pubkey(),
             Some(sol_usdc_dex_market.pubkey),
@@ -135,4 +140,92 @@ async fn test_already_initialized() {
             InstructionError::Custom(LendingError::AlreadyInitialized as u32)
         )
     );
+}
+
+#[tokio::test]
+async fn test_invalid_fees() {
+    let mut test = ProgramTest::new(
+        "spl_token_lending",
+        spl_token_lending::id(),
+        processor!(process_instruction),
+    );
+
+    let user_accounts_owner = Keypair::new();
+    let sol_usdc_dex_market =
+        TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
+    let usdc_mint = add_usdc_mint(&mut test);
+    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
+
+    const RESERVE_AMOUNT: u64 = 42;
+
+    let sol_user_liquidity_account = create_and_mint_to_token_account(
+        &mut banks_client,
+        spl_token::native_mint::id(),
+        None,
+        &payer,
+        user_accounts_owner.pubkey(),
+        RESERVE_AMOUNT,
+    )
+    .await;
+
+    // fee above 100%
+    {
+        let mut config = TEST_RESERVE_CONFIG;
+        config.fees = ReserveFees {
+            borrow_fee_wad: 1_000_000_000_000_000_001,
+            host_fee_percentage: 0,
+        };
+
+        assert_eq!(
+            TestReserve::init(
+                "sol".to_owned(),
+                &mut banks_client,
+                &lending_market,
+                RESERVE_AMOUNT,
+                config,
+                spl_token::native_mint::id(),
+                sol_user_liquidity_account,
+                &payer,
+                &user_accounts_owner,
+                &sol_usdc_dex_market,
+            )
+            .await
+            .unwrap_err(),
+            TransactionError::InstructionError(
+                8,
+                InstructionError::Custom(LendingError::InvalidConfig as u32)
+            )
+        );
+    }
+
+    // host fee above 100%
+    {
+        let mut config = TEST_RESERVE_CONFIG;
+        config.fees = ReserveFees {
+            borrow_fee_wad: 10_000_000_000_000_000,
+            host_fee_percentage: 101,
+        };
+
+        assert_eq!(
+            TestReserve::init(
+                "sol".to_owned(),
+                &mut banks_client,
+                &lending_market,
+                RESERVE_AMOUNT,
+                config,
+                spl_token::native_mint::id(),
+                sol_user_liquidity_account,
+                &payer,
+                &user_accounts_owner,
+                &sol_usdc_dex_market,
+            )
+            .await
+            .unwrap_err(),
+            TransactionError::InstructionError(
+                8,
+                InstructionError::Custom(LendingError::InvalidConfig as u32)
+            )
+        );
+    }
 }

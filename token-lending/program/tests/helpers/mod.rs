@@ -7,7 +7,7 @@ use solana_sdk::{
     account::Account,
     signature::{read_keypair_file, Keypair, Signer},
     system_instruction::create_account,
-    transaction::Transaction,
+    transaction::{Transaction, TransactionError},
 };
 use spl_token::{
     instruction::approve,
@@ -21,7 +21,8 @@ use spl_token_lending::{
     math::Decimal,
     processor::process_instruction,
     state::{
-        LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState, INITIAL_COLLATERAL_RATE,
+        LendingMarket, Obligation, Reserve, ReserveConfig, ReserveFees, ReserveState,
+        INITIAL_COLLATERAL_RATE,
     },
 };
 use std::str::FromStr;
@@ -36,6 +37,11 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     min_borrow_rate: 0,
     optimal_borrow_rate: 4,
     max_borrow_rate: 30,
+    fees: ReserveFees {
+        borrow_fee_wad: 100_000_000_000,
+        /// 0.00001% (Aave borrow fee)
+        host_fee_percentage: 20,
+    },
 };
 
 pub const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -183,6 +189,7 @@ pub struct AddReserveArgs {
     pub user_liquidity_amount: u64,
     pub borrow_amount: u64,
     pub collateral_amount: u64,
+    pub fees_amount: u64,
     pub dex_market_pubkey: Option<Pubkey>,
 }
 
@@ -201,6 +208,7 @@ pub fn add_reserve(
         user_liquidity_amount,
         borrow_amount,
         collateral_amount,
+        fees_amount,
         dex_market_pubkey,
     } = args;
 
@@ -224,6 +232,32 @@ pub fn add_reserve(
             mint: collateral_mint_pubkey,
             owner: lending_market.authority,
             amount: collateral_amount,
+            state: AccountState::Initialized,
+            ..Token::default()
+        },
+        &spl_token::id(),
+    );
+
+    let collateral_fees_receiver_pubkey = Pubkey::new_unique();
+    test.add_packable_account(
+        collateral_fees_receiver_pubkey,
+        &Token {
+            mint: collateral_mint_pubkey,
+            owner: lending_market.keypair.pubkey(),
+            amount: fees_amount,
+            state: AccountState::Initialized,
+            ..Token::default()
+        },
+        &spl_token::id(),
+    );
+
+    let collateral_host_pubkey = Pubkey::new_unique();
+    test.add_packable_account(
+        collateral_host_pubkey,
+        &Token {
+            mint: collateral_mint_pubkey,
+            owner: user_accounts_owner.pubkey(),
+            amount: fees_amount,
             state: AccountState::Initialized,
             ..Token::default()
         },
@@ -256,6 +290,7 @@ pub fn add_reserve(
             liquidity_supply: liquidity_supply_pubkey,
             collateral_mint: collateral_mint_pubkey,
             collateral_supply: collateral_supply_pubkey,
+            collateral_fees_receiver: collateral_fees_receiver_pubkey,
             dex_market: dex_market_pubkey.into(),
             config,
             state: reserve_state,
@@ -298,6 +333,8 @@ pub fn add_reserve(
         liquidity_supply: liquidity_supply_pubkey,
         collateral_mint: collateral_mint_pubkey,
         collateral_supply: collateral_supply_pubkey,
+        collateral_fees_receiver: collateral_fees_receiver_pubkey,
+        collateral_host: collateral_host_pubkey,
         user_liquidity_account: user_liquidity_pubkey,
         user_collateral_account: user_collateral_pubkey,
         dex_market: dex_market_pubkey,
@@ -514,6 +551,7 @@ impl TestLendingMarket {
                     borrow_reserve.user_liquidity_account,
                     deposit_reserve.pubkey,
                     deposit_reserve.collateral_supply,
+                    deposit_reserve.collateral_fees_receiver,
                     borrow_reserve.pubkey,
                     borrow_reserve.liquidity_supply,
                     self.keypair.pubkey(),
@@ -526,6 +564,7 @@ impl TestLendingMarket {
                     dex_market.pubkey,
                     dex_market_orders_pubkey,
                     memory_keypair.pubkey(),
+                    Some(deposit_reserve.collateral_host),
                 ),
             ],
             Some(&payer.pubkey()),
@@ -567,6 +606,7 @@ impl TestLendingMarket {
     }
 }
 
+#[derive(Debug)]
 pub struct TestReserve {
     pub name: String,
     pub pubkey: Pubkey,
@@ -577,6 +617,8 @@ pub struct TestReserve {
     pub liquidity_supply: Pubkey,
     pub collateral_mint: Pubkey,
     pub collateral_supply: Pubkey,
+    pub collateral_fees_receiver: Pubkey,
+    pub collateral_host: Pubkey,
     pub user_liquidity_account: Pubkey,
     pub user_collateral_account: Pubkey,
     pub dex_market: Option<Pubkey>,
@@ -589,16 +631,19 @@ impl TestReserve {
         banks_client: &mut BanksClient,
         lending_market: &TestLendingMarket,
         reserve_amount: u64,
+        config: ReserveConfig,
         liquidity_mint_pubkey: Pubkey,
         user_liquidity_account: Pubkey,
         payer: &Keypair,
         user_accounts_owner: &Keypair,
         dex_market: &TestDexMarket,
-    ) -> Self {
+    ) -> Result<Self, TransactionError> {
         let reserve_keypair = Keypair::new();
         let reserve_pubkey = reserve_keypair.pubkey();
         let collateral_mint_keypair = Keypair::new();
         let collateral_supply_keypair = Keypair::new();
+        let collateral_fees_receiver_keypair = Keypair::new();
+        let collateral_host_keypair = Keypair::new();
         let liquidity_supply_keypair = Keypair::new();
         let user_collateral_token_keypair = Keypair::new();
         let user_transfer_authority_keypair = Keypair::new();
@@ -607,28 +652,6 @@ impl TestReserve {
             Some(dex_market.pubkey)
         } else {
             None
-        };
-
-        let config = if &name == "usdc" {
-            ReserveConfig {
-                optimal_utilization_rate: 80,
-                loan_to_value_ratio: 75,
-                liquidation_bonus: 5,
-                liquidation_threshold: 80,
-                min_borrow_rate: 0,
-                optimal_borrow_rate: 4,
-                max_borrow_rate: 30,
-            }
-        } else {
-            ReserveConfig {
-                optimal_utilization_rate: 0,
-                loan_to_value_ratio: 75,
-                liquidation_bonus: 10,
-                liquidation_threshold: 80,
-                min_borrow_rate: 0,
-                optimal_borrow_rate: 2,
-                max_borrow_rate: 15,
-            }
         };
 
         let liquidity_mint_account = banks_client
@@ -666,6 +689,20 @@ impl TestReserve {
                 ),
                 create_account(
                     &payer.pubkey(),
+                    &collateral_fees_receiver_keypair.pubkey(),
+                    rent.minimum_balance(Token::LEN),
+                    Token::LEN as u64,
+                    &spl_token::id(),
+                ),
+                create_account(
+                    &payer.pubkey(),
+                    &collateral_host_keypair.pubkey(),
+                    rent.minimum_balance(Token::LEN),
+                    Token::LEN as u64,
+                    &spl_token::id(),
+                ),
+                create_account(
+                    &payer.pubkey(),
                     &liquidity_supply_keypair.pubkey(),
                     rent.minimum_balance(Token::LEN),
                     Token::LEN as u64,
@@ -696,6 +733,7 @@ impl TestReserve {
                     liquidity_supply_keypair.pubkey(),
                     collateral_mint_keypair.pubkey(),
                     collateral_supply_keypair.pubkey(),
+                    collateral_fees_receiver_keypair.pubkey(),
                     lending_market.keypair.pubkey(),
                     user_transfer_authority_keypair.pubkey(),
                     dex_market_pubkey,
@@ -713,6 +751,8 @@ impl TestReserve {
                 &lending_market.keypair,
                 &collateral_mint_keypair,
                 &collateral_supply_keypair,
+                &collateral_fees_receiver_keypair,
+                &collateral_host_keypair,
                 &liquidity_supply_keypair,
                 &user_collateral_token_keypair,
                 &user_transfer_authority_keypair,
@@ -720,22 +760,26 @@ impl TestReserve {
             recent_blockhash,
         );
 
-        assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
-
-        Self {
-            name,
-            pubkey: reserve_pubkey,
-            lending_market: lending_market.keypair.pubkey(),
-            config,
-            liquidity_mint: liquidity_mint_pubkey,
-            liquidity_mint_decimals: liquidity_mint.decimals,
-            liquidity_supply: liquidity_supply_keypair.pubkey(),
-            collateral_mint: collateral_mint_keypair.pubkey(),
-            collateral_supply: collateral_supply_keypair.pubkey(),
-            user_liquidity_account,
-            user_collateral_account: user_collateral_token_keypair.pubkey(),
-            dex_market: dex_market_pubkey,
-        }
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .map(|_| Self {
+                name,
+                pubkey: reserve_pubkey,
+                lending_market: lending_market.keypair.pubkey(),
+                config,
+                liquidity_mint: liquidity_mint_pubkey,
+                liquidity_mint_decimals: liquidity_mint.decimals,
+                liquidity_supply: liquidity_supply_keypair.pubkey(),
+                collateral_mint: collateral_mint_keypair.pubkey(),
+                collateral_supply: collateral_supply_keypair.pubkey(),
+                collateral_fees_receiver: collateral_fees_receiver_keypair.pubkey(),
+                collateral_host: collateral_host_keypair.pubkey(),
+                user_liquidity_account,
+                user_collateral_account: user_collateral_token_keypair.pubkey(),
+                dex_market: dex_market_pubkey,
+            })
+            .map_err(|e| e.unwrap())
     }
 
     pub async fn add_to_genesis(
