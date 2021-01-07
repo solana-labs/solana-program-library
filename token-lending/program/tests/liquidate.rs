@@ -36,7 +36,6 @@ async fn test_success() {
     const SOL_LOAN_USDC_COLLATERAL: u64 = 2 * INITIAL_COLLATERAL_RATE * FRACTIONAL_TO_USDC;
 
     let user_accounts_owner = Keypair::new();
-    let user_transfer_authority = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);

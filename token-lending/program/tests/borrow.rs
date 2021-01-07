@@ -101,14 +101,12 @@ async fn test_borrow_quote_currency() {
     let borrow_fees = TEST_RESERVE_CONFIG
         .fees
         .calculate_borrow_fees(collateral_deposit_amount)
-        .unwrap().0;
+        .unwrap()
+        .0;
 
     let collateral_supply =
         get_token_balance(&mut banks_client, sol_reserve.collateral_supply).await;
-    assert_eq!(
-        collateral_supply,
-        collateral_deposit_amount - borrow_fees
-    );
+    assert_eq!(collateral_supply, collateral_deposit_amount - borrow_fees);
 
     lending_market
         .borrow(
@@ -130,32 +128,24 @@ async fn test_borrow_quote_currency() {
         get_token_balance(&mut banks_client, usdc_reserve.user_liquidity_account).await;
     assert_eq!(borrow_amount, 2 * USDC_BORROW_AMOUNT_FRACTIONAL);
 
-    // check that fee accounts have been properly credited
     let (total_fee, host_fee) = TEST_RESERVE_CONFIG
         .fees
-        .calculate_borrow_fees(collateral_deposit_amount)
-        .unwrap().0;
+        .calculate_borrow_fees(2 * collateral_deposit_amount)
+        .unwrap();
 
     assert!(total_fee > 0);
     assert!(host_fee > 0);
 
     let collateral_supply =
         get_token_balance(&mut banks_client, sol_reserve.collateral_supply).await;
-    assert_eq!(
-        collateral_supply,
-        2 * INITIAL_COLLATERAL_RATE * SOL_COLLATERAL_AMOUNT_LAMPORTS
-    );
+    assert_eq!(collateral_supply, 2 * collateral_deposit_amount - total_fee);
 
-    let sol_collateral_supply =
-        get_token_balance(&mut banks_client, sol_reserve.collateral_supply).await;
-    assert_eq!(sol_collateral_supply, borrow_amount - total_fee);
-
-    let sol_fee_balance =
+    let fee_balance =
         get_token_balance(&mut banks_client, sol_reserve.collateral_fees_receiver).await;
-    assert_eq!(sol_fee_balance, total_fee - host_fee);
+    assert_eq!(fee_balance, total_fee - host_fee);
 
-    let sol_host_balance = get_token_balance(&mut banks_client, sol_reserve.collateral_host).await;
-    assert_eq!(sol_host_balance, host_fee);
+    let host_fee_balance = get_token_balance(&mut banks_client, sol_reserve.collateral_host).await;
+    assert_eq!(host_fee_balance, host_fee);
 }
 
 #[tokio::test]
@@ -179,8 +169,7 @@ async fn test_borrow_base_currency() {
     );
 
     let user_accounts_owner = Keypair::new();
-    let sol_usdc_dex_market =
-        TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
+    let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
@@ -224,6 +213,7 @@ async fn test_borrow_base_currency() {
         get_token_balance(&mut banks_client, usdc_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, 0);
 
+    let collateral_deposit_amount = INITIAL_COLLATERAL_RATE * USDC_COLLATERAL_LAMPORTS;
     let obligation = lending_market
         .borrow(
             &mut banks_client,
@@ -233,7 +223,7 @@ async fn test_borrow_base_currency() {
                 borrow_reserve: &sol_reserve,
                 dex_market: &sol_usdc_dex_market,
                 borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
-                amount: INITIAL_COLLATERAL_RATE * USDC_COLLATERAL_LAMPORTS,
+                amount: collateral_deposit_amount,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: None,
             },
@@ -244,12 +234,15 @@ async fn test_borrow_base_currency() {
         get_token_balance(&mut banks_client, sol_reserve.user_liquidity_account).await;
     assert_eq!(borrow_amount, SOL_BORROW_AMOUNT_LAMPORTS);
 
-    let collateral_amount =
+    let borrow_fees = TEST_RESERVE_CONFIG
+        .fees
+        .calculate_borrow_fees(collateral_deposit_amount)
+        .unwrap()
+        .0;
+
+    let collateral_supply =
         get_token_balance(&mut banks_client, usdc_reserve.collateral_supply).await;
-    assert_eq!(
-        collateral_amount,
-        INITIAL_COLLATERAL_RATE * USDC_COLLATERAL_LAMPORTS
-    );
+    assert_eq!(collateral_supply, collateral_deposit_amount - borrow_fees);
 
     lending_market
         .borrow(
@@ -271,10 +264,26 @@ async fn test_borrow_base_currency() {
         get_token_balance(&mut banks_client, sol_reserve.user_liquidity_account).await;
     assert_eq!(borrow_amount, 2 * SOL_BORROW_AMOUNT_LAMPORTS);
 
+    let (mut total_fee, mut host_fee) = TEST_RESERVE_CONFIG
+        .fees
+        .calculate_borrow_fees(collateral_deposit_amount)
+        .unwrap();
+
+    // avoid rounding error by assessing fees individually
+    total_fee *= 2;
+    host_fee *= 2;
+
+    assert!(total_fee > 0);
+    assert!(host_fee > 0);
+
     let collateral_supply =
         get_token_balance(&mut banks_client, usdc_reserve.collateral_supply).await;
-    assert_eq!(
-        collateral_supply,
-        2 * INITIAL_COLLATERAL_RATE * USDC_COLLATERAL_LAMPORTS
-    );
+    assert_eq!(collateral_supply, 2 * collateral_deposit_amount - total_fee);
+
+    let fee_balance =
+        get_token_balance(&mut banks_client, usdc_reserve.collateral_fees_receiver).await;
+    assert_eq!(fee_balance, total_fee - host_fee);
+
+    let host_fee_balance = get_token_balance(&mut banks_client, usdc_reserve.collateral_host).await;
+    assert_eq!(host_fee_balance, host_fee);
 }

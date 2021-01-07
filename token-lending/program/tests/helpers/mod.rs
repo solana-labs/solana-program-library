@@ -535,6 +535,7 @@ impl TestLendingMarket {
         };
 
         let memory_keypair = Keypair::new();
+        let user_transfer_authority = Keypair::new();
         let mut transaction = Transaction::new_with_payer(
             &[
                 create_account(
@@ -547,7 +548,7 @@ impl TestLendingMarket {
                 approve(
                     &spl_token::id(),
                     &repay_reserve.user_liquidity_account,
-                    &self.authority,
+                    &user_transfer_authority.pubkey(),
                     &user_accounts_owner.pubkey(),
                     &[],
                     amount,
@@ -565,6 +566,7 @@ impl TestLendingMarket {
                     obligation.keypair.pubkey(),
                     self.keypair.pubkey(),
                     self.authority,
+                    user_transfer_authority.pubkey(),
                     dex_market.pubkey,
                     dex_market_orders_pubkey,
                     memory_keypair.pubkey(),
@@ -575,7 +577,12 @@ impl TestLendingMarket {
 
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
         transaction.sign(
-            &[&payer, &memory_keypair, &user_accounts_owner],
+            &[
+                &payer,
+                &memory_keypair,
+                &user_accounts_owner,
+                &user_transfer_authority,
+            ],
             recent_blockhash,
         );
         assert!(banks_client.process_transaction(transaction).await.is_ok());

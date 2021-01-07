@@ -52,6 +52,8 @@ enum Orders<'a> {
 }
 
 impl Orders<'_> {
+    // BPF rust version does not support matches!
+    #[allow(clippy::match_like_matches_macro)]
     fn is_cacheable(&self) -> bool {
         match &self {
             Self::DexMarket(_) => true,
