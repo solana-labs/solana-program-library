@@ -2,6 +2,7 @@
 
 //! A lending program for the Solana blockchain.
 
+pub mod dex_market;
 pub mod entrypoint;
 pub mod error;
 pub mod instruction;

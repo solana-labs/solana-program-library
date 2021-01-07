@@ -1,14 +1,13 @@
 //! Program state processor
 
 use crate::{
+    dex_market::{DexMarket, TradeAction, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
     math::{Decimal, Rate, WAD},
     state::{LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState},
 };
-use arrayref::{array_refs, mut_array_refs};
 use num_traits::FromPrimitive;
-use serum_dex::critbit::Slab;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
@@ -22,7 +21,6 @@ use solana_program::{
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 use spl_token::state::Account as Token;
-use std::cell::RefMut;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -173,26 +171,13 @@ fn process_init_reserve(
             return Err(LendingError::NotRentExempt.into());
         }
 
-        fn base_mint_pubkey(data: &[u8]) -> Pubkey {
-            let count_start = 5 + 6 * 8;
-            let count_end = count_start + 32;
-            Pubkey::new(&data[count_start..count_end])
-        }
-
-        fn quote_mint_pubkey(data: &[u8]) -> Pubkey {
-            let count_start = 5 + 10 * 8;
-            let count_end = count_start + 32;
-            Pubkey::new(&data[count_start..count_end])
-        }
-
-        let market_base_mint = base_mint_pubkey(&dex_market_info.data.borrow());
-        let market_quote_mint = quote_mint_pubkey(&dex_market_info.data.borrow());
+        let dex_market_data = &dex_market_info.data.borrow();
+        let market_quote_mint = DexMarket::pubkey_at_offset(&dex_market_data, QUOTE_MINT_OFFSET);
         if lending_market.quote_token_mint != market_quote_mint {
-            msg!(&market_quote_mint.to_string().as_str());
             return Err(LendingError::DexMarketMintMismatch.into());
         }
+        let market_base_mint = DexMarket::pubkey_at_offset(&dex_market_data, BASE_MINT_OFFSET);
         if reserve_liquidity_mint_info.key != &market_base_mint {
-            msg!(&market_base_mint.to_string().as_str());
             return Err(LendingError::DexMarketMintMismatch.into());
         }
 
@@ -486,7 +471,7 @@ fn process_borrow(
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let dex_market_info = next_account_info(account_info_iter)?;
-    let dex_market_order_book_side_info = next_account_info(account_info_iter)?;
+    let dex_market_orders_info = next_account_info(account_info_iter)?;
     let memory = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let rent_info = next_account_info(account_info_iter)?;
@@ -570,16 +555,24 @@ fn process_borrow(
     let cumulative_borrow_rate = borrow_reserve.state.cumulative_borrow_rate_wads;
     let deposit_reserve_collateral_exchange_rate = deposit_reserve.state.collateral_exchange_rate();
 
+    let mut trade_simulator = TradeSimulator::new(
+        dex_market_info,
+        dex_market_orders_info,
+        memory,
+        &lending_market.quote_token_mint,
+    )?;
+
     let (borrow_amount, mut collateral_deposit_amount) = match amount_type {
         BorrowAmountType::LiquidityBorrowAmount => {
             let borrow_amount = amount;
 
-            let loan_in_deposit_underlying = simulate_market_order_fill_maker(
+            // Simulate buying `borrow_amount` of borrow reserve underlying tokens
+            //   to determine how much collateral is needed
+            let loan_in_deposit_underlying = trade_simulator.simulate_trade(
+                TradeAction::Buy,
                 Decimal::from(borrow_amount),
-                memory,
-                dex_market_order_book_side_info,
-                dex_market_info,
-                &deposit_reserve,
+                &borrow_reserve.liquidity_mint,
+                false,
             )?;
 
             let loan_in_deposit_collateral = deposit_reserve_collateral_exchange_rate
@@ -602,12 +595,13 @@ fn process_borrow(
             let loan_in_deposit_underlying = deposit_reserve_collateral_exchange_rate
                 .decimal_collateral_to_liquidity(loan_in_deposit_collateral);
 
-            let borrow_amount = simulate_market_order_fill(
+            // Simulate selling `loan_in_deposit_underlying` amount of deposit reserve underlying
+            //   tokens to determine how much to lend to the user
+            let borrow_amount = trade_simulator.simulate_trade(
+                TradeAction::Sell,
                 loan_in_deposit_underlying,
-                memory,
-                dex_market_order_book_side_info,
-                dex_market_info,
-                &deposit_reserve,
+                &deposit_reserve.liquidity_mint,
+                false,
             )?;
 
             let borrow_amount = borrow_amount.round_u64();
@@ -954,7 +948,7 @@ fn process_liquidate(
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let dex_market_info = next_account_info(account_info_iter)?;
-    let dex_market_order_book_side_info = next_account_info(account_info_iter)?;
+    let dex_market_orders_info = next_account_info(account_info_iter)?;
     let memory = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
@@ -1039,20 +1033,28 @@ fn process_liquidate(
     withdraw_reserve.accrue_interest(clock.slot);
     obligation.accrue_interest(clock, repay_reserve.state.cumulative_borrow_rate_wads);
 
+    let mut trade_simulator = TradeSimulator::new(
+        dex_market_info,
+        dex_market_orders_info,
+        memory,
+        &lending_market.quote_token_mint,
+    )?;
+
     // calculate obligation health
     let withdraw_reserve_collateral_exchange_rate =
         withdraw_reserve.state.collateral_exchange_rate();
     let borrow_amount_as_collateral = withdraw_reserve_collateral_exchange_rate
         .liquidity_to_collateral(
-            simulate_market_order_fill(
-                obligation.borrowed_liquidity_wads,
-                memory,
-                dex_market_order_book_side_info,
-                dex_market_info,
-                &repay_reserve,
-            )?
-            .round_u64(),
+            trade_simulator
+                .simulate_trade(
+                    TradeAction::Sell,
+                    obligation.borrowed_liquidity_wads,
+                    &repay_reserve.liquidity_mint,
+                    true,
+                )?
+                .round_u64(),
         );
+
     if 100 * borrow_amount_as_collateral / obligation.deposited_collateral_tokens
         < withdraw_reserve.config.liquidation_threshold as u64
     {
@@ -1071,21 +1073,21 @@ fn process_liquidate(
 
     // TODO: check math precision
     // calculate the amount of collateral that will be withdrawn
-    let withdraw_liquidity_amount = simulate_market_order_fill(
+
+    let withdraw_liquidity_amount = trade_simulator.simulate_trade(
+        TradeAction::Sell,
         repay_amount,
-        memory,
-        dex_market_order_book_side_info,
-        dex_market_info,
-        &repay_reserve,
+        &repay_reserve.liquidity_mint,
+        false,
     )?;
-    let repay_amount_as_collateral = withdraw_reserve_collateral_exchange_rate
+    let withdraw_amount_as_collateral = withdraw_reserve_collateral_exchange_rate
         .decimal_liquidity_to_collateral(withdraw_liquidity_amount)
         .round_u64();
     let liquidation_bonus_amount =
-        repay_amount_as_collateral * (withdraw_reserve.config.liquidation_bonus as u64) / 100;
+        withdraw_amount_as_collateral * (withdraw_reserve.config.liquidation_bonus as u64) / 100;
     let collateral_withdraw_amount = obligation
         .deposited_collateral_tokens
-        .min(repay_amount_as_collateral + liquidation_bonus_amount);
+        .min(withdraw_amount_as_collateral + liquidation_bonus_amount);
 
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
     Reserve::pack(
@@ -1321,211 +1323,4 @@ impl PrintProgramError for LendingError {
     {
         msg!(&self.to_string());
     }
-}
-
-/// A more efficient `copy_from_slice` implementation.
-fn fast_copy(mut src: &[u8], mut dst: &mut [u8]) {
-    const COPY_SIZE: usize = 512;
-    while src.len() >= COPY_SIZE {
-        #[allow(clippy::ptr_offset_with_cast)]
-        let (src_word, src_rem) = array_refs![src, COPY_SIZE; ..;];
-        #[allow(clippy::ptr_offset_with_cast)]
-        let (dst_word, dst_rem) = mut_array_refs![dst, COPY_SIZE; ..;];
-        *dst_word = *src_word;
-        src = src_rem;
-        dst = dst_rem;
-    }
-    unsafe {
-        std::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), src.len());
-    }
-}
-
-/// A stack and instruction efficient memset
-fn fast_set(mut dst: &mut [u8], val: u8) {
-    const SET_SIZE: usize = 1024;
-    while dst.len() >= SET_SIZE {
-        #[allow(clippy::ptr_offset_with_cast)]
-        let (dst_word, dst_rem) = mut_array_refs![dst, SET_SIZE; ..;];
-        *dst_word = [val; SET_SIZE];
-        dst = dst_rem;
-    }
-    unsafe {
-        std::ptr::write_bytes(dst.as_mut_ptr(), val, dst.len());
-    }
-}
-
-enum Side {
-    Bid,
-    Ask,
-}
-
-#[derive(PartialEq)]
-enum Fill {
-    Base,
-    Quote,
-}
-
-/// Calculate output quantity from input using order book depth
-fn exchange_with_order_book(
-    mut orders: RefMut<Slab>,
-    side: Side,
-    fill: Fill,
-    mut input_quantity: Decimal,
-) -> Result<Decimal, ProgramError> {
-    let mut output_quantity = Decimal::zero();
-
-    let zero = Decimal::zero();
-    while input_quantity > zero {
-        let next_order = match side {
-            Side::Bid => orders.remove_max(),
-            Side::Ask => orders.remove_min(),
-        }
-        .ok_or_else(|| ProgramError::from(LendingError::DexOrderBookError))?;
-
-        let next_order_price: u64 = next_order.price().get();
-        let base_quantity = next_order.quantity();
-        let quote_quantity = base_quantity as u128 * next_order_price as u128;
-
-        let (filled, output) = if fill == Fill::Base {
-            let filled = input_quantity.min(Decimal::from(base_quantity));
-            (filled, filled * next_order_price)
-        } else {
-            let filled = input_quantity.min(Decimal::from(quote_quantity));
-            (filled, filled / next_order_price)
-        };
-
-        input_quantity -= filled;
-        output_quantity += output;
-    }
-
-    Ok(output_quantity)
-}
-
-fn mut_orders_copy<'a>(
-    orders: &AccountInfo,
-    memory: &'a AccountInfo,
-) -> Result<RefMut<'a, Slab>, ProgramError> {
-    if memory.data_len() < orders.data_len() {
-        return Err(LendingError::MemoryTooSmall.into());
-    }
-
-    let mut memory = memory.data.borrow_mut();
-    fast_copy(&orders.data.borrow(), &mut memory);
-    Ok(RefMut::map(memory, |bytes| {
-        // strip padding and header
-        let start = 5 + 8;
-        let end = bytes.len() - 7;
-        Slab::new(&mut bytes[start..end])
-    }))
-}
-
-fn quote_mint_pubkey(data: &[u8]) -> Pubkey {
-    let count_start = 5 + 10 * 8;
-    let count_end = count_start + 32;
-    Pubkey::new(&data[count_start..count_end])
-}
-
-use std::convert::TryFrom;
-fn base_lots(data: &[u8]) -> u64 {
-    let count_start = 5 + 43 * 8;
-    let count_end = count_start + 8;
-    u64::from_le_bytes(<[u8; 8]>::try_from(&data[count_start..count_end]).unwrap())
-}
-
-fn quote_lots(data: &[u8]) -> u64 {
-    let count_start = 5 + 44 * 8;
-    let count_end = count_start + 8;
-    u64::from_le_bytes(<[u8; 8]>::try_from(&data[count_start..count_end]).unwrap())
-}
-
-fn load_bids_pubkey(data: &[u8]) -> Pubkey {
-    let count_start = 5 + 35 * 8;
-    let count_end = count_start + 32;
-    Pubkey::new(&data[count_start..count_end])
-}
-
-fn load_asks_pubkey(data: &[u8]) -> Pubkey {
-    let count_start = 5 + 39 * 8;
-    let count_end = count_start + 32;
-    Pubkey::new(&data[count_start..count_end])
-}
-
-fn simulate_market_order_fill_maker(
-    amount: Decimal,
-    memory: &AccountInfo,
-    dex_market_order_book_side_info: &AccountInfo,
-    dex_market_info: &AccountInfo,
-    reserve: &Reserve,
-) -> Result<Decimal, ProgramError> {
-    let market_quote_mint = quote_mint_pubkey(&dex_market_info.data.borrow());
-    let market_bid_orders = load_bids_pubkey(&dex_market_info.data.borrow());
-    let market_ask_orders = load_asks_pubkey(&dex_market_info.data.borrow());
-
-    let base_lots = base_lots(&dex_market_info.data.borrow());
-    let quote_lots = quote_lots(&dex_market_info.data.borrow());
-
-    let (fill, side, source_lots, destination_lots) = if reserve.liquidity_mint != market_quote_mint
-    {
-        if &market_ask_orders != dex_market_order_book_side_info.key {
-            return Err(LendingError::DexInvalidOrderBookSide.into());
-        }
-        (Fill::Quote, Side::Ask, base_lots, quote_lots)
-    } else {
-        if &market_bid_orders != dex_market_order_book_side_info.key {
-            return Err(LendingError::DexInvalidOrderBookSide.into());
-        }
-        (Fill::Base, Side::Bid, quote_lots, base_lots)
-    };
-
-    let input_scale =
-        destination_lots * 10u64.pow(reserve.liquidity_mint_decimals as u32) / source_lots;
-    let input_quantity = amount / Decimal::from(input_scale);
-
-    let orders = mut_orders_copy(dex_market_order_book_side_info, memory)?;
-    let output_quantity = exchange_with_order_book(orders, side, fill, input_quantity)?;
-
-    let exchanged_amount = output_quantity * 10u64.pow(reserve.liquidity_mint_decimals as u32);
-
-    fast_set(&mut memory.data.borrow_mut(), 0);
-    Ok(exchanged_amount)
-}
-
-fn simulate_market_order_fill(
-    amount: Decimal,
-    memory: &AccountInfo,
-    dex_market_order_book_side_info: &AccountInfo,
-    dex_market_info: &AccountInfo,
-    reserve: &Reserve,
-) -> Result<Decimal, ProgramError> {
-    let market_quote_mint = quote_mint_pubkey(&dex_market_info.data.borrow());
-    let market_bid_orders = load_bids_pubkey(&dex_market_info.data.borrow());
-    let market_ask_orders = load_asks_pubkey(&dex_market_info.data.borrow());
-
-    let base_lots = base_lots(&dex_market_info.data.borrow());
-    let quote_lots = quote_lots(&dex_market_info.data.borrow());
-
-    let (fill, side, source_lots, destination_lots) = if reserve.liquidity_mint == market_quote_mint
-    {
-        if &market_bid_orders != dex_market_order_book_side_info.key {
-            return Err(LendingError::DexInvalidOrderBookSide.into());
-        }
-        (Fill::Quote, Side::Bid, quote_lots, base_lots)
-    } else {
-        if &market_ask_orders != dex_market_order_book_side_info.key {
-            return Err(LendingError::DexInvalidOrderBookSide.into());
-        }
-        (Fill::Base, Side::Ask, base_lots, quote_lots)
-    };
-
-    let input_quantity = amount / Decimal::from(10u64.pow(reserve.liquidity_mint_decimals as u32));
-
-    let orders = mut_orders_copy(dex_market_order_book_side_info, memory)?;
-    let output_quantity = exchange_with_order_book(orders, side, fill, input_quantity)?;
-
-    let output_scale =
-        destination_lots * 10u64.pow(reserve.liquidity_mint_decimals as u32) / source_lots;
-    let exchanged_amount = output_quantity * output_scale;
-
-    fast_set(&mut memory.data.borrow_mut(), 0);
-    Ok(exchanged_amount)
 }

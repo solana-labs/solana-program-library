@@ -4,32 +4,18 @@ mod helpers;
 
 use helpers::*;
 use solana_program_test::*;
-use solana_sdk::{
-    pubkey::Pubkey,
-    signature::{Keypair, Signer},
-    system_instruction::create_account,
-    system_program,
-    transaction::Transaction,
-};
-use spl_token::instruction::approve;
+use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::{
-    instruction::liquidate_obligation, math::Decimal, processor::process_instruction,
-    state::INITIAL_COLLATERAL_RATE,
+    math::Decimal,
+    processor::process_instruction,
+    state::{INITIAL_COLLATERAL_RATE, SLOTS_PER_YEAR},
 };
 
-const LAMPORTS_TO_SOL: u64 = 1_000_000_000; // -> 2_210_000
+const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
 const FRACTIONAL_TO_USDC: u64 = 1_000_000;
-// 0.000001 USDC
 
-// Market and collateral are setup to fill two orders in the dex market at an average
-// price of 2210.5
-const fn lamports_to_usdc_fractional(lamports: u64) -> u64 {
-    lamports / LAMPORTS_TO_SOL * (2210 + 2211) / 2 * FRACTIONAL_TO_USDC / 1000
-}
-
-const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 42_500 * LAMPORTS_TO_SOL;
-const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 =
-    lamports_to_usdc_fractional(INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS);
+const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL;
+const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 100 * FRACTIONAL_TO_USDC;
 
 #[tokio::test]
 async fn test_success() {
@@ -39,26 +25,38 @@ async fn test_success() {
         processor!(process_instruction),
     );
 
-    const OBLIGATION_USDC_LOAN: u64 = FRACTIONAL_TO_USDC;
-    const OBLIGATION_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATE * LAMPORTS_TO_SOL;
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(160_000);
+
+    // set loan values to about 90% of collateral value so that it gets liquidated
+    const USDC_LOAN: u64 = 2 * FRACTIONAL_TO_USDC;
+    const USDC_LOAN_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATE * LAMPORTS_TO_SOL;
+
+    const SOL_LOAN: u64 = LAMPORTS_TO_SOL;
+    const SOL_LOAN_USDC_COLLATERAL: u64 = 2 * INITIAL_COLLATERAL_RATE * FRACTIONAL_TO_USDC;
 
     let user_accounts_owner = Keypair::new();
-    let user_transfer_authority = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+
+    // Loans are unhealthy if borrow is more than 80% of collateral
+    let mut reserve_config = TEST_RESERVE_CONFIG;
+    reserve_config.liquidation_threshold = 80;
 
     let usdc_reserve = add_reserve(
         &mut test,
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            config: TEST_RESERVE_CONFIG,
+            config: reserve_config,
+            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
-            borrow_amount: OBLIGATION_USDC_LOAN,
-            user_liquidity_amount: OBLIGATION_USDC_LOAN,
+            borrow_amount: USDC_LOAN,
+            user_liquidity_amount: USDC_LOAN,
+            collateral_amount: SOL_LOAN_USDC_COLLATERAL,
             ..AddReserveArgs::default()
         },
     );
@@ -68,76 +66,94 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            config: TEST_RESERVE_CONFIG,
+            config: reserve_config,
+            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_decimals: 9,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
             dex_market_pubkey: Some(sol_usdc_dex_market.pubkey),
-            collateral_amount: OBLIGATION_SOL_COLLATERAL,
+            collateral_amount: USDC_LOAN_SOL_COLLATERAL,
+            borrow_amount: SOL_LOAN,
+            user_liquidity_amount: SOL_LOAN,
             ..AddReserveArgs::default()
         },
     );
 
-    let obligation = add_obligation(
+    let usdc_obligation = add_obligation(
         &mut test,
         &user_accounts_owner,
         &lending_market,
-        &usdc_reserve,
-        &sol_reserve,
-        OBLIGATION_SOL_COLLATERAL,
-        Decimal::from(OBLIGATION_USDC_LOAN),
+        AddObligationArgs {
+            slots_elapsed: SLOTS_PER_YEAR,
+            borrow_reserve: &usdc_reserve,
+            collateral_reserve: &sol_reserve,
+            collateral_amount: USDC_LOAN_SOL_COLLATERAL,
+            borrowed_liquidity_wads: Decimal::from(USDC_LOAN),
+        },
     );
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-
-    let memory_keypair = Keypair::new();
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            create_account(
-                &payer.pubkey(),
-                &memory_keypair.pubkey(),
-                0,
-                65548,
-                &system_program::id(),
-            ),
-            approve(
-                &spl_token::id(),
-                &usdc_reserve.user_liquidity_account,
-                &user_transfer_authority.pubkey(),
-                &user_accounts_owner.pubkey(),
-                &[],
-                OBLIGATION_USDC_LOAN,
-            )
-            .unwrap(),
-            liquidate_obligation(
-                spl_token_lending::id(),
-                OBLIGATION_USDC_LOAN,
-                usdc_reserve.user_liquidity_account,
-                sol_reserve.user_collateral_account,
-                usdc_reserve.pubkey,
-                usdc_reserve.liquidity_supply,
-                sol_reserve.pubkey,
-                sol_reserve.collateral_supply,
-                obligation.keypair.pubkey(),
-                lending_market.keypair.pubkey(),
-                lending_market.authority,
-                user_transfer_authority.pubkey(),
-                sol_usdc_dex_market.pubkey,
-                sol_usdc_dex_market.bids_pubkey,
-                memory_keypair.pubkey(),
-            ),
-        ],
-        Some(&payer.pubkey()),
+    let sol_obligation = add_obligation(
+        &mut test,
+        &user_accounts_owner,
+        &lending_market,
+        AddObligationArgs {
+            slots_elapsed: SLOTS_PER_YEAR,
+            borrow_reserve: &sol_reserve,
+            collateral_reserve: &usdc_reserve,
+            collateral_amount: SOL_LOAN_USDC_COLLATERAL,
+            borrowed_liquidity_wads: Decimal::from(SOL_LOAN),
+        },
     );
 
-    transaction.sign(
-        &[
+    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
+
+    lending_market
+        .liquidate(
+            &mut banks_client,
             &payer,
-            &memory_keypair,
-            &user_accounts_owner,
-            &user_transfer_authority,
-        ],
-        recent_blockhash,
+            LiquidateArgs {
+                repay_reserve: &usdc_reserve,
+                withdraw_reserve: &sol_reserve,
+                dex_market: &sol_usdc_dex_market,
+                amount: USDC_LOAN,
+                user_accounts_owner: &user_accounts_owner,
+                obligation: &usdc_obligation,
+            },
+        )
+        .await;
+
+    lending_market
+        .liquidate(
+            &mut banks_client,
+            &payer,
+            LiquidateArgs {
+                repay_reserve: &sol_reserve,
+                withdraw_reserve: &usdc_reserve,
+                dex_market: &sol_usdc_dex_market,
+                amount: SOL_LOAN,
+                user_accounts_owner: &user_accounts_owner,
+                obligation: &sol_obligation,
+            },
+        )
+        .await;
+
+    let usdc_liquidity_supply =
+        get_token_balance(&mut banks_client, usdc_reserve.liquidity_supply).await;
+    let usdc_loan_state = usdc_obligation.get_state(&mut banks_client).await;
+    let usdc_liquidated = usdc_liquidity_supply - INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL;
+    assert!(usdc_liquidated > USDC_LOAN / 2);
+    assert_eq!(
+        usdc_liquidated,
+        usdc_loan_state.borrowed_liquidity_wads.round_u64()
     );
-    assert!(banks_client.process_transaction(transaction).await.is_ok());
+
+    let sol_liquidity_supply =
+        get_token_balance(&mut banks_client, sol_reserve.liquidity_supply).await;
+    let sol_loan_state = sol_obligation.get_state(&mut banks_client).await;
+    let sol_liquidated = sol_liquidity_supply - INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS;
+    assert!(sol_liquidated > SOL_LOAN / 2);
+    assert_eq!(
+        sol_liquidated,
+        sol_loan_state.borrowed_liquidity_wads.round_u64()
+    );
 }
