@@ -394,7 +394,8 @@ impl Pack for Reserve {
             collateral_mint_supply,
             __padding,
         ) = array_refs![
-            input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
+            input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8,
+            300
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),
@@ -457,7 +458,8 @@ impl Pack for Reserve {
             collateral_mint_supply,
             _padding,
         ) = mut_array_refs![
-            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
+            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8,
+            300
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.state.last_update_slot.to_le_bytes();
