@@ -19,9 +19,9 @@ async fn test_borrow_quote_currency() {
     //  $2.192,  213.3 SOL
     //  $2.190, 1523.4 SOL
     //
-    // Collateral amount = 600 SOL
+    // Collateral amount = 750 * 0.8 (LTV) = 600 SOL
     // Borrow amount = 2.199 * 300 + 2.192 * 213.3 + 2.19 * 86.7 = 1,317.1266 USDC
-    const SOL_COLLATERAL_AMOUNT_LAMPORTS: u64 = 600 * LAMPORTS_TO_SOL;
+    const SOL_COLLATERAL_AMOUNT_LAMPORTS: u64 = 750 * LAMPORTS_TO_SOL;
     const USDC_BORROW_AMOUNT_FRACTIONAL: u64 = 1_317_126_600;
     const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 10_000 * FRACTIONAL_TO_USDC;
     const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 2 * SOL_COLLATERAL_AMOUNT_LAMPORTS;
@@ -38,7 +38,7 @@ async fn test_borrow_quote_currency() {
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
     let mut reserve_config = TEST_RESERVE_CONFIG;
-    reserve_config.loan_to_value_ratio = 100;
+    reserve_config.loan_to_value_ratio = 80;
 
     let usdc_reserve = add_reserve(
         &mut test,
