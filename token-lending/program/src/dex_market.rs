@@ -1,6 +1,11 @@
 //! Dex market used for simulating trades
 
-use crate::{error::LendingError, math::Decimal};
+use crate::{
+    error::LendingError,
+    instruction::BorrowAmountType,
+    math::{Decimal, Rate},
+    state::Reserve,
+};
 use arrayref::{array_refs, mut_array_refs};
 use serum_dex::critbit::Slab;
 use solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey};
@@ -197,6 +202,69 @@ impl<'a> TradeSimulator<'a> {
         }
 
         Ok(output_quantity)
+    }
+
+    /// Calculate amount borrowed and collateral deposited for the given reserves
+    /// based on the market state and calculation type
+    pub fn calculate_borrow_amounts(
+        &mut self,
+        deposit_reserve: &Reserve,
+        borrow_reserve: &Reserve,
+        amount_type: BorrowAmountType,
+        amount: u64,
+    ) -> Result<(u64, u64), ProgramError> {
+        let deposit_reserve_collateral_exchange_rate =
+            deposit_reserve.state.collateral_exchange_rate();
+        match amount_type {
+            BorrowAmountType::LiquidityBorrowAmount => {
+                let borrow_amount = amount;
+
+                // Simulate buying `borrow_amount` of borrow reserve underlying tokens
+                //   to determine how much collateral is needed
+                let loan_in_deposit_underlying = self.simulate_trade(
+                    TradeAction::Buy,
+                    Decimal::from(borrow_amount),
+                    &borrow_reserve.liquidity_mint,
+                    false,
+                )?;
+
+                let loan_in_deposit_collateral = deposit_reserve_collateral_exchange_rate
+                    .decimal_liquidity_to_collateral(loan_in_deposit_underlying);
+                let required_deposit_collateral: Decimal = loan_in_deposit_collateral
+                    / Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
+
+                let collateral_deposit_amount = required_deposit_collateral.round_u64();
+                if collateral_deposit_amount == 0 {
+                    return Err(LendingError::InvalidAmount.into());
+                }
+
+                Ok((borrow_amount, collateral_deposit_amount))
+            }
+            BorrowAmountType::CollateralDepositAmount => {
+                let collateral_deposit_amount = amount;
+
+                let loan_in_deposit_collateral: Decimal = Decimal::from(collateral_deposit_amount)
+                    * Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
+                let loan_in_deposit_underlying = deposit_reserve_collateral_exchange_rate
+                    .decimal_collateral_to_liquidity(loan_in_deposit_collateral);
+
+                // Simulate selling `loan_in_deposit_underlying` amount of deposit reserve underlying
+                //   tokens to determine how much to lend to the user
+                let borrow_amount = self.simulate_trade(
+                    TradeAction::Sell,
+                    loan_in_deposit_underlying,
+                    &deposit_reserve.liquidity_mint,
+                    false,
+                )?;
+
+                let borrow_amount = borrow_amount.round_u64();
+                if borrow_amount == 0 {
+                    return Err(LendingError::InvalidAmount.into());
+                }
+
+                Ok((borrow_amount, collateral_deposit_amount))
+            }
+        }
     }
 }
 

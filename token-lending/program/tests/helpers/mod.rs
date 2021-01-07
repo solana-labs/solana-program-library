@@ -22,7 +22,7 @@ use spl_token_lending::{
     processor::process_instruction,
     state::{
         LendingMarket, Obligation, Reserve, ReserveConfig, ReserveFees, ReserveState,
-        INITIAL_COLLATERAL_RATE,
+        INITIAL_COLLATERAL_RATE, PROGRAM_VERSION,
     },
 };
 use std::str::FromStr;
@@ -121,6 +121,7 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
         keypair.pubkey(),
         u32::MAX as u64,
         &LendingMarket {
+            version: PROGRAM_VERSION,
             is_initialized: true,
             quote_token_mint,
             token_program_id: spl_token::id(),
@@ -196,6 +197,7 @@ pub fn add_obligation(
         obligation_pubkey,
         u32::MAX as u64,
         &Obligation {
+            version: PROGRAM_VERSION,
             last_update_slot: 1u64.wrapping_sub(slots_elapsed),
             deposited_collateral_tokens: collateral_amount,
             collateral_reserve: collateral_reserve.pubkey,
@@ -340,6 +342,7 @@ pub fn add_reserve(
         reserve_pubkey,
         u32::MAX as u64,
         &Reserve {
+            version: PROGRAM_VERSION,
             lending_market: lending_market.keypair.pubkey(),
             liquidity_mint: liquidity_mint_pubkey,
             liquidity_mint_decimals,

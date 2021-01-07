@@ -18,6 +18,9 @@ use solana_program::{
 /// Collateral tokens are initially valued at a ratio of 5:1 (collateral:liquidity)
 pub const INITIAL_COLLATERAL_RATE: u64 = 5;
 
+/// Current version of the program and all new accounts created
+pub const PROGRAM_VERSION: u8 = 1;
+
 /// Number of slots per year
 pub const SLOTS_PER_YEAR: u64 =
     DEFAULT_TICKS_PER_SECOND / DEFAULT_TICKS_PER_SLOT * SECONDS_PER_DAY * 365;
@@ -25,6 +28,8 @@ pub const SLOTS_PER_YEAR: u64 =
 /// Lending market state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LendingMarket {
+    /// Version of lending market
+    pub version: u8,
     /// Initialized state
     pub is_initialized: bool,
     /// Quote currency token mint
@@ -138,6 +143,8 @@ impl ReserveState {
 /// Lending market reserve state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Reserve {
+    /// Version of the struct
+    pub version: u8,
     /// Lending market address
     pub lending_market: Pubkey,
     /// Reserve liquidity mint
@@ -313,6 +320,8 @@ impl Reserve {
 /// Borrow obligation state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Obligation {
+    /// Version of the obligation
+    pub version: u8,
     /// Slot when obligation was updated. Used for calculating interest.
     pub last_update_slot: u64,
     /// Amount of collateral tokens deposited for this obligation
@@ -351,15 +360,16 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 301;
+const RESERVE_LEN: usize = 302;
 impl Pack for Reserve {
-    const LEN: usize = 301;
+    const LEN: usize = 302;
 
     /// Unpacks a byte buffer into a [ReserveInfo](struct.ReserveInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, RESERVE_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
+            version,
             last_update_slot,
             lending_market,
             liquidity_mint,
@@ -383,9 +393,10 @@ impl Pack for Reserve {
             available_liquidity,
             collateral_mint_supply,
         ) = array_refs![
-            input, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8
+            input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8
         ];
         Ok(Self {
+            version: u8::from_le_bytes(*version),
             lending_market: Pubkey::new_from_array(*lending_market),
             liquidity_mint: Pubkey::new_from_array(*liquidity_mint),
             liquidity_mint_decimals: u8::from_le_bytes(*liquidity_mint_decimals),
@@ -420,6 +431,7 @@ impl Pack for Reserve {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, RESERVE_LEN];
         let (
+            version,
             last_update_slot,
             lending_market,
             liquidity_mint,
@@ -443,8 +455,9 @@ impl Pack for Reserve {
             available_liquidity,
             collateral_mint_supply,
         ) = mut_array_refs![
-            output, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8
+            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8
         ];
+        *version = self.version.to_le_bytes();
         *last_update_slot = self.state.last_update_slot.to_le_bytes();
         lending_market.copy_from_slice(self.lending_market.as_ref());
         liquidity_mint.copy_from_slice(self.liquidity_mint.as_ref());
@@ -480,16 +493,18 @@ impl IsInitialized for LendingMarket {
     }
 }
 
-const LENDING_MARKET_LEN: usize = 65;
+const LENDING_MARKET_LEN: usize = 66;
 impl Pack for LendingMarket {
-    const LEN: usize = 65;
+    const LEN: usize = 66;
 
     /// Unpacks a byte buffer into a [LendingMarketInfo](struct.LendingMarketInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, LENDING_MARKET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (is_initialized, quote_token_mint, token_program_id) = array_refs![input, 1, 32, 32];
+        let (version, is_initialized, quote_token_mint, token_program_id) =
+            array_refs![input, 1, 1, 32, 32];
         Ok(Self {
+            version: u8::from_le_bytes(*version),
             is_initialized: match is_initialized {
                 [0] => false,
                 [1] => true,
@@ -503,8 +518,9 @@ impl Pack for LendingMarket {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, LENDING_MARKET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (is_initialized, quote_token_mint, token_program_id) =
-            mut_array_refs![output, 1, 32, 32];
+        let (version, is_initialized, quote_token_mint, token_program_id) =
+            mut_array_refs![output, 1, 1, 32, 32];
+        *version = self.version.to_le_bytes();
         *is_initialized = [self.is_initialized as u8];
         quote_token_mint.copy_from_slice(self.quote_token_mint.as_ref());
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
@@ -518,15 +534,16 @@ impl IsInitialized for Obligation {
     }
 }
 
-const OBLIGATION_LEN: usize = 144;
+const OBLIGATION_LEN: usize = 145;
 impl Pack for Obligation {
-    const LEN: usize = 144;
+    const LEN: usize = 145;
 
     /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, OBLIGATION_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
+            version,
             last_update_slot,
             deposited_collateral_tokens,
             collateral_supply,
@@ -534,8 +551,9 @@ impl Pack for Obligation {
             borrowed_liquidity_wads,
             borrow_reserve,
             token_mint,
-        ) = array_refs![input, 8, 8, 32, 16, 16, 32, 32];
+        ) = array_refs![input, 1, 8, 8, 32, 16, 16, 32, 32];
         Ok(Self {
+            version: u8::from_le_bytes(*version),
             last_update_slot: u64::from_le_bytes(*last_update_slot),
             deposited_collateral_tokens: u64::from_le_bytes(*deposited_collateral_tokens),
             collateral_reserve: Pubkey::new_from_array(*collateral_supply),
@@ -549,6 +567,7 @@ impl Pack for Obligation {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, OBLIGATION_LEN];
         let (
+            version,
             last_update_slot,
             deposited_collateral_tokens,
             collateral_supply,
@@ -556,8 +575,9 @@ impl Pack for Obligation {
             borrowed_liquidity_wads,
             borrow_reserve,
             token_mint,
-        ) = mut_array_refs![output, 8, 8, 32, 16, 16, 32, 32];
+        ) = mut_array_refs![output, 1, 8, 8, 32, 16, 16, 32, 32];
 
+        *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();
         *deposited_collateral_tokens = self.deposited_collateral_tokens.to_le_bytes();
         collateral_supply.copy_from_slice(self.collateral_reserve.as_ref());
