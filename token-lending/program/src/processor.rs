@@ -570,7 +570,7 @@ fn process_borrow(
     let cumulative_borrow_rate = borrow_reserve.state.cumulative_borrow_rate_wads;
     let deposit_reserve_collateral_exchange_rate = deposit_reserve.state.collateral_exchange_rate();
 
-    let (borrow_amount, collateral_deposit_amount) = match amount_type {
+    let (borrow_amount, mut collateral_deposit_amount) = match amount_type {
         BorrowAmountType::LiquidityBorrowAmount => {
             let borrow_amount = amount;
 
@@ -619,13 +619,12 @@ fn process_borrow(
         }
     };
 
-    let (borrow_fee, host_fee) = deposit_reserve
+    let (mut borrow_fee, host_fee) = deposit_reserve
         .config
         .fees
         .calculate_borrow_fees(collateral_deposit_amount)?;
     // update amount actually deposited
-    let collateral_deposit_amount = collateral_deposit_amount - borrow_fee;
-    let owner_fee = borrow_fee - host_fee;
+    collateral_deposit_amount -= borrow_fee;
 
     borrow_reserve.state.add_borrow(borrow_amount)?;
 
@@ -685,6 +684,33 @@ fn process_borrow(
         token_program: token_program_id.clone(),
     })?;
 
+    // transfer host fees if host is specified
+    if let Ok(host_fee_recipient) = next_account_info(account_info_iter) {
+        if host_fee > 0 {
+            borrow_fee -= host_fee;
+            spl_token_transfer(TokenTransferParams {
+                source: source_collateral_info.clone(),
+                destination: host_fee_recipient.clone(),
+                amount: host_fee,
+                authority: user_transfer_authority_info.clone(),
+                authority_signer_seeds: &[],
+                token_program: token_program_id.clone(),
+            })?;
+        }
+    }
+
+    // transfer remaining fees to owner
+    if borrow_fee > 0 {
+        spl_token_transfer(TokenTransferParams {
+            source: source_collateral_info.clone(),
+            destination: deposit_reserve_collateral_fees_receiver_info.clone(),
+            amount: borrow_fee,
+            authority: user_transfer_authority_info.clone(),
+            authority_signer_seeds: &[],
+            token_program: token_program_id.clone(),
+        })?;
+    }
+
     // borrow liquidity
     spl_token_transfer(TokenTransferParams {
         source: borrow_reserve_liquidity_supply_info.clone(),
@@ -742,39 +768,6 @@ fn process_borrow(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
-
-    // transfer owner fees
-    if owner_fee > 0 {
-        spl_token_transfer(TokenTransferParams {
-            source: deposit_reserve_collateral_supply_info.clone(),
-            destination: deposit_reserve_collateral_fees_receiver_info.clone(),
-            amount: owner_fee,
-            authority: lending_market_authority_info.clone(),
-            authority_signer_seeds,
-            token_program: token_program_id.clone(),
-        })?;
-    }
-
-    // transfer host fees
-    if host_fee > 0 {
-        // if host specified, transfer to that account, otherwise transfer to
-        // owner
-        let host_fee_recipient = if let Ok(deposit_reserve_collateral_host_info) =
-            next_account_info(account_info_iter)
-        {
-            deposit_reserve_collateral_host_info
-        } else {
-            deposit_reserve_collateral_fees_receiver_info
-        };
-        spl_token_transfer(TokenTransferParams {
-            source: deposit_reserve_collateral_supply_info.clone(),
-            destination: host_fee_recipient.clone(),
-            amount: host_fee,
-            authority: lending_market_authority_info.clone(),
-            authority_signer_seeds,
-            token_program: token_program_id.clone(),
-        })?;
-    }
 
     Ok(())
 }
