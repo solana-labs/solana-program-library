@@ -82,7 +82,6 @@ async fn test_success() {
             liquidity_amount: INITIAL_SRM_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_decimals: srm_mint.decimals,
             liquidity_mint_pubkey: srm_mint.pubkey,
-            user_liquidity_amount: USER_SOL_DEPOSIT_LAMPORTS,
             config: TEST_RESERVE_CONFIG,
             ..AddReserveArgs::default()
         },

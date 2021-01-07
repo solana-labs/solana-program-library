@@ -46,10 +46,19 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
 
 pub const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 pub const SRM_MINT: &str = "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt";
+
+pub const SOL_USDC_MARKET: &str = "7xMDbYTCqQEcK2aM9LbetGtNFJpzKdfXzLL5juaLh4GJ";
 pub const SOL_USDC_BIDS: &str = "4VndUfHkmh6RWTQbXSVjY3wbSfqGjoPbuPHMoatV272H";
 pub const SOL_USDC_ASKS: &str = "6LTxKpMyGnbHM5rRx7f3eZHF9q3gnUBV5ucXF9LvrB3M";
+pub const SRM_USDC_MARKET: &str = "CDdR97S8y96v3To93aKvi3nCnjUrbuVSuumw8FLvbVeg";
 pub const SRM_USDC_BIDS: &str = "DkxpXtF1EyjHomQcEhH54498gdhUN3t1sZCjReFNYZZn";
 pub const SRM_USDC_ASKS: &str = "DRqgRZqfdD6PLHKSU7ydyVXWMUpvkqhzLZ1JSKn1iB1K";
+
+#[allow(non_camel_case_types)]
+pub enum TestDexMarketPair {
+    SRM_USDC,
+    SOL_USDC,
+}
 
 pub struct LendingTest {
     pub sol_usdc_dex_market: TestDexMarket,
@@ -68,11 +77,8 @@ pub fn setup_test() -> (ProgramTest, LendingTest) {
     let usdc_mint = add_usdc_mint(&mut test);
     let srm_mint = add_srm_mint(&mut test);
 
-    let sol_usdc_dex_market =
-        TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
-
-    let srm_usdc_dex_market =
-        TestDexMarket::setup(&mut test, "srm_usdc", SRM_USDC_BIDS, SRM_USDC_ASKS);
+    let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
+    let srm_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SRM_USDC);
 
     (
         test,
@@ -86,12 +92,24 @@ pub fn setup_test() -> (ProgramTest, LendingTest) {
 }
 
 trait AddPacked {
-    fn add_packable_account<T: Pack>(&mut self, pubkey: Pubkey, data: &T, owner: &Pubkey);
+    fn add_packable_account<T: Pack>(
+        &mut self,
+        pubkey: Pubkey,
+        amount: u64,
+        data: &T,
+        owner: &Pubkey,
+    );
 }
 
 impl AddPacked for ProgramTest {
-    fn add_packable_account<T: Pack>(&mut self, pubkey: Pubkey, data: &T, owner: &Pubkey) {
-        let mut account = Account::new(u32::MAX as u64, T::get_packed_len(), owner);
+    fn add_packable_account<T: Pack>(
+        &mut self,
+        pubkey: Pubkey,
+        amount: u64,
+        data: &T,
+        owner: &Pubkey,
+    ) {
+        let mut account = Account::new(amount, T::get_packed_len(), owner);
         data.pack_into_slice(&mut account.data);
         self.add_account(pubkey, account);
     }
@@ -101,6 +119,7 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
     let keypair = Keypair::new();
     test.add_packable_account(
         keypair.pubkey(),
+        u32::MAX as u64,
         &LendingMarket {
             is_initialized: true,
             quote_token_mint,
@@ -133,6 +152,7 @@ pub fn add_obligation(
     let token_mint_pubkey = Pubkey::new_unique();
     test.add_packable_account(
         token_mint_pubkey,
+        u32::MAX as u64,
         &Mint {
             is_initialized: true,
             decimals: collateral_reserve.liquidity_mint_decimals,
@@ -146,6 +166,7 @@ pub fn add_obligation(
     let token_account_pubkey = Pubkey::new_unique();
     test.add_packable_account(
         token_account_pubkey,
+        u32::MAX as u64,
         &Token {
             mint: token_mint_pubkey,
             owner: user_accounts_owner.pubkey(),
@@ -160,6 +181,7 @@ pub fn add_obligation(
     let obligation_pubkey = obligation_keypair.pubkey();
     test.add_packable_account(
         obligation_pubkey,
+        u32::MAX as u64,
         &Obligation {
             last_update_slot: 1,
             deposited_collateral_tokens: collateral_amount,
@@ -212,9 +234,16 @@ pub fn add_reserve(
         dex_market_pubkey,
     } = args;
 
+    let is_native = if liquidity_mint_pubkey == spl_token::native_mint::id() {
+        COption::Some(1)
+    } else {
+        COption::None
+    };
+
     let collateral_mint_pubkey = Pubkey::new_unique();
     test.add_packable_account(
         collateral_mint_pubkey,
+        u32::MAX as u64,
         &Mint {
             is_initialized: true,
             decimals: liquidity_mint_decimals,
@@ -228,6 +257,7 @@ pub fn add_reserve(
     let collateral_supply_pubkey = Pubkey::new_unique();
     test.add_packable_account(
         collateral_supply_pubkey,
+        u32::MAX as u64,
         &Token {
             mint: collateral_mint_pubkey,
             owner: lending_market.authority,
@@ -241,6 +271,7 @@ pub fn add_reserve(
     let collateral_fees_receiver_pubkey = Pubkey::new_unique();
     test.add_packable_account(
         collateral_fees_receiver_pubkey,
+        u32::MAX as u64,
         &Token {
             mint: collateral_mint_pubkey,
             owner: lending_market.keypair.pubkey(),
@@ -254,6 +285,7 @@ pub fn add_reserve(
     let collateral_host_pubkey = Pubkey::new_unique();
     test.add_packable_account(
         collateral_host_pubkey,
+        u32::MAX as u64,
         &Token {
             mint: collateral_mint_pubkey,
             owner: user_accounts_owner.pubkey(),
@@ -264,14 +296,22 @@ pub fn add_reserve(
         &spl_token::id(),
     );
 
+    let amount = if let COption::Some(rent_reserve) = is_native {
+        liquidity_amount + rent_reserve
+    } else {
+        u32::MAX as u64
+    };
+
     let liquidity_supply_pubkey = Pubkey::new_unique();
     test.add_packable_account(
         liquidity_supply_pubkey,
+        amount,
         &Token {
             mint: liquidity_mint_pubkey,
             owner: lending_market.authority,
             amount: liquidity_amount,
             state: AccountState::Initialized,
+            is_native,
             ..Token::default()
         },
         &spl_token::id(),
@@ -283,6 +323,7 @@ pub fn add_reserve(
     reserve_state.add_borrow(borrow_amount).unwrap();
     test.add_packable_account(
         reserve_pubkey,
+        u32::MAX as u64,
         &Reserve {
             lending_market: lending_market.keypair.pubkey(),
             liquidity_mint: liquidity_mint_pubkey,
@@ -298,14 +339,22 @@ pub fn add_reserve(
         &spl_token_lending::id(),
     );
 
+    let amount = if let COption::Some(rent_reserve) = is_native {
+        user_liquidity_amount + rent_reserve
+    } else {
+        u32::MAX as u64
+    };
+
     let user_liquidity_pubkey = Pubkey::new_unique();
     test.add_packable_account(
         user_liquidity_pubkey,
+        amount,
         &Token {
             mint: liquidity_mint_pubkey,
             owner: user_accounts_owner.pubkey(),
             amount: user_liquidity_amount,
             state: AccountState::Initialized,
+            is_native,
             ..Token::default()
         },
         &spl_token::id(),
@@ -313,6 +362,7 @@ pub fn add_reserve(
     let user_collateral_pubkey = Pubkey::new_unique();
     test.add_packable_account(
         user_collateral_pubkey,
+        u32::MAX as u64,
         &Token {
             mint: collateral_mint_pubkey,
             owner: user_accounts_owner.pubkey(),
@@ -800,6 +850,13 @@ impl TestReserve {
             self.name, self.collateral_supply
         );
         genesis_accounts
+            .fetch_and_insert(banks_client, self.collateral_fees_receiver)
+            .await;
+        println!(
+            "{}_collateral_fees_receiver: {}",
+            self.name, self.collateral_fees_receiver
+        );
+        genesis_accounts
             .fetch_and_insert(banks_client, self.collateral_supply)
             .await;
         if &self.name != "sol" {
@@ -881,13 +938,6 @@ impl TestObligation {
     }
 }
 
-pub struct TestDexMarket {
-    pub name: String,
-    pub pubkey: Pubkey,
-    pub bids_pubkey: Pubkey,
-    pub asks_pubkey: Pubkey,
-}
-
 pub struct TestQuoteMint {
     pub pubkey: Pubkey,
     pub authority: Keypair,
@@ -900,6 +950,7 @@ pub fn add_usdc_mint(test: &mut ProgramTest) -> TestQuoteMint {
     let decimals = 6;
     test.add_packable_account(
         pubkey,
+        u32::MAX as u64,
         &Mint {
             is_initialized: true,
             mint_authority: COption::Some(authority.pubkey()),
@@ -921,6 +972,7 @@ pub fn add_srm_mint(test: &mut ProgramTest) -> TestQuoteMint {
     let decimals = 6;
     test.add_packable_account(
         pubkey,
+        u32::MAX as u64,
         &Mint {
             is_initialized: true,
             mint_authority: COption::Some(authority.pubkey()),
@@ -936,16 +988,28 @@ pub fn add_srm_mint(test: &mut ProgramTest) -> TestQuoteMint {
     }
 }
 
+pub struct TestDexMarket {
+    pub name: String,
+    pub pubkey: Pubkey,
+    pub bids_pubkey: Pubkey,
+    pub asks_pubkey: Pubkey,
+}
+
 impl TestDexMarket {
-    pub fn setup(
-        test: &mut ProgramTest,
-        name: &str,
-        bids_pubkey: &str,
-        asks_pubkey: &str,
-    ) -> TestDexMarket {
-        let pubkey = Pubkey::new_unique();
+    pub fn setup(test: &mut ProgramTest, market_pair: TestDexMarketPair) -> TestDexMarket {
+        let (name, pubkey, bids_pubkey, asks_pubkey) = match market_pair {
+            TestDexMarketPair::SOL_USDC => {
+                ("sol_usdc", SOL_USDC_MARKET, SOL_USDC_BIDS, SOL_USDC_ASKS)
+            }
+            TestDexMarketPair::SRM_USDC => {
+                ("srm_usdc", SRM_USDC_MARKET, SRM_USDC_BIDS, SRM_USDC_ASKS)
+            }
+        };
+
+        let pubkey = Pubkey::from_str(pubkey).unwrap();
         let bids_pubkey = Pubkey::from_str(bids_pubkey).unwrap();
         let asks_pubkey = Pubkey::from_str(asks_pubkey).unwrap();
+
         test.add_account_with_file_data(
             pubkey,
             u32::MAX as u64,
