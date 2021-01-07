@@ -201,14 +201,14 @@ impl<'a> TradeSimulator<'a> {
 }
 
 /// Dex market order account info
-pub struct DexMarketOrders<'a> {
+struct DexMarketOrders<'a> {
     heap: Option<RefMut<'a, Slab>>,
     side: Side,
 }
 
 impl<'a> DexMarketOrders<'a> {
     /// Create a new DexMarketOrders
-    pub fn new(
+    fn new(
         dex_market: &DexMarket,
         orders: &AccountInfo,
         memory: &'a AccountInfo,
@@ -254,7 +254,7 @@ pub struct DexMarket {
 
 impl DexMarket {
     /// Create a new DexMarket
-    pub fn new(dex_market_info: &AccountInfo) -> Self {
+    fn new(dex_market_info: &AccountInfo) -> Self {
         let dex_market_data = dex_market_info.data.borrow();
         let bids = Self::pubkey_at_offset(&dex_market_data, BIDS_OFFSET);
         let asks = Self::pubkey_at_offset(&dex_market_data, ASKS_OFFSET);
