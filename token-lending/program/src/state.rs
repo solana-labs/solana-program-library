@@ -360,9 +360,9 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 302;
+const RESERVE_LEN: usize = 602;
 impl Pack for Reserve {
-    const LEN: usize = 302;
+    const LEN: usize = 602;
 
     /// Unpacks a byte buffer into a [ReserveInfo](struct.ReserveInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
@@ -392,8 +392,9 @@ impl Pack for Reserve {
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
+            __padding,
         ) = array_refs![
-            input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8
+            input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),
@@ -454,8 +455,9 @@ impl Pack for Reserve {
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
+            _padding,
         ) = mut_array_refs![
-            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8
+            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.state.last_update_slot.to_le_bytes();
@@ -493,16 +495,16 @@ impl IsInitialized for LendingMarket {
     }
 }
 
-const LENDING_MARKET_LEN: usize = 66;
+const LENDING_MARKET_LEN: usize = 128;
 impl Pack for LendingMarket {
-    const LEN: usize = 66;
+    const LEN: usize = 128;
 
     /// Unpacks a byte buffer into a [LendingMarketInfo](struct.LendingMarketInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, LENDING_MARKET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, is_initialized, quote_token_mint, token_program_id) =
-            array_refs![input, 1, 1, 32, 32];
+        let (version, is_initialized, quote_token_mint, token_program_id, _padding) =
+            array_refs![input, 1, 1, 32, 32, 62];
         Ok(Self {
             version: u8::from_le_bytes(*version),
             is_initialized: match is_initialized {
@@ -518,8 +520,8 @@ impl Pack for LendingMarket {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, LENDING_MARKET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, is_initialized, quote_token_mint, token_program_id) =
-            mut_array_refs![output, 1, 1, 32, 32];
+        let (version, is_initialized, quote_token_mint, token_program_id, _padding) =
+            mut_array_refs![output, 1, 1, 32, 32, 62];
         *version = self.version.to_le_bytes();
         *is_initialized = [self.is_initialized as u8];
         quote_token_mint.copy_from_slice(self.quote_token_mint.as_ref());
@@ -534,9 +536,9 @@ impl IsInitialized for Obligation {
     }
 }
 
-const OBLIGATION_LEN: usize = 145;
+const OBLIGATION_LEN: usize = 273;
 impl Pack for Obligation {
-    const LEN: usize = 145;
+    const LEN: usize = 273;
 
     /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
@@ -551,7 +553,8 @@ impl Pack for Obligation {
             borrowed_liquidity_wads,
             borrow_reserve,
             token_mint,
-        ) = array_refs![input, 1, 8, 8, 32, 16, 16, 32, 32];
+            _padding,
+        ) = array_refs![input, 1, 8, 8, 32, 16, 16, 32, 32, 128];
         Ok(Self {
             version: u8::from_le_bytes(*version),
             last_update_slot: u64::from_le_bytes(*last_update_slot),
@@ -575,7 +578,8 @@ impl Pack for Obligation {
             borrowed_liquidity_wads,
             borrow_reserve,
             token_mint,
-        ) = mut_array_refs![output, 1, 8, 8, 32, 16, 16, 32, 32];
+            _padding,
+        ) = mut_array_refs![output, 1, 8, 8, 32, 16, 16, 32, 32, 128];
 
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();
