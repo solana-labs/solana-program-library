@@ -103,11 +103,18 @@ async fn test_success() {
         .fees
         .calculate_borrow_fees(borrow_amount)
         .unwrap();
-    let sol_fee_balance =
-        get_token_balance(&mut banks_client, sol_reserve.collateral_fees_receiver).await;
+
     assert!(total_fee > 0);
     assert!(host_fee > 0);
-    assert_eq!(total_fee - host_fee, sol_fee_balance);
+
+    let sol_collateral_supply =
+        get_token_balance(&mut banks_client, sol_reserve.collateral_supply).await;
+    assert_eq!(sol_collateral_supply, borrow_amount - total_fee);
+
+    let sol_fee_balance =
+        get_token_balance(&mut banks_client, sol_reserve.collateral_fees_receiver).await;
+    assert_eq!(sol_fee_balance, total_fee - host_fee);
+
     let sol_host_balance = get_token_balance(&mut banks_client, sol_reserve.collateral_host).await;
-    assert_eq!(host_fee, sol_host_balance);
+    assert_eq!(sol_host_balance, host_fee);
 }
