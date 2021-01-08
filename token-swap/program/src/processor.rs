@@ -401,8 +401,14 @@ impl Processor {
         }
 
         let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
-            TradeDirection::AtoB => (result.new_swap_source_amount, result.new_swap_destination_amount),
-            TradeDirection::BtoA => (result.new_swap_destination_amount, result.new_swap_source_amount),
+            TradeDirection::AtoB => (
+                result.new_swap_source_amount,
+                result.new_swap_destination_amount,
+            ),
+            TradeDirection::BtoA => (
+                result.new_swap_destination_amount,
+                result.new_swap_source_amount,
+            ),
         };
 
         Self::token_transfer(
