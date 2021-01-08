@@ -5,7 +5,7 @@ use crate::{
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
     math::{Decimal, Rate, WAD},
-    state::{LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState},
+    state::{LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState, PROGRAM_VERSION},
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -81,7 +81,7 @@ fn process_init_lending_market(_program_id: &Pubkey, accounts: &[AccountInfo]) -
 
     assert_rent_exempt(rent, lending_market_info)?;
     let mut new_lending_market: LendingMarket = assert_uninitialized(lending_market_info)?;
-    new_lending_market.is_initialized = true;
+    new_lending_market.version = PROGRAM_VERSION;
     new_lending_market.quote_token_mint = *quote_token_mint_info.key;
     LendingMarket::pack(
         new_lending_market,
@@ -255,6 +255,7 @@ fn process_init_reserve(
 
     Reserve::pack(
         Reserve {
+            version: PROGRAM_VERSION,
             lending_market: *lending_market_info.key,
             liquidity_mint: *reserve_liquidity_mint_info.key,
             liquidity_mint_decimals: liquidity_reserve_mint.decimals,
@@ -553,7 +554,6 @@ fn process_borrow(
     borrow_reserve.accrue_interest(clock.slot);
     deposit_reserve.accrue_interest(clock.slot);
     let cumulative_borrow_rate = borrow_reserve.state.cumulative_borrow_rate_wads;
-    let deposit_reserve_collateral_exchange_rate = deposit_reserve.state.collateral_exchange_rate();
 
     let mut trade_simulator = TradeSimulator::new(
         dex_market_info,
@@ -562,56 +562,12 @@ fn process_borrow(
         &lending_market.quote_token_mint,
     )?;
 
-    let (borrow_amount, mut collateral_deposit_amount) = match amount_type {
-        BorrowAmountType::LiquidityBorrowAmount => {
-            let borrow_amount = amount;
-
-            // Simulate buying `borrow_amount` of borrow reserve underlying tokens
-            //   to determine how much collateral is needed
-            let loan_in_deposit_underlying = trade_simulator.simulate_trade(
-                TradeAction::Buy,
-                Decimal::from(borrow_amount),
-                &borrow_reserve.liquidity_mint,
-                false,
-            )?;
-
-            let loan_in_deposit_collateral = deposit_reserve_collateral_exchange_rate
-                .decimal_liquidity_to_collateral(loan_in_deposit_underlying);
-            let required_deposit_collateral: Decimal = loan_in_deposit_collateral
-                / Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
-
-            let collateral_deposit_amount = required_deposit_collateral.round_u64();
-            if collateral_deposit_amount == 0 {
-                return Err(LendingError::InvalidAmount.into());
-            }
-
-            (borrow_amount, collateral_deposit_amount)
-        }
-        BorrowAmountType::CollateralDepositAmount => {
-            let collateral_deposit_amount = amount;
-
-            let loan_in_deposit_collateral: Decimal = Decimal::from(collateral_deposit_amount)
-                * Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
-            let loan_in_deposit_underlying = deposit_reserve_collateral_exchange_rate
-                .decimal_collateral_to_liquidity(loan_in_deposit_collateral);
-
-            // Simulate selling `loan_in_deposit_underlying` amount of deposit reserve underlying
-            //   tokens to determine how much to lend to the user
-            let borrow_amount = trade_simulator.simulate_trade(
-                TradeAction::Sell,
-                loan_in_deposit_underlying,
-                &deposit_reserve.liquidity_mint,
-                false,
-            )?;
-
-            let borrow_amount = borrow_amount.round_u64();
-            if borrow_amount == 0 {
-                return Err(LendingError::InvalidAmount.into());
-            }
-
-            (borrow_amount, collateral_deposit_amount)
-        }
-    };
+    let (borrow_amount, mut collateral_deposit_amount) = trade_simulator.calculate_borrow_amounts(
+        &deposit_reserve,
+        &borrow_reserve,
+        amount_type,
+        amount,
+    )?;
 
     let (mut borrow_fee, host_fee) = deposit_reserve
         .config
@@ -651,6 +607,7 @@ fn process_borrow(
     } else {
         assert_rent_exempt(rent, obligation_info)?;
         let mut new_obligation = obligation;
+        new_obligation.version = PROGRAM_VERSION;
         new_obligation.last_update_slot = clock.slot;
         new_obligation.deposited_collateral_tokens = collateral_deposit_amount;
         new_obligation.collateral_reserve = *deposit_reserve_info.key;

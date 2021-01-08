@@ -22,7 +22,7 @@ use spl_token_lending::{
     processor::process_instruction,
     state::{
         LendingMarket, Obligation, Reserve, ReserveConfig, ReserveFees, ReserveState,
-        INITIAL_COLLATERAL_RATE,
+        INITIAL_COLLATERAL_RATE, PROGRAM_VERSION,
     },
 };
 use std::str::FromStr;
@@ -121,7 +121,7 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
         keypair.pubkey(),
         u32::MAX as u64,
         &LendingMarket {
-            is_initialized: true,
+            version: PROGRAM_VERSION,
             quote_token_mint,
             token_program_id: spl_token::id(),
         },
@@ -196,6 +196,7 @@ pub fn add_obligation(
         obligation_pubkey,
         u32::MAX as u64,
         &Obligation {
+            version: PROGRAM_VERSION,
             last_update_slot: 1u64.wrapping_sub(slots_elapsed),
             deposited_collateral_tokens: collateral_amount,
             collateral_reserve: collateral_reserve.pubkey,
@@ -340,6 +341,7 @@ pub fn add_reserve(
         reserve_pubkey,
         u32::MAX as u64,
         &Reserve {
+            version: PROGRAM_VERSION,
             lending_market: lending_market.keypair.pubkey(),
             liquidity_mint: liquidity_mint_pubkey,
             liquidity_mint_decimals,
@@ -996,6 +998,7 @@ impl TestReserve {
     pub async fn validate_state(&self, banks_client: &mut BanksClient) {
         let reserve_state = self.get_state(banks_client).await;
         assert!(reserve_state.state.last_update_slot > 0);
+        assert_eq!(PROGRAM_VERSION, reserve_state.version);
         assert_eq!(self.lending_market, reserve_state.lending_market);
         assert_eq!(self.liquidity_mint, reserve_state.liquidity_mint);
         assert_eq!(self.liquidity_supply, reserve_state.liquidity_supply);
