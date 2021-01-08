@@ -21,6 +21,10 @@ pub const INITIAL_COLLATERAL_RATE: u64 = 5;
 /// Current version of the program and all new accounts created
 pub const PROGRAM_VERSION: u8 = 1;
 
+/// Accounts are created with data zeroed out, so uninitialized state instances
+/// will have the version set to 0.
+const UNINITIALIZED_VERSION: u8 = 0;
+
 /// Number of slots per year
 pub const SLOTS_PER_YEAR: u64 =
     DEFAULT_TICKS_PER_SECOND / DEFAULT_TICKS_PER_SLOT * SECONDS_PER_DAY * 365;
@@ -30,8 +34,6 @@ pub const SLOTS_PER_YEAR: u64 =
 pub struct LendingMarket {
     /// Version of lending market
     pub version: u8,
-    /// Initialized state
-    pub is_initialized: bool,
     /// Quote currency token mint
     pub quote_token_mint: Pubkey,
     /// Token program id
@@ -493,7 +495,7 @@ impl Pack for Reserve {
 impl Sealed for LendingMarket {}
 impl IsInitialized for LendingMarket {
     fn is_initialized(&self) -> bool {
-        self.is_initialized
+        self.version != UNINITIALIZED_VERSION
     }
 }
 
@@ -505,27 +507,25 @@ impl Pack for LendingMarket {
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, LENDING_MARKET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, is_initialized, quote_token_mint, token_program_id, _padding) =
-            array_refs![input, 1, 1, 32, 32, 62];
-        Ok(Self {
-            version: u8::from_le_bytes(*version),
-            is_initialized: match is_initialized {
-                [0] => false,
-                [1] => true,
-                _ => return Err(ProgramError::InvalidAccountData),
-            },
-            quote_token_mint: Pubkey::new_from_array(*quote_token_mint),
-            token_program_id: Pubkey::new_from_array(*token_program_id),
-        })
+        let (version, quote_token_mint, token_program_id, _padding) =
+            array_refs![input, 1, 32, 32, 63];
+        let version = u8::from_le_bytes(*version);
+        match version {
+            PROGRAM_VERSION | UNINITIALIZED_VERSION => Ok(Self {
+                version,
+                quote_token_mint: Pubkey::new_from_array(*quote_token_mint),
+                token_program_id: Pubkey::new_from_array(*token_program_id),
+            }),
+            _ => Err(ProgramError::InvalidAccountData),
+        }
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, LENDING_MARKET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, is_initialized, quote_token_mint, token_program_id, _padding) =
-            mut_array_refs![output, 1, 1, 32, 32, 62];
+        let (version, quote_token_mint, token_program_id, _padding) =
+            mut_array_refs![output, 1, 32, 32, 63];
         *version = self.version.to_le_bytes();
-        *is_initialized = [self.is_initialized as u8];
         quote_token_mint.copy_from_slice(self.quote_token_mint.as_ref());
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
     }

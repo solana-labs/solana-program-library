@@ -82,7 +82,6 @@ fn process_init_lending_market(_program_id: &Pubkey, accounts: &[AccountInfo]) -
     assert_rent_exempt(rent, lending_market_info)?;
     let mut new_lending_market: LendingMarket = assert_uninitialized(lending_market_info)?;
     new_lending_market.version = PROGRAM_VERSION;
-    new_lending_market.is_initialized = true;
     new_lending_market.quote_token_mint = *quote_token_mint_info.key;
     LendingMarket::pack(
         new_lending_market,

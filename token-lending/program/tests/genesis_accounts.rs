@@ -5,7 +5,10 @@ mod helpers;
 use helpers::genesis::GenesisAccounts;
 use helpers::*;
 use solana_sdk::signature::Keypair;
-use spl_token_lending::{instruction::BorrowAmountType, state::INITIAL_COLLATERAL_RATE};
+use spl_token_lending::{
+    instruction::BorrowAmountType,
+    state::{INITIAL_COLLATERAL_RATE, PROGRAM_VERSION},
+};
 
 #[tokio::test]
 async fn test_success() {
@@ -91,7 +94,7 @@ async fn test_success() {
 
     // Verify lending market
     let lending_market_info = lending_market.get_state(&mut banks_client).await;
-    assert_eq!(lending_market_info.is_initialized, true);
+    assert_eq!(lending_market_info.version, PROGRAM_VERSION);
     assert_eq!(lending_market_info.quote_token_mint, usdc_mint.pubkey);
 
     // Verify reserves

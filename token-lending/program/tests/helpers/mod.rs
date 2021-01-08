@@ -122,7 +122,6 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
         u32::MAX as u64,
         &LendingMarket {
             version: PROGRAM_VERSION,
-            is_initialized: true,
             quote_token_mint,
             token_program_id: spl_token::id(),
         },
@@ -999,6 +998,7 @@ impl TestReserve {
     pub async fn validate_state(&self, banks_client: &mut BanksClient) {
         let reserve_state = self.get_state(banks_client).await;
         assert!(reserve_state.state.last_update_slot > 0);
+        assert_eq!(PROGRAM_VERSION, reserve_state.version);
         assert_eq!(self.lending_market, reserve_state.lending_market);
         assert_eq!(self.liquidity_mint, reserve_state.liquidity_mint);
         assert_eq!(self.liquidity_supply, reserve_state.liquidity_supply);

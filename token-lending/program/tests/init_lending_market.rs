@@ -10,6 +10,7 @@ use solana_sdk::{
 };
 use spl_token_lending::{
     error::LendingError, instruction::init_lending_market, processor::process_instruction,
+    state::PROGRAM_VERSION,
 };
 
 #[tokio::test]
@@ -25,7 +26,7 @@ async fn test_success() {
 
     let lending_market = TestLendingMarket::init(&mut banks_client, usdc_mint.pubkey, &payer).await;
     let lending_market_info = lending_market.get_state(&mut banks_client).await;
-    assert_eq!(lending_market_info.is_initialized, true);
+    assert_eq!(lending_market_info.version, PROGRAM_VERSION);
     assert_eq!(lending_market_info.quote_token_mint, usdc_mint.pubkey);
 }
 
