@@ -55,6 +55,15 @@ pub enum StakePoolError {
     /// Stake account address not properly derived from the validator address.
     #[error("InvalidStakeAccountAddress")]
     InvalidStakeAccountAddress,
+    /// Identify validator stake accounts with old balances and update them.
+    #[error("UpdateStakeList")]
+    UpdateStakeList,
+    /// First udpate old validator stake account balances and then pool stake balance.
+    #[error("UpdateStakeListAndPool")]
+    UpdateStakeListAndPool,
+    /// Validator stake account is not found in the list storage.
+    #[error("UnknownValidatorStakeAccount")]
+    UnknownValidatorStakeAccount,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

@@ -4,7 +4,6 @@ mod helpers;
 
 use helpers::*;
 
-use bincode::deserialize;
 use solana_sdk::signature::{Keypair, Signer};
 use spl_stake_pool::*;
 
@@ -15,6 +14,14 @@ async fn test_stake_pool_deposit() {
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
         .await;
+
+    let validator_stake_account: StakeAccount = simple_add_validator_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+    )
+    .await;
 
     let user = Keypair::new();
     // make stake account
@@ -48,32 +55,17 @@ async fn test_stake_pool_deposit() {
         .deposit_stake(
             &user_stake.pubkey(),
             &user_pool_account.pubkey(),
+            &validator_stake_account.stake_account,
             &mut banks_client,
             &payer,
             &recent_blockhash,
         )
         .await;
 
-    let stake = banks_client
+    // Account should be drained
+    assert!(banks_client
         .get_account(user_stake.pubkey())
         .await
         .expect("get_account")
-        .expect("stake not none");
-    assert_eq!(stake.data.len(), std::mem::size_of::<stake::StakeState>());
-    assert_eq!(stake.owner, stake::id());
-
-    let stake_state = deserialize::<stake::StakeState>(&stake.data).unwrap();
-    match stake_state {
-        stake::StakeState::Initialized(meta) => {
-            assert_eq!(
-                &meta.authorized.staker,
-                &stake_pool_accounts.withdraw_authority
-            );
-            assert_eq!(
-                &meta.authorized.withdrawer,
-                &stake_pool_accounts.withdraw_authority
-            );
-        }
-        _ => panic!(),
-    }
+        .is_none());
 }

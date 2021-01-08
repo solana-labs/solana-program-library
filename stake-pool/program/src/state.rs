@@ -37,6 +37,8 @@ pub struct StakePool {
     pub stake_total: u64,
     /// total pool
     pub pool_total: u64,
+    /// Last epoch stake_total field was updated
+    pub last_update_epoch: u64,
     /// Fee applied to deposits
     pub fee: Fee,
 }
@@ -110,6 +112,7 @@ impl StakePool {
 /// Program states.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum State {
     /// Unallocated state, may be initialized into another state.
     Unallocated,
@@ -200,6 +203,20 @@ impl ValidatorStakeList {
 
     /// Header length
     pub const HEADER_LEN: usize = size_of::<u8>() + size_of::<u16>();
+
+    /// Check if contains validator with particular pubkey
+    pub fn contains(&self, validator: &Pubkey) -> bool {
+        self.validators
+            .iter()
+            .any(|&x| x.validator_account == *validator)
+    }
+
+    /// Check if contains validator with particular pubkey
+    pub fn find_mut(&mut self, validator: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
+        self.validators
+            .iter_mut()
+            .find(|x| x.validator_account == *validator)
+    }
 
     /// Deserializes a byte buffer into a ValidatorStakeList.
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
