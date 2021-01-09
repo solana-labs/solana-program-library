@@ -34,7 +34,8 @@ pub struct GenesisAccounts(HashMap<String, Base64Account>);
 
 impl GenesisAccounts {
     pub fn insert_upgradeable_program(&mut self, program_id: Pubkey, filename: &str) {
-        let program_file = find_file(filename).expect(&format!("couldn't find {}", filename));
+        let program_file =
+            find_file(filename).unwrap_or_else(|| panic!("couldn't find {}", filename));
         let program_data = read_file(program_file);
         let upgrade_authority_keypair =
             read_keypair_file("tests/fixtures/lending_market.json").unwrap();
