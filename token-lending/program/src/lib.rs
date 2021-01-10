@@ -13,4 +13,4 @@ pub mod state;
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
 
-solana_program::declare_id!("TokenLend1ng1111111111111111111111111111111");
+solana_program::declare_id!("TokenLending1111111111111111111111111111111");

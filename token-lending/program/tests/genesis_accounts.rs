@@ -2,7 +2,6 @@
 
 mod helpers;
 
-use helpers::genesis::GenesisAccounts;
 use helpers::*;
 use solana_sdk::signature::Keypair;
 use spl_token_lending::{
@@ -252,27 +251,31 @@ async fn test_success() {
         )
         .await;
 
-    let mut genesis_accounts = GenesisAccounts::default();
-    lending_market
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-    sol_reserve
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-    srm_reserve
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-    usdc_reserve
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-    sol_usdc_dex_market
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-    srm_usdc_dex_market
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-
     // Only dump the accounts if the feature is specified
     #[cfg(feature = "test-dump-genesis-accounts")]
-    genesis_accounts.write_yaml();
+    {
+        use helpers::genesis::GenesisAccounts;
+        let mut genesis_accounts = GenesisAccounts::default();
+        lending_market
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        sol_reserve
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        srm_reserve
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        usdc_reserve
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        sol_usdc_dex_market
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        srm_usdc_dex_market
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        genesis_accounts
+            .insert_upgradeable_program(spl_token_lending::id(), "spl_token_lending.so");
+        genesis_accounts.write_yaml();
+    }
 }
