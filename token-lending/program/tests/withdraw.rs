@@ -11,8 +11,9 @@ use solana_sdk::{
 };
 use spl_token::instruction::approve;
 use spl_token_lending::{
-    instruction::withdraw_reserve_liquidity, processor::process_instruction,
-    state::INITIAL_COLLATERAL_RATE,
+    instruction::withdraw_reserve_liquidity,
+    processor::process_instruction,
+    state::{INITIAL_COLLATERAL_RATE, SLOTS_PER_YEAR},
 };
 
 const FRACTIONAL_TO_USDC: u64 = 1_000_000;
@@ -26,6 +27,9 @@ async fn test_success() {
         processor!(process_instruction),
     );
 
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(62_000);
+
     let user_accounts_owner = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
@@ -38,6 +42,7 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
+            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,

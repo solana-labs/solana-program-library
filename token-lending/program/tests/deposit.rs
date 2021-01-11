@@ -5,7 +5,7 @@ mod helpers;
 use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
-use spl_token_lending::processor::process_instruction;
+use spl_token_lending::{processor::process_instruction, state::SLOTS_PER_YEAR};
 
 const FRACTIONAL_TO_USDC: u64 = 1_000_000;
 
@@ -17,6 +17,9 @@ async fn test_success() {
         processor!(process_instruction),
     );
 
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(62_000);
+
     let user_accounts_owner = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
@@ -26,6 +29,7 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
+            slots_elapsed: SLOTS_PER_YEAR,
             user_liquidity_amount: 100 * FRACTIONAL_TO_USDC,
             liquidity_amount: 10_000 * FRACTIONAL_TO_USDC,
             liquidity_mint_decimals: usdc_mint.decimals,

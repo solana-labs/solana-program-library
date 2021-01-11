@@ -12,6 +12,7 @@ use solana_sdk::{
 use spl_token::instruction::approve;
 use spl_token_lending::{
     instruction::repay_reserve_liquidity, math::Decimal, processor::process_instruction,
+    state::SLOTS_PER_YEAR,
 };
 
 const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
@@ -35,6 +36,9 @@ async fn test_success() {
         processor!(process_instruction),
     );
 
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(80_000);
+
     const OBLIGATION_LOAN: u64 = 1;
     const OBLIGATION_COLLATERAL: u64 = 500;
 
@@ -50,6 +54,7 @@ async fn test_success() {
         &lending_market,
         AddReserveArgs {
             config: TEST_RESERVE_CONFIG,
+            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -65,6 +70,7 @@ async fn test_success() {
         &lending_market,
         AddReserveArgs {
             config: TEST_RESERVE_CONFIG,
+            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_decimals: 9,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
@@ -79,7 +85,7 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddObligationArgs {
-            slots_elapsed: 0,
+            slots_elapsed: SLOTS_PER_YEAR,
             borrow_reserve: &usdc_reserve,
             collateral_reserve: &sol_reserve,
             collateral_amount: OBLIGATION_COLLATERAL,

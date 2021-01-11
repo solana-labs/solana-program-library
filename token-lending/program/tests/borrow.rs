@@ -6,7 +6,9 @@ use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::{
-    instruction::BorrowAmountType, processor::process_instruction, state::INITIAL_COLLATERAL_RATE,
+    instruction::BorrowAmountType,
+    processor::process_instruction,
+    state::{INITIAL_COLLATERAL_RATE, SLOTS_PER_YEAR},
 };
 
 const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
@@ -32,6 +34,9 @@ async fn test_borrow_quote_currency() {
         processor!(process_instruction),
     );
 
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(190_000);
+
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
@@ -45,6 +50,7 @@ async fn test_borrow_quote_currency() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
+            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -58,6 +64,7 @@ async fn test_borrow_quote_currency() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
+            slots_elapsed: SLOTS_PER_YEAR,
             dex_market_pubkey: Some(sol_usdc_dex_market.pubkey),
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
@@ -168,6 +175,9 @@ async fn test_borrow_base_currency() {
         processor!(process_instruction),
     );
 
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(190_000);
+
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
@@ -181,6 +191,7 @@ async fn test_borrow_base_currency() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
+            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -194,6 +205,7 @@ async fn test_borrow_base_currency() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
+            slots_elapsed: SLOTS_PER_YEAR,
             dex_market_pubkey: Some(sol_usdc_dex_market.pubkey),
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
