@@ -40,7 +40,8 @@
   "dependencies": {
     "@solana/spl-token": "0.0.13",
     "@solana/web3.js": "^0.88.0",
-    "bn.js": "^5.0.0"
+    "bn.js": "^5.0.0",
+    "mkdirp": "^1.0.4"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^17.0.0",
