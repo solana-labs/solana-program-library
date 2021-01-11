@@ -399,6 +399,18 @@ impl Processor {
         if result.destination_amount_swapped < to_u128(minimum_amount_out)? {
             return Err(SwapError::ExceededSlippage.into());
         }
+
+        let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
+            TradeDirection::AtoB => (
+                result.new_swap_source_amount,
+                result.new_swap_destination_amount,
+            ),
+            TradeDirection::BtoA => (
+                result.new_swap_destination_amount,
+                result.new_swap_source_amount,
+            ),
+        };
+
         Self::token_transfer(
             swap_info.key,
             token_program_info.clone(),
@@ -408,31 +420,13 @@ impl Processor {
             token_swap.nonce,
             to_u64(result.source_amount_swapped)?,
         )?;
-        Self::token_transfer(
-            swap_info.key,
-            token_program_info.clone(),
-            swap_destination_info.clone(),
-            destination_info.clone(),
-            authority_info.clone(),
-            token_swap.nonce,
-            to_u64(result.destination_amount_swapped)?,
-        )?;
 
-        // mint pool tokens equivalent to the owner fee
-        let source_account =
-            Self::unpack_token_account(swap_source_info, &token_swap.token_program_id)?;
-        let destination_account =
-            Self::unpack_token_account(swap_destination_info, &token_swap.token_program_id)?;
-        let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
-            TradeDirection::AtoB => (source_account.amount, destination_account.amount),
-            TradeDirection::BtoA => (destination_account.amount, source_account.amount),
-        };
         let mut pool_token_amount = token_swap
             .swap_curve
             .trading_tokens_to_pool_tokens(
                 result.owner_fee,
-                to_u128(swap_token_a_amount)?,
-                to_u128(swap_token_b_amount)?,
+                swap_token_a_amount,
+                swap_token_b_amount,
                 to_u128(pool_mint.supply)?,
                 trade_direction,
                 &token_swap.fees,
@@ -478,6 +472,17 @@ impl Processor {
                 to_u64(pool_token_amount)?,
             )?;
         }
+
+        Self::token_transfer(
+            swap_info.key,
+            token_program_info.clone(),
+            swap_destination_info.clone(),
+            destination_info.clone(),
+            authority_info.clone(),
+            token_swap.nonce,
+            to_u64(result.destination_amount_swapped)?,
+        )?;
+
         Ok(())
     }
 
@@ -661,6 +666,27 @@ impl Processor {
             return Err(SwapError::ZeroTradingTokens.into());
         }
 
+        if withdraw_fee > 0 {
+            Self::token_transfer(
+                swap_info.key,
+                token_program_info.clone(),
+                source_info.clone(),
+                pool_fee_account_info.clone(),
+                user_transfer_authority_info.clone(),
+                token_swap.nonce,
+                to_u64(withdraw_fee)?,
+            )?;
+        }
+        Self::token_burn(
+            swap_info.key,
+            token_program_info.clone(),
+            source_info.clone(),
+            pool_mint_info.clone(),
+            user_transfer_authority_info.clone(),
+            token_swap.nonce,
+            to_u64(pool_token_amount)?,
+        )?;
+
         let token_a_amount = std::cmp::min(token_a.amount, token_a_amount);
         if token_a_amount > 0 {
             Self::token_transfer(
@@ -685,26 +711,6 @@ impl Processor {
                 token_b_amount,
             )?;
         }
-        if withdraw_fee > 0 {
-            Self::token_transfer(
-                swap_info.key,
-                token_program_info.clone(),
-                source_info.clone(),
-                pool_fee_account_info.clone(),
-                user_transfer_authority_info.clone(),
-                token_swap.nonce,
-                to_u64(withdraw_fee)?,
-            )?;
-        }
-        Self::token_burn(
-            swap_info.key,
-            token_program_info.clone(),
-            source_info.clone(),
-            pool_mint_info.clone(),
-            user_transfer_authority_info.clone(),
-            token_swap.nonce,
-            to_u64(pool_token_amount)?,
-        )?;
         Ok(())
     }
 
@@ -928,6 +934,27 @@ impl Processor {
             return Err(SwapError::ZeroTradingTokens.into());
         }
 
+        if withdraw_fee > 0 {
+            Self::token_transfer(
+                swap_info.key,
+                token_program_info.clone(),
+                source_info.clone(),
+                pool_fee_account_info.clone(),
+                user_transfer_authority_info.clone(),
+                token_swap.nonce,
+                to_u64(withdraw_fee)?,
+            )?;
+        }
+        Self::token_burn(
+            swap_info.key,
+            token_program_info.clone(),
+            source_info.clone(),
+            pool_mint_info.clone(),
+            user_transfer_authority_info.clone(),
+            token_swap.nonce,
+            to_u64(burn_pool_token_amount)?,
+        )?;
+
         match trade_direction {
             TradeDirection::AtoB => {
                 Self::token_transfer(
@@ -953,26 +980,6 @@ impl Processor {
             }
         }
 
-        if withdraw_fee > 0 {
-            Self::token_transfer(
-                swap_info.key,
-                token_program_info.clone(),
-                source_info.clone(),
-                pool_fee_account_info.clone(),
-                user_transfer_authority_info.clone(),
-                token_swap.nonce,
-                to_u64(withdraw_fee)?,
-            )?;
-        }
-        Self::token_burn(
-            swap_info.key,
-            token_program_info.clone(),
-            source_info.clone(),
-            pool_mint_info.clone(),
-            user_transfer_authority_info.clone(),
-            token_swap.nonce,
-            to_u64(burn_pool_token_amount)?,
-        )?;
         Ok(())
     }
 
