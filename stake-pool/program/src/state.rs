@@ -208,13 +208,19 @@ impl ValidatorStakeList {
     pub fn contains(&self, validator: &Pubkey) -> bool {
         self.validators
             .iter()
-            .any(|&x| x.validator_account == *validator)
+            .any(|x| x.validator_account == *validator)
     }
 
-    /// Check if contains validator with particular pubkey
+    /// Check if contains validator with particular pubkey (mutable)
     pub fn find_mut(&mut self, validator: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
         self.validators
             .iter_mut()
+            .find(|x| x.validator_account == *validator)
+    }
+    /// Check if contains validator with particular pubkey (immutable)
+    pub fn find(&self, validator: &Pubkey) -> Option<&ValidatorStakeInfo> {
+        self.validators
+            .iter()
             .find(|x| x.validator_account == *validator)
     }
 

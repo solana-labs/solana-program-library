@@ -47,11 +47,7 @@ async fn test_create_validator_stake_account() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     // Check authorities
-    let stake = banks_client
-        .get_account(stake_account)
-        .await
-        .expect("get_account")
-        .expect("stake not none");
+    let stake = get_account(&mut banks_client, &stake_account).await;
     let stake_state = deserialize::<stake::StakeState>(&stake.data).unwrap();
     match stake_state {
         stake::StakeState::Initialized(meta) => {

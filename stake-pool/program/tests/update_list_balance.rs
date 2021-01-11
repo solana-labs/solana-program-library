@@ -42,7 +42,7 @@ async fn test_update_list_balance() {
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
         .await;
-    
+
     // Add several accounts
     let mut stake_accounts: Vec<StakeAccount> = vec![];
     const STAKE_ACCOUNTS: u64 = 3;

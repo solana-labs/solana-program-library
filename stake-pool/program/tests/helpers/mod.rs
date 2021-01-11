@@ -3,6 +3,7 @@
 use solana_program::{hash::Hash, program_pack::Pack, pubkey::Pubkey, system_instruction};
 use solana_program_test::*;
 use solana_sdk::{
+    account::Account,
     signature::{Keypair, Signer},
     transaction::Transaction,
     transport::TransportError,
@@ -18,6 +19,14 @@ pub fn program_test() -> ProgramTest {
         id(),
         processor!(processor::Processor::process),
     )
+}
+
+pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Account {
+    banks_client
+        .get_account(*pubkey)
+        .await
+        .expect("account not found")
+        .expect("account empty")
 }
 
 async fn create_mint(
@@ -153,17 +162,12 @@ async fn create_stake_pool(
     pool_mint: &Pubkey,
     pool_token_account: &Pubkey,
     owner: &Pubkey,
+    fee: &instruction::Fee,
 ) {
     let rent = banks_client.get_rent().await.unwrap();
     let rent_stake_pool = rent.minimum_balance(state::State::LEN);
     let rent_validator_stake_list = rent.minimum_balance(state::ValidatorStakeList::LEN);
-    let numerator = 1;
-    let denominator = 100;
-    let fee = instruction::Fee {
-        numerator,
-        denominator,
-    };
-    let init_args = instruction::InitArgs { fee };
+    let init_args = instruction::InitArgs { fee: *fee };
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -232,7 +236,7 @@ pub async fn create_independent_stake_account(
     stake: &Keypair,
     authorized: &stake::Authorized,
     lockup: &stake::Lockup,
-) {
+) -> u64 {
     let rent = banks_client.get_rent().await.unwrap();
     let lamports =
         rent.minimum_balance(std::mem::size_of::<stake::StakeState>()) + TEST_STAKE_AMOUNT;
@@ -249,6 +253,33 @@ pub async fn create_independent_stake_account(
     );
     transaction.sign(&[payer, stake], *recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
+
+    lamports
+}
+
+pub async fn create_blank_stake_account(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    stake: &Keypair,
+) -> u64 {
+    let rent = banks_client.get_rent().await.unwrap();
+    let lamports = rent.minimum_balance(std::mem::size_of::<stake::StakeState>()) + 1;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[system_instruction::create_account(
+            &payer.pubkey(),
+            &stake.pubkey(),
+            lamports,
+            std::mem::size_of::<stake::StakeState>() as u64,
+            &stake::id(),
+        )],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[payer, stake], *recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    lamports
 }
 
 pub async fn create_stake_account(
@@ -396,6 +427,7 @@ pub struct StakePoolAccounts {
     pub owner: Keypair,
     pub withdraw_authority: Pubkey,
     pub deposit_authority: Pubkey,
+    pub fee: instruction::Fee,
 }
 
 impl StakePoolAccounts {
@@ -423,7 +455,15 @@ impl StakePoolAccounts {
             owner,
             withdraw_authority,
             deposit_authority,
+            fee: instruction::Fee {
+                numerator: 1,
+                denominator: 100,
+            },
         }
+    }
+
+    pub fn calculate_fee(&self, amount: u64) -> u64 {
+        amount * self.fee.numerator / self.fee.denominator
     }
 
     pub async fn initialize_stake_pool(
@@ -458,18 +498,19 @@ impl StakePoolAccounts {
             &self.pool_mint.pubkey(),
             &self.pool_fee_account.pubkey(),
             &self.owner.pubkey(),
+            &self.fee,
         )
         .await;
     }
 
     pub async fn deposit_stake(
         &self,
-        stake: &Pubkey,
-        pool_account: &Pubkey,
-        validator_stake_account: &Pubkey,
         banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
+        stake: &Pubkey,
+        pool_account: &Pubkey,
+        validator_stake_account: &Pubkey,
     ) {
         let mut transaction = Transaction::new_with_payer(
             &[instruction::deposit(
@@ -485,6 +526,39 @@ impl StakePoolAccounts {
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
                 &stake::id(),
+            )
+            .unwrap()],
+            Some(&payer.pubkey()),
+        );
+        transaction.sign(&[payer], *recent_blockhash);
+        banks_client.process_transaction(transaction).await.unwrap();
+    }
+
+    pub async fn withdraw_stake(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        stake_recipient: &Pubkey,
+        pool_account: &Pubkey,
+        validator_stake_account: &Pubkey,
+        recipient_new_authority: &Pubkey,
+        amount: u64,
+    ) {
+        let mut transaction = Transaction::new_with_payer(
+            &[instruction::withdraw(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.validator_stake_list.pubkey(),
+                &self.withdraw_authority,
+                validator_stake_account,
+                stake_recipient,
+                recipient_new_authority,
+                pool_account,
+                &self.pool_mint.pubkey(),
+                &spl_token::id(),
+                &stake::id(),
+                amount,
             )
             .unwrap()],
             Some(&payer.pubkey()),
@@ -590,4 +664,69 @@ pub async fn simple_add_validator_stake_account(
     assert!(error.is_none());
 
     user_stake
+}
+
+pub struct DepositInfo {
+    pub user: Keypair,
+    pub user_pool_account: Pubkey,
+    pub stake_lamports: u64,
+    pub pool_tokens: u64,
+}
+
+pub async fn simple_deposit(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    stake_pool_accounts: &StakePoolAccounts,
+    validator_stake_account: &StakeAccount,
+) -> DepositInfo {
+    let user = Keypair::new();
+    // make stake account
+    let user_stake = Keypair::new();
+    let lockup = stake::Lockup::default();
+    let authorized = stake::Authorized {
+        staker: stake_pool_accounts.deposit_authority,
+        withdrawer: stake_pool_accounts.deposit_authority,
+    };
+    let stake_lamports = create_independent_stake_account(
+        banks_client,
+        payer,
+        recent_blockhash,
+        &user_stake,
+        &authorized,
+        &lockup,
+    )
+    .await;
+    // make pool token account
+    let user_pool_account = Keypair::new();
+    create_token_account(
+        banks_client,
+        payer,
+        recent_blockhash,
+        &user_pool_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &user.pubkey(),
+    )
+    .await;
+
+    stake_pool_accounts
+        .deposit_stake(
+            banks_client,
+            payer,
+            recent_blockhash,
+            &user_stake.pubkey(),
+            &user_pool_account.pubkey(),
+            &validator_stake_account.stake_account,
+        )
+        .await;
+
+    let user_pool_account = user_pool_account.pubkey();
+    let pool_tokens = get_token_balance(banks_client, &user_pool_account).await;
+
+    DepositInfo {
+        user,
+        user_pool_account,
+        stake_lamports,
+        pool_tokens,
+    }
 }

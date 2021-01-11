@@ -950,6 +950,8 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         // Stake pool
         let stake_pool_info = next_account_info(account_info_iter)?;
+        // Account storing validator stake list
+        let validator_stake_list_info = next_account_info(account_info_iter)?;
         // Stake pool withdraw authority
         let withdraw_info = next_account_info(account_info_iter)?;
         // Stake account to split
@@ -979,10 +981,29 @@ impl Processor {
             return Err(StakePoolError::InvalidProgramAddress.into());
         }
 
+        // Check validator stake account list storage
+        if *validator_stake_list_info.key != stake_pool.validator_stake_list {
+            return Err(StakePoolError::InvalidValidatorStakeList.into());
+        }
+
         // Check stake pool last update epoch
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::UpdateStakeListAndPool.into());
         }
+
+        // Read validator stake list account and check if it is valid
+        let mut validator_stake_list =
+            ValidatorStakeList::deserialize(&validator_stake_list_info.data.borrow())?;
+        if !validator_stake_list.is_initialized {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        let validator_account =
+            Self::get_validator_checked(program_id, stake_pool_info, stake_split_from)?;
+
+        let validator_list_item = validator_stake_list
+            .find_mut(&validator_account)
+            .ok_or(StakePoolError::ValidatorNotFound)?;
 
         let pool_amount = stake_pool
             .calc_pool_withdraw_amount(stake_amount)
@@ -1040,6 +1061,10 @@ impl Processor {
         stake_pool.pool_total -= pool_amount;
         stake_pool.stake_total -= stake_amount;
         State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
+
+        validator_list_item.balance = **stake_split_from.lamports.borrow();
+        validator_stake_list.serialize(&mut validator_stake_list_info.data.borrow_mut())?;
+
         Ok(())
     }
     /// Processes [SetStakeAuthority](enum.Instruction.html).

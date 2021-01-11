@@ -121,15 +121,16 @@ pub enum StakePoolInstruction {
     ///   The amount withdrawn is the MIN(u64, stake size)
     ///
     ///   0. `[w]` Stake pool
-    ///   1. `[]` Stake pool withdraw authority
-    ///   2. `[w]` Stake account to split
-    ///   3. `[w]` Unitialized stake account to receive withdrawal
-    ///   4. `[]` User account to set as a new withdraw authority
-    ///   5. `[w]` User account with pool tokens to burn from
-    ///   6. `[w]` Pool token mint account
-    ///   7. '[]' Sysvar clock account (required)
-    ///   8. `[]` Pool token program id
-    ///   9. `[]` Stake program id,
+    ///   1. `[w]` Validator stake list storage account
+    ///   2. `[]` Stake pool withdraw authority
+    ///   3. `[w]` Validator stake account to split
+    ///   4. `[w]` Unitialized stake account to receive withdrawal
+    ///   5. `[]` User account to set as a new withdraw authority
+    ///   6. `[w]` User account with pool tokens to burn from
+    ///   7. `[w]` Pool token mint account
+    ///   8. '[]' Sysvar clock account (required)
+    ///   9. `[]` Pool token program id
+    ///   10. `[]` Stake program id,
     ///   userdata: amount to withdraw
     Withdraw(u64),
 
@@ -444,6 +445,7 @@ pub fn deposit(
 pub fn withdraw(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
+    validator_stake_list_storage: &Pubkey,
     stake_pool_withdraw: &Pubkey,
     stake_to_split: &Pubkey,
     stake_to_receive: &Pubkey,
@@ -458,6 +460,7 @@ pub fn withdraw(
     let data = args.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
+        AccountMeta::new(*validator_stake_list_storage, false),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*stake_to_split, false),
         AccountMeta::new(*stake_to_receive, false),

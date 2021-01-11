@@ -58,13 +58,19 @@ async fn test_add_validator_stake_account() {
                                                 // Check token account balance
     let token_balance = get_token_balance(&mut banks_client, &user_pool_account.pubkey()).await;
     assert_eq!(token_balance, deposit_tokens);
+    let pool_fee_token_balance = get_token_balance(
+        &mut banks_client,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+    )
+    .await;
+    assert_eq!(pool_fee_token_balance, 0); // No fee when adding validator stake accounts
 
     // Check if validator account was added to the list
-    let validator_stake_list = banks_client
-        .get_account(stake_pool_accounts.validator_stake_list.pubkey())
-        .await
-        .expect("get_account")
-        .expect("validator stake list not none");
+    let validator_stake_list = get_account(
+        &mut banks_client,
+        &stake_pool_accounts.validator_stake_list.pubkey(),
+    )
+    .await;
     let validator_stake_list =
         state::ValidatorStakeList::deserialize(validator_stake_list.data.as_slice()).unwrap();
     assert_eq!(
@@ -80,11 +86,7 @@ async fn test_add_validator_stake_account() {
     );
 
     // Check of stake account authority has changed
-    let stake = banks_client
-        .get_account(user_stake.stake_account)
-        .await
-        .expect("get_account")
-        .expect("stake not none");
+    let stake = get_account(&mut banks_client, &user_stake.stake_account).await;
     let stake_state = deserialize::<stake::StakeState>(&stake.data).unwrap();
     match stake_state {
         stake::StakeState::Stake(meta, _) => {

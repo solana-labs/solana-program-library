@@ -15,20 +15,16 @@ async fn test_stake_pool_initialize() {
         .await;
 
     // Stake pool now exists
-    let stake_pool = banks_client
-        .get_account(stake_pool_accounts.stake_pool.pubkey())
-        .await
-        .expect("get_account")
-        .expect("stake pool not none");
+    let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     assert_eq!(stake_pool.data.len(), state::State::LEN);
     assert_eq!(stake_pool.owner, id());
 
     // Validator stake list storage initialized
-    let validator_stake_list = banks_client
-        .get_account(stake_pool_accounts.validator_stake_list.pubkey())
-        .await
-        .expect("get_account")
-        .expect("validator stake list not none");
+    let validator_stake_list = get_account(
+        &mut banks_client,
+        &stake_pool_accounts.validator_stake_list.pubkey(),
+    )
+    .await;
     let validator_stake_list =
         state::ValidatorStakeList::deserialize(validator_stake_list.data.as_slice()).unwrap();
     assert_eq!(validator_stake_list.is_initialized, true);
