@@ -32,8 +32,10 @@ exit_status=0
 for crash_file in ./hfuzz_workspace/"$fuzz_target"/*.fuzz; do
   # Check if the glob gets expanded to existing files.
   if [[ -e "$crash_file" ]]; then
-    echo ".fuzz file $crash_file found, meaning some error occurred, try to reproduce locall with the contents of the file:"
-    cat "$crash_file"
+    echo ".fuzz file $crash_file found, some error occurred, try to reproduce"
+    echo "locally with the hexdump of fuzz file.  Use \"xxd -r\" on this to"
+    echo "reconstruct the binary input file"
+    od -t x1 "$crash_file"
     exit_status=1
   fi
 done
