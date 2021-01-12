@@ -3691,8 +3691,10 @@ dependencies = [
 name = "spl-stake-pool-cli"
 version = "2.0.1"
 dependencies = [
+ "bincode",
  "bs58 0.4.0",
  "clap",
+ "lazy_static",
  "serde_json",
  "solana-account-decoder",
  "solana-clap-utils",
