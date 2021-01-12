@@ -3,7 +3,7 @@
 use crate::{
     error::LendingError,
     instruction::BorrowAmountType,
-    math::{Decimal, Rate},
+    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
     state::Reserve,
 };
 use arrayref::{array_refs, mut_array_refs};
@@ -148,10 +148,10 @@ impl<'a> TradeSimulator<'a> {
             return Err(LendingError::DexInvalidOrderBookSide.into());
         }
 
-        let input_quantity: Decimal = quantity / self.dex_market.get_lots(currency);
+        let input_quantity: Decimal = quantity.try_div(self.dex_market.get_lots(currency))?;
         let output_quantity =
             self.exchange_with_order_book(input_quantity, currency, cache_orders)?;
-        Ok(output_quantity * self.dex_market.get_lots(currency.opposite()))
+        Ok(output_quantity.try_mul(self.dex_market.get_lots(currency.opposite()))?)
     }
 
     /// Exchange tokens by filling orders
@@ -180,15 +180,15 @@ impl<'a> TradeSimulator<'a> {
 
             let (filled, output) = if currency == Currency::Base {
                 let filled = input_quantity.min(Decimal::from(base_quantity));
-                (filled, filled * next_order_price)
+                (filled, filled.try_mul(next_order_price)?)
             } else {
-                let quote_quantity = base_quantity as u128 * next_order_price as u128;
-                let filled = input_quantity.min(Decimal::from(quote_quantity));
-                (filled, filled / next_order_price)
+                let quote_quantity = Decimal::from(base_quantity).try_mul(next_order_price)?;
+                let filled = input_quantity.min(quote_quantity);
+                (filled, filled.try_div(next_order_price)?)
             };
 
-            input_quantity -= filled;
-            output_quantity += output;
+            input_quantity = input_quantity.try_sub(filled)?;
+            output_quantity = output_quantity.try_add(output)?;
 
             if cache_orders {
                 order_cache.push_back(next_order);
@@ -214,7 +214,7 @@ impl<'a> TradeSimulator<'a> {
         amount: u64,
     ) -> Result<(u64, u64), ProgramError> {
         let deposit_reserve_collateral_exchange_rate =
-            deposit_reserve.state.collateral_exchange_rate();
+            deposit_reserve.state.collateral_exchange_rate()?;
         match amount_type {
             BorrowAmountType::LiquidityBorrowAmount => {
                 let borrow_amount = amount;
@@ -229,11 +229,12 @@ impl<'a> TradeSimulator<'a> {
                 )?;
 
                 let loan_in_deposit_collateral = deposit_reserve_collateral_exchange_rate
-                    .decimal_liquidity_to_collateral(loan_in_deposit_underlying);
-                let required_deposit_collateral: Decimal = loan_in_deposit_collateral
-                    / Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
+                    .decimal_liquidity_to_collateral(loan_in_deposit_underlying)?;
+                let required_deposit_collateral: Decimal = loan_in_deposit_collateral.try_div(
+                    Rate::from_percent(deposit_reserve.config.loan_to_value_ratio),
+                )?;
 
-                let collateral_deposit_amount = required_deposit_collateral.round_u64();
+                let collateral_deposit_amount = required_deposit_collateral.try_round_u64()?;
                 if collateral_deposit_amount == 0 {
                     return Err(LendingError::InvalidAmount.into());
                 }
@@ -244,9 +245,11 @@ impl<'a> TradeSimulator<'a> {
                 let collateral_deposit_amount = amount;
 
                 let loan_in_deposit_collateral: Decimal = Decimal::from(collateral_deposit_amount)
-                    * Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
+                    .try_mul(Rate::from_percent(
+                        deposit_reserve.config.loan_to_value_ratio,
+                    ))?;
                 let loan_in_deposit_underlying = deposit_reserve_collateral_exchange_rate
-                    .decimal_collateral_to_liquidity(loan_in_deposit_collateral);
+                    .decimal_collateral_to_liquidity(loan_in_deposit_collateral)?;
 
                 // Simulate selling `loan_in_deposit_underlying` amount of deposit reserve underlying
                 //   tokens to determine how much to lend to the user
@@ -257,7 +260,7 @@ impl<'a> TradeSimulator<'a> {
                     false,
                 )?;
 
-                let borrow_amount = borrow_amount.round_u64();
+                let borrow_amount = borrow_amount.try_round_u64()?;
                 if borrow_amount == 0 {
                     return Err(LendingError::InvalidAmount.into());
                 }
