@@ -779,8 +779,17 @@ party through an airdrop campaign.
 
 The creation process is described [here](associated-token-account.md#creating-an-associated-token-account).
 
+It's highly recommended that the wallet create the associated token account for
+a given SPL Token itself before indicating to the user that they are able to
+receive that SPL Tokens type (typically done by showing the user their receiving
+address). A wallet that chooses to not perform this step may limit its user's ability
+to receive SPL Tokens from other wallets.
+
 #### Sample "Add Token" workflow
-The user should first fund their associated token when they want to receive tokens of a certain type.
+The user should first fund their associated token account when they want to
+receive SPL Tokens of a certain type to:
+1. Maximize interoperability with other wallet implementations
+2. Avoid pushing the cost of creating their associated token account on the first sender
 
 The wallet should provide a UI that allow the users to "add a token".
 The user selects the kind of token, and is presented with information about how
@@ -812,9 +821,21 @@ associated token account of the recipient.
 The recipient must provide their main wallet address to the sender.  The sender
 then:
 1. Derives the associated token account for the recipient
-1. Fetches the recipient's associated token account over RPC and checks that it exists.
-1. If the recipient's associated token account does not exist, the sender wallet may choose to first fund the recipient's wallet at their expense
-1. Use `TokenInstruction::Transfer` to complete the transfer.
+1. Fetches the recipient's associated token account over RPC and checks that it exists
+1. If the recipient's associated token account does not yet exist, the sender
+   wallet should create the recipient's associated token account as described
+   [here](associated-token-account.md#creating-an-associated-token-account).
+   The sender's wallet may choose to inform the user that as a result of account
+   creation the transfer will require more SOL than normal.
+   However a wallet that chooses to not support creating the recipient's
+   associated token account at this time should present a message to the user with enough
+   information to permit them to find a workaround (such as transferring the
+   token through a fully compliant intermediary wallet such as https://sollet.io)
+   to allow the users to accomplish their goal
+1. Use `TokenInstruction::Transfer` to complete the transfer
+
+The sender's wallet must not require that the recipient's main wallet address
+hold a balance before allowing the transfer.
 
 ### Registry for token details
 At the moment Token Mint addresses need to be hard coded by each wallet.  **Improving this situation is a work in progress.**
