@@ -43,6 +43,12 @@ pub enum LendingError {
     /// Invalid account input
     #[error("Invalid account input")]
     InvalidAccountInput,
+    /// Math operation overflow
+    #[error("Math operation overflow")]
+    MathOverflow,
+    /// Negative interest rate
+    #[error("Interest rate is negative")]
+    NegativeInterestRate,
 
     /// Memory is too small
     #[error("Memory is too small")]

@@ -4,7 +4,7 @@ use crate::{
     dex_market::{DexMarket, TradeAction, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
-    math::{Decimal, Rate, WAD},
+    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, WAD},
     state::{LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState, PROGRAM_VERSION},
 };
 use num_traits::FromPrimitive;
@@ -98,6 +98,7 @@ fn process_init_reserve(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if liquidity_amount == 0 {
+        msg!("Reserve must be initialized with liquidity");
         return Err(LendingError::InvalidAmount.into());
     }
     if config.optimal_utilization_rate > 100 {
@@ -243,7 +244,7 @@ fn process_init_reserve(
         token_program: token_program_id.clone(),
     })?;
 
-    let reserve_state = ReserveState::new(clock.slot, liquidity_amount);
+    let reserve_state = ReserveState::new(clock.slot, liquidity_amount)?;
     spl_token_mint_to(TokenMintToParams {
         mint: reserve_collateral_mint_info.clone(),
         destination: destination_collateral_info.clone(),
@@ -327,8 +328,8 @@ fn process_deposit(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    reserve.accrue_interest(clock.slot);
-    let collateral_amount = reserve.deposit_liquidity(liquidity_amount);
+    reserve.accrue_interest(clock.slot)?;
+    let collateral_amount = reserve.deposit_liquidity(liquidity_amount)?;
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
     let (lending_market_authority_pubkey, bump_seed) =
@@ -413,7 +414,7 @@ fn process_withdraw(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    reserve.accrue_interest(clock.slot);
+    reserve.accrue_interest(clock.slot)?;
     let liquidity_withdraw_amount = reserve.redeem_collateral(collateral_amount)?;
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
@@ -551,8 +552,8 @@ fn process_borrow(
     }
 
     // accrue interest and update rates
-    borrow_reserve.accrue_interest(clock.slot);
-    deposit_reserve.accrue_interest(clock.slot);
+    borrow_reserve.accrue_interest(clock.slot)?;
+    deposit_reserve.accrue_interest(clock.slot)?;
     let cumulative_borrow_rate = borrow_reserve.state.cumulative_borrow_rate_wads;
 
     let mut trade_simulator = TradeSimulator::new(
@@ -600,15 +601,16 @@ fn process_borrow(
             return Err(LendingError::InvalidAccountInput.into());
         }
 
-        obligation.accrue_interest(clock, cumulative_borrow_rate);
-        obligation.borrowed_liquidity_wads += Decimal::from(borrow_amount);
+        obligation.accrue_interest(cumulative_borrow_rate)?;
+        obligation.borrowed_liquidity_wads = obligation
+            .borrowed_liquidity_wads
+            .try_add(Decimal::from(borrow_amount))?;
         obligation.deposited_collateral_tokens += collateral_deposit_amount;
         Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
     } else {
         assert_rent_exempt(rent, obligation_info)?;
         let mut new_obligation = obligation;
         new_obligation.version = PROGRAM_VERSION;
-        new_obligation.last_update_slot = clock.slot;
         new_obligation.deposited_collateral_tokens = collateral_deposit_amount;
         new_obligation.collateral_reserve = *deposit_reserve_info.key;
         new_obligation.cumulative_borrow_rate_wads = cumulative_borrow_rate;
@@ -815,31 +817,27 @@ fn process_repay(
     }
 
     // accrue interest and update rates
-    repay_reserve.accrue_interest(clock.slot);
-    obligation.accrue_interest(clock, repay_reserve.state.cumulative_borrow_rate_wads);
+    repay_reserve.accrue_interest(clock.slot)?;
+    obligation.accrue_interest(repay_reserve.state.cumulative_borrow_rate_wads)?;
 
     let repay_amount = Decimal::from(liquidity_amount).min(obligation.borrowed_liquidity_wads);
-    let rounded_repay_amount = repay_amount.round_u64();
-    if rounded_repay_amount == 0 {
-        return Err(LendingError::ObligationTooSmall.into());
-    }
-
-    repay_reserve.state.subtract_repay(repay_amount);
+    let rounded_repay_amount = repay_reserve.state.subtract_repay(repay_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    let repay_pct: Decimal = repay_amount / obligation.borrowed_liquidity_wads;
+    let repay_pct: Decimal = repay_amount.try_div(obligation.borrowed_liquidity_wads)?;
     let collateral_withdraw_amount = {
-        let withdraw_amount: Decimal = repay_pct * obligation.deposited_collateral_tokens;
-        withdraw_amount.round_u64()
+        let withdraw_amount: Decimal = repay_pct.try_mul(obligation.deposited_collateral_tokens)?;
+        withdraw_amount.try_round_u64()?
     };
 
     let obligation_token_amount = {
         let obligation_mint = &unpack_mint(&obligation_token_mint_info.data.borrow())?;
-        let token_amount: Decimal = repay_pct * obligation_mint.supply;
-        token_amount.round_u64()
+        let token_amount: Decimal = repay_pct.try_mul(obligation_mint.supply)?;
+        token_amount.try_round_u64()?
     };
 
-    obligation.borrowed_liquidity_wads -= repay_amount;
+    obligation.borrowed_liquidity_wads =
+        obligation.borrowed_liquidity_wads.try_sub(repay_amount)?;
     obligation.deposited_collateral_tokens -= collateral_withdraw_amount;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
@@ -986,9 +984,9 @@ fn process_liquidate(
     }
 
     // accrue interest and update rates
-    repay_reserve.accrue_interest(clock.slot);
-    withdraw_reserve.accrue_interest(clock.slot);
-    obligation.accrue_interest(clock, repay_reserve.state.cumulative_borrow_rate_wads);
+    repay_reserve.accrue_interest(clock.slot)?;
+    withdraw_reserve.accrue_interest(clock.slot)?;
+    obligation.accrue_interest(repay_reserve.state.cumulative_borrow_rate_wads)?;
 
     let mut trade_simulator = TradeSimulator::new(
         dex_market_info,
@@ -999,18 +997,15 @@ fn process_liquidate(
 
     // calculate obligation health
     let withdraw_reserve_collateral_exchange_rate =
-        withdraw_reserve.state.collateral_exchange_rate();
+        withdraw_reserve.state.collateral_exchange_rate()?;
     let borrow_amount_as_collateral = withdraw_reserve_collateral_exchange_rate
-        .liquidity_to_collateral(
-            trade_simulator
-                .simulate_trade(
-                    TradeAction::Sell,
-                    obligation.borrowed_liquidity_wads,
-                    &repay_reserve.liquidity_mint,
-                    true,
-                )?
-                .round_u64(),
-        );
+        .decimal_liquidity_to_collateral(trade_simulator.simulate_trade(
+            TradeAction::Sell,
+            obligation.borrowed_liquidity_wads,
+            &repay_reserve.liquidity_mint,
+            true,
+        )?)?
+        .try_round_u64()?;
 
     if 100 * borrow_amount_as_collateral / obligation.deposited_collateral_tokens
         < withdraw_reserve.config.liquidation_threshold as u64
@@ -1020,13 +1015,9 @@ fn process_liquidate(
 
     // calculate the amount of liquidity that will be repaid
     let close_factor = Rate::from_percent(50);
-    let repay_amount =
-        Decimal::from(liquidity_amount).min(obligation.borrowed_liquidity_wads * close_factor);
-    let rounded_repay_amount = repay_amount.round_u64();
-    if rounded_repay_amount == 0 {
-        return Err(LendingError::ObligationTooSmall.into());
-    }
-    repay_reserve.state.subtract_repay(repay_amount);
+    let repay_amount = Decimal::from(liquidity_amount)
+        .min(obligation.borrowed_liquidity_wads.try_mul(close_factor)?);
+    let rounded_repay_amount = repay_reserve.state.subtract_repay(repay_amount)?;
 
     // TODO: check math precision
     // calculate the amount of collateral that will be withdrawn
@@ -1038,8 +1029,8 @@ fn process_liquidate(
         false,
     )?;
     let withdraw_amount_as_collateral = withdraw_reserve_collateral_exchange_rate
-        .decimal_liquidity_to_collateral(withdraw_liquidity_amount)
-        .round_u64();
+        .decimal_liquidity_to_collateral(withdraw_liquidity_amount)?
+        .try_round_u64()?;
     let liquidation_bonus_amount =
         withdraw_amount_as_collateral * (withdraw_reserve.config.liquidation_bonus as u64) / 100;
     let collateral_withdraw_amount = obligation
@@ -1052,8 +1043,8 @@ fn process_liquidate(
         &mut withdraw_reserve_info.data.borrow_mut(),
     )?;
 
-    obligation.last_update_slot = clock.slot;
-    obligation.borrowed_liquidity_wads -= repay_amount;
+    obligation.borrowed_liquidity_wads =
+        obligation.borrowed_liquidity_wads.try_sub(repay_amount)?;
     obligation.deposited_collateral_tokens -= collateral_withdraw_amount;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 

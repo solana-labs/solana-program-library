@@ -22,7 +22,7 @@ use spl_token_lending::{
     processor::process_instruction,
     state::{
         LendingMarket, Obligation, Reserve, ReserveConfig, ReserveFees, ReserveState,
-        INITIAL_COLLATERAL_RATE, PROGRAM_VERSION,
+        INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION,
     },
 };
 use std::str::FromStr;
@@ -116,9 +116,10 @@ impl AddPacked for ProgramTest {
 }
 
 pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> TestLendingMarket {
-    let keypair = Keypair::new();
+    let keypair = read_keypair_file("tests/fixtures/lending_market.json").unwrap();
+    let pubkey = keypair.pubkey();
     test.add_packable_account(
-        keypair.pubkey(),
+        pubkey,
         u32::MAX as u64,
         &LendingMarket {
             version: PROGRAM_VERSION,
@@ -128,10 +129,8 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
         &spl_token_lending::id(),
     );
 
-    let (authority, _bump_seed) = Pubkey::find_program_address(
-        &[&keypair.pubkey().to_bytes()[..32]],
-        &spl_token_lending::id(),
-    );
+    let (authority, _bump_seed) =
+        Pubkey::find_program_address(&[&pubkey.to_bytes()[..32]], &spl_token_lending::id());
 
     TestLendingMarket {
         keypair,
@@ -141,7 +140,6 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
 }
 
 pub struct AddObligationArgs<'a> {
-    pub slots_elapsed: u64,
     pub borrow_reserve: &'a TestReserve,
     pub collateral_reserve: &'a TestReserve,
     pub collateral_amount: u64,
@@ -155,7 +153,6 @@ pub fn add_obligation(
     args: AddObligationArgs,
 ) -> TestObligation {
     let AddObligationArgs {
-        slots_elapsed,
         borrow_reserve,
         collateral_reserve,
         collateral_amount,
@@ -197,7 +194,6 @@ pub fn add_obligation(
         u32::MAX as u64,
         &Obligation {
             version: PROGRAM_VERSION,
-            last_update_slot: 1u64.wrapping_sub(slots_elapsed),
             deposited_collateral_tokens: collateral_amount,
             collateral_reserve: collateral_reserve.pubkey,
             cumulative_borrow_rate_wads: Decimal::one(),
@@ -335,7 +331,8 @@ pub fn add_reserve(
 
     let reserve_keypair = Keypair::new();
     let reserve_pubkey = reserve_keypair.pubkey();
-    let mut reserve_state = ReserveState::new(1u64.wrapping_sub(slots_elapsed), liquidity_amount);
+    let mut reserve_state =
+        ReserveState::new(1u64.wrapping_sub(slots_elapsed), liquidity_amount).unwrap();
     reserve_state.add_borrow(borrow_amount).unwrap();
     test.add_packable_account(
         reserve_pubkey,
@@ -383,7 +380,7 @@ pub fn add_reserve(
         &Token {
             mint: collateral_mint_pubkey,
             owner: user_accounts_owner.pubkey(),
-            amount: liquidity_amount * INITIAL_COLLATERAL_RATE,
+            amount: liquidity_amount * INITIAL_COLLATERAL_RATIO,
             state: AccountState::Initialized,
             ..Token::default()
         },
