@@ -1,5 +1,6 @@
 use spl_token_swap_fuzz::{
-    native_account_data::NativeAccountData, native_token::{get_token_balance, transfer},
+    native_account_data::NativeAccountData,
+    native_token::{get_token_balance, transfer},
     native_token_swap::NativeTokenSwap,
 };
 

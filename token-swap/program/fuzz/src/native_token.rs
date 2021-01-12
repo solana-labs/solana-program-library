@@ -40,7 +40,11 @@ pub fn get_token_balance(account_data: &NativeAccountData) -> u64 {
     account.amount
 }
 
-pub fn transfer(from_account: &mut NativeAccountData, to_account: &mut NativeAccountData, amount: u64) {
+pub fn transfer(
+    from_account: &mut NativeAccountData,
+    to_account: &mut NativeAccountData,
+    amount: u64,
+) {
     let mut from = TokenAccount::unpack(&from_account.data).unwrap();
     let mut to = TokenAccount::unpack(&to_account.data).unwrap();
     assert_eq!(from.mint, to.mint);
