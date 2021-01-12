@@ -272,7 +272,7 @@ impl NativeTokenSwap {
         token_a_account: &mut NativeAccountData,
         token_b_account: &mut NativeAccountData,
         pool_account: &mut NativeAccountData,
-        instruction: DepositAllTokenTypes,
+        mut instruction: DepositAllTokenTypes,
     ) -> ProgramResult {
         let mut user_transfer_account = NativeAccountData::new(0, system_program::id());
         user_transfer_account.is_signer = true;
@@ -312,6 +312,12 @@ impl NativeTokenSwap {
         )
         .unwrap();
 
+        // special logic: if we only deposit 1 pool token, we can't withdraw it
+        // because we incur a withdrawal fee, so we hack it to not be 1
+        if instruction.pool_token_amount == 1 {
+            instruction.pool_token_amount = 2;
+        }
+
         let deposit_instruction = instruction::deposit_all_token_types(
             &spl_token_swap::id(),
             &spl_token::id(),
@@ -350,10 +356,16 @@ impl NativeTokenSwap {
         pool_account: &mut NativeAccountData,
         token_a_account: &mut NativeAccountData,
         token_b_account: &mut NativeAccountData,
-        instruction: WithdrawAllTokenTypes,
+        mut instruction: WithdrawAllTokenTypes,
     ) -> ProgramResult {
         let mut user_transfer_account = NativeAccountData::new(0, system_program::id());
         user_transfer_account.is_signer = true;
+        let pool_token_amount = native_token::get_token_balance(&pool_account);
+        // special logic to avoid withdrawing down to 1 pool token, which
+        // eventually causes an error on withdrawing all
+        if pool_token_amount.saturating_sub(instruction.pool_token_amount) == 1 {
+            instruction.pool_token_amount = pool_token_amount;
+        }
         do_process_instruction(
             approve(
                 &self.token_program_account.key,
@@ -411,7 +423,7 @@ impl NativeTokenSwap {
         &mut self,
         source_token_account: &mut NativeAccountData,
         pool_account: &mut NativeAccountData,
-        instruction: DepositSingleTokenTypeExactAmountIn,
+        mut instruction: DepositSingleTokenTypeExactAmountIn,
     ) -> ProgramResult {
         let mut user_transfer_account = NativeAccountData::new(0, system_program::id());
         user_transfer_account.is_signer = true;
@@ -432,6 +444,12 @@ impl NativeTokenSwap {
             ],
         )
         .unwrap();
+
+        // special logic: if we only deposit 1 pool token, we can't withdraw it
+        // because we incur a withdrawal fee, so we hack it to not be 1
+        if instruction.minimum_pool_token_amount < 2 {
+            instruction.minimum_pool_token_amount = 2;
+        }
 
         let deposit_instruction = instruction::deposit_single_token_type_exact_amount_in(
             &spl_token_swap::id(),
@@ -468,10 +486,16 @@ impl NativeTokenSwap {
         &mut self,
         pool_account: &mut NativeAccountData,
         destination_token_account: &mut NativeAccountData,
-        instruction: WithdrawSingleTokenTypeExactAmountOut,
+        mut instruction: WithdrawSingleTokenTypeExactAmountOut,
     ) -> ProgramResult {
         let mut user_transfer_account = NativeAccountData::new(0, system_program::id());
         user_transfer_account.is_signer = true;
+        let pool_token_amount = native_token::get_token_balance(&pool_account);
+        // special logic to avoid withdrawing down to 1 pool token, which
+        // eventually causes an error on withdrawing all
+        if pool_token_amount.saturating_sub(instruction.maximum_pool_token_amount) == 1 {
+            instruction.maximum_pool_token_amount = pool_token_amount;
+        }
         do_process_instruction(
             approve(
                 &self.token_program_account.key,
