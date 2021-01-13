@@ -649,10 +649,6 @@ impl Processor {
             .checked_sub(withdraw_fee)
             .ok_or(SwapError::CalculationFailure)?;
 
-        println!(
-            "amt {} supply {} a {} b {}",
-            pool_token_amount, pool_mint.supply, token_a.amount, token_b.amount
-        );
         let results = calculator
             .pool_tokens_to_trading_tokens(
                 pool_token_amount,

@@ -207,9 +207,9 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
 
     // Omit fees intentionally, because fees in the form of pool tokens can
     // dilute the value of the pool.  For example, if we perform a small swap
-    // whose value is less than 1 pool token, we still mint a minimum of 1 pool
-    // token to the fee.  Depending on the size of the pool, this fee can
-    // actually reduces the value of pool tokens.
+    // whose fee is worth less than 1 pool token, we may round up to 1 pool
+    // token and mint it as the fee.  Depending on the size of the pool, this
+    // fee can actually reduce the value of pool tokens.
     let pool_token_amount =
         pool_tokens + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
     let swap_token_a_amount = get_token_balance(&token_swap.token_a_account) as u128;
