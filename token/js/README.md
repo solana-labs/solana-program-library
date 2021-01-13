@@ -25,17 +25,13 @@ $ export RUST_LOG=solana_runtime::native_loader=trace,solana_runtime::system_ins
 
 To start a local Solana cluster run:
 ```bash
-$ npm run localnet:update
-$ npm run localnet:up
+$ solana-test-validator
 ```
 
 Solana cluster logs are available with:
 ```bash
-$ npm run localnet:logs
+$ solana --url http://127.0.0.1:8899/ logs
 ```
-
-For more details on working with a local cluster, see the [full
-instructions](https://github.com/solana-labs/solana-web3.js#local-network).
 
 ### Build the on-chain program
 

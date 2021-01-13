@@ -10,6 +10,7 @@ module.exports = {
       "memo",
       "shared-memory",
       "stake-pool",
+      "feature-proposal",
     ],
   },
 };

@@ -32,7 +32,6 @@ declare module '@solana/spl-token-swap' {
       tokenAccountB: PublicKey,
       mintA: PublicKey,
       mintB: PublicKey,
-      curveType: number,
       tradeFeeNumerator: Numberu64,
       tradeFeeDenominator: Numberu64,
       ownerTradeFeeNumerator: Numberu64,
@@ -41,6 +40,7 @@ declare module '@solana/spl-token-swap' {
       ownerWithdrawFeeDenominator: Numberu64,
       hostFeeNumerator: Numberu64,
       hostFeeDenominator: Numberu64,
+      curveType: number,
       payer: Account,
     );
 
@@ -59,7 +59,6 @@ declare module '@solana/spl-token-swap' {
       tokenProgramId: PublicKey,
       swapProgramId: PublicKey,
       nonce: number,
-      curveType: number,
       tradeFeeNumerator: number,
       tradeFeeDenominator: number,
       ownerTradeFeeNumerator: number,
@@ -68,6 +67,7 @@ declare module '@solana/spl-token-swap' {
       ownerWithdrawFeeDenominator: number,
       hostFeeNumerator: number,
       hostFeeDenominator: number,
+      curveType: number,
     ): TransactionInstruction;
 
     static loadTokenSwap(
@@ -92,7 +92,6 @@ declare module '@solana/spl-token-swap' {
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
       nonce: number,
-      curveType: number,
       tradeFeeNumerator: number,
       tradeFeeDenominator: number,
       ownerTradeFeeNumerator: number,
@@ -101,6 +100,7 @@ declare module '@solana/spl-token-swap' {
       ownerWithdrawFeeDenominator: number,
       hostFeeNumerator: number,
       hostFeeDenominator: number,
+      curveType: number,
     ): Promise<TokenSwap>;
 
     swap(
@@ -129,7 +129,7 @@ declare module '@solana/spl-token-swap' {
       minimumAmountOut: number | Numberu64,
     ): TransactionInstruction;
 
-    deposit(
+    depositAllTokenTypes(
       userAccountA: PublicKey,
       userAccountB: PublicKey,
       poolAccount: PublicKey,
@@ -138,7 +138,7 @@ declare module '@solana/spl-token-swap' {
       maximumTokenB: number | Numberu64,
     ): Promise<TransactionSignature>;
 
-    static depositInstruction(
+    static depositAllTokenTypesInstruction(
       tokenSwap: PublicKey,
       authority: PublicKey,
       sourceA: PublicKey,
@@ -154,7 +154,7 @@ declare module '@solana/spl-token-swap' {
       maximumTokenB: number | Numberu64,
     ): TransactionInstruction;
 
-    withdraw(
+    withdrawAllTokenTypes(
       userAccountA: PublicKey,
       userAccountB: PublicKey,
       poolTokenAmount: number | Numberu64,
@@ -162,7 +162,7 @@ declare module '@solana/spl-token-swap' {
       minimumTokenB: number | Numberu64,
     ): Promise<TransactionSignature>;
 
-    static withdrawInstruction(
+    static withdrawAllTokenTypesInstruction(
       tokenSwap: PublicKey,
       authority: PublicKey,
       poolMint: PublicKey,
@@ -177,6 +177,49 @@ declare module '@solana/spl-token-swap' {
       poolTokenAmount: number | Numberu64,
       minimumTokenA: number | Numberu64,
       minimumTokenB: number | Numberu64,
+    ): TransactionInstruction;
+
+    depositSingleTokenTypeExactAmountIn(
+      userAccount: PublicKey,
+      poolAccount: PublicKey,
+      sourceTokenAmount: number | Numberu64,
+      minimumPoolTokenAmount: number | Numberu64,
+    ): Promise<TransactionSignature>;
+
+    static depositSingleTokenTypeExactAmountInInstruction(
+      tokenSwap: PublicKey,
+      authority: PublicKey,
+      source: PublicKey,
+      intoA: PublicKey,
+      intoB: PublicKey,
+      poolToken: PublicKey,
+      poolAccount: PublicKey,
+      swapProgramId: PublicKey,
+      tokenProgramId: PublicKey,
+      sourceTokenAmount: number | Numberu64,
+      minimumPoolTokenAmount: number | Numberu64,
+    ): TransactionInstruction;
+
+    withdrawSingleTokenTypeExactAmountOut(
+      userAccount: PublicKey,
+      poolAccount: PublicKey,
+      destinationTokenAmount: number | Numberu64,
+      maximumPoolTokenAmount: number | Numberu64,
+    ): Promise<TransactionSignature>;
+
+    static withdrawSingleTokenTypeExactAmountOutInstruction(
+      tokenSwap: PublicKey,
+      authority: PublicKey,
+      poolMint: PublicKey,
+      feeAccount: PublicKey,
+      sourcePoolAccount: PublicKey,
+      fromA: PublicKey,
+      fromB: PublicKey,
+      userAccount: PublicKey,
+      swapProgramId: PublicKey,
+      tokenProgramId: PublicKey,
+      destinationTokenAmount: number | Numberu64,
+      maximumPoolTokenAmount: number | Numberu64,
     ): TransactionInstruction;
   }
 }

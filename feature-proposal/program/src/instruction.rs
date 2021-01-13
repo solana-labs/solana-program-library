@@ -3,8 +3,8 @@
 use crate::{state::AcceptanceCriteria, *};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
-    info,
     instruction::{AccountMeta, Instruction},
+    msg,
     program_error::ProgramError,
     program_pack::{Pack, Sealed},
     pubkey::Pubkey,
@@ -20,14 +20,14 @@ pub enum FeatureProposalInstruction {
     /// funded by account 0:
     /// * A new token mint with a supply of `tokens_to_mint`, owned by the program and never
     ///   modified again
-    /// * A new "delivery" token account that holds the total supply, owned by account 0.
+    /// * A new "distributor" token account that holds the total supply, owned by account 0.
     /// * A new "acceptance" token account that holds 0 tokens, owned by the program.  Tokens
     ///   transfers to this address are irrevocable and permanent.
     /// * A new feature id account that has been funded and allocated (as described in
     ///  `solana_program::feature`)
     ///
     /// On successful execution of the instruction, the feature proposer is expected to distribute
-    /// the tokens in the delivery token account out to all participating parties.
+    /// the tokens in the distributor token account out to all participating parties.
     ///
     /// Based on the provided acceptance criteria, if `AcceptanceCriteria::tokens_required`
     /// tokens are transferred into the acceptance token account before
@@ -41,7 +41,7 @@ pub enum FeatureProposalInstruction {
     /// 0. `[writeable,signer]` Funding account (must be a system account)
     /// 1. `[writeable,signer]` Unallocated feature proposal account to create
     /// 2. `[writeable]` Token mint address from `get_mint_address`
-    /// 3. `[writeable]` Delivery token account address from `get_delivery_token_address`
+    /// 3. `[writeable]` Distributor token account address from `get_distributor_token_address`
     /// 4. `[writeable]` Acceptance token account address from `get_acceptance_token_address`
     /// 5. `[writeable]` Feature id account address from `get_feature_id_address`
     /// 6. `[]` System program
@@ -76,7 +76,7 @@ pub enum FeatureProposalInstruction {
 
 impl Sealed for FeatureProposalInstruction {}
 impl Pack for FeatureProposalInstruction {
-    const LEN: usize = 26; // see `test_get_packed_len()` for justification of "18"
+    const LEN: usize = 25; // see `test_get_packed_len()` for justification of "18"
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
         let data = self.pack_into_vec();
@@ -86,10 +86,10 @@ impl Pack for FeatureProposalInstruction {
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
         Self::deserialize(&mut mut_src).map_err(|err| {
-            info!(&format!(
+            msg!(
                 "Error: failed to deserialize feature proposal instruction: {}",
                 err
-            ));
+            );
             ProgramError::InvalidInstructionData
         })
     }
@@ -109,7 +109,7 @@ pub fn propose(
     acceptance_criteria: AcceptanceCriteria,
 ) -> Instruction {
     let mint_address = get_mint_address(feature_proposal_address);
-    let delivery_token_address = get_delivery_token_address(feature_proposal_address);
+    let distributor_token_address = get_distributor_token_address(feature_proposal_address);
     let acceptance_token_address = get_acceptance_token_address(feature_proposal_address);
     let feature_id_address = get_feature_id_address(feature_proposal_address);
 
@@ -119,7 +119,7 @@ pub fn propose(
             AccountMeta::new(*funding_address, true),
             AccountMeta::new(*feature_proposal_address, true),
             AccountMeta::new(mint_address, false),
-            AccountMeta::new(delivery_token_address, false),
+            AccountMeta::new(distributor_token_address, false),
             AccountMeta::new(acceptance_token_address, false),
             AccountMeta::new(feature_id_address, false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
@@ -177,12 +177,15 @@ mod tests {
                 tokens_to_mint: 42,
                 acceptance_criteria: AcceptanceCriteria {
                     tokens_required: 0xdeadbeefdeadbeef,
-                    deadline: None,
+                    deadline: -1,
                 }
             }
             .try_to_vec()
             .unwrap(),
-            vec![0, 42, 0, 0, 0, 0, 0, 0, 0, 239, 190, 173, 222, 239, 190, 173, 222, 0]
+            vec![
+                0, 42, 0, 0, 0, 0, 0, 0, 0, 239, 190, 173, 222, 239, 190, 173, 222, 255, 255, 255,
+                255, 255, 255, 255, 255
+            ]
         );
     }
 

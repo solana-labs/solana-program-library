@@ -9,7 +9,7 @@ use crate::{
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::next_account_info, account_info::AccountInfo, decode_error::DecodeError,
-    entrypoint::ProgramResult, info, program::invoke_signed, program_error::PrintProgramError,
+    entrypoint::ProgramResult, msg, program::invoke_signed, program_error::PrintProgramError,
     program_error::ProgramError, program_pack::Pack, pubkey::Pubkey,
 };
 use std::convert::TryFrom;
@@ -410,6 +410,18 @@ impl Processor {
             stake_program_info.clone(),
         )?;
 
+        Self::stake_authorize(
+            stake_pool_info.key,
+            stake_split_to.clone(),
+            withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            user_stake_authority.key,
+            stake::StakeAuthorize::Staker,
+            reserved.clone(),
+            stake_program_info.clone(),
+        )?;
+
         Self::token_burn(
             stake_pool_info.key,
             token_program_info.clone(),
@@ -478,6 +490,18 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
             user_stake_authority.key,
             stake::StakeAuthorize::Withdrawer,
+            reserved.clone(),
+            stake_program_info.clone(),
+        )?;
+
+        Self::stake_authorize(
+            stake_pool_info.key,
+            stake_to_claim.clone(),
+            withdraw_info.clone(),
+            Self::AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            user_stake_authority.key,
+            stake::StakeAuthorize::Staker,
             reserved.clone(),
             stake_program_info.clone(),
         )?;
@@ -582,27 +606,27 @@ impl Processor {
         let instruction = StakePoolInstruction::deserialize(input)?;
         match instruction {
             StakePoolInstruction::Initialize(init) => {
-                info!("Instruction: Init");
+                msg!("Instruction: Init");
                 Self::process_initialize(program_id, init, accounts)
             }
             StakePoolInstruction::Deposit => {
-                info!("Instruction: Deposit");
+                msg!("Instruction: Deposit");
                 Self::process_deposit(program_id, accounts)
             }
             StakePoolInstruction::Withdraw(amount) => {
-                info!("Instruction: Withdraw");
+                msg!("Instruction: Withdraw");
                 Self::process_withdraw(program_id, amount, accounts)
             }
             StakePoolInstruction::Claim => {
-                info!("Instruction: Claim");
+                msg!("Instruction: Claim");
                 Self::process_claim(program_id, accounts)
             }
             StakePoolInstruction::SetStakingAuthority => {
-                info!("Instruction: SetStakingAuthority");
+                msg!("Instruction: SetStakingAuthority");
                 Self::process_set_staking_auth(program_id, accounts)
             }
             StakePoolInstruction::SetOwner => {
-                info!("Instruction: SetOwner");
+                msg!("Instruction: SetOwner");
                 Self::process_set_owner(program_id, accounts)
             }
         }
@@ -615,19 +639,19 @@ impl PrintProgramError for Error {
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
         match self {
-            Error::AlreadyInUse => info!("Error: AlreadyInUse"),
-            Error::InvalidProgramAddress => info!("Error: InvalidProgramAddress"),
-            Error::InvalidOwner => info!("Error: InvalidOwner"),
-            Error::ExpectedToken => info!("Error: ExpectedToken"),
-            Error::ExpectedAccount => info!("Error: ExpectedAccount"),
-            Error::InvalidSupply => info!("Error: InvalidSupply"),
-            Error::InvalidDelegate => info!("Error: InvalidDelegate"),
-            Error::InvalidState => info!("Error: InvalidState"),
-            Error::InvalidInput => info!("Error: InvalidInput"),
-            Error::InvalidOutput => info!("Error: InvalidOutput"),
-            Error::CalculationFailure => info!("Error: CalculationFailure"),
-            Error::FeeTooHigh => info!("Error: FeeTooHigh"),
-            Error::WrongAccountMint => info!("Error: WrongAccountMint"),
+            Error::AlreadyInUse => msg!("Error: AlreadyInUse"),
+            Error::InvalidProgramAddress => msg!("Error: InvalidProgramAddress"),
+            Error::InvalidOwner => msg!("Error: InvalidOwner"),
+            Error::ExpectedToken => msg!("Error: ExpectedToken"),
+            Error::ExpectedAccount => msg!("Error: ExpectedAccount"),
+            Error::InvalidSupply => msg!("Error: InvalidSupply"),
+            Error::InvalidDelegate => msg!("Error: InvalidDelegate"),
+            Error::InvalidState => msg!("Error: InvalidState"),
+            Error::InvalidInput => msg!("Error: InvalidInput"),
+            Error::InvalidOutput => msg!("Error: InvalidOutput"),
+            Error::CalculationFailure => msg!("Error: CalculationFailure"),
+            Error::FeeTooHigh => msg!("Error: FeeTooHigh"),
+            Error::WrongAccountMint => msg!("Error: WrongAccountMint"),
         }
     }
 }
@@ -637,11 +661,12 @@ mod tests {
     use super::*;
     use crate::instruction::*;
     use solana_program::{
-        instruction::Instruction, native_token::sol_to_lamports, program_pack::Pack, program_stubs,
-        rent::Rent,
+        instruction::AccountMeta, instruction::Instruction, native_token::sol_to_lamports,
+        program_pack::Pack, program_stubs, rent::Rent, sysvar,
     };
     use solana_sdk::account::{create_account, create_is_signer_account_infos, Account};
     use spl_token::{
+        error::TokenError,
         instruction::{initialize_account, initialize_mint},
         processor::Processor as TokenProcessor,
         state::{Account as SplAccount, Mint as SplMint},
@@ -670,7 +695,7 @@ mod tests {
             account_infos: &[AccountInfo],
             signers_seeds: &[&[&[u8]]],
         ) -> ProgramResult {
-            info!("TestSyscallStubs::sol_invoke_signed()");
+            msg!("TestSyscallStubs::sol_invoke_signed()");
 
             let mut new_account_infos = vec![];
             for meta in instruction.accounts.iter() {
@@ -740,8 +765,46 @@ mod tests {
     }
 
     struct DepositInfo {
+        result: ProgramResult,
         stake_account_key: Pubkey,
         stake_account_account: Account,
+    }
+
+    struct Deposit {
+        stake_balance: u64,
+        tokens_to_issue: u64,
+        user_token_balance: u64,
+        fee_token_balance: u64,
+        pool_info: StakePoolInfo,
+        pool_token_receiver: TokenInfo,
+    }
+
+    struct WithdrawInfo {
+        result: ProgramResult,
+    }
+
+    struct Withdraw {
+        stake_balance: u64,
+        tokens_to_issue: u64,
+        withdraw_amount: u64,
+        tokens_to_burn: u64,
+        pool_info: StakePoolInfo,
+        user_withdrawer_key: Pubkey,
+        pool_token_receiver: TokenInfo,
+        deposit_info: DepositInfo,
+    }
+
+    struct ClaimInfo {
+        result: ProgramResult,
+    }
+
+    struct Claim {
+        tokens_to_issue: u64,
+        pool_info: StakePoolInfo,
+        user_withdrawer_key: Pubkey,
+        pool_token_receiver: TokenInfo,
+        deposit_info: DepositInfo,
+        allow_burn_to: Pubkey,
     }
 
     fn do_process_instruction(
@@ -831,37 +894,6 @@ mod tests {
         .unwrap();
 
         token
-    }
-
-    fn _mint_token(
-        program_id: &Pubkey,
-        mint_key: &Pubkey,
-        mut mint_account: &mut Account,
-        authority_key: &Pubkey,
-        amount: u64,
-    ) -> (Pubkey, Account) {
-        let mut token_account = create_token_account(program_id, mint_key, mint_account);
-        let mut authority_account = Account::default();
-
-        do_process_instruction(
-            spl_token::instruction::mint_to(
-                &program_id,
-                &mint_key,
-                &token_account.key,
-                &authority_key,
-                &[],
-                amount,
-            )
-            .unwrap(),
-            vec![
-                &mut mint_account,
-                &mut token_account.account,
-                &mut authority_account,
-            ],
-        )
-        .unwrap();
-
-        (token_account.key, token_account.account)
     }
 
     fn create_mint(program_id: &Pubkey, authority_key: &Pubkey) -> (Pubkey, Account) {
@@ -989,7 +1021,7 @@ mod tests {
         // TODO: Set stake account Withdrawer authority to pool_info.deposit_authority_key
 
         // Call deposit
-        let _result = do_process_instruction(
+        let result = do_process_instruction(
             deposit(
                 &STAKE_POOL_PROGRAM_ID,
                 &pool_info.pool_key,
@@ -1015,13 +1047,149 @@ mod tests {
                 &mut Account::default(),
                 &mut Account::default(),
             ],
-        )
-        .expect("Error on stake pool deposit");
+        );
 
         DepositInfo {
+            result,
             stake_account_key,
             stake_account_account,
         }
+    }
+
+    fn do_withdraw(test_data: &mut Withdraw) -> WithdrawInfo {
+        approve_token(
+            &TOKEN_PROGRAM_ID,
+            &test_data.pool_token_receiver.key,
+            &mut test_data.pool_token_receiver.account,
+            &test_data.pool_info.withdraw_authority_key,
+            &test_data.pool_token_receiver.owner,
+            test_data.tokens_to_burn,
+        );
+
+        let stake_to_receive_key = Pubkey::new_unique();
+        let mut stake_to_receive_account = Account::new(
+            test_data.stake_balance,
+            STAKE_ACCOUNT_LEN,
+            &stake_program_id(),
+        );
+
+        let result = do_process_instruction(
+            withdraw(
+                &STAKE_POOL_PROGRAM_ID,
+                &test_data.pool_info.pool_key,
+                &test_data.pool_info.withdraw_authority_key,
+                &test_data.deposit_info.stake_account_key,
+                &stake_to_receive_key,
+                &test_data.user_withdrawer_key,
+                &test_data.pool_token_receiver.key,
+                &test_data.pool_info.mint_key,
+                &TOKEN_PROGRAM_ID,
+                &stake_program_id(),
+                test_data.withdraw_amount,
+            )
+            .unwrap(),
+            vec![
+                &mut test_data.pool_info.pool_account,
+                &mut Account::default(),
+                &mut test_data.deposit_info.stake_account_account,
+                &mut stake_to_receive_account,
+                &mut Account::default(),
+                &mut test_data.pool_token_receiver.account,
+                &mut test_data.pool_info.mint_account,
+                &mut Account::default(),
+                &mut Account::default(),
+                &mut Account::default(),
+            ],
+        );
+
+        WithdrawInfo { result }
+    }
+
+    fn do_claim(test_data: &mut Claim) -> ClaimInfo {
+        approve_token(
+            &TOKEN_PROGRAM_ID,
+            &test_data.pool_token_receiver.key,
+            &mut test_data.pool_token_receiver.account,
+            &test_data.allow_burn_to,
+            &test_data.pool_token_receiver.owner,
+            test_data.tokens_to_issue,
+        );
+
+        let result = do_process_instruction(
+            claim(
+                &STAKE_POOL_PROGRAM_ID,
+                &test_data.pool_info.pool_key,
+                &test_data.pool_info.withdraw_authority_key,
+                &test_data.deposit_info.stake_account_key,
+                &test_data.user_withdrawer_key,
+                &test_data.pool_token_receiver.key,
+                &test_data.pool_info.mint_key,
+                &TOKEN_PROGRAM_ID,
+                &stake_program_id(),
+            )
+            .unwrap(),
+            vec![
+                &mut test_data.pool_info.pool_account,
+                &mut Account::default(),
+                &mut test_data.deposit_info.stake_account_account,
+                &mut Account::default(),
+                &mut test_data.pool_token_receiver.account,
+                &mut test_data.pool_info.mint_account,
+                &mut Account::default(),
+                &mut Account::default(),
+                &mut Account::default(),
+            ],
+        );
+        ClaimInfo { result }
+    }
+
+    fn set_staking_authority_without_signer(
+        program_id: &Pubkey,
+        stake_pool: &Pubkey,
+        stake_pool_owner: &Pubkey,
+        stake_pool_withdraw: &Pubkey,
+        stake_account_to_update: &Pubkey,
+        stake_account_new_authority: &Pubkey,
+        stake_program_id: &Pubkey,
+    ) -> Result<Instruction, ProgramError> {
+        let args = StakePoolInstruction::SetStakingAuthority;
+        let data = args.serialize()?;
+        let accounts = vec![
+            AccountMeta::new(*stake_pool, false),
+            AccountMeta::new_readonly(*stake_pool_owner, false),
+            AccountMeta::new_readonly(*stake_pool_withdraw, false),
+            AccountMeta::new(*stake_account_to_update, false),
+            AccountMeta::new_readonly(*stake_account_new_authority, false),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
+            AccountMeta::new_readonly(*stake_program_id, false),
+        ];
+        Ok(Instruction {
+            program_id: *program_id,
+            accounts,
+            data,
+        })
+    }
+
+    fn set_owner_without_signer(
+        program_id: &Pubkey,
+        stake_pool: &Pubkey,
+        stake_pool_owner: &Pubkey,
+        stake_pool_new_owner: &Pubkey,
+        stake_pool_new_fee_receiver: &Pubkey,
+    ) -> Result<Instruction, ProgramError> {
+        let args = StakePoolInstruction::SetOwner;
+        let data = args.serialize()?;
+        let accounts = vec![
+            AccountMeta::new(*stake_pool, false),
+            AccountMeta::new_readonly(*stake_pool_owner, false),
+            AccountMeta::new_readonly(*stake_pool_new_owner, false),
+            AccountMeta::new_readonly(*stake_pool_new_fee_receiver, false),
+        ];
+        Ok(Instruction {
+            program_id: *program_id,
+            accounts,
+            data,
+        })
     }
 
     #[test]
@@ -1034,8 +1202,8 @@ mod tests {
             State::Init(stake_pool) => {
                 assert_eq!(stake_pool.deposit_bump_seed, pool_info.deposit_bump_seed);
                 assert_eq!(stake_pool.withdraw_bump_seed, pool_info.withdraw_bump_seed);
-                assert_eq!(stake_pool.fee.numerator, pool_info.fee.numerator);
-                assert_eq!(stake_pool.fee.denominator, pool_info.fee.denominator);
+                assert_eq!(stake_pool.fee.numerator, FEE_DEFAULT.numerator);
+                assert_eq!(stake_pool.fee.denominator, FEE_DEFAULT.denominator);
 
                 assert_eq!(stake_pool.owner, pool_info.owner_key);
                 assert_eq!(stake_pool.pool_mint, pool_info.mint_key);
@@ -1048,12 +1216,7 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_deposit() {
-        let fee = Fee {
-            denominator: 100,
-            numerator: 2,
-        };
+    fn initialize_deposit_test() -> Deposit {
         let stake_balance: u64 = sol_to_lamports(10.0);
         let tokens_to_issue: u64 = 10_000_000_000;
         let user_token_balance: u64 = 9_800_000_000;
@@ -1061,187 +1224,303 @@ mod tests {
         assert_eq!(tokens_to_issue, user_token_balance + fee_token_balance);
 
         // Create stake account
-        let mut pool_info = create_stake_pool(fee);
+        let mut pool_info = create_stake_pool(Fee {
+            denominator: 100,
+            numerator: 2,
+        });
 
-        let mut pool_token_receiver = create_token_account(
+        let pool_token_receiver = create_token_account(
             &TOKEN_PROGRAM_ID,
             &pool_info.mint_key,
             &mut pool_info.mint_account,
         );
-        let _deposit_info = do_deposit(&mut pool_info, stake_balance, &mut pool_token_receiver);
 
+        Deposit {
+            stake_balance,
+            tokens_to_issue,
+            user_token_balance,
+            fee_token_balance,
+            pool_info,
+            pool_token_receiver,
+        }
+    }
+    #[test]
+    fn test_deposit() {
+        let mut test_data = initialize_deposit_test();
+
+        let deposit_info = do_deposit(
+            &mut test_data.pool_info,
+            test_data.stake_balance,
+            &mut test_data.pool_token_receiver,
+        );
+
+        deposit_info.result.expect("Fail on deposit");
         // Test stake pool balance
-        let state = State::deserialize(&pool_info.pool_account.data).unwrap();
+        let state = State::deserialize(&test_data.pool_info.pool_account.data).unwrap();
         assert!(
-            matches!(state, State::Init(stake_pool) if stake_pool.stake_total == stake_balance && stake_pool.pool_total == tokens_to_issue)
+            matches!(state, State::Init(stake_pool) if stake_pool.stake_total == test_data.stake_balance && stake_pool.pool_total == test_data.tokens_to_issue)
         );
 
         // Test token balances
-        let user_token_state = SplAccount::unpack_from_slice(&pool_token_receiver.account.data)
-            .expect("User token account is not initialized after deposit");
-        assert_eq!(user_token_state.amount, user_token_balance);
-        let fee_token_state = SplAccount::unpack_from_slice(&pool_info.owner_fee_account.data)
-            .expect("Fee token account is not initialized after deposit");
-        assert_eq!(fee_token_state.amount, fee_token_balance);
+        let user_token_state =
+            SplAccount::unpack_from_slice(&test_data.pool_token_receiver.account.data)
+                .expect("User token account is not initialized after deposit");
+        assert_eq!(user_token_state.amount, test_data.user_token_balance);
+        let fee_token_state =
+            SplAccount::unpack_from_slice(&test_data.pool_info.owner_fee_account.data)
+                .expect("Fee token account is not initialized after deposit");
+        assert_eq!(fee_token_state.amount, test_data.fee_token_balance);
 
         // Test mint total issued tokens
-        let mint_state = SplMint::unpack_from_slice(&pool_info.mint_account.data)
+        let mint_state = SplMint::unpack_from_slice(&test_data.pool_info.mint_account.data)
             .expect("Mint account is not initialized after deposit");
-        assert_eq!(mint_state.supply, stake_balance);
+        assert_eq!(mint_state.supply, test_data.stake_balance);
 
         // TODO: Check stake account Withdrawer to match stake pool withdraw authority
     }
     #[test]
-    fn test_withdraw() {
-        let mut pool_info = create_stake_pool_default();
+    fn negative_test_deposit_wrong_withdraw_authority() {
+        let mut test_data = initialize_deposit_test();
+        test_data.pool_info.withdraw_authority_key = Pubkey::new_unique();
 
-        let user_withdrawer_key = Pubkey::new_unique();
-
-        let stake_balance = sol_to_lamports(20.0);
-        let tokens_to_issue: u64 = 20_000_000_000;
-
-        let mut pool_token_receiver = create_token_account(
-            &TOKEN_PROGRAM_ID,
-            &pool_info.mint_key,
-            &mut pool_info.mint_account,
+        let deposit_info = do_deposit(
+            &mut test_data.pool_info,
+            test_data.stake_balance,
+            &mut test_data.pool_token_receiver,
         );
-        let mut deposit_info = do_deposit(&mut pool_info, stake_balance, &mut pool_token_receiver);
-
-        let withdraw_amount = sol_to_lamports(5.0);
-        let tokens_to_burn: u64 = 5_000_000_000;
-
-        approve_token(
-            &TOKEN_PROGRAM_ID,
-            &pool_token_receiver.key,
-            &mut pool_token_receiver.account,
-            &pool_info.withdraw_authority_key,
-            &pool_token_receiver.owner,
-            tokens_to_burn,
-        );
-
-        let stake_to_receive_key = Pubkey::new_unique();
-        let mut stake_to_receive_account =
-            Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
-
-        let _result = do_process_instruction(
-            withdraw(
-                &STAKE_POOL_PROGRAM_ID,
-                &pool_info.pool_key,
-                &pool_info.withdraw_authority_key,
-                &deposit_info.stake_account_key,
-                &stake_to_receive_key,
-                &user_withdrawer_key,
-                &pool_token_receiver.key,
-                &pool_info.mint_key,
-                &TOKEN_PROGRAM_ID,
-                &stake_program_id(),
-                withdraw_amount,
-            )
-            .unwrap(),
-            vec![
-                &mut pool_info.pool_account,
-                &mut Account::default(),
-                &mut deposit_info.stake_account_account,
-                &mut stake_to_receive_account,
-                &mut Account::default(),
-                &mut pool_token_receiver.account,
-                &mut pool_info.mint_account,
-                &mut Account::default(),
-                &mut Account::default(),
-                &mut Account::default(),
-            ],
-        )
-        .expect("Error on withdraw");
-
-        let fee_amount = stake_balance * pool_info.fee.numerator / pool_info.fee.denominator;
-
-        let user_token_state = SplAccount::unpack_from_slice(&pool_token_receiver.account.data)
-            .expect("User token account is not initialized after withdraw");
         assert_eq!(
-            user_token_state.amount,
-            stake_balance - fee_amount - withdraw_amount
-        );
-
-        // Check stake pool token amounts
-        let state = State::deserialize(&pool_info.pool_account.data).unwrap();
-        assert!(
-            matches!(state, State::Init(stake_pool) if stake_pool.stake_total == stake_balance - withdraw_amount && stake_pool.pool_total == tokens_to_issue - tokens_to_burn)
+            deposit_info.result,
+            Err(Error::InvalidProgramAddress.into())
         );
     }
     #[test]
-    fn test_claim() {
+    fn negative_test_deposit_wrong_deposit_authority() {
+        let mut test_data = initialize_deposit_test();
+        test_data.pool_info.deposit_authority_key = Pubkey::new_unique();
+
+        let deposit_info = do_deposit(
+            &mut test_data.pool_info,
+            test_data.stake_balance,
+            &mut test_data.pool_token_receiver,
+        );
+
+        assert_eq!(
+            deposit_info.result,
+            Err(Error::InvalidProgramAddress.into())
+        );
+    }
+    #[test]
+    fn negative_test_deposit_wrong_owner_fee_account() {
+        let mut test_data = initialize_deposit_test();
+        test_data.pool_info.owner_fee_account = Account::default();
+
+        let deposit_info = do_deposit(
+            &mut test_data.pool_info,
+            test_data.stake_balance,
+            &mut test_data.pool_token_receiver,
+        );
+
+        assert_eq!(deposit_info.result, Err(ProgramError::InvalidAccountData));
+    }
+
+    fn initialize_withdraw_test() -> Withdraw {
+        let stake_balance = sol_to_lamports(20.0);
+        let tokens_to_issue = 20_000_000_000;
+        let withdraw_amount = sol_to_lamports(5.0);
+        let tokens_to_burn = 5_000_000_000;
+
         let mut pool_info = create_stake_pool_default();
 
         let user_withdrawer_key = Pubkey::new_unique();
-
-        let stake_balance = sol_to_lamports(20.0);
 
         let mut pool_token_receiver = create_token_account(
             &TOKEN_PROGRAM_ID,
             &pool_info.mint_key,
             &mut pool_info.mint_account,
         );
-        let mut deposit_info = do_deposit(&mut pool_info, stake_balance, &mut pool_token_receiver);
+        let deposit_info = do_deposit(&mut pool_info, stake_balance, &mut pool_token_receiver);
+
+        Withdraw {
+            stake_balance,
+            tokens_to_issue,
+            withdraw_amount,
+            tokens_to_burn,
+            pool_info,
+            user_withdrawer_key,
+            pool_token_receiver,
+            deposit_info,
+        }
+    }
+    #[test]
+    fn test_withdraw() {
+        let mut test_data = initialize_withdraw_test();
+        let withdraw_info = do_withdraw(&mut test_data);
+
+        withdraw_info.result.expect("Fail on deposit");
+        let fee_amount = test_data.stake_balance * FEE_DEFAULT.numerator / FEE_DEFAULT.denominator;
+
+        let user_token_state =
+            SplAccount::unpack_from_slice(&test_data.pool_token_receiver.account.data)
+                .expect("User token account is not initialized after withdraw");
+        assert_eq!(
+            user_token_state.amount,
+            test_data.stake_balance - fee_amount - test_data.withdraw_amount
+        );
+
+        // Check stake pool token amounts
+        let state = State::deserialize(&test_data.pool_info.pool_account.data).unwrap();
+        assert!(
+            matches!(state, State::Init(stake_pool) if stake_pool.stake_total == test_data.stake_balance - test_data.withdraw_amount && stake_pool.pool_total == test_data.tokens_to_issue - test_data.tokens_to_burn)
+        );
+    }
+    #[test]
+    fn negative_test_withdraw_wrong_withdraw_authority() {
+        let mut test_data = initialize_withdraw_test();
+
+        test_data.pool_info.withdraw_authority_key = Pubkey::new_unique();
+
+        let withdraw_info = do_withdraw(&mut test_data);
+
+        assert_eq!(
+            withdraw_info.result,
+            Err(Error::InvalidProgramAddress.into())
+        );
+    }
+    #[test]
+    fn negative_test_withdraw_all() {
+        let mut test_data = initialize_withdraw_test();
+
+        test_data.withdraw_amount = test_data.stake_balance;
+
+        let withdraw_info = do_withdraw(&mut test_data);
+
+        assert_eq!(
+            withdraw_info.result,
+            Err(Error::InvalidProgramAddress.into())
+        );
+    }
+    #[test]
+    fn negative_test_withdraw_excess_amount() {
+        let mut test_data = initialize_withdraw_test();
+
+        test_data.withdraw_amount *= 2;
+
+        let withdraw_info = do_withdraw(&mut test_data);
+
+        assert_eq!(
+            withdraw_info.result,
+            Err(Error::InvalidProgramAddress.into())
+        );
+    }
+
+    fn initialize_claim_test() -> Claim {
+        let mut pool_info = create_stake_pool_default();
+
+        let user_withdrawer_key = Pubkey::new_unique();
+
+        let stake_balance = sol_to_lamports(20.0);
+        let tokens_to_issue = 20_000_000_000;
+
+        let mut pool_token_receiver = create_token_account(
+            &TOKEN_PROGRAM_ID,
+            &pool_info.mint_key,
+            &mut pool_info.mint_account,
+        );
+        let deposit_info = do_deposit(&mut pool_info, stake_balance, &mut pool_token_receiver);
 
         // Need to deposit more to cover deposit fee
-        let fee_amount = stake_balance * pool_info.fee.numerator / pool_info.fee.denominator;
-        let extra_deposit = (fee_amount * pool_info.fee.denominator)
-            / (pool_info.fee.denominator - pool_info.fee.numerator);
+        let fee_amount = stake_balance * FEE_DEFAULT.numerator / FEE_DEFAULT.denominator;
+        let extra_deposit = (fee_amount * FEE_DEFAULT.denominator)
+            / (FEE_DEFAULT.denominator - FEE_DEFAULT.numerator);
 
         let _extra_deposit_info =
             do_deposit(&mut pool_info, extra_deposit, &mut pool_token_receiver);
 
-        approve_token(
-            &TOKEN_PROGRAM_ID,
-            &pool_token_receiver.key,
-            &mut pool_token_receiver.account,
-            &pool_info.withdraw_authority_key,
-            &pool_token_receiver.owner,
-            stake_balance,
-        );
+        Claim {
+            tokens_to_issue,
+            allow_burn_to: pool_info.withdraw_authority_key,
+            pool_info,
+            user_withdrawer_key,
+            pool_token_receiver,
+            deposit_info,
+        }
+    }
 
-        let _result = do_process_instruction(
-            claim(
-                &STAKE_POOL_PROGRAM_ID,
-                &pool_info.pool_key,
-                &pool_info.withdraw_authority_key,
-                &deposit_info.stake_account_key,
-                &user_withdrawer_key,
-                &pool_token_receiver.key,
-                &pool_info.mint_key,
-                &TOKEN_PROGRAM_ID,
-                &stake_program_id(),
-            )
-            .unwrap(),
-            vec![
-                &mut pool_info.pool_account,
-                &mut Account::default(),
-                &mut deposit_info.stake_account_account,
-                &mut Account::default(),
-                &mut pool_token_receiver.account,
-                &mut pool_info.mint_account,
-                &mut Account::default(),
-                &mut Account::default(),
-                &mut Account::default(),
-            ],
-        )
-        .expect("Error on claim");
+    #[test]
+    fn test_claim() {
+        let mut test_data = initialize_claim_test();
+        let claim_info = do_claim(&mut test_data);
 
-        let user_token_state = SplAccount::unpack_from_slice(&pool_token_receiver.account.data)
-            .expect("User token account is not initialized after withdraw");
+        assert_eq!(claim_info.result, Ok(()));
+
+        let user_token_state =
+            SplAccount::unpack_from_slice(&test_data.pool_token_receiver.account.data)
+                .expect("User token account is not initialized after withdraw");
         assert_eq!(user_token_state.amount, 0);
 
         // TODO: Check deposit_info.stake_account_account Withdrawer to change to user_withdrawer_key
     }
     #[test]
+    fn negative_test_claim_not_enough_approved() {
+        let mut test_data = initialize_claim_test();
+        test_data.tokens_to_issue /= 2; // Approve less tokens for burning than required
+        let claim_info = do_claim(&mut test_data);
+
+        assert_eq!(claim_info.result, Err(TokenError::InsufficientFunds.into()));
+    }
+    #[test]
+    fn negative_test_claim_approve_to_wrong_account() {
+        let mut test_data = initialize_claim_test();
+        test_data.allow_burn_to = test_data.pool_info.deposit_authority_key; // Change token burn authority
+        let claim_info = do_claim(&mut test_data);
+
+        assert_eq!(claim_info.result, Err(TokenError::OwnerMismatch.into()));
+    }
+    #[test]
+    fn negative_test_claim_twice() {
+        let mut test_data = initialize_claim_test();
+        let claim_info = do_claim(&mut test_data);
+
+        assert_eq!(claim_info.result, Ok(()));
+
+        let result = do_process_instruction(
+            claim(
+                &STAKE_POOL_PROGRAM_ID,
+                &test_data.pool_info.pool_key,
+                &test_data.pool_info.withdraw_authority_key,
+                &test_data.deposit_info.stake_account_key,
+                &test_data.user_withdrawer_key,
+                &test_data.pool_token_receiver.key,
+                &test_data.pool_info.mint_key,
+                &TOKEN_PROGRAM_ID,
+                &stake_program_id(),
+            )
+            .unwrap(),
+            vec![
+                &mut test_data.pool_info.pool_account,
+                &mut Account::default(),
+                &mut test_data.deposit_info.stake_account_account,
+                &mut Account::default(),
+                &mut test_data.pool_token_receiver.account,
+                &mut test_data.pool_info.mint_account,
+                &mut Account::default(),
+                &mut Account::default(),
+                &mut Account::default(),
+            ],
+        );
+
+        assert_eq!(result, Err(Error::InvalidProgramAddress.into()));
+    }
+
+    #[test]
     fn test_set_staking_authority() {
         let mut pool_info = create_stake_pool_default();
-        let stake_balance: u64 = sol_to_lamports(10.0);
+        let stake_balance = sol_to_lamports(10.0);
 
         let stake_key = Pubkey::new_unique();
         let mut stake_account = Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
-        let new_authorithy_key = Pubkey::new_unique();
-        let mut new_authorithy_account =
+        let new_authority_key = Pubkey::new_unique();
+        let mut new_authority_account =
             Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
 
         let _result = do_process_instruction(
@@ -1251,7 +1530,7 @@ mod tests {
                 &pool_info.owner_key,
                 &pool_info.withdraw_authority_key,
                 &stake_key,
-                &new_authorithy_key,
+                &new_authority_key,
                 &stake_program_id(),
             )
             .unwrap(),
@@ -1260,12 +1539,81 @@ mod tests {
                 &mut pool_info.owner_fee_account,
                 &mut Account::default(),
                 &mut stake_account,
-                &mut new_authorithy_account,
+                &mut new_authority_account,
                 &mut Account::default(),
                 &mut Account::default(),
             ],
         )
         .expect("Error on set_owner");
+    }
+    #[test]
+    fn negative_test_set_staking_authority_owner() {
+        let mut pool_info = create_stake_pool_default();
+        let stake_balance = sol_to_lamports(10.0);
+
+        let stake_key = Pubkey::new_unique();
+        let mut stake_account = Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
+        let new_authority_key = Pubkey::new_unique();
+        let mut new_authority_account =
+            Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
+
+        let result = do_process_instruction(
+            set_staking_authority(
+                &STAKE_POOL_PROGRAM_ID,
+                &pool_info.pool_key,
+                &Pubkey::new_unique(),
+                &pool_info.withdraw_authority_key,
+                &stake_key,
+                &new_authority_key,
+                &stake_program_id(),
+            )
+            .unwrap(),
+            vec![
+                &mut pool_info.pool_account,
+                &mut Account::default(),
+                &mut Account::default(),
+                &mut stake_account,
+                &mut new_authority_account,
+                &mut Account::default(),
+                &mut Account::default(),
+            ],
+        );
+
+        assert_eq!(result, Err(Error::InvalidInput.into()));
+    }
+    #[test]
+    fn negative_test_set_staking_authority_signer() {
+        let mut pool_info = create_stake_pool_default();
+        let stake_balance = sol_to_lamports(10.0);
+
+        let stake_key = Pubkey::new_unique();
+        let mut stake_account = Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
+        let new_authority_key = Pubkey::new_unique();
+        let mut new_authority_account =
+            Account::new(stake_balance, STAKE_ACCOUNT_LEN, &stake_program_id());
+
+        let result = do_process_instruction(
+            set_staking_authority_without_signer(
+                &STAKE_POOL_PROGRAM_ID,
+                &pool_info.pool_key,
+                &Pubkey::new_unique(),
+                &pool_info.withdraw_authority_key,
+                &stake_key,
+                &new_authority_key,
+                &stake_program_id(),
+            )
+            .unwrap(),
+            vec![
+                &mut pool_info.pool_account,
+                &mut pool_info.owner_fee_account,
+                &mut Account::default(),
+                &mut stake_account,
+                &mut new_authority_account,
+                &mut Account::default(),
+                &mut Account::default(),
+            ],
+        );
+        assert_eq!(result, Err(Error::InvalidInput.into()));
     }
 
     #[test]
@@ -1303,5 +1651,69 @@ mod tests {
         assert!(
             matches!(state, State::Init(stake_pool) if stake_pool.owner == new_owner_key && stake_pool.owner_fee_account == new_owner_fee.key)
         );
+    }
+    #[test]
+    fn negative_test_set_owner_owner() {
+        let mut pool_info = create_stake_pool_default();
+
+        let new_owner_key = Pubkey::new_unique();
+        let mut new_owner_account = Account::default();
+
+        let mut new_owner_fee = create_token_account(
+            &TOKEN_PROGRAM_ID,
+            &pool_info.mint_key,
+            &mut pool_info.mint_account,
+        );
+
+        let result = do_process_instruction(
+            set_owner(
+                &STAKE_POOL_PROGRAM_ID,
+                &pool_info.pool_key,
+                &Pubkey::new_unique(),
+                &new_owner_key,
+                &new_owner_fee.key,
+            )
+            .unwrap(),
+            vec![
+                &mut pool_info.pool_account,
+                &mut Account::default(),
+                &mut new_owner_account,
+                &mut new_owner_fee.account,
+            ],
+        );
+
+        assert_eq!(result, Err(Error::InvalidInput.into()));
+    }
+    #[test]
+    fn negative_test_set_owner_signer() {
+        let mut pool_info = create_stake_pool_default();
+
+        let new_owner_key = Pubkey::new_unique();
+        let mut new_owner_account = Account::default();
+
+        let mut new_owner_fee = create_token_account(
+            &TOKEN_PROGRAM_ID,
+            &pool_info.mint_key,
+            &mut pool_info.mint_account,
+        );
+
+        let result = do_process_instruction(
+            set_owner_without_signer(
+                &STAKE_POOL_PROGRAM_ID,
+                &pool_info.pool_key,
+                &pool_info.owner_key,
+                &new_owner_key,
+                &new_owner_fee.key,
+            )
+            .unwrap(),
+            vec![
+                &mut pool_info.pool_account,
+                &mut pool_info.owner_account,
+                &mut new_owner_account,
+                &mut new_owner_fee.account,
+            ],
+        );
+
+        assert_eq!(result, Err(Error::InvalidInput.into()));
     }
 }
