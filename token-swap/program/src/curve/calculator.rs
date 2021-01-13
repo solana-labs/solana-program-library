@@ -1,9 +1,6 @@
 //! Swap calculations
 
-use crate::{
-    curve::math::{ceiling_division, PreciseNumber},
-    error::SwapError,
-};
+use crate::error::SwapError;
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
@@ -34,6 +31,17 @@ pub enum TradeDirection {
     AtoB,
     /// Input token B, output token A
     BtoA,
+}
+
+/// The direction to round.  Used for pool token to trading token conversions to
+/// avoid losing value on any deposit or withdrawal.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum RoundDirection {
+    /// Floor the value, ie. 1.9 => 1, 1.1 => 1, 1.5 => 1
+    Floor,
+    /// Ceiling the value, ie. 1.9 => 2, 1.1 => 2, 1.5 => 2
+    Ceiling,
 }
 
 impl TradeDirection {
@@ -92,29 +100,14 @@ pub trait CurveCalculator: Debug + DynPack {
 
     /// Get the amount of trading tokens for the given amount of pool tokens,
     /// provided the total trading tokens and supply of pool tokens.
-    ///
-    /// The default implementation is a simple ratio calculation for how many
-    /// trading tokens correspond to a certain number of pool tokens
     fn pool_tokens_to_trading_tokens(
         &self,
         pool_tokens: u128,
         pool_token_supply: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<TradingTokenResult> {
-        let (token_a_amount, _) = ceiling_division(
-            pool_tokens.checked_mul(swap_token_a_amount)?,
-            pool_token_supply,
-        )?;
-        let (token_b_amount, _) = ceiling_division(
-            pool_tokens.checked_mul(swap_token_b_amount)?,
-            pool_token_supply,
-        )?;
-        Some(TradingTokenResult {
-            token_a_amount,
-            token_b_amount,
-        })
-    }
+        round_direction: RoundDirection,
+    ) -> Option<TradingTokenResult>;
 
     /// Get the amount of pool tokens for the given amount of token A or B.
     ///
@@ -132,20 +125,8 @@ pub trait CurveCalculator: Debug + DynPack {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-    ) -> Option<u128> {
-        let swap_source_amount = match trade_direction {
-            TradeDirection::AtoB => swap_token_a_amount,
-            TradeDirection::BtoA => swap_token_b_amount,
-        };
-        let swap_source_amount = PreciseNumber::new(swap_source_amount)?;
-        let source_amount = PreciseNumber::new(source_amount)?;
-        let ratio = source_amount.checked_div(&swap_source_amount)?;
-        let one = PreciseNumber::new(1)?;
-        let base = one.checked_add(&ratio)?;
-        let root = base.sqrt()?.checked_sub(&one)?;
-        let pool_supply = PreciseNumber::new(pool_supply)?;
-        pool_supply.checked_mul(&root)?.to_imprecise()
-    }
+        round_direction: RoundDirection,
+    ) -> Option<u128>;
 
     /// Validate that the given curve has no invalid parameters
     fn validate(&self) -> Result<(), SwapError>;
@@ -182,21 +163,11 @@ pub trait CurveCalculator: Debug + DynPack {
     /// This is useful for testing the curves, to make sure that value is not
     /// lost on any trade.  It can also be used to find out the relative value
     /// of pool tokens or liquidity tokens.
-    ///
-    /// The default implementation for this function gives the square root of
-    /// the Uniswap invariant.
     fn normalized_value(
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<u128> {
-        let swap_token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
-        let swap_token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
-        swap_token_a_amount
-            .checked_mul(&swap_token_b_amount)?
-            .sqrt()?
-            .to_imprecise()
-    }
+    ) -> Option<u128>;
 }
 
 /// Test helpers for curves
@@ -248,6 +219,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
+                RoundDirection::Floor,
             )
             .unwrap();
 
@@ -269,6 +241,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
+                RoundDirection::Floor,
             )
             .unwrap();
         let pool_tokens_from_destination = curve
@@ -278,6 +251,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply + pool_tokens_from_source,
                 opposite_direction,
+                RoundDirection::Floor,
             )
             .unwrap();
 
@@ -369,6 +343,7 @@ pub mod test {
                 pool_token_supply,
                 swap_token_a_amount,
                 swap_token_b_amount,
+                RoundDirection::Ceiling,
             )
             .unwrap();
         let new_swap_token_a_amount = swap_token_a_amount + deposit_result.token_a_amount;

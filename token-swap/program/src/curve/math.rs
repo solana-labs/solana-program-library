@@ -201,6 +201,16 @@ impl PreciseNumber {
         Some(Self { value })
     }
 
+    /// Ceiling a precise value to a precision of ONE
+    pub fn ceiling(&self) -> Option<Self> {
+        let value = self
+            .value
+            .checked_add(one())?
+            .checked_div(one())?
+            .checked_mul(one())?;
+        Some(Self { value })
+    }
+
     /// Performs a checked division on two precise numbers
     pub fn checked_div(&self, rhs: &Self) -> Option<Self> {
         if *rhs == Self::zero() {

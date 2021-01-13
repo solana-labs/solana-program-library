@@ -2,8 +2,8 @@
 
 use crate::{
     curve::calculator::{
-        map_zero_to_none, CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection,
-        TradingTokenResult,
+        map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
+        TradeDirection, TradingTokenResult,
     },
     curve::math::{ceiling_division, U256},
     error::SwapError,
@@ -67,18 +67,34 @@ impl CurveCalculator for ConstantPriceCurve {
         pool_token_supply: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
+        round_direction: RoundDirection,
     ) -> Option<TradingTokenResult> {
         let token_b_price = self.token_b_price as u128;
         let total_value = self.normalized_value(swap_token_a_amount, swap_token_b_amount)?;
 
-        let (token_a_amount, _) =
-            ceiling_division(pool_tokens.checked_mul(total_value)?, pool_token_supply)?;
-        let (token_b_amount, _) = ceiling_division(
-            pool_tokens
-                .checked_mul(total_value)?
-                .checked_div(token_b_price)?,
-            pool_token_supply,
-        )?;
+        let (token_a_amount, token_b_amount) = match round_direction {
+            RoundDirection::Floor => {
+                let token_a_amount = pool_tokens
+                    .checked_mul(total_value)?
+                    .checked_div(pool_token_supply)?;
+                let token_b_amount = pool_tokens
+                    .checked_mul(total_value)?
+                    .checked_div(token_b_price)?
+                    .checked_div(pool_token_supply)?;
+                (token_a_amount, token_b_amount)
+            }
+            RoundDirection::Ceiling => {
+                let (token_a_amount, _) =
+                    ceiling_division(pool_tokens.checked_mul(total_value)?, pool_token_supply)?;
+                let (token_b_amount, _) = ceiling_division(
+                    pool_tokens
+                        .checked_mul(total_value)?
+                        .checked_div(token_b_price)?,
+                    pool_token_supply,
+                )?;
+                (token_a_amount, token_b_amount)
+            }
+        };
         Some(TradingTokenResult {
             token_a_amount,
             token_b_amount,
@@ -95,6 +111,7 @@ impl CurveCalculator for ConstantPriceCurve {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
+        round_direction: RoundDirection,
     ) -> Option<u128> {
         let token_b_price = U256::from(self.token_b_price);
         let given_value = match trade_direction {
@@ -105,12 +122,21 @@ impl CurveCalculator for ConstantPriceCurve {
             .checked_mul(token_b_price)?
             .checked_add(U256::from(swap_token_a_amount))?;
         let pool_supply = U256::from(pool_supply);
-        Some(
-            pool_supply
-                .checked_mul(given_value)?
-                .checked_div(total_value)?
-                .as_u128(),
-        )
+        match round_direction {
+            RoundDirection::Floor => Some(
+                pool_supply
+                    .checked_mul(given_value)?
+                    .checked_div(total_value)?
+                    .as_u128(),
+            ),
+            RoundDirection::Ceiling => Some(
+                pool_supply
+                    .checked_mul(given_value)?
+                    .checked_add(U256::from(1))?
+                    .checked_div(total_value)?
+                    .as_u128(),
+            ),
+        }
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -454,6 +480,7 @@ mod tests {
                     pool_token_supply,
                     swap_token_a_amount,
                     swap_token_b_amount,
+                    RoundDirection::Ceiling,
                 )
                 .unwrap();
             let new_swap_token_a_amount = swap_token_a_amount + deposit_result.token_a_amount;
