@@ -9,7 +9,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
-honggfuzz = { version = "0.5" }
+honggfuzz = { version = "0.5.52" }
 arbitrary = { version = "0.4", features = ["derive"] }
 solana-program = "1.5.1"
 spl-token = { version = "3.0", path = "../../../token/program", features = [ "no-entrypoint" ] }
