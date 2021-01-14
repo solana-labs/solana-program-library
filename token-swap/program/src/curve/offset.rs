@@ -167,8 +167,7 @@ mod tests {
     use crate::curve::calculator::{
         test::{
             check_curve_value_from_swap, check_pool_token_conversion,
-            check_pool_value_from_deposit, check_pool_value_from_withdraw,
-            total_and_intermediate,
+            check_pool_value_from_deposit, check_pool_value_from_withdraw, total_and_intermediate,
             CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         INITIAL_SWAP_POOL_AMOUNT,

@@ -174,8 +174,8 @@ pub trait CurveCalculator: Debug + DynPack {
 #[cfg(any(test, fuzzing))]
 pub mod test {
     use super::*;
-    use proptest::prelude::*;
     use crate::curve::math::U256;
+    use proptest::prelude::*;
 
     /// The epsilon for most curves when performing the conversion test,
     /// comparing a one-sided deposit to a swap + deposit.
@@ -402,21 +402,23 @@ pub mod test {
         let new_swap_token_b_amount = swap_token_b_amount - withdraw_result.token_b_amount;
         let new_pool_token_supply = pool_token_supply - pool_token_amount;
 
-        let pool_value = curve.normalized_value(swap_token_a_amount, swap_token_b_amount).unwrap();
+        let pool_value = curve
+            .normalized_value(swap_token_a_amount, swap_token_b_amount)
+            .unwrap();
         // since we can get rounding issues on the pool value which make it seem that the
         // value per token has gone down, we bump it up by an epsilon of 1 to
         // cover all cases
-        let new_pool_value = curve.normalized_value(new_swap_token_a_amount, new_swap_token_b_amount).unwrap() + 1;
+        let new_pool_value = curve
+            .normalized_value(new_swap_token_a_amount, new_swap_token_b_amount)
+            .unwrap()
+            + 1;
 
         // the following inequality must hold:
         // new_pool_value / new_pool_token_supply >= pool_value / pool_token_supply
         // which can also be written:
         // new_pool_value * pool_token_supply >= pool_value * new_pool_token_supply
 
-        assert!(
-            new_pool_value * pool_token_supply
-                >= pool_value * new_pool_token_supply
-        );
+        assert!(new_pool_value * pool_token_supply >= pool_value * new_pool_token_supply);
     }
 
     prop_compose! {
