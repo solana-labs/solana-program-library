@@ -168,7 +168,7 @@ mod tests {
         test::{
             check_curve_value_from_swap, check_pool_token_conversion,
             check_pool_value_from_deposit, check_pool_value_from_withdraw,
-            total_and_amount,
+            total_and_intermediate,
             CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         INITIAL_SWAP_POOL_AMOUNT,
@@ -466,7 +466,7 @@ mod tests {
     proptest! {
         #[test]
         fn curve_value_does_not_decrease_from_withdraw(
-            (pool_token_supply, pool_token_amount) in total_and_amount(),
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
             swap_token_a_amount in 1..u64::MAX,
             (swap_token_b_amount, token_b_offset) in values_sum_within_u64(),
         ) {

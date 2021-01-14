@@ -88,13 +88,9 @@ pub fn pool_tokens_to_trading_tokens(
 
 /// Get the amount of pool tokens for the given amount of token A or B.
 ///
-/// This is used for single-sided deposits or withdrawals and owner trade
-/// fee calculation. It essentially performs a swap followed by a deposit,
-/// or a withdrawal followed by a swap.  Because a swap is implicitly
-/// performed, this will change the spot price of the pool.
-///
-/// See more background for the calculation at:
-/// https://balancer.finance/whitepaper/#single-asset-deposit
+/// The constant product implementation uses the Balancer formulas found at
+/// https://balancer.finance/whitepaper/#single-asset-deposit, specifically
+/// in the case for 2 tokens, each weighted at 1/2.
 pub fn trading_tokens_to_pool_tokens(
     source_amount: u128,
     swap_token_a_amount: u128,
@@ -228,7 +224,7 @@ mod tests {
         test::{
             check_curve_value_from_swap, check_pool_token_conversion,
             check_pool_value_from_deposit, check_pool_value_from_withdraw,
-            CONVERSION_BASIS_POINTS_GUARANTEE,
+            total_and_intermediate, CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         RoundDirection, INITIAL_SWAP_POOL_AMOUNT,
     };
@@ -442,8 +438,7 @@ mod tests {
     proptest! {
         #[test]
         fn curve_value_does_not_decrease_from_withdraw(
-            pool_token_amount in 1..u64::MAX,
-            pool_token_supply in 1..u64::MAX,
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
             swap_token_a_amount in 1..u64::MAX,
             swap_token_b_amount in 1..u64::MAX,
         ) {
@@ -453,7 +448,6 @@ mod tests {
             let swap_token_b_amount = swap_token_b_amount as u128;
             // Make sure we will get at least one trading token out for each
             // side, otherwise the calculation fails
-            prop_assume!(pool_token_amount <= pool_token_supply);
             prop_assume!(pool_token_amount * swap_token_a_amount / pool_token_supply >= 1);
             prop_assume!(pool_token_amount * swap_token_b_amount / pool_token_supply >= 1);
             let curve = ConstantProductCurve {};

@@ -117,7 +117,7 @@ pub trait CurveCalculator: Debug + DynPack {
     /// performed, this will change the spot price of the pool.
     ///
     /// See more background for the calculation at:
-    /// https://balancer.finance/whitepaper/#single-asset-deposit
+    /// https://balancer.finance/whitepaper/#single-asset-deposit-withdrawal
     fn trading_tokens_to_pool_tokens(
         &self,
         source_amount: u128,
@@ -404,12 +404,13 @@ pub mod test {
 
         let pool_value = curve.normalized_value(swap_token_a_amount, swap_token_b_amount).unwrap();
         // since we can get rounding issues on the pool value which make it seem that the
-        // value per token has gone down, we bump it up by 1 to cover that case
+        // value per token has gone down, we bump it up by an epsilon of 1 to
+        // cover all cases
         let new_pool_value = curve.normalized_value(new_swap_token_a_amount, new_swap_token_b_amount).unwrap() + 1;
 
         // the following inequality must hold:
         // new_pool_value / new_pool_token_supply >= pool_value / pool_token_supply
-        // which reduces to:
+        // which can also be written:
         // new_pool_value * pool_token_supply >= pool_value * new_pool_token_supply
 
         assert!(
@@ -419,10 +420,10 @@ pub mod test {
     }
 
     prop_compose! {
-        pub fn total_and_amount()(total in 1..u64::MAX)
-                        (amount in 1..total, total in Just(total))
+        pub fn total_and_intermediate()(total in 1..u64::MAX)
+                        (intermediate in 1..total, total in Just(total))
                         -> (u64, u64) {
-           (total, amount)
+           (total, intermediate)
        }
     }
 }
