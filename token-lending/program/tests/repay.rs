@@ -39,7 +39,7 @@ async fn test_success() {
     // limit to track compute unit increase
     test.set_bpf_compute_max_units(80_000);
 
-    const OBLIGATION_LOAN: u64 = 1;
+    const OBLIGATION_LOAN: u64 = 2;
     const OBLIGATION_COLLATERAL: u64 = 500;
 
     let user_accounts_owner = Keypair::new();
@@ -94,7 +94,7 @@ async fn test_success() {
     );
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
-
+    
     let mut transaction = Transaction::new_with_payer(
         &[
             approve(
@@ -117,7 +117,7 @@ async fn test_success() {
             .unwrap(),
             repay_reserve_liquidity(
                 spl_token_lending::id(),
-                OBLIGATION_LOAN,
+                OBLIGATION_LOAN-1,
                 usdc_reserve.user_liquidity_account,
                 sol_reserve.user_collateral_account,
                 usdc_reserve.pubkey,
@@ -140,4 +140,6 @@ async fn test_success() {
         recent_blockhash,
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
+    // Should only be 1 owed left on the loan remaining after repayment, given no slots ticked since loan start(no interest)
+    assert!(obligation.get_state(&mut banks_client).await.borrowed_liquidity_wads == Decimal::from(1u64))
 }
