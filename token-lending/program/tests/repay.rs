@@ -37,7 +37,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(80_000);
+    test.set_bpf_compute_max_units(79_000);
 
     const OBLIGATION_LOAN: u64 = 1;
     const OBLIGATION_COLLATERAL: u64 = 500;

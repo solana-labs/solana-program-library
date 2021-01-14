@@ -35,7 +35,7 @@ async fn test_borrow_quote_currency() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(190_000);
+    test.set_bpf_compute_max_units(188_000);
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -176,7 +176,7 @@ async fn test_borrow_base_currency() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(190_000);
+    test.set_bpf_compute_max_units(188_000);
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);

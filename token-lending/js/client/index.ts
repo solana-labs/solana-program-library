@@ -25,9 +25,10 @@ const TOKEN_PROGRAM_ID = new PublicKey(
 export const LendingMarketLayout: typeof BufferLayout.Structure = BufferLayout.struct(
   [
     BufferLayout.u8("version"),
+    BufferLayout.u8("bumpSeed"),
     Layout.publicKey("quoteTokenMint"),
     Layout.publicKey("tokenProgramId"),
-    BufferLayout.blob(63, "padding"),
+    BufferLayout.blob(62, "padding"),
   ]
 );
 
