@@ -12,7 +12,6 @@ use solana_program::{
     program_option::COption,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
-    sysvar::clock::Clock,
 };
 
 /// Collateral tokens are initially valued at a ratio of 5:1 (collateral:liquidity)
@@ -218,10 +217,17 @@ impl ReserveState {
         Ok(())
     }
 
-    /// Subtract repay amount from total borrows
-    pub fn subtract_repay(&mut self, repay_amount: Decimal) {
-        self.available_liquidity += repay_amount.round_u64();
+    /// Subtract repay amount from total borrows and return rounded repay value
+    pub fn subtract_repay(&mut self, repay_amount: Decimal) -> Result<u64, ProgramError> {
+        let rounded_repay_amount = repay_amount.round_u64();
+        if rounded_repay_amount == 0 {
+            return Err(LendingError::ObligationTooSmall.into());
+        }
+
+        self.available_liquidity += rounded_repay_amount;
         self.borrowed_liquidity_wads -= repay_amount;
+
+        Ok(rounded_repay_amount)
     }
 
     /// Calculate the current utilization rate of the reserve
@@ -326,8 +332,6 @@ impl Reserve {
 pub struct Obligation {
     /// Version of the obligation
     pub version: u8,
-    /// Slot when obligation was updated. Used for calculating interest.
-    pub last_update_slot: u64,
     /// Amount of collateral tokens deposited for this obligation
     pub deposited_collateral_tokens: u64,
     /// Reserve which collateral tokens were deposited into
@@ -344,23 +348,24 @@ pub struct Obligation {
 
 impl Obligation {
     /// Accrue interest
-    pub fn accrue_interest(&mut self, clock: &Clock, cumulative_borrow_rate: Decimal) {
-        let slots_elapsed = clock.slot - self.last_update_slot;
-        let borrow_rate =
-            (cumulative_borrow_rate / self.cumulative_borrow_rate_wads - Decimal::one()).as_rate();
-        let yearly_interest: Decimal = self.borrowed_liquidity_wads * borrow_rate;
-        let accrued_interest: Decimal = yearly_interest * slots_elapsed / SLOTS_PER_YEAR;
+    pub fn accrue_interest(&mut self, cumulative_borrow_rate: Decimal) -> Result<(), ProgramError> {
+        let compounded_interest_rate: Rate =
+            (cumulative_borrow_rate / self.cumulative_borrow_rate_wads).as_rate();
 
-        self.borrowed_liquidity_wads += accrued_interest;
+        if compounded_interest_rate < Rate::one() {
+            return Err(LendingError::NegativeInterestRate.into());
+        }
+
+        self.borrowed_liquidity_wads *= compounded_interest_rate;
         self.cumulative_borrow_rate_wads = cumulative_borrow_rate;
-        self.last_update_slot = clock.slot;
+        Ok(())
     }
 }
 
 impl Sealed for Reserve {}
 impl IsInitialized for Reserve {
     fn is_initialized(&self) -> bool {
-        self.state.last_update_slot > 0
+        self.version != UNINITIALIZED_VERSION
     }
 }
 
@@ -539,13 +544,13 @@ impl Pack for LendingMarket {
 impl Sealed for Obligation {}
 impl IsInitialized for Obligation {
     fn is_initialized(&self) -> bool {
-        self.last_update_slot > 0
+        self.version != UNINITIALIZED_VERSION
     }
 }
 
-const OBLIGATION_LEN: usize = 273;
+const OBLIGATION_LEN: usize = 265;
 impl Pack for Obligation {
-    const LEN: usize = 273;
+    const LEN: usize = 265;
 
     /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
@@ -553,7 +558,6 @@ impl Pack for Obligation {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             version,
-            last_update_slot,
             deposited_collateral_tokens,
             collateral_supply,
             cumulative_borrow_rate,
@@ -561,10 +565,9 @@ impl Pack for Obligation {
             borrow_reserve,
             token_mint,
             _padding,
-        ) = array_refs![input, 1, 8, 8, 32, 16, 16, 32, 32, 128];
+        ) = array_refs![input, 1, 8, 32, 16, 16, 32, 32, 128];
         Ok(Self {
             version: u8::from_le_bytes(*version),
-            last_update_slot: u64::from_le_bytes(*last_update_slot),
             deposited_collateral_tokens: u64::from_le_bytes(*deposited_collateral_tokens),
             collateral_reserve: Pubkey::new_from_array(*collateral_supply),
             cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate),
@@ -578,7 +581,6 @@ impl Pack for Obligation {
         let output = array_mut_ref![output, 0, OBLIGATION_LEN];
         let (
             version,
-            last_update_slot,
             deposited_collateral_tokens,
             collateral_supply,
             cumulative_borrow_rate,
@@ -586,10 +588,9 @@ impl Pack for Obligation {
             borrow_reserve,
             token_mint,
             _padding,
-        ) = mut_array_refs![output, 1, 8, 8, 32, 16, 16, 32, 32, 128];
+        ) = mut_array_refs![output, 1, 8, 32, 16, 16, 32, 32, 128];
 
         *version = self.version.to_le_bytes();
-        *last_update_slot = self.last_update_slot.to_le_bytes();
         *deposited_collateral_tokens = self.deposited_collateral_tokens.to_le_bytes();
         collateral_supply.copy_from_slice(self.collateral_reserve.as_ref());
         pack_decimal(self.cumulative_borrow_rate_wads, cumulative_borrow_rate);

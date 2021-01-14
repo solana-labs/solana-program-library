@@ -11,22 +11,14 @@ use solana_sdk::{
 };
 use spl_token::instruction::approve;
 use spl_token_lending::{
-    instruction::repay_reserve_liquidity, math::Decimal, processor::process_instruction,
-    state::SLOTS_PER_YEAR,
+    instruction::repay_reserve_liquidity,
+    math::Decimal,
+    processor::process_instruction,
+    state::{INITIAL_COLLATERAL_RATE, SLOTS_PER_YEAR},
 };
 
 const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
 const FRACTIONAL_TO_USDC: u64 = 1_000_000;
-
-// Market and collateral are setup to fill two orders in the dex market at an average
-// price of 2210.5
-const fn lamports_to_usdc_fractional(lamports: u64) -> u64 {
-    lamports / LAMPORTS_TO_SOL * (2210 + 2211) / 2 * FRACTIONAL_TO_USDC / 1000
-}
-
-const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 42_500 * LAMPORTS_TO_SOL;
-const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 =
-    lamports_to_usdc_fractional(INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS);
 
 #[tokio::test]
 async fn test_success() {
@@ -39,8 +31,11 @@ async fn test_success() {
     // limit to track compute unit increase
     test.set_bpf_compute_max_units(79_000);
 
-    const OBLIGATION_LOAN: u64 = 1;
-    const OBLIGATION_COLLATERAL: u64 = 500;
+    const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL;
+    const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 100 * FRACTIONAL_TO_USDC;
+
+    const OBLIGATION_LOAN: u64 = 10 * FRACTIONAL_TO_USDC;
+    const OBLIGATION_COLLATERAL: u64 = 10 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATE;
 
     let user_accounts_owner = Keypair::new();
     let user_transfer_authority = Keypair::new();
@@ -85,7 +80,6 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddObligationArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             borrow_reserve: &usdc_reserve,
             collateral_reserve: &sol_reserve,
             collateral_amount: OBLIGATION_COLLATERAL,
@@ -94,6 +88,9 @@ async fn test_success() {
     );
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
+
+    let initial_user_collateral_balance =
+        get_token_balance(&mut banks_client, sol_reserve.user_collateral_account).await;
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -140,4 +137,46 @@ async fn test_success() {
         recent_blockhash,
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
+
+    let collateral_received =
+        get_token_balance(&mut banks_client, sol_reserve.user_collateral_account).await
+            - initial_user_collateral_balance;
+    assert!(collateral_received > 0);
+
+    let borrow_reserve_state = usdc_reserve.get_state(&mut banks_client).await;
+    assert!(borrow_reserve_state.state.cumulative_borrow_rate_wads > Decimal::one());
+
+    let obligation_state = obligation.get_state(&mut banks_client).await;
+    assert_eq!(
+        obligation_state.cumulative_borrow_rate_wads,
+        borrow_reserve_state.state.cumulative_borrow_rate_wads
+    );
+    assert_eq!(
+        obligation_state.borrowed_liquidity_wads,
+        borrow_reserve_state.state.borrowed_liquidity_wads
+    );
+
+    // use cumulative borrow rate directly since test rate starts at 1.0
+    let expected_obligation_interest = (obligation_state.cumulative_borrow_rate_wads
+        * OBLIGATION_LOAN)
+        - Decimal::from(OBLIGATION_LOAN);
+    assert_eq!(
+        obligation_state.borrowed_liquidity_wads,
+        expected_obligation_interest
+    );
+
+    let expected_obligation_total = Decimal::from(OBLIGATION_LOAN) + expected_obligation_interest;
+
+    let expected_obligation_repaid_percent =
+        Decimal::from(OBLIGATION_LOAN) / expected_obligation_total;
+
+    let expected_collateral_received =
+        (expected_obligation_repaid_percent * OBLIGATION_COLLATERAL).round_u64();
+    assert_eq!(collateral_received, expected_collateral_received);
+
+    let expected_collateral_remaining = OBLIGATION_COLLATERAL - expected_collateral_received;
+    assert_eq!(
+        obligation_state.deposited_collateral_tokens,
+        expected_collateral_remaining
+    );
 }
