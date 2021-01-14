@@ -505,4 +505,59 @@ mod tests {
             assert!(new_value * pool_token_supply >= value * new_pool_token_supply);
         }
     }
+
+    proptest! {
+        #[test]
+        fn curve_value_does_not_decrease_from_withdraw(
+            pool_token_amount in 2..u64::MAX, // minimum 2 to splitting on withdraw
+            pool_token_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
+            swap_token_a_amount in 1..u64::MAX,
+            swap_token_b_amount in 1..u32::MAX, // kept small to avoid proptest rejections
+            token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
+        ) {
+            let curve = ConstantPriceCurve { token_b_price: token_b_price as u64 };
+            let pool_token_amount = pool_token_amount as u128;
+            let pool_token_supply = pool_token_supply as u128;
+            let swap_token_a_amount = swap_token_a_amount as u128;
+            let swap_token_b_amount = swap_token_b_amount as u128;
+            let token_b_price = token_b_price as u128;
+
+            let value = curve.normalized_value(swap_token_a_amount, swap_token_b_amount).unwrap();
+
+            // Make sure we trade at least one of each token
+            prop_assume!(pool_token_amount * value >= 2 * token_b_price * pool_token_supply);
+            prop_assume!(pool_token_amount <= pool_token_supply);
+            let withdraw_result = curve
+                .pool_tokens_to_trading_tokens(
+                    pool_token_amount,
+                    pool_token_supply,
+                    swap_token_a_amount,
+                    swap_token_b_amount,
+                    RoundDirection::Floor,
+                )
+                .unwrap();
+            prop_assume!(withdraw_result.token_a_amount <= swap_token_a_amount);
+            prop_assume!(withdraw_result.token_b_amount <= swap_token_b_amount);
+            let new_swap_token_a_amount = swap_token_a_amount - withdraw_result.token_a_amount;
+            let new_swap_token_b_amount = swap_token_b_amount - withdraw_result.token_b_amount;
+            let new_pool_token_supply = pool_token_supply - pool_token_amount;
+
+            let new_value = curve.normalized_value(new_swap_token_a_amount, new_swap_token_b_amount).unwrap();
+
+            // the following inequality must hold:
+            // new_value / new_pool_token_supply >= value / pool_token_supply
+            // which reduces to:
+            // new_value * pool_token_supply >= value * new_pool_token_supply
+
+            // These numbers can be just slightly above u64 after the deposit, which
+            // means that their multiplication can be just above the range of u128.
+            // For ease of testing, we bump these up to U256.
+            let pool_token_supply = U256::from(pool_token_supply);
+            let new_pool_token_supply = U256::from(new_pool_token_supply);
+            let value = U256::from(value);
+            let new_value = U256::from(new_value);
+
+            assert!(new_value * pool_token_supply >= value * new_pool_token_supply);
+        }
+    }
 }

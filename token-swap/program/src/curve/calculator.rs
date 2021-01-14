@@ -174,6 +174,7 @@ pub trait CurveCalculator: Debug + DynPack {
 #[cfg(any(test, fuzzing))]
 pub mod test {
     use super::*;
+    use proptest::prelude::*;
     use crate::curve::math::U256;
 
     /// The epsilon for most curves when performing the conversion test,
@@ -373,5 +374,55 @@ pub mod test {
             new_swap_token_b_amount * pool_token_supply
                 >= swap_token_b_amount * new_pool_token_supply
         );
+    }
+
+    /// Test function checking that a withdraw never reduces the value of pool
+    /// tokens.
+    ///
+    /// Since curve calculations use unsigned integers, there is potential for
+    /// truncation at some point, meaning a potential for value to be lost if
+    /// too much is given to the depositor.
+    pub fn check_pool_value_from_withdraw(
+        curve: &dyn CurveCalculator,
+        pool_token_amount: u128,
+        pool_token_supply: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+    ) {
+        let withdraw_result = curve
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+                RoundDirection::Floor,
+            )
+            .unwrap();
+        let new_swap_token_a_amount = swap_token_a_amount - withdraw_result.token_a_amount;
+        let new_swap_token_b_amount = swap_token_b_amount - withdraw_result.token_b_amount;
+        let new_pool_token_supply = pool_token_supply - pool_token_amount;
+
+        let pool_value = curve.normalized_value(swap_token_a_amount, swap_token_b_amount).unwrap();
+        // since we can get rounding issues on the pool value which make it seem that the
+        // value per token has gone down, we bump it up by 1 to cover that case
+        let new_pool_value = curve.normalized_value(new_swap_token_a_amount, new_swap_token_b_amount).unwrap() + 1;
+
+        // the following inequality must hold:
+        // new_pool_value / new_pool_token_supply >= pool_value / pool_token_supply
+        // which reduces to:
+        // new_pool_value * pool_token_supply >= pool_value * new_pool_token_supply
+
+        assert!(
+            new_pool_value * pool_token_supply
+                >= pool_value * new_pool_token_supply
+        );
+    }
+
+    prop_compose! {
+        pub fn total_and_amount()(total in 1..u64::MAX)
+                        (amount in 1..total, total in Just(total))
+                        -> (u64, u64) {
+           (total, amount)
+       }
     }
 }

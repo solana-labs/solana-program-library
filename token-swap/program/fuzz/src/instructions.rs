@@ -218,14 +218,12 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
     let initial_pool_value = curve
         .normalized_value(initial_swap_token_a_amount, initial_swap_token_b_amount)
         .unwrap();
-    let pool_value = curve
+    // Since we can run into rounding issues on the pool value calculation, we
+    // bump it up by 1 for the inequality to hold under all situations.
+    let pool_value = 1 + curve
         .normalized_value(swap_token_a_amount, swap_token_b_amount)
         .unwrap();
 
-    // Since we're limited in precision by the amount of pool tokens issued,
-    // we guarantee that within a difference of 1 pool token, that the value
-    // per token does not decrease.
-    let pool_token_amount = pool_token_amount - 1;
     assert!(initial_pool_value * pool_token_amount <= pool_value * initial_pool_token_amount);
 
     // check total token a and b amounts
