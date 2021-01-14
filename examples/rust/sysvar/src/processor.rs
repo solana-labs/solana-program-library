@@ -30,7 +30,12 @@ pub fn process_instruction(
 
     // Note: `format!` can be very expensive, use cautiously
     msg!("{:?}", clock);
-    msg!("{:?}", rent);
+    // Can't print `exemption_threshold` because BPF does not support printing floats
+    msg!(
+        "Rent: lamports_per_byte_year: {:?}, burn_percent: {:?}",
+        rent.lamports_per_byte_year,
+        rent.burn_percent
+    );
 
     Ok(())
 }
