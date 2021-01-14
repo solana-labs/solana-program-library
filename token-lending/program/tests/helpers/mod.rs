@@ -117,19 +117,19 @@ impl AddPacked for ProgramTest {
 
 pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> TestLendingMarket {
     let keypair = Keypair::new();
+    let pubkey = keypair.pubkey();
+    let (authority, bump_seed) =
+        Pubkey::find_program_address(&[pubkey.as_ref()], &spl_token_lending::id());
+
     test.add_packable_account(
-        keypair.pubkey(),
+        pubkey,
         u32::MAX as u64,
         &LendingMarket {
             version: PROGRAM_VERSION,
+            bump_seed,
             quote_token_mint,
             token_program_id: spl_token::id(),
         },
-        &spl_token_lending::id(),
-    );
-
-    let (authority, _bump_seed) = Pubkey::find_program_address(
-        &[&keypair.pubkey().to_bytes()[..32]],
         &spl_token_lending::id(),
     );
 

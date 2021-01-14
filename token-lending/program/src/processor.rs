@@ -186,8 +186,12 @@ fn process_init_reserve(
         COption::None
     };
 
-    let (lending_market_authority_pubkey, bump_seed) =
-        Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id);
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
@@ -233,7 +237,6 @@ fn process_init_reserve(
         token_program: token_program_id.clone(),
     })?;
 
-    let authority_signer_seeds = &[lending_market_info.key.as_ref(), &[bump_seed]];
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: reserve_liquidity_supply_info.clone(),
@@ -331,13 +334,16 @@ fn process_deposit(
     let collateral_amount = reserve.deposit_liquidity(liquidity_amount);
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
-    let (lending_market_authority_pubkey, bump_seed) =
-        Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id);
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let authority_signer_seeds = &[lending_market_info.key.as_ref(), &[bump_seed]];
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: reserve_liquidity_supply_info.clone(),
@@ -417,12 +423,15 @@ fn process_withdraw(
     let liquidity_withdraw_amount = reserve.redeem_collateral(collateral_amount)?;
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
-    let (lending_market_authority_pubkey, bump_seed) =
-        Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id);
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-    let authority_signer_seeds = &[lending_market_info.key.as_ref(), &[bump_seed]];
 
     spl_token_transfer(TokenTransferParams {
         source: reserve_liquidity_supply_info.clone(),
@@ -578,7 +587,6 @@ fn process_borrow(
 
     borrow_reserve.state.add_borrow(borrow_amount)?;
 
-    let lending_market_key = deposit_reserve.lending_market;
     let obligation_mint_decimals = deposit_reserve.liquidity_mint_decimals;
 
     Reserve::pack(deposit_reserve, &mut deposit_reserve_info.data.borrow_mut())?;
@@ -618,12 +626,15 @@ fn process_borrow(
         Obligation::pack(new_obligation, &mut obligation_info.data.borrow_mut())?;
     }
 
-    let (lending_market_authority_pubkey, bump_seed) =
-        Pubkey::find_program_address(&[lending_market_key.as_ref()], program_id);
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-    let authority_signer_seeds = &[lending_market_key.as_ref(), &[bump_seed]];
 
     // deposit collateral
     spl_token_transfer(TokenTransferParams {
@@ -843,12 +854,15 @@ fn process_repay(
     obligation.deposited_collateral_tokens -= collateral_withdraw_amount;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
-    let (lending_market_authority_pubkey, bump_seed) =
-        Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id);
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-    let authority_signer_seeds = &[lending_market_info.key.as_ref(), &[bump_seed]];
 
     // deposit repaid liquidity
     spl_token_transfer(TokenTransferParams {
@@ -1057,12 +1071,15 @@ fn process_liquidate(
     obligation.deposited_collateral_tokens -= collateral_withdraw_amount;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
-    let (lending_market_authority_pubkey, bump_seed) =
-        Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id);
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-    let authority_signer_seeds = &[lending_market_info.key.as_ref(), &[bump_seed]];
 
     // deposit repaid liquidity
     spl_token_transfer(TokenTransferParams {
