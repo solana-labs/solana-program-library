@@ -362,10 +362,10 @@ export async function withdrawAllTokenTypes(): Promise<void> {
     );
   }
   const poolTokenAmount = POOL_TOKEN_AMOUNT - feeAmount;
-  const tokenA = Math.ceil(
+  const tokenA = Math.floor(
     (swapTokenA.amount.toNumber() * poolTokenAmount) / supply,
   );
-  const tokenB = Math.ceil(
+  const tokenB = Math.floor(
     (swapTokenB.amount.toNumber() * poolTokenAmount) / supply,
   );
 
