@@ -5,7 +5,7 @@ use solana_program::{
     entrypoint::ProgramResult,
     msg,
     pubkey::Pubkey,
-    sysvar::{clock::Clock, Sysvar},
+    sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 
 /// Instruction processor
@@ -17,15 +17,25 @@ pub fn process_instruction(
     // Create in iterator to safety reference accounts in the slice
     let account_info_iter = &mut accounts.iter();
 
-    // As part of the program specification the first account is the clock
-    // sysvar
+    // The first account is the clock sysvar
     let clock_sysvar_info = next_account_info(account_info_iter)?;
+    // The second account is the rent sysvar
+    let rent_sysvar_info = next_account_info(account_info_iter)?;
 
     // Deserialize the account into a clock struct
     let clock = Clock::from_account_info(&clock_sysvar_info)?;
 
+    // Deserialize the account into a rent struct
+    let rent = Rent::from_account_info(&rent_sysvar_info)?;
+
     // Note: `format!` can be very expensive, use cautiously
     msg!("{:?}", clock);
+    // Can't print `exemption_threshold` because BPF does not support printing floats
+    msg!(
+        "Rent: lamports_per_byte_year: {:?}, burn_percent: {:?}",
+        rent.lamports_per_byte_year,
+        rent.burn_percent
+    );
 
     Ok(())
 }
