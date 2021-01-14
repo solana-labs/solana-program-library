@@ -15,7 +15,7 @@ solana-account-decoder = "1.5.0"
 solana-clap-utils = "1.5.0"
 solana-cli-config = "1.5.2"
 solana-client = "1.5.0"
-solana-logger = "1.5.0"
+solana-logger = "1.5.3"
 solana-sdk = "1.5.0"
 solana-program = "1.5.1"
 spl-stake-pool = { path="../program", features = [ "no-entrypoint" ] }
