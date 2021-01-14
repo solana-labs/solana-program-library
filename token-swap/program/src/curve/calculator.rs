@@ -171,7 +171,7 @@ pub trait CurveCalculator: Debug + DynPack {
 }
 
 /// Test helpers for curves
-#[cfg(any(test, fuzzing))]
+#[cfg(test)]
 pub mod test {
     use super::*;
     use crate::curve::math::U256;
