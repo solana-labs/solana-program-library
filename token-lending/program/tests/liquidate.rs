@@ -84,7 +84,6 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddObligationArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             borrow_reserve: &usdc_reserve,
             collateral_reserve: &sol_reserve,
             collateral_amount: USDC_LOAN_SOL_COLLATERAL,
@@ -97,7 +96,6 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddObligationArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             borrow_reserve: &sol_reserve,
             collateral_reserve: &usdc_reserve,
             collateral_amount: SOL_LOAN_USDC_COLLATERAL,

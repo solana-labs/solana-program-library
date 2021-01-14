@@ -141,7 +141,6 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
 }
 
 pub struct AddObligationArgs<'a> {
-    pub slots_elapsed: u64,
     pub borrow_reserve: &'a TestReserve,
     pub collateral_reserve: &'a TestReserve,
     pub collateral_amount: u64,
@@ -155,7 +154,6 @@ pub fn add_obligation(
     args: AddObligationArgs,
 ) -> TestObligation {
     let AddObligationArgs {
-        slots_elapsed,
         borrow_reserve,
         collateral_reserve,
         collateral_amount,
@@ -197,7 +195,6 @@ pub fn add_obligation(
         u32::MAX as u64,
         &Obligation {
             version: PROGRAM_VERSION,
-            last_update_slot: 1u64.wrapping_sub(slots_elapsed),
             deposited_collateral_tokens: collateral_amount,
             collateral_reserve: collateral_reserve.pubkey,
             cumulative_borrow_rate_wads: Decimal::one(),

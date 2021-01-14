@@ -77,6 +77,9 @@ pub enum LendingError {
     /// Borrow amount too small
     #[error("Borrow amount too small")]
     BorrowTooSmall,
+    /// Negative interest rate
+    #[error("Interest rate cannot be negative")]
+    NegativeInterestRate,
 
     /// Trade simulation error
     #[error("Trade simulation error")]
