@@ -217,7 +217,7 @@ mod tests {
     use super::*;
     use crate::curve::calculator::{
         test::{
-            check_curve_value_from_swap, check_pool_token_conversion,
+            check_curve_value_from_swap, check_pool_token_conversion, total_and_intermediate,
             CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         INITIAL_SWAP_POOL_AMOUNT,
@@ -509,8 +509,7 @@ mod tests {
     proptest! {
         #[test]
         fn curve_value_does_not_decrease_from_withdraw(
-            pool_token_amount in 2..u64::MAX, // minimum 2 to splitting on withdraw
-            pool_token_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
             swap_token_a_amount in 1..u64::MAX,
             swap_token_b_amount in 1..u32::MAX, // kept small to avoid proptest rejections
             token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
