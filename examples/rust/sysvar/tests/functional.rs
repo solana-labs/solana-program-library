@@ -23,7 +23,10 @@ async fn test_sysvar() {
         &[Instruction::new(
             program_id,
             &(),
-            vec![AccountMeta::new(sysvar::clock::id(), false)],
+            vec![
+                AccountMeta::new(sysvar::clock::id(), false),
+                AccountMeta::new(sysvar::rent::id(), false),
+            ],
         )],
         Some(&payer.pubkey()),
     );
