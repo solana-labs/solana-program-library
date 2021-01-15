@@ -9,6 +9,7 @@ use crate::{
         constant_product::{
             normalized_value, pool_tokens_to_trading_tokens, swap, trading_tokens_to_pool_tokens,
         },
+        math::PreciseNumber,
     },
     error::SwapError,
 };
@@ -124,7 +125,7 @@ impl CurveCalculator for OffsetCurve {
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<u128> {
+    ) -> Option<PreciseNumber> {
         let token_b_offset = self.token_b_offset as u128;
         normalized_value(
             swap_token_a_amount,

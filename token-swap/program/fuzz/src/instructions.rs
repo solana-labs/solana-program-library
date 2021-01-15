@@ -10,6 +10,7 @@ use spl_token_swap::{
         calculator::CurveCalculator,
         constant_product::ConstantProductCurve,
         fees::Fees,
+        math::PreciseNumber,
     },
     error::SwapError,
     instruction::{
@@ -218,13 +219,16 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
     let initial_pool_value = curve
         .normalized_value(initial_swap_token_a_amount, initial_swap_token_b_amount)
         .unwrap();
-    // Since we can run into rounding issues on the pool value calculation, we
-    // bump it up by 1 for the inequality to hold under all situations.
-    let pool_value = 1 + curve
+    let pool_value = curve
         .normalized_value(swap_token_a_amount, swap_token_b_amount)
         .unwrap();
 
-    assert!(initial_pool_value * pool_token_amount <= pool_value * initial_pool_token_amount);
+    let pool_token_amount = PreciseNumber::new(pool_token_amount).unwrap();
+    let initial_pool_token_amount = PreciseNumber::new(initial_pool_token_amount).unwrap();
+    assert!(initial_pool_value
+        .checked_div(&initial_pool_token_amount)
+        .unwrap()
+        .less_than_or_equal(&pool_value.checked_div(&pool_token_amount).unwrap()));
 
     // check total token a and b amounts
     let after_total_token_a = token_a_accounts

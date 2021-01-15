@@ -122,13 +122,15 @@ pub fn trading_tokens_to_pool_tokens(
 ///
 /// The constant product implementation for this function gives the square root of
 /// the Uniswap invariant.
-pub fn normalized_value(swap_token_a_amount: u128, swap_token_b_amount: u128) -> Option<u128> {
+pub fn normalized_value(
+    swap_token_a_amount: u128,
+    swap_token_b_amount: u128,
+) -> Option<PreciseNumber> {
     let swap_token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
     let swap_token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
     swap_token_a_amount
         .checked_mul(&swap_token_b_amount)?
-        .sqrt()?
-        .to_imprecise()
+        .sqrt()
 }
 
 impl CurveCalculator for ConstantProductCurve {
@@ -186,7 +188,7 @@ impl CurveCalculator for ConstantProductCurve {
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<u128> {
+    ) -> Option<PreciseNumber> {
         normalized_value(swap_token_a_amount, swap_token_b_amount)
     }
 

@@ -14,6 +14,7 @@ use crate::curve::{
     constant_product::{
         normalized_value, pool_tokens_to_trading_tokens, trading_tokens_to_pool_tokens,
     },
+    math::PreciseNumber,
 };
 use arrayref::{array_mut_ref, array_ref};
 use std::convert::TryFrom;
@@ -185,7 +186,7 @@ impl CurveCalculator for StableCurve {
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<u128> {
+    ) -> Option<PreciseNumber> {
         normalized_value(swap_token_a_amount, swap_token_b_amount)
     }
 

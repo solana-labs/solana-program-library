@@ -1,6 +1,6 @@
 //! Swap calculations
 
-use crate::error::SwapError;
+use crate::{curve::math::PreciseNumber, error::SwapError};
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
@@ -167,7 +167,7 @@ pub trait CurveCalculator: Debug + DynPack {
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<u128>;
+    ) -> Option<PreciseNumber>;
 }
 
 /// Test helpers for curves
@@ -318,10 +318,14 @@ pub mod test {
         let new_value = curve
             .normalized_value(swap_token_a_amount, swap_token_b_amount)
             .unwrap();
-        assert!(new_value >= previous_value);
+        assert!(new_value.greater_than_or_equal(&previous_value));
 
         let epsilon = 1; // Extremely close!
-        let difference = new_value - previous_value;
+        let difference = new_value
+            .checked_sub(&previous_value)
+            .unwrap()
+            .to_imprecise()
+            .unwrap();
         assert!(difference <= epsilon);
     }
 
@@ -402,23 +406,27 @@ pub mod test {
         let new_swap_token_b_amount = swap_token_b_amount - withdraw_result.token_b_amount;
         let new_pool_token_supply = pool_token_supply - pool_token_amount;
 
-        let pool_value = curve
+        let value = curve
             .normalized_value(swap_token_a_amount, swap_token_b_amount)
             .unwrap();
         // since we can get rounding issues on the pool value which make it seem that the
         // value per token has gone down, we bump it up by an epsilon of 1 to
         // cover all cases
-        let new_pool_value = curve
+        let new_value = curve
             .normalized_value(new_swap_token_a_amount, new_swap_token_b_amount)
-            .unwrap()
-            + 1;
+            .unwrap();
 
         // the following inequality must hold:
         // new_pool_value / new_pool_token_supply >= pool_value / pool_token_supply
         // which can also be written:
         // new_pool_value * pool_token_supply >= pool_value * new_pool_token_supply
 
-        assert!(new_pool_value * pool_token_supply >= pool_value * new_pool_token_supply);
+        let pool_token_supply = PreciseNumber::new(pool_token_supply).unwrap();
+        let new_pool_token_supply = PreciseNumber::new(new_pool_token_supply).unwrap();
+        assert!(new_value
+            .checked_mul(&pool_token_supply)
+            .unwrap()
+            .greater_than_or_equal(&value.checked_mul(&new_pool_token_supply).unwrap()));
     }
 
     prop_compose! {

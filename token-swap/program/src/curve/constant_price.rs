@@ -5,7 +5,7 @@ use crate::{
         map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
         TradeDirection, TradingTokenResult,
     },
-    curve::math::{ceiling_division, U256},
+    curve::math::{ceiling_division, PreciseNumber, U256},
     error::SwapError,
 };
 use arrayref::{array_mut_ref, array_ref};
@@ -70,7 +70,9 @@ impl CurveCalculator for ConstantPriceCurve {
         round_direction: RoundDirection,
     ) -> Option<TradingTokenResult> {
         let token_b_price = self.token_b_price as u128;
-        let total_value = self.normalized_value(swap_token_a_amount, swap_token_b_amount)?;
+        let total_value = self
+            .normalized_value(swap_token_a_amount, swap_token_b_amount)?
+            .to_imprecise()?;
 
         let (token_a_amount, token_b_amount) = match round_direction {
             RoundDirection::Floor => {
@@ -167,20 +169,21 @@ impl CurveCalculator for ConstantPriceCurve {
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<u128> {
+    ) -> Option<PreciseNumber> {
         let swap_token_b_value = swap_token_b_amount.checked_mul(self.token_b_price as u128)?;
         // special logic in case we're close to the limits, avoid overflowing u128
-        if swap_token_b_value.saturating_sub(std::u64::MAX.into())
+        let value = if swap_token_b_value.saturating_sub(std::u64::MAX.into())
             > (std::u128::MAX.saturating_sub(std::u64::MAX.into()))
         {
             swap_token_b_value
                 .checked_div(2)?
-                .checked_add(swap_token_a_amount.checked_div(2)?)
+                .checked_add(swap_token_a_amount.checked_div(2)?)?
         } else {
             swap_token_a_amount
                 .checked_add(swap_token_b_value)?
-                .checked_div(2)
-        }
+                .checked_div(2)?
+        };
+        PreciseNumber::new(value)
     }
 }
 
@@ -473,7 +476,7 @@ mod tests {
             let value = curve.normalized_value(swap_token_a_amount, swap_token_b_amount).unwrap();
 
             // Make sure we trade at least one of each token
-            prop_assume!(pool_token_amount * value >= 2 * token_b_price * pool_token_supply);
+            prop_assume!(pool_token_amount * value.to_imprecise().unwrap() >= 2 * token_b_price * pool_token_supply);
             let deposit_result = curve
                 .pool_tokens_to_trading_tokens(
                     pool_token_amount,
@@ -494,15 +497,12 @@ mod tests {
             // which reduces to:
             // new_value * pool_token_supply >= value * new_pool_token_supply
 
-            // These numbers can be just slightly above u64 after the deposit, which
-            // means that their multiplication can be just above the range of u128.
-            // For ease of testing, we bump these up to U256.
-            let pool_token_supply = U256::from(pool_token_supply);
-            let new_pool_token_supply = U256::from(new_pool_token_supply);
-            let value = U256::from(value);
-            let new_value = U256::from(new_value);
+            let pool_token_supply = PreciseNumber::new(pool_token_supply).unwrap();
+            let new_pool_token_supply = PreciseNumber::new(new_pool_token_supply).unwrap();
+            //let value = U256::from(value);
+            //let new_value = U256::from(new_value);
 
-            assert!(new_value * pool_token_supply >= value * new_pool_token_supply);
+            assert!(new_value.checked_mul(&pool_token_supply).unwrap().greater_than_or_equal(&value.checked_mul(&new_pool_token_supply).unwrap()));
         }
     }
 
@@ -524,7 +524,7 @@ mod tests {
             let value = curve.normalized_value(swap_token_a_amount, swap_token_b_amount).unwrap();
 
             // Make sure we trade at least one of each token
-            prop_assume!(pool_token_amount * value >= 2 * token_b_price * pool_token_supply);
+            prop_assume!(pool_token_amount * value.to_imprecise().unwrap() >= 2 * token_b_price * pool_token_supply);
             prop_assume!(pool_token_amount <= pool_token_supply);
             let withdraw_result = curve
                 .pool_tokens_to_trading_tokens(
@@ -548,15 +548,9 @@ mod tests {
             // which reduces to:
             // new_value * pool_token_supply >= value * new_pool_token_supply
 
-            // These numbers can be just slightly above u64 after the deposit, which
-            // means that their multiplication can be just above the range of u128.
-            // For ease of testing, we bump these up to U256.
-            let pool_token_supply = U256::from(pool_token_supply);
-            let new_pool_token_supply = U256::from(new_pool_token_supply);
-            let value = U256::from(value);
-            let new_value = U256::from(new_value);
-
-            assert!(new_value * pool_token_supply >= value * new_pool_token_supply);
+            let pool_token_supply = PreciseNumber::new(pool_token_supply).unwrap();
+            let new_pool_token_supply = PreciseNumber::new(new_pool_token_supply).unwrap();
+            assert!(new_value.checked_mul(&pool_token_supply).unwrap().greater_than_or_equal(&value.checked_mul(&new_pool_token_supply).unwrap()));
         }
     }
 }
