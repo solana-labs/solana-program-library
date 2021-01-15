@@ -117,14 +117,15 @@ async fn test_already_initialized() {
             usdc_reserve.collateral_mint,
             usdc_reserve.collateral_supply,
             usdc_reserve.collateral_fees_receiver,
-            lending_market.keypair.pubkey(),
+            lending_market.pubkey,
+            lending_market.owner.pubkey(),
             user_transfer_authority.pubkey(),
             Some(sol_usdc_dex_market.pubkey),
         )],
         Some(&payer.pubkey()),
     );
     transaction.sign(
-        &[&payer, &lending_market.keypair, &user_transfer_authority],
+        &[&payer, &lending_market.owner, &user_transfer_authority],
         recent_blockhash,
     );
     assert_eq!(

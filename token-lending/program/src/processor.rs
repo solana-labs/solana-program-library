@@ -30,9 +30,9 @@ pub fn process_instruction(
 ) -> ProgramResult {
     let instruction = LendingInstruction::unpack(input)?;
     match instruction {
-        LendingInstruction::InitLendingMarket => {
+        LendingInstruction::InitLendingMarket { market_owner } => {
             msg!("Instruction: Init Lending Market");
-            process_init_lending_market(program_id, accounts)
+            process_init_lending_market(program_id, market_owner, accounts)
         }
         LendingInstruction::InitReserve {
             liquidity_amount,
@@ -67,7 +67,11 @@ pub fn process_instruction(
     }
 }
 
-fn process_init_lending_market(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+fn process_init_lending_market(
+    _program_id: &Pubkey,
+    market_owner: Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let lending_market_info = next_account_info(account_info_iter)?;
     let quote_token_mint_info = next_account_info(account_info_iter)?;
@@ -82,6 +86,7 @@ fn process_init_lending_market(_program_id: &Pubkey, accounts: &[AccountInfo]) -
     assert_rent_exempt(rent, lending_market_info)?;
     let mut new_lending_market: LendingMarket = assert_uninitialized(lending_market_info)?;
     new_lending_market.version = PROGRAM_VERSION;
+    new_lending_market.owner = market_owner;
     new_lending_market.quote_token_mint = *quote_token_mint_info.key;
     LendingMarket::pack(
         new_lending_market,
@@ -143,6 +148,7 @@ fn process_init_reserve(
     let reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_owner_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
@@ -157,11 +163,14 @@ fn process_init_reserve(
     if lending_market_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
-    if !lending_market_info.is_signer {
-        return Err(LendingError::InvalidSigner.into());
-    }
     if &lending_market.token_program_id != token_program_id.key {
         return Err(LendingError::InvalidTokenProgram.into());
+    }
+    if &lending_market.owner != lending_market_owner_info.key {
+        return Err(LendingError::InvalidMarketOwner.into());
+    }
+    if !lending_market_owner_info.is_signer {
+        return Err(LendingError::InvalidSigner.into());
     }
 
     let dex_market = if reserve_liquidity_mint_info.key != &lending_market.quote_token_mint {

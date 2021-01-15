@@ -116,10 +116,11 @@ impl AddPacked for ProgramTest {
 }
 
 pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> TestLendingMarket {
-    let keypair = Keypair::new();
-    let pubkey = keypair.pubkey();
+    let pubkey = Pubkey::new_unique();
     let (authority, bump_seed) =
         Pubkey::find_program_address(&[pubkey.as_ref()], &spl_token_lending::id());
+
+    let owner = Keypair::new();
 
     test.add_packable_account(
         pubkey,
@@ -127,6 +128,7 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
         &LendingMarket {
             version: PROGRAM_VERSION,
             bump_seed,
+            owner: owner.pubkey(),
             quote_token_mint,
             token_program_id: spl_token::id(),
         },
@@ -134,7 +136,8 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
     );
 
     TestLendingMarket {
-        keypair,
+        pubkey,
+        owner,
         authority,
         quote_token_mint,
     }
@@ -287,7 +290,7 @@ pub fn add_reserve(
         u32::MAX as u64,
         &Token {
             mint: collateral_mint_pubkey,
-            owner: lending_market.keypair.pubkey(),
+            owner: lending_market.owner.pubkey(),
             amount: fees_amount,
             state: AccountState::Initialized,
             ..Token::default()
@@ -339,7 +342,7 @@ pub fn add_reserve(
         u32::MAX as u64,
         &Reserve {
             version: PROGRAM_VERSION,
-            lending_market: lending_market.keypair.pubkey(),
+            lending_market: lending_market.pubkey,
             liquidity_mint: liquidity_mint_pubkey,
             liquidity_mint_decimals,
             liquidity_supply: liquidity_supply_pubkey,
@@ -390,7 +393,7 @@ pub fn add_reserve(
     TestReserve {
         name,
         pubkey: reserve_pubkey,
-        lending_market: lending_market.keypair.pubkey(),
+        lending_market: lending_market.pubkey,
         config,
         liquidity_mint: liquidity_mint_pubkey,
         liquidity_mint_decimals,
@@ -406,7 +409,8 @@ pub fn add_reserve(
 }
 
 pub struct TestLendingMarket {
-    pub keypair: Keypair,
+    pub pubkey: Pubkey,
+    pub owner: Keypair,
     pub authority: Pubkey,
     pub quote_token_mint: Pubkey,
 }
@@ -436,7 +440,8 @@ impl TestLendingMarket {
         quote_token_mint: Pubkey,
         payer: &Keypair,
     ) -> Self {
-        let keypair = read_keypair_file("tests/fixtures/lending_market.json").unwrap();
+        let owner = read_keypair_file("tests/fixtures/lending_market_owner.json").unwrap();
+        let keypair = Keypair::new();
         let pubkey = keypair.pubkey();
         let (authority_pubkey, _bump_seed) =
             Pubkey::find_program_address(&[&pubkey.to_bytes()[..32]], &spl_token_lending::id());
@@ -451,7 +456,12 @@ impl TestLendingMarket {
                     LendingMarket::LEN as u64,
                     &spl_token_lending::id(),
                 ),
-                init_lending_market(spl_token_lending::id(), pubkey, quote_token_mint),
+                init_lending_market(
+                    spl_token_lending::id(),
+                    pubkey,
+                    owner.pubkey(),
+                    quote_token_mint,
+                ),
             ],
             Some(&payer.pubkey()),
         );
@@ -461,7 +471,8 @@ impl TestLendingMarket {
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 
         TestLendingMarket {
-            keypair,
+            owner,
+            pubkey,
             authority: authority_pubkey,
             quote_token_mint,
         }
@@ -495,7 +506,7 @@ impl TestLendingMarket {
                     reserve.pubkey,
                     reserve.liquidity_supply,
                     reserve.collateral_mint,
-                    self.keypair.pubkey(),
+                    self.pubkey,
                     self.authority,
                     user_transfer_authority.pubkey(),
                 ),
@@ -563,7 +574,7 @@ impl TestLendingMarket {
                     withdraw_reserve.pubkey,
                     withdraw_reserve.collateral_supply,
                     obligation.keypair.pubkey(),
-                    self.keypair.pubkey(),
+                    self.pubkey,
                     self.authority,
                     user_transfer_authority.pubkey(),
                     dex_market.pubkey,
@@ -702,7 +713,7 @@ impl TestLendingMarket {
                     deposit_reserve.collateral_fees_receiver,
                     borrow_reserve.pubkey,
                     borrow_reserve.liquidity_supply,
-                    self.keypair.pubkey(),
+                    self.pubkey,
                     self.authority,
                     user_transfer_authority.pubkey(),
                     obligation.keypair.pubkey(),
@@ -735,7 +746,7 @@ impl TestLendingMarket {
 
     pub async fn get_state(&self, banks_client: &mut BanksClient) -> LendingMarket {
         let lending_market_account: Account = banks_client
-            .get_account(self.keypair.pubkey())
+            .get_account(self.pubkey)
             .await
             .unwrap()
             .unwrap();
@@ -747,9 +758,9 @@ impl TestLendingMarket {
         banks_client: &mut BanksClient,
         genesis_accounts: &mut GenesisAccounts,
     ) {
-        println!("lending_market: {}", self.keypair.pubkey());
+        println!("lending_market: {}", self.pubkey);
         genesis_accounts
-            .fetch_and_insert(banks_client, self.keypair.pubkey())
+            .fetch_and_insert(banks_client, self.pubkey)
             .await;
     }
 }
@@ -882,7 +893,8 @@ impl TestReserve {
                     collateral_mint_keypair.pubkey(),
                     collateral_supply_keypair.pubkey(),
                     collateral_fees_receiver_keypair.pubkey(),
-                    lending_market.keypair.pubkey(),
+                    lending_market.pubkey,
+                    lending_market.owner.pubkey(),
                     user_transfer_authority_keypair.pubkey(),
                     dex_market_pubkey,
                 ),
@@ -896,7 +908,7 @@ impl TestReserve {
                 payer,
                 user_accounts_owner,
                 &reserve_keypair,
-                &lending_market.keypair,
+                &lending_market.owner,
                 &collateral_mint_keypair,
                 &collateral_supply_keypair,
                 &collateral_fees_receiver_keypair,
@@ -914,7 +926,7 @@ impl TestReserve {
             .map(|_| Self {
                 name,
                 pubkey: reserve_pubkey,
-                lending_market: lending_market.keypair.pubkey(),
+                lending_market: lending_market.pubkey,
                 config,
                 liquidity_mint: liquidity_mint_pubkey,
                 liquidity_mint_decimals: liquidity_mint.decimals,
