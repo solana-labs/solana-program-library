@@ -124,7 +124,7 @@ async fn test_success() {
                 obligation.keypair.pubkey(),
                 obligation.token_mint,
                 obligation.token_account,
-                lending_market.keypair.pubkey(),
+                lending_market.pubkey,
                 lending_market.authority,
                 user_transfer_authority.pubkey(),
             ),

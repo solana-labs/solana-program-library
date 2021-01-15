@@ -32,7 +32,10 @@ pub enum LendingInstruction {
     ///   1. `[]` Quote currency SPL Token mint. Must be initialized.
     ///   2. `[]` Rent sysvar
     ///   3. '[]` Token program id
-    InitLendingMarket,
+    InitLendingMarket {
+        /// Owner authority which can add new reserves
+        market_owner: Pubkey,
+    },
 
     /// Initializes a new lending market reserve.
     ///
@@ -45,13 +48,14 @@ pub enum LendingInstruction {
     ///   6. `[writable]` Reserve collateral token supply - uninitialized
     ///   7. `[writable]` Reserve collateral fees receiver - uninitialized.
     ///                     Owner will be set to the lending market account.
-    ///   8. `[signer]` Lending market account.
-    ///   9. `[]` Derived lending market authority.
-    ///   10 `[]` User transfer authority ($authority).
-    ///   11 `[]` Clock sysvar
-    ///   12 `[]` Rent sysvar
-    ///   13 '[]` Token program id
-    ///   14 `[optional]` Serum DEX market account. Not required for quote currency reserves. Must be initialized and match quote and base currency.
+    ///   8. `[]` Lending market account.
+    ///   9. `[signer]` Lending market owner.
+    ///   10 `[]` Derived lending market authority.
+    ///   11 `[]` User transfer authority ($authority).
+    ///   12 `[]` Clock sysvar
+    ///   13 `[]` Rent sysvar
+    ///   14 '[]` Token program id
+    ///   15 `[optional]` Serum DEX market account. Not required for quote currency reserves. Must be initialized and match quote and base currency.
     InitReserve {
         /// Initial amount of liquidity to deposit into the new reserve
         liquidity_amount: u64,
@@ -182,7 +186,10 @@ impl LendingInstruction {
             .split_first()
             .ok_or(LendingError::InstructionUnpackError)?;
         Ok(match tag {
-            0 => Self::InitLendingMarket,
+            0 => {
+                let (market_owner, _rest) = Self::unpack_pubkey(rest)?;
+                Self::InitLendingMarket { market_owner }
+            }
             1 => {
                 let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
                 let (optimal_utilization_rate, rest) = Self::unpack_u8(rest)?;
@@ -269,12 +276,23 @@ impl LendingInstruction {
         }
     }
 
+    fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
+        if input.len() >= 32 {
+            let (key, rest) = input.split_at(32);
+            let pk = Pubkey::new(key);
+            Ok((pk, rest))
+        } else {
+            Err(LendingError::InstructionUnpackError.into())
+        }
+    }
+
     /// Packs a [LendingInstruction](enum.LendingInstruction.html) into a byte buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match *self {
-            Self::InitLendingMarket => {
+            Self::InitLendingMarket { market_owner } => {
                 buf.push(0);
+                buf.extend_from_slice(market_owner.as_ref());
             }
             Self::InitReserve {
                 liquidity_amount,
@@ -339,6 +357,7 @@ impl LendingInstruction {
 pub fn init_lending_market(
     program_id: Pubkey,
     lending_market_pubkey: Pubkey,
+    lending_market_owner: Pubkey,
     quote_token_mint: Pubkey,
 ) -> Instruction {
     Instruction {
@@ -349,7 +368,10 @@ pub fn init_lending_market(
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: LendingInstruction::InitLendingMarket.pack(),
+        data: LendingInstruction::InitLendingMarket {
+            market_owner: lending_market_owner,
+        }
+        .pack(),
     }
 }
 
@@ -368,6 +390,7 @@ pub fn init_reserve(
     reserve_collateral_supply_pubkey: Pubkey,
     reserve_collateral_fees_receiver_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
+    lending_market_owner_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
     dex_market_pubkey: Option<Pubkey>,
 ) -> Instruction {
@@ -382,7 +405,8 @@ pub fn init_reserve(
         AccountMeta::new(reserve_collateral_mint_pubkey, false),
         AccountMeta::new(reserve_collateral_supply_pubkey, false),
         AccountMeta::new(reserve_collateral_fees_receiver_pubkey, false),
-        AccountMeta::new_readonly(lending_market_pubkey, true),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_owner_pubkey, true),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),

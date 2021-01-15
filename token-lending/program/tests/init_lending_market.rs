@@ -39,15 +39,14 @@ async fn test_already_initialized() {
     );
 
     let usdc_mint = add_usdc_mint(&mut test);
-    let market_pubkey = add_lending_market(&mut test, usdc_mint.pubkey)
-        .keypair
-        .pubkey();
+    let existing_market = add_lending_market(&mut test, usdc_mint.pubkey);
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[init_lending_market(
             spl_token_lending::id(),
-            market_pubkey,
+            existing_market.pubkey,
+            existing_market.owner.pubkey(),
             usdc_mint.pubkey,
         )],
         Some(&payer.pubkey()),
