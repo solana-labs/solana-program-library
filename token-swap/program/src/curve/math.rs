@@ -205,7 +205,7 @@ impl PreciseNumber {
     pub fn ceiling(&self) -> Option<Self> {
         let value = self
             .value
-            .checked_add(one())?
+            .checked_add(one().checked_sub(U256::from(1))?)?
             .checked_div(one())?
             .checked_mul(one())?;
         Some(Self { value })
@@ -618,6 +618,28 @@ mod tests {
         for i in test_roots.iter() {
             check_square_root(i);
         }
+    }
+
+    #[test]
+    fn test_floor() {
+        let whole_number = PreciseNumber::new(2).unwrap();
+        let mut decimal_number = PreciseNumber::new(2).unwrap();
+        decimal_number.value += U256::from(1);
+        let floor = decimal_number.floor().unwrap();
+        let floor_again = floor.floor().unwrap();
+        assert_eq!(whole_number.value, floor.value);
+        assert_eq!(whole_number.value, floor_again.value);
+    }
+
+    #[test]
+    fn test_ceiling() {
+        let whole_number = PreciseNumber::new(2).unwrap();
+        let mut decimal_number = PreciseNumber::new(2).unwrap();
+        decimal_number.value -= U256::from(1);
+        let ceiling = decimal_number.ceiling().unwrap();
+        let ceiling_again = ceiling.ceiling().unwrap();
+        assert_eq!(whole_number.value, ceiling.value);
+        assert_eq!(whole_number.value, ceiling_again.value);
     }
 
     proptest! {
