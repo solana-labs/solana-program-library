@@ -2,7 +2,11 @@
 
 use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS};
 use crate::{
-    curve::{base::SwapCurve, calculator::TradeDirection, fees::Fees},
+    curve::{
+        base::SwapCurve,
+        calculator::{RoundDirection, TradeDirection},
+        fees::Fees,
+    },
     error::SwapError,
     instruction::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
@@ -429,6 +433,7 @@ impl Processor {
                 swap_token_b_amount,
                 to_u128(pool_mint.supply)?,
                 trade_direction,
+                RoundDirection::Ceiling,
                 &token_swap.fees,
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
@@ -538,6 +543,7 @@ impl Processor {
                 pool_mint_supply,
                 to_u128(token_a.amount)?,
                 to_u128(token_b.amount)?,
+                RoundDirection::Ceiling,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
         let token_a_amount = to_u64(results.token_a_amount)?;
@@ -649,6 +655,7 @@ impl Processor {
                 to_u128(pool_mint.supply)?,
                 to_u128(token_a.amount)?,
                 to_u128(token_b.amount)?,
+                RoundDirection::Floor,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
         let token_a_amount = to_u64(results.token_a_amount)?;
@@ -777,6 +784,7 @@ impl Processor {
                 to_u128(swap_token_b.amount)?,
                 pool_mint_supply,
                 trade_direction,
+                RoundDirection::Floor,
                 &token_swap.fees,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
@@ -910,6 +918,7 @@ impl Processor {
                 swap_token_b_amount,
                 pool_mint_supply,
                 trade_direction,
+                RoundDirection::Ceiling,
                 &token_swap.fees,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
@@ -4142,6 +4151,7 @@ mod tests {
                     pool_mint.supply.try_into().unwrap(),
                     swap_token_a.amount.try_into().unwrap(),
                     swap_token_b.amount.try_into().unwrap(),
+                    RoundDirection::Floor,
                 )
                 .unwrap();
             assert_eq!(
@@ -4220,6 +4230,7 @@ mod tests {
                     pool_mint.supply.try_into().unwrap(),
                     swap_token_a.amount.try_into().unwrap(),
                     swap_token_b.amount.try_into().unwrap(),
+                    RoundDirection::Floor,
                 )
                 .unwrap();
             let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
@@ -5322,6 +5333,7 @@ mod tests {
                     swap_token_b.amount.try_into().unwrap(),
                     pool_mint.supply.try_into().unwrap(),
                     TradeDirection::AtoB,
+                    RoundDirection::Ceiling,
                     &accounts.fees,
                 )
                 .unwrap();
@@ -5494,6 +5506,7 @@ mod tests {
                 token_b_amount.try_into().unwrap(),
                 initial_supply.try_into().unwrap(),
                 TradeDirection::AtoB,
+                RoundDirection::Ceiling,
                 &fees,
             )
             .unwrap();
@@ -5570,6 +5583,7 @@ mod tests {
                 token_b_amount.try_into().unwrap(),
                 initial_supply.try_into().unwrap(),
                 TradeDirection::BtoA,
+                RoundDirection::Ceiling,
                 &fees,
             )
             .unwrap();

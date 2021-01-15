@@ -2,10 +2,10 @@
 
 use crate::{
     curve::calculator::{
-        map_zero_to_none, CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection,
-        TradingTokenResult,
+        map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
+        TradeDirection, TradingTokenResult,
     },
-    curve::math::{ceiling_division, U256},
+    curve::math::{CheckedCeilDiv, PreciseNumber, U256},
     error::SwapError,
 };
 use arrayref::{array_mut_ref, array_ref};
@@ -67,18 +67,36 @@ impl CurveCalculator for ConstantPriceCurve {
         pool_token_supply: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
+        round_direction: RoundDirection,
     ) -> Option<TradingTokenResult> {
         let token_b_price = self.token_b_price as u128;
-        let total_value = self.normalized_value(swap_token_a_amount, swap_token_b_amount)?;
+        let total_value = self
+            .normalized_value(swap_token_a_amount, swap_token_b_amount)?
+            .to_imprecise()?;
 
-        let (token_a_amount, _) =
-            ceiling_division(pool_tokens.checked_mul(total_value)?, pool_token_supply)?;
-        let (token_b_amount, _) = ceiling_division(
-            pool_tokens
-                .checked_mul(total_value)?
-                .checked_div(token_b_price)?,
-            pool_token_supply,
-        )?;
+        let (token_a_amount, token_b_amount) = match round_direction {
+            RoundDirection::Floor => {
+                let token_a_amount = pool_tokens
+                    .checked_mul(total_value)?
+                    .checked_div(pool_token_supply)?;
+                let token_b_amount = pool_tokens
+                    .checked_mul(total_value)?
+                    .checked_div(token_b_price)?
+                    .checked_div(pool_token_supply)?;
+                (token_a_amount, token_b_amount)
+            }
+            RoundDirection::Ceiling => {
+                let (token_a_amount, _) = pool_tokens
+                    .checked_mul(total_value)?
+                    .checked_ceil_div(pool_token_supply)?;
+                let (pool_value_as_token_b, _) = pool_tokens
+                    .checked_mul(total_value)?
+                    .checked_ceil_div(token_b_price)?;
+                let (token_b_amount, _) =
+                    pool_value_as_token_b.checked_ceil_div(pool_token_supply)?;
+                (token_a_amount, token_b_amount)
+            }
+        };
         Some(TradingTokenResult {
             token_a_amount,
             token_b_amount,
@@ -95,6 +113,7 @@ impl CurveCalculator for ConstantPriceCurve {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
+        round_direction: RoundDirection,
     ) -> Option<u128> {
         let token_b_price = U256::from(self.token_b_price);
         let given_value = match trade_direction {
@@ -105,12 +124,21 @@ impl CurveCalculator for ConstantPriceCurve {
             .checked_mul(token_b_price)?
             .checked_add(U256::from(swap_token_a_amount))?;
         let pool_supply = U256::from(pool_supply);
-        Some(
-            pool_supply
-                .checked_mul(given_value)?
-                .checked_div(total_value)?
-                .as_u128(),
-        )
+        match round_direction {
+            RoundDirection::Floor => Some(
+                pool_supply
+                    .checked_mul(given_value)?
+                    .checked_div(total_value)?
+                    .as_u128(),
+            ),
+            RoundDirection::Ceiling => Some(
+                pool_supply
+                    .checked_mul(given_value)?
+                    .checked_ceil_div(total_value)?
+                    .0
+                    .as_u128(),
+            ),
+        }
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -141,20 +169,21 @@ impl CurveCalculator for ConstantPriceCurve {
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<u128> {
+    ) -> Option<PreciseNumber> {
         let swap_token_b_value = swap_token_b_amount.checked_mul(self.token_b_price as u128)?;
         // special logic in case we're close to the limits, avoid overflowing u128
-        if swap_token_b_value.saturating_sub(std::u64::MAX.into())
+        let value = if swap_token_b_value.saturating_sub(std::u64::MAX.into())
             > (std::u128::MAX.saturating_sub(std::u64::MAX.into()))
         {
             swap_token_b_value
                 .checked_div(2)?
-                .checked_add(swap_token_a_amount.checked_div(2)?)
+                .checked_add(swap_token_a_amount.checked_div(2)?)?
         } else {
             swap_token_a_amount
                 .checked_add(swap_token_b_value)?
-                .checked_div(2)
-        }
+                .checked_div(2)?
+        };
+        PreciseNumber::new(value)
     }
 }
 
@@ -191,7 +220,7 @@ mod tests {
     use super::*;
     use crate::curve::calculator::{
         test::{
-            check_curve_value_from_swap, check_pool_token_conversion,
+            check_curve_value_from_swap, check_pool_token_conversion, total_and_intermediate,
             CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         INITIAL_SWAP_POOL_AMOUNT,
@@ -447,13 +476,14 @@ mod tests {
             let value = curve.normalized_value(swap_token_a_amount, swap_token_b_amount).unwrap();
 
             // Make sure we trade at least one of each token
-            prop_assume!(pool_token_amount * value >= 2 * token_b_price * pool_token_supply);
+            prop_assume!(pool_token_amount * value.to_imprecise().unwrap() >= 2 * token_b_price * pool_token_supply);
             let deposit_result = curve
                 .pool_tokens_to_trading_tokens(
                     pool_token_amount,
                     pool_token_supply,
                     swap_token_a_amount,
                     swap_token_b_amount,
+                    RoundDirection::Ceiling,
                 )
                 .unwrap();
             let new_swap_token_a_amount = swap_token_a_amount + deposit_result.token_a_amount;
@@ -467,15 +497,60 @@ mod tests {
             // which reduces to:
             // new_value * pool_token_supply >= value * new_pool_token_supply
 
-            // These numbers can be just slightly above u64 after the deposit, which
-            // means that their multiplication can be just above the range of u128.
-            // For ease of testing, we bump these up to U256.
-            let pool_token_supply = U256::from(pool_token_supply);
-            let new_pool_token_supply = U256::from(new_pool_token_supply);
-            let value = U256::from(value);
-            let new_value = U256::from(new_value);
+            let pool_token_supply = PreciseNumber::new(pool_token_supply).unwrap();
+            let new_pool_token_supply = PreciseNumber::new(new_pool_token_supply).unwrap();
+            //let value = U256::from(value);
+            //let new_value = U256::from(new_value);
 
-            assert!(new_value * pool_token_supply >= value * new_pool_token_supply);
+            assert!(new_value.checked_mul(&pool_token_supply).unwrap().greater_than_or_equal(&value.checked_mul(&new_pool_token_supply).unwrap()));
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn curve_value_does_not_decrease_from_withdraw(
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            swap_token_a_amount in 1..u64::MAX,
+            swap_token_b_amount in 1..u32::MAX, // kept small to avoid proptest rejections
+            token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
+        ) {
+            let curve = ConstantPriceCurve { token_b_price: token_b_price as u64 };
+            let pool_token_amount = pool_token_amount as u128;
+            let pool_token_supply = pool_token_supply as u128;
+            let swap_token_a_amount = swap_token_a_amount as u128;
+            let swap_token_b_amount = swap_token_b_amount as u128;
+            let token_b_price = token_b_price as u128;
+
+            let value = curve.normalized_value(swap_token_a_amount, swap_token_b_amount).unwrap();
+
+            // Make sure we trade at least one of each token
+            prop_assume!(pool_token_amount * value.to_imprecise().unwrap() >= 2 * token_b_price * pool_token_supply);
+            prop_assume!(pool_token_amount <= pool_token_supply);
+            let withdraw_result = curve
+                .pool_tokens_to_trading_tokens(
+                    pool_token_amount,
+                    pool_token_supply,
+                    swap_token_a_amount,
+                    swap_token_b_amount,
+                    RoundDirection::Floor,
+                )
+                .unwrap();
+            prop_assume!(withdraw_result.token_a_amount <= swap_token_a_amount);
+            prop_assume!(withdraw_result.token_b_amount <= swap_token_b_amount);
+            let new_swap_token_a_amount = swap_token_a_amount - withdraw_result.token_a_amount;
+            let new_swap_token_b_amount = swap_token_b_amount - withdraw_result.token_b_amount;
+            let new_pool_token_supply = pool_token_supply - pool_token_amount;
+
+            let new_value = curve.normalized_value(new_swap_token_a_amount, new_swap_token_b_amount).unwrap();
+
+            // the following inequality must hold:
+            // new_value / new_pool_token_supply >= value / pool_token_supply
+            // which reduces to:
+            // new_value * pool_token_supply >= value * new_pool_token_supply
+
+            let pool_token_supply = PreciseNumber::new(pool_token_supply).unwrap();
+            let new_pool_token_supply = PreciseNumber::new(new_pool_token_supply).unwrap();
+            assert!(new_value.checked_mul(&pool_token_supply).unwrap().greater_than_or_equal(&value.checked_mul(&new_pool_token_supply).unwrap()));
         }
     }
 }

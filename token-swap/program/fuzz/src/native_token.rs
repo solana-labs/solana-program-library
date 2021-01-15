@@ -51,5 +51,5 @@ pub fn transfer(
     from.amount -= amount;
     to.amount += amount;
     TokenAccount::pack(from, &mut from_account.data[..]).unwrap();
-    TokenAccount::pack(to, &mut from_account.data[..]).unwrap();
+    TokenAccount::pack(to, &mut to_account.data[..]).unwrap();
 }

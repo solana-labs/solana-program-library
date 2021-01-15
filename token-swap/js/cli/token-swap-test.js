@@ -65,7 +65,7 @@ let currentFeeAmount = 0;
 // need to get slightly tweaked in the two cases.
 const SWAP_AMOUNT_IN = 100000;
 const SWAP_AMOUNT_OUT = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 90661 : 90674;
-const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22272 : 22276;
+const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22273 : 22276;
 const HOST_SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS
   ? Math.floor((SWAP_FEE * HOST_FEE_NUMERATOR) / HOST_FEE_DENOMINATOR)
   : 0;
@@ -362,10 +362,10 @@ export async function withdrawAllTokenTypes(): Promise<void> {
     );
   }
   const poolTokenAmount = POOL_TOKEN_AMOUNT - feeAmount;
-  const tokenA = Math.ceil(
+  const tokenA = Math.floor(
     (swapTokenA.amount.toNumber() * poolTokenAmount) / supply,
   );
-  const tokenB = Math.ceil(
+  const tokenB = Math.floor(
     (swapTokenB.amount.toNumber() * poolTokenAmount) / supply,
   );
 

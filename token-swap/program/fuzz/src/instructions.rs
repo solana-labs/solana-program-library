@@ -7,8 +7,10 @@ use spl_token_swap_fuzz::{
 use spl_token_swap::{
     curve::{
         base::{CurveType, SwapCurve},
+        calculator::CurveCalculator,
         constant_product::ConstantProductCurve,
         fees::Fees,
+        math::PreciseNumber,
     },
     error::SwapError,
     instruction::{
@@ -102,9 +104,10 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
         host_fee_numerator,
         host_fee_denominator,
     };
+    let curve = ConstantProductCurve {};
     let swap_curve = SwapCurve {
         curve_type: CurveType::ConstantProduct,
-        calculator: Box::new(ConstantProductCurve {}),
+        calculator: Box::new(curve.clone()),
     };
     let mut token_swap = NativeTokenSwap::new(
         fees,
@@ -203,20 +206,29 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
         );
     }
 
-    let pool_tokens = [&token_swap.pool_token_account, &token_swap.pool_fee_account]
-        .iter()
-        .map(|&x| get_token_balance(x))
-        .sum::<u64>() as u128;
+    // Omit fees intentionally, because fees in the form of pool tokens can
+    // dilute the value of the pool.  For example, if we perform a small swap
+    // whose fee is worth less than 1 pool token, we may round up to 1 pool
+    // token and mint it as the fee.  Depending on the size of the pool, this
+    // fee can actually reduce the value of pool tokens.
     let pool_token_amount =
         pool_tokens + pool_accounts.values().map(get_token_balance).sum::<u64>() as u128;
     let swap_token_a_amount = get_token_balance(&token_swap.token_a_account) as u128;
     let swap_token_b_amount = get_token_balance(&token_swap.token_b_account) as u128;
 
-    let lost_a_value = initial_swap_token_a_amount * pool_token_amount
-        > swap_token_a_amount * initial_pool_token_amount;
-    let lost_b_value = initial_swap_token_b_amount * pool_token_amount
-        > swap_token_b_amount * initial_pool_token_amount;
-    assert!(!(lost_a_value && lost_b_value));
+    let initial_pool_value = curve
+        .normalized_value(initial_swap_token_a_amount, initial_swap_token_b_amount)
+        .unwrap();
+    let pool_value = curve
+        .normalized_value(swap_token_a_amount, swap_token_b_amount)
+        .unwrap();
+
+    let pool_token_amount = PreciseNumber::new(pool_token_amount).unwrap();
+    let initial_pool_token_amount = PreciseNumber::new(initial_pool_token_amount).unwrap();
+    assert!(initial_pool_value
+        .checked_div(&initial_pool_token_amount)
+        .unwrap()
+        .less_than_or_equal(&pool_value.checked_div(&pool_token_amount).unwrap()));
 
     // check total token a and b amounts
     let after_total_token_a = token_a_accounts
