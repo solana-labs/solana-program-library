@@ -1,43 +1,18 @@
 //! State transition types
 
-use solana_program::pubkey::Pubkey;
+use solana_program::{epoch_schedule::Slot, pubkey::Pubkey};
 use solana_program::program_pack::{IsInitialized, Pack, Sealed};
 use solana_program::program_error::ProgramError;
 
-
-/// Possible program states
-#[repr(C)]
-#[derive(Debug, PartialEq)]
-pub enum State {
-    /// starting state
-    Uninitialized,
-    /// margin pool
-    MarginPool(MarginPool),
-    /// Position
-    Position(Position),
-}
-
-impl Pack for State {
-    const LEN: usize = 291;
-    fn unpack_from_slice(_input: &[u8]) -> Result<Self, ProgramError> {
-        unimplemented!();
-    }
-    fn pack_into_slice(&self, _output: &mut [u8]) {
-        unimplemented!();
-    }
-}
-
-impl Sealed for State {}
-impl IsInitialized for State {
-    fn is_initialized(&self) -> bool {
-        unimplemented!();
-    }
-}
+const UNINITIALIZED_VERSION: u8 = 0;
 
 /// Margin Pool
 #[repr(C)]
 #[derive(Debug, Default, PartialEq)]
 pub struct MarginPool {
+    /// version of the margin pool
+    pub version: u8,
+
     /// Nonce used in program address.
     /// The program address is created deterministically with the nonce,
     /// swap program id, and swap account pubkey.  This program address has
@@ -78,12 +53,49 @@ pub struct MarginPool {
     // pub debt_mint_b: Pubkey,
 }
 
+impl Pack for MarginPool {
+    const LEN: usize = 291;
+    fn unpack_from_slice(_input: &[u8]) -> Result<Self, ProgramError> {
+        unimplemented!();
+    }
+    fn pack_into_slice(&self, _output: &mut [u8]) {
+        unimplemented!();
+    }
+}
+
+impl Sealed for MarginPool {}
+impl IsInitialized for MarginPool {
+    fn is_initialized(&self) -> bool {
+        self.version != UNINITIALIZED_VERSION
+    }
+}
+
 /// Position state
 #[repr(C)]
 #[derive(Debug, Default, PartialEq)]
 pub struct Position {
+    /// version of the margin pool
+    pub version: u8,
+
     pub slot: Slot,
     pub collateral_amount: u64,
     pub size: u64,
     pub mint: Pubkey,
+}
+
+impl Pack for Position {
+    const LEN: usize = 291;
+    fn unpack_from_slice(_input: &[u8]) -> Result<Self, ProgramError> {
+        unimplemented!();
+    }
+    fn pack_into_slice(&self, _output: &mut [u8]) {
+        unimplemented!();
+    }
+}
+
+impl Sealed for Position {}
+impl IsInitialized for Position {
+    fn is_initialized(&self) -> bool {
+        self.version != UNINITIALIZED_VERSION
+    }
 }

@@ -3650,7 +3650,7 @@ dependencies = [
  "num-traits",
  "solana-program",
  "solana-sdk",
- "spl-token 3.0.0",
+ "spl-token 3.0.1",
  "spl-token-swap",
  "thiserror",
 ]

@@ -1,22 +1,20 @@
 //! Program state processor
 
-use crate::{
-    error::MarginPoolError, instruction::MarginPoolInstruction, state::MarginPool, state::State,
-};
-use spl_token_swap::state::SwapInfo;
+use crate::{error::MarginPoolError, instruction::MarginPoolInstruction, state::MarginPool, state::{Position, State}, swap::spl_token_swap_withdraw_single};
 use num_traits::FromPrimitive;
-use std::collections::HashSet;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
-    info,
+    msg,
     program::invoke_signed,
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
 };
+use spl_token_swap::state::SwapInfo;
+use std::collections::HashSet;
 
 /// Program state handler.
 pub struct Processor {}
@@ -27,9 +25,7 @@ impl Processor {
     }
 
     /// Unpacks a spl_token `Account`.
-    pub fn unpack_token_swap(
-        data: &[u8],
-    ) -> Result<SwapInfo, MarginPoolError> {
+    pub fn unpack_token_swap(data: &[u8]) -> Result<SwapInfo, MarginPoolError> {
         SwapInfo::unpack(data).map_err(|_| MarginPoolError::ExpectedAccount)
     }
 
@@ -121,7 +117,6 @@ impl Processor {
         invoke_signed(&ix, &[mint, destination, authority, token_program], signers)
     }
 
-
     /// Issue a spl_token `Transfer` instruction.
     pub fn token_transfer<'a>(
         me: &Pubkey,
@@ -169,7 +164,6 @@ impl Processor {
         unimplemented!();
     }
 
-
     /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize(
         program_id: &Pubkey,
@@ -205,7 +199,15 @@ impl Processor {
         if COption::Some(*authority_info.key) != pool_mint.mint_authority {
             return Err(MarginPoolError::InvalidOwner.into());
         }
-        let mints: HashSet<Pubkey> = [token_a.mint, token_b.mint, token_lp.mint, *pool_mint_info.key].iter().cloned().collect();
+        let mints: HashSet<Pubkey> = [
+            token_a.mint,
+            token_b.mint,
+            token_lp.mint,
+            *pool_mint_info.key,
+        ]
+        .iter()
+        .cloned()
+        .collect();
         if mints.len() != 4 {
             return Err(MarginPoolError::RepeatedMint.into());
         }
@@ -239,18 +241,19 @@ impl Processor {
         }
 
         let obj = State::MarginPool(MarginPool {
+            version: 1,
             nonce,
             token_program_id: *token_program_info.key,
+            token_swap_program_id: *token_swap_program_info.key,
+            token_lp: *token_lp_info.key,
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
-            token_lp: *token_lp_info.key,
             pool_mint: *pool_mint_info.key,
             token_a_mint: token_a.mint,
             token_b_mint: token_b.mint,
             token_lp_mint: token_lp.mint,
-            token_swap_program_id: *token_swap_program_info.key,
         });
-        State::pack(obj, &mut margin_pool_info.data.borrow_mut())?;
+        MarginPool::pack(obj, &mut margin_pool_info.data.borrow_mut())?;
         Ok(())
     }
     fn token_swap_price(swap_info: &SwapInfo, source: &Pubkey) {
@@ -276,14 +279,21 @@ impl Processor {
         let token_swap_program_info = next_account_info(account_info_iter)?;
 
         let margin_pool = MarginPool::unpack(&margin_pool_info.data.borrow())?;
-        let mut position = Self::unpack_position(&margin_pool_info.data.borrow())?;
-        Self::check_authority_id(authority_info.key, program_id, margin_pool_info.key, margin_pool.nonce)?;
+        let mut position = Position::unpack(&position_info.data.borrow())?;
+        Self::check_authority_id(
+            authority_info.key,
+            program_id,
+            margin_pool_info.key,
+            margin_pool.nonce,
+        )?;
         let checks = [
             margin_pool.token_swap != *token_swap_info.key,
             margin_pool.token_program_id != *token_program_info.key,
             margin_pool.token_swap_program_id != *token_swap_program_info.key,
-            margin_pool.token_a != *token_source_info.key || margin_pool.token_b != *token_source_info.key,
-            margin_pool.token_a != *token_dest_info.key || margin_pool.token_b != *token_dest_info.key,
+            margin_pool.token_a != *token_source_info.key
+                || margin_pool.token_b != *token_source_info.key,
+            margin_pool.token_a != *token_dest_info.key
+                || margin_pool.token_b != *token_dest_info.key,
             *token_source_info.key != *token_dest_info.key,
             margin_pool.token_lp != *token_lp_info.key,
             position.mint == Pubkey::default() || position.mint == *position_mint_info.key,
@@ -312,6 +322,10 @@ impl Processor {
         } else {
             (min_amount_out.checked_div(p1)?, min_amount_out)
         };
+
+        spl_token_swap_withdraw_single(
+            token_swap_program_info.key,
+        )
 
         Self::token_swap_withdraw(
             margin_pool_info.key,
@@ -342,10 +356,15 @@ impl Processor {
         let swap_info = Self::unpack_token_swap(token_swap_info.data.borrow())?;
         let p2 = Self::token_swap_price(&swap_info, source_account.mint);
 
-        let needed: u64 = min_amount_out.to_u256().checked_mul(p1.to_u256())?.checked_div(p2.to_u256())?.to_u64()?;
+        
+        let needed: u64 = 
+            u128::try_from(min_amount_out).unwrap()
+            .checked_mul(u128::try_from(p1).unwrap())?
+            .checked_div(u128::try_from(p2).unwrap())?
+            .to_u64()?;
 
         if amount_in < needed {
-            info!("Insuficient funds");
+            msg!("Insuficient funds");
             return Err(MarginPoolError::InsufficeintFunds.into());
         }
         position.charge_yield();
@@ -362,7 +381,7 @@ impl Processor {
             min_amount_out,
         )?;
 
-        State::pack(position, &mut position_info.data.borrow_mut())?;
+        Position::pack(position, &mut position_info.data.borrow_mut())?;
         Ok(())
     }
 
@@ -594,16 +613,20 @@ impl Processor {
         let instruction = MarginPoolInstruction::unpack(input)?;
         match instruction {
             MarginPoolInstruction::Initialize { nonce } => {
-                info!("Instruction: Init");
+                msg!("Instruction: Init");
                 Self::process_initialize(program_id, nonce, accounts)
             }
-            MarginPoolInstruction::FundPosition { amount_in, minimum_amount_out } => {
-                info!("Instruction: Fund Position");
+            MarginPoolInstruction::FundPosition {
+                amount_in,
+                minimum_amount_out,
+            } => {
+                msg!("Instruction: Fund Position");
                 Self::process_fund_position(program_id, amount_in, minimum_amount_out, accounts)
             }
-            MarginPoolInstruction::ClosePosition { .. } => unimplemented!(),
+            MarginPoolInstruction::ReducePosition { .. } => unimplemented!(),
             MarginPoolInstruction::Deposit { .. } => unimplemented!(),
             MarginPoolInstruction::Withdraw { .. } => unimplemented!(),
+            MarginPoolInstruction::Liquidate => unimplemented!(),
         }
     }
 }
@@ -614,63 +637,62 @@ impl PrintProgramError for MarginPoolError {
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
         match self {
-            MarginPoolError::AlreadyInUse => info!("Error: Swap account already in use"),
+            MarginPoolError::AlreadyInUse => msg!("Error: Swap account already in use"),
             MarginPoolError::InvalidProgramAddress => {
-                info!("Error: Invalid program address generated from nonce and key")
+                msg!("Error: Invalid program address generated from nonce and key")
             }
             MarginPoolError::InvalidOwner => {
-                info!("Error: The input account owner is not the program address")
+                msg!("Error: The input account owner is not the program address")
             }
             MarginPoolError::InvalidOutputOwner => {
-                info!("Error: Output pool account owner cannot be the program address")
+                msg!("Error: Output pool account owner cannot be the program address")
             }
             MarginPoolError::ExpectedMint => {
-                info!("Error: Deserialized account is not an SPL Token mint")
+                msg!("Error: Deserialized account is not an SPL Token mint")
             }
             MarginPoolError::ExpectedAccount => {
-                info!("Error: Deserialized account is not an SPL Token account")
+                msg!("Error: Deserialized account is not an SPL Token account")
             }
-            MarginPoolError::EmptySupply => info!("Error: Input token account empty"),
-            MarginPoolError::InvalidSupply => info!("Error: Pool token mint has a non-zero supply"),
+            MarginPoolError::EmptySupply => msg!("Error: Input token account empty"),
+            MarginPoolError::InvalidSupply => msg!("Error: Pool token mint has a non-zero supply"),
             MarginPoolError::RepeatedMint => {
-                info!("Error: Swap input token accounts have the same mint")
+                msg!("Error: Swap input token accounts have the same mint")
             }
-            MarginPoolError::InvalidDelegate => info!("Error: Token account has a delegate"),
-            MarginPoolError::InvalidInput => info!("Error: InvalidInput"),
+            MarginPoolError::InvalidDelegate => msg!("Error: Token account has a delegate"),
+            MarginPoolError::InvalidInput => msg!("Error: InvalidInput"),
             MarginPoolError::IncorrectSwapAccount => {
-                info!("Error: Address of the provided swap token account is incorrect")
+                msg!("Error: Address of the provided swap token account is incorrect")
             }
             MarginPoolError::IncorrectPoolMint => {
-                info!("Error: Address of the provided pool token mint is incorrect")
+                msg!("Error: Address of the provided pool token mint is incorrect")
             }
-            MarginPoolError::InvalidOutput => info!("Error: InvalidOutput"),
-            MarginPoolError::CalculationFailure => info!("Error: CalculationFailure"),
-            MarginPoolError::InvalidInstruction => info!("Error: InvalidInstruction"),
+            MarginPoolError::InvalidOutput => msg!("Error: InvalidOutput"),
+            MarginPoolError::CalculationFailure => msg!("Error: CalculationFailure"),
+            MarginPoolError::InvalidInstruction => msg!("Error: InvalidInstruction"),
             MarginPoolError::ExceededSlippage => {
-                info!("Error: Swap instruction exceeds desired slippage limit")
+                msg!("Error: Swap instruction exceeds desired slippage limit")
             }
             MarginPoolError::InvalidCloseAuthority => {
-                info!("Error: Token account has a close authority")
+                msg!("Error: Token account has a close authority")
             }
             MarginPoolError::InvalidFreezeAuthority => {
-                info!("Error: Pool token mint has a freeze authority")
+                msg!("Error: Pool token mint has a freeze authority")
             }
-            MarginPoolError::IncorrectFeeAccount => {
-                info!("Error: Pool fee token account incorrect")
-            }
+            MarginPoolError::IncorrectFeeAccount => msg!("Error: Pool fee token account incorrect"),
             MarginPoolError::ZeroTradingTokens => {
-                info!("Error: Given pool token amount results in zero trading tokens")
+                msg!("Error: Given pool token amount results in zero trading tokens")
             }
-            MarginPoolError::FeeCalculationFailure => info!(
+            MarginPoolError::FeeCalculationFailure => msg!(
                 "Error: The fee calculation failed due to overflow, underflow, or unexpected 0"
             ),
-            MarginPoolError::ConversionFailure => info!("Error: Conversion to or from u64 failed."),
+            MarginPoolError::ConversionFailure => msg!("Error: Conversion to or from u64 failed."),
             MarginPoolError::InvalidFee => {
-                info!("Error: The provided fee does not match the program owner's constraints")
+                msg!("Error: The provided fee does not match the program owner's constraints")
             }
             MarginPoolError::InvalidMint => {
-                info!("Error: Swap input token accounts have the same mint")
+                msg!("Error: Swap input token accounts have the same mint")
             }
+            MarginPoolError::InsufficeintFunds => msg!("Error: Margin Pool insufficient funds"),
         }
     }
 }
