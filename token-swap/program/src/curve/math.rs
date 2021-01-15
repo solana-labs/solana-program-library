@@ -5,6 +5,7 @@
 #![allow(clippy::unknown_clippy_lints)]
 #![allow(clippy::manual_range_contains)]
 
+use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedRem, One, Zero};
 use uint::construct_uint;
 
 construct_uint! {
@@ -58,25 +59,28 @@ impl U256 {
 ///
 /// This calculation fails if the divisor is larger than the dividend, to avoid
 /// having a result like: 1 / 1000 = 1.
-pub fn ceiling_division(dividend: u128, mut divisor: u128) -> Option<(u128, u128)> {
-    let mut quotient = dividend.checked_div(divisor)?;
+pub fn ceiling_division<T>(dividend: T, mut divisor: T) -> Option<(T, T)>
+where
+    T: CheckedDiv + CheckedRem + CheckedMul + CheckedAdd + One + Zero + Eq + Ord,
+{
+    let mut quotient = dividend.checked_div(&divisor)?;
     // Avoid dividing a small number by a big one and returning 1, and instead
     // fail.
-    if quotient == 0 {
+    if quotient == T::zero() {
         return None;
     }
 
     // Ceiling the destination amount if there's any remainder, which will
     // almost always be the case.
-    let remainder = dividend.checked_rem(divisor)?;
-    if remainder > 0 {
-        quotient = quotient.checked_add(1)?;
+    let remainder = dividend.checked_rem(&divisor)?;
+    if remainder > T::zero() {
+        quotient = quotient.checked_add(&T::one())?;
         // calculate the minimum amount needed to get the dividend amount to
         // avoid truncating too much
-        divisor = dividend.checked_div(quotient)?;
-        let remainder = dividend.checked_rem(quotient)?;
-        if remainder > 0 {
-            divisor = divisor.checked_add(1)?;
+        divisor = dividend.checked_div(&quotient)?;
+        let remainder = dividend.checked_rem(&quotient)?;
+        if remainder > T::zero() {
+            divisor = divisor.checked_add(&T::one())?;
         }
     }
     Some((quotient, divisor))

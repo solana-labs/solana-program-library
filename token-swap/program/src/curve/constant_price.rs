@@ -88,12 +88,10 @@ impl CurveCalculator for ConstantPriceCurve {
             RoundDirection::Ceiling => {
                 let (token_a_amount, _) =
                     ceiling_division(pool_tokens.checked_mul(total_value)?, pool_token_supply)?;
-                let (token_b_amount, _) = ceiling_division(
-                    pool_tokens
-                        .checked_mul(total_value)?
-                        .checked_div(token_b_price)?,
-                    pool_token_supply,
-                )?;
+                let (pool_value_as_token_b, _) =
+                    ceiling_division(pool_tokens.checked_mul(total_value)?, token_b_price)?;
+                let (token_b_amount, _) =
+                    ceiling_division(pool_value_as_token_b, pool_token_supply)?;
                 (token_a_amount, token_b_amount)
             }
         };
