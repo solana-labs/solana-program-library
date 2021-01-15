@@ -68,6 +68,11 @@ pub fn pool_tokens_to_trading_tokens(
             let token_a_remainder = pool_tokens
                 .checked_mul(swap_token_a_amount)?
                 .checked_rem(pool_token_supply)?;
+            // Also check for 0 token A and B amount to avoid taking too much
+            // for tiny amounts of pool tokens.  For example, if someone asks
+            // for 1 pool token, which is worth 0.01 token A, we avoid the
+            // ceiling of taking 1 token A and instead return 0, for it to be
+            // rejected later in processing.
             if token_a_remainder > 0 && token_a_amount > 0 {
                 token_a_amount += 1;
             }
