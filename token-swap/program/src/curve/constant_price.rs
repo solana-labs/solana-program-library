@@ -5,7 +5,7 @@ use crate::{
         map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
         TradeDirection, TradingTokenResult,
     },
-    curve::math::{ceiling_division, PreciseNumber, U256},
+    curve::math::{CheckedCeilDiv, PreciseNumber, U256},
     error::SwapError,
 };
 use arrayref::{array_mut_ref, array_ref};
@@ -87,11 +87,11 @@ impl CurveCalculator for ConstantPriceCurve {
             }
             RoundDirection::Ceiling => {
                 let (token_a_amount, _) =
-                    ceiling_division(pool_tokens.checked_mul(total_value)?, pool_token_supply)?;
+                    pool_tokens.checked_mul(total_value)?.checked_ceil_div(pool_token_supply)?;
                 let (pool_value_as_token_b, _) =
-                    ceiling_division(pool_tokens.checked_mul(total_value)?, token_b_price)?;
+                    pool_tokens.checked_mul(total_value)?.checked_ceil_div(token_b_price)?;
                 let (token_b_amount, _) =
-                    ceiling_division(pool_value_as_token_b, pool_token_supply)?;
+                    pool_value_as_token_b.checked_ceil_div(pool_token_supply)?;
                 (token_a_amount, token_b_amount)
             }
         };
@@ -130,11 +130,8 @@ impl CurveCalculator for ConstantPriceCurve {
                     .as_u128(),
             ),
             RoundDirection::Ceiling => Some(
-                pool_supply
-                    .checked_mul(given_value)?
-                    .checked_add(U256::from(1))?
-                    .checked_div(total_value)?
-                    .as_u128(),
+                pool_supply.checked_mul(given_value)?.checked_ceil_div(
+                    total_value)?.0.as_u128(),
             ),
         }
     }

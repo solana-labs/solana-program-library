@@ -10,7 +10,7 @@ use crate::{
         map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
         TradeDirection, TradingTokenResult,
     },
-    curve::math::{ceiling_division, PreciseNumber},
+    curve::math::{CheckedCeilDiv, PreciseNumber},
     error::SwapError,
 };
 
@@ -32,7 +32,7 @@ pub fn swap(
 
     let new_swap_source_amount = swap_source_amount.checked_add(source_amount)?;
     let (new_swap_destination_amount, new_swap_source_amount) =
-        ceiling_division(invariant, new_swap_source_amount)?;
+        invariant.checked_ceil_div(new_swap_source_amount)?;
 
     let source_amount_swapped = new_swap_source_amount.checked_sub(swap_source_amount)?;
     let destination_amount_swapped =
