@@ -1,5 +1,5 @@
 use crate::{
-    error::LendingError,
+    error::MarginPoolError,
 };
 use solana_program::{
     account_info::{AccountInfo},
@@ -32,7 +32,7 @@ pub fn spl_token_swap_swap<'a>(
             token_program.key,
             pool.key,
             authority.key,
-            user_transfer.key,
+            // user_transfer.key,
             source.key,
             swap_source.key,
             swap_destination.key,
@@ -49,10 +49,11 @@ pub fn spl_token_swap_swap<'a>(
         &[source, token_program, swap_program],
         &[],
     );
-    result.map_err(|_| LendingError::TokenSwapFailed.into())
+    result.map_err(|_| MarginPoolError::SwapFaild.into())
 }
 
-[inline(always)]
+/// Issue a withdraw_single_token_type_exact_amount_out `Swap` instruction.
+#[inline(always)]
 pub fn spl_token_swap_withdraw_single<'a>(
     swap_program: AccountInfo<'a>,
     token_program: AccountInfo<'a>,
@@ -77,23 +78,22 @@ pub fn spl_token_swap_withdraw_single<'a>(
             pool.key,
             authority.key,
             pool_mint.key,
+            pool_fee.key,
 
             // user_transfer.key,
             source.key,
             swap_source.key,
             swap_destination.key,
             destination.key,
-            
-            pool_fee.key,
-            Some(host_fee.key),
-            spl_token_swap::instruction::Swap {
-                amount_in,
-                minimum_amount_out,
+    
+            spl_token_swap::instruction::WithdrawSingleTokenTypeExactAmountOut {
+                destination_token_amount: destination_token_amount,
+                maximum_pool_token_amount: maximum_pool_token_amount,
             }
         )?,
         // TODO: check accounts ...
         &[source, token_program, swap_program],
         &[],
     );
-    result.map_err(|_| LendingError::TokenSwapFailed.into())
+    result.map_err(|_| MarginPoolError::SwapFaild.into())
 }

@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::{error::MarginPoolError, instruction::MarginPoolInstruction, state::MarginPool, state::{Position, State}, swap::spl_token_swap_withdraw_single};
+use crate::{error::MarginPoolError, instruction::MarginPoolInstruction, state::MarginPool, state::{Position}, swap::spl_token_swap_withdraw_single};
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -693,6 +693,7 @@ impl PrintProgramError for MarginPoolError {
                 msg!("Error: Swap input token accounts have the same mint")
             }
             MarginPoolError::InsufficeintFunds => msg!("Error: Margin Pool insufficient funds"),
+            MarginPoolError::SwapFaild => msg!("Error: Margin Pool swap faild"),
         }
     }
 }
