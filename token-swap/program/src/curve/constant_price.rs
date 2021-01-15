@@ -86,10 +86,12 @@ impl CurveCalculator for ConstantPriceCurve {
                 (token_a_amount, token_b_amount)
             }
             RoundDirection::Ceiling => {
-                let (token_a_amount, _) =
-                    pool_tokens.checked_mul(total_value)?.checked_ceil_div(pool_token_supply)?;
-                let (pool_value_as_token_b, _) =
-                    pool_tokens.checked_mul(total_value)?.checked_ceil_div(token_b_price)?;
+                let (token_a_amount, _) = pool_tokens
+                    .checked_mul(total_value)?
+                    .checked_ceil_div(pool_token_supply)?;
+                let (pool_value_as_token_b, _) = pool_tokens
+                    .checked_mul(total_value)?
+                    .checked_ceil_div(token_b_price)?;
                 let (token_b_amount, _) =
                     pool_value_as_token_b.checked_ceil_div(pool_token_supply)?;
                 (token_a_amount, token_b_amount)
@@ -130,8 +132,11 @@ impl CurveCalculator for ConstantPriceCurve {
                     .as_u128(),
             ),
             RoundDirection::Ceiling => Some(
-                pool_supply.checked_mul(given_value)?.checked_ceil_div(
-                    total_value)?.0.as_u128(),
+                pool_supply
+                    .checked_mul(given_value)?
+                    .checked_ceil_div(total_value)?
+                    .0
+                    .as_u128(),
             ),
         }
     }
