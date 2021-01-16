@@ -1,4 +1,12 @@
-//! Math for preserving precision
+//! Math for preserving precision of token amounts which are limited
+//! by the SPL Token program to be at most u64::MAX.
+//!
+//! Decimals are internally scaled by a WAD (10^18) to preserve
+//! precision up to 18 decimal places. Decimals are sized to support
+//! both serialization and precise math for the full range of
+//! unsigned 64-bit integers. The underlying representation is a
+//! u192 rather than u256 to reduce compute cost while losing
+//! support for arithmetic operations at the high end of u64 range.
 
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::ptr_offset_with_cast)]
@@ -16,7 +24,7 @@ construct_uint! {
     pub struct U192(3);
 }
 
-/// Large decimal values (< 18.447 * u64::MAX) precise to 18 digits
+/// Large decimal values, precise to 18 digits
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Decimal(pub U192);
 
@@ -61,7 +69,8 @@ impl Decimal {
         let rounded_val = Self::half_wad()
             .checked_add(self.0)
             .ok_or(LendingError::MathOverflow)?
-            / Self::wad();
+            .checked_div(Self::wad())
+            .ok_or(LendingError::MathOverflow)?;
         Ok(u64::try_from(rounded_val).map_err(|_| LendingError::MathOverflow)?)
     }
 }
@@ -157,11 +166,18 @@ impl TryMul<u64> for Decimal {
 
 impl TryMul<Rate> for Decimal {
     fn try_mul(self, rhs: Rate) -> Result<Self, ProgramError> {
+        self.try_mul(Self::from(rhs))
+    }
+}
+
+impl TryMul<Decimal> for Decimal {
+    fn try_mul(self, rhs: Self) -> Result<Self, ProgramError> {
         Ok(Self(
             self.0
-                .checked_mul(U192::from(rhs.to_scaled_val()))
+                .checked_mul(rhs.0)
                 .ok_or(LendingError::MathOverflow)?
-                / Self::wad(),
+                .checked_div(Self::wad())
+                .ok_or(LendingError::MathOverflow)?,
         ))
     }
 }
