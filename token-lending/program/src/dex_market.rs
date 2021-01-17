@@ -214,7 +214,7 @@ impl<'a> TradeSimulator<'a> {
         amount: u64,
     ) -> Result<(u64, u64), ProgramError> {
         let deposit_reserve_collateral_exchange_rate =
-            deposit_reserve.state.collateral_exchange_rate()?;
+            deposit_reserve.collateral_exchange_rate()?;
         match amount_type {
             BorrowAmountType::LiquidityBorrowAmount => {
                 let borrow_amount = amount;
@@ -224,7 +224,7 @@ impl<'a> TradeSimulator<'a> {
                 let loan_in_deposit_underlying = self.simulate_trade(
                     TradeAction::Buy,
                     Decimal::from(borrow_amount),
-                    &borrow_reserve.liquidity_mint,
+                    &borrow_reserve.liquidity.mint_pubkey,
                     false,
                 )?;
 
@@ -256,7 +256,7 @@ impl<'a> TradeSimulator<'a> {
                 let borrow_amount = self.simulate_trade(
                     TradeAction::Sell,
                     loan_in_deposit_underlying,
-                    &deposit_reserve.liquidity_mint,
+                    &deposit_reserve.liquidity.mint_pubkey,
                     false,
                 )?;
 

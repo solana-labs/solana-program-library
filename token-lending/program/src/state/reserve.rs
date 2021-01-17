@@ -7,7 +7,6 @@ use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     clock::Slot,
     entrypoint::ProgramResult,
-    msg,
     program_error::ProgramError,
     program_option::COption,
     program_pack::{IsInitialized, Pack, Sealed},
@@ -20,36 +19,49 @@ use std::convert::{TryFrom, TryInto};
 pub struct Reserve {
     /// Version of the struct
     pub version: u8,
+    /// Last slot when supply and rates updated
+    pub last_update_slot: Slot,
+    /// Cumulative borrow rate
+    pub cumulative_borrow_rate_wads: Decimal,
     /// Lending market address
     pub lending_market: Pubkey,
-    /// Reserve liquidity mint
-    pub liquidity_mint: Pubkey,
-    /// Reserve liquidity supply
-    pub liquidity_mint_decimals: u8,
-    /// Reserve liquidity supply
-    pub liquidity_supply: Pubkey,
-    /// Collateral tokens are minted when liquidity is deposited in the reserve.
-    /// Collateral tokens can be withdrawn back to the underlying liquidity token.
-    pub collateral_mint: Pubkey,
-    /// Reserve collateral supply
-    /// Collateral is stored rather than burned to keep an accurate total collateral supply
-    pub collateral_supply: Pubkey,
-    /// Collateral account receiving owner fees on liquidate and repay
-    pub collateral_fees_receiver: Pubkey,
     /// Dex market state account
     pub dex_market: COption<Pubkey>,
-
-    /// Reserve state
-    pub state: ReserveState,
-
+    /// Reserve liquidity info
+    pub liquidity: ReserveLiquidity,
+    /// Reserve collateral info
+    pub collateral: ReserveCollateral,
     /// Reserve configuration values
     pub config: ReserveConfig,
 }
 
 impl Reserve {
+    /// Initialize new reserve state
+    pub fn new(params: NewReserveParams) -> Self {
+        let NewReserveParams {
+            current_slot,
+            lending_market,
+            collateral: collateral_info,
+            liquidity: liquidity_info,
+            dex_market,
+            config,
+        } = params;
+
+        Self {
+            version: PROGRAM_VERSION,
+            last_update_slot: current_slot,
+            cumulative_borrow_rate_wads: Decimal::one(),
+            lending_market,
+            collateral: collateral_info,
+            liquidity: liquidity_info,
+            dex_market,
+            config,
+        }
+    }
+
     /// Calculate the current borrow rate
     pub fn current_borrow_rate(&self) -> Result<Rate, ProgramError> {
-        let utilization_rate = self.state.current_utilization_rate()?;
+        let utilization_rate = self.liquidity.utilization_rate()?;
         let optimal_utilization_rate = Rate::from_percent(self.config.optimal_utilization_rate);
         let low_utilization = utilization_rate < optimal_utilization_rate;
         if low_utilization || self.config.optimal_utilization_rate == 100 {
@@ -75,143 +87,50 @@ impl Reserve {
 
     /// Record deposited liquidity and return amount of collateral tokens to mint
     pub fn deposit_liquidity(&mut self, liquidity_amount: u64) -> Result<u64, ProgramError> {
-        let collateral_exchange_rate = self.state.collateral_exchange_rate()?;
+        let collateral_exchange_rate = self.collateral_exchange_rate()?;
         let collateral_amount =
             collateral_exchange_rate.liquidity_to_collateral(liquidity_amount)?;
 
-        self.state.available_liquidity += liquidity_amount;
-        self.state.collateral_mint_supply += collateral_amount;
+        self.liquidity.available_amount += liquidity_amount;
+        self.collateral.mint_total_supply += collateral_amount;
 
         Ok(collateral_amount)
     }
 
     /// Record redeemed collateral and return amount of liquidity to withdraw
     pub fn redeem_collateral(&mut self, collateral_amount: u64) -> Result<u64, ProgramError> {
-        let collateral_exchange_rate = self.state.collateral_exchange_rate()?;
+        let collateral_exchange_rate = self.collateral_exchange_rate()?;
         let liquidity_amount =
             collateral_exchange_rate.collateral_to_liquidity(collateral_amount)?;
-        if liquidity_amount > self.state.available_liquidity {
+        if liquidity_amount > self.liquidity.available_amount {
             return Err(LendingError::InsufficientLiquidity.into());
         }
 
-        self.state.available_liquidity -= liquidity_amount;
-        self.state.collateral_mint_supply -= collateral_amount;
+        self.liquidity.available_amount -= liquidity_amount;
+        self.collateral.mint_total_supply -= collateral_amount;
 
         Ok(liquidity_amount)
     }
 
     /// Update borrow rate and accrue interest
     pub fn accrue_interest(&mut self, current_slot: Slot) -> Result<(), ProgramError> {
-        let slots_elapsed = self.state.update_slot(current_slot);
+        let slots_elapsed = self.update_slot(current_slot);
         if slots_elapsed > 0 {
             let current_borrow_rate = self.current_borrow_rate()?;
-            let compounded_interest_rate = self
-                .state
-                .compound_interest(current_borrow_rate, slots_elapsed)?;
-            self.state.borrowed_liquidity_wads = self
-                .state
-                .borrowed_liquidity_wads
+            let compounded_interest_rate =
+                self.compound_interest(current_borrow_rate, slots_elapsed)?;
+            self.liquidity.borrowed_amount_wads = self
+                .liquidity
+                .borrowed_amount_wads
                 .try_mul(compounded_interest_rate)?;
         }
         Ok(())
     }
-}
 
-/// Reserve state
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ReserveState {
-    /// Last slot when supply and rates updated
-    pub last_update_slot: Slot,
-    /// Cumulative borrow rate
-    pub cumulative_borrow_rate_wads: Decimal,
-    /// Borrowed liquidity, plus interest
-    pub borrowed_liquidity_wads: Decimal,
-    /// Available liquidity currently held in reserve
-    pub available_liquidity: u64,
-    /// Total collateral mint supply, used to calculate exchange rate
-    pub collateral_mint_supply: u64,
-}
-
-impl ReserveState {
-    /// Initialize new reserve state
-    pub fn new(current_slot: Slot, liquidity_amount: u64) -> Result<Self, ProgramError> {
-        let collateral_mint_supply = liquidity_amount
-            .checked_mul(INITIAL_COLLATERAL_RATIO)
-            .ok_or_else(|| {
-                msg!("Collateral token supply overflow");
-                ProgramError::from(LendingError::MathOverflow)
-            })?;
-        Ok(Self {
-            last_update_slot: current_slot,
-            cumulative_borrow_rate_wads: Decimal::one(),
-            available_liquidity: liquidity_amount,
-            collateral_mint_supply,
-            borrowed_liquidity_wads: Decimal::zero(),
-        })
-    }
-
-    /// Add new borrow amount to total borrows
-    pub fn add_borrow(&mut self, borrow_amount: u64) -> ProgramResult {
-        if borrow_amount > self.available_liquidity {
-            return Err(LendingError::InsufficientLiquidity.into());
-        }
-
-        self.available_liquidity -= borrow_amount;
-        self.borrowed_liquidity_wads = self
-            .borrowed_liquidity_wads
-            .try_add(Decimal::from(borrow_amount))?;
-        Ok(())
-    }
-
-    /// Subtract repay amount from total borrows and return rounded repay value
-    pub fn subtract_repay(&mut self, repay_amount: Decimal) -> Result<u64, ProgramError> {
-        let rounded_repay_amount = repay_amount.try_round_u64()?;
-        if rounded_repay_amount == 0 {
-            return Err(LendingError::ObligationTooSmall.into());
-        }
-
-        self.available_liquidity = self
-            .available_liquidity
-            .checked_add(rounded_repay_amount)
-            .ok_or(LendingError::MathOverflow)?;
-        self.borrowed_liquidity_wads = self.borrowed_liquidity_wads.try_sub(repay_amount)?;
-
-        Ok(rounded_repay_amount)
-    }
-
-    /// Calculate the current utilization rate of the reserve
-    pub fn current_utilization_rate(&self) -> Result<Rate, ProgramError> {
-        let available_liquidity = Decimal::from(self.available_liquidity);
-        let total_supply = self.borrowed_liquidity_wads.try_add(available_liquidity)?;
-
-        let zero = Decimal::zero();
-        if total_supply == zero {
-            return Ok(Rate::zero());
-        }
-
-        self.borrowed_liquidity_wads
-            .try_div(total_supply)?
-            .try_into()
-    }
-
-    /// Return the current collateral exchange rate.
+    /// Collateral exchange rate
     pub fn collateral_exchange_rate(&self) -> Result<CollateralExchangeRate, ProgramError> {
-        let rate = if self.collateral_mint_supply == 0 {
-            Rate::from_scaled_val(INITIAL_COLLATERAL_RATE)
-        } else {
-            let collateral_supply = Decimal::from(self.collateral_mint_supply);
-            let total_supply = self
-                .borrowed_liquidity_wads
-                .try_add(Decimal::from(self.available_liquidity))?;
-
-            if total_supply == Decimal::zero() {
-                Rate::from_scaled_val(INITIAL_COLLATERAL_RATE)
-            } else {
-                Rate::try_from(collateral_supply.try_div(total_supply)?)?
-            }
-        };
-
-        Ok(CollateralExchangeRate(rate))
+        let total_liquidity = self.liquidity.total_supply()?;
+        self.collateral.exchange_rate(total_liquidity)
     }
 
     /// Return slots elapsed since last update
@@ -235,6 +154,133 @@ impl ReserveState {
             .cumulative_borrow_rate_wads
             .try_mul(compounded_interest_rate)?;
         Ok(compounded_interest_rate)
+    }
+}
+
+/// Create new reserve
+pub struct NewReserveParams {
+    /// Current slot
+    pub current_slot: Slot,
+    /// Lending market address
+    pub lending_market: Pubkey,
+    /// Reserve collateral info
+    pub collateral: ReserveCollateral,
+    /// Reserve liquidity info
+    pub liquidity: ReserveLiquidity,
+    /// Optional dex market address
+    pub dex_market: COption<Pubkey>,
+    /// Reserve configuration values
+    pub config: ReserveConfig,
+}
+
+/// Reserve liquidity
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ReserveLiquidity {
+    /// Reserve liquidity mint address
+    pub mint_pubkey: Pubkey,
+    /// Reserve liquidity mint decimals
+    pub mint_decimals: u8,
+    /// Reserve liquidity supply address
+    pub supply_pubkey: Pubkey,
+    /// Reserve liquidity available
+    pub available_amount: u64,
+    /// Reserve liquidity borrowed
+    pub borrowed_amount_wads: Decimal,
+}
+
+impl ReserveLiquidity {
+    /// New reserve liquidity info
+    pub fn new(mint_pubkey: Pubkey, mint_decimals: u8, supply_pubkey: Pubkey) -> Self {
+        Self {
+            mint_pubkey,
+            mint_decimals,
+            supply_pubkey,
+            available_amount: 0,
+            borrowed_amount_wads: Decimal::zero(),
+        }
+    }
+
+    /// Calculate the total reserve supply including active loans
+    pub fn total_supply(&self) -> Result<Decimal, ProgramError> {
+        Decimal::from(self.available_amount).try_add(self.borrowed_amount_wads)
+    }
+
+    /// Add new borrow amount to total borrows
+    pub fn borrow(&mut self, borrow_amount: u64) -> ProgramResult {
+        if borrow_amount > self.available_amount {
+            return Err(LendingError::InsufficientLiquidity.into());
+        }
+
+        self.available_amount -= borrow_amount;
+        self.borrowed_amount_wads = self
+            .borrowed_amount_wads
+            .try_add(Decimal::from(borrow_amount))?;
+        Ok(())
+    }
+
+    /// Subtract repay amount from total borrows and return rounded repay value
+    pub fn repay(&mut self, repay_amount: Decimal) -> Result<u64, ProgramError> {
+        let rounded_repay_amount = repay_amount.try_round_u64()?;
+        if rounded_repay_amount == 0 {
+            return Err(LendingError::ObligationTooSmall.into());
+        }
+
+        self.available_amount = self
+            .available_amount
+            .checked_add(rounded_repay_amount)
+            .ok_or(LendingError::MathOverflow)?;
+        self.borrowed_amount_wads = self.borrowed_amount_wads.try_sub(repay_amount)?;
+
+        Ok(rounded_repay_amount)
+    }
+
+    /// Calculate the liquidity utilization rate of the reserve
+    pub fn utilization_rate(&self) -> Result<Rate, ProgramError> {
+        let total_supply = self.total_supply()?;
+        if total_supply == Decimal::zero() {
+            return Ok(Rate::zero());
+        }
+        self.borrowed_amount_wads.try_div(total_supply)?.try_into()
+    }
+}
+
+/// Reserve collateral
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ReserveCollateral {
+    /// Reserve collateral mint address
+    pub mint_pubkey: Pubkey,
+    /// Reserve collateral mint supply, used for exchange rate
+    pub mint_total_supply: u64,
+    /// Reserve collateral supply address
+    pub supply_pubkey: Pubkey,
+    /// Reserve collateral fees receiver address
+    pub fees_receiver: Pubkey,
+}
+
+impl ReserveCollateral {
+    /// New reserve collateral info
+    pub fn new(mint_pubkey: Pubkey, supply_pubkey: Pubkey, fees_receiver: Pubkey) -> Self {
+        Self {
+            mint_pubkey,
+            supply_pubkey,
+            fees_receiver,
+            ..Self::default()
+        }
+    }
+
+    /// Return the current collateral exchange rate.
+    fn exchange_rate(
+        &self,
+        total_liquidity: Decimal,
+    ) -> Result<CollateralExchangeRate, ProgramError> {
+        let rate = if self.mint_total_supply == 0 || total_liquidity == Decimal::zero() {
+            Rate::from_scaled_val(INITIAL_COLLATERAL_RATE)
+        } else {
+            let collateral_supply = Decimal::from(self.mint_total_supply);
+            Rate::try_from(collateral_supply.try_div(total_liquidity)?)?
+        };
+
+        Ok(CollateralExchangeRate(rate))
     }
 }
 
@@ -400,14 +446,23 @@ impl Pack for Reserve {
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),
+            last_update_slot: u64::from_le_bytes(*last_update_slot),
+            cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate),
             lending_market: Pubkey::new_from_array(*lending_market),
-            liquidity_mint: Pubkey::new_from_array(*liquidity_mint),
-            liquidity_mint_decimals: u8::from_le_bytes(*liquidity_mint_decimals),
-            liquidity_supply: Pubkey::new_from_array(*liquidity_supply),
-            collateral_mint: Pubkey::new_from_array(*collateral_mint),
-            collateral_supply: Pubkey::new_from_array(*collateral_supply),
-            collateral_fees_receiver: Pubkey::new_from_array(*collateral_fees_receiver),
             dex_market: unpack_coption_key(dex_market)?,
+            liquidity: ReserveLiquidity {
+                mint_pubkey: Pubkey::new_from_array(*liquidity_mint),
+                mint_decimals: u8::from_le_bytes(*liquidity_mint_decimals),
+                supply_pubkey: Pubkey::new_from_array(*liquidity_supply),
+                available_amount: u64::from_le_bytes(*available_liquidity),
+                borrowed_amount_wads: unpack_decimal(total_borrows),
+            },
+            collateral: ReserveCollateral {
+                mint_pubkey: Pubkey::new_from_array(*collateral_mint),
+                mint_total_supply: u64::from_le_bytes(*collateral_mint_supply),
+                supply_pubkey: Pubkey::new_from_array(*collateral_supply),
+                fees_receiver: Pubkey::new_from_array(*collateral_fees_receiver),
+            },
             config: ReserveConfig {
                 optimal_utilization_rate: u8::from_le_bytes(*optimal_utilization_rate),
                 loan_to_value_ratio: u8::from_le_bytes(*loan_to_value_ratio),
@@ -420,13 +475,6 @@ impl Pack for Reserve {
                     borrow_fee_wad: u64::from_le_bytes(*borrow_fee_wad),
                     host_fee_percentage: u8::from_le_bytes(*host_fee_percentage),
                 },
-            },
-            state: ReserveState {
-                last_update_slot: u64::from_le_bytes(*last_update_slot),
-                cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate),
-                borrowed_liquidity_wads: unpack_decimal(total_borrows),
-                available_liquidity: u64::from_le_bytes(*available_liquidity),
-                collateral_mint_supply: u64::from_le_bytes(*collateral_mint_supply),
             },
         })
     }
@@ -463,15 +511,25 @@ impl Pack for Reserve {
             300
         ];
         *version = self.version.to_le_bytes();
-        *last_update_slot = self.state.last_update_slot.to_le_bytes();
+        *last_update_slot = self.last_update_slot.to_le_bytes();
+        pack_decimal(self.cumulative_borrow_rate_wads, cumulative_borrow_rate);
         lending_market.copy_from_slice(self.lending_market.as_ref());
-        liquidity_mint.copy_from_slice(self.liquidity_mint.as_ref());
-        *liquidity_mint_decimals = self.liquidity_mint_decimals.to_le_bytes();
-        liquidity_supply.copy_from_slice(self.liquidity_supply.as_ref());
-        collateral_mint.copy_from_slice(self.collateral_mint.as_ref());
-        collateral_supply.copy_from_slice(self.collateral_supply.as_ref());
-        collateral_fees_receiver.copy_from_slice(self.collateral_fees_receiver.as_ref());
         pack_coption_key(&self.dex_market, dex_market);
+
+        // liquidity info
+        liquidity_mint.copy_from_slice(self.liquidity.mint_pubkey.as_ref());
+        *liquidity_mint_decimals = self.liquidity.mint_decimals.to_le_bytes();
+        liquidity_supply.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
+        *available_liquidity = self.liquidity.available_amount.to_le_bytes();
+        pack_decimal(self.liquidity.borrowed_amount_wads, total_borrows);
+
+        // collateral info
+        collateral_mint.copy_from_slice(self.collateral.mint_pubkey.as_ref());
+        collateral_supply.copy_from_slice(self.collateral.supply_pubkey.as_ref());
+        collateral_fees_receiver.copy_from_slice(self.collateral.fees_receiver.as_ref());
+        *collateral_mint_supply = self.collateral.mint_total_supply.to_le_bytes();
+
+        // config
         *optimal_utilization_rate = self.config.optimal_utilization_rate.to_le_bytes();
         *loan_to_value_ratio = self.config.loan_to_value_ratio.to_le_bytes();
         *liquidation_bonus = self.config.liquidation_bonus.to_le_bytes();
@@ -481,13 +539,6 @@ impl Pack for Reserve {
         *max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();
         *borrow_fee_wad = self.config.fees.borrow_fee_wad.to_le_bytes();
         *host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
-        pack_decimal(
-            self.state.cumulative_borrow_rate_wads,
-            cumulative_borrow_rate,
-        );
-        pack_decimal(self.state.borrowed_liquidity_wads, total_borrows);
-        *available_liquidity = self.state.available_liquidity.to_le_bytes();
-        *collateral_mint_supply = self.state.collateral_mint_supply.to_le_bytes();
     }
 }
 
@@ -505,15 +556,14 @@ mod test {
             total_liquidity in 0..=MAX_LIQUIDITY,
             borrowed_percent in 0..=WAD,
         ) {
-            let borrowed_liquidity_wads = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(borrowed_percent))?;
-            let available_liquidity = total_liquidity - borrowed_liquidity_wads.try_round_u64()?;
-            let state = ReserveState {
-                borrowed_liquidity_wads,
-                available_liquidity,
-                ..ReserveState::default()
+            let borrowed_amount_wads = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(borrowed_percent))?;
+            let liquidity = ReserveLiquidity {
+                borrowed_amount_wads,
+                available_amount: total_liquidity - borrowed_amount_wads.try_round_u64()?,
+                ..ReserveLiquidity::default()
             };
 
-            let current_rate = state.current_utilization_rate()?;
+            let current_rate = liquidity.utilization_rate()?;
             assert!(current_rate <= Rate::one());
         }
 
@@ -526,13 +576,17 @@ mod test {
         ) {
             let borrowed_liquidity_wads = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(borrowed_percent))?;
             let available_liquidity = total_liquidity - borrowed_liquidity_wads.try_round_u64()?;
-            let collateral_mint_supply = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(collateral_multiplier))?.try_round_u64()?;
+            let mint_total_supply = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(collateral_multiplier))?.try_round_u64()?;
+
             let mut reserve = Reserve {
-                state: ReserveState {
-                    borrowed_liquidity_wads,
-                    available_liquidity,
-                    collateral_mint_supply,
-                    ..ReserveState::default()
+                collateral: ReserveCollateral {
+                    mint_total_supply,
+                    ..ReserveCollateral::default()
+                },
+                liquidity: ReserveLiquidity {
+                    borrowed_amount_wads: borrowed_liquidity_wads,
+                    available_amount: available_liquidity,
+                    ..ReserveLiquidity::default()
                 },
                 config: ReserveConfig {
                     min_borrow_rate: borrow_rate,
@@ -543,13 +597,13 @@ mod test {
                 ..Reserve::default()
             };
 
-            let exchange_rate = reserve.state.collateral_exchange_rate()?;
+            let exchange_rate = reserve.collateral_exchange_rate()?;
             assert!(exchange_rate.0.to_scaled_val() <= 5u128 * WAD as u128);
 
-            // After interest accrual, collateral tokens should be worth more
-            reserve.accrue_interest(SLOTS_PER_YEAR)?;
+            // After interest accrual, total liquidity increases and collateral are worth more
+            reserve.accrue_interest(1)?;
 
-            let new_exchange_rate = reserve.state.collateral_exchange_rate()?;
+            let new_exchange_rate = reserve.collateral_exchange_rate()?;
             if borrow_rate > 0 && total_liquidity > 0 && borrowed_percent > 0 {
                 assert!(new_exchange_rate.0 < exchange_rate.0);
             } else {
@@ -562,14 +616,14 @@ mod test {
             slots_elapsed in 0..=SLOTS_PER_YEAR,
             borrow_rate in 0..=u8::MAX,
         ) {
-            let mut state = ReserveState::default();
+            let mut reserve = Reserve::default();
             let borrow_rate = Rate::from_percent(borrow_rate);
 
             // Simulate running for max 1000 years, assuming that interest is
             // compounded at least once a year
             for _ in 0..1000 {
-                state.compound_interest(borrow_rate, slots_elapsed)?;
-                state.cumulative_borrow_rate_wads.to_scaled_val()?;
+                reserve.compound_interest(borrow_rate, slots_elapsed)?;
+                reserve.cumulative_borrow_rate_wads.to_scaled_val()?;
             }
         }
 
@@ -579,11 +633,11 @@ mod test {
             borrowed_liquidity in 0..=u64::MAX,
             borrow_rate in 0..=u8::MAX,
         ) {
-            let borrowed_liquidity_wads = Decimal::from(borrowed_liquidity);
+            let borrowed_amount_wads = Decimal::from(borrowed_liquidity);
             let mut reserve = Reserve {
-                state: ReserveState {
-                    borrowed_liquidity_wads,
-                    ..ReserveState::default()
+                liquidity: ReserveLiquidity {
+                    borrowed_amount_wads,
+                    ..ReserveLiquidity::default()
                 },
                 config: ReserveConfig {
                     max_borrow_rate: borrow_rate,
@@ -595,9 +649,9 @@ mod test {
             reserve.accrue_interest(slots_elapsed)?;
 
             if borrow_rate > 0 && slots_elapsed > 0 {
-                assert!(reserve.state.borrowed_liquidity_wads > borrowed_liquidity_wads);
+                assert!(reserve.liquidity.borrowed_amount_wads > borrowed_amount_wads);
             } else {
-                assert!(reserve.state.borrowed_liquidity_wads == borrowed_liquidity_wads);
+                assert!(reserve.liquidity.borrowed_amount_wads == borrowed_amount_wads);
             }
         }
 

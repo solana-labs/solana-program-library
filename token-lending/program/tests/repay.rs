@@ -144,16 +144,16 @@ async fn test_success() {
     assert!(collateral_received > 0);
 
     let borrow_reserve_state = usdc_reserve.get_state(&mut banks_client).await;
-    assert!(borrow_reserve_state.state.cumulative_borrow_rate_wads > Decimal::one());
+    assert!(borrow_reserve_state.cumulative_borrow_rate_wads > Decimal::one());
 
     let obligation_state = obligation.get_state(&mut banks_client).await;
     assert_eq!(
         obligation_state.cumulative_borrow_rate_wads,
-        borrow_reserve_state.state.cumulative_borrow_rate_wads
+        borrow_reserve_state.cumulative_borrow_rate_wads
     );
     assert_eq!(
         obligation_state.borrowed_liquidity_wads,
-        borrow_reserve_state.state.borrowed_liquidity_wads
+        borrow_reserve_state.liquidity.borrowed_amount_wads
     );
 
     // use cumulative borrow rate directly since test rate starts at 1.0
