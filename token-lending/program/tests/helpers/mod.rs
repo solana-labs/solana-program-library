@@ -22,7 +22,7 @@ use spl_token_lending::{
     processor::process_instruction,
     state::{
         LendingMarket, Obligation, Reserve, ReserveConfig, ReserveFees, ReserveState,
-        INITIAL_COLLATERAL_RATE, PROGRAM_VERSION,
+        INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION,
     },
 };
 use std::str::FromStr;
@@ -120,7 +120,7 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
     let (authority, bump_seed) =
         Pubkey::find_program_address(&[pubkey.as_ref()], &spl_token_lending::id());
 
-    let owner = Keypair::new();
+    let owner = read_keypair_file("tests/fixtures/lending_market_owner.json").unwrap();
 
     test.add_packable_account(
         pubkey,
@@ -335,7 +335,8 @@ pub fn add_reserve(
 
     let reserve_keypair = Keypair::new();
     let reserve_pubkey = reserve_keypair.pubkey();
-    let mut reserve_state = ReserveState::new(1u64.wrapping_sub(slots_elapsed), liquidity_amount);
+    let mut reserve_state =
+        ReserveState::new(1u64.wrapping_sub(slots_elapsed), liquidity_amount).unwrap();
     reserve_state.add_borrow(borrow_amount).unwrap();
     test.add_packable_account(
         reserve_pubkey,
@@ -383,7 +384,7 @@ pub fn add_reserve(
         &Token {
             mint: collateral_mint_pubkey,
             owner: user_accounts_owner.pubkey(),
-            amount: liquidity_amount * INITIAL_COLLATERAL_RATE,
+            amount: liquidity_amount * INITIAL_COLLATERAL_RATIO,
             state: AccountState::Initialized,
             ..Token::default()
         },

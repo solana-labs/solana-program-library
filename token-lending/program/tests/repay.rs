@@ -12,9 +12,9 @@ use solana_sdk::{
 use spl_token::instruction::approve;
 use spl_token_lending::{
     instruction::repay_reserve_liquidity,
-    math::Decimal,
+    math::{Decimal, TryAdd, TryDiv, TryMul, TrySub},
     processor::process_instruction,
-    state::{INITIAL_COLLATERAL_RATE, SLOTS_PER_YEAR},
+    state::{INITIAL_COLLATERAL_RATIO, SLOTS_PER_YEAR},
 };
 
 const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
@@ -29,13 +29,13 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(79_000);
+    test.set_bpf_compute_max_units(85_000);
 
     const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL;
     const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 100 * FRACTIONAL_TO_USDC;
 
     const OBLIGATION_LOAN: u64 = 10 * FRACTIONAL_TO_USDC;
-    const OBLIGATION_COLLATERAL: u64 = 10 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATE;
+    const OBLIGATION_COLLATERAL: u64 = 10 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
 
     let user_accounts_owner = Keypair::new();
     let user_transfer_authority = Keypair::new();
@@ -157,21 +157,30 @@ async fn test_success() {
     );
 
     // use cumulative borrow rate directly since test rate starts at 1.0
-    let expected_obligation_interest = (obligation_state.cumulative_borrow_rate_wads
-        * OBLIGATION_LOAN)
-        - Decimal::from(OBLIGATION_LOAN);
+    let expected_obligation_interest = obligation_state
+        .cumulative_borrow_rate_wads
+        .try_mul(OBLIGATION_LOAN)
+        .unwrap()
+        .try_sub(Decimal::from(OBLIGATION_LOAN))
+        .unwrap();
     assert_eq!(
         obligation_state.borrowed_liquidity_wads,
         expected_obligation_interest
     );
 
-    let expected_obligation_total = Decimal::from(OBLIGATION_LOAN) + expected_obligation_interest;
+    let expected_obligation_total = Decimal::from(OBLIGATION_LOAN)
+        .try_add(expected_obligation_interest)
+        .unwrap();
 
-    let expected_obligation_repaid_percent =
-        Decimal::from(OBLIGATION_LOAN) / expected_obligation_total;
+    let expected_obligation_repaid_percent = Decimal::from(OBLIGATION_LOAN)
+        .try_div(expected_obligation_total)
+        .unwrap();
 
-    let expected_collateral_received =
-        (expected_obligation_repaid_percent * OBLIGATION_COLLATERAL).round_u64();
+    let expected_collateral_received = expected_obligation_repaid_percent
+        .try_mul(OBLIGATION_COLLATERAL)
+        .unwrap()
+        .try_round_u64()
+        .unwrap();
     assert_eq!(collateral_received, expected_collateral_received);
 
     let expected_collateral_remaining = OBLIGATION_COLLATERAL - expected_collateral_received;

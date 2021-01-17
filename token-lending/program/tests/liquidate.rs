@@ -8,7 +8,7 @@ use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::{
     math::Decimal,
     processor::process_instruction,
-    state::{INITIAL_COLLATERAL_RATE, SLOTS_PER_YEAR},
+    state::{INITIAL_COLLATERAL_RATIO, SLOTS_PER_YEAR},
 };
 
 const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
@@ -26,14 +26,14 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(154_000);
+    test.set_bpf_compute_max_units(165_000);
 
     // set loan values to about 90% of collateral value so that it gets liquidated
     const USDC_LOAN: u64 = 2 * FRACTIONAL_TO_USDC;
-    const USDC_LOAN_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATE * LAMPORTS_TO_SOL;
+    const USDC_LOAN_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATIO * LAMPORTS_TO_SOL;
 
     const SOL_LOAN: u64 = LAMPORTS_TO_SOL;
-    const SOL_LOAN_USDC_COLLATERAL: u64 = 2 * INITIAL_COLLATERAL_RATE * FRACTIONAL_TO_USDC;
+    const SOL_LOAN_USDC_COLLATERAL: u64 = 2 * INITIAL_COLLATERAL_RATIO * FRACTIONAL_TO_USDC;
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -142,7 +142,10 @@ async fn test_success() {
     assert!(usdc_liquidated > USDC_LOAN / 2);
     assert_eq!(
         usdc_liquidated,
-        usdc_loan_state.borrowed_liquidity_wads.round_u64()
+        usdc_loan_state
+            .borrowed_liquidity_wads
+            .try_round_u64()
+            .unwrap()
     );
 
     let sol_liquidity_supply =
@@ -152,6 +155,9 @@ async fn test_success() {
     assert!(sol_liquidated > SOL_LOAN / 2);
     assert_eq!(
         sol_liquidated,
-        sol_loan_state.borrowed_liquidity_wads.round_u64()
+        sol_loan_state
+            .borrowed_liquidity_wads
+            .try_round_u64()
+            .unwrap()
     );
 }

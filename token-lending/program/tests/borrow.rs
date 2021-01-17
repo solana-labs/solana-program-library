@@ -8,7 +8,7 @@ use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::{
     instruction::BorrowAmountType,
     processor::process_instruction,
-    state::{INITIAL_COLLATERAL_RATE, SLOTS_PER_YEAR},
+    state::{INITIAL_COLLATERAL_RATIO, SLOTS_PER_YEAR},
 };
 
 const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
@@ -33,9 +33,6 @@ async fn test_borrow_quote_currency() {
         spl_token_lending::id(),
         processor!(process_instruction),
     );
-
-    // limit to track compute unit increase
-    test.set_bpf_compute_max_units(188_000);
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -84,7 +81,7 @@ async fn test_borrow_quote_currency() {
         get_token_balance(&mut banks_client, sol_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, 0);
 
-    let collateral_deposit_amount = INITIAL_COLLATERAL_RATE * SOL_COLLATERAL_AMOUNT_LAMPORTS;
+    let collateral_deposit_amount = INITIAL_COLLATERAL_RATIO * SOL_COLLATERAL_AMOUNT_LAMPORTS;
     let obligation = lending_market
         .borrow(
             &mut banks_client,
@@ -175,9 +172,6 @@ async fn test_borrow_base_currency() {
         processor!(process_instruction),
     );
 
-    // limit to track compute unit increase
-    test.set_bpf_compute_max_units(188_000);
-
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
@@ -225,7 +219,7 @@ async fn test_borrow_base_currency() {
         get_token_balance(&mut banks_client, usdc_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, 0);
 
-    let collateral_deposit_amount = INITIAL_COLLATERAL_RATE * USDC_COLLATERAL_LAMPORTS;
+    let collateral_deposit_amount = INITIAL_COLLATERAL_RATIO * USDC_COLLATERAL_LAMPORTS;
     let obligation = lending_market
         .borrow(
             &mut banks_client,

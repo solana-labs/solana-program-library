@@ -1,11 +1,21 @@
-//! Math for preserving precision
+//! Math for preserving precision of token amounts which are limited
+//! by the SPL Token program to be at most u64::MAX.
+//!
+//! Decimals are internally scaled by a WAD (10^18) to preserve
+//! precision up to 18 decimal places. Decimals are sized to support
+//! both serialization and precise math for the full range of
+//! unsigned 64-bit integers. The underlying representation is a
+//! u192 rather than u256 to reduce compute cost while losing
+//! support for arithmetic operations at the high end of u64 range.
 
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::ptr_offset_with_cast)]
 #![allow(clippy::manual_range_contains)]
 
-use crate::math::common::*;
 use crate::math::Rate;
+use crate::{error::LendingError, math::common::*};
+use solana_program::program_error::ProgramError;
+use std::convert::TryFrom;
 use std::fmt;
 use uint::construct_uint;
 
@@ -14,7 +24,7 @@ construct_uint! {
     pub struct U192(3);
 }
 
-/// Large decimal value precise to 18 digits
+/// Large decimal values, precise to 18 digits
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Decimal(pub U192);
 
@@ -29,12 +39,12 @@ impl Decimal {
         Self(U192::zero())
     }
 
-    // TODO: use const slices when fixed
+    // OPTIMIZE: use const slice when fixed in BPF toolchain
     fn wad() -> U192 {
         U192::from(WAD)
     }
 
-    // TODO: use const slices when fixed
+    // OPTIMIZE: use const slice when fixed in BPF toolchain
     fn half_wad() -> U192 {
         U192::from(HALF_WAD)
     }
@@ -44,20 +54,9 @@ impl Decimal {
         Self(U192::from(percent as u64 * PERCENT_SCALER))
     }
 
-    /// Create scaled decimal from value and scale
-    pub fn new(val: u64, scale: usize) -> Self {
-        assert!(scale <= SCALE);
-        Self(Self::wad() / U192::exp10(scale) * U192::from(val))
-    }
-
-    /// Convert to lower precision rate
-    pub fn as_rate(self) -> Rate {
-        Rate::from_scaled_val(self.0.as_u64() as u128)
-    }
-
-    /// Return raw scaled value
-    pub fn to_scaled_val(&self) -> u128 {
-        self.0.as_u128()
+    /// Return raw scaled value if it fits within u128
+    pub fn to_scaled_val(&self) -> Result<u128, ProgramError> {
+        Ok(u128::try_from(self.0).map_err(|_| LendingError::MathOverflow)?)
     }
 
     /// Create decimal from scaled value
@@ -66,8 +65,13 @@ impl Decimal {
     }
 
     /// Round scaled decimal to u64
-    pub fn round_u64(&self) -> u64 {
-        ((Self::half_wad() + self.0) / Self::wad()).as_u64()
+    pub fn try_round_u64(&self) -> Result<u64, ProgramError> {
+        let rounded_val = Self::half_wad()
+            .checked_add(self.0)
+            .ok_or(LendingError::MathOverflow)?
+            .checked_div(Self::wad())
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(u64::try_from(rounded_val).map_err(|_| LendingError::MathOverflow)?)
     }
 }
 
@@ -102,76 +106,79 @@ impl From<Rate> for Decimal {
     }
 }
 
-impl std::ops::Add for Decimal {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
+impl TryAdd for Decimal {
+    fn try_add(self, rhs: Self) -> Result<Self, ProgramError> {
+        Ok(Self(
+            self.0
+                .checked_add(rhs.0)
+                .ok_or(LendingError::MathOverflow)?,
+        ))
     }
 }
 
-impl std::ops::Sub for Decimal {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0 - rhs.0)
+impl TrySub for Decimal {
+    fn try_sub(self, rhs: Self) -> Result<Self, ProgramError> {
+        Ok(Self(
+            self.0
+                .checked_sub(rhs.0)
+                .ok_or(LendingError::MathOverflow)?,
+        ))
     }
 }
 
-impl std::ops::Div<u64> for Decimal {
-    type Output = Self;
-    fn div(self, rhs: u64) -> Self::Output {
-        Self(self.0 / U192::from(rhs))
+impl TryDiv<u64> for Decimal {
+    fn try_div(self, rhs: u64) -> Result<Self, ProgramError> {
+        Ok(Self(
+            self.0
+                .checked_div(U192::from(rhs))
+                .ok_or(LendingError::MathOverflow)?,
+        ))
     }
 }
 
-impl std::ops::Div<Rate> for Decimal {
-    type Output = Self;
-    fn div(self, rhs: Rate) -> Self::Output {
-        self / Self::from(rhs)
+impl TryDiv<Rate> for Decimal {
+    fn try_div(self, rhs: Rate) -> Result<Self, ProgramError> {
+        self.try_div(Self::from(rhs))
     }
 }
 
-impl std::ops::Div for Decimal {
-    type Output = Self;
-    fn div(self, rhs: Self) -> Self::Output {
-        Self(Self::wad() * self.0 / rhs.0)
+impl TryDiv<Decimal> for Decimal {
+    fn try_div(self, rhs: Self) -> Result<Self, ProgramError> {
+        Ok(Self(
+            self.0
+                .checked_mul(Self::wad())
+                .ok_or(LendingError::MathOverflow)?
+                .checked_div(rhs.0)
+                .ok_or(LendingError::MathOverflow)?,
+        ))
     }
 }
 
-impl std::ops::Mul<u64> for Decimal {
-    type Output = Self;
-    fn mul(self, rhs: u64) -> Self::Output {
-        Self(self.0 * U192::from(rhs))
+impl TryMul<u64> for Decimal {
+    fn try_mul(self, rhs: u64) -> Result<Self, ProgramError> {
+        Ok(Self(
+            self.0
+                .checked_mul(U192::from(rhs))
+                .ok_or(LendingError::MathOverflow)?,
+        ))
     }
 }
 
-impl std::ops::Mul<Rate> for Decimal {
-    type Output = Self;
-    fn mul(self, rhs: Rate) -> Self::Output {
-        Self(self.0 * U192::from(rhs.to_scaled_val()) / Self::wad())
+impl TryMul<Rate> for Decimal {
+    fn try_mul(self, rhs: Rate) -> Result<Self, ProgramError> {
+        self.try_mul(Self::from(rhs))
     }
 }
 
-impl std::ops::AddAssign for Decimal {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = *self + rhs;
-    }
-}
-
-impl std::ops::SubAssign for Decimal {
-    fn sub_assign(&mut self, rhs: Self) {
-        *self = *self - rhs;
-    }
-}
-
-impl std::ops::DivAssign for Decimal {
-    fn div_assign(&mut self, rhs: Self) {
-        *self = *self / rhs;
-    }
-}
-
-impl std::ops::MulAssign<Rate> for Decimal {
-    fn mul_assign(&mut self, rhs: Rate) {
-        *self = *self * rhs;
+impl TryMul<Decimal> for Decimal {
+    fn try_mul(self, rhs: Self) -> Result<Self, ProgramError> {
+        Ok(Self(
+            self.0
+                .checked_mul(rhs.0)
+                .ok_or(LendingError::MathOverflow)?
+                .checked_div(Self::wad())
+                .ok_or(LendingError::MathOverflow)?,
+        ))
     }
 }
 
