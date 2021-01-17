@@ -15,81 +15,106 @@ use solana_program::{
 };
 use std::convert::{TryFrom, TryInto};
 
-/// Additional fee information on a reserve
-///
-/// These exist separately from interest accrual fees, and are specifically for
-/// the program owner and frontend host.  The fees are paid out as a percentage
-/// of collateral token amounts during repayments and liquidations.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ReserveFees {
-    /// Fee assessed on `BorrowReserveLiquidity`, expressed as a Wad.
-    /// Must be between 0 and 10^18, such that 10^18 = 1.  A few examples for
-    /// clarity:
-    /// 1% = 10_000_000_000_000_000
-    /// 0.01% (1 basis point) = 100_000_000_000_000
-    /// 0.00001% (Aave borrow fee) = 100_000_000_000
-    pub borrow_fee_wad: u64,
-    /// Amount of fee going to host account, if provided in liquidate and repay
-    pub host_fee_percentage: u8,
+/// Lending market reserve state
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Reserve {
+    /// Version of the struct
+    pub version: u8,
+    /// Lending market address
+    pub lending_market: Pubkey,
+    /// Reserve liquidity mint
+    pub liquidity_mint: Pubkey,
+    /// Reserve liquidity supply
+    pub liquidity_mint_decimals: u8,
+    /// Reserve liquidity supply
+    pub liquidity_supply: Pubkey,
+    /// Collateral tokens are minted when liquidity is deposited in the reserve.
+    /// Collateral tokens can be withdrawn back to the underlying liquidity token.
+    pub collateral_mint: Pubkey,
+    /// Reserve collateral supply
+    /// Collateral is stored rather than burned to keep an accurate total collateral supply
+    pub collateral_supply: Pubkey,
+    /// Collateral account receiving owner fees on liquidate and repay
+    pub collateral_fees_receiver: Pubkey,
+    /// Dex market state account
+    pub dex_market: COption<Pubkey>,
+
+    /// Reserve state
+    pub state: ReserveState,
+
+    /// Reserve configuration values
+    pub config: ReserveConfig,
 }
 
-impl ReserveFees {
-    /// Calculate the owner and host fees on borrow
-    pub fn calculate_borrow_fees(
-        &self,
-        collateral_amount: u64,
-    ) -> Result<(u64, u64), ProgramError> {
-        let borrow_fee_rate = Rate::from_scaled_val(self.borrow_fee_wad);
-        let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
-        if borrow_fee_rate > Rate::zero() && collateral_amount > 0 {
-            let need_to_assess_host_fee = host_fee_rate > Rate::zero();
-            let minimum_fee = if need_to_assess_host_fee {
-                2 // 1 token to owner, 1 to host
-            } else {
-                1 // 1 token to owner, nothing else
-            };
+impl Reserve {
+    /// Calculate the current borrow rate
+    pub fn current_borrow_rate(&self) -> Result<Rate, ProgramError> {
+        let utilization_rate = self.state.current_utilization_rate()?;
+        let optimal_utilization_rate = Rate::from_percent(self.config.optimal_utilization_rate);
+        let low_utilization = utilization_rate < optimal_utilization_rate;
+        if low_utilization || self.config.optimal_utilization_rate == 100 {
+            let normalized_rate = utilization_rate.try_div(optimal_utilization_rate)?;
+            let min_rate = Rate::from_percent(self.config.min_borrow_rate);
+            let rate_range =
+                Rate::from_percent(self.config.optimal_borrow_rate - self.config.min_borrow_rate);
 
-            let borrow_fee = borrow_fee_rate
-                .try_mul(collateral_amount)?
-                .try_round_u64()?
-                .max(minimum_fee);
-
-            let host_fee = if need_to_assess_host_fee {
-                host_fee_rate.try_mul(borrow_fee)?.try_round_u64()?.max(1)
-            } else {
-                0
-            };
-
-            if borrow_fee >= collateral_amount {
-                Err(LendingError::BorrowTooSmall.into())
-            } else {
-                Ok((borrow_fee, host_fee))
-            }
+            Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
         } else {
-            Ok((0, 0))
+            let normalized_rate = utilization_rate
+                .try_sub(optimal_utilization_rate)?
+                .try_div(Rate::from_percent(
+                    100 - self.config.optimal_utilization_rate,
+                ))?;
+            let min_rate = Rate::from_percent(self.config.optimal_borrow_rate);
+            let rate_range =
+                Rate::from_percent(self.config.max_borrow_rate - self.config.optimal_borrow_rate);
+
+            Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
         }
     }
-}
 
-/// Reserve configuration values
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ReserveConfig {
-    /// Optimal utilization rate as a percent
-    pub optimal_utilization_rate: u8,
-    /// The ratio of the loan to the value of the collateral as a percent
-    pub loan_to_value_ratio: u8,
-    /// The percent discount the liquidator gets when buying collateral for an unhealthy obligation
-    pub liquidation_bonus: u8,
-    /// The percent at which an obligation is considered unhealthy
-    pub liquidation_threshold: u8,
-    /// Min borrow APY
-    pub min_borrow_rate: u8,
-    /// Optimal (utilization) borrow APY
-    pub optimal_borrow_rate: u8,
-    /// Max borrow APY
-    pub max_borrow_rate: u8,
-    /// Program owner fees assessed, separate from gains due to interest accrual
-    pub fees: ReserveFees,
+    /// Record deposited liquidity and return amount of collateral tokens to mint
+    pub fn deposit_liquidity(&mut self, liquidity_amount: u64) -> Result<u64, ProgramError> {
+        let collateral_exchange_rate = self.state.collateral_exchange_rate()?;
+        let collateral_amount =
+            collateral_exchange_rate.liquidity_to_collateral(liquidity_amount)?;
+
+        self.state.available_liquidity += liquidity_amount;
+        self.state.collateral_mint_supply += collateral_amount;
+
+        Ok(collateral_amount)
+    }
+
+    /// Record redeemed collateral and return amount of liquidity to withdraw
+    pub fn redeem_collateral(&mut self, collateral_amount: u64) -> Result<u64, ProgramError> {
+        let collateral_exchange_rate = self.state.collateral_exchange_rate()?;
+        let liquidity_amount =
+            collateral_exchange_rate.collateral_to_liquidity(collateral_amount)?;
+        if liquidity_amount > self.state.available_liquidity {
+            return Err(LendingError::InsufficientLiquidity.into());
+        }
+
+        self.state.available_liquidity -= liquidity_amount;
+        self.state.collateral_mint_supply -= collateral_amount;
+
+        Ok(liquidity_amount)
+    }
+
+    /// Update borrow rate and accrue interest
+    pub fn accrue_interest(&mut self, current_slot: Slot) -> Result<(), ProgramError> {
+        let slots_elapsed = self.state.update_slot(current_slot);
+        if slots_elapsed > 0 {
+            let current_borrow_rate = self.current_borrow_rate()?;
+            let compounded_interest_rate = self
+                .state
+                .compound_interest(current_borrow_rate, slots_elapsed)?;
+            self.state.borrowed_liquidity_wads = self
+                .state
+                .borrowed_liquidity_wads
+                .try_mul(compounded_interest_rate)?;
+        }
+        Ok(())
+    }
 }
 
 /// Reserve state
@@ -124,79 +149,7 @@ impl ReserveState {
             borrowed_liquidity_wads: Decimal::zero(),
         })
     }
-}
 
-/// Lending market reserve state
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Reserve {
-    /// Version of the struct
-    pub version: u8,
-    /// Lending market address
-    pub lending_market: Pubkey,
-    /// Reserve liquidity mint
-    pub liquidity_mint: Pubkey,
-    /// Reserve liquidity supply
-    pub liquidity_mint_decimals: u8,
-    /// Reserve liquidity supply
-    pub liquidity_supply: Pubkey,
-    /// Collateral tokens are minted when liquidity is deposited in the reserve.
-    /// Collateral tokens can be withdrawn back to the underlying liquidity token.
-    pub collateral_mint: Pubkey,
-    /// Reserve collateral supply
-    /// Collateral is stored rather than burned to keep an accurate total collateral supply
-    pub collateral_supply: Pubkey,
-    /// Collateral account receiving owner fees on liquidate and repay
-    pub collateral_fees_receiver: Pubkey,
-    /// Dex market state account
-    pub dex_market: COption<Pubkey>,
-
-    /// Reserve state
-    pub state: ReserveState,
-
-    /// Reserve configuration values
-    pub config: ReserveConfig,
-}
-
-/// Collateral exchange rate
-pub struct CollateralExchangeRate(Rate);
-
-impl CollateralExchangeRate {
-    /// Convert reserve collateral to liquidity
-    pub fn collateral_to_liquidity(&self, collateral_amount: u64) -> Result<u64, ProgramError> {
-        Decimal::from(collateral_amount)
-            .try_div(self.0)?
-            .try_round_u64()
-    }
-
-    /// Convert reserve collateral to liquidity
-    pub fn decimal_collateral_to_liquidity(
-        &self,
-        collateral_amount: Decimal,
-    ) -> Result<Decimal, ProgramError> {
-        collateral_amount.try_div(self.0)
-    }
-
-    /// Convert reserve liquidity to collateral
-    pub fn liquidity_to_collateral(&self, liquidity_amount: u64) -> Result<u64, ProgramError> {
-        self.0.try_mul(liquidity_amount)?.try_round_u64()
-    }
-
-    /// Convert reserve liquidity to collateral
-    pub fn decimal_liquidity_to_collateral(
-        &self,
-        liquidity_amount: Decimal,
-    ) -> Result<Decimal, ProgramError> {
-        liquidity_amount.try_mul(self.0)
-    }
-}
-
-impl From<CollateralExchangeRate> for Rate {
-    fn from(exchange_rate: CollateralExchangeRate) -> Self {
-        exchange_rate.0
-    }
-}
-
-impl ReserveState {
     /// Add new borrow amount to total borrows
     pub fn add_borrow(&mut self, borrow_amount: u64) -> ProgramResult {
         if borrow_amount > self.available_liquidity {
@@ -285,74 +238,119 @@ impl ReserveState {
     }
 }
 
-impl Reserve {
-    /// Calculate the current borrow rate
-    pub fn current_borrow_rate(&self) -> Result<Rate, ProgramError> {
-        let utilization_rate = self.state.current_utilization_rate()?;
-        let optimal_utilization_rate = Rate::from_percent(self.config.optimal_utilization_rate);
-        let low_utilization = utilization_rate < optimal_utilization_rate;
-        if low_utilization || self.config.optimal_utilization_rate == 100 {
-            let normalized_rate = utilization_rate.try_div(optimal_utilization_rate)?;
-            let min_rate = Rate::from_percent(self.config.min_borrow_rate);
-            let rate_range =
-                Rate::from_percent(self.config.optimal_borrow_rate - self.config.min_borrow_rate);
+/// Collateral exchange rate
+pub struct CollateralExchangeRate(Rate);
 
-            Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
+impl CollateralExchangeRate {
+    /// Convert reserve collateral to liquidity
+    pub fn collateral_to_liquidity(&self, collateral_amount: u64) -> Result<u64, ProgramError> {
+        Decimal::from(collateral_amount)
+            .try_div(self.0)?
+            .try_round_u64()
+    }
+
+    /// Convert reserve collateral to liquidity
+    pub fn decimal_collateral_to_liquidity(
+        &self,
+        collateral_amount: Decimal,
+    ) -> Result<Decimal, ProgramError> {
+        collateral_amount.try_div(self.0)
+    }
+
+    /// Convert reserve liquidity to collateral
+    pub fn liquidity_to_collateral(&self, liquidity_amount: u64) -> Result<u64, ProgramError> {
+        self.0.try_mul(liquidity_amount)?.try_round_u64()
+    }
+
+    /// Convert reserve liquidity to collateral
+    pub fn decimal_liquidity_to_collateral(
+        &self,
+        liquidity_amount: Decimal,
+    ) -> Result<Decimal, ProgramError> {
+        liquidity_amount.try_mul(self.0)
+    }
+}
+
+impl From<CollateralExchangeRate> for Rate {
+    fn from(exchange_rate: CollateralExchangeRate) -> Self {
+        exchange_rate.0
+    }
+}
+
+/// Reserve configuration values
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ReserveConfig {
+    /// Optimal utilization rate as a percent
+    pub optimal_utilization_rate: u8,
+    /// The ratio of the loan to the value of the collateral as a percent
+    pub loan_to_value_ratio: u8,
+    /// The percent discount the liquidator gets when buying collateral for an unhealthy obligation
+    pub liquidation_bonus: u8,
+    /// The percent at which an obligation is considered unhealthy
+    pub liquidation_threshold: u8,
+    /// Min borrow APY
+    pub min_borrow_rate: u8,
+    /// Optimal (utilization) borrow APY
+    pub optimal_borrow_rate: u8,
+    /// Max borrow APY
+    pub max_borrow_rate: u8,
+    /// Program owner fees assessed, separate from gains due to interest accrual
+    pub fees: ReserveFees,
+}
+
+/// Additional fee information on a reserve
+///
+/// These exist separately from interest accrual fees, and are specifically for
+/// the program owner and frontend host.  The fees are paid out as a percentage
+/// of collateral token amounts during repayments and liquidations.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ReserveFees {
+    /// Fee assessed on `BorrowReserveLiquidity`, expressed as a Wad.
+    /// Must be between 0 and 10^18, such that 10^18 = 1.  A few examples for
+    /// clarity:
+    /// 1% = 10_000_000_000_000_000
+    /// 0.01% (1 basis point) = 100_000_000_000_000
+    /// 0.00001% (Aave borrow fee) = 100_000_000_000
+    pub borrow_fee_wad: u64,
+    /// Amount of fee going to host account, if provided in liquidate and repay
+    pub host_fee_percentage: u8,
+}
+
+impl ReserveFees {
+    /// Calculate the owner and host fees on borrow
+    pub fn calculate_borrow_fees(
+        &self,
+        collateral_amount: u64,
+    ) -> Result<(u64, u64), ProgramError> {
+        let borrow_fee_rate = Rate::from_scaled_val(self.borrow_fee_wad);
+        let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
+        if borrow_fee_rate > Rate::zero() && collateral_amount > 0 {
+            let need_to_assess_host_fee = host_fee_rate > Rate::zero();
+            let minimum_fee = if need_to_assess_host_fee {
+                2 // 1 token to owner, 1 to host
+            } else {
+                1 // 1 token to owner, nothing else
+            };
+
+            let borrow_fee = borrow_fee_rate
+                .try_mul(collateral_amount)?
+                .try_round_u64()?
+                .max(minimum_fee);
+
+            let host_fee = if need_to_assess_host_fee {
+                host_fee_rate.try_mul(borrow_fee)?.try_round_u64()?.max(1)
+            } else {
+                0
+            };
+
+            if borrow_fee >= collateral_amount {
+                Err(LendingError::BorrowTooSmall.into())
+            } else {
+                Ok((borrow_fee, host_fee))
+            }
         } else {
-            let normalized_rate = utilization_rate
-                .try_sub(optimal_utilization_rate)?
-                .try_div(Rate::from_percent(
-                    100 - self.config.optimal_utilization_rate,
-                ))?;
-            let min_rate = Rate::from_percent(self.config.optimal_borrow_rate);
-            let rate_range =
-                Rate::from_percent(self.config.max_borrow_rate - self.config.optimal_borrow_rate);
-
-            Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
+            Ok((0, 0))
         }
-    }
-
-    /// Record deposited liquidity and return amount of collateral tokens to mint
-    pub fn deposit_liquidity(&mut self, liquidity_amount: u64) -> Result<u64, ProgramError> {
-        let collateral_exchange_rate = self.state.collateral_exchange_rate()?;
-        let collateral_amount =
-            collateral_exchange_rate.liquidity_to_collateral(liquidity_amount)?;
-
-        self.state.available_liquidity += liquidity_amount;
-        self.state.collateral_mint_supply += collateral_amount;
-
-        Ok(collateral_amount)
-    }
-
-    /// Record redeemed collateral and return amount of liquidity to withdraw
-    pub fn redeem_collateral(&mut self, collateral_amount: u64) -> Result<u64, ProgramError> {
-        let collateral_exchange_rate = self.state.collateral_exchange_rate()?;
-        let liquidity_amount =
-            collateral_exchange_rate.collateral_to_liquidity(collateral_amount)?;
-        if liquidity_amount > self.state.available_liquidity {
-            return Err(LendingError::InsufficientLiquidity.into());
-        }
-
-        self.state.available_liquidity -= liquidity_amount;
-        self.state.collateral_mint_supply -= collateral_amount;
-
-        Ok(liquidity_amount)
-    }
-
-    /// Update borrow rate and accrue interest
-    pub fn accrue_interest(&mut self, current_slot: Slot) -> Result<(), ProgramError> {
-        let slots_elapsed = self.state.update_slot(current_slot);
-        if slots_elapsed > 0 {
-            let current_borrow_rate = self.current_borrow_rate()?;
-            let compounded_interest_rate = self
-                .state
-                .compound_interest(current_borrow_rate, slots_elapsed)?;
-            self.state.borrowed_liquidity_wads = self
-                .state
-                .borrowed_liquidity_wads
-                .try_mul(compounded_interest_rate)?;
-        }
-        Ok(())
     }
 }
 
