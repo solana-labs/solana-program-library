@@ -304,18 +304,15 @@ impl ReserveState {
         &mut self,
         current_borrow_rate: Rate,
         slots_elapsed: u64,
-    ) -> Result<(), ProgramError> {
+    ) -> Result<Rate, ProgramError> {
         let slot_interest_rate: Rate = current_borrow_rate.try_div(SLOTS_PER_YEAR)?;
         let compounded_interest_rate = Rate::one()
             .try_add(slot_interest_rate)?
             .try_pow(slots_elapsed)?;
-        self.borrowed_liquidity_wads = self
-            .borrowed_liquidity_wads
-            .try_mul(compounded_interest_rate)?;
         self.cumulative_borrow_rate_wads = self
             .cumulative_borrow_rate_wads
             .try_mul(compounded_interest_rate)?;
-        Ok(())
+        Ok(compounded_interest_rate)
     }
 }
 
@@ -378,8 +375,13 @@ impl Reserve {
         let slots_elapsed = self.state.update_slot(current_slot);
         if slots_elapsed > 0 {
             let current_borrow_rate = self.current_borrow_rate()?;
-            self.state
+            let compounded_interest_rate = self
+                .state
                 .compound_interest(current_borrow_rate, slots_elapsed)?;
+            self.state.borrowed_liquidity_wads = self
+                .state
+                .borrowed_liquidity_wads
+                .try_mul(compounded_interest_rate)?;
         }
         Ok(())
     }
@@ -771,38 +773,75 @@ mod test {
             total_liquidity in 0..=MAX_LIQUIDITY,
             borrowed_percent in 0..=WAD,
             collateral_multiplier in 0..=(5*WAD),
+            borrow_rate in 0..=u8::MAX,
         ) {
             let borrowed_liquidity_wads = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(borrowed_percent))?;
             let available_liquidity = total_liquidity - borrowed_liquidity_wads.try_round_u64()?;
             let collateral_mint_supply = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(collateral_multiplier))?.try_round_u64()?;
-            let state = ReserveState {
+            let mut state = ReserveState {
                 borrowed_liquidity_wads,
                 available_liquidity,
                 collateral_mint_supply,
                 ..ReserveState::default()
             };
 
-            state.collateral_exchange_rate()?;
+            let exchange_rate = state.collateral_exchange_rate()?;
+            assert!(exchange_rate.0.to_scaled_val() <= 5u128 * WAD as u128);
+
+            let borrow_rate = Rate::from_percent(borrow_rate);
+            state.compound_interest(borrow_rate, SLOTS_PER_YEAR)?;
+
+            // After compounding interest, collateral tokens should be worth
+            // more than before.
+            let new_exchange_rate = state.collateral_exchange_rate()?;
+            if borrow_rate > Rate::zero() && total_liquidity > 0 && borrowed_percent > 0 {
+                assert!(new_exchange_rate.0 < exchange_rate.0);
+            } else {
+                assert_eq!(new_exchange_rate.0, exchange_rate.0);
+            }
         }
 
         #[test]
         fn compound_interest(
             slots_elapsed in 0..=SLOTS_PER_YEAR,
+            borrow_rate in 0..=u8::MAX,
+        ) {
+            let mut state = ReserveState::default();
+            let borrow_rate = Rate::from_percent(borrow_rate);
+
+            // Simulate running for max 1000 years, assuming that interest is
+            // compounded at least once a year
+            for _ in 0..1000 {
+                state.compound_interest(borrow_rate, slots_elapsed)?;
+                state.cumulative_borrow_rate_wads.to_scaled_val()?;
+            }
+        }
+
+        #[test]
+        fn reserve_accrue_interest(
+            slots_elapsed in 0..=SLOTS_PER_YEAR,
             borrowed_liquidity in 0..=u64::MAX,
             borrow_rate in 0..=u8::MAX,
         ) {
             let borrowed_liquidity_wads = Decimal::from(borrowed_liquidity);
-            let mut state = ReserveState {
-                borrowed_liquidity_wads,
-                ..ReserveState::default()
-            };
+            let mut reserve = Reserve {
+                state: ReserveState {
+                    borrowed_liquidity_wads,
+                    ..ReserveState::default()
+                },
+                config: ReserveConfig {
+                    max_borrow_rate: borrow_rate,
+                    ..ReserveConfig::default()
+                },
+                ..Reserve::default()
+            } ;
 
-            state.compound_interest(Rate::from_percent(borrow_rate), slots_elapsed)?;
+            reserve.accrue_interest(slots_elapsed)?;
 
             if borrow_rate > 0 && slots_elapsed > 0 {
-                assert!(state.borrowed_liquidity_wads > borrowed_liquidity_wads);
+                assert!(reserve.state.borrowed_liquidity_wads > borrowed_liquidity_wads);
             } else {
-                assert!(state.borrowed_liquidity_wads == borrowed_liquidity_wads);
+                assert!(reserve.state.borrowed_liquidity_wads == borrowed_liquidity_wads);
             }
         }
 
