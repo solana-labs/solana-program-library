@@ -778,23 +778,30 @@ mod test {
             let borrowed_liquidity_wads = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(borrowed_percent))?;
             let available_liquidity = total_liquidity - borrowed_liquidity_wads.try_round_u64()?;
             let collateral_mint_supply = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(collateral_multiplier))?.try_round_u64()?;
-            let mut state = ReserveState {
-                borrowed_liquidity_wads,
-                available_liquidity,
-                collateral_mint_supply,
-                ..ReserveState::default()
+            let mut reserve = Reserve {
+                state: ReserveState {
+                    borrowed_liquidity_wads,
+                    available_liquidity,
+                    collateral_mint_supply,
+                    ..ReserveState::default()
+                },
+                config: ReserveConfig {
+                    min_borrow_rate: borrow_rate,
+                    optimal_borrow_rate: borrow_rate,
+                    optimal_utilization_rate: 100,
+                    ..ReserveConfig::default()
+                },
+                ..Reserve::default()
             };
 
-            let exchange_rate = state.collateral_exchange_rate()?;
+            let exchange_rate = reserve.state.collateral_exchange_rate()?;
             assert!(exchange_rate.0.to_scaled_val() <= 5u128 * WAD as u128);
 
-            let borrow_rate = Rate::from_percent(borrow_rate);
-            state.compound_interest(borrow_rate, SLOTS_PER_YEAR)?;
+            // After interest accrual, collateral tokens should be worth more
+            reserve.accrue_interest(SLOTS_PER_YEAR)?;
 
-            // After compounding interest, collateral tokens should be worth
-            // more than before.
-            let new_exchange_rate = state.collateral_exchange_rate()?;
-            if borrow_rate > Rate::zero() && total_liquidity > 0 && borrowed_percent > 0 {
+            let new_exchange_rate = reserve.state.collateral_exchange_rate()?;
+            if borrow_rate > 0 && total_liquidity > 0 && borrowed_percent > 0 {
                 assert!(new_exchange_rate.0 < exchange_rate.0);
             } else {
                 assert_eq!(new_exchange_rate.0, exchange_rate.0);
@@ -834,7 +841,7 @@ mod test {
                     ..ReserveConfig::default()
                 },
                 ..Reserve::default()
-            } ;
+            };
 
             reserve.accrue_interest(slots_elapsed)?;
 
