@@ -5,7 +5,10 @@ use crate::{
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, WAD},
-    state::{LendingMarket, Obligation, Reserve, ReserveConfig, ReserveState, PROGRAM_VERSION},
+    state::{
+        LendingMarket, NewReserveParams, Obligation, Reserve, ReserveCollateral, ReserveConfig,
+        ReserveLiquidity, PROGRAM_VERSION,
+    },
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -206,7 +209,28 @@ fn process_init_reserve(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let liquidity_reserve_mint = unpack_mint(&reserve_liquidity_mint_info.data.borrow())?;
+    let reserve_liquidity_mint = unpack_mint(&reserve_liquidity_mint_info.data.borrow())?;
+    let reserve_liquidity_info = ReserveLiquidity::new(
+        *reserve_liquidity_mint_info.key,
+        reserve_liquidity_mint.decimals,
+        *reserve_liquidity_supply_info.key,
+    );
+    let reserve_collateral_info = ReserveCollateral::new(
+        *reserve_collateral_mint_info.key,
+        *reserve_collateral_supply_info.key,
+        *reserve_collateral_fees_receiver_info.key,
+    );
+    let mut reserve = Reserve::new(NewReserveParams {
+        current_slot: clock.slot,
+        lending_market: *lending_market_info.key,
+        collateral: reserve_collateral_info,
+        liquidity: reserve_liquidity_info,
+        dex_market,
+        config,
+    });
+    let collateral_amount = reserve.deposit_liquidity(liquidity_amount)?;
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+
     spl_token_init_account(TokenInitializeAccountParams {
         account: reserve_liquidity_supply_info.clone(),
         mint: reserve_liquidity_mint_info.clone(),
@@ -219,7 +243,7 @@ fn process_init_reserve(
         mint: reserve_collateral_mint_info.clone(),
         authority: lending_market_authority_info.key,
         rent: rent_info.clone(),
-        decimals: liquidity_reserve_mint.decimals,
+        decimals: reserve_liquidity_mint.decimals,
         token_program: token_program_id.clone(),
     })?;
 
@@ -256,32 +280,14 @@ fn process_init_reserve(
         token_program: token_program_id.clone(),
     })?;
 
-    let reserve_state = ReserveState::new(clock.slot, liquidity_amount)?;
     spl_token_mint_to(TokenMintToParams {
         mint: reserve_collateral_mint_info.clone(),
         destination: destination_collateral_info.clone(),
-        amount: reserve_state.collateral_mint_supply,
+        amount: collateral_amount,
         authority: lending_market_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
-
-    Reserve::pack(
-        Reserve {
-            version: PROGRAM_VERSION,
-            lending_market: *lending_market_info.key,
-            liquidity_mint: *reserve_liquidity_mint_info.key,
-            liquidity_mint_decimals: liquidity_reserve_mint.decimals,
-            liquidity_supply: *reserve_liquidity_supply_info.key,
-            collateral_mint: *reserve_collateral_mint_info.key,
-            collateral_supply: *reserve_collateral_supply_info.key,
-            collateral_fees_receiver: *reserve_collateral_fees_receiver_info.key,
-            dex_market,
-            state: reserve_state,
-            config,
-        },
-        &mut reserve_info.data.borrow_mut(),
-    )?;
 
     Ok(())
 }
@@ -323,19 +329,19 @@ fn process_deposit(
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &reserve.liquidity_supply != reserve_liquidity_supply_info.key {
+    if &reserve.liquidity.supply_pubkey != reserve_liquidity_supply_info.key {
         msg!("Invalid reserve liquidity supply account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &reserve.collateral_mint != reserve_collateral_mint_info.key {
+    if &reserve.collateral.mint_pubkey != reserve_collateral_mint_info.key {
         msg!("Invalid reserve collateral mint account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &reserve.liquidity_supply == source_liquidity_info.key {
+    if &reserve.liquidity.supply_pubkey == source_liquidity_info.key {
         msg!("Cannot use reserve liquidity supply as source account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &reserve.collateral_supply == destination_collateral_info.key {
+    if &reserve.collateral.supply_pubkey == destination_collateral_info.key {
         msg!("Cannot use reserve collateral supply as destination account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
@@ -412,19 +418,19 @@ fn process_withdraw(
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &reserve.liquidity_supply != reserve_liquidity_supply_info.key {
+    if &reserve.liquidity.supply_pubkey != reserve_liquidity_supply_info.key {
         msg!("Invalid reserve liquidity supply account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &reserve.collateral_mint != reserve_collateral_mint_info.key {
+    if &reserve.collateral.mint_pubkey != reserve_collateral_mint_info.key {
         msg!("Invalid reserve collateral mint account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &reserve.liquidity_supply == destination_liquidity_info.key {
+    if &reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
         msg!("Cannot use reserve liquidity supply as destination account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &reserve.collateral_supply == source_collateral_info.key {
+    if &reserve.collateral.supply_pubkey == source_collateral_info.key {
         msg!("Cannot use reserve collateral supply as source account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
@@ -529,28 +535,28 @@ fn process_borrow(
     if deposit_reserve_info.key == borrow_reserve_info.key {
         return Err(LendingError::DuplicateReserve.into());
     }
-    if deposit_reserve.liquidity_mint == borrow_reserve.liquidity_mint {
+    if deposit_reserve.liquidity.mint_pubkey == borrow_reserve.liquidity.mint_pubkey {
         return Err(LendingError::DuplicateReserveMint.into());
     }
-    if &borrow_reserve.liquidity_supply != borrow_reserve_liquidity_supply_info.key {
+    if &borrow_reserve.liquidity.supply_pubkey != borrow_reserve_liquidity_supply_info.key {
         msg!("Invalid borrow reserve liquidity supply account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &deposit_reserve.collateral_supply != deposit_reserve_collateral_supply_info.key {
+    if &deposit_reserve.collateral.supply_pubkey != deposit_reserve_collateral_supply_info.key {
         msg!("Invalid deposit reserve collateral supply account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &deposit_reserve.collateral_supply == source_collateral_info.key {
+    if &deposit_reserve.collateral.supply_pubkey == source_collateral_info.key {
         msg!("Cannot use deposit reserve collateral supply as source account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &deposit_reserve.collateral_fees_receiver
+    if &deposit_reserve.collateral.fees_receiver
         != deposit_reserve_collateral_fees_receiver_info.key
     {
         msg!("Invalid deposit reserve collateral fees receiver account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &borrow_reserve.liquidity_supply == destination_liquidity_info.key {
+    if &borrow_reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
         msg!("Cannot use borrow reserve liquidity supply as destination account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
@@ -572,7 +578,7 @@ fn process_borrow(
     // accrue interest and update rates
     borrow_reserve.accrue_interest(clock.slot)?;
     deposit_reserve.accrue_interest(clock.slot)?;
-    let cumulative_borrow_rate = borrow_reserve.state.cumulative_borrow_rate_wads;
+    let cumulative_borrow_rate = borrow_reserve.cumulative_borrow_rate_wads;
 
     let mut trade_simulator = TradeSimulator::new(
         dex_market_info,
@@ -595,9 +601,9 @@ fn process_borrow(
     // update amount actually deposited
     collateral_deposit_amount -= borrow_fee;
 
-    borrow_reserve.state.add_borrow(borrow_amount)?;
+    borrow_reserve.liquidity.borrow(borrow_amount)?;
 
-    let obligation_mint_decimals = deposit_reserve.liquidity_mint_decimals;
+    let obligation_mint_decimals = deposit_reserve.liquidity.mint_decimals;
 
     Reserve::pack(deposit_reserve, &mut deposit_reserve_info.data.borrow_mut())?;
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
@@ -816,32 +822,32 @@ fn process_repay(
     if repay_reserve_info.key == withdraw_reserve_info.key {
         return Err(LendingError::DuplicateReserve.into());
     }
-    if repay_reserve.liquidity_mint == withdraw_reserve.liquidity_mint {
+    if repay_reserve.liquidity.mint_pubkey == withdraw_reserve.liquidity.mint_pubkey {
         return Err(LendingError::DuplicateReserveMint.into());
     }
-    if &repay_reserve.liquidity_supply != repay_reserve_liquidity_supply_info.key {
+    if &repay_reserve.liquidity.supply_pubkey != repay_reserve_liquidity_supply_info.key {
         msg!("Invalid repay reserve liquidity supply account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &withdraw_reserve.collateral_supply != withdraw_reserve_collateral_supply_info.key {
+    if &withdraw_reserve.collateral.supply_pubkey != withdraw_reserve_collateral_supply_info.key {
         msg!("Invalid withdraw reserve collateral supply account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &repay_reserve.liquidity_supply == source_liquidity_info.key {
+    if &repay_reserve.liquidity.supply_pubkey == source_liquidity_info.key {
         msg!("Cannot use repay reserve liquidity supply as source account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &withdraw_reserve.collateral_supply == destination_collateral_info.key {
+    if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
         msg!("Cannot use withdraw reserve collateral supply as destination account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
     // accrue interest and update rates
     repay_reserve.accrue_interest(clock.slot)?;
-    obligation.accrue_interest(repay_reserve.state.cumulative_borrow_rate_wads)?;
+    obligation.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
     let repay_amount = Decimal::from(liquidity_amount).min(obligation.borrowed_liquidity_wads);
-    let rounded_repay_amount = repay_reserve.state.subtract_repay(repay_amount)?;
+    let rounded_repay_amount = repay_reserve.liquidity.repay(repay_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
     let repay_pct: Decimal = repay_amount.try_div(obligation.borrowed_liquidity_wads)?;
@@ -972,22 +978,22 @@ fn process_liquidate(
     if repay_reserve_info.key == withdraw_reserve_info.key {
         return Err(LendingError::DuplicateReserve.into());
     }
-    if repay_reserve.liquidity_mint == withdraw_reserve.liquidity_mint {
+    if repay_reserve.liquidity.mint_pubkey == withdraw_reserve.liquidity.mint_pubkey {
         return Err(LendingError::DuplicateReserveMint.into());
     }
-    if &repay_reserve.liquidity_supply != repay_reserve_liquidity_supply_info.key {
+    if &repay_reserve.liquidity.supply_pubkey != repay_reserve_liquidity_supply_info.key {
         msg!("Invalid repay reserve liquidity supply account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &withdraw_reserve.collateral_supply != withdraw_reserve_collateral_supply_info.key {
+    if &withdraw_reserve.collateral.supply_pubkey != withdraw_reserve_collateral_supply_info.key {
         msg!("Invalid withdraw reserve collateral supply account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &repay_reserve.liquidity_supply == source_liquidity_info.key {
+    if &repay_reserve.liquidity.supply_pubkey == source_liquidity_info.key {
         msg!("Cannot use repay reserve liquidity supply as source account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &withdraw_reserve.collateral_supply == destination_collateral_info.key {
+    if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
         msg!("Cannot use withdraw reserve collateral supply as destination account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
@@ -1009,7 +1015,7 @@ fn process_liquidate(
     // accrue interest and update rates
     repay_reserve.accrue_interest(clock.slot)?;
     withdraw_reserve.accrue_interest(clock.slot)?;
-    obligation.accrue_interest(repay_reserve.state.cumulative_borrow_rate_wads)?;
+    obligation.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
     let mut trade_simulator = TradeSimulator::new(
         dex_market_info,
@@ -1019,13 +1025,12 @@ fn process_liquidate(
     )?;
 
     // calculate obligation health
-    let withdraw_reserve_collateral_exchange_rate =
-        withdraw_reserve.state.collateral_exchange_rate()?;
+    let withdraw_reserve_collateral_exchange_rate = withdraw_reserve.collateral_exchange_rate()?;
     let borrow_amount_as_collateral = withdraw_reserve_collateral_exchange_rate
         .decimal_liquidity_to_collateral(trade_simulator.simulate_trade(
             TradeAction::Sell,
             obligation.borrowed_liquidity_wads,
-            &repay_reserve.liquidity_mint,
+            &repay_reserve.liquidity.mint_pubkey,
             true,
         )?)?
         .try_round_u64()?;
@@ -1040,7 +1045,7 @@ fn process_liquidate(
     let close_factor = Rate::from_percent(50);
     let repay_amount = Decimal::from(liquidity_amount)
         .min(obligation.borrowed_liquidity_wads.try_mul(close_factor)?);
-    let rounded_repay_amount = repay_reserve.state.subtract_repay(repay_amount)?;
+    let rounded_repay_amount = repay_reserve.liquidity.repay(repay_amount)?;
 
     // TODO: check math precision
     // calculate the amount of collateral that will be withdrawn
@@ -1048,7 +1053,7 @@ fn process_liquidate(
     let withdraw_liquidity_amount = trade_simulator.simulate_trade(
         TradeAction::Sell,
         repay_amount,
-        &repay_reserve.liquidity_mint,
+        &repay_reserve.liquidity.mint_pubkey,
         false,
     )?;
     let withdraw_amount_as_collateral = withdraw_reserve_collateral_exchange_rate

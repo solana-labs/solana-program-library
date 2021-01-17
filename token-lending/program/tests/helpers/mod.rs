@@ -21,8 +21,8 @@ use spl_token_lending::{
     math::Decimal,
     processor::process_instruction,
     state::{
-        LendingMarket, Obligation, Reserve, ReserveConfig, ReserveFees, ReserveState,
-        INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION,
+        LendingMarket, NewReserveParams, Obligation, Reserve, ReserveCollateral, ReserveConfig,
+        ReserveFees, ReserveLiquidity, INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION,
     },
 };
 use std::str::FromStr;
@@ -335,25 +335,31 @@ pub fn add_reserve(
 
     let reserve_keypair = Keypair::new();
     let reserve_pubkey = reserve_keypair.pubkey();
-    let mut reserve_state =
-        ReserveState::new(1u64.wrapping_sub(slots_elapsed), liquidity_amount).unwrap();
-    reserve_state.add_borrow(borrow_amount).unwrap();
+    let reserve_liquidity = ReserveLiquidity::new(
+        liquidity_mint_pubkey,
+        liquidity_mint_decimals,
+        liquidity_supply_pubkey,
+    );
+    let reserve_collateral = ReserveCollateral::new(
+        collateral_mint_pubkey,
+        collateral_supply_pubkey,
+        collateral_fees_receiver_pubkey,
+    );
+    let mut reserve = Reserve::new(NewReserveParams {
+        // intentionally wrapped to simulate elapsed slots
+        current_slot: 1u64.wrapping_sub(slots_elapsed),
+        lending_market: lending_market.pubkey,
+        dex_market: dex_market_pubkey.into(),
+        liquidity: reserve_liquidity,
+        collateral: reserve_collateral,
+        config,
+    });
+    reserve.deposit_liquidity(liquidity_amount).unwrap();
+    reserve.liquidity.borrow(borrow_amount).unwrap();
     test.add_packable_account(
         reserve_pubkey,
         u32::MAX as u64,
-        &Reserve {
-            version: PROGRAM_VERSION,
-            lending_market: lending_market.pubkey,
-            liquidity_mint: liquidity_mint_pubkey,
-            liquidity_mint_decimals,
-            liquidity_supply: liquidity_supply_pubkey,
-            collateral_mint: collateral_mint_pubkey,
-            collateral_supply: collateral_supply_pubkey,
-            collateral_fees_receiver: collateral_fees_receiver_pubkey,
-            dex_market: dex_market_pubkey.into(),
-            config,
-            state: reserve_state,
-        },
+        &reserve,
         &spl_token_lending::id(),
     );
 
@@ -1006,15 +1012,15 @@ impl TestReserve {
     }
 
     pub async fn validate_state(&self, banks_client: &mut BanksClient) {
-        let reserve_state = self.get_state(banks_client).await;
-        assert!(reserve_state.state.last_update_slot > 0);
-        assert_eq!(PROGRAM_VERSION, reserve_state.version);
-        assert_eq!(self.lending_market, reserve_state.lending_market);
-        assert_eq!(self.liquidity_mint, reserve_state.liquidity_mint);
-        assert_eq!(self.liquidity_supply, reserve_state.liquidity_supply);
-        assert_eq!(self.collateral_mint, reserve_state.collateral_mint);
-        assert_eq!(self.collateral_supply, reserve_state.collateral_supply);
-        assert_eq!(self.config, reserve_state.config);
+        let reserve = self.get_state(banks_client).await;
+        assert!(reserve.last_update_slot > 0);
+        assert_eq!(PROGRAM_VERSION, reserve.version);
+        assert_eq!(self.lending_market, reserve.lending_market);
+        assert_eq!(self.liquidity_mint, reserve.liquidity.mint_pubkey);
+        assert_eq!(self.liquidity_supply, reserve.liquidity.supply_pubkey);
+        assert_eq!(self.collateral_mint, reserve.collateral.mint_pubkey);
+        assert_eq!(self.collateral_supply, reserve.collateral.supply_pubkey);
+        assert_eq!(self.config, reserve.config);
 
         let dex_market_coption = if let Some(dex_market_pubkey) = self.dex_market {
             COption::Some(dex_market_pubkey)
@@ -1022,14 +1028,11 @@ impl TestReserve {
             COption::None
         };
 
-        assert_eq!(dex_market_coption, reserve_state.dex_market);
-        assert_eq!(
-            reserve_state.state.cumulative_borrow_rate_wads,
-            Decimal::one()
-        );
-        assert_eq!(reserve_state.state.borrowed_liquidity_wads, Decimal::zero());
-        assert!(reserve_state.state.available_liquidity > 0);
-        assert!(reserve_state.state.collateral_mint_supply > 0);
+        assert_eq!(dex_market_coption, reserve.dex_market);
+        assert_eq!(reserve.cumulative_borrow_rate_wads, Decimal::one());
+        assert_eq!(reserve.liquidity.borrowed_amount_wads, Decimal::zero());
+        assert!(reserve.liquidity.available_amount > 0);
+        assert!(reserve.collateral.mint_total_supply > 0);
     }
 }
 
