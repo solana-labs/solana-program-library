@@ -3,11 +3,13 @@
 use assert_matches::*;
 use solana_program::{program_option::COption, program_pack::Pack, pubkey::Pubkey};
 use solana_program_test::*;
+
 use solana_sdk::{
     account::Account,
     signature::{read_keypair_file, Keypair, Signer},
     system_instruction::create_account,
     transaction::{Transaction, TransactionError},
+    transport::TransportError,
 };
 use spl_token::{
     instruction::approve,
@@ -431,6 +433,7 @@ pub struct LiquidateArgs<'a> {
     pub amount: u64,
     pub dex_market: &'a TestDexMarket,
     pub user_accounts_owner: &'a Keypair,
+    pub successful_transaction: bool,
 }
 
 impl TestLendingMarket {
@@ -520,7 +523,7 @@ impl TestLendingMarket {
         banks_client: &mut BanksClient,
         payer: &Keypair,
         args: LiquidateArgs<'_>,
-    ) {
+    ) -> Result<(), TransportError> {
         let LiquidateArgs {
             repay_reserve,
             withdraw_reserve,
@@ -528,6 +531,7 @@ impl TestLendingMarket {
             amount,
             dex_market,
             user_accounts_owner,
+            successful_transaction,
         } = args;
 
         let dex_market_orders_pubkey = if repay_reserve.dex_market.is_none() {
@@ -587,7 +591,12 @@ impl TestLendingMarket {
             ],
             recent_blockhash,
         );
-        assert!(banks_client.process_transaction(transaction).await.is_ok());
+        let result = banks_client.process_transaction(transaction).await;
+        if successful_transaction {
+            assert!(result.is_ok());
+        }
+
+        return result;
     }
 
     pub async fn borrow(

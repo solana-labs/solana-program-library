@@ -3,9 +3,14 @@
 mod helpers;
 
 use helpers::*;
+use solana_sdk::program_error::ProgramError;
+use solana_sdk::program_error::ProgramError::Custom;
+
 use solana_program_test::*;
-use solana_sdk::{pubkey::Pubkey, signature::Keypair};
+
+use solana_sdk::{pubkey::Pubkey, signature::Keypair, transport::TransportError};
 use spl_token_lending::{
+    error::LendingError,
     math::Decimal,
     processor::process_instruction,
     state::{INITIAL_COLLATERAL_RATE, SLOTS_PER_YEAR},
@@ -17,8 +22,25 @@ const FRACTIONAL_TO_USDC: u64 = 1_000_000;
 const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL;
 const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 100 * FRACTIONAL_TO_USDC;
 
-#[tokio::test]
-async fn test_success() {
+// set loan values to about 90% of collateral value so that it gets liquidated
+const USDC_LOAN: u64 = 2 * FRACTIONAL_TO_USDC;
+const USDC_LOAN_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATE * LAMPORTS_TO_SOL;
+
+const SOL_LOAN: u64 = LAMPORTS_TO_SOL;
+const SOL_LOAN_USDC_COLLATERAL: u64 = 2 * INITIAL_COLLATERAL_RATE * FRACTIONAL_TO_USDC;
+const NUMBER_OF_TESTS: u64 = 3;
+
+struct TestReturn {
+    banks_client: BanksClient,
+    sol_reserve: TestReserve,
+    usdc_reserve: TestReserve,
+    sol_obligation: TestObligation,
+    usdc_obligation: TestObligation,
+    sol_result: Result<(), TransportError>,
+    usdc_result: Result<(), TransportError>,
+}
+
+async fn setup(usdc_amount: u64, sol_amount: u64, successful_transaction: bool) -> TestReturn {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
@@ -26,14 +48,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(160_000);
-
-    // set loan values to about 90% of collateral value so that it gets liquidated
-    const USDC_LOAN: u64 = 2 * FRACTIONAL_TO_USDC;
-    const USDC_LOAN_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATE * LAMPORTS_TO_SOL;
-
-    const SOL_LOAN: u64 = LAMPORTS_TO_SOL;
-    const SOL_LOAN_USDC_COLLATERAL: u64 = 2 * INITIAL_COLLATERAL_RATE * FRACTIONAL_TO_USDC;
+    test.set_bpf_compute_max_units(NUMBER_OF_TESTS * 80_000);
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -54,8 +69,8 @@ async fn test_success() {
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
-            borrow_amount: USDC_LOAN,
-            user_liquidity_amount: USDC_LOAN,
+            borrow_amount: usdc_amount,
+            user_liquidity_amount: usdc_amount,
             collateral_amount: SOL_LOAN_USDC_COLLATERAL,
             ..AddReserveArgs::default()
         },
@@ -73,8 +88,8 @@ async fn test_success() {
             liquidity_mint_pubkey: spl_token::native_mint::id(),
             dex_market_pubkey: Some(sol_usdc_dex_market.pubkey),
             collateral_amount: USDC_LOAN_SOL_COLLATERAL,
-            borrow_amount: SOL_LOAN,
-            user_liquidity_amount: SOL_LOAN,
+            borrow_amount: sol_amount,
+            user_liquidity_amount: sol_amount,
             ..AddReserveArgs::default()
         },
     );
@@ -88,7 +103,7 @@ async fn test_success() {
             borrow_reserve: &usdc_reserve,
             collateral_reserve: &sol_reserve,
             collateral_amount: USDC_LOAN_SOL_COLLATERAL,
-            borrowed_liquidity_wads: Decimal::from(USDC_LOAN),
+            borrowed_liquidity_wads: Decimal::from(usdc_amount),
         },
     );
 
@@ -101,13 +116,13 @@ async fn test_success() {
             borrow_reserve: &sol_reserve,
             collateral_reserve: &usdc_reserve,
             collateral_amount: SOL_LOAN_USDC_COLLATERAL,
-            borrowed_liquidity_wads: Decimal::from(SOL_LOAN),
+            borrowed_liquidity_wads: Decimal::from(sol_amount),
         },
     );
 
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
-    lending_market
+    let usdc_result = lending_market
         .liquidate(
             &mut banks_client,
             &payer,
@@ -115,14 +130,15 @@ async fn test_success() {
                 repay_reserve: &usdc_reserve,
                 withdraw_reserve: &sol_reserve,
                 dex_market: &sol_usdc_dex_market,
-                amount: USDC_LOAN,
+                amount: usdc_amount,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: &usdc_obligation,
+                successful_transaction,
             },
         )
         .await;
 
-    lending_market
+    let sol_result = lending_market
         .liquidate(
             &mut banks_client,
             &payer,
@@ -130,13 +146,33 @@ async fn test_success() {
                 repay_reserve: &sol_reserve,
                 withdraw_reserve: &usdc_reserve,
                 dex_market: &sol_usdc_dex_market,
-                amount: SOL_LOAN,
+                amount: sol_amount,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: &sol_obligation,
+                successful_transaction,
             },
         )
         .await;
 
+    TestReturn {
+        banks_client,
+        usdc_reserve,
+        usdc_obligation,
+        sol_obligation,
+        sol_reserve,
+        sol_result,
+        usdc_result,
+    }
+}
+
+#[tokio::test]
+async fn test_liquidate_usdc_obligation() {
+    let TestReturn {
+        mut banks_client,
+        usdc_reserve,
+        usdc_obligation,
+        ..
+    } = setup(USDC_LOAN, SOL_LOAN, true).await;
     let usdc_liquidity_supply =
         get_token_balance(&mut banks_client, usdc_reserve.liquidity_supply).await;
     let usdc_loan_state = usdc_obligation.get_state(&mut banks_client).await;
@@ -146,7 +182,19 @@ async fn test_success() {
         usdc_liquidated,
         usdc_loan_state.borrowed_liquidity_wads.round_u64()
     );
+    let collateral_liquidated =
+        USDC_LOAN_SOL_COLLATERAL - usdc_loan_state.deposited_collateral_tokens;
+    assert!(collateral_liquidated > 0)
+}
 
+#[tokio::test]
+async fn test_liquidate_sol_obligation() {
+    let TestReturn {
+        mut banks_client,
+        sol_reserve,
+        sol_obligation,
+        ..
+    } = setup(USDC_LOAN, SOL_LOAN, true).await;
     let sol_liquidity_supply =
         get_token_balance(&mut banks_client, sol_reserve.liquidity_supply).await;
     let sol_loan_state = sol_obligation.get_state(&mut banks_client).await;
@@ -156,4 +204,28 @@ async fn test_success() {
         sol_liquidated,
         sol_loan_state.borrowed_liquidity_wads.round_u64()
     );
+
+    let collateral_liquidated =
+        SOL_LOAN_USDC_COLLATERAL - sol_loan_state.deposited_collateral_tokens;
+    assert!(collateral_liquidated > 0)
+}
+
+#[tokio::test]
+async fn test_liquidate_healthy_obligation_failure() {
+    let TestReturn { usdc_result, .. } = setup(100, 100, false).await;
+    let he_as_number = LendingError::HealthyObligation as u32;
+    let unwrapped = usdc_result.unwrap_err().unwrap();
+    match unwrapped {
+        // explicitness for readability since same module names here
+        solana_sdk::transaction::TransactionError::InstructionError(
+            _,
+            instruction_error_struct,
+        ) => match instruction_error_struct {
+            solana_sdk::instruction::InstructionError::Custom(numerical_value) => {
+                assert_eq!(he_as_number, numerical_value);
+            }
+            _ => assert!(false),
+        },
+        _ => assert!(false),
+    }
 }
