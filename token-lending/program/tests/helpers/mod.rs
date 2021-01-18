@@ -33,7 +33,7 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     optimal_utilization_rate: 80,
     loan_to_value_ratio: 50,
     liquidation_bonus: 5,
-    liquidation_threshold: 50,
+    liquidation_threshold: 55,
     min_borrow_rate: 0,
     optimal_borrow_rate: 4,
     max_borrow_rate: 30,

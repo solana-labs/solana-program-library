@@ -4,10 +4,10 @@ use crate::{
     dex_market::{DexMarket, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
-    math::{Decimal, Rate, TryAdd, TryMul, TrySub, WAD},
+    math::{Decimal, TryAdd, WAD},
     state::{
-        LendingMarket, NewObligationParams, NewReserveParams, Obligation, RepayResult, Reserve,
-        ReserveCollateral, ReserveConfig, ReserveLiquidity, TokenConverter, PROGRAM_VERSION,
+        LendingMarket, LiquidateResult, NewObligationParams, NewReserveParams, Obligation,
+        RepayResult, Reserve, ReserveCollateral, ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
     },
 };
 use num_traits::FromPrimitive;
@@ -25,7 +25,6 @@ use solana_program::{
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 use spl_token::state::Account as Token;
-use std::convert::TryInto;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -124,16 +123,18 @@ fn process_init_reserve(
         msg!("Optimal utilization rate must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.loan_to_value_ratio > 90 {
-        msg!("Loan to value ratio must be in range [0, 90]");
+    if config.loan_to_value_ratio >= 100 || config.loan_to_value_ratio == 0 {
+        msg!("Loan to value ratio must be in range (0, 100)");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.liquidation_bonus > 100 {
         msg!("Liquidation bonus must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.liquidation_threshold > 100 {
-        msg!("Liquidation threshold must be in range [0, 100]");
+    if config.liquidation_threshold <= config.loan_to_value_ratio
+        || config.liquidation_threshold > 100
+    {
+        msg!("Liquidation threshold must be in range (LTV, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.optimal_borrow_rate < config.min_borrow_rate {
@@ -744,7 +745,7 @@ fn process_borrow(
         &borrow_reserve.liquidity.mint_pubkey,
     )?;
 
-    borrow_reserve.liquidity.borrow(borrow_amount)?;
+    borrow_reserve.liquidity.borrow(loan.borrow_amount)?;
     obligation.borrowed_liquidity_wads = obligation
         .borrowed_liquidity_wads
         .try_add(Decimal::from(loan.borrow_amount))?;
@@ -1093,20 +1094,6 @@ fn process_liquidate(
     assert_last_update_slot(&withdraw_reserve, clock.slot)?;
     obligation.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
-    // calculate the amount of liquidity that will be repaid
-    let decimal_repay_amount = {
-        let max_repayable = obligation
-            .borrowed_liquidity_wads
-            .try_mul(Rate::from_percent(50))?;
-        let input_amount = Decimal::from(liquidity_amount);
-        input_amount.min(max_repayable)
-    };
-
-    let integer_repay_amount = decimal_repay_amount.try_round_u64()?;
-    if integer_repay_amount == 0 {
-        return Err(LendingError::ObligationTooSmall.into());
-    }
-
     let trade_simulator = TradeSimulator::new(
         dex_market_info,
         dex_market_orders_info,
@@ -1116,41 +1103,24 @@ fn process_liquidate(
         &repay_reserve.liquidity.mint_pubkey,
     )?;
 
-    let withdraw_amount_in_liquidity =
-        trade_simulator.convert(repay_amount, &repay_reserve.liquidity.mint_pubkey)?;
-
-    let withdraw_reserve_exchange_rate = withdraw_reserve.collateral_exchange_rate()?;
-    let withdraw_amount = withdraw_reserve_exchange_rate
-        .decimal_liquidity_to_collateral(withdraw_amount_in_liquidity)?
-        .min(obligation.deposited_collateral_tokens.into());
-
-    let repay_factor: Rate = repay_amount
-        .try_div(obligation.borrowed_liquidity_wads)?
-        .try_into()?;
-    let withdraw_factor: Rate = withdraw_amount
-        .try_div(obligation.deposited_collateral_tokens)?
-        .try_into()?;
-
-    // When repay factor / withdraw factor <= threshold, obligation is healthy
-    let liquidation_threshold = Rate::from_percent(withdraw_reserve.config.liquidation_threshold);
-    if repay_factor <= withdraw_factor.try_mul(liquidation_threshold)? {
-        return Err(LendingError::HealthyObligation.into());
-    }
-
-    let rounded_repay_amount = repay_reserve.liquidity.repay(integer_repay_amount, decimal_repay_amount)?;
-    let withdraw_amount = withdraw_amount.try_round_u64()?;
-    let liquidation_bonus_amount =
-        withdraw_amount * (withdraw_reserve.config.liquidation_bonus as u64) / 100;
-    let withdraw_amount = obligation
-        .deposited_collateral_tokens
-        .min(withdraw_amount + liquidation_bonus_amount);
+    let LiquidateResult {
+        bonus_amount,
+        withdraw_amount,
+        integer_repay_amount,
+        decimal_repay_amount,
+    } = withdraw_reserve.liquidate_obligation(
+        &obligation,
+        liquidity_amount,
+        &repay_reserve.liquidity.mint_pubkey,
+        trade_simulator,
+    )?;
+    repay_reserve
+        .liquidity
+        .repay(integer_repay_amount, decimal_repay_amount)?;
 
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    obligation.borrowed_liquidity_wads = obligation
-        .borrowed_liquidity_wads
-        .try_sub(decimal_repay_amount)?;
-    obligation.deposited_collateral_tokens -= withdraw_amount;
+    obligation.liquidate(decimal_repay_amount, withdraw_amount + bonus_amount)?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     let authority_signer_seeds = &[
@@ -1182,6 +1152,18 @@ fn process_liquidate(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
+
+    // pay bonus collateral
+    if bonus_amount > 0 {
+        spl_token_transfer(TokenTransferParams {
+            source: withdraw_reserve_collateral_supply_info.clone(),
+            destination: destination_collateral_info.clone(),
+            amount: bonus_amount,
+            authority: lending_market_authority_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
+    }
 
     Ok(())
 }

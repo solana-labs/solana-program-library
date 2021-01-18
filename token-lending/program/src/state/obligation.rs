@@ -70,6 +70,19 @@ impl Obligation {
         Ok(())
     }
 
+    /// Liquidate part of obligation
+    pub fn liquidate(
+        &mut self,
+        repay_amount: Decimal,
+        withdraw_amount: u64,
+    ) -> Result<(), ProgramError> {
+        self.borrowed_liquidity_wads = self.borrowed_liquidity_wads.try_sub(repay_amount)?;
+        self.deposited_collateral_tokens
+            .checked_sub(withdraw_amount)
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(())
+    }
+
     /// Repay borrowed tokens
     pub fn repay(
         &mut self,
