@@ -29,7 +29,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(85_000);
+    test.set_bpf_compute_max_units(87_000);
 
     const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL;
     const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 100 * FRACTIONAL_TO_USDC;
@@ -179,7 +179,7 @@ async fn test_success() {
     let expected_collateral_received = expected_obligation_repaid_percent
         .try_mul(OBLIGATION_COLLATERAL)
         .unwrap()
-        .try_round_u64()
+        .try_floor_u64()
         .unwrap();
     assert_eq!(collateral_received, expected_collateral_received);
 
