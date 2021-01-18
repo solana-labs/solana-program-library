@@ -121,7 +121,7 @@ async fn test_success() {
                 usdc_reserve.liquidity_supply,
                 sol_reserve.pubkey,
                 sol_reserve.collateral_supply,
-                obligation.keypair.pubkey(),
+                obligation.pubkey,
                 obligation.token_mint,
                 obligation.token_account,
                 lending_market.pubkey,

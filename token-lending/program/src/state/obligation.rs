@@ -31,6 +31,26 @@ pub struct Obligation {
 }
 
 impl Obligation {
+    /// Create new obligation
+    pub fn new(params: NewObligationParams) -> Self {
+        let NewObligationParams {
+            collateral_reserve,
+            borrow_reserve,
+            token_mint,
+            cumulative_borrow_rate_wads,
+        } = params;
+
+        Self {
+            version: PROGRAM_VERSION,
+            deposited_collateral_tokens: 0,
+            collateral_reserve,
+            cumulative_borrow_rate_wads,
+            borrowed_liquidity_wads: Decimal::zero(),
+            borrow_reserve,
+            token_mint,
+        }
+    }
+
     /// Accrue interest
     pub fn accrue_interest(&mut self, cumulative_borrow_rate: Decimal) -> Result<(), ProgramError> {
         if cumulative_borrow_rate < self.cumulative_borrow_rate_wads {
@@ -102,6 +122,18 @@ pub struct RepayResult {
     pub decimal_repay_amount: Decimal,
     /// Amount that will be repaid as u64
     pub integer_repay_amount: u64,
+}
+
+/// Create new obligation
+pub struct NewObligationParams {
+    /// Collateral reserve address
+    pub collateral_reserve: Pubkey,
+    /// Borrow reserve address
+    pub borrow_reserve: Pubkey,
+    /// Obligation token mint address
+    pub token_mint: Pubkey,
+    /// Borrow rate used for calculating interest.
+    pub cumulative_borrow_rate_wads: Decimal,
 }
 
 impl Sealed for Obligation {}

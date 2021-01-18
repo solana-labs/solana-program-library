@@ -7,6 +7,7 @@ use solana_program_test::*;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::{
     instruction::BorrowAmountType,
+    math::Decimal,
     processor::process_instruction,
     state::{INITIAL_COLLATERAL_RATIO, SLOTS_PER_YEAR},
 };
@@ -33,6 +34,9 @@ async fn test_borrow_quote_currency() {
         spl_token_lending::id(),
         processor!(process_instruction),
     );
+
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(151_000);
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -61,13 +65,24 @@ async fn test_borrow_quote_currency() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             dex_market_pubkey: Some(sol_usdc_dex_market.pubkey),
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
             liquidity_mint_decimals: 9,
             config: reserve_config,
             ..AddReserveArgs::default()
+        },
+    );
+
+    let usdc_obligation = add_obligation(
+        &mut test,
+        &user_accounts_owner,
+        &lending_market,
+        AddObligationArgs {
+            borrow_reserve: &usdc_reserve,
+            collateral_reserve: &sol_reserve,
+            collateral_amount: 0,
+            borrowed_liquidity_wads: Decimal::zero(),
         },
     );
 
@@ -82,7 +97,7 @@ async fn test_borrow_quote_currency() {
     assert_eq!(collateral_supply, 0);
 
     let collateral_deposit_amount = INITIAL_COLLATERAL_RATIO * SOL_COLLATERAL_AMOUNT_LAMPORTS;
-    let obligation = lending_market
+    lending_market
         .borrow(
             &mut banks_client,
             &payer,
@@ -93,7 +108,7 @@ async fn test_borrow_quote_currency() {
                 borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
                 amount: collateral_deposit_amount,
                 user_accounts_owner: &user_accounts_owner,
-                obligation: None,
+                obligation: &usdc_obligation,
             },
         )
         .await;
@@ -123,7 +138,7 @@ async fn test_borrow_quote_currency() {
                 borrow_amount_type: BorrowAmountType::LiquidityBorrowAmount,
                 amount: USDC_BORROW_AMOUNT_FRACTIONAL,
                 user_accounts_owner: &user_accounts_owner,
-                obligation: Some(obligation),
+                obligation: &usdc_obligation,
             },
         )
         .await;
@@ -172,6 +187,9 @@ async fn test_borrow_base_currency() {
         processor!(process_instruction),
     );
 
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(151_000);
+
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
@@ -185,7 +203,6 @@ async fn test_borrow_base_currency() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -209,6 +226,18 @@ async fn test_borrow_base_currency() {
         },
     );
 
+    let sol_obligation = add_obligation(
+        &mut test,
+        &user_accounts_owner,
+        &lending_market,
+        AddObligationArgs {
+            borrow_reserve: &sol_reserve,
+            collateral_reserve: &usdc_reserve,
+            collateral_amount: 0,
+            borrowed_liquidity_wads: Decimal::zero(),
+        },
+    );
+
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
     let borrow_amount =
@@ -220,7 +249,7 @@ async fn test_borrow_base_currency() {
     assert_eq!(collateral_supply, 0);
 
     let collateral_deposit_amount = INITIAL_COLLATERAL_RATIO * USDC_COLLATERAL_LAMPORTS;
-    let obligation = lending_market
+    lending_market
         .borrow(
             &mut banks_client,
             &payer,
@@ -231,7 +260,7 @@ async fn test_borrow_base_currency() {
                 borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
                 amount: collateral_deposit_amount,
                 user_accounts_owner: &user_accounts_owner,
-                obligation: None,
+                obligation: &sol_obligation,
             },
         )
         .await;
@@ -261,7 +290,7 @@ async fn test_borrow_base_currency() {
                 borrow_amount_type: BorrowAmountType::LiquidityBorrowAmount,
                 amount: borrow_amount,
                 user_accounts_owner: &user_accounts_owner,
-                obligation: Some(obligation),
+                obligation: &sol_obligation,
             },
         )
         .await;

@@ -15,8 +15,8 @@ use spl_token::{
 };
 use spl_token_lending::{
     instruction::{
-        borrow_reserve_liquidity, deposit_reserve_liquidity, init_lending_market, init_reserve,
-        liquidate_obligation, BorrowAmountType,
+        borrow_reserve_liquidity, deposit_reserve_liquidity, init_lending_market, init_obligation,
+        init_reserve, liquidate_obligation, BorrowAmountType,
     },
     math::Decimal,
     processor::process_instruction,
@@ -209,9 +209,11 @@ pub fn add_obligation(
     );
 
     TestObligation {
-        keypair: obligation_keypair,
+        pubkey: obligation_pubkey,
         token_mint: token_mint_pubkey,
         token_account: token_account_pubkey,
+        borrow_reserve: borrow_reserve.pubkey,
+        collateral_reserve: collateral_reserve.pubkey,
     }
 }
 
@@ -429,7 +431,7 @@ pub struct BorrowArgs<'a> {
     pub amount: u64,
     pub dex_market: &'a TestDexMarket,
     pub user_accounts_owner: &'a Keypair,
-    pub obligation: Option<TestObligation>,
+    pub obligation: &'a TestObligation,
 }
 
 pub struct LiquidateArgs<'a> {
@@ -580,7 +582,7 @@ impl TestLendingMarket {
                     repay_reserve.liquidity_supply,
                     withdraw_reserve.pubkey,
                     withdraw_reserve.collateral_supply,
-                    obligation.keypair.pubkey(),
+                    obligation.pubkey,
                     self.pubkey,
                     self.authority,
                     user_transfer_authority.pubkey(),
@@ -610,8 +612,7 @@ impl TestLendingMarket {
         banks_client: &mut BanksClient,
         payer: &Keypair,
         args: BorrowArgs<'_>,
-    ) -> TestObligation {
-        let rent = banks_client.get_rent().await.unwrap();
+    ) {
         let memory_keypair = Keypair::new();
         let user_transfer_authority = Keypair::new();
 
@@ -635,60 +636,6 @@ impl TestLendingMarket {
             amount
         } else {
             get_token_balance(banks_client, deposit_reserve.user_collateral_account).await
-        };
-
-        let obligation = if let Some(obligation) = obligation {
-            obligation
-        } else {
-            let obligation_token_mint_keypair = Keypair::new();
-            let obligation_token_account_keypair = Keypair::new();
-            let obligation = TestObligation {
-                keypair: Keypair::new(),
-                token_mint: obligation_token_mint_keypair.pubkey(),
-                token_account: obligation_token_account_keypair.pubkey(),
-            };
-
-            let mut transaction = Transaction::new_with_payer(
-                &[
-                    create_account(
-                        &payer.pubkey(),
-                        &obligation_token_mint_keypair.pubkey(),
-                        rent.minimum_balance(Mint::LEN),
-                        Mint::LEN as u64,
-                        &spl_token::id(),
-                    ),
-                    create_account(
-                        &payer.pubkey(),
-                        &obligation_token_account_keypair.pubkey(),
-                        rent.minimum_balance(Token::LEN),
-                        Token::LEN as u64,
-                        &spl_token::id(),
-                    ),
-                    create_account(
-                        &payer.pubkey(),
-                        &obligation.keypair.pubkey(),
-                        rent.minimum_balance(Obligation::LEN),
-                        Obligation::LEN as u64,
-                        &spl_token_lending::id(),
-                    ),
-                ],
-                Some(&payer.pubkey()),
-            );
-
-            let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
-            transaction.sign(
-                &vec![
-                    payer,
-                    &obligation.keypair,
-                    &obligation_token_account_keypair,
-                    &obligation_token_mint_keypair,
-                ],
-                recent_blockhash,
-            );
-
-            assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
-
-            obligation
         };
 
         let mut transaction = Transaction::new_with_payer(
@@ -723,10 +670,9 @@ impl TestLendingMarket {
                     self.pubkey,
                     self.authority,
                     user_transfer_authority.pubkey(),
-                    obligation.keypair.pubkey(),
+                    obligation.pubkey,
                     obligation.token_mint,
                     obligation.token_account,
-                    user_accounts_owner.pubkey(),
                     dex_market.pubkey,
                     dex_market_orders_pubkey,
                     memory_keypair.pubkey(),
@@ -748,7 +694,6 @@ impl TestLendingMarket {
         );
 
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
-        obligation
     }
 
     pub async fn get_state(&self, banks_client: &mut BanksClient) -> LendingMarket {
@@ -1036,20 +981,109 @@ impl TestReserve {
     }
 }
 
+#[derive(Debug)]
 pub struct TestObligation {
-    pub keypair: Keypair,
+    pub pubkey: Pubkey,
     pub token_mint: Pubkey,
     pub token_account: Pubkey,
+    pub collateral_reserve: Pubkey,
+    pub borrow_reserve: Pubkey,
 }
 
 impl TestObligation {
+    #[allow(clippy::too_many_arguments)]
+    pub async fn init(
+        banks_client: &mut BanksClient,
+        lending_market: &TestLendingMarket,
+        deposit_reserve: &TestReserve,
+        borrow_reserve: &TestReserve,
+        payer: &Keypair,
+        user_accounts_owner: &Keypair,
+    ) -> Result<Self, TransactionError> {
+        let obligation_keypair = Keypair::new();
+        let obligation_token_mint_keypair = Keypair::new();
+        let obligation_token_account_keypair = Keypair::new();
+        let obligation = TestObligation {
+            pubkey: obligation_keypair.pubkey(),
+            token_mint: obligation_token_mint_keypair.pubkey(),
+            token_account: obligation_token_account_keypair.pubkey(),
+            collateral_reserve: deposit_reserve.pubkey,
+            borrow_reserve: borrow_reserve.pubkey,
+        };
+
+        let rent = banks_client.get_rent().await.unwrap();
+        let mut transaction = Transaction::new_with_payer(
+            &[
+                create_account(
+                    &payer.pubkey(),
+                    &obligation_token_mint_keypair.pubkey(),
+                    rent.minimum_balance(Mint::LEN),
+                    Mint::LEN as u64,
+                    &spl_token::id(),
+                ),
+                create_account(
+                    &payer.pubkey(),
+                    &obligation_token_account_keypair.pubkey(),
+                    rent.minimum_balance(Token::LEN),
+                    Token::LEN as u64,
+                    &spl_token::id(),
+                ),
+                create_account(
+                    &payer.pubkey(),
+                    &obligation_keypair.pubkey(),
+                    rent.minimum_balance(Obligation::LEN),
+                    Obligation::LEN as u64,
+                    &spl_token_lending::id(),
+                ),
+                init_obligation(
+                    spl_token_lending::id(),
+                    deposit_reserve.pubkey,
+                    borrow_reserve.pubkey,
+                    lending_market.pubkey,
+                    obligation.pubkey,
+                    obligation.token_mint,
+                    obligation.token_account,
+                    user_accounts_owner.pubkey(),
+                ),
+            ],
+            Some(&payer.pubkey()),
+        );
+
+        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+        transaction.sign(
+            &vec![
+                payer,
+                &obligation_keypair,
+                &obligation_token_account_keypair,
+                &obligation_token_mint_keypair,
+            ],
+            recent_blockhash,
+        );
+
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .map_err(|e| e.unwrap())?;
+
+        Ok(obligation)
+    }
+
     pub async fn get_state(&self, banks_client: &mut BanksClient) -> Obligation {
         let obligation_account: Account = banks_client
-            .get_account(self.keypair.pubkey())
+            .get_account(self.pubkey)
             .await
             .unwrap()
             .unwrap();
         Obligation::unpack(&obligation_account.data[..]).unwrap()
+    }
+
+    pub async fn validate_state(&self, banks_client: &mut BanksClient) {
+        let obligation = self.get_state(banks_client).await;
+        assert_eq!(obligation.version, PROGRAM_VERSION);
+        assert_eq!(obligation.collateral_reserve, self.collateral_reserve);
+        assert!(obligation.cumulative_borrow_rate_wads >= Decimal::one());
+        assert_eq!(obligation.borrow_reserve, self.borrow_reserve);
+        assert_eq!(obligation.token_mint, self.token_mint);
     }
 }
 
