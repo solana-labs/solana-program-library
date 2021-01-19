@@ -85,7 +85,7 @@ pub enum MarginPoolError {
     /// Insuficient funds to open a position
     #[error("Insuficient funds to open a position")]
     InsufficeintFunds,
-     #[error("Token Swap failed")]
+    #[error("Token Swap failed")]
     SwapFaild,
 }
 

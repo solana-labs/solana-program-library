@@ -18,18 +18,11 @@ pub struct MarginPool {
     /// token mint.
     pub nonce: u8,
 
-    /// Program ID of the tokens being exchanged.
-    pub token_program_id: Pubkey,
-
-    /// Program ID of the token swap pool.
-    pub token_swap_program_id: Pubkey,
-
     /// Token LP pool account
     pub token_lp: Pubkey,
-
-    /// Token A
+    /// Token A - first component of the swap basket
     pub token_a: Pubkey,
-    /// Token B
+    /// Token B - second component of the swap basket
     pub token_b: Pubkey,
 
     /// Pool tokens are issued when LP tokens are deposited.
@@ -39,17 +32,14 @@ pub struct MarginPool {
     pub token_a_mint: Pubkey,
     /// Mint information for token B
     pub token_b_mint: Pubkey,
-
     /// Mint information for token LP
     pub token_lp_mint: Pubkey,
-
+    /// token swap pool
     pub token_swap: Pubkey,
-    // TBD
-    // /// Debt Pool A
-    // pub debt_mint_a: Pubkey,
-
-    // /// Debt Pool B
-    // pub debt_mint_b: Pubkey,
+    /// Escrow account for A
+    pub escrow_a: Pubkey,
+    /// Escrow account for B
+    pub escrow_b: Pubkey,
     /// Per-slot position fee numerator
     pub position_fee_numerator: u64,
     /// Per-slot position fee denominator
@@ -66,6 +56,10 @@ pub struct MarginPool {
     pub host_position_fee_numerator: u64,
     /// Part of a position fee transferred to the position opening host, denominator
     pub host_position_fee_denominator: u64,
+    /// Program ID of the tokens being exchanged.
+    pub token_program_id: Pubkey,
+    /// Program ID of the token swap pool.
+    pub token_swap_program_id: Pubkey,
 }
 
 impl Pack for MarginPool {

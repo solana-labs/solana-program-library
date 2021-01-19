@@ -186,6 +186,8 @@ impl Processor {
         let token_a_info = next_account_info(account_info_iter)?;
         let token_b_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
+        let escrow_a_info = next_account_info(account_info_iter)?;
+        let escrow_b_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let token_swap_program_info = next_account_info(account_info_iter)?;
 
@@ -261,6 +263,8 @@ impl Processor {
             token_a_mint: token_a.mint,
             token_b_mint: token_b.mint,
             token_lp_mint: token_lp.mint,
+            escrow_a: *escrow_a_info.key,
+            escrow_b: *escrow_b_info.key,
 
             /// fees
             /// TODO: initalize
@@ -291,12 +295,17 @@ impl Processor {
         let margin_pool_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
         let user_transfer_info = next_account_info(account_info_iter)?;
+        // collateral in form of LP tokens
+        let pool_token_source_info = next_account_info(account_info_iter)?;
         let token_swap_info = next_account_info(account_info_iter)?;
         let position_info = next_account_info(account_info_iter)?;
+        // destination account to store position tokens
+        let position_escrow_info = next_account_info(account_info_iter)?;
         let position_mint_info = next_account_info(account_info_iter)?;
         let token_source_info = next_account_info(account_info_iter)?;
         let token_lp_info = next_account_info(account_info_iter)?;
         let token_dest_info = next_account_info(account_info_iter)?;
+        let token_mint_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let token_swap_program_info = next_account_info(account_info_iter)?;
 
@@ -319,9 +328,11 @@ impl Processor {
             *token_source_info.key != *token_dest_info.key,
             margin_pool.token_lp != *token_lp_info.key,
             position.mint == Pubkey::default() || position.mint == *position_mint_info.key,
+            margin_pool.escrow_a == *position_escrow_info.key
+                || margin_pool.escrow_b == *position_escrow_info.key,
         ];
 
-        if !checks.all() {
+        if checks.iter().any(|&cond| !cond) {
             return Err(MarginPoolError::InvalidInput.into());
         }
 
@@ -352,9 +363,11 @@ impl Processor {
             token_swap_info.key,
             authority_info.key,
             user_transfer_info.key,
-            token_source_info.key,
+            pool_token_source_info.key,
             token_source_info.key,
             token_dest_info.key,
+            position_escrow_info.key,
+            token_mint_info.key,
         );
 
         let swap_info = Self::unpack_token_swap(token_swap_info.data.borrow())?;

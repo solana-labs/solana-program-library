@@ -40,3 +40,9 @@ impl IsInitialized for Position {
         self.version != UNINITIALIZED_VERSION
     }
 }
+
+impl Position {
+    pub fn charge_yield(&self) -> bool {
+        unimplemented!();
+    }
+}
