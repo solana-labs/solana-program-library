@@ -1,10 +1,8 @@
-//! State transition types
-
-use solana_program::{epoch_schedule::Slot, pubkey::Pubkey};
-use solana_program::program_pack::{IsInitialized, Pack, Sealed};
 use solana_program::program_error::ProgramError;
+use solana_program::program_pack::{IsInitialized, Pack, Sealed};
+use solana_program::pubkey::Pubkey;
 
-const UNINITIALIZED_VERSION: u8 = 0;
+use super::UNINITIALIZED_VERSION;
 
 /// Margin Pool
 #[repr(C)]
@@ -45,12 +43,29 @@ pub struct MarginPool {
     /// Mint information for token LP
     pub token_lp_mint: Pubkey,
 
+    pub token_swap: Pubkey,
     // TBD
     // /// Debt Pool A
     // pub debt_mint_a: Pubkey,
 
     // /// Debt Pool B
     // pub debt_mint_b: Pubkey,
+    /// Per-slot position fee numerator
+    pub position_fee_numerator: u64,
+    /// Per-slot position fee denominator
+    pub position_fee_denominator: u64,
+    /// Fee charged on LP on funds withdrawal numerator
+    pub owner_withdraw_fee_numerator: u64,
+    /// Fee charged on LP on funds withdrawal denominator
+    pub owner_withdraw_fee_denominator: u64,
+    /// Part of a position fee transferred to the owner, numerator
+    pub owner_position_fee_numerator: u64,
+    /// Part of a position fee transferred to the owner, denominator
+    pub owner_position_fee_denominator: u64,
+    /// Part of a position fee transferred to the position opening host, numerator
+    pub host_position_fee_numerator: u64,
+    /// Part of a position fee transferred to the position opening host, denominator
+    pub host_position_fee_denominator: u64,
 }
 
 impl Pack for MarginPool {
@@ -65,36 +80,6 @@ impl Pack for MarginPool {
 
 impl Sealed for MarginPool {}
 impl IsInitialized for MarginPool {
-    fn is_initialized(&self) -> bool {
-        self.version != UNINITIALIZED_VERSION
-    }
-}
-
-/// Position state
-#[repr(C)]
-#[derive(Debug, Default, PartialEq)]
-pub struct Position {
-    /// version of the margin pool
-    pub version: u8,
-
-    pub slot: Slot,
-    pub collateral_amount: u64,
-    pub size: u64,
-    pub mint: Pubkey,
-}
-
-impl Pack for Position {
-    const LEN: usize = 291;
-    fn unpack_from_slice(_input: &[u8]) -> Result<Self, ProgramError> {
-        unimplemented!();
-    }
-    fn pack_into_slice(&self, _output: &mut [u8]) {
-        unimplemented!();
-    }
-}
-
-impl Sealed for Position {}
-impl IsInitialized for Position {
     fn is_initialized(&self) -> bool {
         self.version != UNINITIALIZED_VERSION
     }

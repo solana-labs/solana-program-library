@@ -1,6 +1,11 @@
 //! Program state processor
 
-use crate::{error::MarginPoolError, instruction::MarginPoolInstruction, state::MarginPool, state::{Position}, swap::spl_token_swap_withdraw_single};
+use crate::{
+    error::MarginPoolError,
+    instruction::MarginPoolInstruction,
+    state::{MarginPool, Position},
+    swap::spl_token_swap_withdraw_single,
+};
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -164,6 +169,9 @@ impl Processor {
         unimplemented!();
     }
 
+    /// TODO:
+    /// 1. Add fees to parameters
+    /// 2.
     /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize(
         program_id: &Pubkey,
@@ -240,9 +248,10 @@ impl Processor {
             return Err(MarginPoolError::InvalidFreezeAuthority.into());
         }
 
-        let obj = State::MarginPool(MarginPool {
+        let obj = MarginPool {
             version: 1,
             nonce,
+            token_swap: *token_swap_info.key,
             token_program_id: *token_program_info.key,
             token_swap_program_id: *token_swap_program_info.key,
             token_lp: *token_lp_info.key,
@@ -252,7 +261,18 @@ impl Processor {
             token_a_mint: token_a.mint,
             token_b_mint: token_b.mint,
             token_lp_mint: token_lp.mint,
-        });
+
+            /// fees
+            /// TODO: initalize
+            position_fee_numerator: 0,
+            position_fee_denominator: 0,
+            owner_withdraw_fee_numerator: 0,
+            owner_withdraw_fee_denominator: 0,
+            owner_position_fee_numerator: 0,
+            owner_position_fee_denominator: 0,
+            host_position_fee_numerator: 0,
+            host_position_fee_denominator: 0,
+        };
         MarginPool::pack(obj, &mut margin_pool_info.data.borrow_mut())?;
         Ok(())
     }
@@ -267,8 +287,10 @@ impl Processor {
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+
         let margin_pool_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_info = next_account_info(account_info_iter)?;
         let token_swap_info = next_account_info(account_info_iter)?;
         let position_info = next_account_info(account_info_iter)?;
         let position_mint_info = next_account_info(account_info_iter)?;
@@ -315,50 +337,31 @@ impl Processor {
         }
 
         let source_account = Self::unpack_token_account(&token_source_info.data.borrow())?;
-        let swap_info = Self::unpack_token_swap(token_swap_info.data.borrow())?;
-        let p1 = Self::token_swap_price(&swap_info, source_account.mint);
+        let swap_info = Self::unpack_token_swap(&token_swap_info.data.borrow())?;
+        let p1 = Self::token_swap_price(&swap_info, &source_account.mint);
         let (a_out, b_out) = if source_account.mint == swap_info.token_a_mint {
             (min_amount_out, min_amount_out.checked_mul(p1)?)
         } else {
             (min_amount_out.checked_div(p1)?, min_amount_out)
         };
 
+        // Token swap program implements now withdraw and swap as atomic operation
         spl_token_swap_withdraw_single(
             token_swap_program_info.key,
-        )
-
-        Self::token_swap_withdraw(
-            margin_pool_info.key,
-            token_program_info.clone(),
-            token_swap_info.clone(),
-            token_swap_pool_info.clone(),
-            lp_source.clone(),
-            token_swap_a.clone(),
-            token_swap_b.clone(),
-            margin_pool_a_token.clone(),
-            margin_pool_b_token.clone(),
-            authority_info.clone(),
-            swap_info.nonce,
-            u64::MAX,
-            min_amount_out,
-        )?;
-
-        Self::token_swap_swap(
-            margin_pool_info.key,
-            token_program_info.clone(),
-            position_mint_info.clone(),
-            swap_source_info.clone(),
-            authority_info.clone(),
-            token_swap.nonce,
-            min_amount_out,
-        )?;
+            token_program_info.key,
+            token_swap_info.key,
+            authority_info.key,
+            user_transfer_info.key,
+            token_source_info.key,
+            token_source_info.key,
+            token_dest_info.key,
+        );
 
         let swap_info = Self::unpack_token_swap(token_swap_info.data.borrow())?;
         let p2 = Self::token_swap_price(&swap_info, source_account.mint);
 
-        
-        let needed: u64 = 
-            u128::try_from(min_amount_out).unwrap()
+        let needed: u64 = u128::try_from(min_amount_out)
+            .unwrap()
             .checked_mul(u128::try_from(p1).unwrap())?
             .checked_div(u128::try_from(p2).unwrap())?
             .to_u64()?;
