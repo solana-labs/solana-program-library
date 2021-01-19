@@ -1,5 +1,5 @@
 //! Instruction types
-
+use crate::state::Fees;
 use solana_program::program_pack::{Sealed, Pack};
 use solana_program::program_pack::IsInitialized;
 use solana_program::program_error::ProgramError;
@@ -22,6 +22,8 @@ pub enum MarginPoolInstruction {
     Initialize {
         /// nonce used to create valid program address
         nonce: u8,
+        /// Fees for the pool
+        fees: Fees,
     },
 
     ///   Fundn a position.

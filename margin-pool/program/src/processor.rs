@@ -3,7 +3,7 @@
 use crate::{
     error::MarginPoolError,
     instruction::MarginPoolInstruction,
-    state::{MarginPool, Position},
+    state::{MarginPool, Position, Fees},
     swap::spl_token_swap_withdraw_single,
 };
 use num_traits::FromPrimitive;
@@ -20,6 +20,7 @@ use solana_program::{
 };
 use spl_token_swap::state::SwapInfo;
 use std::collections::HashSet;
+use std::convert::TryFrom;
 
 /// Program state handler.
 pub struct Processor {}
@@ -176,6 +177,7 @@ impl Processor {
     pub fn process_initialize(
         program_id: &Pubkey,
         nonce: u8,
+        fees: &Fees,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -265,22 +267,12 @@ impl Processor {
             token_lp_mint: token_lp.mint,
             escrow_a: *escrow_a_info.key,
             escrow_b: *escrow_b_info.key,
-
-            /// fees
-            /// TODO: initalize
-            position_fee_numerator: 0,
-            position_fee_denominator: 0,
-            owner_withdraw_fee_numerator: 0,
-            owner_withdraw_fee_denominator: 0,
-            owner_position_fee_numerator: 0,
-            owner_position_fee_denominator: 0,
-            host_position_fee_numerator: 0,
-            host_position_fee_denominator: 0,
+            fees: *fees,
         };
         MarginPool::pack(obj, &mut margin_pool_info.data.borrow_mut())?;
         Ok(())
     }
-    fn token_swap_price(swap_info: &SwapInfo, source: &Pubkey) {
+    fn token_swap_price(swap_info: &SwapInfo, source: &Pubkey) -> u64 {
         unimplemented!();
     }
     /// Processes an [Swap](enum.Instruction.html).
@@ -351,13 +343,13 @@ impl Processor {
         let swap_info = Self::unpack_token_swap(&token_swap_info.data.borrow())?;
         let p1 = Self::token_swap_price(&swap_info, &source_account.mint);
         let (a_out, b_out) = if source_account.mint == swap_info.token_a_mint {
-            (min_amount_out, min_amount_out.checked_mul(p1)?)
+            (min_amount_out, min_amount_out.checked_mul(p1).ok_or_else(|| MarginPoolError::CalculationFailure)?)
         } else {
-            (min_amount_out.checked_div(p1)?, min_amount_out)
+            (min_amount_out.checked_div(p1).ok_or_else(|| MarginPoolError::CalculationFailure)?, min_amount_out)
         };
 
         // Token swap program implements now withdraw and swap as atomic operation
-        spl_token_swap_withdraw_single(
+        /*spl_token_swap_withdraw_single(
             token_swap_program_info.key,
             token_program_info.key,
             token_swap_info.key,
@@ -368,32 +360,32 @@ impl Processor {
             token_dest_info.key,
             position_escrow_info.key,
             token_mint_info.key,
-        );
+        );*/
 
-        let swap_info = Self::unpack_token_swap(token_swap_info.data.borrow())?;
-        let p2 = Self::token_swap_price(&swap_info, source_account.mint);
+        let swap_info = Self::unpack_token_swap(&token_swap_info.data.borrow())?;
+        let p2 = Self::token_swap_price(&swap_info, &source_account.mint);
 
-        let needed: u64 = u128::try_from(min_amount_out)
+        let needed: u128 = u128::try_from(min_amount_out)
             .unwrap()
-            .checked_mul(u128::try_from(p1).unwrap())?
-            .checked_div(u128::try_from(p2).unwrap())?
-            .to_u64()?;
+            .checked_mul(u128::try_from(p1).unwrap()).ok_or_else(|| MarginPoolError::CalculationFailure)?
+            .checked_div(u128::try_from(p2).unwrap()).ok_or_else(|| MarginPoolError::CalculationFailure)?;
+        let needed: u64 = u64::try_from(needed).map_err(|_| MarginPoolError::CalculationFailure)?;
 
         if amount_in < needed {
             msg!("Insuficient funds");
             return Err(MarginPoolError::InsufficeintFunds.into());
         }
         position.charge_yield();
-        position.colleteral_amount += amount_in;
+        position.collateral_amount += amount_in;
         position.size += min_amount_out;
 
         Self::token_transfer(
             margin_pool_info.key,
             token_program_info.clone(),
             position_mint_info.clone(),
-            swap_source_info.clone(),
+            token_source_info.clone(),
             authority_info.clone(),
-            token_swap.nonce,
+            margin_pool.nonce,
             min_amount_out,
         )?;
 
@@ -628,9 +620,9 @@ impl Processor {
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = MarginPoolInstruction::unpack(input)?;
         match instruction {
-            MarginPoolInstruction::Initialize { nonce } => {
+            MarginPoolInstruction::Initialize { nonce, fees } => {
                 msg!("Instruction: Init");
-                Self::process_initialize(program_id, nonce, accounts)
+                Self::process_initialize(program_id, nonce, &fees, accounts)
             }
             MarginPoolInstruction::FundPosition {
                 amount_in,

@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 //! Error types
 
 use num_derive::FromPrimitive;
