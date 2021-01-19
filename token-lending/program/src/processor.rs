@@ -6,8 +6,8 @@ use crate::{
     instruction::{BorrowAmountType, LendingInstruction},
     math::{Decimal, Rate, TryAdd, TryMul, TrySub, WAD},
     state::{
-        LendingMarket, NewReserveParams, Obligation, RepayResult, Reserve, ReserveCollateral,
-        ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
+        LendingMarket, NewObligationParams, NewReserveParams, Obligation, RepayResult, Reserve,
+        ReserveCollateral, ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
     },
 };
 use num_traits::FromPrimitive;
@@ -43,6 +43,10 @@ pub fn process_instruction(
         } => {
             msg!("Instruction: Init Reserve");
             process_init_reserve(program_id, liquidity_amount, config, accounts)
+        }
+        LendingInstruction::InitObligation => {
+            msg!("Instruction: Init Obligation");
+            process_init_obligation(program_id, accounts)
         }
         LendingInstruction::DepositReserveLiquidity { liquidity_amount } => {
             msg!("Instruction: Deposit");
@@ -292,6 +296,105 @@ fn process_init_reserve(
     Ok(())
 }
 
+#[inline(never)] // avoid stack frame limit
+fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let deposit_reserve_info = next_account_info(account_info_iter)?;
+    let borrow_reserve_info = next_account_info(account_info_iter)?;
+    let obligation_info = next_account_info(account_info_iter)?;
+    let obligation_token_mint_info = next_account_info(account_info_iter)?;
+    let obligation_token_output_info = next_account_info(account_info_iter)?;
+    let obligation_token_owner_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let rent_info = next_account_info(account_info_iter)?;
+    let rent = &Rent::from_account_info(rent_info)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.token_program_id != token_program_id.key {
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
+
+    let deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
+    if deposit_reserve_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &deposit_reserve.lending_market != lending_market_info.key {
+        msg!("Invalid reserve lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let mut borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
+    if borrow_reserve_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if borrow_reserve.lending_market != deposit_reserve.lending_market {
+        return Err(LendingError::LendingMarketMismatch.into());
+    }
+
+    if deposit_reserve.config.loan_to_value_ratio == 0 {
+        return Err(LendingError::ReserveCollateralDisabled.into());
+    }
+    if deposit_reserve_info.key == borrow_reserve_info.key {
+        return Err(LendingError::DuplicateReserve.into());
+    }
+    if deposit_reserve.liquidity.mint_pubkey == borrow_reserve.liquidity.mint_pubkey {
+        return Err(LendingError::DuplicateReserveMint.into());
+    }
+
+    assert_rent_exempt(rent, obligation_info)?;
+    assert_uninitialized::<Obligation>(obligation_info)?;
+
+    // accrue interest and update rates
+    borrow_reserve.accrue_interest(clock.slot)?;
+    let cumulative_borrow_rate = borrow_reserve.cumulative_borrow_rate_wads;
+    Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
+
+    let obligation_mint_decimals = deposit_reserve.liquidity.mint_decimals;
+    let obligation = Obligation::new(NewObligationParams {
+        collateral_reserve: *deposit_reserve_info.key,
+        cumulative_borrow_rate_wads: cumulative_borrow_rate,
+        borrow_reserve: *borrow_reserve_info.key,
+        token_mint: *obligation_token_mint_info.key,
+    });
+    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
+
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    if lending_market_authority_info.key != &lending_market_authority_pubkey {
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    // init obligation token mint
+    spl_token_init_mint(TokenInitializeMintParams {
+        mint: obligation_token_mint_info.clone(),
+        authority: lending_market_authority_info.key,
+        rent: rent_info.clone(),
+        decimals: obligation_mint_decimals,
+        token_program: token_program_id.clone(),
+    })?;
+
+    // init obligation token output account
+    spl_token_init_account(TokenInitializeAccountParams {
+        account: obligation_token_output_info.clone(),
+        mint: obligation_token_mint_info.clone(),
+        owner: obligation_token_owner_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_id.clone(),
+    })?;
+
+    Ok(())
+}
+
 fn process_deposit(
     program_id: &Pubkey,
     liquidity_amount: u64,
@@ -492,7 +595,6 @@ fn process_borrow(
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_token_mint_info = next_account_info(account_info_iter)?;
     let obligation_token_output_info = next_account_info(account_info_iter)?;
-    let obligation_token_owner_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
@@ -500,8 +602,6 @@ fn process_borrow(
     let dex_market_orders_info = next_account_info(account_info_iter)?;
     let memory = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
-    let rent_info = next_account_info(account_info_iter)?;
-    let rent = &Rent::from_account_info(rent_info)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
@@ -575,10 +675,37 @@ fn process_borrow(
         }
     }
 
+    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
+    if obligation_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &obligation.borrow_reserve != borrow_reserve_info.key {
+        msg!("Borrow reserve input doesn't match existing obligation borrow reserve");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &obligation.collateral_reserve != deposit_reserve_info.key {
+        msg!("Collateral reserve input doesn't match existing obligation collateral reserve");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    unpack_mint(&obligation_token_mint_info.data.borrow())?;
+    if &obligation.token_mint != obligation_token_mint_info.key {
+        msg!("Obligation token mint input doesn't match existing obligation token mint");
+        return Err(LendingError::InvalidTokenMint.into());
+    }
+
+    let obligation_token_output = Token::unpack(&obligation_token_output_info.data.borrow())?;
+    if obligation_token_output_info.owner != token_program_id.key {
+        return Err(LendingError::InvalidTokenOwner.into());
+    }
+    if &obligation_token_output.mint != obligation_token_mint_info.key {
+        return Err(LendingError::InvalidTokenMint.into());
+    }
+
     // accrue interest and update rates
     borrow_reserve.accrue_interest(clock.slot)?;
     deposit_reserve.accrue_interest(clock.slot)?;
-    let cumulative_borrow_rate = borrow_reserve.cumulative_borrow_rate_wads;
+    obligation.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
 
     let mut trade_simulator = TradeSimulator::new(
         dex_market_info,
@@ -603,45 +730,14 @@ fn process_borrow(
 
     borrow_reserve.liquidity.borrow(borrow_amount)?;
 
-    let obligation_mint_decimals = deposit_reserve.liquidity.mint_decimals;
+    obligation.borrowed_liquidity_wads = obligation
+        .borrowed_liquidity_wads
+        .try_add(Decimal::from(borrow_amount))?;
+    obligation.deposited_collateral_tokens += collateral_deposit_amount;
 
-    Reserve::pack(deposit_reserve, &mut deposit_reserve_info.data.borrow_mut())?;
+    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
-
-    let mut obligation = Obligation::unpack_unchecked(&obligation_info.data.borrow())?;
-    let reusing_obligation = obligation.is_initialized();
-    if reusing_obligation {
-        if &obligation.token_mint != obligation_token_mint_info.key {
-            msg!("Obligation token mint input doesn't match existing obligation token mint");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
-        if &obligation.borrow_reserve != borrow_reserve_info.key {
-            msg!("Borrow reserve input doesn't match existing obligation borrow reserve");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
-        if &obligation.collateral_reserve != deposit_reserve_info.key {
-            msg!("Collateral reserve input doesn't match existing obligation collateral reserve");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
-
-        obligation.accrue_interest(cumulative_borrow_rate)?;
-        obligation.borrowed_liquidity_wads = obligation
-            .borrowed_liquidity_wads
-            .try_add(Decimal::from(borrow_amount))?;
-        obligation.deposited_collateral_tokens += collateral_deposit_amount;
-        Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
-    } else {
-        assert_rent_exempt(rent, obligation_info)?;
-        let mut new_obligation = obligation;
-        new_obligation.version = PROGRAM_VERSION;
-        new_obligation.deposited_collateral_tokens = collateral_deposit_amount;
-        new_obligation.collateral_reserve = *deposit_reserve_info.key;
-        new_obligation.cumulative_borrow_rate_wads = cumulative_borrow_rate;
-        new_obligation.borrowed_liquidity_wads = Decimal::from(borrow_amount);
-        new_obligation.borrow_reserve = *borrow_reserve_info.key;
-        new_obligation.token_mint = *obligation_token_mint_info.key;
-        Obligation::pack(new_obligation, &mut obligation_info.data.borrow_mut())?;
-    }
+    Reserve::pack(deposit_reserve, &mut deposit_reserve_info.data.borrow_mut())?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -699,44 +795,6 @@ fn process_borrow(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
-
-    if !reusing_obligation {
-        // init obligation token mint
-        spl_token_init_mint(TokenInitializeMintParams {
-            mint: obligation_token_mint_info.clone(),
-            authority: lending_market_authority_info.key,
-            rent: rent_info.clone(),
-            decimals: obligation_mint_decimals,
-            token_program: token_program_id.clone(),
-        })?;
-    }
-
-    let obligation_token_output = if reusing_obligation {
-        let obligation_token_output =
-            Token::unpack_unchecked(&obligation_token_output_info.data.borrow())?;
-        if obligation_token_output.is_initialized() {
-            Some(obligation_token_output)
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    if let Some(token_output) = obligation_token_output {
-        if &token_output.owner != obligation_token_owner_info.key {
-            return Err(LendingError::ObligationTokenOwnerMismatch.into());
-        }
-    } else {
-        // init obligation token output account
-        spl_token_init_account(TokenInitializeAccountParams {
-            account: obligation_token_output_info.clone(),
-            mint: obligation_token_mint_info.clone(),
-            owner: obligation_token_owner_info.clone(),
-            rent: rent_info.clone(),
-            token_program: token_program_id.clone(),
-        })?;
-    }
 
     // mint obligation tokens to output account
     spl_token_mint_to(TokenMintToParams {

@@ -6,6 +6,7 @@ use helpers::*;
 use solana_sdk::signature::Keypair;
 use spl_token_lending::{
     instruction::BorrowAmountType,
+    math::Decimal,
     state::{INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION},
 };
 
@@ -89,6 +90,42 @@ async fn test_success() {
         },
     );
 
+    let usdc_obligation = add_obligation(
+        &mut test,
+        &user_accounts_owner,
+        &lending_market,
+        AddObligationArgs {
+            collateral_reserve: &sol_reserve,
+            borrow_reserve: &usdc_reserve,
+            collateral_amount: 0,
+            borrowed_liquidity_wads: Decimal::zero(),
+        },
+    );
+
+    let sol_obligation = add_obligation(
+        &mut test,
+        &user_accounts_owner,
+        &lending_market,
+        AddObligationArgs {
+            collateral_reserve: &usdc_reserve,
+            borrow_reserve: &sol_reserve,
+            collateral_amount: 0,
+            borrowed_liquidity_wads: Decimal::zero(),
+        },
+    );
+
+    let srm_obligation = add_obligation(
+        &mut test,
+        &user_accounts_owner,
+        &lending_market,
+        AddObligationArgs {
+            collateral_reserve: &usdc_reserve,
+            borrow_reserve: &srm_reserve,
+            collateral_amount: 0,
+            borrowed_liquidity_wads: Decimal::zero(),
+        },
+    );
+
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
     // Verify lending market
@@ -156,7 +193,7 @@ async fn test_success() {
     );
 
     // Borrow USDC with SOL collateral
-    let obligation = lending_market
+    lending_market
         .borrow(
             &mut banks_client,
             &payer,
@@ -167,7 +204,7 @@ async fn test_success() {
                 borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
                 amount: INITIAL_COLLATERAL_RATIO * USER_SOL_COLLATERAL_LAMPORTS,
                 user_accounts_owner: &user_accounts_owner,
-                obligation: None,
+                obligation: &usdc_obligation,
             },
         )
         .await;
@@ -187,7 +224,7 @@ async fn test_success() {
                         / 100,
                 ),
                 user_accounts_owner: &user_accounts_owner,
-                obligation: Some(obligation),
+                obligation: &usdc_obligation,
             },
         )
         .await;
@@ -224,7 +261,7 @@ async fn test_success() {
                             / 100,
                     ),
                 user_accounts_owner: &user_accounts_owner,
-                obligation: None,
+                obligation: &sol_obligation,
             },
         )
         .await;
@@ -246,7 +283,7 @@ async fn test_success() {
                             / 100,
                     ),
                 user_accounts_owner: &user_accounts_owner,
-                obligation: None,
+                obligation: &srm_obligation,
             },
         )
         .await;
