@@ -4,10 +4,10 @@ use crate::{
     dex_market::{DexMarket, TradeAction, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
-    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, WAD},
+    math::{Decimal, Rate, TryAdd, TryMul, TrySub, WAD},
     state::{
-        LendingMarket, NewReserveParams, Obligation, Reserve, ReserveCollateral, ReserveConfig,
-        ReserveLiquidity, PROGRAM_VERSION,
+        LendingMarket, NewReserveParams, Obligation, RepayResult, Reserve, ReserveCollateral,
+        ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
     },
 };
 use num_traits::FromPrimitive;
@@ -789,16 +789,18 @@ fn process_repay(
     if obligation_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
-    if &obligation.token_mint != obligation_token_mint_info.key {
-        msg!("Invalid obligation token mint account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
     if &obligation.borrow_reserve != repay_reserve_info.key {
         msg!("Invalid repay reserve account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &obligation.collateral_reserve != withdraw_reserve_info.key {
         msg!("Invalid withdraw reserve account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let obligation_mint = unpack_mint(&obligation_token_mint_info.data.borrow())?;
+    if &obligation.token_mint != obligation_token_mint_info.key {
+        msg!("Invalid obligation token mint account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -846,25 +848,17 @@ fn process_repay(
     repay_reserve.accrue_interest(clock.slot)?;
     obligation.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
-    let repay_amount = Decimal::from(liquidity_amount).min(obligation.borrowed_liquidity_wads);
-    let rounded_repay_amount = repay_reserve.liquidity.repay(repay_amount)?;
+    let RepayResult {
+        integer_repay_amount,
+        decimal_repay_amount,
+        collateral_withdraw_amount,
+        obligation_token_amount,
+    } = obligation.repay(liquidity_amount, obligation_mint.supply)?;
+    repay_reserve
+        .liquidity
+        .repay(integer_repay_amount, decimal_repay_amount)?;
+
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
-
-    let repay_pct: Decimal = repay_amount.try_div(obligation.borrowed_liquidity_wads)?;
-    let collateral_withdraw_amount = {
-        let withdraw_amount: Decimal = repay_pct.try_mul(obligation.deposited_collateral_tokens)?;
-        withdraw_amount.try_round_u64()?
-    };
-
-    let obligation_token_amount = {
-        let obligation_mint = &unpack_mint(&obligation_token_mint_info.data.borrow())?;
-        let token_amount: Decimal = repay_pct.try_mul(obligation_mint.supply)?;
-        token_amount.try_round_u64()?
-    };
-
-    obligation.borrowed_liquidity_wads =
-        obligation.borrowed_liquidity_wads.try_sub(repay_amount)?;
-    obligation.deposited_collateral_tokens -= collateral_withdraw_amount;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     let authority_signer_seeds = &[
@@ -877,11 +871,21 @@ fn process_repay(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
+    // burn obligation tokens
+    spl_token_burn(TokenBurnParams {
+        mint: obligation_token_mint_info.clone(),
+        source: obligation_token_input_info.clone(),
+        amount: obligation_token_amount,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
+        token_program: token_program_id.clone(),
+    })?;
+
     // deposit repaid liquidity
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: repay_reserve_liquidity_supply_info.clone(),
-        amount: rounded_repay_amount,
+        amount: integer_repay_amount,
         authority: user_transfer_authority_info.clone(),
         authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
@@ -894,16 +898,6 @@ fn process_repay(
         amount: collateral_withdraw_amount,
         authority: lending_market_authority_info.clone(),
         authority_signer_seeds,
-        token_program: token_program_id.clone(),
-    })?;
-
-    // burn obligation tokens
-    spl_token_burn(TokenBurnParams {
-        mint: obligation_token_mint_info.clone(),
-        source: obligation_token_input_info.clone(),
-        amount: obligation_token_amount,
-        authority: user_transfer_authority_info.clone(),
-        authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
@@ -1043,16 +1037,22 @@ fn process_liquidate(
 
     // calculate the amount of liquidity that will be repaid
     let close_factor = Rate::from_percent(50);
-    let repay_amount = Decimal::from(liquidity_amount)
+    let decimal_repay_amount = Decimal::from(liquidity_amount)
         .min(obligation.borrowed_liquidity_wads.try_mul(close_factor)?);
-    let rounded_repay_amount = repay_reserve.liquidity.repay(repay_amount)?;
+    let integer_repay_amount = decimal_repay_amount.try_round_u64()?;
+    if integer_repay_amount == 0 {
+        return Err(LendingError::ObligationTooSmall.into());
+    }
+    repay_reserve
+        .liquidity
+        .repay(integer_repay_amount, decimal_repay_amount)?;
 
     // TODO: check math precision
     // calculate the amount of collateral that will be withdrawn
 
     let withdraw_liquidity_amount = trade_simulator.simulate_trade(
         TradeAction::Sell,
-        repay_amount,
+        decimal_repay_amount,
         &repay_reserve.liquidity.mint_pubkey,
         false,
     )?;
@@ -1071,8 +1071,9 @@ fn process_liquidate(
         &mut withdraw_reserve_info.data.borrow_mut(),
     )?;
 
-    obligation.borrowed_liquidity_wads =
-        obligation.borrowed_liquidity_wads.try_sub(repay_amount)?;
+    obligation.borrowed_liquidity_wads = obligation
+        .borrowed_liquidity_wads
+        .try_sub(decimal_repay_amount)?;
     obligation.deposited_collateral_tokens -= collateral_withdraw_amount;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
@@ -1090,7 +1091,7 @@ fn process_liquidate(
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: repay_reserve_liquidity_supply_info.clone(),
-        amount: rounded_repay_amount,
+        amount: integer_repay_amount,
         authority: user_transfer_authority_info.clone(),
         authority_signer_seeds: &[],
         token_program: token_program_id.clone(),

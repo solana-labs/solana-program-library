@@ -218,20 +218,19 @@ impl ReserveLiquidity {
         Ok(())
     }
 
-    /// Subtract repay amount from total borrows and return rounded repay value
-    pub fn repay(&mut self, repay_amount: Decimal) -> Result<u64, ProgramError> {
-        let rounded_repay_amount = repay_amount.try_round_u64()?;
-        if rounded_repay_amount == 0 {
-            return Err(LendingError::ObligationTooSmall.into());
-        }
-
+    /// Subtract repay amount from total borrows and add to available liquidity
+    pub fn repay(
+        &mut self,
+        integer_amount: u64,
+        decimal_amount: Decimal,
+    ) -> Result<(), ProgramError> {
         self.available_amount = self
             .available_amount
-            .checked_add(rounded_repay_amount)
+            .checked_add(integer_amount)
             .ok_or(LendingError::MathOverflow)?;
-        self.borrowed_amount_wads = self.borrowed_amount_wads.try_sub(repay_amount)?;
+        self.borrowed_amount_wads = self.borrowed_amount_wads.try_sub(decimal_amount)?;
 
-        Ok(rounded_repay_amount)
+        Ok(())
     }
 
     /// Calculate the liquidity utilization rate of the reserve

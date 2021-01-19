@@ -73,6 +73,27 @@ impl Decimal {
             .ok_or(LendingError::MathOverflow)?;
         Ok(u64::try_from(rounded_val).map_err(|_| LendingError::MathOverflow)?)
     }
+
+    /// Ceiling scaled decimal to u64
+    pub fn try_ceil_u64(&self) -> Result<u64, ProgramError> {
+        let ceil_val = Self::wad()
+            .checked_sub(U192::from(1u64))
+            .ok_or(LendingError::MathOverflow)?
+            .checked_add(self.0)
+            .ok_or(LendingError::MathOverflow)?
+            .checked_div(Self::wad())
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(u64::try_from(ceil_val).map_err(|_| LendingError::MathOverflow)?)
+    }
+
+    /// Floor scaled decimal to u64
+    pub fn try_floor_u64(&self) -> Result<u64, ProgramError> {
+        let ceil_val = self
+            .0
+            .checked_div(Self::wad())
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(u64::try_from(ceil_val).map_err(|_| LendingError::MathOverflow)?)
+    }
 }
 
 impl fmt::Display for Decimal {
