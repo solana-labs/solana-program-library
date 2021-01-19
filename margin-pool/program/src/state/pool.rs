@@ -1,6 +1,7 @@
 use solana_program::program_error::ProgramError;
 use solana_program::program_pack::{IsInitialized, Pack, Sealed};
 use solana_program::pubkey::Pubkey;
+use crate::state::fees::Fees;
 
 use super::UNINITIALIZED_VERSION;
 
@@ -40,22 +41,8 @@ pub struct MarginPool {
     pub escrow_a: Pubkey,
     /// Escrow account for B
     pub escrow_b: Pubkey,
-    /// Per-slot position fee numerator
-    pub position_fee_numerator: u64,
-    /// Per-slot position fee denominator
-    pub position_fee_denominator: u64,
-    /// Fee charged on LP on funds withdrawal numerator
-    pub owner_withdraw_fee_numerator: u64,
-    /// Fee charged on LP on funds withdrawal denominator
-    pub owner_withdraw_fee_denominator: u64,
-    /// Part of a position fee transferred to the owner, numerator
-    pub owner_position_fee_numerator: u64,
-    /// Part of a position fee transferred to the owner, denominator
-    pub owner_position_fee_denominator: u64,
-    /// Part of a position fee transferred to the position opening host, numerator
-    pub host_position_fee_numerator: u64,
-    /// Part of a position fee transferred to the position opening host, denominator
-    pub host_position_fee_denominator: u64,
+    /// Pool fees
+    pub fees: Fees, 
     /// Program ID of the tokens being exchanged.
     pub token_program_id: Pubkey,
     /// Program ID of the token swap pool.

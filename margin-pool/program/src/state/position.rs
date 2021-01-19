@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use solana_program::program_error::ProgramError;
 use solana_program::program_pack::{IsInitialized, Pack, Sealed};
 use solana_program::{epoch_schedule::Slot, pubkey::Pubkey};
