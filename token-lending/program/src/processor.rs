@@ -612,7 +612,7 @@ fn process_borrow(
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
-    let deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
+    let mut deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
     if deposit_reserve_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
@@ -704,6 +704,7 @@ fn process_borrow(
 
     // accrue interest and update rates
     borrow_reserve.accrue_interest(clock.slot)?;
+    deposit_reserve.accrue_interest(clock.slot)?;
     obligation.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
 
     let mut trade_simulator = TradeSimulator::new(
@@ -736,6 +737,7 @@ fn process_borrow(
 
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
+    Reserve::pack(deposit_reserve, &mut deposit_reserve_info.data.borrow_mut())?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),

@@ -119,7 +119,7 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Source collateral token account, minted by deposit reserve collateral mint,
     ///                     $authority can transfer $collateral_amount
     ///   1. `[writable]` Destination liquidity token account, minted by borrow reserve liquidity mint
-    ///   2. `[]` Deposit reserve account.
+    ///   2. `[writable]` Deposit reserve account.
     ///   3. `[writable]` Deposit reserve collateral supply SPL Token account
     ///   4. `[writable]` Deposit reserve collateral fee receiver account.
     ///                     Must be the fee account specified at InitReserve.
@@ -571,7 +571,7 @@ pub fn borrow_reserve_liquidity(
     let mut accounts = vec![
         AccountMeta::new(source_collateral_pubkey, false),
         AccountMeta::new(destination_liquidity_pubkey, false),
-        AccountMeta::new_readonly(deposit_reserve_pubkey, false),
+        AccountMeta::new(deposit_reserve_pubkey, false),
         AccountMeta::new(deposit_reserve_collateral_supply_pubkey, false),
         AccountMeta::new(deposit_reserve_collateral_fees_receiver_pubkey, false),
         AccountMeta::new(borrow_reserve_pubkey, false),
