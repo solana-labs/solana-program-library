@@ -8,3 +8,4 @@ node_modules
 hfuzz_target
 hfuzz_workspace
 proptest-regressions
+**/*.so
