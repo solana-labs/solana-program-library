@@ -123,8 +123,8 @@ fn process_init_reserve(
         msg!("Optimal utilization rate must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.loan_to_value_ratio >= 100 || config.loan_to_value_ratio == 0 {
-        msg!("Loan to value ratio must be in range (0, 100)");
+    if config.loan_to_value_ratio >= 100 {
+        msg!("Loan to value ratio must be in range [0, 100)");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.liquidation_bonus > 100 {
