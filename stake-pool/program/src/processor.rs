@@ -568,6 +568,8 @@ impl Processor {
             token_amount,
         )?;
 
+        // TODO: Check if stake is warmed up
+
         // Add validator to the list and save
         validator_stake_list.validators.push(ValidatorStakeInfo {
             validator_account,
