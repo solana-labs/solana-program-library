@@ -744,8 +744,9 @@ fn prepare_withdraw_accounts(
         return Err("No accounts found.".to_string().into());
     }
     let min_balance = config
-                .rpc_client
-                .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)? + 1;
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
+        + 1;
     pick_withdraw_accounts(&mut accounts, amount, min_balance)
 }
 
