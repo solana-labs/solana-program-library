@@ -839,9 +839,6 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
 
         // Check program ids
-        if *stake_history_info.key != solana_program::sysvar::stake_history::id() {
-            return Err(ProgramError::IncorrectProgramId);
-        }
         if *stake_program_info.key != stake::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
