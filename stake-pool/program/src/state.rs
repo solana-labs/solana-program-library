@@ -8,8 +8,8 @@ use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
     pubkey::Pubkey,
 };
-use std::mem::size_of;
 use std::convert::TryFrom;
+use std::mem::size_of;
 
 /// Initialized program details.
 #[repr(C)]
@@ -53,18 +53,24 @@ impl StakePool {
     }
     /// calculate the pool tokens that should be withdrawn
     pub fn calc_pool_withdraw_amount(&self, stake_lamports: u64) -> Option<u64> {
-        u64::try_from((stake_lamports as u128)
-            .checked_mul(self.pool_total as u128)?
-            .checked_div(self.stake_total as u128)?).ok()
+        u64::try_from(
+            (stake_lamports as u128)
+                .checked_mul(self.pool_total as u128)?
+                .checked_div(self.stake_total as u128)?,
+        )
+        .ok()
     }
     /// calculate the fee in pool tokens that goes to the owner
     pub fn calc_fee_amount(&self, pool_amount: u64) -> Option<u64> {
         if self.fee.denominator == 0 {
             return Some(0);
         }
-        u64::try_from((pool_amount as u128)
-            .checked_mul(self.fee.numerator as u128)?
-            .checked_div(self.fee.denominator as u128)?).ok()
+        u64::try_from(
+            (pool_amount as u128)
+                .checked_mul(self.fee.numerator as u128)?
+                .checked_div(self.fee.denominator as u128)?,
+        )
+        .ok()
     }
 
     /// Checks withdraw authority
