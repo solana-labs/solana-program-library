@@ -56,11 +56,11 @@ pub enum StakePoolError {
     #[error("InvalidStakeAccountAddress")]
     InvalidStakeAccountAddress,
     /// Identify validator stake accounts with old balances and update them.
-    #[error("UpdateStakeList")]
-    UpdateStakeList,
+    #[error("StakeListOutOfDate")]
+    StakeListOutOfDate,
     /// First udpate old validator stake account balances and then pool stake balance.
-    #[error("UpdateStakeListAndPool")]
-    UpdateStakeListAndPool,
+    #[error("StakeListAndPoolOutOfDate")]
+    StakeListAndPoolOutOfDate,
     /// Validator stake account is not found in the list storage.
     #[error("UnknownValidatorStakeAccount")]
     UnknownValidatorStakeAccount,

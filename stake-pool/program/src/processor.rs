@@ -25,7 +25,6 @@ use solana_program::{
     system_instruction,
     sysvar::Sysvar,
 };
-use std::convert::TryFrom;
 
 /// Program state handler.
 pub struct Processor {}
@@ -488,7 +487,7 @@ impl Processor {
 
         // Check stake pool last update epoch
         if stake_pool.last_update_epoch < clock.epoch {
-            return Err(StakePoolError::UpdateStakeListAndPool.into());
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
         if stake_pool.token_program_id != *token_program_info.key {
@@ -540,8 +539,6 @@ impl Processor {
         let token_amount = stake_pool
             .calc_pool_deposit_amount(stake_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let token_amount =
-            <u64>::try_from(token_amount).or(Err(StakePoolError::CalculationFailure))?;
         Self::token_mint_to(
             stake_pool_info.key,
             token_program_info.clone(),
@@ -563,7 +560,7 @@ impl Processor {
 
         // Save amounts to the stake pool state
         stake_pool.pool_total += token_amount;
-        // TODO: Only update stake total if the last state update epoch is current
+        // Only update stake total if the last state update epoch is current
         stake_pool.stake_total += stake_lamports;
         State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
 
@@ -611,7 +608,7 @@ impl Processor {
 
         // Check stake pool last update epoch
         if stake_pool.last_update_epoch < clock.epoch {
-            return Err(StakePoolError::UpdateStakeListAndPool.into());
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
         if stake_pool.token_program_id != *token_program_info.key {
@@ -663,8 +660,6 @@ impl Processor {
         let token_amount = stake_pool
             .calc_pool_withdraw_amount(stake_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let token_amount =
-            <u64>::try_from(token_amount).or(Err(StakePoolError::CalculationFailure))?;
         Self::token_burn(
             stake_pool_info.key,
             token_program_info.clone(),
@@ -684,7 +679,7 @@ impl Processor {
 
         // Save amounts to the stake pool state
         stake_pool.pool_total -= token_amount;
-        // TODO: Only update stake total if the last state update epoch is current
+        // Only update stake total if the last state update epoch is current
         stake_pool.stake_total -= stake_lamports;
         State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
 
@@ -777,12 +772,13 @@ impl Processor {
         let mut total_balance: u64 = 0;
         for validator_stake_record in validator_stake_list.validators {
             if validator_stake_record.last_update_epoch < clock.epoch {
-                return Err(StakePoolError::UpdateStakeList.into());
+                return Err(StakePoolError::StakeListOutOfDate.into());
             }
             total_balance += validator_stake_record.balance;
         }
 
         stake_pool.stake_total = total_balance;
+        stake_pool.last_update_epoch = clock.epoch;
         State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
 
         Ok(())
@@ -839,7 +835,7 @@ impl Processor {
 
         // Check stake pool last update epoch
         if stake_pool.last_update_epoch < clock.epoch {
-            return Err(StakePoolError::UpdateStakeListAndPool.into());
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
         // Read validator stake list account and check if it is valid
@@ -905,8 +901,6 @@ impl Processor {
             stake_program_info.clone(),
         )?;
 
-        let user_amount =
-            <u64>::try_from(user_amount).or(Err(StakePoolError::CalculationFailure))?;
         Self::token_mint_to(
             stake_pool_info.key,
             token_program_info.clone(),
@@ -918,7 +912,6 @@ impl Processor {
             user_amount,
         )?;
 
-        let fee_amount = <u64>::try_from(fee_amount).or(Err(StakePoolError::CalculationFailure))?;
         Self::token_mint_to(
             stake_pool_info.key,
             token_program_info.clone(),
@@ -927,10 +920,8 @@ impl Processor {
             withdraw_info.clone(),
             Self::AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            fee_amount as u64,
+            fee_amount,
         )?;
-        let pool_amount =
-            <u64>::try_from(pool_amount).or(Err(StakePoolError::CalculationFailure))?;
         stake_pool.pool_total += pool_amount;
         stake_pool.stake_total += stake_lamports;
         State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
@@ -988,7 +979,7 @@ impl Processor {
 
         // Check stake pool last update epoch
         if stake_pool.last_update_epoch < clock.epoch {
-            return Err(StakePoolError::UpdateStakeListAndPool.into());
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
         // Read validator stake list account and check if it is valid
@@ -1008,8 +999,6 @@ impl Processor {
         let pool_amount = stake_pool
             .calc_pool_withdraw_amount(stake_amount)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_amount =
-            <u64>::try_from(pool_amount).or(Err(StakePoolError::CalculationFailure))?;
 
         Self::stake_split(
             stake_pool_info.key,
@@ -1200,8 +1189,8 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::ValidatorAlreadyAdded => msg!("Error: ValidatorAlreadyAdded"),
             StakePoolError::ValidatorNotFound => msg!("Error: ValidatorNotFound"),
             StakePoolError::InvalidStakeAccountAddress => msg!("Error: InvalidStakeAccountAddress"),
-            StakePoolError::UpdateStakeList => msg!("Error: UpdateStakeList"),
-            StakePoolError::UpdateStakeListAndPool => msg!("Error: UpdateStakeListAndPool"),
+            StakePoolError::StakeListOutOfDate => msg!("Error: StakeListOutOfDate"),
+            StakePoolError::StakeListAndPoolOutOfDate => msg!("Error: StakeListAndPoolOutOfDate"),
             StakePoolError::UnknownValidatorStakeAccount => {
                 msg!("Error: UnknownValidatorStakeAccount")
             }

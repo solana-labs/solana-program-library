@@ -4,9 +4,7 @@ mod helpers;
 
 use crate::helpers::TEST_STAKE_AMOUNT;
 use helpers::*;
-use solana_program::native_token::sol_to_lamports;
 use solana_program::pubkey::Pubkey;
-use solana_program::sysvar;
 use solana_program_test::BanksClient;
 use solana_sdk::signature::Signer;
 use spl_stake_pool::*;
@@ -29,15 +27,7 @@ async fn get_list_sum(banks_client: &mut BanksClient, validator_stake_list_key: 
 
 #[tokio::test]
 async fn test_update_list_balance() {
-    let mut program_test = program_test();
-    //program_test.add_account_with_base64_data(sysvar::clock::id(), sol_to_lamports(1.), Pubkey::default(), "AQAAAAAAAAAREREREREREQAAAAAAAAAAAQAAAAAAAAAREREREREREQ==");
-    program_test.add_account_with_base64_data(
-        sysvar::clock::id(),
-        sol_to_lamports(1.),
-        Pubkey::default(),
-        "AgAAAAAAAAAzEREREREREQEAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAA==",
-    );
-    let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
@@ -86,14 +76,4 @@ async fn test_update_list_balance() {
     );
 
     // TODO: Execute update list with updated clock
-
-    // Check new balance in the list
-    /*assert_eq!(
-        get_list_sum(
-            &mut banks_client,
-            &stake_pool_accounts.validator_stake_list.pubkey()
-        )
-        .await,
-        STAKE_ACCOUNTS * (stake_rent + TEST_STAKE_AMOUNT + EXTRA_STAKE)
-    );*/
 }

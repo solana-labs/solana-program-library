@@ -1107,7 +1107,7 @@ fn main() {
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
             )
         )
-        .subcommand(SubCommand::with_name("create-vsa").about("Create a new validator stake account to use with the pool")
+        .subcommand(SubCommand::with_name("create-validator-stake").about("Create a new validator stake account to use with the pool")
             .arg(
                 Arg::with_name("pool")
                     .long("pool")
@@ -1127,7 +1127,7 @@ fn main() {
                     .help("Validator this stake account will vote for"),
             )
         )
-        .subcommand(SubCommand::with_name("add-vsa").about("Add validator stake account to the stake pool. Must be signed by the pool owner.")
+        .subcommand(SubCommand::with_name("add-validator-stake").about("Add validator stake account to the stake pool. Must be signed by the pool owner.")
             .arg(
                 Arg::with_name("pool")
                     .long("pool")
@@ -1155,7 +1155,7 @@ fn main() {
                     .help("Account to receive pool token. Must be initialized account of the stake pool token. Defaults to the new pool token account."),
             )
         )
-        .subcommand(SubCommand::with_name("remove-vsa").about("Add validator stake account to the stake pool. Must be signed by the pool owner.")
+        .subcommand(SubCommand::with_name("remove-validator-stake").about("Add validator stake account to the stake pool. Must be signed by the pool owner.")
             .arg(
                 Arg::with_name("pool")
                     .long("pool")
@@ -1398,18 +1398,18 @@ fn main() {
                 },
             )
         }
-        ("create-vsa", Some(arg_matches)) => {
+        ("create-validator-stake", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
             let validator_account: Pubkey = pubkey_of(arg_matches, "validator").unwrap();
             command_vsa_create(&config, &pool_account, &validator_account)
         }
-        ("add-vsa", Some(arg_matches)) => {
+        ("add-validator-stake", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account: Pubkey = pubkey_of(arg_matches, "stake").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             command_vsa_add(&config, &pool_account, &stake_account, &token_receiver)
         }
-        ("remove-vsa", Some(arg_matches)) => {
+        ("remove-validator-stake", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account: Pubkey = pubkey_of(arg_matches, "stake").unwrap();
             let burn_from: Pubkey = pubkey_of(arg_matches, "burn_from").unwrap();
