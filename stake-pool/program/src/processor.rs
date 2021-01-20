@@ -322,6 +322,11 @@ impl Processor {
             return Err(StakePoolError::WrongAccountMint.into());
         }
 
+        // Check pool mint program ID
+        if pool_mint_info.owner != token_program_info.key {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
         let (_, deposit_bump_seed) = Self::find_authority_bump_seed(
             program_id,
             stake_pool_info.key,
@@ -380,6 +385,14 @@ impl Processor {
         let system_program_info = next_account_info(account_info_iter)?;
         // Staking program id
         let stake_program_info = next_account_info(account_info_iter)?;
+
+        // Check program ids
+        if *system_program_info.key != solana_program::system_program::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if *stake_program_info.key != stake::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
 
         // Check stake account address validity
         let (stake_address, bump_seed) = Self::find_stake_address_for_validator(
@@ -474,6 +487,11 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
         // Staking program id
         let stake_program_info = next_account_info(account_info_iter)?;
+
+        // Check program ids
+        if *stake_program_info.key != stake::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
 
         // Get stake pool stake (and check if it is iniaialized)
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
@@ -596,6 +614,11 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
         // Staking program id
         let stake_program_info = next_account_info(account_info_iter)?;
+
+        // Check program ids
+        if *stake_program_info.key != stake::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
 
         // Get stake pool stake (and check if it is iniaialized)
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
@@ -815,6 +838,14 @@ impl Processor {
         // Stake program id
         let stake_program_info = next_account_info(account_info_iter)?;
 
+        // Check program ids
+        if *stake_history_info.key != solana_program::sysvar::stake_history::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if *stake_program_info.key != stake::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
         // Check authority accounts
@@ -963,6 +994,11 @@ impl Processor {
         // Stake program id
         let stake_program_info = next_account_info(account_info_iter)?;
 
+        // Check program ids
+        if *stake_program_info.key != stake::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
         let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
         // Check authority account
@@ -1071,6 +1107,11 @@ impl Processor {
         let reserved = next_account_info(account_info_iter)?;
         // Stake program id
         let stake_program_info = next_account_info(account_info_iter)?;
+
+        // Check program ids
+        if *stake_program_info.key != stake::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
 
         let stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
 
