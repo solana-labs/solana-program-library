@@ -5,7 +5,7 @@ mod helpers;
 use helpers::*;
 
 use solana_program_test::*;
-
+use solana_sdk::transaction::TransactionError;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair, transport::TransportError};
 use spl_token_lending::{
     error::LendingError,
@@ -33,7 +33,7 @@ struct TestReturn {
     usdc_reserve: TestReserve,
     sol_reserve: TestReserve,
     obligation: TestObligation,
-    result: Result<(), TransportError>,
+    result: Result<(), TransactionError>,
 }
 
 enum ObligationType {
@@ -183,12 +183,16 @@ async fn setup(config: TestConfig) -> TestReturn {
         }
     }
 
+    let unwrapped_result = match result {
+        Ok(t) => Ok(t),
+        Err(t) => Err(t.unwrap()),
+    };
     TestReturn {
         banks_client,
         usdc_reserve,
         sol_reserve,
         obligation,
-        result,
+        result: unwrapped_result,
     }
 }
 
@@ -257,7 +261,8 @@ async fn test_liquidate_healthy_obligation_failure() {
     })
     .await;
     let he_as_number = LendingError::HealthyObligation as u32;
-    let unwrapped = result.unwrap_err().unwrap();
+    let unwrapped = result.unwrap_err();
+    println!("WHAT");
     assert_eq!(
         solana_sdk::transaction::TransactionError::InstructionError(
             2,
