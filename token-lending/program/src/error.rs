@@ -86,6 +86,9 @@ pub enum LendingError {
     /// Borrow amount too small
     #[error("Borrow amount too small")]
     BorrowTooSmall,
+    /// Reserve state stale
+    #[error("Reserve state needs to be updated for the current slot")]
+    ReserveStale,
 
     /// Trade simulation error
     #[error("Trade simulation error")]

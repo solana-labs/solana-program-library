@@ -12,7 +12,7 @@ use solana_sdk::{
 };
 use spl_token_lending::{
     error::LendingError, instruction::init_obligation, math::Decimal,
-    processor::process_instruction, state::SLOTS_PER_YEAR,
+    processor::process_instruction,
 };
 
 #[tokio::test]
@@ -24,7 +24,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(60_000);
+    test.set_bpf_compute_max_units(28_000);
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -36,7 +36,6 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
             config: TEST_RESERVE_CONFIG,
@@ -84,7 +83,7 @@ async fn test_already_initialized() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(14_000);
+    test.set_bpf_compute_max_units(13_000);
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -96,7 +95,6 @@ async fn test_already_initialized() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
             config: TEST_RESERVE_CONFIG,

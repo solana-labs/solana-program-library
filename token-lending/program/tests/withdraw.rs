@@ -11,13 +11,12 @@ use solana_sdk::{
 };
 use spl_token::instruction::approve;
 use spl_token_lending::{
-    instruction::withdraw_reserve_liquidity,
-    processor::process_instruction,
-    state::{INITIAL_COLLATERAL_RATIO, SLOTS_PER_YEAR},
+    instruction::withdraw_reserve_liquidity, processor::process_instruction,
+    state::INITIAL_COLLATERAL_RATIO,
 };
 
 const FRACTIONAL_TO_USDC: u64 = 1_000_000;
-const INITIAL_USDC_RESERVE_SUPPLY_LAMPORTS: u64 = 10 * FRACTIONAL_TO_USDC;
+const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 10 * FRACTIONAL_TO_USDC;
 
 #[tokio::test]
 async fn test_success() {
@@ -28,22 +27,21 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(66_000);
+    test.set_bpf_compute_max_units(33_000);
 
     let user_accounts_owner = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
     const WITHDRAW_COLLATERAL_AMOUNT: u64 =
-        INITIAL_COLLATERAL_RATIO * INITIAL_USDC_RESERVE_SUPPLY_LAMPORTS;
+        INITIAL_COLLATERAL_RATIO * INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL;
 
     let usdc_reserve = add_reserve(
         &mut test,
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
-            liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_LAMPORTS,
+            liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             collateral_amount: WITHDRAW_COLLATERAL_AMOUNT,

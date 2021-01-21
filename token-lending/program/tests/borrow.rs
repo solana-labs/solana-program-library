@@ -6,10 +6,8 @@ use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::{
-    instruction::BorrowAmountType,
-    math::Decimal,
-    processor::process_instruction,
-    state::{INITIAL_COLLATERAL_RATIO, SLOTS_PER_YEAR},
+    instruction::BorrowAmountType, math::Decimal, processor::process_instruction,
+    state::INITIAL_COLLATERAL_RATIO,
 };
 
 const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
@@ -36,7 +34,7 @@ async fn test_borrow_quote_currency() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(185_000);
+    test.set_bpf_compute_max_units(118_000);
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -46,17 +44,11 @@ async fn test_borrow_quote_currency() {
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.loan_to_value_ratio = 80;
 
-    // Configure reserve to a fixed borrow rate of 1%
-    reserve_config.min_borrow_rate = 1;
-    reserve_config.optimal_borrow_rate = 1;
-    reserve_config.optimal_utilization_rate = 100;
-
     let usdc_reserve = add_reserve(
         &mut test,
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -70,8 +62,6 @@ async fn test_borrow_quote_currency() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
-            borrow_amount: 20, // slightly increase collateral value w/ interest accrual
             dex_market_pubkey: Some(sol_usdc_dex_market.pubkey),
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
@@ -154,14 +144,11 @@ async fn test_borrow_quote_currency() {
         get_token_balance(&mut banks_client, usdc_reserve.user_liquidity_account).await;
     assert_eq!(borrow_amount, 2 * USDC_BORROW_AMOUNT_FRACTIONAL);
 
-    // The SOL reserve accumulates interest which slightly increases the value
-    // of collateral, resulting in slightly less collateral required for new loans
-    const COLLATERAL_EPSILON: u64 = 1;
     let user_collateral_balance =
         get_token_balance(&mut banks_client, sol_reserve.user_collateral_account).await;
-    assert_eq!(user_collateral_balance, COLLATERAL_EPSILON);
+    assert_eq!(user_collateral_balance, 0);
 
-    let collateral_deposited = 2 * collateral_deposit_amount - COLLATERAL_EPSILON;
+    let collateral_deposited = 2 * collateral_deposit_amount;
     let (total_fee, host_fee) = TEST_RESERVE_CONFIG
         .fees
         .calculate_borrow_fees(collateral_deposited)
@@ -196,10 +183,6 @@ async fn test_borrow_base_currency() {
     const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 5000 * LAMPORTS_TO_SOL;
     const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 2 * USDC_COLLATERAL_LAMPORTS;
 
-    // The USDC collateral reserve accumulates interest which slightly increases
-    // the value of collateral, resulting in additional borrow power
-    const INTEREST_EPSILON: u64 = 2;
-
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
@@ -207,7 +190,7 @@ async fn test_borrow_base_currency() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(188_000);
+    test.set_bpf_compute_max_units(118_000);
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -217,18 +200,11 @@ async fn test_borrow_base_currency() {
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.loan_to_value_ratio = 100;
 
-    // Configure reserve to a fixed borrow rate of 1%
-    reserve_config.min_borrow_rate = 1;
-    reserve_config.optimal_borrow_rate = 1;
-    reserve_config.optimal_utilization_rate = 100;
-
     let usdc_reserve = add_reserve(
         &mut test,
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
-            borrow_amount: 1, // slightly increase collateral value w/ interest accrual
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -242,7 +218,6 @@ async fn test_borrow_base_currency() {
         &user_accounts_owner,
         &lending_market,
         AddReserveArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             dex_market_pubkey: Some(sol_usdc_dex_market.pubkey),
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
@@ -293,7 +268,7 @@ async fn test_borrow_base_currency() {
 
     let borrow_amount =
         get_token_balance(&mut banks_client, sol_reserve.user_liquidity_account).await;
-    assert_eq!(borrow_amount, SOL_BORROW_AMOUNT_LAMPORTS + INTEREST_EPSILON);
+    assert_eq!(borrow_amount, SOL_BORROW_AMOUNT_LAMPORTS);
 
     let borrow_fees = TEST_RESERVE_CONFIG
         .fees
@@ -314,7 +289,7 @@ async fn test_borrow_base_currency() {
                 borrow_reserve: &sol_reserve,
                 dex_market: &sol_usdc_dex_market,
                 borrow_amount_type: BorrowAmountType::LiquidityBorrowAmount,
-                amount: borrow_amount - INTEREST_EPSILON,
+                amount: borrow_amount,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: &sol_obligation,
             },
@@ -323,10 +298,7 @@ async fn test_borrow_base_currency() {
 
     let borrow_amount =
         get_token_balance(&mut banks_client, sol_reserve.user_liquidity_account).await;
-    assert_eq!(
-        borrow_amount,
-        2 * SOL_BORROW_AMOUNT_LAMPORTS + INTEREST_EPSILON
-    );
+    assert_eq!(borrow_amount, 2 * SOL_BORROW_AMOUNT_LAMPORTS);
 
     let (mut total_fee, mut host_fee) = TEST_RESERVE_CONFIG
         .fees
