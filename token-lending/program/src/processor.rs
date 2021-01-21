@@ -95,6 +95,7 @@ fn process_init_lending_market(
     new_lending_market.version = PROGRAM_VERSION;
     new_lending_market.owner = market_owner;
     new_lending_market.quote_token_mint = *quote_token_mint_info.key;
+    new_lending_market.token_program_id = *token_program_id.key;
     LendingMarket::pack(
         new_lending_market,
         &mut lending_market_info.data.borrow_mut(),
@@ -114,7 +115,7 @@ fn process_init_reserve(
         return Err(LendingError::InvalidAmount.into());
     }
     if config.optimal_utilization_rate > 100 {
-        msg!("Optimal utilization rate must be in range [0, 100])");
+        msg!("Optimal utilization rate must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.loan_to_value_ratio > 90 {
@@ -163,6 +164,11 @@ fn process_init_reserve(
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
     let token_program_id = next_account_info(account_info_iter)?;
+
+    if reserve_liquidity_supply_info.key == source_liquidity_info.key {
+        msg!("Cannot use reserve liquidity supply as source account input");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
 
     assert_rent_exempt(rent, reserve_info)?;
     assert_uninitialized::<Reserve>(reserve_info)?;
@@ -214,6 +220,10 @@ fn process_init_reserve(
     }
 
     let reserve_liquidity_mint = unpack_mint(&reserve_liquidity_mint_info.data.borrow())?;
+    if reserve_liquidity_mint_info.owner != token_program_id.key {
+        return Err(LendingError::InvalidTokenOwner.into());
+    }
+
     let reserve_liquidity_info = ReserveLiquidity::new(
         *reserve_liquidity_mint_info.key,
         reserve_liquidity_mint.decimals,
@@ -262,7 +272,7 @@ fn process_init_reserve(
     spl_token_init_account(TokenInitializeAccountParams {
         account: reserve_collateral_fees_receiver_info.clone(),
         mint: reserve_collateral_mint_info.clone(),
-        owner: lending_market_info.clone(),
+        owner: lending_market_owner_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_id.clone(),
     })?;
@@ -604,6 +614,11 @@ fn process_borrow(
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
+    // Ensure memory is owned by this program so that we don't have to zero it out
+    if memory.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
@@ -662,6 +677,10 @@ fn process_borrow(
     }
 
     // TODO: handle case when neither reserve is the quote currency
+    if borrow_reserve.dex_market.is_none() && deposit_reserve.dex_market.is_none() {
+        msg!("One reserve must have a dex market");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
     if let COption::Some(dex_market_pubkey) = borrow_reserve.dex_market {
         if &dex_market_pubkey != dex_market_info.key {
             msg!("Invalid dex market account input");
@@ -989,6 +1008,11 @@ fn process_liquidate(
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
+    // Ensure memory is owned by this program so that we don't have to zero it out
+    if memory.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
@@ -1051,6 +1075,10 @@ fn process_liquidate(
     }
 
     // TODO: handle case when neither reserve is the quote currency
+    if repay_reserve.dex_market.is_none() && withdraw_reserve.dex_market.is_none() {
+        msg!("One reserve must have a dex market");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
     if let COption::Some(dex_market_pubkey) = repay_reserve.dex_market {
         if &dex_market_pubkey != dex_market_info.key {
             msg!("Invalid dex market account");
