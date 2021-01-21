@@ -433,7 +433,6 @@ pub struct LiquidateArgs<'a> {
     pub amount: u64,
     pub dex_market: &'a TestDexMarket,
     pub user_accounts_owner: &'a Keypair,
-    pub successful_transaction: bool,
 }
 
 impl TestLendingMarket {
@@ -531,7 +530,6 @@ impl TestLendingMarket {
             amount,
             dex_market,
             user_accounts_owner,
-            successful_transaction,
         } = args;
 
         let dex_market_orders_pubkey = if repay_reserve.dex_market.is_none() {
@@ -592,9 +590,6 @@ impl TestLendingMarket {
             recent_blockhash,
         );
         let result = banks_client.process_transaction(transaction).await;
-        if successful_transaction {
-            assert!(result.is_ok());
-        }
 
         return result;
     }

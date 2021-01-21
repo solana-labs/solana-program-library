@@ -3,8 +3,6 @@
 mod helpers;
 
 use helpers::*;
-use solana_sdk::program_error::ProgramError;
-use solana_sdk::program_error::ProgramError::Custom;
 
 use solana_program_test::*;
 
@@ -32,20 +30,32 @@ const NUMBER_OF_TESTS: u64 = 3;
 
 struct TestReturn {
     banks_client: BanksClient,
-    sol_reserve: TestReserve,
     usdc_reserve: TestReserve,
-    sol_obligation: TestObligation,
-    usdc_obligation: TestObligation,
-    sol_result: Result<(), TransportError>,
-    usdc_result: Result<(), TransportError>,
+    sol_reserve: TestReserve,
+    obligation: TestObligation,
+    result: Result<(), TransportError>,
 }
 
-async fn setup(usdc_amount: u64, sol_amount: u64, successful_transaction: bool) -> TestReturn {
+enum ObligationType {
+    USDC,
+    SOL,
+}
+struct TestConfig {
+    obligation_type: ObligationType,
+    amount: u64,
+}
+
+async fn setup(config: TestConfig) -> TestReturn {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
         processor!(process_instruction),
     );
+
+    let TestConfig {
+        amount,
+        obligation_type,
+    } = config;
 
     // limit to track compute unit increase
     test.set_bpf_compute_max_units(NUMBER_OF_TESTS * 80_000);
@@ -59,6 +69,17 @@ async fn setup(usdc_amount: u64, sol_amount: u64, successful_transaction: bool) 
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.liquidation_threshold = 80;
 
+    let obligation: TestObligation;
+    let result: Result<(), TransportError>;
+    let usdc_borrow_amount = match obligation_type {
+        ObligationType::USDC => amount,
+        _ => 0,
+    };
+    let sol_borrow_amount = match obligation_type {
+        ObligationType::SOL => amount,
+        _ => 0,
+    };
+
     let usdc_reserve = add_reserve(
         &mut test,
         &user_accounts_owner,
@@ -69,8 +90,8 @@ async fn setup(usdc_amount: u64, sol_amount: u64, successful_transaction: bool) 
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
-            borrow_amount: usdc_amount,
-            user_liquidity_amount: usdc_amount,
+            borrow_amount: usdc_borrow_amount,
+            user_liquidity_amount: usdc_borrow_amount,
             collateral_amount: SOL_LOAN_USDC_COLLATERAL,
             ..AddReserveArgs::default()
         },
@@ -88,80 +109,86 @@ async fn setup(usdc_amount: u64, sol_amount: u64, successful_transaction: bool) 
             liquidity_mint_pubkey: spl_token::native_mint::id(),
             dex_market_pubkey: Some(sol_usdc_dex_market.pubkey),
             collateral_amount: USDC_LOAN_SOL_COLLATERAL,
-            borrow_amount: sol_amount,
-            user_liquidity_amount: sol_amount,
+            borrow_amount: sol_borrow_amount,
+            user_liquidity_amount: sol_borrow_amount,
             ..AddReserveArgs::default()
         },
     );
 
-    let usdc_obligation = add_obligation(
-        &mut test,
-        &user_accounts_owner,
-        &lending_market,
-        AddObligationArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
-            borrow_reserve: &usdc_reserve,
-            collateral_reserve: &sol_reserve,
-            collateral_amount: USDC_LOAN_SOL_COLLATERAL,
-            borrowed_liquidity_wads: Decimal::from(usdc_amount),
-        },
-    );
-
-    let sol_obligation = add_obligation(
-        &mut test,
-        &user_accounts_owner,
-        &lending_market,
-        AddObligationArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
-            borrow_reserve: &sol_reserve,
-            collateral_reserve: &usdc_reserve,
-            collateral_amount: SOL_LOAN_USDC_COLLATERAL,
-            borrowed_liquidity_wads: Decimal::from(sol_amount),
-        },
-    );
+    match obligation_type {
+        ObligationType::USDC => {
+            obligation = add_obligation(
+                &mut test,
+                &user_accounts_owner,
+                &lending_market,
+                AddObligationArgs {
+                    slots_elapsed: SLOTS_PER_YEAR,
+                    borrow_reserve: &usdc_reserve,
+                    collateral_reserve: &sol_reserve,
+                    collateral_amount: USDC_LOAN_SOL_COLLATERAL,
+                    borrowed_liquidity_wads: Decimal::from(usdc_borrow_amount),
+                },
+            );
+        }
+        ObligationType::SOL => {
+            obligation = add_obligation(
+                &mut test,
+                &user_accounts_owner,
+                &lending_market,
+                AddObligationArgs {
+                    slots_elapsed: SLOTS_PER_YEAR,
+                    borrow_reserve: &sol_reserve,
+                    collateral_reserve: &usdc_reserve,
+                    collateral_amount: SOL_LOAN_USDC_COLLATERAL,
+                    borrowed_liquidity_wads: Decimal::from(sol_borrow_amount),
+                },
+            );
+        }
+    }
 
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
-    let usdc_result = lending_market
-        .liquidate(
-            &mut banks_client,
-            &payer,
-            LiquidateArgs {
-                repay_reserve: &usdc_reserve,
-                withdraw_reserve: &sol_reserve,
-                dex_market: &sol_usdc_dex_market,
-                amount: usdc_amount,
-                user_accounts_owner: &user_accounts_owner,
-                obligation: &usdc_obligation,
-                successful_transaction,
-            },
-        )
-        .await;
-
-    let sol_result = lending_market
-        .liquidate(
-            &mut banks_client,
-            &payer,
-            LiquidateArgs {
-                repay_reserve: &sol_reserve,
-                withdraw_reserve: &usdc_reserve,
-                dex_market: &sol_usdc_dex_market,
-                amount: sol_amount,
-                user_accounts_owner: &user_accounts_owner,
-                obligation: &sol_obligation,
-                successful_transaction,
-            },
-        )
-        .await;
+    match obligation_type {
+        ObligationType::USDC => {
+            result = lending_market
+                .liquidate(
+                    &mut banks_client,
+                    &payer,
+                    LiquidateArgs {
+                        repay_reserve: &usdc_reserve,
+                        withdraw_reserve: &sol_reserve,
+                        dex_market: &sol_usdc_dex_market,
+                        amount: usdc_borrow_amount,
+                        user_accounts_owner: &user_accounts_owner,
+                        obligation: &obligation,
+                    },
+                )
+                .await;
+        }
+        ObligationType::SOL => {
+            result = lending_market
+                .liquidate(
+                    &mut banks_client,
+                    &payer,
+                    LiquidateArgs {
+                        repay_reserve: &sol_reserve,
+                        withdraw_reserve: &usdc_reserve,
+                        dex_market: &sol_usdc_dex_market,
+                        amount: sol_borrow_amount,
+                        user_accounts_owner: &user_accounts_owner,
+                        obligation: &obligation,
+                    },
+                )
+                .await;
+        }
+    }
 
     TestReturn {
         banks_client,
         usdc_reserve,
-        usdc_obligation,
-        sol_obligation,
         sol_reserve,
-        sol_result,
-        usdc_result,
+        obligation,
+        result,
     }
 }
 
@@ -170,12 +197,18 @@ async fn test_liquidate_usdc_obligation() {
     let TestReturn {
         mut banks_client,
         usdc_reserve,
-        usdc_obligation,
+        obligation,
+        result,
         ..
-    } = setup(USDC_LOAN, SOL_LOAN, true).await;
+    } = setup(TestConfig {
+        amount: USDC_LOAN,
+        obligation_type: ObligationType::USDC,
+    })
+    .await;
+    assert!(result.is_ok());
     let usdc_liquidity_supply =
         get_token_balance(&mut banks_client, usdc_reserve.liquidity_supply).await;
-    let usdc_loan_state = usdc_obligation.get_state(&mut banks_client).await;
+    let usdc_loan_state = obligation.get_state(&mut banks_client).await;
     let usdc_liquidated = usdc_liquidity_supply - INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL;
     assert!(usdc_liquidated > USDC_LOAN / 2);
     assert_eq!(
@@ -192,12 +225,18 @@ async fn test_liquidate_sol_obligation() {
     let TestReturn {
         mut banks_client,
         sol_reserve,
-        sol_obligation,
+        obligation,
+        result,
         ..
-    } = setup(USDC_LOAN, SOL_LOAN, true).await;
+    } = setup(TestConfig {
+        amount: SOL_LOAN,
+        obligation_type: ObligationType::SOL,
+    })
+    .await;
+    assert!(result.is_ok());
     let sol_liquidity_supply =
         get_token_balance(&mut banks_client, sol_reserve.liquidity_supply).await;
-    let sol_loan_state = sol_obligation.get_state(&mut banks_client).await;
+    let sol_loan_state = obligation.get_state(&mut banks_client).await;
     let sol_liquidated = sol_liquidity_supply - INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS;
     assert!(sol_liquidated > SOL_LOAN / 2);
     assert_eq!(
@@ -212,20 +251,18 @@ async fn test_liquidate_sol_obligation() {
 
 #[tokio::test]
 async fn test_liquidate_healthy_obligation_failure() {
-    let TestReturn { usdc_result, .. } = setup(100, 100, false).await;
+    let TestReturn { result, .. } = setup(TestConfig {
+        amount: 100,
+        obligation_type: ObligationType::USDC,
+    })
+    .await;
     let he_as_number = LendingError::HealthyObligation as u32;
-    let unwrapped = usdc_result.unwrap_err().unwrap();
-    match unwrapped {
-        // explicitness for readability since same module names here
+    let unwrapped = result.unwrap_err().unwrap();
+    assert_eq!(
         solana_sdk::transaction::TransactionError::InstructionError(
-            _,
-            instruction_error_struct,
-        ) => match instruction_error_struct {
-            solana_sdk::instruction::InstructionError::Custom(numerical_value) => {
-                assert_eq!(he_as_number, numerical_value);
-            }
-            _ => assert!(false),
-        },
-        _ => assert!(false),
-    }
+            2,
+            solana_sdk::instruction::InstructionError::Custom(he_as_number)
+        ),
+        unwrapped
+    );
 }
