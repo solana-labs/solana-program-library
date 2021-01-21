@@ -130,12 +130,12 @@ fn process_init_reserve(
         msg!("Liquidation threshold must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.min_borrow_rate >= config.optimal_borrow_rate {
-        msg!("Min borrow rate must be less than the optimal borrow rate");
+    if config.optimal_borrow_rate < config.min_borrow_rate {
+        msg!("Optimal borrow rate must be >= min borrow rate");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.optimal_borrow_rate >= config.max_borrow_rate {
-        msg!("Optimal borrow rate must be less than the max borrow rate");
+    if config.optimal_borrow_rate > config.max_borrow_rate {
+        msg!("Optimal borrow rate must be <= max borrow rate");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.fees.borrow_fee_wad >= WAD {
