@@ -721,7 +721,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
 dependencies = [
  "generic-array 0.14.4",
- "subtle 2.4.0",
+ "subtle 2.2.3",
 ]
 
 [[package]]
@@ -744,7 +744,7 @@ dependencies = [
  "digest 0.8.1",
  "rand_core 0.5.1",
  "serde",
- "subtle 2.4.0",
+ "subtle 2.2.3",
  "zeroize",
 ]
 
@@ -757,7 +757,7 @@ dependencies = [
  "byteorder",
  "digest 0.8.1",
  "rand_core 0.5.1",
- "subtle 2.4.0",
+ "subtle 2.2.3",
  "zeroize",
 ]
 
@@ -770,7 +770,7 @@ dependencies = [
  "byteorder",
  "digest 0.9.0",
  "rand_core 0.5.1",
- "subtle 2.4.0",
+ "subtle 2.2.3",
  "zeroize",
 ]
 
@@ -1697,7 +1697,7 @@ dependencies = [
  "hmac-drbg",
  "rand 0.7.3",
  "sha2",
- "subtle 2.4.0",
+ "subtle 2.2.3",
  "typenum",
 ]
 
@@ -3789,6 +3789,7 @@ dependencies = [
  "num-traits",
  "rand 0.7.3",
  "solana-program",
+ "subtle 2.2.3",
  "thiserror",
 ]
 
@@ -3939,9 +3940,9 @@ checksum = "2d67a5a62ba6e01cb2192ff309324cb4875d0c451d55fe2319433abe7a05a8ee"
 
 [[package]]
 name = "subtle"
-version = "2.4.0"
+version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
+checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
 
 [[package]]
 name = "symlink"
