@@ -9,6 +9,7 @@ edition = "2018"
 
 [features]
 no-entrypoint = []
+test-bpf = []
 
 [dependencies]
 arrayref = "0.3.6"
@@ -20,11 +21,12 @@ serde_derive = "1.0.103"
 solana-program = "1.5.1"
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
+bincode = "1.3.1"
 
 [dev-dependencies]
-bincode = "1.3.1"
-solana-program-test = "1.5.0"
+solana-program-test = "1.5.3"
 solana-sdk = "1.5.0"
+solana-vote-program = "1.5.3"
 tokio = { version = "0.3", features = ["macros"]}
 
 [lib]
