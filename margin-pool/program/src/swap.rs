@@ -1,10 +1,6 @@
-use crate::{
-    error::MarginPoolError,
-};
+use crate::error::MarginPoolError;
 use solana_program::{
-    account_info::{AccountInfo},
-    entrypoint::ProgramResult,
-    program::{invoke_signed},
+    account_info::AccountInfo, entrypoint::ProgramResult, program::invoke_signed,
 };
 
 /// Issue a spl_token_swap `Swap` instruction.
@@ -24,7 +20,7 @@ pub fn spl_token_swap_swap<'a>(
     host_fee: AccountInfo<'a>,
 
     amount_in: u64,
-    minimum_amount_out: u64
+    minimum_amount_out: u64,
 ) -> ProgramResult {
     let result = invoke_signed(
         &spl_token_swap::instruction::swap(
@@ -43,7 +39,7 @@ pub fn spl_token_swap_swap<'a>(
             spl_token_swap::instruction::Swap {
                 amount_in,
                 minimum_amount_out,
-            }
+            },
         )?,
         // TODO: check accounts ...
         &[source, token_program, swap_program],
@@ -69,7 +65,7 @@ pub fn spl_token_swap_withdraw_single<'a>(
     host_fee: AccountInfo<'a>,
 
     destination_token_amount: u64,
-    maximum_pool_token_amount: u64
+    maximum_pool_token_amount: u64,
 ) -> ProgramResult {
     let result = invoke_signed(
         &spl_token_swap::instruction::withdraw_single_token_type_exact_amount_out(
@@ -79,17 +75,15 @@ pub fn spl_token_swap_withdraw_single<'a>(
             authority.key,
             pool_mint.key,
             pool_fee.key,
-
             // user_transfer.key,
             source.key,
             swap_source.key,
             swap_destination.key,
             destination.key,
-    
             spl_token_swap::instruction::WithdrawSingleTokenTypeExactAmountOut {
                 destination_token_amount: destination_token_amount,
                 maximum_pool_token_amount: maximum_pool_token_amount,
-            }
+            },
         )?,
         // TODO: check accounts ...
         &[source, token_program, swap_program],

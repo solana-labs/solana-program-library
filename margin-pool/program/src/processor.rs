@@ -3,7 +3,7 @@
 use crate::{
     error::MarginPoolError,
     instruction::MarginPoolInstruction,
-    state::{MarginPool, Position, Fees},
+    state::{Fees, MarginPool, Position},
     swap::spl_token_swap_withdraw_single,
 };
 use num_traits::FromPrimitive;
@@ -15,7 +15,7 @@ use solana_program::{
     program::invoke_signed,
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
-    program_pack::Pack,
+    program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
 };
 use spl_token_swap::state::SwapInfo;
@@ -343,9 +343,19 @@ impl Processor {
         let swap_info = Self::unpack_token_swap(&token_swap_info.data.borrow())?;
         let p1 = Self::token_swap_price(&swap_info, &source_account.mint);
         let (a_out, b_out) = if source_account.mint == swap_info.token_a_mint {
-            (min_amount_out, min_amount_out.checked_mul(p1).ok_or_else(|| MarginPoolError::CalculationFailure)?)
+            (
+                min_amount_out,
+                min_amount_out
+                    .checked_mul(p1)
+                    .ok_or_else(|| MarginPoolError::CalculationFailure)?,
+            )
         } else {
-            (min_amount_out.checked_div(p1).ok_or_else(|| MarginPoolError::CalculationFailure)?, min_amount_out)
+            (
+                min_amount_out
+                    .checked_div(p1)
+                    .ok_or_else(|| MarginPoolError::CalculationFailure)?,
+                min_amount_out,
+            )
         };
 
         // Token swap program implements now withdraw and swap as atomic operation
@@ -367,8 +377,10 @@ impl Processor {
 
         let needed: u128 = u128::try_from(min_amount_out)
             .unwrap()
-            .checked_mul(u128::try_from(p1).unwrap()).ok_or_else(|| MarginPoolError::CalculationFailure)?
-            .checked_div(u128::try_from(p2).unwrap()).ok_or_else(|| MarginPoolError::CalculationFailure)?;
+            .checked_mul(u128::try_from(p1).unwrap())
+            .ok_or_else(|| MarginPoolError::CalculationFailure)?
+            .checked_div(u128::try_from(p2).unwrap())
+            .ok_or_else(|| MarginPoolError::CalculationFailure)?;
         let needed: u64 = u64::try_from(needed).map_err(|_| MarginPoolError::CalculationFailure)?;
 
         if amount_in < needed {
@@ -393,228 +405,136 @@ impl Processor {
         Ok(())
     }
 
-    // /// Processes an [Deposit](enum.Instruction.html).
-    // pub fn process_deposit(
-    //     program_id: &Pubkey,
-    //     pool_token_amount: u64,
-    //     maximum_token_a_amount: u64,
-    //     maximum_token_b_amount: u64,
-    //     accounts: &[AccountInfo],
-    // ) -> ProgramResult {
-    //     let account_info_iter = &mut accounts.iter();
-    //     let margin_pool_info = next_account_info(account_info_iter)?;
-    //     let authority_info = next_account_info(account_info_iter)?;
-    //     let source_a_info = next_account_info(account_info_iter)?;
-    //     let source_b_info = next_account_info(account_info_iter)?;
-    //     let token_a_info = next_account_info(account_info_iter)?;
-    //     let token_b_info = next_account_info(account_info_iter)?;
-    //     let pool_mint_info = next_account_info(account_info_iter)?;
-    //     let dest_info = next_account_info(account_info_iter)?;
-    //     let token_program_info = next_account_info(account_info_iter)?;
+    pub fn process_deposit(
+        program_id: &Pubkey,
+        deposit_amount: u64,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let margin_pool_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+        let src_lp_info = next_account_info(account_info_iter)?;
+        let dst_lp_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let dst_token_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
-    //     let token_swap = MarginPool::unpack(&margin_pool_info.data.borrow())?;
-    //     if *authority_info.key != Self::authority_id(program_id, margin_pool_info.key, token_swap.nonce)? {
-    //         return Err(MarginPoolError::InvalidProgramAddress.into());
-    //     }
-    //     if *token_a_info.key != token_swap.token_a {
-    //         return Err(MarginPoolError::IncorrectSwapAccount.into());
-    //     }
-    //     if *token_b_info.key != token_swap.token_b {
-    //         return Err(MarginPoolError::IncorrectSwapAccount.into());
-    //     }
-    //     if *pool_mint_info.key != token_swap.pool_mint {
-    //         return Err(MarginPoolError::IncorrectPoolMint.into());
-    //     }
-    //     if token_a_info.key == source_a_info.key {
-    //         return Err(MarginPoolError::InvalidInput.into());
-    //     }
-    //     if token_b_info.key == source_b_info.key {
-    //         return Err(MarginPoolError::InvalidInput.into());
-    //     }
+        let margin_pool = MarginPool::unpack(&margin_pool_info.data.borrow())?;
+        if !margin_pool.is_initialized() {
+            return Err(ProgramError::UninitializedAccount);
+        }
+        Self::check_authority_id(
+            authority_info.key,
+            program_id,
+            margin_pool_info.key,
+            margin_pool.nonce,
+        )?;
+        if margin_pool.token_lp != *dst_lp_info.key
+            || margin_pool.pool_mint != *pool_mint_info.key
+            || margin_pool.token_program_id != *token_program_info.key
+        {
+            return Err(MarginPoolError::InvalidInput.into());
+        }
 
-    //     let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
-    //     let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
-    //     let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
-    //     let pool_token_amount = to_u128(pool_token_amount)?;
-    //     let pool_mint_supply = to_u128(pool_mint.supply)?;
+        let mint_amount =
+            margin_pool.lp_token_to_pool_token(dst_lp_info, pool_mint_info, deposit_amount)?;
 
-    //     let calculator = token_swap.swap_curve.calculator;
+        Self::token_transfer(
+            margin_pool_info.key,
+            token_program_info.clone(),
+            src_lp_info.clone(),
+            dst_lp_info.clone(),
+            authority_info.clone(),
+            margin_pool.nonce,
+            deposit_amount,
+        )?;
 
-    //     let a_amount = calculator
-    //         .pool_tokens_to_trading_tokens(
-    //             pool_token_amount,
-    //             pool_mint_supply,
-    //             to_u128(token_a.amount)?,
-    //         )
-    //         .ok_or(MarginPoolError::ZeroTradingTokens)?;
-    //     if a_amount > to_u128(maximum_token_a_amount)? {
-    //         return Err(MarginPoolError::ExceededSlippage.into());
-    //     }
-    //     let b_amount = calculator
-    //         .pool_tokens_to_trading_tokens(
-    //             pool_token_amount,
-    //             pool_mint_supply,
-    //             to_u128(token_b.amount)?,
-    //         )
-    //         .ok_or(MarginPoolError::ZeroTradingTokens)?;
-    //     if b_amount > to_u128(maximum_token_b_amount)? {
-    //         return Err(MarginPoolError::ExceededSlippage.into());
-    //     }
+        Self::token_mint_to(
+            margin_pool_info.key,
+            token_program_info.clone(),
+            pool_mint_info.clone(),
+            dst_token_info.clone(),
+            authority_info.clone(),
+            margin_pool.nonce,
+            mint_amount,
+        )?;
 
-    //     Self::token_transfer(
-    //         margin_pool_info.key,
-    //         token_program_info.clone(),
-    //         source_a_info.clone(),
-    //         token_a_info.clone(),
-    //         authority_info.clone(),
-    //         token_swap.nonce,
-    //         to_u64(a_amount)?,
-    //     )?;
-    //     Self::token_transfer(
-    //         margin_pool_info.key,
-    //         token_program_info.clone(),
-    //         source_b_info.clone(),
-    //         token_b_info.clone(),
-    //         authority_info.clone(),
-    //         token_swap.nonce,
-    //         to_u64(b_amount)?,
-    //     )?;
-    //     Self::token_mint_to(
-    //         margin_pool_info.key,
-    //         token_program_info.clone(),
-    //         pool_mint_info.clone(),
-    //         dest_info.clone(),
-    //         authority_info.clone(),
-    //         token_swap.nonce,
-    //         to_u64(pool_token_amount)?,
-    //     )?;
+        Ok(())
+    }
 
-    //     Ok(())
-    // }
+    pub fn process_withdraw(
+        program_id: &Pubkey,
+        burn_amount: u64,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let margin_pool_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let burn_token_info = next_account_info(account_info_iter)?;
+        let src_lp_info = next_account_info(account_info_iter)?;
+        let dst_lp_info = next_account_info(account_info_iter)?;
+        let fee_lp_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
-    // /// Processes an [Withdraw](enum.Instruction.html).
-    // pub fn process_withdraw(
-    //     program_id: &Pubkey,
-    //     pool_token_amount: u64,
-    //     minimum_token_a_amount: u64,
-    //     minimum_token_b_amount: u64,
-    //     accounts: &[AccountInfo],
-    // ) -> ProgramResult {
-    //     let account_info_iter = &mut accounts.iter();
-    //     let margin_pool_info = next_account_info(account_info_iter)?;
-    //     let authority_info = next_account_info(account_info_iter)?;
-    //     let pool_mint_info = next_account_info(account_info_iter)?;
-    //     let source_info = next_account_info(account_info_iter)?;
-    //     let token_a_info = next_account_info(account_info_iter)?;
-    //     let token_b_info = next_account_info(account_info_iter)?;
-    //     let dest_token_a_info = next_account_info(account_info_iter)?;
-    //     let dest_token_b_info = next_account_info(account_info_iter)?;
-    //     let pool_fee_account_info = next_account_info(account_info_iter)?;
-    //     let token_program_info = next_account_info(account_info_iter)?;
+        let margin_pool = MarginPool::unpack(&margin_pool_info.data.borrow())?;
+        if !margin_pool.is_initialized() {
+            return Err(ProgramError::UninitializedAccount);
+        }
+        Self::check_authority_id(
+            authority_info.key,
+            program_id,
+            margin_pool_info.key,
+            margin_pool.nonce,
+        )?;
+        if margin_pool.token_lp != *src_lp_info.key ||
+            margin_pool.pool_mint != *pool_mint_info.key ||
+            margin_pool.token_lp != *fee_lp_info.key ||     // TBD: Do we need a separate fee account?
+            margin_pool.token_program_id != *token_program_info.key
+        {
+            return Err(MarginPoolError::InvalidInput.into());
+        }
 
-    //     let token_swap = MarginPool::unpack(&margin_pool_info.data.borrow())?;
-    //     if *authority_info.key != Self::authority_id(program_id, margin_pool_info.key, token_swap.nonce)? {
-    //         return Err(MarginPoolError::InvalidProgramAddress.into());
-    //     }
-    //     if *token_a_info.key != token_swap.token_a {
-    //         return Err(MarginPoolError::IncorrectSwapAccount.into());
-    //     }
-    //     if *token_b_info.key != token_swap.token_b {
-    //         return Err(MarginPoolError::IncorrectSwapAccount.into());
-    //     }
-    //     if *pool_mint_info.key != token_swap.pool_mint {
-    //         return Err(MarginPoolError::IncorrectPoolMint.into());
-    //     }
-    //     if *pool_fee_account_info.key != token_swap.pool_fee_account {
-    //         return Err(MarginPoolError::IncorrectFeeAccount.into());
-    //     }
-    //     if token_a_info.key == dest_token_a_info.key {
-    //         return Err(MarginPoolError::InvalidInput.into());
-    //     }
-    //     if token_b_info.key == dest_token_b_info.key {
-    //         return Err(MarginPoolError::InvalidInput.into());
-    //     }
+        let withdraw_amount =
+            margin_pool.pool_token_to_lp_token(src_lp_info, pool_mint_info, burn_amount)?;
 
-    //     let token_a = Self::unpack_token_account(&token_a_info.data.borrow())?;
-    //     let token_b = Self::unpack_token_account(&token_b_info.data.borrow())?;
-    //     let pool_mint = Self::unpack_mint(&pool_mint_info.data.borrow())?;
+        let fee_amount = margin_pool.fees.withdrawal(withdraw_amount)?;
+        let withdraw_amount_minus_fee = withdraw_amount
+            .checked_sub(fee_amount)
+            .ok_or(MarginPoolError::CalculationFailure)?;
 
-    //     let calculator = token_swap.swap_curve.calculator;
+        Self::token_burn(
+            margin_pool_info.key,
+            token_program_info.clone(),
+            burn_token_info.clone(),
+            pool_mint_info.clone(),
+            authority_info.clone(),
+            margin_pool.nonce,
+            burn_amount,
+        )?;
 
-    //     let withdraw_fee: u128 = if *pool_fee_account_info.key == *source_info.key {
-    //         // withdrawing from the fee account, don't assess withdraw fee
-    //         0
-    //     } else {
-    //         calculator
-    //             .owner_withdraw_fee(to_u128(pool_token_amount)?)
-    //             .ok_or(MarginPoolError::FeeCalculationFailure)?
-    //     };
-    //     let pool_token_amount = to_u128(pool_token_amount)?
-    //         .checked_sub(withdraw_fee)
-    //         .ok_or(MarginPoolError::CalculationFailure)?;
+        Self::token_transfer(
+            margin_pool_info.key,
+            token_program_info.clone(),
+            src_lp_info.clone(),
+            fee_lp_info.clone(),
+            authority_info.clone(),
+            margin_pool.nonce,
+            fee_amount,
+        )?;
 
-    //     let a_amount = calculator
-    //         .pool_tokens_to_trading_tokens(
-    //             pool_token_amount,
-    //             to_u128(pool_mint.supply)?,
-    //             to_u128(token_a.amount)?,
-    //         )
-    //         .ok_or(MarginPoolError::ZeroTradingTokens)?;
-    //     if a_amount < to_u128(minimum_token_a_amount)? {
-    //         return Err(MarginPoolError::ExceededSlippage.into());
-    //     }
-    //     let b_amount = calculator
-    //         .pool_tokens_to_trading_tokens(
-    //             pool_token_amount,
-    //             to_u128(pool_mint.supply)?,
-    //             to_u128(token_b.amount)?,
-    //         )
-    //         .ok_or(MarginPoolError::ZeroTradingTokens)?;
-    //     let b_amount = to_u64(b_amount)?;
-    //     if b_amount < minimum_token_b_amount {
-    //         return Err(MarginPoolError::ExceededSlippage.into());
-    //     }
+        Self::token_transfer(
+            margin_pool_info.key,
+            token_program_info.clone(),
+            src_lp_info.clone(),
+            dst_lp_info.clone(),
+            authority_info.clone(),
+            margin_pool.nonce,
+            withdraw_amount_minus_fee,
+        )?;
 
-    //     Self::token_transfer(
-    //         margin_pool_info.key,
-    //         token_program_info.clone(),
-    //         token_a_info.clone(),
-    //         dest_token_a_info.clone(),
-    //         authority_info.clone(),
-    //         token_swap.nonce,
-    //         to_u64(a_amount)?,
-    //     )?;
-    //     Self::token_transfer(
-    //         margin_pool_info.key,
-    //         token_program_info.clone(),
-    //         token_b_info.clone(),
-    //         dest_token_b_info.clone(),
-    //         authority_info.clone(),
-    //         token_swap.nonce,
-    //         b_amount,
-    //     )?;
-    //     if withdraw_fee > 0 {
-    //         Self::token_transfer(
-    //             margin_pool_info.key,
-    //             token_program_info.clone(),
-    //             source_info.clone(),
-    //             pool_fee_account_info.clone(),
-    //             authority_info.clone(),
-    //             token_swap.nonce,
-    //             to_u64(withdraw_fee)?,
-    //         )?;
-    //     }
-    //     Self::token_burn(
-    //         margin_pool_info.key,
-    //         token_program_info.clone(),
-    //         source_info.clone(),
-    //         pool_mint_info.clone(),
-    //         authority_info.clone(),
-    //         token_swap.nonce,
-    //         to_u64(pool_token_amount)?,
-    //     )?;
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
@@ -632,8 +552,14 @@ impl Processor {
                 Self::process_fund_position(program_id, amount_in, minimum_amount_out, accounts)
             }
             MarginPoolInstruction::ReducePosition { .. } => unimplemented!(),
-            MarginPoolInstruction::Deposit { .. } => unimplemented!(),
-            MarginPoolInstruction::Withdraw { .. } => unimplemented!(),
+            MarginPoolInstruction::Deposit { deposit_amount } => {
+                msg!("Instruction: Deposit");
+                Self::process_deposit(program_id, deposit_amount, accounts)
+            }
+            MarginPoolInstruction::Withdraw { burn_amount } => {
+                msg!("Instruction: Withdraw");
+                Self::process_withdraw(program_id, burn_amount, accounts)
+            }
             MarginPoolInstruction::Liquidate => unimplemented!(),
         }
     }
