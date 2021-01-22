@@ -2,14 +2,13 @@
 
 use crate::{
     error::LendingError,
-    instruction::BorrowAmountType,
-    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
-    state::Reserve,
+    math::{Decimal, TryAdd, TryDiv, TryMul, TrySub},
+    state::TokenConverter,
 };
 use arrayref::{array_refs, mut_array_refs};
 use serum_dex::critbit::Slab;
 use solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey};
-use std::{cell::RefMut, collections::VecDeque, convert::TryFrom};
+use std::{cell::RefMut, convert::TryFrom};
 
 /// Side of the dex market order book
 #[derive(Clone, Copy, PartialEq)]
@@ -49,58 +48,30 @@ struct Order {
     quantity: u64,
 }
 
-/// Dex market orders used for simulating trades
-enum Orders<'a> {
-    DexMarket(DexMarketOrders<'a>),
-    Cached(VecDeque<Order>),
-    None,
-}
-
-impl Orders<'_> {
-    // BPF rust version does not support matches!
-    #[allow(clippy::match_like_matches_macro)]
-    fn is_cacheable(&self) -> bool {
-        match &self {
-            Self::DexMarket(_) => true,
-            _ => false,
-        }
-    }
-}
-
-impl Iterator for Orders<'_> {
-    type Item = Order;
-
-    fn next(&mut self) -> Option<Order> {
-        match self {
-            Orders::DexMarket(dex_market_orders) => {
-                let leaf_node = match dex_market_orders.side {
-                    Side::Bid => dex_market_orders
-                        .heap
-                        .as_mut()
-                        .and_then(|heap| heap.remove_max()),
-                    Side::Ask => dex_market_orders
-                        .heap
-                        .as_mut()
-                        .and_then(|heap| heap.remove_min()),
-                }?;
-
-                Some(Order {
-                    price: leaf_node.price().get(),
-                    quantity: leaf_node.quantity(),
-                })
-            }
-            Orders::Cached(orders) => orders.pop_front(),
-            _ => None,
-        }
-    }
-}
-
 /// Trade simulator
 pub struct TradeSimulator<'a> {
     dex_market: DexMarket,
-    orders: Orders<'a>,
+    orders: DexMarketOrders<'a>,
     orders_side: Side,
     quote_token_mint: &'a Pubkey,
+    buy_token_mint: &'a Pubkey,
+    sell_token_mint: &'a Pubkey,
+}
+
+impl<'a> TokenConverter for TradeSimulator<'a> {
+    fn convert(
+        self,
+        from_amount: Decimal,
+        from_token_mint: &Pubkey,
+    ) -> Result<Decimal, ProgramError> {
+        let action = if from_token_mint == self.buy_token_mint {
+            TradeAction::Buy
+        } else {
+            TradeAction::Sell
+        };
+
+        self.simulate_trade(action, from_amount)
+    }
 }
 
 impl<'a> TradeSimulator<'a> {
@@ -110,27 +81,34 @@ impl<'a> TradeSimulator<'a> {
         dex_market_orders: &AccountInfo,
         memory: &'a AccountInfo,
         quote_token_mint: &'a Pubkey,
+        buy_token_mint: &'a Pubkey,
+        sell_token_mint: &'a Pubkey,
     ) -> Result<Self, ProgramError> {
         let dex_market = DexMarket::new(dex_market_info);
-        let dex_market_orders = DexMarketOrders::new(&dex_market, dex_market_orders, memory)?;
-        let orders_side = dex_market_orders.side;
+        let orders = DexMarketOrders::new(&dex_market, dex_market_orders, memory)?;
+        let orders_side = orders.side;
 
         Ok(Self {
             dex_market,
-            orders: Orders::DexMarket(dex_market_orders),
+            orders,
             orders_side,
             quote_token_mint,
+            buy_token_mint,
+            sell_token_mint,
         })
     }
 
     /// Simulate a trade
     pub fn simulate_trade(
-        &mut self,
+        mut self,
         action: TradeAction,
         quantity: Decimal,
-        token_mint: &Pubkey,
-        cache_orders: bool,
     ) -> Result<Decimal, ProgramError> {
+        let token_mint = match action {
+            TradeAction::Buy => self.buy_token_mint,
+            TradeAction::Sell => self.sell_token_mint,
+        };
+
         let currency = if token_mint == self.quote_token_mint {
             Currency::Quote
         } else {
@@ -149,8 +127,7 @@ impl<'a> TradeSimulator<'a> {
         }
 
         let input_quantity: Decimal = quantity.try_div(self.dex_market.get_lots(currency))?;
-        let output_quantity =
-            self.exchange_with_order_book(input_quantity, currency, cache_orders)?;
+        let output_quantity = self.exchange_with_order_book(input_quantity, currency)?;
         Ok(output_quantity.try_mul(self.dex_market.get_lots(currency.opposite()))?)
     }
 
@@ -159,14 +136,8 @@ impl<'a> TradeSimulator<'a> {
         &mut self,
         mut input_quantity: Decimal,
         currency: Currency,
-        cache_orders: bool,
     ) -> Result<Decimal, ProgramError> {
         let mut output_quantity = Decimal::zero();
-        let mut order_cache = VecDeque::new();
-
-        if cache_orders && !self.orders.is_cacheable() {
-            return Err(LendingError::TradeSimulationError.into());
-        }
 
         let zero = Decimal::zero();
         while input_quantity > zero {
@@ -189,85 +160,9 @@ impl<'a> TradeSimulator<'a> {
 
             input_quantity = input_quantity.try_sub(filled)?;
             output_quantity = output_quantity.try_add(output)?;
-
-            if cache_orders {
-                order_cache.push_back(next_order);
-            }
-        }
-
-        if cache_orders {
-            self.orders = Orders::Cached(order_cache)
-        } else {
-            self.orders = Orders::None
         }
 
         Ok(output_quantity)
-    }
-
-    /// Calculate amount borrowed and collateral deposited for the given reserves
-    /// based on the market state and calculation type
-    pub fn calculate_borrow_amounts(
-        &mut self,
-        deposit_reserve: &Reserve,
-        borrow_reserve: &Reserve,
-        amount_type: BorrowAmountType,
-        amount: u64,
-    ) -> Result<(u64, u64), ProgramError> {
-        let deposit_reserve_collateral_exchange_rate =
-            deposit_reserve.collateral_exchange_rate()?;
-        match amount_type {
-            BorrowAmountType::LiquidityBorrowAmount => {
-                let borrow_amount = amount;
-
-                // Simulate buying `borrow_amount` of borrow reserve underlying tokens
-                //   to determine how much collateral is needed
-                let loan_in_deposit_underlying = self.simulate_trade(
-                    TradeAction::Buy,
-                    Decimal::from(borrow_amount),
-                    &borrow_reserve.liquidity.mint_pubkey,
-                    false,
-                )?;
-
-                let loan_in_deposit_collateral = deposit_reserve_collateral_exchange_rate
-                    .decimal_liquidity_to_collateral(loan_in_deposit_underlying)?;
-                let required_deposit_collateral: Decimal = loan_in_deposit_collateral.try_div(
-                    Rate::from_percent(deposit_reserve.config.loan_to_value_ratio),
-                )?;
-
-                let collateral_deposit_amount = required_deposit_collateral.try_round_u64()?;
-                if collateral_deposit_amount == 0 {
-                    return Err(LendingError::InvalidAmount.into());
-                }
-
-                Ok((borrow_amount, collateral_deposit_amount))
-            }
-            BorrowAmountType::CollateralDepositAmount => {
-                let collateral_deposit_amount = amount;
-
-                let loan_in_deposit_collateral: Decimal = Decimal::from(collateral_deposit_amount)
-                    .try_mul(Rate::from_percent(
-                        deposit_reserve.config.loan_to_value_ratio,
-                    ))?;
-                let loan_in_deposit_underlying = deposit_reserve_collateral_exchange_rate
-                    .decimal_collateral_to_liquidity(loan_in_deposit_collateral)?;
-
-                // Simulate selling `loan_in_deposit_underlying` amount of deposit reserve underlying
-                //   tokens to determine how much to lend to the user
-                let borrow_amount = self.simulate_trade(
-                    TradeAction::Sell,
-                    loan_in_deposit_underlying,
-                    &deposit_reserve.liquidity.mint_pubkey,
-                    false,
-                )?;
-
-                let borrow_amount = borrow_amount.try_round_u64()?;
-                if borrow_amount == 0 {
-                    return Err(LendingError::InvalidAmount.into());
-                }
-
-                Ok((borrow_amount, collateral_deposit_amount))
-            }
-        }
     }
 }
 
@@ -304,6 +199,22 @@ impl<'a> DexMarketOrders<'a> {
         }));
 
         Ok(Self { heap, side })
+    }
+}
+
+impl Iterator for DexMarketOrders<'_> {
+    type Item = Order;
+
+    fn next(&mut self) -> Option<Order> {
+        let leaf_node = match self.side {
+            Side::Bid => self.heap.as_mut().and_then(|heap| heap.remove_max()),
+            Side::Ask => self.heap.as_mut().and_then(|heap| heap.remove_min()),
+        }?;
+
+        Some(Order {
+            price: leaf_node.price().get(),
+            quantity: leaf_node.quantity(),
+        })
     }
 }
 

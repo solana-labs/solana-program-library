@@ -86,6 +86,9 @@ pub enum LendingError {
     /// Borrow amount too small
     #[error("Borrow amount too small")]
     BorrowTooSmall,
+    /// Liquidation amount too small
+    #[error("Liquidation amount too small to receive collateral")]
+    LiquidationTooSmall,
     /// Reserve state stale
     #[error("Reserve state needs to be updated for the current slot")]
     ReserveStale,

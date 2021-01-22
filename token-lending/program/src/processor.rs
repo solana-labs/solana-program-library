@@ -1,13 +1,13 @@
 //! Program state processor
 
 use crate::{
-    dex_market::{DexMarket, TradeAction, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
+    dex_market::{DexMarket, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
-    math::{Decimal, Rate, TryAdd, TryMul, TrySub, WAD},
+    math::{Decimal, TryAdd, WAD},
     state::{
-        LendingMarket, NewObligationParams, NewReserveParams, Obligation, RepayResult, Reserve,
-        ReserveCollateral, ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
+        LendingMarket, LiquidateResult, NewObligationParams, NewReserveParams, Obligation,
+        RepayResult, Reserve, ReserveCollateral, ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
     },
 };
 use num_traits::FromPrimitive;
@@ -123,16 +123,18 @@ fn process_init_reserve(
         msg!("Optimal utilization rate must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.loan_to_value_ratio > 90 {
-        msg!("Loan to value ratio must be in range [0, 90]");
+    if config.loan_to_value_ratio >= 100 {
+        msg!("Loan to value ratio must be in range [0, 100)");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.liquidation_bonus > 100 {
         msg!("Liquidation bonus must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.liquidation_threshold > 100 {
-        msg!("Liquidation threshold must be in range [0, 100]");
+    if config.liquidation_threshold <= config.loan_to_value_ratio
+        || config.liquidation_threshold > 100
+    {
+        msg!("Liquidation threshold must be in range (LTV, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.optimal_borrow_rate < config.min_borrow_rate {
@@ -588,11 +590,11 @@ fn process_withdraw(
 #[inline(never)] // avoid stack frame limit
 fn process_borrow(
     program_id: &Pubkey,
-    amount: u64,
-    amount_type: BorrowAmountType,
+    token_amount: u64,
+    token_amount_type: BorrowAmountType,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
-    if amount == 0 {
+    if token_amount == 0 {
         return Err(LendingError::InvalidAmount.into());
     }
 
@@ -727,33 +729,27 @@ fn process_borrow(
     assert_last_update_slot(&deposit_reserve, clock.slot)?;
     obligation.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
 
-    let mut trade_simulator = TradeSimulator::new(
+    let trade_simulator = TradeSimulator::new(
         dex_market_info,
         dex_market_orders_info,
         memory,
         &lending_market.quote_token_mint,
+        &borrow_reserve.liquidity.mint_pubkey,
+        &deposit_reserve.liquidity.mint_pubkey,
     )?;
 
-    let (borrow_amount, mut collateral_deposit_amount) = trade_simulator.calculate_borrow_amounts(
-        &deposit_reserve,
-        &borrow_reserve,
-        amount_type,
-        amount,
+    let loan = deposit_reserve.create_loan(
+        token_amount,
+        token_amount_type,
+        trade_simulator,
+        &borrow_reserve.liquidity.mint_pubkey,
     )?;
 
-    let (mut borrow_fee, host_fee) = deposit_reserve
-        .config
-        .fees
-        .calculate_borrow_fees(collateral_deposit_amount)?;
-    // update amount actually deposited
-    collateral_deposit_amount -= borrow_fee;
-
-    borrow_reserve.liquidity.borrow(borrow_amount)?;
-
+    borrow_reserve.liquidity.borrow(loan.borrow_amount)?;
     obligation.borrowed_liquidity_wads = obligation
         .borrowed_liquidity_wads
-        .try_add(Decimal::from(borrow_amount))?;
-    obligation.deposited_collateral_tokens += collateral_deposit_amount;
+        .try_add(Decimal::from(loan.borrow_amount))?;
+    obligation.deposited_collateral_tokens += loan.collateral_amount;
 
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
@@ -772,20 +768,21 @@ fn process_borrow(
     spl_token_transfer(TokenTransferParams {
         source: source_collateral_info.clone(),
         destination: deposit_reserve_collateral_supply_info.clone(),
-        amount: collateral_deposit_amount,
+        amount: loan.collateral_amount,
         authority: user_transfer_authority_info.clone(),
         authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
 
     // transfer host fees if host is specified
+    let mut owner_fee = loan.origination_fee;
     if let Ok(host_fee_recipient) = next_account_info(account_info_iter) {
-        if host_fee > 0 {
-            borrow_fee -= host_fee;
+        if loan.host_fee > 0 {
+            owner_fee -= loan.host_fee;
             spl_token_transfer(TokenTransferParams {
                 source: source_collateral_info.clone(),
                 destination: host_fee_recipient.clone(),
-                amount: host_fee,
+                amount: loan.host_fee,
                 authority: user_transfer_authority_info.clone(),
                 authority_signer_seeds: &[],
                 token_program: token_program_id.clone(),
@@ -794,11 +791,11 @@ fn process_borrow(
     }
 
     // transfer remaining fees to owner
-    if borrow_fee > 0 {
+    if owner_fee > 0 {
         spl_token_transfer(TokenTransferParams {
             source: source_collateral_info.clone(),
             destination: deposit_reserve_collateral_fees_receiver_info.clone(),
-            amount: borrow_fee,
+            amount: owner_fee,
             authority: user_transfer_authority_info.clone(),
             authority_signer_seeds: &[],
             token_program: token_program_id.clone(),
@@ -809,7 +806,7 @@ fn process_borrow(
     spl_token_transfer(TokenTransferParams {
         source: borrow_reserve_liquidity_supply_info.clone(),
         destination: destination_liquidity_info.clone(),
-        amount: borrow_amount,
+        amount: loan.borrow_amount,
         authority: lending_market_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_id.clone(),
@@ -819,7 +816,7 @@ fn process_borrow(
     spl_token_mint_to(TokenMintToParams {
         mint: obligation_token_mint_info.clone(),
         destination: obligation_token_output_info.clone(),
-        amount: collateral_deposit_amount,
+        amount: loan.collateral_amount,
         authority: lending_market_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_id.clone(),
@@ -1097,66 +1094,33 @@ fn process_liquidate(
     assert_last_update_slot(&withdraw_reserve, clock.slot)?;
     obligation.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
-    let mut trade_simulator = TradeSimulator::new(
+    let trade_simulator = TradeSimulator::new(
         dex_market_info,
         dex_market_orders_info,
         memory,
         &lending_market.quote_token_mint,
+        &withdraw_reserve.liquidity.mint_pubkey,
+        &repay_reserve.liquidity.mint_pubkey,
     )?;
 
-    // calculate obligation health
-    let withdraw_reserve_collateral_exchange_rate = withdraw_reserve.collateral_exchange_rate()?;
-    let borrow_amount_as_collateral = withdraw_reserve_collateral_exchange_rate
-        .decimal_liquidity_to_collateral(trade_simulator.simulate_trade(
-            TradeAction::Sell,
-            obligation.borrowed_liquidity_wads,
-            &repay_reserve.liquidity.mint_pubkey,
-            true,
-        )?)?
-        .try_round_u64()?;
-
-    if 100 * borrow_amount_as_collateral / obligation.deposited_collateral_tokens
-        < withdraw_reserve.config.liquidation_threshold as u64
-    {
-        return Err(LendingError::HealthyObligation.into());
-    }
-
-    // calculate the amount of liquidity that will be repaid
-    let close_factor = Rate::from_percent(50);
-    let decimal_repay_amount = Decimal::from(liquidity_amount)
-        .min(obligation.borrowed_liquidity_wads.try_mul(close_factor)?);
-    let integer_repay_amount = decimal_repay_amount.try_round_u64()?;
-    if integer_repay_amount == 0 {
-        return Err(LendingError::ObligationTooSmall.into());
-    }
+    let LiquidateResult {
+        bonus_amount,
+        withdraw_amount,
+        integer_repay_amount,
+        decimal_repay_amount,
+    } = withdraw_reserve.liquidate_obligation(
+        &obligation,
+        liquidity_amount,
+        &repay_reserve.liquidity.mint_pubkey,
+        trade_simulator,
+    )?;
     repay_reserve
         .liquidity
         .repay(integer_repay_amount, decimal_repay_amount)?;
 
-    // TODO: check math precision
-    // calculate the amount of collateral that will be withdrawn
-
-    let withdraw_liquidity_amount = trade_simulator.simulate_trade(
-        TradeAction::Sell,
-        decimal_repay_amount,
-        &repay_reserve.liquidity.mint_pubkey,
-        false,
-    )?;
-    let withdraw_amount_as_collateral = withdraw_reserve_collateral_exchange_rate
-        .decimal_liquidity_to_collateral(withdraw_liquidity_amount)?
-        .try_round_u64()?;
-    let liquidation_bonus_amount =
-        withdraw_amount_as_collateral * (withdraw_reserve.config.liquidation_bonus as u64) / 100;
-    let collateral_withdraw_amount = obligation
-        .deposited_collateral_tokens
-        .min(withdraw_amount_as_collateral + liquidation_bonus_amount);
-
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    obligation.borrowed_liquidity_wads = obligation
-        .borrowed_liquidity_wads
-        .try_sub(decimal_repay_amount)?;
-    obligation.deposited_collateral_tokens -= collateral_withdraw_amount;
+    obligation.liquidate(decimal_repay_amount, withdraw_amount + bonus_amount)?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     let authority_signer_seeds = &[
@@ -1183,11 +1147,23 @@ fn process_liquidate(
     spl_token_transfer(TokenTransferParams {
         source: withdraw_reserve_collateral_supply_info.clone(),
         destination: destination_collateral_info.clone(),
-        amount: collateral_withdraw_amount,
+        amount: withdraw_amount,
         authority: lending_market_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
+
+    // pay bonus collateral
+    if bonus_amount > 0 {
+        spl_token_transfer(TokenTransferParams {
+            source: withdraw_reserve_collateral_supply_info.clone(),
+            destination: destination_collateral_info.clone(),
+            amount: bonus_amount,
+            authority: lending_market_authority_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
+    }
 
     Ok(())
 }

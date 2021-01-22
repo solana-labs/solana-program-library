@@ -24,7 +24,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(90_000);
+    test.set_bpf_compute_max_units(101_000);
 
     // set loan values to about 90% of collateral value so that it gets liquidated
     const USDC_LOAN: u64 = 2 * FRACTIONAL_TO_USDC;
@@ -142,7 +142,7 @@ async fn test_success() {
         usdc_liquidated,
         usdc_loan_state
             .borrowed_liquidity_wads
-            .try_round_u64()
+            .try_floor_u64()
             .unwrap()
     );
 
@@ -155,7 +155,7 @@ async fn test_success() {
         sol_liquidated,
         sol_loan_state
             .borrowed_liquidity_wads
-            .try_round_u64()
+            .try_floor_u64()
             .unwrap()
     );
 }
