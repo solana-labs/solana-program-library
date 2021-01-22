@@ -1,8 +1,8 @@
 //! Instruction types
 use crate::state::Fees;
-use solana_program::program_pack::{Sealed, Pack};
-use solana_program::program_pack::IsInitialized;
 use solana_program::program_error::ProgramError;
+use solana_program::program_pack::IsInitialized;
+use solana_program::program_pack::{Pack, Sealed};
 
 /// Instructions supported by the MarginPoolInfo program.
 #[repr(C)]
@@ -67,43 +67,33 @@ pub enum MarginPoolInstruction {
     Liquidate,
 
     ///   Deposit some tokens into the pool.  The output is a "pool" token representing ownership
-    ///   into the pool. Inputs are converted to the current ratio.
+    ///   into the pool.
     ///
-    ///   0. `[]` Token-swap
+    ///   0. `[]` Margin pool
     ///   1. `[]` $authority
-    ///   2. `[writable]` token_a $authority can transfer amount,
-    ///   3. `[writable]` token_b $authority can transfer amount,
-    ///   4. `[writable]` token_a Base Account to deposit into.
-    ///   5. `[writable]` token_b Base Account to deposit into.
-    ///   6. `[writable]` Pool MINT account, $authority is the owner.
-    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   8. '[]` Token program id
+    ///   2. `[writable]` LP token account $authority can transfer `deposit_amount`
+    ///   3. `[writable]` Pool LP token account to deposit into
+    ///   4. `[writable]` Pool Mint account, $authority is the owner
+    ///   5. `[writable]` Pool Account to deposit the generated tokens, user is the owner
+    ///   6. '[]` Token program id
     Deposit {
-        /// Pool token amount to transfer. token_a and token_b amount are set by
-        /// the current exchange rate and size of the pool
-        pool_token_amount: u64,
-        /// Maximum LP amount to deposit, prevents excessive slippage
-        maximum_token_lp_amount: u64,
+        /// Amount of LP tokens to deposit to the pool
+        deposit_amount: u64,
     },
 
-    ///   Withdraw the token from the pool at the current ratio.
+    ///   Burn pool tokens and withdraw LP tokens from the pool
     ///
-    ///   0. `[]` Token-swap
+    ///   0. `[]` Margin pool
     ///   1. `[]` $authority
     ///   2. `[writable]` Pool mint account, $authority is the owner
-    ///   3. `[writable]` SOURCE Pool account, amount is transferable by $authority.
-    ///   4. `[writable]` token_a MarginPool Account to withdraw FROM.
-    ///   5. `[writable]` token_b MarginPool Account to withdraw FROM.
-    ///   6. `[writable]` token_a user Account to credit.
-    ///   7. `[writable]` token_b user Account to credit.
-    ///   8. `[writable]` Fee account, to receive withdrawal fees
-    ///   9. '[]` Token program id
+    ///   3. `[writable]` Pool Account to burn from, `burn_amount` is transferable by $authority
+    ///   4. `[writable]` Pool LP token account to withdraw from
+    ///   5. `[writable]` User LP token account to credit
+    ///   6. `[writable]` Pool fee account, to receive withdrawal fees
+    ///   7. '[]` Token program id
     Withdraw {
-        /// Amount of pool tokens to burn. User receives an output of token a
-        /// and b based on the percentage of the pool tokens that are returned.
-        pool_token_amount: u64,
-        /// Minimum amount of LP to receive, prevents excessive slippage
-        minimum_token_lp_amount: u64,
+        /// Amount of pool tokens to burn. User received LP tokens according to the current pool ratio
+        burn_amount: u64,
     },
 }
 

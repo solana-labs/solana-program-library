@@ -1,3 +1,4 @@
+use crate::error::MarginPoolError;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     program_error::ProgramError,
@@ -24,6 +25,16 @@ pub struct Fees {
     pub host_position_fee_numerator: u64,
     /// Part of a position fee transferred to the position opening host, denominator
     pub host_position_fee_denominator: u64,
+}
+
+impl Fees {
+    pub fn withdrawal(&self, amount: u64) -> Result<u64, ProgramError> {
+        Ok(amount
+            .checked_mul(self.owner_withdraw_fee_numerator)
+            .ok_or(MarginPoolError::CalculationFailure)?
+            .checked_div(self.owner_withdraw_fee_denominator)
+            .ok_or(MarginPoolError::CalculationFailure)?)
+    }
 }
 
 impl Sealed for Fees {}

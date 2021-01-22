@@ -1,7 +1,10 @@
+use crate::error::MarginPoolError;
+use crate::state::fees::Fees;
+use solana_program::account_info::AccountInfo;
 use solana_program::program_error::ProgramError;
 use solana_program::program_pack::{IsInitialized, Pack, Sealed};
 use solana_program::pubkey::Pubkey;
-use crate::state::fees::Fees;
+use spl_token::state::{Account as TokenAccount, Mint as TokenMint};
 
 use super::UNINITIALIZED_VERSION;
 
@@ -42,7 +45,7 @@ pub struct MarginPool {
     /// Escrow account for B
     pub escrow_b: Pubkey,
     /// Pool fees
-    pub fees: Fees, 
+    pub fees: Fees,
     /// Program ID of the tokens being exchanged.
     pub token_program_id: Pubkey,
     /// Program ID of the token swap pool.
@@ -63,5 +66,52 @@ impl Sealed for MarginPool {}
 impl IsInitialized for MarginPool {
     fn is_initialized(&self) -> bool {
         self.version != UNINITIALIZED_VERSION
+    }
+}
+
+impl MarginPool {
+    fn get_lp_balance(&self, token_lp_info: &AccountInfo) -> Result<u64, ProgramError> {
+        if *token_lp_info.key != self.token_lp {
+            return Err(ProgramError::InvalidArgument);
+        }
+        let token_data = TokenAccount::unpack_from_slice(&token_lp_info.data.borrow())?;
+        Ok(token_data.amount)
+    }
+    fn get_pool_balance(&self, pool_mint_info: &AccountInfo) -> Result<u64, ProgramError> {
+        if *pool_mint_info.key != self.pool_mint {
+            return Err(ProgramError::InvalidArgument);
+        }
+        let mint_data = TokenMint::unpack_from_slice(&pool_mint_info.data.borrow())?;
+        Ok(mint_data.supply)
+    }
+
+    pub fn lp_token_to_pool_token(
+        &self,
+        token_lp_info: &AccountInfo,
+        pool_mint_info: &AccountInfo,
+        amount: u64,
+    ) -> Result<u64, ProgramError> {
+        let lp_balance = self.get_lp_balance(token_lp_info)?;
+        let pool_balance = self.get_pool_balance(pool_mint_info)?;
+        Ok(amount
+            .checked_mul(pool_balance)
+            .ok_or(MarginPoolError::CalculationFailure)?
+            .checked_div(lp_balance)
+            .ok_or(MarginPoolError::CalculationFailure)?)
+    }
+
+    pub fn pool_token_to_lp_token(
+        &self,
+        token_lp_info: &AccountInfo,
+        pool_mint_info: &AccountInfo,
+        amount: u64,
+    ) -> Result<u64, ProgramError> {
+        let lp_balance = self.get_lp_balance(token_lp_info)?;
+        let pool_balance = self.get_pool_balance(pool_mint_info)?;
+        Ok(amount
+            .checked_mul(lp_balance)
+            .ok_or(MarginPoolError::CalculationFailure)?
+            .checked_div(pool_balance)
+            .ok_or(MarginPoolError::CalculationFailure)?)
     }
 }
