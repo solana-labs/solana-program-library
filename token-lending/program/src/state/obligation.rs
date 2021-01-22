@@ -5,6 +5,7 @@ use crate::{
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
+    entrypoint::ProgramResult,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
@@ -52,7 +53,7 @@ impl Obligation {
     }
 
     /// Accrue interest
-    pub fn accrue_interest(&mut self, cumulative_borrow_rate: Decimal) -> Result<(), ProgramError> {
+    pub fn accrue_interest(&mut self, cumulative_borrow_rate: Decimal) -> ProgramResult {
         if cumulative_borrow_rate < self.cumulative_borrow_rate_wads {
             return Err(LendingError::NegativeInterestRate.into());
         }
@@ -73,12 +74,13 @@ impl Obligation {
     /// Liquidate part of obligation
     pub fn liquidate(
         &mut self,
-        repay_amount: Decimal,
+        settle_amount: Decimal,
         withdraw_amount: u64,
-    ) -> Result<(), ProgramError> {
-        self.borrowed_liquidity_wads = self.borrowed_liquidity_wads.try_sub(repay_amount)?;
+        bonus_amount: u64,
+    ) -> ProgramResult {
+        self.borrowed_liquidity_wads = self.borrowed_liquidity_wads.try_sub(settle_amount)?;
         self.deposited_collateral_tokens
-            .checked_sub(withdraw_amount)
+            .checked_sub(withdraw_amount + bonus_amount)
             .ok_or(LendingError::MathOverflow)?;
         Ok(())
     }

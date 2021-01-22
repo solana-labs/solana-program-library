@@ -132,25 +132,39 @@ impl Reserve {
         }
 
         // Don't pay out bonus if withdraw amount covers full collateral balance
-        let (withdraw_amount, bonus_amount) =
+        let (withdraw_amount, bonus_amount, remaining_amount) =
             if withdraw_amount >= obligation.deposited_collateral_tokens.into() {
-                (obligation.deposited_collateral_tokens, 0)
+                (obligation.deposited_collateral_tokens, 0, 0)
             } else {
                 let withdraw_amount = withdraw_amount.try_floor_u64()?;
                 let liquidation_bonus_rate = Rate::from_percent(self.config.liquidation_bonus);
                 let bonus_amount = Decimal::from(liquidation_bonus_rate)
                     .try_mul(withdraw_amount)?
                     .try_floor_u64()?;
-                let remaining_collateral = obligation.deposited_collateral_tokens - withdraw_amount;
-                let bonus_amount = bonus_amount.min(remaining_collateral);
-                (withdraw_amount, bonus_amount)
+                let remaining_amount = obligation.deposited_collateral_tokens - withdraw_amount;
+                if bonus_amount >= remaining_amount {
+                    (withdraw_amount, remaining_amount, 0)
+                } else {
+                    (
+                        withdraw_amount,
+                        bonus_amount,
+                        remaining_amount - bonus_amount,
+                    )
+                }
             };
+
+        // Determine if the loan has defaulted
+        let settle_amount = if remaining_amount == 0 {
+            obligation.borrowed_liquidity_wads
+        } else {
+            decimal_repay_amount
+        };
 
         Ok(LiquidateResult {
             bonus_amount,
             withdraw_amount,
-            integer_repay_amount,
-            decimal_repay_amount,
+            repay_amount: integer_repay_amount,
+            settle_amount,
         })
     }
 
@@ -266,7 +280,7 @@ impl Reserve {
     }
 
     /// Update borrow rate and accrue interest
-    pub fn accrue_interest(&mut self, current_slot: Slot) -> Result<(), ProgramError> {
+    pub fn accrue_interest(&mut self, current_slot: Slot) -> ProgramResult {
         let slots_elapsed = self.update_slot(current_slot);
         if slots_elapsed > 0 {
             let current_borrow_rate = self.current_borrow_rate()?;
@@ -345,10 +359,11 @@ pub struct LiquidateResult {
     pub bonus_amount: u64,
     /// Amount of collateral to withdraw in exchange for repay amount
     pub withdraw_amount: u64,
-    /// Amount that will be repaid as precise decimal
-    pub decimal_repay_amount: Decimal,
+    /// Amount of liquidity that is settled from the obligation. It includes
+    /// the amount of loan that was defaulted if collateral is depleted.
+    pub settle_amount: Decimal,
     /// Amount that will be repaid as u64
-    pub integer_repay_amount: u64,
+    pub repay_amount: u64,
 }
 
 /// Reserve liquidity
@@ -397,16 +412,12 @@ impl ReserveLiquidity {
     }
 
     /// Subtract repay amount from total borrows and add to available liquidity
-    pub fn repay(
-        &mut self,
-        integer_amount: u64,
-        decimal_amount: Decimal,
-    ) -> Result<(), ProgramError> {
+    pub fn repay(&mut self, repay_amount: u64, settle_amount: Decimal) -> ProgramResult {
         self.available_amount = self
             .available_amount
-            .checked_add(integer_amount)
+            .checked_add(repay_amount)
             .ok_or(LendingError::MathOverflow)?;
-        self.borrowed_amount_wads = self.borrowed_amount_wads.try_sub(decimal_amount)?;
+        self.borrowed_amount_wads = self.borrowed_amount_wads.try_sub(settle_amount)?;
 
         Ok(())
     }
@@ -834,23 +845,28 @@ mod test {
                 assert!(
                     Decimal::from(liquidate_result.withdraw_amount) <=
                         liquidity_in_other_collateral(
-                            liquidate_result.integer_repay_amount,
+                            liquidate_result.repay_amount,
                             collateral_exchange_rate,
                             conversion_rate,
                         )?
                 );
                 assert!(
-                    Decimal::from(liquidate_result.integer_repay_amount) <=
+                    Decimal::from(liquidate_result.repay_amount) <=
                         obligation.borrowed_liquidity_wads.try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
                 );
                 assert!(
                     Decimal::from(liquidate_result.bonus_amount) <=
                         Decimal::from(liquidate_result.withdraw_amount).try_mul(Rate::from_percent(liquidation_bonus))?
                 );
-                assert!(
-                    liquidate_result.withdraw_amount + liquidate_result.bonus_amount <=
-                        obligation.deposited_collateral_tokens
-                );
+
+                let total_withdraw = liquidate_result.withdraw_amount + liquidate_result.bonus_amount;
+                let defaulted = total_withdraw == obligation.deposited_collateral_tokens;
+                if defaulted {
+                    assert_eq!(liquidate_result.settle_amount, borrowed_liquidity_wads);
+                } else {
+                    assert_eq!(liquidate_result.settle_amount.try_ceil_u64()?, liquidate_result.repay_amount);
+                    assert!(total_withdraw < obligation.deposited_collateral_tokens);
+                }
             }
         }
 
