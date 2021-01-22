@@ -1106,21 +1106,19 @@ fn process_liquidate(
     let LiquidateResult {
         bonus_amount,
         withdraw_amount,
-        integer_repay_amount,
-        decimal_repay_amount,
+        repay_amount,
+        settle_amount,
     } = withdraw_reserve.liquidate_obligation(
         &obligation,
         liquidity_amount,
         &repay_reserve.liquidity.mint_pubkey,
         trade_simulator,
     )?;
-    repay_reserve
-        .liquidity
-        .repay(integer_repay_amount, decimal_repay_amount)?;
 
+    repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    obligation.liquidate(decimal_repay_amount, withdraw_amount + bonus_amount)?;
+    obligation.liquidate(settle_amount, withdraw_amount, bonus_amount)?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     let authority_signer_seeds = &[
@@ -1137,7 +1135,7 @@ fn process_liquidate(
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: repay_reserve_liquidity_supply_info.clone(),
-        amount: integer_repay_amount,
+        amount: repay_amount,
         authority: user_transfer_authority_info.clone(),
         authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
