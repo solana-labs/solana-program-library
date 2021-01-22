@@ -262,7 +262,6 @@ async fn test_liquidate_healthy_obligation_failure() {
     .await;
     let he_as_number = LendingError::HealthyObligation as u32;
     let unwrapped = result.unwrap_err();
-    println!("WHAT");
     assert_eq!(
         solana_sdk::transaction::TransactionError::InstructionError(
             2,
