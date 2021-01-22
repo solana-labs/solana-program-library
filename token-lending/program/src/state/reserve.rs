@@ -18,6 +18,9 @@ use std::convert::{TryFrom, TryInto};
 /// Percentage of an obligation that can be repaid during each liquidation call
 pub const LIQUIDATION_CLOSE_FACTOR: u8 = 50;
 
+/// Loan amount that is small enough to close out
+pub const CLOSEABLE_AMOUNT: u64 = 2;
+
 /// Lending market reserve state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Reserve {
@@ -93,79 +96,88 @@ impl Reserve {
     pub fn liquidate_obligation(
         &self,
         obligation: &Obligation,
-        liquidity_amount: u64,
+        liquidate_amount: u64,
         liquidity_token_mint: &Pubkey,
         token_converter: impl TokenConverter,
     ) -> Result<LiquidateResult, ProgramError> {
-        // calculate the amount of liquidity that will be repaid
-        let max_repayable = obligation
-            .borrowed_liquidity_wads
-            .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
-            .try_floor_u64()?;
-        let integer_repay_amount = liquidity_amount.min(max_repayable);
-        if integer_repay_amount == 0 {
-            return Err(LendingError::ObligationTooSmall.into());
-        }
+        Self::_liquidate_obligation(
+            obligation,
+            liquidate_amount,
+            liquidity_token_mint,
+            self.collateral_exchange_rate()?,
+            &self.config,
+            token_converter,
+        )
+    }
 
-        // calculate the amount of collateral that will be received
-        let decimal_repay_amount = Decimal::from(integer_repay_amount);
-        let withdraw_amount_in_liquidity =
-            token_converter.convert(decimal_repay_amount, liquidity_token_mint)?;
-        let withdraw_amount = self
-            .collateral_exchange_rate()?
-            .decimal_liquidity_to_collateral(withdraw_amount_in_liquidity)?;
-        if withdraw_amount == Decimal::zero() {
-            return Err(LendingError::LiquidationTooSmall.into());
-        }
-
-        // When the value of the loan (obligation.borrowed_liquidity_wads) divided by the value of
-        // the collateral (collateral_token_price * obligation.deposited_collateral_tokens) is less
-        // than the liquidation threshold, the loan is healthy and cannot be liquidated.
-        let collateral_token_price = decimal_repay_amount.try_div(withdraw_amount)?;
-        let obligation_loan_to_value = obligation
-            .borrowed_liquidity_wads
-            .try_div(collateral_token_price)?
-            .try_div(obligation.deposited_collateral_tokens)?;
-        let liquidation_threshold = Rate::from_percent(self.config.liquidation_threshold);
-        if obligation_loan_to_value <= liquidation_threshold.into() {
+    fn _liquidate_obligation(
+        obligation: &Obligation,
+        liquidity_amount: u64,
+        liquidity_token_mint: &Pubkey,
+        collateral_exchange_rate: CollateralExchangeRate,
+        collateral_reserve_config: &ReserveConfig,
+        mut token_converter: impl TokenConverter,
+    ) -> Result<LiquidateResult, ProgramError> {
+        // Check obligation health
+        let borrow_token_price = token_converter.best_price(liquidity_token_mint)?;
+        let liquidation_threshold =
+            Rate::from_percent(collateral_reserve_config.liquidation_threshold);
+        let obligation_loan_to_value =
+            obligation.loan_to_value(collateral_exchange_rate, borrow_token_price)?;
+        if obligation_loan_to_value < liquidation_threshold.into() {
             return Err(LendingError::HealthyObligation.into());
         }
 
-        // Don't pay out bonus if withdraw amount covers full collateral balance
-        let (withdraw_amount, bonus_amount, remaining_amount) =
-            if withdraw_amount >= obligation.deposited_collateral_tokens.into() {
-                (obligation.deposited_collateral_tokens, 0, 0)
-            } else {
-                let withdraw_amount = withdraw_amount.try_floor_u64()?;
-                let liquidation_bonus_rate = Rate::from_percent(self.config.liquidation_bonus);
-                let bonus_amount = Decimal::from(liquidation_bonus_rate)
-                    .try_mul(withdraw_amount)?
-                    .try_floor_u64()?;
-                let remaining_amount = obligation.deposited_collateral_tokens - withdraw_amount;
-                if bonus_amount >= remaining_amount {
-                    (withdraw_amount, remaining_amount, 0)
-                } else {
-                    (
-                        withdraw_amount,
-                        bonus_amount,
-                        remaining_amount - bonus_amount,
-                    )
-                }
-            };
+        // Special handling for small, closeable obligations
+        let max_closeable_amount = obligation.max_closeable_amount()?;
+        let close_amount = liquidity_amount.min(max_closeable_amount);
+        if close_amount > 0 {
+            return Ok(LiquidateResult {
+                withdraw_amount: obligation.deposited_collateral_tokens,
+                repay_amount: close_amount,
+                settle_amount: obligation.borrowed_liquidity_wads,
+            });
+        }
 
-        // Determine if the loan has defaulted
-        let settle_amount = if remaining_amount == 0 {
-            obligation.borrowed_liquidity_wads
-        } else {
-            decimal_repay_amount
+        // Calculate the amount of liquidity that will be repaid
+        let max_liquidation_amount = obligation.max_liquidation_amount()?;
+        let repay_amount = liquidity_amount.min(max_liquidation_amount);
+        let decimal_repay_amount = Decimal::from(repay_amount);
+
+        // Calculate the amount of collateral that will be received
+        let withdraw_amount = {
+            let receive_liquidity_amount =
+                token_converter.convert(decimal_repay_amount, liquidity_token_mint)?;
+            let collateral_amount = collateral_exchange_rate
+                .decimal_liquidity_to_collateral(receive_liquidity_amount)?;
+            let bonus_rate = Rate::from_percent(collateral_reserve_config.liquidation_bonus);
+            let bonus_amount = collateral_amount.try_mul(bonus_rate)?;
+            let withdraw_amount = collateral_amount.try_add(bonus_amount)?;
+            let withdraw_amount =
+                withdraw_amount.min(obligation.deposited_collateral_tokens.into());
+            if repay_amount == max_liquidation_amount {
+                withdraw_amount.try_ceil_u64()?
+            } else {
+                withdraw_amount.try_floor_u64()?
+            }
         };
 
-        Ok(LiquidateResult {
-            bonus_amount,
-            withdraw_amount,
-            repay_amount: integer_repay_amount,
-            settle_amount,
-        })
+        if withdraw_amount > 0 {
+            // TODO: charge less liquidity if withdraw value exceeds loan collateral
+            let settle_amount = if withdraw_amount == obligation.deposited_collateral_tokens {
+                obligation.borrowed_liquidity_wads
+            } else {
+                decimal_repay_amount
+            };
+
+            Ok(LiquidateResult {
+                withdraw_amount,
+                repay_amount,
+                settle_amount,
+            })
+        } else {
+            Err(LendingError::LiquidationTooSmall.into())
+        }
     }
 
     /// Create new loan
@@ -355,8 +367,6 @@ pub struct LoanResult {
 /// Liquidate obligation result
 #[derive(Debug)]
 pub struct LiquidateResult {
-    /// Amount of collateral to receive as bonus
-    pub bonus_amount: u64,
     /// Amount of collateral to withdraw in exchange for repay amount
     pub withdraw_amount: u64,
     /// Amount of liquidity that is settled from the obligation. It includes
@@ -742,6 +752,10 @@ mod test {
 
     struct MockConverter(Decimal);
     impl TokenConverter for MockConverter {
+        fn best_price(&mut self, _token_mint: &Pubkey) -> Result<Decimal, ProgramError> {
+            Ok(self.0)
+        }
+
         fn convert(
             self,
             from_amount: Decimal,
@@ -749,19 +763,6 @@ mod test {
         ) -> Result<Decimal, ProgramError> {
             from_amount.try_mul(self.0)
         }
-    }
-
-    /// Loan to value ratio
-    fn loan_to_value_ratio(
-        obligation: &Obligation,
-        borrow_token_price: Decimal,
-        collateral_exchange_rate: CollateralExchangeRate,
-    ) -> Result<Rate, ProgramError> {
-        let borrow_value = borrow_token_price.try_mul(obligation.borrowed_liquidity_wads)?;
-        let collateral_value = collateral_exchange_rate.decimal_collateral_to_liquidity(
-            Decimal::from(obligation.deposited_collateral_tokens),
-        )?;
-        borrow_value.try_div(collateral_value)?.try_into()
     }
 
     /// Convert reserve liquidity tokens to the collateral tokens of another reserve
@@ -786,87 +787,110 @@ mod test {
         }
     }
 
+    // Creates rates (threshold, ltv) where 2 <= threshold <= 100 and threshold <= ltv <= 1,000%
+    prop_compose! {
+        fn unhealthy_rates()(threshold in 2..=100u8)(
+            ltv_rate in threshold as u64..=1000u64,
+            threshold in Just(threshold),
+        ) -> (Decimal, u8) {
+            (Decimal::from_scaled_val(ltv_rate as u128 * PERCENT_SCALER as u128), threshold)
+        }
+    }
+
+    // Creates a range of reasonable token conversion rates
+    prop_compose! {
+        fn token_conversion_rate()(
+            conversion_rate in 1..=u16::MAX,
+            invert_conversion_rate: bool,
+        ) -> Decimal {
+            let conversion_rate = Decimal::from(conversion_rate as u64);
+            if invert_conversion_rate {
+                Decimal::one().try_div(conversion_rate).unwrap()
+            } else {
+                conversion_rate
+            }
+        }
+    }
+
+    // Creates a range of reasonable collateral exchange rates
+    prop_compose! {
+        fn collateral_exchange_rate_range()(percent in 1..=500u64) -> CollateralExchangeRate {
+            CollateralExchangeRate(Rate::from_scaled_val(percent * PERCENT_SCALER))
+        }
+    }
+
     proptest! {
         #[test]
-        fn liquidate_obligation(
-            obligation_loan in 0..=u64::MAX,
-            obligation_collateral in 0..=u64::MAX,
-            liquidate_amount in 0..=u64::MAX,
-            collateral_exchange_rate in PERCENT_SCALER..=5 * WAD,
-            token_conversion_rate in 0..=u64::MAX as u128,
-            liquidation_bonus in 0..=100u8,
-            liquidation_threshold in 2..=100u8,
+        fn unhealthy_obligations_can_be_liquidated(
+            obligation_collateral in 1..=u64::MAX,
+            (obligation_ltv, liquidation_threshold) in unhealthy_rates(),
+            collateral_exchange_rate in collateral_exchange_rate_range(),
+            token_conversion_rate in token_conversion_rate(),
         ) {
-            let borrowed_liquidity_wads = Decimal::from(obligation_loan);
+            let collateral_reserve_config = &ReserveConfig {
+                liquidation_threshold,
+                ..ReserveConfig::default()
+            };
+
+            // Create unhealthy obligation at target LTV
+            let collateral_value = collateral_exchange_rate
+                .decimal_collateral_to_liquidity(Decimal::from(obligation_collateral as u64))?
+                .try_div(token_conversion_rate)?;
+
+            // Ensure that collateral value fits in u64
+            prop_assume!(collateral_value.try_round_u64().is_ok());
+
+            let borrowed_liquidity_wads = collateral_value
+                .try_mul(obligation_ltv)?
+                .try_add(Decimal::from_scaled_val(1u128))? // ensure loan is unhealthy
+                .max(Decimal::from(2u64)); // avoid dust account closure
+
+            // Ensure that borrow value fits in u64
+            prop_assume!(borrowed_liquidity_wads.try_round_u64().is_ok());
+
             let obligation = Obligation {
-                deposited_collateral_tokens: obligation_collateral,
+                deposited_collateral_tokens: obligation_collateral as u64,
                 borrowed_liquidity_wads,
                 ..Obligation::default()
             };
-            let total_liquidity = 1_000_000;
-            let collateral_token_supply = Decimal::from(total_liquidity)
-                .try_mul(Rate::from_scaled_val(collateral_exchange_rate))?
-                .try_floor_u64()?;
 
-            let reserve = Reserve {
-                collateral: ReserveCollateral {
-                    mint_total_supply: collateral_token_supply,
-                    ..ReserveCollateral::default()
-                },
-                liquidity: ReserveLiquidity {
-                    available_amount: total_liquidity,
-                    ..ReserveLiquidity::default()
-                },
-                config: ReserveConfig {
-                    liquidation_threshold,
-                    liquidation_bonus,
-                    ..ReserveConfig::default()
-                },
-                ..Reserve::default()
-            };
-
-            let conversion_rate = Decimal::from_scaled_val(token_conversion_rate);
-            let liquidate_result = reserve.liquidate_obligation(
+            // Liquidate with max amount to ensure obligation can be liquidated
+            let liquidate_result = Reserve::_liquidate_obligation(
                 &obligation,
-                liquidate_amount,
+                u64::MAX,
                 &Pubkey::default(),
-                MockConverter(conversion_rate)
+                collateral_exchange_rate,
+                collateral_reserve_config,
+                MockConverter(token_conversion_rate)
             );
 
-            let collateral_exchange_rate = reserve.collateral_exchange_rate()?;
-            let obligation_ltv = loan_to_value_ratio(&obligation, conversion_rate, collateral_exchange_rate)?;
-            if obligation_ltv <= Rate::from_percent(liquidation_threshold) {
-                assert_eq!(
-                    liquidate_result.unwrap_err(),
-                    LendingError::HealthyObligation.into()
-                );
-            } else {
-                let liquidate_result = liquidate_result.unwrap();
-                assert!(
-                    Decimal::from(liquidate_result.withdraw_amount) <=
-                        liquidity_in_other_collateral(
-                            liquidate_result.repay_amount,
-                            collateral_exchange_rate,
-                            conversion_rate,
-                        )?
-                );
-                assert!(
-                    Decimal::from(liquidate_result.repay_amount) <=
-                        obligation.borrowed_liquidity_wads.try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
-                );
-                assert!(
-                    Decimal::from(liquidate_result.bonus_amount) <=
-                        Decimal::from(liquidate_result.withdraw_amount).try_mul(Rate::from_percent(liquidation_bonus))?
-                );
+            let liquidate_result = liquidate_result.unwrap();
+            let expected_withdraw_amount = liquidity_in_other_collateral(
+                liquidate_result.repay_amount,
+                collateral_exchange_rate,
+                token_conversion_rate,
+            )?.min(obligation.deposited_collateral_tokens.into());
 
-                let total_withdraw = liquidate_result.withdraw_amount + liquidate_result.bonus_amount;
-                let defaulted = total_withdraw == obligation.deposited_collateral_tokens;
-                if defaulted {
-                    assert_eq!(liquidate_result.settle_amount, borrowed_liquidity_wads);
-                } else {
-                    assert_eq!(liquidate_result.settle_amount.try_ceil_u64()?, liquidate_result.repay_amount);
-                    assert!(total_withdraw < obligation.deposited_collateral_tokens);
-                }
+            assert!(liquidate_result.repay_amount > 0);
+            assert!(liquidate_result.withdraw_amount > 0);
+
+            let min_withdraw_amount = expected_withdraw_amount.try_floor_u64()?;
+            let max_withdraw_amount = expected_withdraw_amount.try_ceil_u64()?;
+            let max_repay_amount = obligation.borrowed_liquidity_wads
+                .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
+                .try_ceil_u64()?;
+
+            assert!(liquidate_result.withdraw_amount >= min_withdraw_amount);
+            assert!(liquidate_result.withdraw_amount <= max_withdraw_amount);
+            assert!(liquidate_result.repay_amount <= max_repay_amount);
+
+            let defaulted = liquidate_result.withdraw_amount == obligation.deposited_collateral_tokens;
+            if defaulted {
+                assert_eq!(liquidate_result.settle_amount, borrowed_liquidity_wads);
+                assert!(liquidate_result.repay_amount < liquidate_result.settle_amount.try_floor_u64()?);
+            } else {
+                assert_eq!(liquidate_result.settle_amount.try_ceil_u64()?, liquidate_result.repay_amount);
+                assert!(liquidate_result.withdraw_amount < obligation.deposited_collateral_tokens);
             }
         }
 
@@ -922,14 +946,13 @@ mod test {
         #[test]
         fn allowed_borrow_for_collateral(
             collateral_amount in 0..=u32::MAX as u64,
-            collateral_exchange_rate in PERCENT_SCALER..=5 * WAD,
-            token_conversion_rate in 0..=u64::MAX as u128,
+            collateral_exchange_rate in collateral_exchange_rate_range(),
+            token_conversion_rate in 1..=u64::MAX,
             loan_to_value_ratio in 1..100u8,
         ) {
             let total_liquidity = 1_000_000;
-            let collateral_token_supply = Decimal::from(total_liquidity)
-                .try_mul(Rate::from_scaled_val(collateral_exchange_rate))?
-                .try_round_u64()?;
+            let collateral_token_supply = collateral_exchange_rate
+                .liquidity_to_collateral(total_liquidity)?;
             let reserve = Reserve {
                 collateral: ReserveCollateral {
                     mint_total_supply: collateral_token_supply,
@@ -946,7 +969,7 @@ mod test {
                 ..Reserve::default()
             };
 
-            let conversion_rate = Decimal::from_scaled_val(token_conversion_rate);
+            let conversion_rate = Decimal::from_scaled_val(token_conversion_rate as u128);
             let borrow_amount = reserve.allowed_borrow_for_collateral(
                 collateral_amount,
                 MockConverter(conversion_rate)
@@ -980,14 +1003,13 @@ mod test {
         #[test]
         fn required_collateral_for_borrow(
             borrow_amount in 0..=u32::MAX as u64,
-            collateral_exchange_rate in PERCENT_SCALER..=5 * WAD,
-            token_conversion_rate in 0..=u64::MAX as u128,
+            collateral_exchange_rate in collateral_exchange_rate_range(),
+            token_conversion_rate in 1..=u64::MAX,
             loan_to_value_ratio in 1..=100u8,
         ) {
             let total_liquidity = 1_000_000;
-            let collateral_token_supply = Decimal::from(total_liquidity)
-                .try_mul(Rate::from_scaled_val(collateral_exchange_rate))?
-                .try_round_u64()?;
+            let collateral_token_supply = collateral_exchange_rate
+                .liquidity_to_collateral(total_liquidity)?;
             let reserve = Reserve {
                 collateral: ReserveCollateral {
                     mint_total_supply: collateral_token_supply,
@@ -1004,7 +1026,7 @@ mod test {
                 ..Reserve::default()
             };
 
-            let conversion_rate = Decimal::from_scaled_val(token_conversion_rate);
+            let conversion_rate = Decimal::from_scaled_val(token_conversion_rate as u128);
             let collateral_amount = reserve.required_collateral_for_borrow(
                 borrow_amount,
                 &Pubkey::default(),
@@ -1177,6 +1199,79 @@ mod test {
                 assert_eq!(host_fee, 0);
             }
         }
+    }
+
+    #[test]
+    fn liquidate_amount_too_small() {
+        let conversion_rate = Decimal::from_scaled_val(PERCENT_SCALER as u128); // 1%
+        let collateral_exchange_rate = CollateralExchangeRate(Rate::one());
+        let collateral_reserve_config = &ReserveConfig {
+            liquidation_threshold: 80u8,
+            liquidation_bonus: 5u8,
+            ..ReserveConfig::default()
+        };
+
+        let obligation = Obligation {
+            deposited_collateral_tokens: 1,
+            borrowed_liquidity_wads: Decimal::from(100u64),
+            ..Obligation::default()
+        };
+
+        let liquidate_result = Reserve::_liquidate_obligation(
+            &obligation,
+            1u64, // converts to 0.01 collateral
+            &Pubkey::default(),
+            collateral_exchange_rate,
+            collateral_reserve_config,
+            MockConverter(conversion_rate),
+        );
+
+        assert_eq!(
+            liquidate_result.unwrap_err(),
+            LendingError::LiquidationTooSmall.into()
+        );
+    }
+
+    #[test]
+    fn liquidate_dust_obligation() {
+        let conversion_rate = Decimal::one();
+        let collateral_exchange_rate = CollateralExchangeRate(Rate::one());
+        let collateral_reserve_config = &ReserveConfig {
+            liquidation_threshold: 80u8,
+            liquidation_bonus: 5u8,
+            ..ReserveConfig::default()
+        };
+
+        let obligation = Obligation {
+            deposited_collateral_tokens: 1,
+            borrowed_liquidity_wads: Decimal::one()
+                .try_add(Decimal::from_scaled_val(1u128))
+                .unwrap(),
+            ..Obligation::default()
+        };
+
+        let liquidate_result = Reserve::_liquidate_obligation(
+            &obligation,
+            2,
+            &Pubkey::default(),
+            collateral_exchange_rate,
+            collateral_reserve_config,
+            MockConverter(conversion_rate),
+        )
+        .unwrap();
+
+        assert_eq!(
+            liquidate_result.repay_amount,
+            obligation.borrowed_liquidity_wads.try_ceil_u64().unwrap()
+        );
+        assert_eq!(
+            liquidate_result.withdraw_amount,
+            obligation.deposited_collateral_tokens
+        );
+        assert_eq!(
+            liquidate_result.settle_amount,
+            obligation.borrowed_liquidity_wads
+        );
     }
 
     #[test]

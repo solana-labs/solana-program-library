@@ -871,6 +871,9 @@ fn process_repay(
         msg!("Invalid withdraw reserve account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if obligation.deposited_collateral_tokens == 0 {
+        return Err(LendingError::ObligationEmpty.into());
+    }
 
     let obligation_mint = unpack_mint(&obligation_token_mint_info.data.borrow())?;
     if &obligation.token_mint != obligation_token_mint_info.key {
@@ -1030,6 +1033,9 @@ fn process_liquidate(
         msg!("Invalid withdraw reserve account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if obligation.deposited_collateral_tokens == 0 {
+        return Err(LendingError::ObligationEmpty.into());
+    }
 
     let mut repay_reserve = Reserve::unpack(&repay_reserve_info.data.borrow())?;
     if repay_reserve_info.owner != program_id {
@@ -1104,7 +1110,6 @@ fn process_liquidate(
     )?;
 
     let LiquidateResult {
-        bonus_amount,
         withdraw_amount,
         repay_amount,
         settle_amount,
@@ -1118,7 +1123,7 @@ fn process_liquidate(
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    obligation.liquidate(settle_amount, withdraw_amount, bonus_amount)?;
+    obligation.liquidate(settle_amount, withdraw_amount)?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     let authority_signer_seeds = &[
@@ -1150,18 +1155,6 @@ fn process_liquidate(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
-
-    // pay bonus collateral
-    if bonus_amount > 0 {
-        spl_token_transfer(TokenTransferParams {
-            source: withdraw_reserve_collateral_supply_info.clone(),
-            destination: destination_collateral_info.clone(),
-            amount: bonus_amount,
-            authority: lending_market_authority_info.clone(),
-            authority_signer_seeds,
-            token_program: token_program_id.clone(),
-        })?;
-    }
 
     Ok(())
 }

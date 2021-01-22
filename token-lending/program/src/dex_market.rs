@@ -6,7 +6,7 @@ use crate::{
     state::TokenConverter,
 };
 use arrayref::{array_refs, mut_array_refs};
-use serum_dex::critbit::Slab;
+use serum_dex::critbit::{Slab, SlabView};
 use solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey};
 use std::{cell::RefMut, convert::TryFrom};
 
@@ -59,6 +59,43 @@ pub struct TradeSimulator<'a> {
 }
 
 impl<'a> TokenConverter for TradeSimulator<'a> {
+    fn best_price(&mut self, token_mint: &Pubkey) -> Result<Decimal, ProgramError> {
+        let action = if token_mint == self.buy_token_mint {
+            TradeAction::Buy
+        } else {
+            TradeAction::Sell
+        };
+
+        let currency = if token_mint == self.quote_token_mint {
+            Currency::Quote
+        } else {
+            Currency::Base
+        };
+
+        let order_book_side = match (action, currency) {
+            (TradeAction::Buy, Currency::Base) => Side::Ask,
+            (TradeAction::Sell, Currency::Quote) => Side::Ask,
+            (TradeAction::Buy, Currency::Quote) => Side::Bid,
+            (TradeAction::Sell, Currency::Base) => Side::Bid,
+        };
+        if order_book_side != self.orders_side {
+            return Err(LendingError::DexInvalidOrderBookSide.into());
+        }
+
+        let best_order_price = self
+            .orders
+            .best_order_price()
+            .ok_or(LendingError::TradeSimulationError)?;
+
+        let input_token = Decimal::one().try_div(self.dex_market.get_lots(currency))?;
+        let output_token_price = if currency == Currency::Base {
+            input_token.try_mul(best_order_price)
+        } else {
+            input_token.try_div(best_order_price)
+        }?;
+        Ok(output_token_price.try_mul(self.dex_market.get_lots(currency.opposite()))?)
+    }
+
     fn convert(
         self,
         from_amount: Decimal,
@@ -199,6 +236,18 @@ impl<'a> DexMarketOrders<'a> {
         }));
 
         Ok(Self { heap, side })
+    }
+
+    fn best_order_price(&mut self) -> Option<u64> {
+        let side = self.side;
+        self.heap.as_mut().and_then(|heap| {
+            let handle = match side {
+                Side::Bid => heap.find_max(),
+                Side::Ask => heap.find_min(),
+            }?;
+
+            Some(heap.get_mut(handle)?.as_leaf_mut()?.price().get())
+        })
     }
 }
 
