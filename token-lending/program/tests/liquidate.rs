@@ -24,7 +24,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(90_000);
+    test.set_bpf_compute_max_units(101_000);
 
     // set loan values to about 90% of collateral value so that it gets liquidated
     const USDC_LOAN: u64 = 2 * FRACTIONAL_TO_USDC;
@@ -138,12 +138,12 @@ async fn test_success() {
     let usdc_loan_state = usdc_obligation.get_state(&mut banks_client).await;
     let usdc_liquidated = usdc_liquidity_supply - INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL;
     assert!(usdc_liquidated > USDC_LOAN / 2);
-    assert!(
-        usdc_liquidated
-            <= usdc_loan_state
-                .borrowed_liquidity_wads
-                .try_floor_u64()
-                .unwrap()
+    assert_eq!(
+        usdc_liquidated,
+        usdc_loan_state
+            .borrowed_liquidity_wads
+            .try_floor_u64()
+            .unwrap()
     );
 
     let sol_liquidity_supply =
@@ -151,11 +151,11 @@ async fn test_success() {
     let sol_loan_state = sol_obligation.get_state(&mut banks_client).await;
     let sol_liquidated = sol_liquidity_supply - INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS;
     assert!(sol_liquidated > SOL_LOAN / 2);
-    assert!(
-        sol_liquidated
-            <= sol_loan_state
-                .borrowed_liquidity_wads
-                .try_floor_u64()
-                .unwrap()
+    assert_eq!(
+        sol_liquidated,
+        sol_loan_state
+            .borrowed_liquidity_wads
+            .try_floor_u64()
+            .unwrap()
     );
 }

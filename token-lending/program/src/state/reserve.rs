@@ -778,11 +778,11 @@ mod test {
     proptest! {
         #[test]
         fn liquidate_obligation(
-            obligation_loan in 1..=u64::MAX,
-            obligation_collateral in 1..=u64::MAX,
-            liquidate_amount in 1..=u64::MAX,
+            obligation_loan in 0..=u64::MAX,
+            obligation_collateral in 0..=u64::MAX,
+            liquidate_amount in 0..=u64::MAX,
             collateral_exchange_rate in PERCENT_SCALER..=5 * WAD,
-            token_conversion_rate in 1..=u64::MAX as u128,
+            token_conversion_rate in 0..=u64::MAX as u128,
             liquidation_bonus in 0..=100u8,
             liquidation_threshold in 2..=100u8,
         ) {
