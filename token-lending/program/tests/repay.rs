@@ -28,16 +28,8 @@ const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 42_500 * LAMPORTS_TO_SOL;
 const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 =
     lamports_to_usdc_fractional(INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS);
 
-const OBLIGATION_LOAN: u64 = 100;
-const OBLIGATION_COLLATERAL: u64 = 90;
-const NUMBER_OF_TESTS: u64 = 2;
-struct TestReturn {
-    banks_client: BanksClient,
-    obligation: TestObligation,
-    usdc_reserve: TestReserve,
-}
-
-async fn setup() -> TestReturn {
+#[tokio::test]
+async fn test_success() {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
@@ -45,7 +37,10 @@ async fn setup() -> TestReturn {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(NUMBER_OF_TESTS * 80_000);
+    test.set_bpf_compute_max_units(80_000);
+
+    const OBLIGATION_LOAN: u64 = 2;
+    const OBLIGATION_COLLATERAL: u64 = 500;
 
     let user_accounts_owner = Keypair::new();
     let user_transfer_authority = Keypair::new();
@@ -99,7 +94,7 @@ async fn setup() -> TestReturn {
     );
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
-
+    
     let mut transaction = Transaction::new_with_payer(
         &[
             approve(
@@ -122,7 +117,7 @@ async fn setup() -> TestReturn {
             .unwrap(),
             repay_reserve_liquidity(
                 spl_token_lending::id(),
-                OBLIGATION_LOAN / 2,
+                OBLIGATION_LOAN-1,
                 usdc_reserve.user_liquidity_account,
                 sol_reserve.user_collateral_account,
                 usdc_reserve.pubkey,
@@ -145,43 +140,6 @@ async fn setup() -> TestReturn {
         recent_blockhash,
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
-
-    TestReturn {
-        banks_client,
-        obligation,
-        usdc_reserve,
-    }
-}
-
-#[tokio::test]
-async fn test_repay_obligation() {
-    let TestReturn {
-        mut banks_client,
-        obligation,
-        ..
-    } = setup().await;
-
-    let obligation_state = obligation.get_state(&mut banks_client).await;
-    // Should only be 50% owed left on the loan remaining after repayment, given no slots ticked since loan start(no interest)
-    assert!(obligation_state.borrowed_liquidity_wads == Decimal::from(OBLIGATION_LOAN / 2u64));
-    // 50% of collateral tokens given back to user too, since they paid back half loan
-    assert!(obligation_state.deposited_collateral_tokens == OBLIGATION_COLLATERAL / 2);
-}
-
-#[tokio::test]
-async fn test_repay_repay_reserve() {
-    let TestReturn {
-        mut banks_client,
-        usdc_reserve,
-        ..
-    } = setup().await;
-    // because we're giving the collateral tokens back to user, that's disappearing from our usdc reserves...
-    let repay_reserve = usdc_reserve.get_state(&mut banks_client).await;
-    // Repayment decreases the available collateral in the reserve
-    assert!(
-        repay_reserve.state.available_liquidity
-            == INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL - OBLIGATION_LOAN / 2
-    );
-    // borrowed_liquidity_wads supposed to go down by same amount...
-    assert!(repay_reserve.state.borrowed_liquidity_wads == Decimal::from(OBLIGATION_LOAN / 2));
+    // Should only be 1 owed left on the loan remaining after repayment, given no slots ticked since loan start(no interest)
+    assert!(obligation.get_state(&mut banks_client).await.borrowed_liquidity_wads == Decimal::from(1u64))
 }
