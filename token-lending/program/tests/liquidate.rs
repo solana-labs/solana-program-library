@@ -59,7 +59,7 @@ async fn setup(config: TestConfig) -> TestReturn {
 
     // limit to track compute unit increase
     test.set_bpf_compute_max_units(NUMBER_OF_TESTS * 80_000);
-
+  
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
@@ -86,7 +86,7 @@ async fn setup(config: TestConfig) -> TestReturn {
         &lending_market,
         AddReserveArgs {
             config: reserve_config,
-            slots_elapsed: SLOTS_PER_YEAR,
+            initial_borrow_rate: 1,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -103,7 +103,7 @@ async fn setup(config: TestConfig) -> TestReturn {
         &lending_market,
         AddReserveArgs {
             config: reserve_config,
-            slots_elapsed: SLOTS_PER_YEAR,
+            initial_borrow_rate: 1,
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_decimals: 9,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
@@ -145,6 +145,7 @@ async fn setup(config: TestConfig) -> TestReturn {
             );
         }
     }
+
 
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
@@ -217,7 +218,10 @@ async fn test_liquidate_usdc_obligation() {
     assert!(usdc_liquidated > USDC_LOAN / 2);
     assert_eq!(
         usdc_liquidated,
-        usdc_loan_state.borrowed_liquidity_wads.round_u64()
+        usdc_loan_state
+            .borrowed_liquidity_wads
+            .try_floor_u64()
+            .unwrap()
     );
     let collateral_liquidated =
         USDC_LOAN_SOL_COLLATERAL - usdc_loan_state.deposited_collateral_tokens;
@@ -245,7 +249,10 @@ async fn test_liquidate_sol_obligation() {
     assert!(sol_liquidated > SOL_LOAN / 2);
     assert_eq!(
         sol_liquidated,
-        sol_loan_state.borrowed_liquidity_wads.round_u64()
+        sol_loan_state
+            .borrowed_liquidity_wads
+            .try_floor_u64()
+            .unwrap()
     );
 
     let collateral_liquidated =

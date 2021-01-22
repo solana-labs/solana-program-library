@@ -14,7 +14,7 @@ use spl_token_lending::{
     error::LendingError,
     instruction::init_reserve,
     processor::process_instruction,
-    state::{ReserveFees, INITIAL_COLLATERAL_RATE},
+    state::{ReserveFees, INITIAL_COLLATERAL_RATIO},
 };
 
 #[tokio::test]
@@ -24,6 +24,9 @@ async fn test_success() {
         spl_token_lending::id(),
         processor!(process_instruction),
     );
+
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(70_000);
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -70,7 +73,7 @@ async fn test_success() {
         get_token_balance(&mut banks_client, sol_reserve.user_collateral_account).await;
     assert_eq!(
         user_sol_collateral_balance,
-        INITIAL_COLLATERAL_RATE * RESERVE_AMOUNT
+        INITIAL_COLLATERAL_RATIO * RESERVE_AMOUNT
     );
 }
 
@@ -117,14 +120,15 @@ async fn test_already_initialized() {
             usdc_reserve.collateral_mint,
             usdc_reserve.collateral_supply,
             usdc_reserve.collateral_fees_receiver,
-            lending_market.keypair.pubkey(),
+            lending_market.pubkey,
+            lending_market.owner.pubkey(),
             user_transfer_authority.pubkey(),
             Some(sol_usdc_dex_market.pubkey),
         )],
         Some(&payer.pubkey()),
     );
     transaction.sign(
-        &[&payer, &lending_market.keypair, &user_transfer_authority],
+        &[&payer, &lending_market.owner, &user_transfer_authority],
         recent_blockhash,
     );
     assert_eq!(

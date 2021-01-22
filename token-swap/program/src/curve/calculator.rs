@@ -1,9 +1,6 @@
 //! Swap calculations
 
-use crate::{
-    curve::math::{ceiling_division, PreciseNumber},
-    error::SwapError,
-};
+use crate::{curve::math::PreciseNumber, error::SwapError};
 use std::fmt::Debug;
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
@@ -34,6 +31,17 @@ pub enum TradeDirection {
     AtoB,
     /// Input token B, output token A
     BtoA,
+}
+
+/// The direction to round.  Used for pool token to trading token conversions to
+/// avoid losing value on any deposit or withdrawal.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum RoundDirection {
+    /// Floor the value, ie. 1.9 => 1, 1.1 => 1, 1.5 => 1
+    Floor,
+    /// Ceiling the value, ie. 1.9 => 2, 1.1 => 2, 1.5 => 2
+    Ceiling,
 }
 
 impl TradeDirection {
@@ -92,29 +100,14 @@ pub trait CurveCalculator: Debug + DynPack {
 
     /// Get the amount of trading tokens for the given amount of pool tokens,
     /// provided the total trading tokens and supply of pool tokens.
-    ///
-    /// The default implementation is a simple ratio calculation for how many
-    /// trading tokens correspond to a certain number of pool tokens
     fn pool_tokens_to_trading_tokens(
         &self,
         pool_tokens: u128,
         pool_token_supply: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<TradingTokenResult> {
-        let (token_a_amount, _) = ceiling_division(
-            pool_tokens.checked_mul(swap_token_a_amount)?,
-            pool_token_supply,
-        )?;
-        let (token_b_amount, _) = ceiling_division(
-            pool_tokens.checked_mul(swap_token_b_amount)?,
-            pool_token_supply,
-        )?;
-        Some(TradingTokenResult {
-            token_a_amount,
-            token_b_amount,
-        })
-    }
+        round_direction: RoundDirection,
+    ) -> Option<TradingTokenResult>;
 
     /// Get the amount of pool tokens for the given amount of token A or B.
     ///
@@ -124,7 +117,7 @@ pub trait CurveCalculator: Debug + DynPack {
     /// performed, this will change the spot price of the pool.
     ///
     /// See more background for the calculation at:
-    /// https://balancer.finance/whitepaper/#single-asset-deposit
+    /// https://balancer.finance/whitepaper/#single-asset-deposit-withdrawal
     fn trading_tokens_to_pool_tokens(
         &self,
         source_amount: u128,
@@ -132,20 +125,8 @@ pub trait CurveCalculator: Debug + DynPack {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-    ) -> Option<u128> {
-        let swap_source_amount = match trade_direction {
-            TradeDirection::AtoB => swap_token_a_amount,
-            TradeDirection::BtoA => swap_token_b_amount,
-        };
-        let swap_source_amount = PreciseNumber::new(swap_source_amount)?;
-        let source_amount = PreciseNumber::new(source_amount)?;
-        let ratio = source_amount.checked_div(&swap_source_amount)?;
-        let one = PreciseNumber::new(1)?;
-        let base = one.checked_add(&ratio)?;
-        let root = base.sqrt()?.checked_sub(&one)?;
-        let pool_supply = PreciseNumber::new(pool_supply)?;
-        pool_supply.checked_mul(&root)?.to_imprecise()
-    }
+        round_direction: RoundDirection,
+    ) -> Option<u128>;
 
     /// Validate that the given curve has no invalid parameters
     fn validate(&self) -> Result<(), SwapError>;
@@ -182,28 +163,19 @@ pub trait CurveCalculator: Debug + DynPack {
     /// This is useful for testing the curves, to make sure that value is not
     /// lost on any trade.  It can also be used to find out the relative value
     /// of pool tokens or liquidity tokens.
-    ///
-    /// The default implementation for this function gives the square root of
-    /// the Uniswap invariant.
     fn normalized_value(
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<u128> {
-        let swap_token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
-        let swap_token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
-        swap_token_a_amount
-            .checked_mul(&swap_token_b_amount)?
-            .sqrt()?
-            .to_imprecise()
-    }
+    ) -> Option<PreciseNumber>;
 }
 
 /// Test helpers for curves
-#[cfg(any(test, fuzzing))]
+#[cfg(test)]
 pub mod test {
     use super::*;
     use crate::curve::math::U256;
+    use proptest::prelude::*;
 
     /// The epsilon for most curves when performing the conversion test,
     /// comparing a one-sided deposit to a swap + deposit.
@@ -248,6 +220,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
+                RoundDirection::Floor,
             )
             .unwrap();
 
@@ -269,6 +242,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
+                RoundDirection::Floor,
             )
             .unwrap();
         let pool_tokens_from_destination = curve
@@ -278,6 +252,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply + pool_tokens_from_source,
                 opposite_direction,
+                RoundDirection::Floor,
             )
             .unwrap();
 
@@ -343,10 +318,14 @@ pub mod test {
         let new_value = curve
             .normalized_value(swap_token_a_amount, swap_token_b_amount)
             .unwrap();
-        assert!(new_value >= previous_value);
+        assert!(new_value.greater_than_or_equal(&previous_value));
 
         let epsilon = 1; // Extremely close!
-        let difference = new_value - previous_value;
+        let difference = new_value
+            .checked_sub(&previous_value)
+            .unwrap()
+            .to_imprecise()
+            .unwrap();
         assert!(difference <= epsilon);
     }
 
@@ -369,6 +348,7 @@ pub mod test {
                 pool_token_supply,
                 swap_token_a_amount,
                 swap_token_b_amount,
+                RoundDirection::Ceiling,
             )
             .unwrap();
         let new_swap_token_a_amount = swap_token_a_amount + deposit_result.token_a_amount;
@@ -398,5 +378,62 @@ pub mod test {
             new_swap_token_b_amount * pool_token_supply
                 >= swap_token_b_amount * new_pool_token_supply
         );
+    }
+
+    /// Test function checking that a withdraw never reduces the value of pool
+    /// tokens.
+    ///
+    /// Since curve calculations use unsigned integers, there is potential for
+    /// truncation at some point, meaning a potential for value to be lost if
+    /// too much is given to the depositor.
+    pub fn check_pool_value_from_withdraw(
+        curve: &dyn CurveCalculator,
+        pool_token_amount: u128,
+        pool_token_supply: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+    ) {
+        let withdraw_result = curve
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+                RoundDirection::Floor,
+            )
+            .unwrap();
+        let new_swap_token_a_amount = swap_token_a_amount - withdraw_result.token_a_amount;
+        let new_swap_token_b_amount = swap_token_b_amount - withdraw_result.token_b_amount;
+        let new_pool_token_supply = pool_token_supply - pool_token_amount;
+
+        let value = curve
+            .normalized_value(swap_token_a_amount, swap_token_b_amount)
+            .unwrap();
+        // since we can get rounding issues on the pool value which make it seem that the
+        // value per token has gone down, we bump it up by an epsilon of 1 to
+        // cover all cases
+        let new_value = curve
+            .normalized_value(new_swap_token_a_amount, new_swap_token_b_amount)
+            .unwrap();
+
+        // the following inequality must hold:
+        // new_pool_value / new_pool_token_supply >= pool_value / pool_token_supply
+        // which can also be written:
+        // new_pool_value * pool_token_supply >= pool_value * new_pool_token_supply
+
+        let pool_token_supply = PreciseNumber::new(pool_token_supply).unwrap();
+        let new_pool_token_supply = PreciseNumber::new(new_pool_token_supply).unwrap();
+        assert!(new_value
+            .checked_mul(&pool_token_supply)
+            .unwrap()
+            .greater_than_or_equal(&value.checked_mul(&new_pool_token_supply).unwrap()));
+    }
+
+    prop_compose! {
+        pub fn total_and_intermediate()(total in 1..u64::MAX)
+                        (intermediate in 1..total, total in Just(total))
+                        -> (u64, u64) {
+           (total, intermediate)
+       }
     }
 }

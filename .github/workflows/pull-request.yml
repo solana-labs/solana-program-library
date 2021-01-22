@@ -46,9 +46,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_NIGHTLY=$rust_nightly" >> $GITHUB_ENV
+
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: ${{ env.RUST_NIGHTLY }}
           override: true
           profile: minimal
           components: clippy
@@ -230,8 +236,6 @@ jobs:
             ~/.cargo/git
             target
           key: cargo-fuzz-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-fuzz-
 
       - uses: actions/cache@v2
         with:
@@ -239,8 +243,6 @@ jobs:
             ~/.cargo/bin/cargo-hfuzz
             ~/.cargo/bin/cargo-honggfuzz
           key: cargo-fuzz-bins-${{ runner.os }}
-          restore-keys: |
-            cargo-fuzz-bins-${{ runner.os }}-
 
       - uses: actions/cache@v2
         with:

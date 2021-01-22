@@ -25,9 +25,11 @@ const TOKEN_PROGRAM_ID = new PublicKey(
 export const LendingMarketLayout: typeof BufferLayout.Structure = BufferLayout.struct(
   [
     BufferLayout.u8("version"),
+    BufferLayout.u8("bumpSeed"),
+    Layout.publicKey("owner"),
     Layout.publicKey("quoteTokenMint"),
     Layout.publicKey("tokenProgramId"),
-    BufferLayout.blob(63, "padding"),
+    BufferLayout.blob(62, "padding"),
   ]
 );
 
@@ -36,6 +38,7 @@ export type CreateLendingMarketParams = {
   tokenProgramId?: PublicKey;
   lendingProgramId: PublicKey;
   lendingMarketAccount: Account;
+  lendingMarketOwner: PublicKey;
   quoteTokenMint: PublicKey;
   payer: Account;
 };
@@ -43,6 +46,7 @@ export type CreateLendingMarketParams = {
 export class LendingMarket {
   account: Account;
   connection: Connection;
+  owner: PublicKey;
   quoteTokenMint: PublicKey;
   tokenProgramId: PublicKey;
   lendingProgramId: PublicKey;
@@ -51,6 +55,7 @@ export class LendingMarket {
   constructor(params: CreateLendingMarketParams) {
     this.account = params.lendingMarketAccount;
     this.connection = params.connection;
+    this.owner = params.lendingMarketOwner;
     this.quoteTokenMint = params.quoteTokenMint;
     this.tokenProgramId = params.tokenProgramId || TOKEN_PROGRAM_ID;
     this.lendingProgramId = params.lendingProgramId;
@@ -124,19 +129,23 @@ export class LendingMarket {
         isWritable: false,
       },
     ];
+
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8("instruction"),
+      Layout.publicKey("owner"),
     ]);
     let data = Buffer.alloc(1024);
     {
       const encodeLength = commandDataLayout.encode(
         {
           instruction: 0, // InitLendingMarket instruction
+          owner: lendingMarket.owner.toBuffer(),
         },
         data
       );
       data = data.slice(0, encodeLength);
     }
+
     return new TransactionInstruction({
       keys,
       programId,

@@ -7,8 +7,11 @@ use solana_program::{
     pubkey::Pubkey,
     system_instruction, sysvar,
 };
+use std::str::FromStr;
 
 solana_program::declare_id!("Stake11111111111111111111111111111111111111");
+
+const STAKE_CONFIG: &str = "StakeConfig11111111111111111111111111111111";
 
 /// FIXME copied from solana stake program
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -257,7 +260,7 @@ pub fn create_account(
 }
 
 /// FIXME copied from the stake program
-fn initialize(stake_pubkey: &Pubkey, authorized: &Authorized, lockup: &Lockup) -> Instruction {
+pub fn initialize(stake_pubkey: &Pubkey, authorized: &Authorized, lockup: &Lockup) -> Instruction {
     Instruction::new(
         id(),
         &StakeInstruction::Initialize(*authorized, *lockup),
@@ -266,4 +269,21 @@ fn initialize(stake_pubkey: &Pubkey, authorized: &Authorized, lockup: &Lockup) -
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
     )
+}
+
+/// FIXME copied from the stake program
+pub fn delegate_stake(
+    stake_pubkey: &Pubkey,
+    authorized_pubkey: &Pubkey,
+    vote_pubkey: &Pubkey,
+) -> Instruction {
+    let account_metas = vec![
+        AccountMeta::new(*stake_pubkey, false),
+        AccountMeta::new_readonly(*vote_pubkey, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(Pubkey::from_str(STAKE_CONFIG).unwrap(), false),
+        AccountMeta::new_readonly(*authorized_pubkey, true),
+    ];
+    Instruction::new(id(), &StakeInstruction::DelegateStake, account_metas)
 }

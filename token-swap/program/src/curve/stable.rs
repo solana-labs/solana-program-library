@@ -6,7 +6,16 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use crate::curve::calculator::{CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection};
+use crate::curve::{
+    calculator::{
+        CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
+        TradingTokenResult,
+    },
+    constant_product::{
+        normalized_value, pool_tokens_to_trading_tokens, trading_tokens_to_pool_tokens,
+    },
+    math::PreciseNumber,
+};
 use arrayref::{array_mut_ref, array_ref};
 use std::convert::TryFrom;
 
@@ -136,6 +145,51 @@ impl CurveCalculator for StableCurve {
         })
     }
 
+    fn pool_tokens_to_trading_tokens(
+        &self,
+        pool_tokens: u128,
+        pool_token_supply: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        round_direction: RoundDirection,
+    ) -> Option<TradingTokenResult> {
+        pool_tokens_to_trading_tokens(
+            pool_tokens,
+            pool_token_supply,
+            swap_token_a_amount,
+            swap_token_b_amount,
+            round_direction,
+        )
+    }
+
+    /// Get the amount of pool tokens for the given amount of token A or B.
+    fn trading_tokens_to_pool_tokens(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
+        round_direction: RoundDirection,
+    ) -> Option<u128> {
+        trading_tokens_to_pool_tokens(
+            source_amount,
+            swap_token_a_amount,
+            swap_token_b_amount,
+            pool_supply,
+            trade_direction,
+            round_direction,
+        )
+    }
+
+    fn normalized_value(
+        &self,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+    ) -> Option<PreciseNumber> {
+        normalized_value(swap_token_a_amount, swap_token_b_amount)
+    }
+
     fn validate(&self) -> Result<(), SwapError> {
         // TODO are all amps valid?
         Ok(())
@@ -173,7 +227,7 @@ impl DynPack for StableCurve {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::calculator::INITIAL_SWAP_POOL_AMOUNT;
+    use crate::curve::calculator::{RoundDirection, INITIAL_SWAP_POOL_AMOUNT};
     use proptest::prelude::*;
     use sim::StableSwapModel;
 
@@ -195,7 +249,13 @@ mod tests {
         let amp = 1;
         let calculator = StableCurve { amp };
         let results = calculator
-            .pool_tokens_to_trading_tokens(deposit, supply, token_a, token_b)
+            .pool_tokens_to_trading_tokens(
+                deposit,
+                supply,
+                token_a,
+                token_b,
+                RoundDirection::Ceiling,
+            )
             .unwrap();
         assert_eq!(results.token_a_amount, expected_a);
         assert_eq!(results.token_b_amount, expected_b);
@@ -212,9 +272,11 @@ mod tests {
     fn fail_trading_token_conversion() {
         let amp = 1;
         let calculator = StableCurve { amp };
-        let results = calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX, 0);
+        let results =
+            calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX, 0, RoundDirection::Floor);
         assert!(results.is_none());
-        let results = calculator.pool_tokens_to_trading_tokens(5, 10, 0, u128::MAX);
+        let results =
+            calculator.pool_tokens_to_trading_tokens(5, 10, 0, u128::MAX, RoundDirection::Floor);
         assert!(results.is_none());
     }
 

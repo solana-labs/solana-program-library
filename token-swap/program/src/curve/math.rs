@@ -58,28 +58,63 @@ impl U256 {
 ///
 /// This calculation fails if the divisor is larger than the dividend, to avoid
 /// having a result like: 1 / 1000 = 1.
-pub fn ceiling_division(dividend: u128, mut divisor: u128) -> Option<(u128, u128)> {
-    let mut quotient = dividend.checked_div(divisor)?;
-    // Avoid dividing a small number by a big one and returning 1, and instead
-    // fail.
-    if quotient == 0 {
-        return None;
-    }
+pub trait CheckedCeilDiv: Sized {
+    /// Perform ceiling division
+    fn checked_ceil_div(&self, rhs: Self) -> Option<(Self, Self)>;
+}
 
-    // Ceiling the destination amount if there's any remainder, which will
-    // almost always be the case.
-    let remainder = dividend.checked_rem(divisor)?;
-    if remainder > 0 {
-        quotient = quotient.checked_add(1)?;
-        // calculate the minimum amount needed to get the dividend amount to
-        // avoid truncating too much
-        divisor = dividend.checked_div(quotient)?;
-        let remainder = dividend.checked_rem(quotient)?;
-        if remainder > 0 {
-            divisor = divisor.checked_add(1)?;
+impl CheckedCeilDiv for u128 {
+    fn checked_ceil_div(&self, mut rhs: Self) -> Option<(Self, Self)> {
+        let mut quotient = self.checked_div(rhs)?;
+        // Avoid dividing a small number by a big one and returning 1, and instead
+        // fail.
+        if quotient == 0 {
+            return None;
         }
+
+        // Ceiling the destination amount if there's any remainder, which will
+        // almost always be the case.
+        let remainder = self.checked_rem(rhs)?;
+        if remainder > 0 {
+            quotient = quotient.checked_add(1)?;
+            // calculate the minimum amount needed to get the dividend amount to
+            // avoid truncating too much
+            rhs = self.checked_div(quotient)?;
+            let remainder = self.checked_rem(quotient)?;
+            if remainder > 0 {
+                rhs = rhs.checked_add(1)?;
+            }
+        }
+        Some((quotient, rhs))
     }
-    Some((quotient, divisor))
+}
+
+impl CheckedCeilDiv for U256 {
+    fn checked_ceil_div(&self, mut rhs: Self) -> Option<(Self, Self)> {
+        let mut quotient = self.checked_div(rhs)?;
+        let zero = U256::from(0);
+        let one = U256::from(1);
+        // Avoid dividing a small number by a big one and returning 1, and instead
+        // fail.
+        if quotient == zero {
+            return None;
+        }
+
+        // Ceiling the destination amount if there's any remainder, which will
+        // almost always be the case.
+        let remainder = self.checked_rem(rhs)?;
+        if remainder > zero {
+            quotient = quotient.checked_add(one)?;
+            // calculate the minimum amount needed to get the dividend amount to
+            // avoid truncating too much
+            rhs = self.checked_div(quotient)?;
+            let remainder = self.checked_rem(quotient)?;
+            if remainder > zero {
+                rhs = rhs.checked_add(one)?;
+            }
+        }
+        Some((quotient, rhs))
+    }
 }
 
 /// The representation of the number one as a precise number as 10^12
@@ -198,6 +233,16 @@ impl PreciseNumber {
     /// Floors a precise value to a precision of ONE
     pub fn floor(&self) -> Option<Self> {
         let value = self.value.checked_div(one())?.checked_mul(one())?;
+        Some(Self { value })
+    }
+
+    /// Ceiling a precise value to a precision of ONE
+    pub fn ceiling(&self) -> Option<Self> {
+        let value = self
+            .value
+            .checked_add(one().checked_sub(U256::from(1))?)?
+            .checked_div(one())?
+            .checked_mul(one())?;
         Some(Self { value })
     }
 
@@ -608,6 +653,28 @@ mod tests {
         for i in test_roots.iter() {
             check_square_root(i);
         }
+    }
+
+    #[test]
+    fn test_floor() {
+        let whole_number = PreciseNumber::new(2).unwrap();
+        let mut decimal_number = PreciseNumber::new(2).unwrap();
+        decimal_number.value += U256::from(1);
+        let floor = decimal_number.floor().unwrap();
+        let floor_again = floor.floor().unwrap();
+        assert_eq!(whole_number.value, floor.value);
+        assert_eq!(whole_number.value, floor_again.value);
+    }
+
+    #[test]
+    fn test_ceiling() {
+        let whole_number = PreciseNumber::new(2).unwrap();
+        let mut decimal_number = PreciseNumber::new(2).unwrap();
+        decimal_number.value -= U256::from(1);
+        let ceiling = decimal_number.ceiling().unwrap();
+        let ceiling_again = ceiling.ceiling().unwrap();
+        assert_eq!(whole_number.value, ceiling.value);
+        assert_eq!(whole_number.value, ceiling_again.value);
     }
 
     proptest! {

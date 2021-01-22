@@ -3,10 +3,13 @@
 use crate::{
     curve::{
         calculator::{
-            CurveCalculator, DynPack, SwapWithoutFeesResult, TradeDirection, TradingTokenResult,
+            CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
+            TradingTokenResult,
         },
-        constant_product::swap,
-        math::{ceiling_division, PreciseNumber},
+        constant_product::{
+            normalized_value, pool_tokens_to_trading_tokens, swap, trading_tokens_to_pool_tokens,
+        },
+        math::PreciseNumber,
     },
     error::SwapError,
 };
@@ -58,20 +61,16 @@ impl CurveCalculator for OffsetCurve {
         pool_token_supply: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
+        round_direction: RoundDirection,
     ) -> Option<TradingTokenResult> {
         let token_b_offset = self.token_b_offset as u128;
-        let (token_a_amount, _) = ceiling_division(
-            pool_tokens.checked_mul(swap_token_a_amount)?,
+        pool_tokens_to_trading_tokens(
+            pool_tokens,
             pool_token_supply,
-        )?;
-        let (token_b_amount, _) = ceiling_division(
-            pool_tokens.checked_mul(swap_token_b_amount.checked_add(token_b_offset)?)?,
-            pool_token_supply,
-        )?;
-        Some(TradingTokenResult {
-            token_a_amount,
-            token_b_amount,
-        })
+            swap_token_a_amount,
+            swap_token_b_amount.checked_add(token_b_offset)?,
+            round_direction,
+        )
     }
 
     /// Get the amount of pool tokens for the given amount of token A and B,
@@ -83,20 +82,17 @@ impl CurveCalculator for OffsetCurve {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
+        round_direction: RoundDirection,
     ) -> Option<u128> {
         let token_b_offset = self.token_b_offset as u128;
-        let swap_source_amount = match trade_direction {
-            TradeDirection::AtoB => swap_token_a_amount,
-            TradeDirection::BtoA => swap_token_b_amount.checked_add(token_b_offset)?,
-        };
-        let swap_source_amount = PreciseNumber::new(swap_source_amount)?;
-        let source_amount = PreciseNumber::new(source_amount)?;
-        let ratio = source_amount.checked_div(&swap_source_amount)?;
-        let one = PreciseNumber::new(1)?;
-        let base = one.checked_add(&ratio)?;
-        let root = base.sqrt()?.checked_sub(&one)?;
-        let pool_supply = PreciseNumber::new(pool_supply)?;
-        pool_supply.checked_mul(&root)?.to_imprecise()
+        trading_tokens_to_pool_tokens(
+            source_amount,
+            swap_token_a_amount,
+            swap_token_b_amount.checked_add(token_b_offset)?,
+            pool_supply,
+            trade_direction,
+            round_direction,
+        )
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -129,14 +125,12 @@ impl CurveCalculator for OffsetCurve {
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-    ) -> Option<u128> {
-        let swap_token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
-        let swap_token_b_amount =
-            PreciseNumber::new(swap_token_b_amount.checked_add(self.token_b_offset as u128)?)?;
-        swap_token_a_amount
-            .checked_mul(&swap_token_b_amount)?
-            .sqrt()?
-            .to_imprecise()
+    ) -> Option<PreciseNumber> {
+        let token_b_offset = self.token_b_offset as u128;
+        normalized_value(
+            swap_token_a_amount,
+            swap_token_b_amount.checked_add(token_b_offset)?,
+        )
     }
 }
 
@@ -174,7 +168,8 @@ mod tests {
     use crate::curve::calculator::{
         test::{
             check_curve_value_from_swap, check_pool_token_conversion,
-            check_pool_value_from_deposit, CONVERSION_BASIS_POINTS_GUARANTEE,
+            check_pool_value_from_deposit, check_pool_value_from_withdraw, total_and_intermediate,
+            CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         INITIAL_SWAP_POOL_AMOUNT,
     };
@@ -287,6 +282,14 @@ mod tests {
             .unwrap();
         assert_eq!(result.source_amount_swapped, 18_373_104_376_818_475_561);
         assert_eq!(result.destination_amount_swapped, 499);
+    }
+
+    prop_compose! {
+        pub fn values_sum_within_u64()(total in 1..u64::MAX)
+                        (amount in 1..total, total in Just(total))
+                        -> (u64, u64) {
+           (total - amount, amount)
+       }
     }
 
     proptest! {
@@ -437,8 +440,7 @@ mod tests {
             pool_token_amount in 1..u64::MAX,
             pool_token_supply in 1..u64::MAX,
             swap_token_a_amount in 1..u64::MAX,
-            swap_token_b_amount in 1..u64::MAX,
-            token_b_offset in 1..u64::MAX,
+            (swap_token_b_amount, token_b_offset) in values_sum_within_u64(),
         ) {
             let curve = OffsetCurve { token_b_offset };
             let pool_token_amount = pool_token_amount as u128;
@@ -447,14 +449,52 @@ mod tests {
             let swap_token_b_amount = swap_token_b_amount as u128;
             let token_b_offset = token_b_offset as u128;
 
-            // For ease of calc, make sure the token B side stays within u64
-            prop_assume!(token_b_offset + swap_token_b_amount <= u64::MAX.into());
-
             // Make sure we will get at least one trading token out for each
             // side, otherwise the calculation fails
             prop_assume!(pool_token_amount * swap_token_a_amount / pool_token_supply >= 1);
             prop_assume!(pool_token_amount * (swap_token_b_amount + token_b_offset) / pool_token_supply >= 1);
             check_pool_value_from_deposit(
+                &curve,
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn curve_value_does_not_decrease_from_withdraw(
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            swap_token_a_amount in 1..u64::MAX,
+            (swap_token_b_amount, token_b_offset) in values_sum_within_u64(),
+        ) {
+            let curve = OffsetCurve { token_b_offset };
+            let pool_token_amount = pool_token_amount as u128;
+            let pool_token_supply = pool_token_supply as u128;
+            let swap_token_a_amount = swap_token_a_amount as u128;
+            let swap_token_b_amount = swap_token_b_amount as u128;
+            let token_b_offset = token_b_offset as u128;
+
+            // Make sure we will get at least one trading token out for each
+            // side, otherwise the calculation fails
+            prop_assume!(pool_token_amount * swap_token_a_amount / pool_token_supply >= 1);
+            prop_assume!(pool_token_amount * (swap_token_b_amount + token_b_offset) / pool_token_supply >= 1);
+
+            // make sure we don't overdraw from either side
+            let withdraw_result = curve
+                .pool_tokens_to_trading_tokens(
+                    pool_token_amount,
+                    pool_token_supply,
+                    swap_token_a_amount,
+                    swap_token_b_amount,
+                    RoundDirection::Floor,
+                )
+                .unwrap();
+            prop_assume!(withdraw_result.token_b_amount <= swap_token_b_amount); // avoid overdrawing to 0 for calc
+
+            check_pool_value_from_withdraw(
                 &curve,
                 pool_token_amount,
                 pool_token_supply,

@@ -64,6 +64,7 @@ export async function createLendingMarket(): Promise<void> {
     lendingProgramId: tokenLendingProgramId,
     quoteTokenMint: quoteTokenMint.publicKey,
     lendingMarketAccount,
+    lendingMarketOwner: payer.publicKey,
     payer,
   });
 }
