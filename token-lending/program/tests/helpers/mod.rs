@@ -18,7 +18,7 @@ use spl_token_lending::{
         borrow_reserve_liquidity, deposit_reserve_liquidity, init_lending_market, init_obligation,
         init_reserve, liquidate_obligation, BorrowAmountType,
     },
-    math::Decimal,
+    math::{Decimal, Rate, TryAdd, TryMul},
     processor::process_instruction,
     state::{
         LendingMarket, NewReserveParams, Obligation, Reserve, ReserveCollateral, ReserveConfig,
@@ -227,6 +227,7 @@ pub struct AddReserveArgs {
     pub liquidity_mint_decimals: u8,
     pub user_liquidity_amount: u64,
     pub borrow_amount: u64,
+    pub initial_borrow_rate: u8,
     pub collateral_amount: u64,
     pub fees_amount: u64,
     pub dex_market_pubkey: Option<Pubkey>,
@@ -247,6 +248,7 @@ pub fn add_reserve(
         liquidity_mint_decimals,
         user_liquidity_amount,
         borrow_amount,
+        initial_borrow_rate,
         collateral_amount,
         fees_amount,
         dex_market_pubkey,
@@ -358,6 +360,10 @@ pub fn add_reserve(
     });
     reserve.deposit_liquidity(liquidity_amount).unwrap();
     reserve.liquidity.borrow(borrow_amount).unwrap();
+    let borrow_rate_multiplier = Rate::one()
+        .try_add(Rate::from_percent(initial_borrow_rate))
+        .unwrap();
+    reserve.cumulative_borrow_rate_wads = Decimal::one().try_mul(borrow_rate_multiplier).unwrap();
     test.add_packable_account(
         reserve_pubkey,
         u32::MAX as u64,

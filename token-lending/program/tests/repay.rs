@@ -29,7 +29,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(87_000);
+    test.set_bpf_compute_max_units(51_000);
 
     const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL;
     const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 100 * FRACTIONAL_TO_USDC;
@@ -49,11 +49,11 @@ async fn test_success() {
         &lending_market,
         AddReserveArgs {
             config: TEST_RESERVE_CONFIG,
-            slots_elapsed: SLOTS_PER_YEAR,
+            initial_borrow_rate: 1,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
-            borrow_amount: OBLIGATION_LOAN,
+            borrow_amount: OBLIGATION_LOAN * 101 / 100,
             user_liquidity_amount: OBLIGATION_LOAN,
             ..AddReserveArgs::default()
         },

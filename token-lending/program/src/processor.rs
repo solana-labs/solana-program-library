@@ -13,6 +13,7 @@ use crate::{
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::Slot,
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
@@ -70,6 +71,10 @@ pub fn process_instruction(
         LendingInstruction::LiquidateObligation { liquidity_amount } => {
             msg!("Instruction: Liquidate");
             process_liquidate(program_id, liquidity_amount, accounts)
+        }
+        LendingInstruction::AccrueReserveInterest => {
+            msg!("Instruction: Accrue Interest");
+            process_accrue_interest(program_id, accounts)
         }
     }
 }
@@ -339,7 +344,7 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let mut borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
+    let borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
     if borrow_reserve_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
@@ -359,12 +364,9 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
 
     assert_rent_exempt(rent, obligation_info)?;
     assert_uninitialized::<Obligation>(obligation_info)?;
+    assert_last_update_slot(&borrow_reserve, clock.slot)?;
 
-    // accrue interest and update rates
-    borrow_reserve.accrue_interest(clock.slot)?;
     let cumulative_borrow_rate = borrow_reserve.cumulative_borrow_rate_wads;
-    Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
-
     let obligation_mint_decimals = deposit_reserve.liquidity.mint_decimals;
     let obligation = Obligation::new(NewObligationParams {
         collateral_reserve: *deposit_reserve_info.key,
@@ -459,7 +461,7 @@ fn process_deposit(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    reserve.accrue_interest(clock.slot)?;
+    assert_last_update_slot(&reserve, clock.slot)?;
     let collateral_amount = reserve.deposit_liquidity(liquidity_amount)?;
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
@@ -548,7 +550,7 @@ fn process_withdraw(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    reserve.accrue_interest(clock.slot)?;
+    assert_last_update_slot(&reserve, clock.slot)?;
     let liquidity_withdraw_amount = reserve.redeem_collateral(collateral_amount)?;
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
@@ -627,7 +629,7 @@ fn process_borrow(
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
-    let mut deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
+    let deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
     if deposit_reserve_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
@@ -721,9 +723,8 @@ fn process_borrow(
         return Err(LendingError::InvalidTokenMint.into());
     }
 
-    // accrue interest and update rates
-    borrow_reserve.accrue_interest(clock.slot)?;
-    deposit_reserve.accrue_interest(clock.slot)?;
+    assert_last_update_slot(&borrow_reserve, clock.slot)?;
+    assert_last_update_slot(&deposit_reserve, clock.slot)?;
     obligation.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
 
     let mut trade_simulator = TradeSimulator::new(
@@ -756,7 +757,6 @@ fn process_borrow(
 
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
-    Reserve::pack(deposit_reserve, &mut deposit_reserve_info.data.borrow_mut())?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -922,7 +922,7 @@ fn process_repay(
     }
 
     // accrue interest and update rates
-    repay_reserve.accrue_interest(clock.slot)?;
+    assert_last_update_slot(&repay_reserve, clock.slot)?;
     obligation.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
     let RepayResult {
@@ -1043,7 +1043,7 @@ fn process_liquidate(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let mut withdraw_reserve = Reserve::unpack(&withdraw_reserve_info.data.borrow())?;
+    let withdraw_reserve = Reserve::unpack(&withdraw_reserve_info.data.borrow())?;
     if withdraw_reserve_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
@@ -1093,8 +1093,8 @@ fn process_liquidate(
     }
 
     // accrue interest and update rates
-    repay_reserve.accrue_interest(clock.slot)?;
-    withdraw_reserve.accrue_interest(clock.slot)?;
+    assert_last_update_slot(&repay_reserve, clock.slot)?;
+    assert_last_update_slot(&withdraw_reserve, clock.slot)?;
     obligation.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
     let mut trade_simulator = TradeSimulator::new(
@@ -1152,10 +1152,6 @@ fn process_liquidate(
         .min(withdraw_amount_as_collateral + liquidation_bonus_amount);
 
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
-    Reserve::pack(
-        withdraw_reserve,
-        &mut withdraw_reserve_info.data.borrow_mut(),
-    )?;
 
     obligation.borrowed_liquidity_wads = obligation
         .borrowed_liquidity_wads
@@ -1196,10 +1192,35 @@ fn process_liquidate(
     Ok(())
 }
 
+#[inline(never)] // avoid stack frame limit
+fn process_accrue_interest(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    for reserve_info in account_info_iter {
+        let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+        if reserve_info.owner != program_id {
+            return Err(LendingError::InvalidAccountOwner.into());
+        }
+
+        reserve.accrue_interest(clock.slot)?;
+        Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+    }
+
+    Ok(())
+}
+
 fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
         msg!(&rent.minimum_balance(account_info.data_len()).to_string());
         Err(LendingError::NotRentExempt.into())
+    } else {
+        Ok(())
+    }
+}
+
+fn assert_last_update_slot(reserve: &Reserve, slot: Slot) -> ProgramResult {
+    if !reserve.last_update_slot == slot {
+        Err(LendingError::ReserveStale.into())
     } else {
         Ok(())
     }
