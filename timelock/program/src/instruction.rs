@@ -85,7 +85,7 @@ pub enum TimelockInstruction {
     /// Burns signatory token, indicating you approve of moving this Timelock set from Draft state to Voting state.
     /// The last Signatory token to be burned moves the state to Voting.
     ///
-    ///   0. `[]` Timelock set account pub key.
+    ///   0. `[writable]` Timelock set account pub key.
     ///   1. `[]` Timelock program account pub key.
     Sign {},
 
@@ -100,7 +100,7 @@ pub enum TimelockInstruction {
     /// [Requires Signatory token]
     /// Mints voting tokens for a destination account to be used during the voting process.
     ///
-    ///   0. `[]` Timelock set account pub key.
+    ///   0. `[writable]` Timelock set account pub key.
     ///   1. `[]` Timelock program account pub key.
     ///   2. `[]` Destination account pub key.
     MintVotingTokens { voting_token_amount: u64 },
