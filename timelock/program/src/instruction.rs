@@ -60,10 +60,13 @@ pub enum TimelockInstruction {
     ///
     ///   0. `[writable]` Timelock set account pub key.
     ///   1. `[]` Timelock program account pub key.
-    ///   2. `[]` executable pub key. Must have granted executable authority to Timelock program account pub key in advance.
     AddTransaction {
         /// Slot during which this executable will run.
         slot: u64,
+        /// Actual end of instructions index in the executable array
+        executable_instruction_length: u64,
+        /// Can be 0s after instructions end
+        executable: [u8; INSTRUCTION_LIMIT],
     },
 
     /// [Requires Signatory token]

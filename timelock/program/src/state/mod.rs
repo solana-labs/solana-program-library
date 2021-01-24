@@ -15,6 +15,7 @@ use solana_program::{
 
 const TRANSACTION_SLOTS: u8 = 10;
 const TIMELOCK_VERSION: u8 = 1;
+pub const INSTRUCTION_LIMIT: u64 = 2_000_000;
 
 pub enum ConsensusAlgorithm {
     /// Run if 51% of tokens are burned in favor of the timelock set
@@ -95,6 +96,9 @@ pub struct TimelockTransaction {
     /// Slot at which this will execute
     slot: u64,
 
-    /// Executable account
-    executable: Pubkey,
+    /// Actual length of u8 instruction pieces in executable array
+    executable_instruction_length: u64,
+
+    /// Executable instruction set binary - padded with 0s after instructions end
+    executable: [u8; INSTRUCTION_LIMIT],
 }
