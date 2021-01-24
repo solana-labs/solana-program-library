@@ -12,6 +12,10 @@ use solana_program::{
 };
 use std::{convert::TryInto, mem::size_of};
 
+pub enum Format {
+    JSON,
+    MsgPack,
+}
 /// Instructions supported by the Timelock program.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TimelockInstruction {
@@ -76,4 +80,34 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Timelock set account pub key.
     ///   1. `[]` Timelock program account pub key.
     DeleteTimelockSet {},
+
+    /// [Requires Signatory token]
+    /// Burns signatory token, indicating you approve of moving this Timelock set from Draft state to Voting state.
+    /// The last Signatory token to be burned moves the state to Voting.
+    ///
+    ///   0. `[]` Timelock set account pub key.
+    ///   1. `[]` Timelock program account pub key.
+    Sign {},
+
+    /// [Requires Voting tokens]
+    /// Burns voting tokens, indicating you approve of running this set of transactions. If you tip the consensus,
+    /// then the transactions begin to be run at their time slots.
+    ///
+    ///   0. `[]` Timelock set account pub key.
+    ///   1. `[]` Timelock program account pub key.
+    Vote { voting_token_amount: u64 },
+
+    /// [Requires Signatory token]
+    /// Mints voting tokens for a destination account to be used during the voting process.
+    ///
+    ///   0. `[]` Timelock set account pub key.
+    ///   1. `[]` Timelock program account pub key.
+    ///   2. `[]` Destination account pub key.
+    MintVotingTokens { voting_token_amount: u64 },
+
+    /// Gets status of Timelock Set, returns it's entire state as JSON or MsgPack.
+    ///
+    ///   0. `[]` Timelock set account pub key.
+    ///   1. `[]` Timelock program account pub key.
+    Status { format: Format },
 }

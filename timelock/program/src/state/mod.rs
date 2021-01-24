@@ -16,6 +16,22 @@ use solana_program::{
 const TRANSACTION_SLOTS: u8 = 10;
 const TIMELOCK_VERSION: u8 = 1;
 
+pub enum ConsensusAlgorithm {
+    /// Run if 51% of tokens are burned in favor of the timelock set
+    Majority,
+    /// Run if 66% of tokens are burned in favor
+    SuperMajority,
+    /// Run only if 100% of tokens are burned in favor
+    FullConsensus,
+}
+
+pub enum ExecutionType {
+    /// Only run the timelock set if all of the transactions have slot times above the slot that the vote finished at
+    AllOrNothing,
+    /// Run the remaining set transactions whose slots are above the slot the vote finished at
+    AnyAboveVoteFinishSlot,
+}
+
 /// Global app state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockProgram {
@@ -53,9 +69,7 @@ pub struct TimelockSet {
 pub enum TimelockStateStatus {
     Draft,
     Voting,
-    AwaitingExecution,
-    Defeated,
-    Executed,
+    VoteComplete,
 }
 
 pub struct TimelockState {
@@ -72,7 +86,10 @@ pub struct TimelockState {
     pub cross_program_id: Pubkey,
 }
 
-pub struct TimelockConfig {}
+pub struct TimelockConfig {
+    consensus_algorithm: ConsensusAlgorithm,
+    execution_type: ExecutionType,
+}
 
 pub struct TimelockTransaction {
     /// Slot at which this will execute
