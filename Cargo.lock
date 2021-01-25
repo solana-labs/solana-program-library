@@ -3902,19 +3902,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-token-v3"
-version = "3.0.0"
-dependencies = [
- "arrayref",
- "num-derive",
- "num-traits",
- "num_enum",
- "solana-program",
- "solana-sdk",
- "thiserror",
-]
-
-[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4078,7 +4065,6 @@ dependencies = [
  "spl-memo 2.0.1",
  "spl-token 3.0.1",
  "spl-token-swap",
- "spl-token-v3",
 ]
 
 [[package]]

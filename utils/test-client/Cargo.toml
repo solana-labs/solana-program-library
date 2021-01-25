@@ -12,4 +12,3 @@ solana-sdk = "1.5.0"
 spl-memo = { path = "../../memo/program", features = [ "no-entrypoint" ] }
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
 spl-token-swap = { path = "../../token-swap/program", features = [ "no-entrypoint" ] }
-spl-token-v3 = { path = "../../token/program-v3", features = [ "no-entrypoint" ] }
