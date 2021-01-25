@@ -19,7 +19,6 @@ members = [
   "token-swap/program/fuzz",
   "token/cli",
   "token/program",
-  "token/program-v3",
   "utils/cgen",
   "utils/test-client",
 ]
