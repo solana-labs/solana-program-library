@@ -33,6 +33,17 @@ pub enum ExecutionType {
     AnyAboveVoteFinishSlot,
 }
 
+pub enum TimelockStateStatus {
+    Draft,
+    Voting,
+    VoteComplete,
+}
+
+pub enum TimelockType {
+    /// Only supported type for now - call the Upgrade program
+    Upgrade,
+}
+
 /// Global app state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockProgram {
@@ -42,6 +53,7 @@ pub struct TimelockProgram {
     pub program_id: Pubkey,
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockSet {
     /// Version of the struct
     pub version: u8,
@@ -57,9 +69,6 @@ pub struct TimelockSet {
     /// Mint that creates voting tokens of this instruction
     pub voting_mint: Pubkey,
 
-    /// Program id of the app
-    pub timelock_program_id: Pubkey,
-
     /// Reserve state
     pub state: TimelockState,
 
@@ -67,12 +76,7 @@ pub struct TimelockSet {
     pub config: TimelockConfig,
 }
 
-pub enum TimelockStateStatus {
-    Draft,
-    Voting,
-    VoteComplete,
-}
-
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockState {
     /// Current state of the invoked instruction account
     pub status: TimelockStateStatus,
@@ -82,23 +86,28 @@ pub struct TimelockState {
 
     /// Array of pubkeys pointing at TimelockTransactions, up to 10
     pub timelock_transactions: [Pubkey; TRANSACTION_SLOTS],
-
-    /// cross program id to invoke
-    pub cross_program_id: Pubkey,
 }
-
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockConfig {
     consensus_algorithm: ConsensusAlgorithm,
     execution_type: ExecutionType,
+    timelock_type: TimelockType,
 }
 
-pub struct TimelockTransaction {
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct UpgradeTimelockTransaction {
     /// Slot at which this will execute
     slot: u64,
 
-    /// Actual length of u8 instruction pieces in executable array
-    executable_instruction_length: u64,
+    /// Executable location where new program resides
+    new_program_temp_location: Pubkey,
 
-    /// Executable instruction set binary - padded with 0s after instructions end
-    executable: [u8; INSTRUCTION_LIMIT],
+    /// Program being upgraded
+    program_id_to_upgrade: Pubkey,
+
+    /// Executor program id
+    executor_program_id: Pubkey,
+
+    /// authority key (pda) used to run the program
+    authority_key: Pubkey,
 }
