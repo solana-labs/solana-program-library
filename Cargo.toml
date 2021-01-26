@@ -10,6 +10,7 @@ members = [
   "feature-proposal/cli",
   "memo/program",
   "shared-memory/program",
+  "signed-memo/program",
   "stake-pool/cli",
   "stake-pool/program",
   "themis/program_ristretto",

@@ -3737,6 +3737,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-signed-memo"
+version = "1.0.0"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "tokio 0.3.6",
+]
+
+[[package]]
 name = "spl-stake-pool"
 version = "0.1.0"
 dependencies = [
