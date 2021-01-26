@@ -56,26 +56,37 @@ pub enum TimelockInstruction {
     RemoveSigner,
 
     /// [Requires Signatory token]
-    /// Adds Transaction to the Timelock Set. Max of 10. More than 10 will throw error.
+    /// Adds an Upgrade type Transaction to the Timelock Set. Max of 10 of any Transaction type. More than 10 will throw error.
+    /// Creates a PDA using your authority to be used to later execute the upgrade program.
+    /// This transaction needs to contain authority to execute the executor program and to write to the program account you are
+    /// upgrading as the executor.
     ///
     ///   0. `[writable]` Timelock set account pub key.
-    ///   1. `[]` Timelock program account pub key.
-    AddTransaction {
-        /// Slot during which this executable will run.
+    ///   1. `[writable]` program account pub key you are upgrading.
+    ///   2. `[writable]` Pubkey for use creating new Timelock Transaction account.
+    ///   3. `[]` Location of the executable account containing the upgraded program code.
+    ///   4. `[]` Timelock program account pub key.
+    ///   5. `[]` Executor program account pub key.
+    AddUpgradeTransaction {
+        /// Slot during which this will run
         slot: u64,
-        /// Actual end of instructions index in the executable array
-        executable_instruction_length: u64,
-        /// Can be 0s after instructions end
-        executable: [u8; INSTRUCTION_LIMIT],
     },
 
     /// [Requires Signatory token]
     /// Remove Transaction from the Timelock Set.
     ///
     ///   0. `[writable]` Timelock set account pub key.
-    ///   1. `[]` Timelock program account pub key.
-    ///   2. `[]` executable pub key.
+    ///   1. `[writable]` Timelock Transaction pub key.
+    ///   2. `[]` Timelock program account pub key.
     RemoveTransaction {},
+
+    /// [Requires Signatory token]
+    /// Update Transaction slot in the Timelock Set. Useful during reset periods.
+    ///
+    ///   0. `[writable]` Timelock Transaction pub key.
+    ///   1. `[]` Timelock set account pub key.
+    ///   1. `[]` Timelock program account pub key.
+    UpdateTransactionSlot { slot: u64 },
 
     /// [Requires Admin token]
     /// Delete Timelock set entirely.
