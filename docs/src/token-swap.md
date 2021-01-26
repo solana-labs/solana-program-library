@@ -260,3 +260,31 @@ roughly 4.04, slightly higher than the minimum of 4 USDC per SOLBET.
 
 Conversely, if a trader tries to buy USDC with SOLBET immediately after creation,
 it will fail because there is no USDC actually present in the pool.
+
+## Testing
+
+The token-swap program is tested using various strategies, including unit tests,
+integration tests, property tests, and fuzzing.  Since unit tests and integration
+tests are well-known, we highlight property tests and fuzzing here.
+
+### Property testing
+
+Using the [proptest](https://altsysrq.github.io/proptest-book/intro.html)
+crate, we test specific mathematical properties of curves, specifically to avoid
+leaking value on any trades, deposits, or withdrawals.  It is out of scope of
+this document to explain property testing, but the specific property tests for
+the Token Swap Program can be found in the
+[curves](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/src/curve/constant_product.rs)
+and
+[math](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/src/curve/math.rs)
+portions of the repo.
+
+### Fuzzing
+
+Using [honggfuzz](https://github.com/rust-fuzz/honggfuzz-rs), we regularly
+test all possible inputs to the Token Swap Program, ensuring that the program
+does not crash unexpectedly or leak tokens.  It is out of scope of this document
+to explain fuzzing, but the specific implementation for the program can be found
+in the [instruction fuzz
+tests](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/fuzz/src/instructions.rs)
+of the repo.
