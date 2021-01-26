@@ -120,7 +120,7 @@ jobs:
         run: |
           ./ci/install-build-deps.sh
           ./ci/install-program-deps.sh
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          echo "${solana_path}/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test
         run: ./ci/cargo-build-test.sh
@@ -252,7 +252,7 @@ jobs:
         run: |
           ./ci/install-build-deps.sh
           ./ci/install-program-deps.sh
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          echo "${solana_path}/active_release/bin" >> $GITHUB_PATH
 
       - name: Run fuzz target
         run: ./ci/fuzz.sh ${{ matrix.fuzz_target }} 30 # 30 seconds, just to check everything is ok

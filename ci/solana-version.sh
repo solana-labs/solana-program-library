@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #
 # This file maintains the solana versions for use by CI.
 #
@@ -19,12 +20,18 @@ fi
 
 export solana_version="$solana_version"
 export solana_docker_image=solanalabs/solana:"$solana_version"
-export PATH="$HOME"/.local/share/solana/install/active_release/bin:"$PATH"
+export solana_path="$PWD/solana-install"
 
 if [[ -n $1 ]]; then
   case $1 in
   install)
-    sh -c "$(curl -sSfL https://release.solana.com/$solana_version/install)"
+    curl -sSfL https://release.solana.com/$solana_version/install \
+      | sh -s - $solana_version \
+        --no-modify-path \
+        --data-dir "$solana_path" \
+        --config "$solana_path"/config.yml
+
+    export PATH="$solana_path"/active_release/bin:"$PATH"
     solana --version
     ;;
   *)
