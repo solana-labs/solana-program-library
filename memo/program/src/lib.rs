@@ -13,7 +13,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-solana_program::declare_id!("MemoS11111111111111111111111111111111111111");
+solana_program::declare_id!("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
 
 /// Build a memo instruction, possibly signed
 ///
