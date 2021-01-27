@@ -6,8 +6,8 @@ Simple Oracle Pair Token
 4. pick the decide term end slot, must be after 3
 
 
-Each deposit token can mint one `Yes` and one `Not Yes` token up to
-the mint term end slot.  After the decide term end slot the `Yes`
+Each deposit token can mint one `Pass` and one `Fail` token up to
+the mint term end slot.  After the decide term end slot the `Pass`
 token converts 1:1 with the deposit token if and only if the decider
-had set `yes` before the end of the decide term, otherwise the `Not
-Yes` token converts 1:1 with the deposit token.
+had set `pass` before the end of the decide term, otherwise the `Fail`
+token converts 1:1 with the deposit token.
