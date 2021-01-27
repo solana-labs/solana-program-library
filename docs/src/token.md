@@ -337,7 +337,7 @@ Creating 2/3 multisig 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re
 Signature: 2FN4KXnczAz33SAxwsuevqrD1BvikP6LUhLie5Lz4ETt594X8R7yvMZzZW2zjmFLPsLQNHsRuhQeumExHbnUGC9A
 ```
 
-Next create the token mint and recieving accounts
+Next create the token mint and receiving accounts
 [as previously described](#example-creating-your-own-fungible-token)
 ```
 $ spl-token create-token
