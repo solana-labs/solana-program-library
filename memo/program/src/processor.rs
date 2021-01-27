@@ -29,7 +29,7 @@ pub fn process_instruction(
         msg!("Invalid UTF-8, from byte {}", err.valid_up_to());
         ProgramError::InvalidInstructionData
     })?;
-    msg!("{:?}", memo);
+    msg!("Memo (len {}): {:?}", memo.len(), memo);
 
     Ok(())
 }
