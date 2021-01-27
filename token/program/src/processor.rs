@@ -152,10 +152,6 @@ impl Processor {
         let dest_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        if source_account_info.key == dest_account_info.key {
-            return Ok(());
-        }
-
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
         let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
 
@@ -180,6 +176,8 @@ impl Processor {
             }
         }
 
+        let self_transfer = source_account_info.key == dest_account_info.key;
+
         match source_account.delegate {
             COption::Some(ref delegate) if authority_info.key == delegate => {
                 Self::validate_owner(
@@ -191,12 +189,14 @@ impl Processor {
                 if source_account.delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
                 }
-                source_account.delegated_amount = source_account
-                    .delegated_amount
-                    .checked_sub(amount)
-                    .ok_or(TokenError::Overflow)?;
-                if source_account.delegated_amount == 0 {
-                    source_account.delegate = COption::None;
+                if !self_transfer {
+                    source_account.delegated_amount = source_account
+                        .delegated_amount
+                        .checked_sub(amount)
+                        .ok_or(TokenError::Overflow)?;
+                    if source_account.delegated_amount == 0 {
+                        source_account.delegate = COption::None;
+                    }
                 }
             }
             _ => Self::validate_owner(
@@ -206,6 +206,12 @@ impl Processor {
                 account_info_iter.as_slice(),
             )?,
         };
+
+        // This check MUST occur just before the amounts are manipulated
+        // to ensure self-transfers are fully validated
+        if self_transfer {
+            return Ok(());
+        }
 
         source_account.amount = source_account
             .amount
@@ -1708,49 +1714,6 @@ mod tests {
         }
         let account = Account::unpack_unchecked(&account_account.data).unwrap();
         assert_eq!(account.amount, 1000);
-
-        // bogus transfer to self using system accounts.
-        //
-        // Transfer will succeed if the source and destination accounts have the same address,
-        // regardless of whether it is a valid token account.
-        //
-        // This is probably wrong but transactions in the wild have been observed to do this so
-        // this behavior is now part of the token ABI
-        {
-            let system_account_key = Pubkey::new_unique();
-            let mut system_account = SolanaAccount::new(1, 0, &Pubkey::default());
-
-            let instruction = transfer(
-                &program_id,
-                &system_account_key,
-                &system_account_key,
-                &owner_key,
-                &[],
-                500,
-            )
-            .unwrap();
-
-            let account_account_info = AccountInfo::from((
-                &instruction.accounts[0].pubkey,
-                instruction.accounts[0].is_signer,
-                &mut system_account,
-            ));
-            let owner_account_info = AccountInfo::from((
-                &instruction.accounts[2].pubkey,
-                instruction.accounts[2].is_signer,
-                &mut owner_account,
-            ));
-            Processor::process(
-                &instruction.program_id,
-                &[
-                    account_account_info.clone(),
-                    account_account_info,
-                    owner_account_info,
-                ],
-                &instruction.data,
-            )
-            .unwrap()
-        }
 
         // insufficient funds
         assert_eq!(
