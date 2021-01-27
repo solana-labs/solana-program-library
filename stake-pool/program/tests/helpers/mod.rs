@@ -29,13 +29,13 @@ pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Acc
         .expect("account empty")
 }
 
-async fn create_mint(
+pub async fn create_mint(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
     pool_mint: &Keypair,
     owner: &Pubkey,
-) {
+) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
     let mint_rent = rent.minimum_balance(spl_token::state::Mint::LEN);
 
@@ -60,7 +60,8 @@ async fn create_mint(
         Some(&payer.pubkey()),
     );
     transaction.sign(&[payer, pool_mint], *recent_blockhash);
-    banks_client.process_transaction(transaction).await.unwrap();
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
 }
 
 pub async fn transfer(
@@ -89,7 +90,7 @@ pub async fn create_token_account(
     account: &Keypair,
     pool_mint: &Pubkey,
     owner: &Pubkey,
-) {
+) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
     let account_rent = rent.minimum_balance(spl_token::state::Account::LEN);
 
@@ -113,7 +114,8 @@ pub async fn create_token_account(
         Some(&payer.pubkey()),
     );
     transaction.sign(&[payer, account], *recent_blockhash);
-    banks_client.process_transaction(transaction).await.unwrap();
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
 }
 
 pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -> u64 {
@@ -153,7 +155,7 @@ pub async fn delegate_tokens(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn create_stake_pool(
+pub async fn create_stake_pool(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
@@ -163,7 +165,7 @@ async fn create_stake_pool(
     pool_token_account: &Pubkey,
     owner: &Pubkey,
     fee: &instruction::Fee,
-) {
+) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
     let rent_stake_pool = rent.minimum_balance(state::State::LEN);
     let rent_validator_stake_list = rent.minimum_balance(state::ValidatorStakeList::LEN);
@@ -203,7 +205,8 @@ async fn create_stake_pool(
         &[payer, stake_pool, validator_stake_list],
         *recent_blockhash,
     );
-    banks_client.process_transaction(transaction).await.unwrap();
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
 }
 
 pub async fn create_vote(
@@ -471,7 +474,7 @@ impl StakePoolAccounts {
         mut banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
-    ) {
+    ) -> Result<(), TransportError> {
         create_mint(
             &mut banks_client,
             &payer,
@@ -479,7 +482,7 @@ impl StakePoolAccounts {
             &self.pool_mint,
             &self.withdraw_authority,
         )
-        .await;
+        .await?;
         create_token_account(
             &mut banks_client,
             &payer,
@@ -488,7 +491,7 @@ impl StakePoolAccounts {
             &self.pool_mint.pubkey(),
             &self.owner.pubkey(),
         )
-        .await;
+        .await?;
         create_stake_pool(
             &mut banks_client,
             &payer,
@@ -500,7 +503,8 @@ impl StakePoolAccounts {
             &self.owner.pubkey(),
             &self.fee,
         )
-        .await;
+        .await?;
+        Ok(())
     }
 
     pub async fn deposit_stake(
@@ -511,7 +515,7 @@ impl StakePoolAccounts {
         stake: &Pubkey,
         pool_account: &Pubkey,
         validator_stake_account: &Pubkey,
-    ) {
+    ) -> Result<(), TransportError> {
         let mut transaction = Transaction::new_with_payer(
             &[instruction::deposit(
                 &id(),
@@ -531,7 +535,8 @@ impl StakePoolAccounts {
             Some(&payer.pubkey()),
         );
         transaction.sign(&[payer], *recent_blockhash);
-        banks_client.process_transaction(transaction).await.unwrap();
+        banks_client.process_transaction(transaction).await?;
+        Ok(())
     }
 
     pub async fn withdraw_stake(
@@ -544,7 +549,7 @@ impl StakePoolAccounts {
         validator_stake_account: &Pubkey,
         recipient_new_authority: &Pubkey,
         amount: u64,
-    ) {
+    ) -> Result<(), TransportError> {
         let mut transaction = Transaction::new_with_payer(
             &[instruction::withdraw(
                 &id(),
@@ -564,7 +569,8 @@ impl StakePoolAccounts {
             Some(&payer.pubkey()),
         );
         transaction.sign(&[payer], *recent_blockhash);
-        banks_client.process_transaction(transaction).await.unwrap();
+        banks_client.process_transaction(transaction).await?;
+        Ok(())
     }
 
     pub async fn add_validator_stake_account(
@@ -651,7 +657,8 @@ pub async fn simple_add_validator_stake_account(
         &stake_pool_accounts.pool_mint.pubkey(),
         &user.pubkey(),
     )
-    .await;
+    .await
+    .unwrap();
     let error = stake_pool_accounts
         .add_validator_stake_account(
             banks_client,
@@ -707,7 +714,8 @@ pub async fn simple_deposit(
         &stake_pool_accounts.pool_mint.pubkey(),
         &user.pubkey(),
     )
-    .await;
+    .await
+    .unwrap();
 
     stake_pool_accounts
         .deposit_stake(
@@ -718,7 +726,8 @@ pub async fn simple_deposit(
             &user_pool_account.pubkey(),
             &validator_stake_account.stake_account,
         )
-        .await;
+        .await
+        .unwrap();
 
     let user_pool_account = user_pool_account.pubkey();
     let pool_tokens = get_token_balance(banks_client, &user_pool_account).await;

@@ -31,7 +31,8 @@ async fn test_update_list_balance() {
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
-        .await;
+        .await
+        .unwrap();
 
     // Add several accounts
     let mut stake_accounts: Vec<StakeAccount> = vec![];
@@ -77,3 +78,9 @@ async fn test_update_list_balance() {
 
     // TODO: Execute update list with updated clock
 }
+
+#[tokio::test]
+async fn test_update_list_balance_with_uninitialized_validator_stake_list() {} // TODO
+
+#[tokio::test]
+async fn test_update_list_balance_with_wrong_stake_state() {} // TODO
