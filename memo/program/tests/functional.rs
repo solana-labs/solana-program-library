@@ -9,18 +9,14 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
-use spl_signed_memo::*;
+use spl_memo::*;
 
 fn program_test() -> ProgramTest {
-    ProgramTest::new(
-        "spl_signed_memo",
-        id(),
-        processor!(processor::process_instruction),
-    )
+    ProgramTest::new("spl_memo", id(), processor!(processor::process_instruction))
 }
 
 #[tokio::test]
-async fn test_signed_memo() {
+async fn test_memo_signing() {
     let memo = "🐆".as_bytes();
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
 
@@ -29,10 +25,8 @@ async fn test_signed_memo() {
 
     // Test complete signing
     let signer_key_refs: Vec<&Pubkey> = pubkeys.iter().collect();
-    let mut transaction = Transaction::new_with_payer(
-        &[signed_memo(memo, &signer_key_refs)],
-        Some(&payer.pubkey()),
-    );
+    let mut transaction =
+        Transaction::new_with_payer(&[build_memo(memo, &signer_key_refs)], Some(&payer.pubkey()));
     let mut signers = vec![&payer];
     for keypair in keypairs.iter() {
         signers.push(keypair);
@@ -42,11 +36,11 @@ async fn test_signed_memo() {
 
     // Test unsigned memo
     let mut transaction =
-        Transaction::new_with_payer(&[signed_memo(memo, &[])], Some(&payer.pubkey()));
+        Transaction::new_with_payer(&[build_memo(memo, &[])], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 
-    // Demonstrate success on signature provided, regardless of specific signed-memo AccountMeta
+    // Demonstrate success on signature provided, regardless of specific memo AccountMeta
     let mut transaction = Transaction::new_with_payer(
         &[Instruction {
             program_id: id(),
@@ -110,7 +104,7 @@ async fn test_signed_memo() {
     // Test invalid utf-8; demonstrate log
     let invalid_utf8 = [0xF0, 0x9F, 0x90, 0x86, 0xF0, 0x9F, 0xFF, 0x86];
     let mut transaction =
-        Transaction::new_with_payer(&[signed_memo(&invalid_utf8, &[])], Some(&payer.pubkey()));
+        Transaction::new_with_payer(&[build_memo(&invalid_utf8, &[])], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
     assert_eq!(
         banks_client
