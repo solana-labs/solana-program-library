@@ -5,10 +5,10 @@ title: Signed Memo Program
 The Signed Memo program is an expanded version of the original [memo](memo.md)
 program. In addition to validating a string of UTF-8 encoded characters, the
 program also verifies that any accounts provided are signers of the transaction.
-An additional enhancement: the program logs the memo, as well as any signer
-addresses and verification status, to the transaction log, so that anyone can
-easily observe memos and know they were approved by zero or more addresses
-by inspecting the transaction log from a trusted provider.
+An additional enhancement: the program logs the memo, as well as any verified
+signer addresses, to the transaction log, so that anyone can easily observe
+memos and know they were approved by zero or more addresses by inspecting the
+transaction log from a trusted provider.
 
 ## Background
 
@@ -40,6 +40,4 @@ valid UTF-8. It has the additional feature of logging the memo to the
 transaction log.
 
 If one or more accounts are provided to the signed-memo instruction, all must be
-valid signers of the transaction for the instruction to succeed. To aid in
-debugging, all account addresses and their signer status are logged to the
-transaction log on failure as well as on success.
+valid signers of the transaction for the instruction to succeed.

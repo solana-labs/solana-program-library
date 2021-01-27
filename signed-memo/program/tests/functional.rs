@@ -106,4 +106,18 @@ async fn test_signed_memo() {
             .unwrap(),
         TransactionError::InstructionError(0, InstructionError::MissingRequiredSignature)
     );
+
+    // Test invalid utf-8; demonstrate log
+    let invalid_utf8 = [0xF0, 0x9F, 0x90, 0x86, 0xF0, 0x9F, 0xFF, 0x86];
+    let mut transaction =
+        Transaction::new_with_payer(&[signed_memo(&invalid_utf8, &[])], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(0, InstructionError::InvalidInstructionData)
+    );
 }
