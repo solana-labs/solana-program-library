@@ -115,3 +115,93 @@ async fn test_memo_signing() {
         TransactionError::InstructionError(0, InstructionError::InvalidInstructionData)
     );
 }
+
+#[tokio::test]
+async fn test_memo_compute_limits() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+
+    // Test memo length
+    let mut memo = vec![];
+    for _ in 0..1000 {
+        let mut vec = vec![0x53, 0x4F, 0x4C];
+        memo.append(&mut vec);
+    }
+
+    let mut transaction =
+        Transaction::new_with_payer(&[build_memo(&memo[..566], &[])], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    let mut transaction =
+        Transaction::new_with_payer(&[build_memo(&memo[..567], &[])], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
+    );
+
+    let mut memo = vec![];
+    for _ in 0..100 {
+        let mut vec = vec![0xE2, 0x97, 0x8E];
+        memo.append(&mut vec);
+    }
+
+    let mut transaction =
+        Transaction::new_with_payer(&[build_memo(&memo[..60], &[])], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    let mut transaction =
+        Transaction::new_with_payer(&[build_memo(&memo[..63], &[])], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
+    );
+
+    // Test num signers with 32-byte memo
+    let memo = Pubkey::new_unique().to_bytes();
+    let mut keypairs = vec![];
+    for _ in 0..20 {
+        keypairs.push(Keypair::new());
+    }
+    let pubkeys: Vec<Pubkey> = keypairs.iter().map(|keypair| keypair.pubkey()).collect();
+    let signer_key_refs: Vec<&Pubkey> = pubkeys.iter().collect();
+
+    let mut signers = vec![&payer];
+    for keypair in keypairs[..12].iter() {
+        signers.push(keypair);
+    }
+    let mut transaction = Transaction::new_with_payer(
+        &[build_memo(&memo, &signer_key_refs[..12])],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&signers, recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    let mut signers = vec![&payer];
+    for keypair in keypairs[..13].iter() {
+        signers.push(keypair);
+    }
+    let mut transaction = Transaction::new_with_payer(
+        &[build_memo(&memo, &signer_key_refs[..13])],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&signers, recent_blockhash);
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
+    );
+}
