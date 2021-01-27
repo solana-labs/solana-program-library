@@ -16,7 +16,6 @@ use solana_sdk::{
 };
 use spl_stake_pool::*;
 use spl_token::error::TokenError;
-use spl_token::instruction as tokenInstruction;
 
 async fn setup() -> (
     BanksClient,
@@ -340,12 +339,8 @@ async fn test_stake_pool_withdraw_with_wrong_token_program_id() {
         .unwrap();
 
     match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::InvalidProgramAddress as u32;
-            assert_eq!(error_index, program_error);
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
+            assert_eq!(error, InstructionError::IncorrectProgramId);
         }
         _ => panic!("Wrong error occurs while try to withdraw with wrong token program ID"),
     }
@@ -625,7 +620,7 @@ async fn test_stake_pool_withdraw_from_unknown_validator() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_double_withdraw() {
+async fn test_stake_pool_double_withdraw_to_the_same_account() {
     let (
         mut banks_client,
         payer,
@@ -684,99 +679,6 @@ async fn test_stake_pool_double_withdraw() {
             assert_eq!(error, InstructionError::InvalidAccountData);
         }
         _ => panic!("Wrong error occurs while try to do double withdraw"),
-    }
-}
-
-#[tokio::test]
-async fn test_stake_pool_withdraw_user_acc_doesnt_have_pool_tokens() {
-    let (
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        mut stake_pool_accounts,
-        validator_stake_account,
-        _,
-        _,
-        _,
-    ) = setup().await;
-
-    // Create stake account to withdraw to
-    let user_stake_recipient = Keypair::new();
-    create_blank_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_stake_recipient,
-    )
-    .await;
-
-    let wrong_mint = Keypair::new();
-    let wrong_stake_acc = Keypair::new();
-    let owner = Keypair::new();
-
-    create_mint(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &wrong_mint,
-        &owner.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    create_token_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &wrong_stake_acc,
-        &wrong_mint.pubkey(),
-        &owner.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    let mut transaction = Transaction::new_with_payer(
-        &[tokenInstruction::mint_to(
-            &spl_token::id(),
-            &wrong_mint.pubkey(),
-            &wrong_stake_acc.pubkey(),
-            &owner.pubkey(),
-            &[],
-            1000,
-        )
-        .unwrap()],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer, &owner], recent_blockhash);
-    banks_client.process_transaction(transaction).await.unwrap();
-
-    stake_pool_accounts.pool_mint = wrong_mint;
-
-    let new_authority = Pubkey::new_unique();
-    let transaction_error = stake_pool_accounts
-        .withdraw_stake(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &user_stake_recipient.pubkey(),
-            &wrong_stake_acc.pubkey(),
-            &validator_stake_account.stake_account,
-            &new_authority,
-            10,
-        )
-        .await
-        .err()
-        .unwrap();
-
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = TokenError::OwnerMismatch as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error occurs while try to do withdraw and burn wrong tokens"),
     }
 }
 

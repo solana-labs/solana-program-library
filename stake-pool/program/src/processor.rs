@@ -509,7 +509,7 @@ impl Processor {
         }
 
         if stake_pool.token_program_id != *token_program_info.key {
-            return Err(StakePoolError::InvalidProgramAddress.into());
+            return Err(ProgramError::IncorrectProgramId);
         }
         if stake_pool.pool_mint != *pool_mint_info.key {
             return Err(StakePoolError::WrongPoolMint.into());
@@ -637,7 +637,7 @@ impl Processor {
         }
 
         if stake_pool.token_program_id != *token_program_info.key {
-            return Err(StakePoolError::InvalidProgramAddress.into());
+            return Err(ProgramError::IncorrectProgramId);
         }
         if stake_pool.pool_mint != *pool_mint_info.key {
             return Err(StakePoolError::WrongPoolMint.into());
@@ -855,7 +855,7 @@ impl Processor {
             return Err(StakePoolError::InvalidFeeAccount.into());
         }
         if stake_pool.token_program_id != *token_program_info.key {
-            return Err(StakePoolError::InvalidProgramAddress.into());
+            return Err(ProgramError::IncorrectProgramId);
         }
 
         // Check validator stake account list storage
@@ -1004,7 +1004,7 @@ impl Processor {
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
 
         if stake_pool.token_program_id != *token_program_info.key {
-            return Err(StakePoolError::InvalidProgramAddress.into());
+            return Err(ProgramError::IncorrectProgramId);
         }
 
         // Check validator stake account list storage

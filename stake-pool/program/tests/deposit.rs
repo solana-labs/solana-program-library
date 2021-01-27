@@ -14,7 +14,7 @@ use solana_sdk::{
     transport::TransportError,
 };
 use spl_stake_pool::*;
-use spl_token::error as tokenErrors;
+use spl_token::error as token_error;
 
 async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, StakeAccount) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
@@ -331,12 +331,8 @@ async fn test_stake_pool_deposit_with_wrong_token_program_id() {
         .unwrap();
 
     match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::InvalidProgramAddress as u32;
-            assert_eq!(error_index, program_error);
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
+            assert_eq!(error, InstructionError::IncorrectProgramId);
         }
         _ => panic!("Wrong error occurs while try to make a deposit with wrong token program ID"),
     }
@@ -497,17 +493,20 @@ async fn test_stake_pool_deposit_to_unknown_validator() {
 
     // make stake account
     let user_stake = Keypair::new();
-
-    create_token_account(
+    let lockup = stake::Lockup::default();
+    let authorized = stake::Authorized {
+        staker: stake_pool_accounts.deposit_authority,
+        withdrawer: stake_pool_accounts.deposit_authority,
+    };
+    create_independent_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,
-        &user_pool_account,
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user_stake,
+        &authorized,
+        &lockup,
     )
-    .await
-    .unwrap();
+    .await;
 
     let transaction_error = stake_pool_accounts
         .deposit_stake(
@@ -703,84 +702,6 @@ async fn test_stake_pool_deposit_with_wrong_set_deposit_authority() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_deposit_stake_acc_already_staked_for_different_validator() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake_account) =
-        setup().await;
-
-    let user = Keypair::new();
-    // make stake account
-    let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
-    let authorized = stake::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
-    };
-    create_independent_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_stake,
-        &authorized,
-        &lockup,
-    )
-    .await;
-    // make pool token account
-    let user_pool_account = Keypair::new();
-    create_token_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_pool_account,
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    stake_pool_accounts
-        .deposit_stake(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &user_stake.pubkey(),
-            &user_pool_account.pubkey(),
-            &validator_stake_account.stake_account,
-        )
-        .await
-        .unwrap();
-
-    let new_validator_stake_account: StakeAccount = simple_add_validator_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &stake_pool_accounts,
-    )
-    .await;
-
-    let transaction_error = stake_pool_accounts
-        .deposit_stake(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &user_stake.pubkey(),
-            &user_pool_account.pubkey(),
-            &new_validator_stake_account.stake_account,
-        )
-        .await
-        .err()
-        .unwrap();
-
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
-            assert_eq!(error, InstructionError::IncorrectProgramId);
-        }
-        _ => panic!(
-            "Wrong error occurs while try to deposit from account which has already deposited"
-        ),
-    }
-}
-
-#[tokio::test]
 async fn test_stake_pool_deposit_with_wrong_mint_for_receiver_acc() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake_account) =
         setup().await;
@@ -846,7 +767,7 @@ async fn test_stake_pool_deposit_with_wrong_mint_for_receiver_acc() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = tokenErrors::TokenError::MintMismatch as u32;
+            let program_error = token_error::TokenError::MintMismatch as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while try to deposit with wrong mint fro receiver account"),

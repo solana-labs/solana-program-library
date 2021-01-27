@@ -239,12 +239,8 @@ async fn test_remove_validator_stake_account_with_wrong_token_program_id() {
         .unwrap();
 
     match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::InvalidProgramAddress as u32;
-            assert_eq!(error_index, program_error);
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
+            assert_eq!(error, InstructionError::IncorrectProgramId);
         }
         _ => panic!("Wrong error occurs while try to remove validator stake address with wrong token program ID"),
     }

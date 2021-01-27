@@ -2,6 +2,7 @@
 
 mod helpers;
 
+use bincode::deserialize;
 use helpers::*;
 use solana_program::hash::Hash;
 use solana_program::instruction::AccountMeta;
@@ -87,6 +88,20 @@ async fn test_set_staking_authority() {
     );
     transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
+
+    // Check of stake account authority has changed
+    let stake = get_account(&mut banks_client, &user_stake.stake_account).await;
+    let stake_state = deserialize::<stake::StakeState>(&stake.data).unwrap();
+    match stake_state {
+        stake::StakeState::Stake(meta, _) => {
+            assert_eq!(&meta.authorized.staker, &new_staking_pubkey);
+            assert_eq!(
+                &meta.authorized.withdrawer,
+                &stake_pool_accounts.withdraw_authority
+            );
+        }
+        _ => panic!(),
+    }
 }
 
 #[tokio::test]
