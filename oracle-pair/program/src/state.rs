@@ -1,9 +1,11 @@
+pub const UNINITIALIZED_VERSION: u8 = 0;
+
 /// Program states.
 #[repr(C)]
 #[derive(Debug, Default, PartialEq)]
 pub struct OraclePair {
     /// Initialized state.
-    pub is_initialized: bool,
+    pub version: u8,
 
     /// Nonce used in program address.
     pub nonce: u8,
@@ -24,9 +26,14 @@ pub struct OraclePair {
     /// Mint information for token Fail
     pub token_fail_mint: Pubkey,
 
-    /// Deposit account to receive minting fees
-    pub deposit_fee_account: Pubkey,
+    pub decider: Pubkey,
+    /// decision boolean
+    pub decision: Option<bool>,
+}
 
-    /// All fee information
-    pub fees: Fees,
+impl Sealed for LendingMarket {}
+impl IsInitialized for OraclePair {
+    fn is_initialized(&self) -> bool {
+        self.version != UNINITIALIZED_VERSION
+    }
 }

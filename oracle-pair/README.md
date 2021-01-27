@@ -1,10 +1,9 @@
 Simple Oracle Pair Token
 
 1. pick a deposit token
-2. pick the decider signature
+2. pick the decider's pubkey
 3. pick the mint term end slot
 4. pick the decide term end slot, must be after 3
-
 
 Each deposit token can mint one `Pass` and one `Fail` token up to
 the mint term end slot.  After the decide term end slot the `Pass`
