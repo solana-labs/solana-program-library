@@ -30,6 +30,5 @@ pub fn process_instruction(
         TimelockInstruction::MintVotingTokens {
             voting_token_amount,
         } => Ok(()),
-        TimelockInstruction::Status { format } => Ok(()),
     }
 }

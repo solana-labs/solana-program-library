@@ -1,3 +1,4 @@
+/// What kind of consensus algo a timelock uses
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConsensusAlgorithm {
     /// Run if 51% of tokens are burned in favor of the timelock set
@@ -14,6 +15,7 @@ impl Default for ConsensusAlgorithm {
     }
 }
 
+/// What type of execution a timelock is
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExecutionType {
     /// Only run the timelock set if all of the transactions have slot times above the slot that the vote finished at
@@ -28,10 +30,14 @@ impl Default for ExecutionType {
     }
 }
 
+/// What state a timelock set is in
 #[derive(Clone, Debug, PartialEq)]
 pub enum TimelockStateStatus {
+    /// Draft
     Draft,
+    /// Taking votes
     Voting,
+    /// Votes complete
     VoteComplete,
 }
 
@@ -41,6 +47,7 @@ impl Default for TimelockStateStatus {
     }
 }
 
+/// What type a timelock is
 #[derive(Clone, Debug, PartialEq)]
 pub enum TimelockType {
     /// Only supported type for now - call the Upgrade program

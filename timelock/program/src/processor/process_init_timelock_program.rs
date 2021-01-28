@@ -1,15 +1,17 @@
 //! Program state processor
 use crate::{
-    state::{TimelockProgram, TIMELOCK_VERSION},
+    state::{timelock_program::TimelockProgram, TIMELOCK_VERSION},
     utils::{assert_rent_exempt, assert_uninitialized},
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    program_pack::Pack,
     pubkey::Pubkey,
     sysvar::{rent::Rent, Sysvar},
 };
 
+/// Create a new timelock program
 pub fn process_init_timelock_program(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],

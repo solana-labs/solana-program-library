@@ -8,6 +8,7 @@ use solana_program::{
     sysvar::rent::Rent,
 };
 
+/// assert rent exempt
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
         msg!(&rent.minimum_balance(account_info.data_len()).to_string());
@@ -16,7 +17,7 @@ pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramRes
         Ok(())
     }
 }
-
+/// assert ununitialized account
 pub fn assert_uninitialized<T: Pack + IsInitialized>(
     account_info: &AccountInfo,
 ) -> Result<T, ProgramError> {
