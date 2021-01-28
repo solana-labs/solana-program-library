@@ -13,16 +13,12 @@ pub struct Pool {
     /// Program ID of the tokens
     pub token_program_id: Pubkey,
 
-    /// Token Pass
-    pub token_pass: Pubkey,
-    /// Token Fail
-    pub token_fail: Pubkey,
-
     /// Account to deposit into
     pub deposit_account: Pubkey,
 
     /// Mint information for token Pass
     pub token_pass_mint: Pubkey,
+
     /// Mint information for token Fail
     pub token_fail_mint: Pubkey,
 
