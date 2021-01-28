@@ -31,6 +31,7 @@ pub enum OraclePairInstruction {
         mint_end_slot: Slot,
         /// decide end slot
         decide_end_slot: Slot,
+        /// authority nonce
         nonce: u8,
     },
 
@@ -48,8 +49,9 @@ pub enum OraclePairInstruction {
     Deposit(u64),
 
     ///   Withdraw from the pool.
-    ///   If current slot is < mint_end slot, 1 Pass and 1 Fail token convert to 1 deposit 
-    ///   If current slot is > decide_end slot, 1 Pass OR 1 Fail token convert to 1 deposit 
+    ///   If current slot is < mint_end slot, 1 Pass AND 1 Fail token convert to 1 deposit 
+    ///   If current slot is > mint_end slot && decide == Some(true), 1 Pass convert to 1 deposit 
+    ///   otherwise 1 Fail converts to 1 deposit
     ///
     ///   Pass tokens convert 1:1 to the deposit token iff decision is set to Some(true)
     ///   AND current slot is > decide_end_slot.
@@ -68,7 +70,7 @@ pub enum OraclePairInstruction {
     Withdraw(u64),
 
     ///  Trigger the decision.
-    ///  Call only succeeds once and if current slot > mint_end slot and < decide_end slot 
+    ///  Call only succeeds once and if current slot > mint_end slot AND < decide_end slot 
     ///   0. `[]` Oracle pair
     ///   1. `[signer]` decider pubkey
     ///   2. '[]` Sysvar Clock
