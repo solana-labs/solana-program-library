@@ -25,7 +25,6 @@ arbitrary = { version = "0.4", features = ["derive"], optional = true }
 [dev-dependencies]
 solana-sdk = "1.5.0"
 proptest = "0.10"
-sim =  { path = "./sim" }
 
 [lib]
 crate-type = ["cdylib", "lib"]
