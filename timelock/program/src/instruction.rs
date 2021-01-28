@@ -1,29 +1,14 @@
-use crate::{
-    error::LendingError,
-    state::{ReserveConfig, ReserveFees},
-};
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    sysvar,
-};
-use std::{convert::TryInto, mem::size_of};
-
+use crate::state::{TimelockConfig, INSTRUCTION_LIMIT};
 pub enum Format {
     JSON,
     MsgPack,
 }
 /// Instructions supported by the Timelock program.
-#[derive(Clone, Debug, PartialEq)]
 pub enum TimelockInstruction {
     /// Initializes a new Timelock Program.
     ///
     ///   0. `[writable]` Timelock program account pub key.
-    ///   2. `[]` Rent sysvar
-    ///   3. '[]` Token program id
+    ///   1. `[]` Rent sysvar
     InitTimelockProgram,
 
     /// Initializes a new empty Timelocked set of Instructions that will be executed at various slots in the future in draft mode.
@@ -62,14 +47,14 @@ pub enum TimelockInstruction {
     /// upgrading as the executor.
     ///
     ///   0. `[writable]` Timelock set account pub key.
-    ///   1. `[writable]` program account pub key you are upgrading.
-    ///   2. `[writable]` Pubkey for use creating new Timelock Transaction account.
-    ///   3. `[]` Location of the executable account containing the upgraded program code.
-    ///   4. `[]` Timelock program account pub key.
-    ///   5. `[]` Executor program account pub key.
-    AddUpgradeTransaction {
+    ///   1. `[writable]` Pubkey for use creating new Timelock Transaction account.
+    ///   2. `[]` Timelock program account pub key.
+    ///   3. `[]` Executor program account pub key.
+    AddCustomSingleSignerV1Transaction {
         /// Slot during which this will run
         slot: u64,
+        /// Instruction
+        instruction: [u64; INSTRUCTION_LIMIT],
     },
 
     /// [Requires Signatory token]

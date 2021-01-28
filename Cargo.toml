@@ -20,6 +20,7 @@ members = [
   "token/cli",
   "token/program",
   "token/program-v3",
+  "timelock/program",
   "utils/cgen",
   "utils/test-client",
 ]

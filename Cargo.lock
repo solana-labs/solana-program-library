@@ -3721,6 +3721,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-timelock"
+version = "0.0.1"
+dependencies = [
+ "arrayref",
+ "assert_matches",
+ "base64 0.13.0",
+ "log",
+ "num-derive",
+ "num-traits",
+ "proptest",
+ "serde",
+ "serde_yaml",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token 3.0.1",
+ "thiserror",
+ "tokio 0.3.5",
+ "uint",
+]
+
+[[package]]
 name = "spl-token"
 version = "3.0.1"
 dependencies = [
