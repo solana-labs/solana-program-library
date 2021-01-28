@@ -3554,7 +3554,7 @@ dependencies = [
  "solana-sdk",
  "solana-stake-program",
  "solana-vote-program",
- "spl-memo 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-memo 2.0.1",
  "spl-token 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
 ]
@@ -3712,17 +3712,20 @@ dependencies = [
 [[package]]
 name = "spl-memo"
 version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb2b771f6146dec14ef5fbf498f9374652c54badc3befc8c40c1d426dd45d720"
 dependencies = [
  "solana-program",
 ]
 
 [[package]]
 name = "spl-memo"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb2b771f6146dec14ef5fbf498f9374652c54badc3befc8c40c1d426dd45d720"
+version = "3.0.0"
 dependencies = [
  "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "tokio 0.3.6",
 ]
 
 [[package]]
@@ -4062,7 +4065,7 @@ name = "test-client"
 version = "0.1.0"
 dependencies = [
  "solana-sdk",
- "spl-memo 2.0.1",
+ "spl-memo 3.0.0",
  "spl-token 3.0.1",
  "spl-token-swap",
 ]

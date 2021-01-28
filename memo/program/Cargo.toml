@@ -1,6 +1,6 @@
 [package]
 name = "spl-memo"
-version = "2.0.1"
+version = "3.0.0"
 description = "Solana Program Library Memo"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -9,9 +9,15 @@ edition = "2018"
 
 [features]
 no-entrypoint = []
+test-bpf = []
 
 [dependencies]
 solana-program = "1.5.1"
+
+[dev-dependencies]
+solana-program-test = "1.5.1"
+solana-sdk = "1.5.1"
+tokio = { version = "0.3", features = ["macros"]}
 
 [lib]
 crate-type = ["cdylib", "lib"]
