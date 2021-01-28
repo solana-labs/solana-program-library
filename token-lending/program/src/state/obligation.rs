@@ -52,6 +52,37 @@ impl Obligation {
         }
     }
 
+    /// Maximum amount of loan that can be closed out by a liquidator due
+    /// to the remaining balance being too small to be liquidated normally.
+    pub fn max_closeable_amount(&self) -> Result<u64, ProgramError> {
+        if self.borrowed_liquidity_wads < Decimal::from(CLOSEABLE_AMOUNT) {
+            self.borrowed_liquidity_wads.try_ceil_u64()
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Maximum amount of loan that can be repaid by liquidators
+    pub fn max_liquidation_amount(&self) -> Result<u64, ProgramError> {
+        Ok(self
+            .borrowed_liquidity_wads
+            .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
+            .try_floor_u64()?)
+    }
+
+    /// Ratio of loan balance to collateral value
+    pub fn loan_to_value(
+        &self,
+        collateral_exchange_rate: CollateralExchangeRate,
+        borrow_token_price: Decimal,
+    ) -> Result<Decimal, ProgramError> {
+        let loan = self.borrowed_liquidity_wads;
+        let collateral_value = collateral_exchange_rate
+            .decimal_collateral_to_liquidity(self.deposited_collateral_tokens.into())?
+            .try_div(borrow_token_price)?;
+        loan.try_div(collateral_value)
+    }
+
     /// Accrue interest
     pub fn accrue_interest(&mut self, cumulative_borrow_rate: Decimal) -> ProgramResult {
         if cumulative_borrow_rate < self.cumulative_borrow_rate_wads {
@@ -72,15 +103,10 @@ impl Obligation {
     }
 
     /// Liquidate part of obligation
-    pub fn liquidate(
-        &mut self,
-        settle_amount: Decimal,
-        withdraw_amount: u64,
-        bonus_amount: u64,
-    ) -> ProgramResult {
+    pub fn liquidate(&mut self, settle_amount: Decimal, withdraw_amount: u64) -> ProgramResult {
         self.borrowed_liquidity_wads = self.borrowed_liquidity_wads.try_sub(settle_amount)?;
         self.deposited_collateral_tokens
-            .checked_sub(withdraw_amount + bonus_amount)
+            .checked_sub(withdraw_amount)
             .ok_or(LendingError::MathOverflow)?;
         Ok(())
     }
@@ -95,7 +121,7 @@ impl Obligation {
             Decimal::from(liquidity_amount).min(self.borrowed_liquidity_wads);
         let integer_repay_amount = decimal_repay_amount.try_ceil_u64()?;
         if integer_repay_amount == 0 {
-            return Err(LendingError::ObligationTooSmall.into());
+            return Err(LendingError::ObligationEmpty.into());
         }
 
         let repay_pct: Decimal = decimal_repay_amount.try_div(self.borrowed_liquidity_wads)?;

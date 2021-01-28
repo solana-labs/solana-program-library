@@ -34,6 +34,9 @@ pub const SLOTS_PER_YEAR: u64 =
 
 /// Token converter
 pub trait TokenConverter {
+    /// Return best price for specified token
+    fn best_price(&mut self, token_mint: &Pubkey) -> Result<Decimal, ProgramError>;
+
     /// Convert between two different tokens
     fn convert(
         self,
