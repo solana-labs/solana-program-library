@@ -1,57 +1,12 @@
-use crate::{
-    error::LendingError,
-    math::{Decimal, Rate, SCALE},
-};
-use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use solana_program::{
-    clock::{Slot, DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT, SECONDS_PER_DAY},
-    entrypoint::ProgramResult,
-    program_error::ProgramError,
-    program_option::COption,
-    program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
-    sysvar::clock::Clock,
-};
+const TRANSACTION_SLOTS: usize = 10;
+pub(crate) const TIMELOCK_VERSION: u8 = 1;
+const UNINITIALIZED_VERSION: u8 = 0;
+pub const INSTRUCTION_LIMIT: usize = 2_000_000;
 
-const TRANSACTION_SLOTS: u8 = 10;
-const TIMELOCK_VERSION: u8 = 1;
-pub const INSTRUCTION_LIMIT: u64 = 2_000_000;
-
-pub enum ConsensusAlgorithm {
-    /// Run if 51% of tokens are burned in favor of the timelock set
-    Majority,
-    /// Run if 66% of tokens are burned in favor
-    SuperMajority,
-    /// Run only if 100% of tokens are burned in favor
-    FullConsensus,
-}
-
-pub enum ExecutionType {
-    /// Only run the timelock set if all of the transactions have slot times above the slot that the vote finished at
-    AllOrNothing,
-    /// Run the remaining set transactions whose slots are above the slot the vote finished at
-    AnyAboveVoteFinishSlot,
-}
-
-pub enum TimelockStateStatus {
-    Draft,
-    Voting,
-    VoteComplete,
-}
-
-pub enum TimelockType {
-    /// Only supported type for now - call the Upgrade program
-    Upgrade,
-}
-
-/// Global app state
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct TimelockProgram {
-    /// Version of app
-    pub version: u8,
-    /// program id
-    pub program_id: Pubkey,
-}
+pub mod enums;
+pub mod timelock_program;
+use self::enums::{ConsensusAlgorithm, ExecutionType, TimelockStateStatus, TimelockType};
+use solana_program::pubkey::Pubkey;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockSet {
@@ -94,19 +49,12 @@ pub struct TimelockConfig {
     timelock_type: TimelockType,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct UpgradeTimelockTransaction {
+#[derive(Clone, Debug, PartialEq)]
+pub struct CustomSingleSignerV1TimelockTransaction {
     /// Slot at which this will execute
     slot: u64,
 
-    /// Executable location where new program resides
-    new_program_temp_location: Pubkey,
-
-    /// Program being upgraded
-    program_id_to_upgrade: Pubkey,
-
-    /// Executor program id
-    executor_program_id: Pubkey,
+    instruction: [u8; INSTRUCTION_LIMIT],
 
     /// authority key (pda) used to run the program
     authority_key: Pubkey,
