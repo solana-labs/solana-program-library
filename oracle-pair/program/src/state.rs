@@ -26,7 +26,9 @@ pub struct OraclePair {
     /// Mint information for token Fail
     pub token_fail_mint: Pubkey,
 
+    /// decider key
     pub decider: Pubkey,
+
     /// decision boolean
     pub decision: Option<bool>,
 }
