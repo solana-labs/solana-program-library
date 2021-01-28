@@ -3,7 +3,7 @@ pub const UNINITIALIZED_VERSION: u8 = 0;
 /// Program states.
 #[repr(C)]
 #[derive(Debug, Default, PartialEq)]
-pub struct OraclePair {
+pub struct Pool {
     /// Initialized state.
     pub version: u8,
 
@@ -34,7 +34,7 @@ pub struct OraclePair {
 }
 
 impl Sealed for LendingMarket {}
-impl IsInitialized for OraclePair {
+impl IsInitialized for Pool {
     fn is_initialized(&self) -> bool {
         self.version != UNINITIALIZED_VERSION
     }
