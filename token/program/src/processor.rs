@@ -52,12 +52,18 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializeAccount](enum.TokenInstruction.html) instruction.
-    pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
+    fn _process_initialize_account(
+        accounts: &[AccountInfo],
+        owner: Option<&Pubkey>,
+    ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let new_account_info = next_account_info(account_info_iter)?;
         let mint_info = next_account_info(account_info_iter)?;
-        let owner_info = next_account_info(account_info_iter)?;
+        let owner = if let Some(owner) = owner {
+            owner
+        } else {
+            next_account_info(account_info_iter)?.key
+        };
         let new_account_info_data_len = new_account_info.data_len();
         let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
 
@@ -76,7 +82,7 @@ impl Processor {
         }
 
         account.mint = *mint_info.key;
-        account.owner = *owner_info.key;
+        account.owner = *owner;
         account.delegate = COption::None;
         account.delegated_amount = 0;
         account.state = AccountState::Initialized;
@@ -95,6 +101,16 @@ impl Processor {
         Account::pack(account, &mut new_account_info.data.borrow_mut())?;
 
         Ok(())
+    }
+
+    /// Processes an [InitializeAccount](enum.TokenInstruction.html) instruction.
+    pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
+        Self::_process_initialize_account(accounts, None)
+    }
+
+    /// Processes an [InitializeAccount2](enum.TokenInstruction.html) instruction.
+    pub fn process_initialize_account2(accounts: &[AccountInfo], owner: Pubkey) -> ProgramResult {
+        Self::_process_initialize_account(accounts, Some(&owner))
     }
 
     /// Processes a [InitializeMultisig](enum.TokenInstruction.html) instruction.
@@ -640,6 +656,10 @@ impl Processor {
             TokenInstruction::InitializeAccount => {
                 msg!("Instruction: InitializeAccount");
                 Self::process_initialize_account(accounts)
+            }
+            TokenInstruction::InitializeAccount2 { owner } => {
+                msg!("Instruction: InitializeAccount2");
+                Self::process_initialize_account2(accounts, owner)
             }
             TokenInstruction::InitializeMultisig { m } => {
                 msg!("Instruction: InitializeMultisig");
@@ -5659,5 +5679,53 @@ mod tests {
         .unwrap();
         let account = Account::unpack_unchecked(&account_account.data).unwrap();
         assert_eq!(account.state, AccountState::Initialized);
+    }
+
+    #[test]
+    fn test_initialize_account2() {
+        let program_id = Pubkey::new_unique();
+        let account_key = Pubkey::new_unique();
+        let mut account_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let mut account2_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let owner_key = Pubkey::new_unique();
+        let mut owner_account = SolanaAccount::default();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mut rent_sysvar = rent_sysvar();
+
+        // create mint
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        do_process_instruction(
+            initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
+            vec![
+                &mut account_account,
+                &mut mint_account,
+                &mut owner_account,
+                &mut rent_sysvar,
+            ],
+        )
+        .unwrap();
+
+        do_process_instruction(
+            initialize_account2(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
+            vec![&mut account2_account, &mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        assert_eq!(account_account, account2_account);
     }
 }

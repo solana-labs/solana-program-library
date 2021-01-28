@@ -349,6 +349,20 @@ pub enum TokenInstruction {
         /// Expected number of base 10 digits to the right of the decimal place.
         decimals: u8,
     },
+    /// Like InitializeAccount, but the owner pubkey is passed via instruction data
+    /// rather than the accounts list. This variant may be preferable when using
+    /// Cross Program Invocation from an instruction that does not need the owner's
+    /// `AccountInfo` otherwise.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The account to initialize.
+    ///   1. `[]` The mint this account will be associated with.
+    ///   3. `[]` Rent sysvar
+    InitializeAccount2 {
+        /// The new account's owner/multisignature.
+        owner: Pubkey,
+    },
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -446,6 +460,10 @@ impl TokenInstruction {
 
                 Self::BurnChecked { amount, decimals }
             }
+            16 => {
+                let (owner, _rest) = Self::unpack_pubkey(rest)?;
+                Self::InitializeAccount2 { owner }
+            }
 
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
@@ -517,6 +535,10 @@ impl TokenInstruction {
                 buf.push(15);
                 buf.extend_from_slice(&amount.to_le_bytes());
                 buf.push(decimals);
+            }
+            &Self::InitializeAccount2 { owner } => {
+                buf.push(16);
+                buf.extend_from_slice(owner.as_ref());
             }
         };
         buf
@@ -625,12 +647,37 @@ pub fn initialize_account(
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    let data = TokenInstruction::InitializeAccount.pack(); // TODO do we need to return result?
+    let data = TokenInstruction::InitializeAccount.pack();
 
     let accounts = vec![
         AccountMeta::new(*account_pubkey, false),
         AccountMeta::new_readonly(*mint_pubkey, false),
         AccountMeta::new_readonly(*owner_pubkey, false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a `InitializeAccount2` instruction.
+pub fn initialize_account2(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let data = TokenInstruction::InitializeAccount2 {
+        owner: *owner_pubkey,
+    }
+    .pack();
+
+    let accounts = vec![
+        AccountMeta::new(*account_pubkey, false),
+        AccountMeta::new_readonly(*mint_pubkey, false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
@@ -1211,6 +1258,16 @@ mod test {
         };
         let packed = check.pack();
         let expect = Vec::from([15u8, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeAccount2 {
+            owner: Pubkey::new(&[2u8; 32]),
+        };
+        let packed = check.pack();
+        let mut expect = vec![16u8];
+        expect.extend_from_slice(&[2u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
