@@ -1,9 +1,28 @@
-use crate::state::{TimelockConfig, INSTRUCTION_LIMIT};
+use std::{convert::TryInto, mem::size_of};
+
+use solana_program::program_error::ProgramError;
+
+use crate::{
+    error::TimelockError,
+    state::{TimelockConfig, INSTRUCTION_LIMIT},
+};
+
+/// Used for telling caller what type of format you want back
+#[derive(Clone, Debug, PartialEq)]
 pub enum Format {
+    /// JSON format
     JSON,
+    /// MsgPack format
     MsgPack,
 }
+impl Default for Format {
+    fn default() -> Self {
+        Format::JSON
+    }
+}
+
 /// Instructions supported by the Timelock program.
+#[derive(Clone, Debug, PartialEq)]
 pub enum TimelockInstruction {
     /// Initializes a new Timelock Program.
     ///
@@ -18,7 +37,10 @@ pub enum TimelockInstruction {
     ///   1. `[]` Timelock program account pub key.
     ///   2. `[]` Rent sysvar
     ///   3. '[]` Token program id
-    InitTimelockSet { config: TimelockConfig },
+    InitTimelockSet {
+        /// Determine what type of timelock config you want
+        config: TimelockConfig,
+    },
 
     /// [Requires Admin token]
     /// Adds a signatory to the Timelock which means that this timelock can't leave Draft state until yet another signatory burns
@@ -71,7 +93,10 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Timelock Transaction pub key.
     ///   1. `[]` Timelock set account pub key.
     ///   1. `[]` Timelock program account pub key.
-    UpdateTransactionSlot { slot: u64 },
+    UpdateTransactionSlot {
+        /// On what slot this transaction slot will now run
+        slot: u64,
+    },
 
     /// [Requires Admin token]
     /// Delete Timelock set entirely.
@@ -94,7 +119,10 @@ pub enum TimelockInstruction {
     ///
     ///   0. `[]` Timelock set account pub key.
     ///   1. `[]` Timelock program account pub key.
-    Vote { voting_token_amount: u64 },
+    Vote {
+        /// How many voting tokens to burn
+        voting_token_amount: u64,
+    },
 
     /// [Requires Signatory token]
     /// Mints voting tokens for a destination account to be used during the voting process.
@@ -102,11 +130,81 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Timelock set account pub key.
     ///   1. `[]` Timelock program account pub key.
     ///   2. `[]` Destination account pub key.
-    MintVotingTokens { voting_token_amount: u64 },
+    MintVotingTokens {
+        /// How many voting tokens to mint
+        voting_token_amount: u64,
+    },
+}
 
-    /// Gets status of Timelock Set, returns it's entire state as JSON or MsgPack.
-    ///
-    ///   0. `[]` Timelock set account pub key.
-    ///   1. `[]` Timelock program account pub key.
-    Status { format: Format },
+impl TimelockInstruction {
+    /// Unpacks a byte buffer into a [TimelockInstruction](enum.TimelockInstruction.html).
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+        let (&tag, rest) = input
+            .split_first()
+            .ok_or(TimelockError::InstructionUnpackError)?;
+        Ok(match tag {
+            0 => Self::InitTimelockProgram,
+            _ => return Err(TimelockError::InstructionUnpackError.into()),
+        })
+    }
+
+    fn unpack_u64(input: &[u8]) -> Result<(u64, &[u8]), ProgramError> {
+        if input.len() >= 8 {
+            let (amount, rest) = input.split_at(8);
+            let amount = amount
+                .get(..8)
+                .and_then(|slice| slice.try_into().ok())
+                .map(u64::from_le_bytes)
+                .ok_or(TimelockError::InstructionUnpackError)?;
+            Ok((amount, rest))
+        } else {
+            Err(TimelockError::InstructionUnpackError.into())
+        }
+    }
+
+    fn unpack_u8(input: &[u8]) -> Result<(u8, &[u8]), ProgramError> {
+        if !input.is_empty() {
+            let (amount, rest) = input.split_at(1);
+            let amount = amount
+                .get(..1)
+                .and_then(|slice| slice.try_into().ok())
+                .map(u8::from_le_bytes)
+                .ok_or(TimelockError::InstructionUnpackError)?;
+            Ok((amount, rest))
+        } else {
+            Err(TimelockError::InstructionUnpackError.into())
+        }
+    }
+
+    /// Packs a [TimelockInstruction](enum.TimelockInstruction.html) into a byte buffer.
+    pub fn pack(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(size_of::<Self>());
+        match *self {
+            Self::InitTimelockProgram => {
+                buf.push(0);
+            }
+            Self::InitTimelockProgram => {
+                buf.push(1);
+            }
+            Self::InitTimelockSet {
+                config: TimelockConfig { .. },
+            } => {
+                buf.push(2);
+            }
+            Self::AddSigner => {}
+            Self::RemoveSigner => {}
+            Self::AddCustomSingleSignerV1Transaction { slot, instruction } => {}
+            Self::RemoveTransaction {} => {}
+            Self::UpdateTransactionSlot { slot } => {}
+            Self::DeleteTimelockSet {} => {}
+            Self::Sign {} => {}
+            Self::Vote {
+                voting_token_amount,
+            } => {}
+            Self::MintVotingTokens {
+                voting_token_amount,
+            } => {}
+        }
+        buf
+    }
 }

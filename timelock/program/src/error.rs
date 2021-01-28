@@ -7,6 +7,9 @@ use thiserror::Error;
 /// Errors that may be returned by the TokenLending program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum TimelockError {
+    /// Invalid instruction data passed in.
+    #[error("Failed to unpack instruction data")]
+    InstructionUnpackError,
     /// The account cannot be initialized because it is already in use.
     #[error("Account is already initialized")]
     AlreadyInitialized,

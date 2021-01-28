@@ -1,13 +1,17 @@
 const TRANSACTION_SLOTS: usize = 10;
 pub(crate) const TIMELOCK_VERSION: u8 = 1;
 const UNINITIALIZED_VERSION: u8 = 0;
+/// Max instruction limit for generics
 pub const INSTRUCTION_LIMIT: usize = 2_000_000;
 
+/// Enums
 pub mod enums;
+/// Timelock program
 pub mod timelock_program;
 use self::enums::{ConsensusAlgorithm, ExecutionType, TimelockStateStatus, TimelockType};
 use solana_program::pubkey::Pubkey;
 
+/// Single instance of a timelock
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockSet {
     /// Version of the struct
@@ -31,6 +35,7 @@ pub struct TimelockSet {
     pub config: TimelockConfig,
 }
 
+/// Timelock state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockState {
     /// Current state of the invoked instruction account
@@ -42,13 +47,14 @@ pub struct TimelockState {
     /// Array of pubkeys pointing at TimelockTransactions, up to 10
     pub timelock_transactions: [Pubkey; TRANSACTION_SLOTS],
 }
+/// Timelock Config
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockConfig {
     consensus_algorithm: ConsensusAlgorithm,
     execution_type: ExecutionType,
     timelock_type: TimelockType,
 }
-
+/// First iteration of generic instruction
 #[derive(Clone, Debug, PartialEq)]
 pub struct CustomSingleSignerV1TimelockTransaction {
     /// Slot at which this will execute

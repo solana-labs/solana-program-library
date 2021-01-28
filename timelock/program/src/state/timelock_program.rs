@@ -1,12 +1,11 @@
-use arrayref::{array_mut_ref, array_ref, array_refs};
+use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
 
-use super::UNINITIALIZED_VERSION;
-use super:TIMELOCK_VERSION;
+use super::{TIMELOCK_VERSION, UNINITIALIZED_VERSION};
 
 /// Global app state
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -35,20 +34,18 @@ impl Pack for TimelockProgram {
         match version {
             TIMELOCK_VERSION | UNINITIALIZED_VERSION => Ok(Self {
                 version,
-                program_id,
+                program_id: Pubkey::new_from_array(*program_id),
             }),
             _ => Err(ProgramError::InvalidAccountData),
         }
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, LTIMELOCK_LENEN];
+        let output = array_mut_ref![output, 0, TIMELOCK_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, quote_token_mint, token_program_id, _padding) =
-            mut_array_refs![output, 1, 32, 32, 63];
+        let (version, program_id) = mut_array_refs![output, 1, 32];
         *version = self.version.to_le_bytes();
-        quote_token_mint.copy_from_slice(self.quote_token_mint.as_ref());
-        token_program_id.copy_from_slice(self.token_program_id.as_ref());
+        program_id.copy_from_slice(self.program_id.as_ref());
     }
 
     fn get_packed_len() -> usize {
