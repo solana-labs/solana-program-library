@@ -1,18 +1,17 @@
 //! Instruction types
 
-use crate::{
-    error::LendingError,
-    state::{ReserveConfig, ReserveFees},
-};
+//use crate::{
+//    error::PoolError,
+//};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
 use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
+    //instruction::{AccountMeta},
+    //program_error::ProgramError,
     pubkey::Pubkey,
-    sysvar,
+    //sysvar,
 };
-use std::{convert::TryInto, mem::size_of};
+//use std::{convert::TryInto, mem::size_of};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {
