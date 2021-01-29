@@ -102,7 +102,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
 
       - uses: actions/cache@v2
         with:
