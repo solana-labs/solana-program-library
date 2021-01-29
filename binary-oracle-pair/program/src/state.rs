@@ -1,3 +1,13 @@
+//! State transition types
+
+//use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
+use solana_program::{
+    program_error::ProgramError,
+    program_pack::{IsInitialized, Pack, Sealed},
+    pubkey::Pubkey,
+};
+
+
 pub const UNINITIALIZED_VERSION: u8 = 0;
 
 /// Program states.
@@ -29,7 +39,7 @@ pub struct Pool {
     pub decision: Option<bool>,
 }
 
-impl Sealed for LendingMarket {}
+impl Sealed for Pool {}
 impl IsInitialized for Pool {
     fn is_initialized(&self) -> bool {
         self.version != UNINITIALIZED_VERSION
