@@ -1,6 +1,6 @@
 //! Program state processor
 use crate::{
-    state::{timelock_program::TimelockProgram, TIMELOCK_VERSION},
+    state::timelock_program::{TimelockProgram, TIMELOCK_VERSION},
     utils::{assert_rent_exempt, assert_uninitialized},
 };
 use solana_program::{

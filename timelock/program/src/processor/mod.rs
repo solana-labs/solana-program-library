@@ -1,7 +1,10 @@
 pub mod process_init_timelock_program;
+pub mod process_init_timelock_set;
 
 use crate::instruction::TimelockInstruction;
 use process_init_timelock_program::process_init_timelock_program;
+use process_init_timelock_set::process_init_timelock_set;
+
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 /// Processes an instruction
@@ -16,7 +19,10 @@ pub fn process_instruction(
             msg!("Instruction: Init Timelock Program");
             process_init_timelock_program(program_id, accounts)
         }
-        TimelockInstruction::InitTimelockSet { config } => Ok(()),
+        TimelockInstruction::InitTimelockSet { config } => {
+            msg!("Instruction: Init Timelock Set");
+            process_init_timelock_set(program_id, accounts)
+        }
         TimelockInstruction::AddSigner => Ok(()),
         TimelockInstruction::RemoveSigner => Ok(()),
         TimelockInstruction::AddCustomSingleSignerV1Transaction { slot, instruction } => Ok(()),

@@ -5,8 +5,9 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use super::{TIMELOCK_VERSION, UNINITIALIZED_VERSION};
-
+use super::UNINITIALIZED_VERSION;
+/// Timelock version
+pub const TIMELOCK_VERSION: u8 = 1;
 /// Global app state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockProgram {
