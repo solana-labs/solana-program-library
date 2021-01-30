@@ -4,7 +4,10 @@ use solana_program::program_error::ProgramError;
 
 use crate::{
     error::TimelockError,
-    state::{TimelockConfig, INSTRUCTION_LIMIT},
+    state::{
+        enums::ConsensusAlgorithm, enums::ExecutionType, enums::TimelockType,
+        timelock_config::TimelockConfig, INSTRUCTION_LIMIT,
+    },
 };
 
 /// Used for telling caller what type of format you want back
@@ -144,6 +147,25 @@ impl TimelockInstruction {
             .ok_or(TimelockError::InstructionUnpackError)?;
         Ok(match tag {
             0 => Self::InitTimelockProgram,
+            1 => Self::InitTimelockSet {
+                config: TimelockConfig {
+                    consensus_algorithm: match input[0] {
+                        0 => ConsensusAlgorithm::Majority,
+                        1 => ConsensusAlgorithm::SuperMajority,
+                        2 => ConsensusAlgorithm::FullConsensus,
+                        _ => ConsensusAlgorithm::Majority,
+                    },
+                    execution_type: match input[1] {
+                        0 => ExecutionType::AllOrNothing,
+                        1 => ExecutionType::AnyAboveVoteFinishSlot,
+                        _ => ExecutionType::AllOrNothing,
+                    },
+                    timelock_type: match input[2] {
+                        0 => TimelockType::CustomSingleSignerV1,
+                        _ => TimelockType::CustomSingleSignerV1,
+                    },
+                },
+            },
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -179,17 +201,25 @@ impl TimelockInstruction {
     /// Packs a [TimelockInstruction](enum.TimelockInstruction.html) into a byte buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
-        match *self {
+
+        match self {
             Self::InitTimelockProgram => {
                 buf.push(0);
             }
-            Self::InitTimelockProgram => {
+            Self::InitTimelockSet { config } => {
                 buf.push(1);
-            }
-            Self::InitTimelockSet {
-                config: TimelockConfig { .. },
-            } => {
-                buf.push(2);
+                match config.consensus_algorithm {
+                    ConsensusAlgorithm::Majority => buf.push(0),
+                    ConsensusAlgorithm::SuperMajority => buf.push(1),
+                    ConsensusAlgorithm::FullConsensus => buf.push(2),
+                }
+                match config.execution_type {
+                    ExecutionType::AllOrNothing => buf.push(0),
+                    ExecutionType::AnyAboveVoteFinishSlot => buf.push(1),
+                }
+                match config.timelock_type {
+                    TimelockType::CustomSingleSignerV1 => buf.push(0),
+                }
             }
             Self::AddSigner => {}
             Self::RemoveSigner => {}
