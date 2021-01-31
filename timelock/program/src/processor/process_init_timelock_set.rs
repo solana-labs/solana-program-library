@@ -90,7 +90,7 @@ pub fn process_init_timelock_set<'a>(
         token_program: token_program_info.clone(),
     })?;
     let (_, bump_seed) =
-        Pubkey::find_program_address(&[timelock_program_info.key.as_ref()], program_id);
+        Pubkey::find_program_address(&[timelock_set_account_info.key.as_ref()], program_id);
 
     let authority_signer_seeds = &[timelock_program_info.key.as_ref(), &[bump_seed]];
 
