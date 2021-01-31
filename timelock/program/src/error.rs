@@ -14,9 +14,37 @@ pub enum TimelockError {
     #[error("Account is already initialized")]
     AlreadyInitialized,
 
+    /// The account is uninitialized
+    #[error("The account is uninitialized when it should have already been initialized")]
+    Uninitialized,
+
     /// Lamport balance below rent-exempt threshold.
     #[error("Lamport balance below rent-exempt threshold")]
     NotRentExempt,
+
+    /// Expected a different SPL Token program
+    #[error("Input token program account is not valid")]
+    InvalidTokenProgram,
+
+    /// Expected an SPL Token mint
+    #[error("Input token mint account is not valid")]
+    InvalidTokenMint,
+
+    /// Token initialize mint failed
+    #[error("Token initialize mint failed")]
+    TokenInitializeMintFailed,
+    /// Token initialize account failed
+    #[error("Token initialize account failed")]
+    TokenInitializeAccountFailed,
+    /// Token transfer failed
+    #[error("Token transfer failed")]
+    TokenTransferFailed,
+    /// Token mint to failed
+    #[error("Token mint to failed")]
+    TokenMintToFailed,
+    /// Token burn failed
+    #[error("Token burn failed")]
+    TokenBurnFailed,
 }
 
 impl From<TimelockError> for ProgramError {

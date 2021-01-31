@@ -18,11 +18,13 @@ pub fn process_init_timelock_program(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let program_info = next_account_info(account_info_iter)?;
+    let token_program_id = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
 
     assert_rent_exempt(rent, program_info)?;
     let mut new_timelock_program: TimelockProgram = assert_uninitialized(program_info)?;
     new_timelock_program.version = TIMELOCK_VERSION;
+    new_timelock_program.token_program_id = *token_program_id.key;
     TimelockProgram::pack(new_timelock_program, &mut program_info.data.borrow_mut())?;
 
     Ok(())
