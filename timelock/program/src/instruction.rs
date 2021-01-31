@@ -30,16 +30,21 @@ pub enum TimelockInstruction {
     /// Initializes a new Timelock Program.
     ///
     ///   0. `[writable]` Timelock program account pub key.
-    ///   1. `[]` Rent sysvar
+    ///   1. `[]` Token program id
+    ///   2. `[]` Rent sysvar
     InitTimelockProgram,
 
     /// Initializes a new empty Timelocked set of Instructions that will be executed at various slots in the future in draft mode.
     /// Grants Admin token to caller.
     ///
-    ///   0. `[writable]` Timelock set account pub key.
-    ///   1. `[]` Timelock program account pub key.
-    ///   2. `[]` Rent sysvar
-    ///   3. '[]` Token program id
+    ///   0. `[writable]` Uninitialized Timelock set account pub key.
+    ///   1. `[writable]` Initialized Signatory Mint
+    ///   2. `[writable]` Initialized Admin Mint
+    ///   3. `[writable]` Initialized Voting Mint
+    ///   4. `[writable]` Destination account for first admin and signatory token
+    ///   5. `[]` Timelock Program
+    ///   6. `[]` Rent sysvar
+    ///   7. '[]` Token program id
     InitTimelockSet {
         /// Determine what type of timelock config you want
         config: TimelockConfig,
@@ -166,6 +171,7 @@ impl TimelockInstruction {
                     },
                 },
             },
+            2 => Self::AddSigner,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -221,7 +227,7 @@ impl TimelockInstruction {
                     TimelockType::CustomSingleSignerV1 => buf.push(0),
                 }
             }
-            Self::AddSigner => {}
+            Self::AddSigner => buf.push(2),
             Self::RemoveSigner => {}
             Self::AddCustomSingleSignerV1Transaction { slot, instruction } => {}
             Self::RemoveTransaction {} => {}

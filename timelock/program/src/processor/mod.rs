@@ -1,16 +1,18 @@
+pub mod process_add_signer;
 pub mod process_init_timelock_program;
 pub mod process_init_timelock_set;
 
 use crate::instruction::TimelockInstruction;
+use process_add_signer::process_add_signer;
 use process_init_timelock_program::process_init_timelock_program;
 use process_init_timelock_set::process_init_timelock_set;
 
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 /// Processes an instruction
-pub fn process_instruction(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
+pub fn process_instruction<'a>(
+    program_id: &'a Pubkey,
+    accounts: &'a [AccountInfo<'a>],
     input: &[u8],
 ) -> ProgramResult {
     let instruction = TimelockInstruction::unpack(input)?;
@@ -23,7 +25,10 @@ pub fn process_instruction(
             msg!("Instruction: Init Timelock Set");
             process_init_timelock_set(program_id, accounts)
         }
-        TimelockInstruction::AddSigner => Ok(()),
+        TimelockInstruction::AddSigner => {
+            msg!("Instruction: Add Signer");
+            process_add_signer(program_id, accounts)
+        }
         TimelockInstruction::RemoveSigner => Ok(()),
         TimelockInstruction::AddCustomSingleSignerV1Transaction { slot, instruction } => Ok(()),
         TimelockInstruction::RemoveTransaction {} => Ok(()),
