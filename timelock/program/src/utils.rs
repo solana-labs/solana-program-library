@@ -194,7 +194,7 @@ pub fn spl_token_mint_to(params: TokenMintToParams<'_, '_>) -> ProgramResult {
 
 /// Issue a spl_token `Burn` instruction.
 #[inline(always)]
-fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
     let TokenBurnParams {
         mint,
         source,

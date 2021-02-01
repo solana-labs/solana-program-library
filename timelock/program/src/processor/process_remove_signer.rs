@@ -4,8 +4,8 @@ use crate::{
     state::timelock_set::TimelockSet,
     utils::{
         assert_draft, assert_initialized, assert_proper_signatory_mint,
-        assert_same_version_as_program, assert_token_program_is_correct, spl_token_mint_to,
-        TokenMintToParams,
+        assert_same_version_as_program, assert_token_program_is_correct, spl_token_burn,
+        TokenBurnParams,
     },
 };
 use solana_program::{
@@ -15,9 +15,9 @@ use solana_program::{
 };
 
 /// Create a new timelock program
-pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let new_signatory_account_info = next_account_info(account_info_iter)?;
+    let remove_signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_mint_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
@@ -35,14 +35,14 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
 
     let authority_signer_seeds = &[token_program_account_info.key.as_ref(), &[bump_seed]];
 
-    // Give this person a token!
-    spl_token_mint_to(TokenMintToParams {
+    // Remove the token
+    spl_token_burn(TokenBurnParams {
         mint: signatory_mint_info.clone(),
-        destination: new_signatory_account_info.clone(),
         amount: 1,
         authority: timelock_program_account_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_account_info.clone(),
+        source: remove_signatory_account_info.clone(),
     })?;
     Ok(())
 }
