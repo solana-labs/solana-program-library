@@ -10,9 +10,26 @@ pub enum TimelockError {
     /// Invalid instruction data passed in.
     #[error("Failed to unpack instruction data")]
     InstructionUnpackError,
+
+    /// Using the wrong version of the timelock program for this code version
+    #[error("Using a timelock program account from a different version than this program version")]
+    InvalidTimelockVersionError,
+
+    /// Using the wrong version of the timelock set for this code version
+    #[error("Using a timelock set from a different version than this program version")]
+    InvalidTimelockSetVersionError,
+
     /// The account cannot be initialized because it is already in use.
     #[error("Account is already initialized")]
     AlreadyInitialized,
+
+    /// The wrong signatory mint was given for this timelock set
+    #[error("The wrong signatory mint was given for this timelock set")]
+    InvalidSignatoryMintError,
+
+    /// The timelock set is in the wrong state for this operation
+    #[error("The timelock set is in the wrong state for this operation")]
+    InvalidTimelockSetStateError,
 
     /// The account is uninitialized
     #[error("The account is uninitialized when it should have already been initialized")]

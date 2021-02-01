@@ -37,10 +37,10 @@ pub enum TimelockInstruction {
     /// Initializes a new empty Timelocked set of Instructions that will be executed at various slots in the future in draft mode.
     /// Grants Admin token to caller.
     ///
-    ///   0. `[writable]` Uninitialized Timelock set account pub key.
-    ///   1. `[writable]` Initialized Signatory Mint
-    ///   2. `[writable]` Initialized Admin Mint
-    ///   3. `[writable]` Initialized Voting Mint
+    ///   0. `[writable]` Uninitialized Timelock set account .
+    ///   1. `[writable]` Uninitialized Signatory Mint account
+    ///   2. `[writable]` Uninitialized Admin Mint account
+    ///   3. `[writable]` Uninitialized Voting Mint account
     ///   4. `[writable]` Destination account for first admin and signatory token
     ///   5. `[]` Timelock Program
     ///   6. `[]` Rent sysvar
@@ -55,10 +55,11 @@ pub enum TimelockInstruction {
     /// their signatory token indicating they are satisfied with the instruction queue. They'll receive an signatory token
     /// as a result of this call that they can burn later.
     ///
-    ///   0. `[]` Timelock set account pub key.
-    ///   1. `[]` New signatory account pub key.
-    ///   2. `[]` Timelock program account pub key.
-    ///   3. '[]` Token program id
+    ///   0. `[writable]` New signatory account.
+    ///   1. `[writable]` Signatory mint account.
+    ///   2. `[]` Timelock set account.
+    ///   3. `[]` Timelock program account.
+    ///   4. '[]` Token program id.
     AddSigner,
 
     /// [Requires Admin token]
