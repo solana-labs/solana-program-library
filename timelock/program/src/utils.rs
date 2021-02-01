@@ -1,6 +1,13 @@
-use crate::error::TimelockError;
+use crate::{
+    error::TimelockError,
+    state::{
+        enums::TimelockStateStatus,
+        timelock_program::{TimelockProgram, TIMELOCK_VERSION},
+        timelock_set::{TimelockSet, TIMELOCK_SET_VERSION},
+    },
+};
 use solana_program::{
-    account_info::AccountInfo,
+    account_info::{Account, AccountInfo},
     entrypoint::ProgramResult,
     msg,
     program::{invoke, invoke_signed},
@@ -10,6 +17,51 @@ use solana_program::{
     sysvar::rent::Rent,
 };
 
+/// Asserts a timelock set is in draft state.
+pub fn assert_draft(timelock_set: &TimelockSet) -> ProgramResult {
+    if timelock_set.state.status != TimelockStateStatus::Draft {
+        return Err(TimelockError::InvalidTimelockSetStateError.into());
+    }
+    Ok(())
+}
+
+/// Asserts the proper mint key is being used.
+pub fn assert_proper_signatory_mint(
+    timelock_set: &TimelockSet,
+    signatory_mint_account_info: &AccountInfo,
+) -> ProgramResult {
+    if timelock_set.signatory_mint != *signatory_mint_account_info.key {
+        return Err(TimelockError::InvalidSignatoryMintError.into());
+    }
+    Ok(())
+}
+
+/// Asserts token_program is correct program
+pub fn assert_token_program_is_correct(
+    timelock_program: &TimelockProgram,
+    token_program_info: &AccountInfo,
+) -> ProgramResult {
+    if &timelock_program.token_program_id != token_program_info.key {
+        return Err(TimelockError::InvalidTokenProgram.into());
+    };
+    Ok(())
+}
+
+/// Asserts the timelock program and timelock set are running the same version constants as this code
+/// Otherwise throws an error telling user to find different version on the block chain for these accounts that is compatible
+pub fn assert_same_version_as_program(
+    timelock_program: &TimelockProgram,
+    timelock_set: &TimelockSet,
+) -> ProgramResult {
+    if timelock_program.version != TIMELOCK_VERSION {
+        return Err(TimelockError::InvalidTimelockVersionError.into());
+    }
+    if timelock_set.version != TIMELOCK_SET_VERSION {
+        return Err(TimelockError::InvalidTimelockSetVersionError.into());
+    }
+
+    Ok(())
+}
 /// assert rent exempt
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {

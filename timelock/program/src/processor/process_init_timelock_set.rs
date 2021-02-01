@@ -1,13 +1,13 @@
 //! Program state processor
 
 use crate::{
-    error::TimelockError,
     state::{
         timelock_program::TimelockProgram,
         timelock_set::{TimelockSet, TIMELOCK_SET_VERSION},
     },
     utils::{
-        assert_initialized, assert_rent_exempt, assert_uninitialized, spl_token_init_mint,
+        assert_initialized, assert_rent_exempt, assert_same_version_as_program,
+        assert_token_program_is_correct, assert_uninitialized, spl_token_init_mint,
         spl_token_mint_to, TokenInitializeMintParams, TokenMintToParams,
     },
 };
@@ -38,15 +38,14 @@ pub fn process_init_timelock_set<'a>(
     let token_program_info = next_account_info(account_info_iter)?;
 
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_info)?;
-    if &timelock_program.token_program_id != token_program_info.key {
-        return Err(TimelockError::InvalidTokenProgram.into());
-    };
 
     assert_rent_exempt(rent, timelock_set_account_info)?;
 
     let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
     new_timelock_set.version = TIMELOCK_SET_VERSION;
 
+    assert_same_version_as_program(&timelock_program, &new_timelock_set)?;
+    assert_token_program_is_correct(&timelock_program, token_program_info)?;
     // now create the mints.
 
     new_timelock_set.admin_mint = *admin_mint_account_info.key;
@@ -57,9 +56,9 @@ pub fn process_init_timelock_set<'a>(
     assert_rent_exempt(rent, voting_mint_account_info)?;
     assert_rent_exempt(rent, signatory_mint_account_info)?;
 
-    let _admin_mint: Mint = assert_initialized(admin_mint_account_info)?;
-    let _voting_mint: Mint = assert_initialized(voting_mint_account_info)?;
-    let _signatory_mint: Mint = assert_initialized(signatory_mint_account_info)?;
+    let _admin_mint: Mint = assert_uninitialized(admin_mint_account_info)?;
+    let _voting_mint: Mint = assert_uninitialized(voting_mint_account_info)?;
+    let _signatory_mint: Mint = assert_uninitialized(signatory_mint_account_info)?;
 
     TimelockSet::pack(
         new_timelock_set.clone(),
