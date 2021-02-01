@@ -65,10 +65,11 @@ pub enum TimelockInstruction {
     /// [Requires Admin token]
     /// Removes a signer from the set.
     ///
-    ///   0. `[]` Timelock set account pub key.
-    ///   1. `[]` Signer account pub key (cannot be yourself)
-    ///   2. `[]` Timelock program account pub key.
-    ///   3. '[]` Token program id
+    ///   0. `[writable]` Signatory account to remove token from.
+    ///   1. `[writable]` Signatory mint account.
+    ///   2. `[]` Timelock set account.
+    ///   3. `[]` Timelock program account.
+    ///   4. '[]` Token program id.
     RemoveSigner,
 
     /// [Requires Signatory token]
@@ -173,6 +174,7 @@ impl TimelockInstruction {
                 },
             },
             2 => Self::AddSigner,
+            3 => Self::RemoveSigner,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -229,7 +231,7 @@ impl TimelockInstruction {
                 }
             }
             Self::AddSigner => buf.push(2),
-            Self::RemoveSigner => {}
+            Self::RemoveSigner => buf.push(3),
             Self::AddCustomSingleSignerV1Transaction { slot, instruction } => {}
             Self::RemoveTransaction {} => {}
             Self::UpdateTransactionSlot { slot } => {}
