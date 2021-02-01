@@ -1,5 +1,6 @@
 use std::{convert::TryInto, mem::size_of};
 
+use arrayref::array_refs;
 use solana_program::program_error::ProgramError;
 
 use crate::{
@@ -86,7 +87,7 @@ pub enum TimelockInstruction {
         /// Slot during which this will run
         slot: u64,
         /// Instruction
-        instruction: [u64; INSTRUCTION_LIMIT],
+        instruction: [u8; INSTRUCTION_LIMIT],
     },
 
     /// [Requires Signatory token]
@@ -175,6 +176,11 @@ impl TimelockInstruction {
             },
             2 => Self::AddSigner,
             3 => Self::RemoveSigner,
+            4 => {
+                let (slot, rest) = Self::unpack_u64(rest)?;
+                let (instruction, rest) = Self::unpack_instructions(rest)?;
+                Self::AddCustomSingleSignerV1Transaction { slot, instruction }
+            }
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -188,6 +194,23 @@ impl TimelockInstruction {
                 .map(u64::from_le_bytes)
                 .ok_or(TimelockError::InstructionUnpackError)?;
             Ok((amount, rest))
+        } else {
+            Err(TimelockError::InstructionUnpackError.into())
+        }
+    }
+
+    fn unpack_instructions(input: &[u8]) -> Result<([u8; INSTRUCTION_LIMIT], &[u8]), ProgramError> {
+        if !input.is_empty() {
+            if input.len() < INSTRUCTION_LIMIT {
+                return Err(TimelockError::InstructionUnpackError.into());
+            }
+
+            let (input_instruction, rest) = input.split_at(INSTRUCTION_LIMIT + 1);
+            let instruction: [u8; INSTRUCTION_LIMIT] = [0; INSTRUCTION_LIMIT];
+            for n in 0..(INSTRUCTION_LIMIT - 1) {
+                instruction[n] = input_instruction[n];
+            }
+            Ok((instruction, rest))
         } else {
             Err(TimelockError::InstructionUnpackError.into())
         }
@@ -232,7 +255,11 @@ impl TimelockInstruction {
             }
             Self::AddSigner => buf.push(2),
             Self::RemoveSigner => buf.push(3),
-            Self::AddCustomSingleSignerV1Transaction { slot, instruction } => {}
+            Self::AddCustomSingleSignerV1Transaction { slot, instruction } => {
+                buf.push(4);
+                buf.extend_from_slice(&slot.to_le_bytes());
+                buf.extend_from_slice(instruction);
+            }
             Self::RemoveTransaction {} => {}
             Self::UpdateTransactionSlot { slot } => {}
             Self::DeleteTimelockSet {} => {}
