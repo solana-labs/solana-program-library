@@ -4,8 +4,8 @@ use crate::{
     state::timelock_set::TimelockSet,
     utils::{
         assert_draft, assert_initialized, assert_is_admin, assert_proper_signatory_mint,
-        assert_same_version_as_program, assert_token_program_is_correct, spl_token_mint_to,
-        TokenMintToParams,
+        assert_same_version_as_program, assert_token_program_is_correct, spl_token_init_account,
+        spl_token_mint_to, TokenInitializeAccountParams, TokenMintToParams,
     },
 };
 use solana_program::{
@@ -23,6 +23,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
     let admin_validation_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
+    let rent_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
@@ -44,6 +45,14 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
     let authority_signer_seeds = &[token_program_account_info.key.as_ref(), &[bump_seed]];
 
     // Give this person a token!
+    spl_token_init_account(TokenInitializeAccountParams {
+        account: new_signatory_account_info.clone(),
+        mint: signatory_mint_info.clone(),
+        owner: timelock_program_account_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_account_info.clone(),
+    })?;
+
     spl_token_mint_to(TokenMintToParams {
         mint: signatory_mint_info.clone(),
         destination: new_signatory_account_info.clone(),
