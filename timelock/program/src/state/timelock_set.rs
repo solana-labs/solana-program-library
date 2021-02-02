@@ -30,6 +30,15 @@ pub struct TimelockSet {
     /// Mint that creates voting tokens of this instruction
     pub voting_mint: Pubkey,
 
+    /// Used to validate signatory tokens in a round trip transfer
+    pub signatory_validation: Pubkey,
+
+    /// Used to validate admin tokens in a round trip transfer
+    pub admin_validation: Pubkey,
+
+    /// Used to validate voting tokens in a round trip transfer
+    pub voting_validation: Pubkey,
+
     /// Reserve state
     pub state: TimelockState,
 
@@ -44,9 +53,9 @@ impl IsInitialized for TimelockSet {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 429;
+const TIMELOCK_SET_LEN: usize = 525;
 impl Pack for TimelockSet {
-    const LEN: usize = 429;
+    const LEN: usize = 525;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_SET_LEN];
@@ -57,6 +66,9 @@ impl Pack for TimelockSet {
             signatory_mint,
             admin_mint,
             voting_mint,
+            signatory_validation,
+            admin_validation,
+            voting_validation,
             timelock_state_status,
             total_voting_tokens_minted,
             timelock_txn_1,
@@ -73,7 +85,7 @@ impl Pack for TimelockSet {
             execution_type,
             timelock_type,
         ) = array_refs![
-            input, 1, 32, 32, 32, 1, 8, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1, 1, 1
+            input, 1, 32, 32, 32, 32, 32, 32, 1, 8, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1, 1, 1
         ];
         let version = u8::from_le_bytes(*version);
         let total_voting_tokens_minted = u64::from_le_bytes(*total_voting_tokens_minted);
@@ -88,6 +100,9 @@ impl Pack for TimelockSet {
                 signatory_mint: Pubkey::new_from_array(*signatory_mint),
                 admin_mint: Pubkey::new_from_array(*admin_mint),
                 voting_mint: Pubkey::new_from_array(*voting_mint),
+                signatory_validation: Pubkey::new_from_array(*signatory_validation),
+                admin_validation: Pubkey::new_from_array(*admin_validation),
+                voting_validation: Pubkey::new_from_array(*voting_validation),
                 state: TimelockState {
                     status: match timelock_state_status {
                         0 => TimelockStateStatus::Draft,
@@ -139,6 +154,9 @@ impl Pack for TimelockSet {
             signatory_mint,
             admin_mint,
             voting_mint,
+            signatory_validation,
+            admin_validation,
+            voting_validation,
             timelock_state_status,
             total_voting_tokens_minted,
             timelock_txn_1,
@@ -155,12 +173,16 @@ impl Pack for TimelockSet {
             execution_type,
             timelock_type,
         ) = mut_array_refs![
-            output, 1, 32, 32, 32, 1, 8, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1, 1, 1
+            output, 1, 32, 32, 32, 32, 32, 32, 1, 8, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1, 1,
+            1
         ];
         *version = self.version.to_le_bytes();
         signatory_mint.copy_from_slice(self.signatory_mint.as_ref());
         admin_mint.copy_from_slice(self.admin_mint.as_ref());
         voting_mint.copy_from_slice(self.voting_mint.as_ref());
+        signatory_validation.copy_from_slice(self.signatory_validation.as_ref());
+        admin_validation.copy_from_slice(self.admin_validation.as_ref());
+        voting_validation.copy_from_slice(self.voting_validation.as_ref());
         *timelock_state_status = match self.state.status {
             TimelockStateStatus::Draft => 0 as u8,
             TimelockStateStatus::Voting => 1 as u8,

@@ -20,7 +20,7 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let remove_signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_mint_info = next_account_info(account_info_iter)?;
     let admin_account_info = next_account_info(account_info_iter)?;
-    let admin_mint_info = next_account_info(account_info_iter)?;
+    let admin_validation_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
@@ -29,12 +29,10 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
-    assert_proper_signatory_mint(&timelock_set, signatory_mint_info)?;
     assert_draft(&timelock_set)?;
     assert_is_admin(
         admin_account_info,
-        admin_mint_info,
-        timelock_set_account_info,
+        admin_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
     )?;
