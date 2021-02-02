@@ -34,7 +34,8 @@ pub fn process_init_timelock_set<'a>(
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
     let admin_validation_account_info = next_account_info(account_info_iter)?;
     let voting_validation_account_info = next_account_info(account_info_iter)?;
-    let destination_account_info = next_account_info(account_info_iter)?;
+    let destination_admin_account_info = next_account_info(account_info_iter)?;
+    let destination_sig_account_info = next_account_info(account_info_iter)?;
     let timelock_program_info = next_account_info(account_info_iter)?;
 
     let rent_info = next_account_info(account_info_iter)?;
@@ -102,9 +103,17 @@ pub fn process_init_timelock_set<'a>(
     let authority_signer_seeds = &[timelock_program_info.key.as_ref(), &[bump_seed]];
 
     // Mint admin token to creator
+    spl_token_init_account(TokenInitializeAccountParams {
+        account: destination_admin_account_info.clone(),
+        mint: admin_mint_account_info.clone(),
+        owner: timelock_program_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_info.clone(),
+    })?;
+
     spl_token_mint_to(TokenMintToParams {
         mint: admin_mint_account_info.clone(),
-        destination: destination_account_info.clone(),
+        destination: destination_admin_account_info.clone(),
         amount: 1,
         authority: timelock_program_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
@@ -112,9 +121,17 @@ pub fn process_init_timelock_set<'a>(
     })?;
 
     // Mint signatory token to creator
+    spl_token_init_account(TokenInitializeAccountParams {
+        account: destination_sig_account_info.clone(),
+        mint: signatory_mint_account_info.clone(),
+        owner: timelock_program_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_info.clone(),
+    })?;
+
     spl_token_mint_to(TokenMintToParams {
         mint: signatory_mint_account_info.clone(),
-        destination: destination_account_info.clone(),
+        destination: destination_sig_account_info.clone(),
         amount: 1,
         authority: timelock_program_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
@@ -128,7 +145,7 @@ pub fn process_init_timelock_set<'a>(
         owner: timelock_program_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_info.clone(),
-    });
+    })?;
 
     spl_token_init_account(TokenInitializeAccountParams {
         account: admin_validation_account_info.clone(),
@@ -136,7 +153,7 @@ pub fn process_init_timelock_set<'a>(
         owner: timelock_program_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_info.clone(),
-    });
+    })?;
 
     spl_token_init_account(TokenInitializeAccountParams {
         account: voting_validation_account_info.clone(),
@@ -144,6 +161,6 @@ pub fn process_init_timelock_set<'a>(
         owner: timelock_program_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_info.clone(),
-    });
+    })?;
     Ok(())
 }

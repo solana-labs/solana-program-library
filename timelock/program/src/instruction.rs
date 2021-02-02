@@ -45,10 +45,11 @@ pub enum TimelockInstruction {
     ///   4. `[writable]` Uninitialized Signatory Validation account
     ///   5. `[writable]` Uninitialized Admin Validation account
     ///   6. `[writable]` Uninitialized Voting Validation account
-    ///   7. `[writable]` Destination account for first admin and signatory token
-    ///   8. `[]` Timelock Program
-    ///   9. `[]` Rent sysvar
-    ///   10. '[]` Token program id
+    ///   7. `[writable]` Uninitialized Destination account for first admin token
+    ///   8. `[writable]` Uninitialized Destination account for first signatory token
+    ///   9. `[]` Timelock Program
+    ///   10. `[]` Rent sysvar
+    ///   11. '[]` Token program id
     InitTimelockSet {
         /// Determine what type of timelock config you want
         config: TimelockConfig,
@@ -59,13 +60,14 @@ pub enum TimelockInstruction {
     /// their signatory token indicating they are satisfied with the instruction queue. They'll receive an signatory token
     /// as a result of this call that they can burn later.
     ///
-    ///   0. `[writable]` New signatory account.
+    ///   0. `[writable]` Uninitialized new signatory account.
     ///   1. `[writable]` Signatory mint account.
     ///   2. `[writable]` Admin account.
     ///   3. `[]` Admin validation account.
     ///   4. `[]` Timelock set account.
     ///   5. `[]` Timelock program account.
-    ///   6. '[]` Token program id.
+    ///   6. `[]` Rent sysvar
+    ///   7. '[]` Token program id.
     AddSigner,
 
     /// [Requires Admin token]
