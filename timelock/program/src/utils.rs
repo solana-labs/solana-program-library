@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use solana_program::{
-    account_info::{Account, AccountInfo},
+    account_info::AccountInfo,
     entrypoint::ProgramResult,
     msg,
     program::{invoke, invoke_signed},
@@ -16,6 +16,44 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::rent::Rent,
 };
+
+/// Attempts to transfer the admin token to the timelock set and back to the admin again.
+/// Can only be done if done in a transaction that has authority to do so. Serves as a check
+/// That the person is an admin!
+pub fn assert_is_admin<'a>(
+    admin_account_info: &AccountInfo<'a>,
+    admin_mint_info: &AccountInfo<'a>,
+    timelock_set_info: &AccountInfo<'a>,
+    timelock_program_info: &AccountInfo<'a>,
+    token_program_info: &AccountInfo<'a>,
+) -> ProgramResult {
+    let (_, bump_seed) =
+        Pubkey::find_program_address(&[timelock_set_info.key.as_ref()], timelock_program_info.key);
+
+    let authority_signer_seeds = &[timelock_program_info.key.as_ref(), &[bump_seed]];
+
+    spl_token_transfer(TokenTransferParams {
+        source: admin_account_info.clone(),
+        destination: timelock_set_info.clone(),
+        amount: 1,
+        authority: timelock_program_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    // Now give it back
+
+    spl_token_transfer(TokenTransferParams {
+        source: timelock_set_info.clone(),
+        destination: admin_account_info.clone(),
+        amount: 1,
+        authority: timelock_program_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    Ok(())
+}
 
 /// Asserts a timelock set is in draft state.
 pub fn assert_draft(timelock_set: &TimelockSet) -> ProgramResult {
@@ -143,7 +181,7 @@ fn spl_token_init_account(params: TokenInitializeAccountParams<'_>) -> ProgramRe
 
 /// Issue a spl_token `Transfer` instruction.
 #[inline(always)]
-fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
     let TokenTransferParams {
         source,
         destination,
