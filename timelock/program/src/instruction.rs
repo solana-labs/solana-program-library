@@ -58,9 +58,11 @@ pub enum TimelockInstruction {
     ///
     ///   0. `[writable]` New signatory account.
     ///   1. `[writable]` Signatory mint account.
-    ///   2. `[]` Timelock set account.
-    ///   3. `[]` Timelock program account.
-    ///   4. '[]` Token program id.
+    ///   2. `[writable]` Admin account.
+    ///   3. `[]` Admin mint account.
+    ///   4. `[]` Timelock set account.
+    ///   5. `[]` Timelock program account.
+    ///   6. '[]` Token program id.
     AddSigner,
 
     /// [Requires Admin token]
@@ -68,9 +70,11 @@ pub enum TimelockInstruction {
     ///
     ///   0. `[writable]` Signatory account to remove token from.
     ///   1. `[writable]` Signatory mint account.
-    ///   2. `[]` Timelock set account.
-    ///   3. `[]` Timelock program account.
-    ///   4. '[]` Token program id.
+    ///   2. `[writable]` Admin account.
+    ///   3. `[]` Admin mint account.
+    ///   4. `[]` Timelock set account.
+    ///   5. `[]` Timelock program account.
+    ///   6. '[]` Token program id.
     RemoveSigner,
 
     /// [Requires Signatory token]

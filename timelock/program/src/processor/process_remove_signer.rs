@@ -3,7 +3,7 @@ use crate::{
     state::timelock_program::TimelockProgram,
     state::timelock_set::TimelockSet,
     utils::{
-        assert_draft, assert_initialized, assert_proper_signatory_mint,
+        assert_draft, assert_initialized, assert_is_admin, assert_proper_signatory_mint,
         assert_same_version_as_program, assert_token_program_is_correct, spl_token_burn,
         TokenBurnParams,
     },
@@ -19,6 +19,8 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let account_info_iter = &mut accounts.iter();
     let remove_signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_mint_info = next_account_info(account_info_iter)?;
+    let admin_account_info = next_account_info(account_info_iter)?;
+    let admin_mint_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
@@ -29,7 +31,13 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_proper_signatory_mint(&timelock_set, signatory_mint_info)?;
     assert_draft(&timelock_set)?;
-
+    assert_is_admin(
+        admin_account_info,
+        admin_mint_info,
+        timelock_set_account_info,
+        timelock_program_account_info,
+        token_program_account_info,
+    )?;
     let (_, bump_seed) =
         Pubkey::find_program_address(&[timelock_set_account_info.key.as_ref()], program_id);
 
