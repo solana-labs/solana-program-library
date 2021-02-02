@@ -20,7 +20,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
     let new_signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_mint_info = next_account_info(account_info_iter)?;
     let admin_account_info = next_account_info(account_info_iter)?;
-    let admin_mint_info = next_account_info(account_info_iter)?;
+    let admin_validation_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
@@ -33,8 +33,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
     assert_draft(&timelock_set)?;
     assert_is_admin(
         admin_account_info,
-        admin_mint_info,
-        timelock_set_account_info,
+        admin_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
     )?;

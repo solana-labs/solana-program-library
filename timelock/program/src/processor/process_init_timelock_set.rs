@@ -7,8 +7,9 @@ use crate::{
     },
     utils::{
         assert_initialized, assert_rent_exempt, assert_same_version_as_program,
-        assert_token_program_is_correct, assert_uninitialized, spl_token_init_mint,
-        spl_token_mint_to, TokenInitializeMintParams, TokenMintToParams,
+        assert_token_program_is_correct, assert_uninitialized, spl_token_init_account,
+        spl_token_init_mint, spl_token_mint_to, TokenInitializeAccountParams,
+        TokenInitializeMintParams, TokenMintToParams,
     },
 };
 use solana_program::{
@@ -30,6 +31,9 @@ pub fn process_init_timelock_set<'a>(
     let signatory_mint_account_info = next_account_info(account_info_iter)?;
     let admin_mint_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
+    let signatory_validation_account_info = next_account_info(account_info_iter)?;
+    let admin_validation_account_info = next_account_info(account_info_iter)?;
+    let voting_validation_account_info = next_account_info(account_info_iter)?;
     let destination_account_info = next_account_info(account_info_iter)?;
     let timelock_program_info = next_account_info(account_info_iter)?;
 
@@ -51,6 +55,10 @@ pub fn process_init_timelock_set<'a>(
     new_timelock_set.admin_mint = *admin_mint_account_info.key;
     new_timelock_set.voting_mint = *voting_mint_account_info.key;
     new_timelock_set.signatory_mint = *signatory_mint_account_info.key;
+
+    new_timelock_set.admin_validation = *admin_validation_account_info.key;
+    new_timelock_set.voting_validation = *voting_validation_account_info.key;
+    new_timelock_set.signatory_validation = *signatory_validation_account_info.key;
 
     assert_rent_exempt(rent, admin_mint_account_info)?;
     assert_rent_exempt(rent, voting_mint_account_info)?;
@@ -112,5 +120,30 @@ pub fn process_init_timelock_set<'a>(
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
+
+    // Initialize validation accounts
+    spl_token_init_account(TokenInitializeAccountParams {
+        account: signatory_validation_account_info.clone(),
+        mint: signatory_mint_account_info.clone(),
+        owner: timelock_program_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_info.clone(),
+    });
+
+    spl_token_init_account(TokenInitializeAccountParams {
+        account: admin_validation_account_info.clone(),
+        mint: admin_mint_account_info.clone(),
+        owner: timelock_program_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_info.clone(),
+    });
+
+    spl_token_init_account(TokenInitializeAccountParams {
+        account: voting_validation_account_info.clone(),
+        mint: voting_mint_account_info.clone(),
+        owner: timelock_program_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_info.clone(),
+    });
     Ok(())
 }

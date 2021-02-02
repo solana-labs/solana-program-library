@@ -6,8 +6,8 @@ use solana_program::program_error::ProgramError;
 use crate::{
     error::TimelockError,
     state::{
-        enums::ConsensusAlgorithm, enums::ExecutionType, enums::TimelockType,
-        timelock_config::TimelockConfig, INSTRUCTION_LIMIT,
+        custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT, enums::ConsensusAlgorithm,
+        enums::ExecutionType, enums::TimelockType, timelock_config::TimelockConfig,
     },
 };
 
@@ -42,10 +42,13 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Uninitialized Signatory Mint account
     ///   2. `[writable]` Uninitialized Admin Mint account
     ///   3. `[writable]` Uninitialized Voting Mint account
-    ///   4. `[writable]` Destination account for first admin and signatory token
-    ///   5. `[]` Timelock Program
-    ///   6. `[]` Rent sysvar
-    ///   7. '[]` Token program id
+    ///   4. `[writable]` Uninitialized Signatory Validation account
+    ///   5. `[writable]` Uninitialized Admin Validation account
+    ///   6. `[writable]` Uninitialized Voting Validation account
+    ///   7. `[writable]` Destination account for first admin and signatory token
+    ///   8. `[]` Timelock Program
+    ///   9. `[]` Rent sysvar
+    ///   10. '[]` Token program id
     InitTimelockSet {
         /// Determine what type of timelock config you want
         config: TimelockConfig,
@@ -59,7 +62,7 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` New signatory account.
     ///   1. `[writable]` Signatory mint account.
     ///   2. `[writable]` Admin account.
-    ///   3. `[]` Admin mint account.
+    ///   3. `[]` Admin validation account.
     ///   4. `[]` Timelock set account.
     ///   5. `[]` Timelock program account.
     ///   6. '[]` Token program id.
@@ -71,23 +74,24 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Signatory account to remove token from.
     ///   1. `[writable]` Signatory mint account.
     ///   2. `[writable]` Admin account.
-    ///   3. `[]` Admin mint account.
+    ///   3. `[]` Admin validation account.
     ///   4. `[]` Timelock set account.
     ///   5. `[]` Timelock program account.
     ///   6. '[]` Token program id.
     RemoveSigner,
 
     /// [Requires Signatory token]
-    /// Adds an Upgrade type Transaction to the Timelock Set. Max of 10 of any Transaction type. More than 10 will throw error.
-    /// Creates a PDA using your authority to be used to later execute the upgrade program.
-    /// This transaction needs to contain authority to execute the executor program and to write to the program account you are
-    /// upgrading as the executor.
+    /// Adds a Transaction to the Timelock Set. Max of 10 of any Transaction type. More than 10 will throw error.
+    /// Creates a PDA using your authority to be used to later execute the instruction.
+    /// This transaction needs to contain authority to execute the program.
     ///
-    ///   0. `[writable]` Timelock set account pub key.
-    ///   1. `[writable]` Pubkey for use creating new Timelock Transaction account.
-    ///   2. `[]` Timelock program account pub key.
-    ///   3. `[]` Executor program account pub key.
-    AddCustomSingleSignerV1Transaction {
+    ///   0. `[writable]` Timelock set account.
+    ///   1. `[writable]` Uninitialized Timelock Transaction account.
+    ///   2. `[writable]` Signatory account
+    ///   3. `[]` Signatory validation account account.
+    ///   4. `[]` Timelock program account.
+    ///   5. `[]` Token program account.
+    AddCustomSingleSignerTransaction {
         /// Slot during which this will run
         slot: u64,
         /// Instruction
@@ -183,7 +187,7 @@ impl TimelockInstruction {
             4 => {
                 let (slot, rest) = Self::unpack_u64(rest)?;
                 let (instruction, rest) = Self::unpack_instructions(rest)?;
-                Self::AddCustomSingleSignerV1Transaction { slot, instruction }
+                Self::AddCustomSingleSignerTransaction { slot, instruction }
             }
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
@@ -210,7 +214,7 @@ impl TimelockInstruction {
             }
 
             let (input_instruction, rest) = input.split_at(INSTRUCTION_LIMIT + 1);
-            let instruction: [u8; INSTRUCTION_LIMIT] = [0; INSTRUCTION_LIMIT];
+            let mut instruction: [u8; INSTRUCTION_LIMIT] = [0; INSTRUCTION_LIMIT];
             for n in 0..(INSTRUCTION_LIMIT - 1) {
                 instruction[n] = input_instruction[n];
             }
@@ -259,7 +263,7 @@ impl TimelockInstruction {
             }
             Self::AddSigner => buf.push(2),
             Self::RemoveSigner => buf.push(3),
-            Self::AddCustomSingleSignerV1Transaction { slot, instruction } => {
+            Self::AddCustomSingleSignerTransaction { slot, instruction } => {
                 buf.push(4);
                 buf.extend_from_slice(&slot.to_le_bytes());
                 buf.extend_from_slice(instruction);

@@ -17,24 +17,25 @@ use solana_program::{
     sysvar::rent::Rent,
 };
 
-/// Attempts to transfer the admin token to the timelock set and back to the admin again.
+/// Attempts to transfer the signatory token to the timelock set's validation account and back to the signatory again.
 /// Can only be done if done in a transaction that has authority to do so. Serves as a check
 /// That the person is an admin!
-pub fn assert_is_admin<'a>(
-    admin_account_info: &AccountInfo<'a>,
-    admin_mint_info: &AccountInfo<'a>,
-    timelock_set_info: &AccountInfo<'a>,
+pub fn assert_is_signatory<'a>(
+    signatory_account_info: &AccountInfo<'a>,
+    signatory_validation_account_info: &AccountInfo<'a>,
     timelock_program_info: &AccountInfo<'a>,
     token_program_info: &AccountInfo<'a>,
 ) -> ProgramResult {
-    let (_, bump_seed) =
-        Pubkey::find_program_address(&[timelock_set_info.key.as_ref()], timelock_program_info.key);
+    let (_, bump_seed) = Pubkey::find_program_address(
+        &[signatory_validation_account_info.key.as_ref()],
+        timelock_program_info.key,
+    );
 
     let authority_signer_seeds = &[timelock_program_info.key.as_ref(), &[bump_seed]];
 
     spl_token_transfer(TokenTransferParams {
-        source: admin_account_info.clone(),
-        destination: timelock_set_info.clone(),
+        source: signatory_account_info.clone(),
+        destination: signatory_validation_account_info.clone(),
         amount: 1,
         authority: timelock_program_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
@@ -44,7 +45,49 @@ pub fn assert_is_admin<'a>(
     // Now give it back
 
     spl_token_transfer(TokenTransferParams {
-        source: timelock_set_info.clone(),
+        source: signatory_validation_account_info.clone(),
+        destination: signatory_account_info.clone(),
+        amount: 1,
+        authority: timelock_program_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    Ok(())
+}
+
+/// Attempts to transfer the admin token to the timelock set's validation account and back to the admin again.
+/// Can only be done if done in a transaction that has authority to do so. Serves as a check
+/// That the person is an admin!
+pub fn assert_is_admin<'a>(
+    admin_account_info: &AccountInfo<'a>,
+    admin_validation_account_info: &AccountInfo<'a>,
+    timelock_program_info: &AccountInfo<'a>,
+    token_program_info: &AccountInfo<'a>,
+) -> ProgramResult {
+    let (_, bump_seed) = Pubkey::find_program_address(
+        &[admin_validation_account_info.key.as_ref()],
+        timelock_program_info.key,
+    );
+
+    let authority_signer_seeds = &[timelock_program_info.key.as_ref(), &[bump_seed]];
+
+    // If both accounts arent correct mint type, it explodes
+    // If token amount is <1, it explodes. Perfect check.
+    // If authority isnt right, it explodes.
+    spl_token_transfer(TokenTransferParams {
+        source: admin_account_info.clone(),
+        destination: admin_validation_account_info.clone(),
+        amount: 1,
+        authority: timelock_program_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    // Now give it back
+
+    spl_token_transfer(TokenTransferParams {
+        source: admin_validation_account_info.clone(),
         destination: admin_account_info.clone(),
         amount: 1,
         authority: timelock_program_info.clone(),
@@ -161,7 +204,7 @@ pub fn spl_token_init_mint(params: TokenInitializeMintParams<'_, '_>) -> Program
 
 /// Issue a spl_token `InitializeAccount` instruction.
 #[inline(always)]
-fn spl_token_init_account(params: TokenInitializeAccountParams<'_>) -> ProgramResult {
+pub fn spl_token_init_account(params: TokenInitializeAccountParams<'_>) -> ProgramResult {
     let TokenInitializeAccountParams {
         account,
         mint,
