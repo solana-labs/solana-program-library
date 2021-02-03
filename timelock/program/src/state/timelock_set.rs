@@ -107,7 +107,9 @@ impl Pack for TimelockSet {
                     status: match timelock_state_status {
                         0 => TimelockStateStatus::Draft,
                         1 => TimelockStateStatus::Voting,
-                        2 => TimelockStateStatus::VoteComplete,
+                        2 => TimelockStateStatus::Executing,
+                        3 => TimelockStateStatus::Completed,
+                        4 => TimelockStateStatus::Deleted,
                         _ => TimelockStateStatus::Draft,
                     },
                     total_voting_tokens_minted,
@@ -186,7 +188,9 @@ impl Pack for TimelockSet {
         *timelock_state_status = match self.state.status {
             TimelockStateStatus::Draft => 0 as u8,
             TimelockStateStatus::Voting => 1 as u8,
-            TimelockStateStatus::VoteComplete => 2 as u8,
+            TimelockStateStatus::Executing => 2 as u8,
+            TimelockStateStatus::Completed => 3 as u8,
+            TimelockStateStatus::Deleted => 4 as u8,
         }
         .to_le_bytes();
         *total_voting_tokens_minted = self.state.total_voting_tokens_minted.to_le_bytes();

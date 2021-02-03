@@ -13,7 +13,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-/// Create a new timelock program
+/// Removes a signer
 pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let remove_signatory_account_info = next_account_info(account_info_iter)?;

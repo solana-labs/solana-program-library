@@ -14,7 +14,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-/// Create a new timelock program
+/// Adds a signer
 pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let new_signatory_account_info = next_account_info(account_info_iter)?;
