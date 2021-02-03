@@ -98,6 +98,8 @@ pub enum TimelockInstruction {
         slot: u64,
         /// Instruction
         instruction: [u8; INSTRUCTION_LIMIT],
+        /// Position in transaction array
+        position: u8,
     },
 
     /// [Requires Signatory token]
@@ -189,7 +191,12 @@ impl TimelockInstruction {
             4 => {
                 let (slot, rest) = Self::unpack_u64(rest)?;
                 let (instruction, rest) = Self::unpack_instructions(rest)?;
-                Self::AddCustomSingleSignerTransaction { slot, instruction }
+                let (position, rest) = Self::unpack_u8(rest)?;
+                Self::AddCustomSingleSignerTransaction {
+                    slot,
+                    instruction,
+                    position,
+                }
             }
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
@@ -265,10 +272,15 @@ impl TimelockInstruction {
             }
             Self::AddSigner => buf.push(2),
             Self::RemoveSigner => buf.push(3),
-            Self::AddCustomSingleSignerTransaction { slot, instruction } => {
+            Self::AddCustomSingleSignerTransaction {
+                slot,
+                instruction,
+                position,
+            } => {
                 buf.push(4);
                 buf.extend_from_slice(&slot.to_le_bytes());
                 buf.extend_from_slice(instruction);
+                buf.extend_from_slice(&position.to_le_bytes());
             }
             Self::RemoveTransaction {} => {}
             Self::UpdateTransactionSlot { slot } => {}

@@ -3,9 +3,8 @@ use crate::{
     state::timelock_program::TimelockProgram,
     state::timelock_set::TimelockSet,
     utils::{
-        assert_draft, assert_initialized, assert_is_admin, assert_proper_signatory_mint,
-        assert_same_version_as_program, assert_token_program_is_correct, spl_token_burn,
-        TokenBurnParams,
+        assert_draft, assert_initialized, assert_is_admin, assert_same_version_as_program,
+        assert_token_program_is_correct, spl_token_burn, TokenBurnParams,
     },
 };
 use solana_program::{

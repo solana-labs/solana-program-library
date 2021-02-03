@@ -1,5 +1,3 @@
-const TRANSACTION_SLOTS: usize = 10;
-
 const UNINITIALIZED_VERSION: u8 = 0;
 
 /// Enums

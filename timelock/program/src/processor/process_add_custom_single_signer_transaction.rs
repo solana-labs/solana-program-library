@@ -1,17 +1,23 @@
 //! Program state processor
 use crate::{
+    error::TimelockError,
     state::timelock_program::TimelockProgram,
     state::{
-        custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT, timelock_set::TimelockSet,
+        custom_single_signer_timelock_transaction::{
+            CustomSingleSignerTimelockTransaction, INSTRUCTION_LIMIT,
+        },
+        timelock_set::TimelockSet,
+        timelock_state::TRANSACTION_SLOTS,
     },
     utils::{
         assert_draft, assert_initialized, assert_is_signatory, assert_same_version_as_program,
-        assert_token_program_is_correct, spl_token_mint_to, TokenMintToParams,
+        assert_uninitialized,
     },
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    program_pack::Pack,
     pubkey::Pubkey,
 };
 
@@ -21,6 +27,7 @@ pub fn process_add_custom_single_signer_transaction(
     accounts: &[AccountInfo],
     slot: u64,
     instruction: [u8; INSTRUCTION_LIMIT],
+    position: u8,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let timelock_set_account_info = next_account_info(account_info_iter)?;
@@ -30,8 +37,14 @@ pub fn process_add_custom_single_signer_transaction(
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
+    let mut timelock_txn: CustomSingleSignerTimelockTransaction =
+        assert_uninitialized(timelock_txn_account_info)?;
+
+    if position as usize >= TRANSACTION_SLOTS {
+        return Err(TimelockError::TooHighPositionInTxnArrayError.into());
+    }
 
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
@@ -40,6 +53,25 @@ pub fn process_add_custom_single_signer_transaction(
         signatory_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
+    )?;
+
+    timelock_txn.slot = slot;
+    timelock_txn.instruction = instruction;
+
+    let (pda, _) =
+        Pubkey::find_program_address(&[timelock_txn_account_info.key.as_ref()], program_id);
+
+    timelock_txn.authority_key = pda;
+    timelock_set.state.timelock_transactions[position as usize] = *timelock_txn_account_info.key;
+
+    TimelockSet::pack(
+        timelock_set.clone(),
+        &mut timelock_set_account_info.data.borrow_mut(),
+    )?;
+
+    CustomSingleSignerTimelockTransaction::pack(
+        timelock_txn.clone(),
+        &mut timelock_txn_account_info.data.borrow_mut(),
     )?;
 
     Ok(())

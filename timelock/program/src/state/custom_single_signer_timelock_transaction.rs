@@ -11,13 +11,13 @@ pub const INSTRUCTION_LIMIT: usize = 2_000_000;
 #[derive(Clone, Debug, PartialEq)]
 pub struct CustomSingleSignerTimelockTransaction {
     /// Slot at which this will execute
-    slot: u64,
+    pub slot: u64,
 
     /// Instruction set
-    instruction: [u8; INSTRUCTION_LIMIT],
+    pub instruction: [u8; INSTRUCTION_LIMIT],
 
     /// authority key (pda) used to run the program
-    authority_key: Pubkey,
+    pub authority_key: Pubkey,
 }
 impl Sealed for CustomSingleSignerTimelockTransaction {}
 impl IsInitialized for CustomSingleSignerTimelockTransaction {

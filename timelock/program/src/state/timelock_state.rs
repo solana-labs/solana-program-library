@@ -2,7 +2,8 @@ use super::enums;
 use enums::TimelockStateStatus;
 use solana_program::pubkey::Pubkey;
 
-use super::TRANSACTION_SLOTS;
+/// Transaction slots allowed
+pub const TRANSACTION_SLOTS: usize = 10;
 
 /// Timelock state
 #[derive(Clone, Debug, Default, PartialEq)]
