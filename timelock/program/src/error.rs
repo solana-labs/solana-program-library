@@ -23,6 +23,10 @@ pub enum TimelockError {
     #[error("Account is already initialized")]
     AlreadyInitialized,
 
+    /// Too high position in txn array
+    #[error("Too high a position given in txn array")]
+    TooHighPositionInTxnArrayError,
+
     /// The wrong signatory mint was given for this timelock set
     #[error("The wrong signatory mint was given for this timelock set")]
     InvalidSignatoryMintError,
