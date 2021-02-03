@@ -3,6 +3,7 @@ pub mod process_add_signer;
 pub mod process_init_timelock_program;
 pub mod process_init_timelock_set;
 pub mod process_remove_signer;
+pub mod process_remove_transaction;
 
 use crate::instruction::TimelockInstruction;
 use process_add_custom_single_signer_transaction::process_add_custom_single_signer_transaction;
@@ -10,6 +11,7 @@ use process_add_signer::process_add_signer;
 use process_init_timelock_program::process_init_timelock_program;
 use process_init_timelock_set::process_init_timelock_set;
 use process_remove_signer::process_remove_signer;
+use process_remove_transaction::process_remove_transaction;
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 /// Processes an instruction
@@ -50,7 +52,10 @@ pub fn process_instruction<'a>(
                 position,
             )
         }
-        TimelockInstruction::RemoveTransaction {} => Ok(()),
+        TimelockInstruction::RemoveTransaction => {
+            msg!("Instruction: Remove Transaction");
+            process_remove_transaction(program_id, accounts)
+        }
         TimelockInstruction::UpdateTransactionSlot { slot } => Ok(()),
         TimelockInstruction::DeleteTimelockSet {} => Ok(()),
         TimelockInstruction::Sign {} => Ok(()),
