@@ -27,6 +27,10 @@ pub enum TimelockError {
     #[error("Too high a position given in txn array")]
     TooHighPositionInTxnArrayError,
 
+    /// Timelock Transaction not found on the Timelock Set
+    #[error("Timelock Transaction not found on the Timelock Set")]
+    TimelockTransactionNotFoundError,
+
     /// The wrong signatory mint was given for this timelock set
     #[error("The wrong signatory mint was given for this timelock set")]
     InvalidSignatoryMintError,

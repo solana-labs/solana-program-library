@@ -63,7 +63,7 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Uninitialized new signatory account.
     ///   1. `[writable]` Signatory mint account.
     ///   2. `[writable]` Admin account.
-    ///   3. `[]` Admin validation account.
+    ///   3. `[writable]` Admin validation account.
     ///   4. `[]` Timelock set account.
     ///   5. `[]` Timelock program account.
     ///   6. `[]` Rent sysvar
@@ -76,7 +76,7 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Signatory account to remove token from.
     ///   1. `[writable]` Signatory mint account.
     ///   2. `[writable]` Admin account.
-    ///   3. `[]` Admin validation account.
+    ///   3. `[writable]` Admin validation account.
     ///   4. `[]` Timelock set account.
     ///   5. `[]` Timelock program account.
     ///   6. '[]` Token program id.
@@ -90,7 +90,7 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Timelock set account.
     ///   1. `[writable]` Uninitialized Timelock Transaction account.
     ///   2. `[writable]` Signatory account
-    ///   3. `[]` Signatory validation account account.
+    ///   3. `[writable]` Signatory validation account account.
     ///   4. `[]` Timelock program account.
     ///   5. `[]` Token program account.
     AddCustomSingleSignerTransaction {
@@ -105,10 +105,13 @@ pub enum TimelockInstruction {
     /// [Requires Signatory token]
     /// Remove Transaction from the Timelock Set.
     ///
-    ///   0. `[writable]` Timelock set account pub key.
-    ///   1. `[writable]` Timelock Transaction pub key.
-    ///   2. `[]` Timelock program account pub key.
-    RemoveTransaction {},
+    ///   0. `[writable]` Timelock set account.
+    ///   1. `[writable]` Timelock Transaction account.
+    ///   2. `[writable]` Signatory account
+    ///   3. `[writable]` Signatory validation account account.
+    ///   4. `[]` Timelock program account pub key.
+    ///   5. `[]` Token program account.
+    RemoveTransaction,
 
     /// [Requires Signatory token]
     /// Update Transaction slot in the Timelock Set. Useful during reset periods.
@@ -198,6 +201,7 @@ impl TimelockInstruction {
                     position,
                 }
             }
+            5 => Self::RemoveTransaction,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -282,7 +286,7 @@ impl TimelockInstruction {
                 buf.extend_from_slice(instruction);
                 buf.extend_from_slice(&position.to_le_bytes());
             }
-            Self::RemoveTransaction {} => {}
+            Self::RemoveTransaction {} => buf.push(5),
             Self::UpdateTransactionSlot { slot } => {}
             Self::DeleteTimelockSet {} => {}
             Self::Sign {} => {}
