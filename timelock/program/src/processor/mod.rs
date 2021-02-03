@@ -5,6 +5,7 @@ pub mod process_init_timelock_program;
 pub mod process_init_timelock_set;
 pub mod process_remove_signer;
 pub mod process_remove_transaction;
+pub mod process_sign;
 pub mod process_update_transaction_slot;
 
 use crate::instruction::TimelockInstruction;
@@ -15,6 +16,7 @@ use process_init_timelock_program::process_init_timelock_program;
 use process_init_timelock_set::process_init_timelock_set;
 use process_remove_signer::process_remove_signer;
 use process_remove_transaction::process_remove_transaction;
+use process_sign::process_sign;
 use process_update_transaction_slot::process_update_transaction_slot;
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
@@ -68,7 +70,10 @@ pub fn process_instruction<'a>(
             msg!("Instruction: Delete Timelock Set");
             process_delete_timelock_set(program_id, accounts)
         }
-        TimelockInstruction::Sign {} => Ok(()),
+        TimelockInstruction::Sign => {
+            msg!("Instruction: Sign");
+            process_sign(program_id, accounts)
+        }
         TimelockInstruction::Vote {
             voting_token_amount,
         } => Ok(()),
