@@ -142,8 +142,12 @@ pub enum TimelockInstruction {
     /// The last Signatory token to be burned moves the state to Voting.
     ///
     ///   0. `[writable]` Timelock set account pub key.
-    ///   1. `[]` Timelock program account pub key.
-    Sign {},
+    ///   1. `[writable]` Signatory account
+    ///   2. `[writable]` Signatory validation account.
+    ///   3. `[writable]` Signatory mint account.
+    ///   4. `[]` Timelock program account pub key.
+    ///   5. `[]` Token program account.
+    Sign,
 
     /// [Requires Voting tokens]
     /// Burns voting tokens, indicating you approve of running this set of transactions. If you tip the consensus,
@@ -213,6 +217,7 @@ impl TimelockInstruction {
                 Self::UpdateTransactionSlot { slot }
             }
             7 => Self::DeleteTimelockSet,
+            8 => Self::Sign,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -303,7 +308,7 @@ impl TimelockInstruction {
                 buf.extend_from_slice(&slot.to_le_bytes());
             }
             Self::DeleteTimelockSet => buf.push(7),
-            Self::Sign {} => {}
+            Self::Sign => buf.push(8),
             Self::Vote {
                 voting_token_amount,
             } => {}
