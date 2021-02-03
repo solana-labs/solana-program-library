@@ -37,8 +37,15 @@ pub enum TimelockStateStatus {
     Draft,
     /// Taking votes
     Voting,
-    /// Votes complete
-    VoteComplete,
+
+    /// Votes complete, in execution phase
+    Executing,
+
+    /// Completed, can be rebooted
+    Completed,
+
+    /// Deleted
+    Deleted,
 }
 
 impl Default for TimelockStateStatus {

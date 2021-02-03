@@ -10,6 +10,8 @@ pub const INSTRUCTION_LIMIT: usize = 2_000_000;
 /// First iteration of generic instruction
 #[derive(Clone, Debug, PartialEq)]
 pub struct CustomSingleSignerTimelockTransaction {
+    /// NOTE all Transaction structs MUST have slot as first u64 entry in byte buffer.
+
     /// Slot at which this will execute
     pub slot: u64,
 

@@ -21,7 +21,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-/// Create a new timelock program
+/// Create a new timelock txn
 pub fn process_add_custom_single_signer_transaction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

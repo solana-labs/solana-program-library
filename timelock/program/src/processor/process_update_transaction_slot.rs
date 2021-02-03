@@ -1,21 +1,24 @@
 //! Program state processor
 use crate::{
-    error::TimelockError,
     state::timelock_program::TimelockProgram,
     state::timelock_set::TimelockSet,
     utils::{
         assert_draft, assert_initialized, assert_is_signatory, assert_same_version_as_program,
     },
 };
+use arrayref::array_mut_ref;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    program_pack::Pack,
     pubkey::Pubkey,
 };
 
-/// Removes a txn from a transaction set
-pub fn process_remove_transaction(_: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+/// Updates transaction slot on a txn
+pub fn process_update_transaction_slot(
+    _: &Pubkey,
+    accounts: &[AccountInfo],
+    new_slot: u64,
+) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_txn_account_info = next_account_info(account_info_iter)?;
@@ -24,7 +27,7 @@ pub fn process_remove_transaction(_: &Pubkey, accounts: &[AccountInfo]) -> Progr
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
 
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
@@ -36,26 +39,10 @@ pub fn process_remove_transaction(_: &Pubkey, accounts: &[AccountInfo]) -> Progr
         token_program_account_info,
     )?;
 
-    let mut found: bool = false;
-    for n in 0..timelock_set.state.timelock_transactions.len() {
-        if timelock_set.state.timelock_transactions[n].to_bytes()
-            == timelock_txn_account_info.key.to_bytes()
-        {
-            let zeros: [u8; 32] = [0; 32];
-            timelock_set.state.timelock_transactions[n] = Pubkey::new_from_array(zeros);
-            found = true;
-            break;
-        }
-    }
-
-    if !found {
-        return Err(TimelockError::TimelockTransactionNotFoundError.into());
-    }
-
-    TimelockSet::pack(
-        timelock_set.clone(),
-        &mut timelock_set_account_info.data.borrow_mut(),
-    )?;
+    // All transactions have slot as first byte, adjust it.
+    let mut mutable_data = timelock_txn_account_info.data.borrow_mut();
+    let original_slot_slice = array_mut_ref![mutable_data, 0, 8];
+    original_slot_slice.copy_from_slice(&new_slot.to_le_bytes());
 
     Ok(())
 }

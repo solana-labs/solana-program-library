@@ -98,6 +98,16 @@ pub fn assert_is_admin<'a>(
     Ok(())
 }
 
+/// Asserts a timelock set is in a state that can be edited - if its voting or executing, cant touch it.
+pub fn assert_not_in_voting_or_executing(timelock_set: &TimelockSet) -> ProgramResult {
+    if timelock_set.state.status == TimelockStateStatus::Voting
+        || timelock_set.state.status == TimelockStateStatus::Executing
+    {
+        return Err(TimelockError::InvalidTimelockSetStateError.into());
+    }
+    Ok(())
+}
+
 /// Asserts a timelock set is in draft state.
 pub fn assert_draft(timelock_set: &TimelockSet) -> ProgramResult {
     if timelock_set.state.status != TimelockStateStatus::Draft {

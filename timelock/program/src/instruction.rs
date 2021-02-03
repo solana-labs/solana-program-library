@@ -90,7 +90,7 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Timelock set account.
     ///   1. `[writable]` Uninitialized Timelock Transaction account.
     ///   2. `[writable]` Signatory account
-    ///   3. `[writable]` Signatory validation account account.
+    ///   3. `[writable]` Signatory validation account.
     ///   4. `[]` Timelock program account.
     ///   5. `[]` Token program account.
     AddCustomSingleSignerTransaction {
@@ -108,7 +108,7 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Timelock set account.
     ///   1. `[writable]` Timelock Transaction account.
     ///   2. `[writable]` Signatory account
-    ///   3. `[writable]` Signatory validation account account.
+    ///   3. `[writable]` Signatory validation account.
     ///   4. `[]` Timelock program account pub key.
     ///   5. `[]` Token program account.
     RemoveTransaction,
@@ -116,9 +116,12 @@ pub enum TimelockInstruction {
     /// [Requires Signatory token]
     /// Update Transaction slot in the Timelock Set. Useful during reset periods.
     ///
-    ///   0. `[writable]` Timelock Transaction pub key.
-    ///   1. `[]` Timelock set account pub key.
-    ///   1. `[]` Timelock program account pub key.
+    ///   0. `[writable]` Timelock set account.
+    ///   1. `[writable]` Timelock Transaction account.
+    ///   2. `[writable]` Signatory account
+    ///   3. `[writable]` Signatory validation account.
+    ///   4. `[]` Timelock program account pub key.
+    ///   5. `[]` Token program account.
     UpdateTransactionSlot {
         /// On what slot this transaction slot will now run
         slot: u64,
@@ -128,8 +131,11 @@ pub enum TimelockInstruction {
     /// Delete Timelock set entirely.
     ///
     ///   0. `[writable]` Timelock set account pub key.
-    ///   1. `[]` Timelock program account pub key.
-    DeleteTimelockSet {},
+    ///   1. `[writable]` Admin account
+    ///   2. `[writable]` Admin validation account.
+    ///   3. `[]` Timelock program account pub key.
+    ///   4. `[]` Token program account.
+    DeleteTimelockSet,
 
     /// [Requires Signatory token]
     /// Burns signatory token, indicating you approve of moving this Timelock set from Draft state to Voting state.
@@ -194,7 +200,7 @@ impl TimelockInstruction {
             4 => {
                 let (slot, rest) = Self::unpack_u64(rest)?;
                 let (instruction, rest) = Self::unpack_instructions(rest)?;
-                let (position, rest) = Self::unpack_u8(rest)?;
+                let (position, _) = Self::unpack_u8(rest)?;
                 Self::AddCustomSingleSignerTransaction {
                     slot,
                     instruction,
@@ -202,6 +208,11 @@ impl TimelockInstruction {
                 }
             }
             5 => Self::RemoveTransaction,
+            6 => {
+                let (slot, _) = Self::unpack_u64(rest)?;
+                Self::UpdateTransactionSlot { slot }
+            }
+            7 => Self::DeleteTimelockSet,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -287,8 +298,11 @@ impl TimelockInstruction {
                 buf.extend_from_slice(&position.to_le_bytes());
             }
             Self::RemoveTransaction {} => buf.push(5),
-            Self::UpdateTransactionSlot { slot } => {}
-            Self::DeleteTimelockSet {} => {}
+            Self::UpdateTransactionSlot { slot } => {
+                buf.push(6);
+                buf.extend_from_slice(&slot.to_le_bytes());
+            }
+            Self::DeleteTimelockSet => buf.push(7),
             Self::Sign {} => {}
             Self::Vote {
                 voting_token_amount,

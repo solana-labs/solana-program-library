@@ -21,7 +21,7 @@ use solana_program::{
 };
 use spl_token::state::Mint;
 
-/// Create a new timelock program
+/// Create a new timelock set
 pub fn process_init_timelock_set<'a>(
     program_id: &'a Pubkey,
     accounts: &'a [AccountInfo<'a>],
