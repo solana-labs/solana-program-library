@@ -3,6 +3,7 @@ pub mod process_add_signer;
 pub mod process_delete_timelock_set;
 pub mod process_init_timelock_program;
 pub mod process_init_timelock_set;
+pub mod process_mint_voting_tokens;
 pub mod process_remove_signer;
 pub mod process_remove_transaction;
 pub mod process_sign;
@@ -15,6 +16,7 @@ use process_add_signer::process_add_signer;
 use process_delete_timelock_set::process_delete_timelock_set;
 use process_init_timelock_program::process_init_timelock_program;
 use process_init_timelock_set::process_init_timelock_set;
+use process_mint_voting_tokens::process_mint_voting_tokens;
 use process_remove_signer::process_remove_signer;
 use process_remove_transaction::process_remove_transaction;
 use process_sign::process_sign;
@@ -84,6 +86,9 @@ pub fn process_instruction<'a>(
         }
         TimelockInstruction::MintVotingTokens {
             voting_token_amount,
-        } => Ok(()),
+        } => {
+            msg!("Instruction: Mint Voting Tokens");
+            process_mint_voting_tokens(program_id, accounts, voting_token_amount)
+        }
     }
 }
