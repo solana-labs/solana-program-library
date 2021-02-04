@@ -1,35 +1,50 @@
 # Token Swap Program
 ---
 
-A Uniswap-like exchange for the Token program on the Solana blockchain, implementing multiple automated market maker (AMM) curves.
+A Uniswap-like exchange for the Token program on the Solana blockchain,
+implementing multiple automated market maker (AMM) curves.
 
 ## Overview
 
-The Token Swap Program allows simple trading of token pairs without a centralized limit order book. The program uses a mathematical formula called "curve" to calculate the price of all trades.  Curves aim to mimic normal market dynamics: for example, as traders buy a lot of one token type, the value of the other token type goes up.
+The Token Swap Program allows simple trading of token pairs without a
+centralized limit order book. The program uses a mathematical formula called
+"curve" to calculate the price of all trades.  Curves aim to mimic normal market
+dynamics: for example, as traders buy a lot of one token type, the value of the
+other token type goes up.
 
-Depositors in the token swap pool provide liquidity for the token pair. That liquidity enables trade execution at spot price. In exchange for their liquidity, depositors receive pool tokens, representing their fractional ownership in the pool. During each trade, a smart contract withholds a portion of the input token as a fee. That fee increases the value of pool tokens by being stored in the pool.
+Depositors in the token swap pool provide liquidity for the token pair. That
+liquidity enables trade execution at spot price. In exchange for their
+liquidity, depositors receive pool tokens, representing their fractional
+ownership in the pool. During each trade, a program withholds a portion of the
+input token as a fee. That fee increases the value of pool tokens by being
+stored in the pool.
 
-This program was heavily inspired by [Uniswap](https://uniswap.org/) and 
-[Balancer](https://balancer.finance/). More information is available in their excellent documentation and whitepapers.
+This program was heavily inspired by [Uniswap](https://uniswap.org/) and
+[Balancer](https://balancer.finance/). More information is available in their
+excellent documentation and whitepapers.
 
 ## Background
 
-Solana's programming model and the definitions of the Solana terms used in this document are available at:
+Solana's programming model and the definitions of the Solana terms used in this
+document are available at:
 
 - https://docs.solana.com/apps
 - https://docs.solana.com/terminology
 
 ## Source
 
-The Token Swap Program's source is available on [github](https://github.com/solana-labs/solana-program-library).
+The Token Swap Program's source is available on
+[github](https://github.com/solana-labs/solana-program-library).
 
 ## Interface
 
-[JavaScript bindings](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/client/token-swap.js) are available that support loading the Token Swap Program on to a chain and issue
-instructions.
+[JavaScript
+bindings](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/client/token-swap.js)
+are available that support loading the Token Swap Program on to a chain and
+issue instructions.
 
-Example user interface built and maintained by Serum team is available [here](https://github.com/project-serum/oyster-swap)
-
+Example user interface built and maintained by Serum team is available
+[here](https://github.com/project-serum/oyster-swap)
 
 ## Operational overview
 
