@@ -58,6 +58,7 @@ export class Numberu64 extends BN {
  */
 export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struct(
   [
+    BufferLayout.u8('version'),
     BufferLayout.u8('isInitialized'),
     BufferLayout.u8('nonce'),
     Layout.publicKey('tokenProgramId'),
