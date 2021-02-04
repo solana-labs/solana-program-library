@@ -5,7 +5,7 @@ use crate::{
         enums::TimelockStateStatus, timelock_program::TimelockProgram, timelock_set::TimelockSet,
     },
     utils::{
-        assert_initialized, assert_is_admin, assert_not_in_voting_or_executing,
+        assert_initialized, assert_is_permissioned, assert_not_in_voting_or_executing,
         assert_same_version_as_program, assert_token_program_is_correct,
     },
 };
@@ -32,7 +32,7 @@ pub fn process_delete_timelock_set(_: &Pubkey, accounts: &[AccountInfo]) -> Prog
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_token_program_is_correct(&timelock_program, token_program_info)?;
     assert_not_in_voting_or_executing(&timelock_set)?;
-    assert_is_admin(
+    assert_is_permissioned(
         admin_account_info,
         admin_validation_account_info,
         timelock_program_info,

@@ -7,6 +7,7 @@ pub mod process_remove_signer;
 pub mod process_remove_transaction;
 pub mod process_sign;
 pub mod process_update_transaction_slot;
+pub mod process_vote;
 
 use crate::instruction::TimelockInstruction;
 use process_add_custom_single_signer_transaction::process_add_custom_single_signer_transaction;
@@ -18,6 +19,7 @@ use process_remove_signer::process_remove_signer;
 use process_remove_transaction::process_remove_transaction;
 use process_sign::process_sign;
 use process_update_transaction_slot::process_update_transaction_slot;
+use process_vote::process_vote;
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 /// Processes an instruction
@@ -76,7 +78,10 @@ pub fn process_instruction<'a>(
         }
         TimelockInstruction::Vote {
             voting_token_amount,
-        } => Ok(()),
+        } => {
+            msg!("Instruction: Vote");
+            process_vote(program_id, accounts, voting_token_amount)
+        }
         TimelockInstruction::MintVotingTokens {
             voting_token_amount,
         } => Ok(()),

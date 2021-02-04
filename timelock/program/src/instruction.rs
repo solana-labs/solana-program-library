@@ -153,8 +153,12 @@ pub enum TimelockInstruction {
     /// Burns voting tokens, indicating you approve of running this set of transactions. If you tip the consensus,
     /// then the transactions begin to be run at their time slots.
     ///
-    ///   0. `[]` Timelock set account pub key.
-    ///   1. `[]` Timelock program account pub key.
+    ///   0. `[writable]` Timelock set account.
+    ///   1. `[writable]` Voting account.
+    ///   2. `[writable]` Voting mint account.
+    ///   3. `[writable]` Voting validation account.
+    ///   4. `[]` Timelock program account pub key.
+    ///   5. `[]` Token program account.
     Vote {
         /// How many voting tokens to burn
         voting_token_amount: u64,
@@ -170,6 +174,11 @@ pub enum TimelockInstruction {
         /// How many voting tokens to mint
         voting_token_amount: u64,
     },
+    /* TODO add execute ability and reset ability /// []
+    Execute {},
+
+    /// Reset
+    Reset {},*/
 }
 
 impl TimelockInstruction {
@@ -218,6 +227,12 @@ impl TimelockInstruction {
             }
             7 => Self::DeleteTimelockSet,
             8 => Self::Sign,
+            9 => {
+                let (voting_token_amount, _) = Self::unpack_u64(rest)?;
+                Self::Vote {
+                    voting_token_amount,
+                }
+            }
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -311,7 +326,10 @@ impl TimelockInstruction {
             Self::Sign => buf.push(8),
             Self::Vote {
                 voting_token_amount,
-            } => {}
+            } => {
+                buf.push(9);
+                buf.extend_from_slice(&voting_token_amount.to_le_bytes());
+            }
             Self::MintVotingTokens {
                 voting_token_amount,
             } => {}

@@ -3,7 +3,7 @@ use crate::{
     state::timelock_program::TimelockProgram,
     state::timelock_set::TimelockSet,
     utils::{
-        assert_draft, assert_initialized, assert_is_signatory, assert_same_version_as_program,
+        assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program,
     },
 };
 use arrayref::array_mut_ref;
@@ -32,7 +32,7 @@ pub fn process_update_transaction_slot(
 
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
-    assert_is_signatory(
+    assert_is_permissioned(
         signatory_account_info,
         signatory_validation_account_info,
         timelock_program_account_info,

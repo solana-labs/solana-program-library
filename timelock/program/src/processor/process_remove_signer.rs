@@ -3,7 +3,7 @@ use crate::{
     state::timelock_program::TimelockProgram,
     state::timelock_set::TimelockSet,
     utils::{
-        assert_draft, assert_initialized, assert_is_admin, assert_same_version_as_program,
+        assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program,
         assert_token_program_is_correct, spl_token_burn, TokenBurnParams,
     },
 };
@@ -29,7 +29,7 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_draft(&timelock_set)?;
-    assert_is_admin(
+    assert_is_permissioned(
         admin_account_info,
         admin_validation_account_info,
         timelock_program_account_info,
