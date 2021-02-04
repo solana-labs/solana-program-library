@@ -10,7 +10,7 @@ use crate::{
         timelock_state::TRANSACTION_SLOTS,
     },
     utils::{
-        assert_draft, assert_initialized, assert_is_signatory, assert_same_version_as_program,
+        assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program,
         assert_uninitialized,
     },
 };
@@ -48,7 +48,7 @@ pub fn process_add_custom_single_signer_transaction(
 
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
-    assert_is_signatory(
+    assert_is_permissioned(
         signatory_account_info,
         signatory_validation_account_info,
         timelock_program_account_info,

@@ -3,7 +3,7 @@ use crate::{
     state::timelock_program::TimelockProgram,
     state::timelock_set::TimelockSet,
     utils::{
-        assert_draft, assert_initialized, assert_is_admin, assert_proper_signatory_mint,
+        assert_draft, assert_initialized, assert_is_permissioned, assert_proper_signatory_mint,
         assert_same_version_as_program, assert_token_program_is_correct, spl_token_init_account,
         spl_token_mint_to, TokenInitializeAccountParams, TokenMintToParams,
     },
@@ -32,7 +32,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_proper_signatory_mint(&timelock_set, signatory_mint_info)?;
     assert_draft(&timelock_set)?;
-    assert_is_admin(
+    assert_is_permissioned(
         admin_account_info,
         admin_validation_account_info,
         timelock_program_account_info,
