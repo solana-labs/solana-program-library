@@ -1,47 +1,35 @@
----
-title: Token Swap Program
+# Token Swap Program
 ---
 
-A Uniswap-like exchange for the Token program on the Solana blockchain,
-implementing multiple automated market maker (AMM) curves.
+A Uniswap-like exchange for the Token program on the Solana blockchain, implementing multiple automated market maker (AMM) curves.
 
 ## Overview
 
-The Token Swap Program allows simple trading of token pairs without a centralized
-limit order book. The program uses a "curve" to calculate the price of all
-trades, following a mathematical formula defined in the curve implementation. 
-Curves aim to mimic normal market dynamics: for example, as traders buy a lot 
-of one token type, the value of the other token type goes up.
+The Token Swap Program allows simple trading of token pairs without a centralized limit order book. The program uses a mathematical formula called "curve" to calculate the price of all trades.  Curves aim to mimic normal market dynamics: for example, as traders buy a lot of one token type, the value of the other token type goes up.
 
-Depositors provide liquidity for the token types in the Token Swap, and this 
-liquidity is used in trades. In exchange for their liquidity, depositors are
-given pool tokens, which represent their fractional ownership in the Token Swap.
-During trades, a portion of the input token is withheld as a fee, allowing the 
-overall value of the pool to grow, and with them, the value of pool tokens.
+Depositors in the token swap pool provide liquidity for the token pair. That liquidity enables trade execution at spot price. In exchange for their liquidity, depositors receive pool tokens, representing their fractional ownership in the pool. During each trade, a smart contract withholds a portion of the input token as a fee. That fee increases the value of pool tokens by being stored in the pool.
 
 This program was heavily inspired by [Uniswap](https://uniswap.org/) and 
-[Balancer](https://balancer.finance/). More information can be found in their
-excellent documentation and whitepapers.
+[Balancer](https://balancer.finance/). More information is available in their excellent documentation and whitepapers.
 
 ## Background
 
-Solana's programming model and the definitions of the Solana terms used in this
-document are available at:
+Solana's programming model and the definitions of the Solana terms used in this document are available at:
 
 - https://docs.solana.com/apps
 - https://docs.solana.com/terminology
 
 ## Source
 
-The Token Swap Program's source is available on
-[github](https://github.com/solana-labs/solana-program-library).
+The Token Swap Program's source is available on [github](https://github.com/solana-labs/solana-program-library).
 
 ## Interface
 
-[JavaScript
-bindings](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/client/token-swap.js)
-are available that support loading the Token Swap Program on to a chain and issue
+[JavaScript bindings](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/client/token-swap.js) are available that support loading the Token Swap Program on to a chain and issue
 instructions.
+
+Example user interface built and maintained by Serum team is available [here](https://github.com/project-serum/oyster-swap)
+
 
 ## Operational overview
 
@@ -181,8 +169,7 @@ whitepaper](https://balancer.finance/whitepaper/).
 
 ### Constant price
 
-The [constant price
-curve](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/src/curve/constant_price.rs)
+The [constant price curve](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/src/curve/constant_price.rs)
 is a simple curve that always maintains the price of token A with respect to
 token B.  At initialization, the swap creator sets the cost for 1 token B in
 terms of token A. For example, if the price is set to 17, 17 token A will always
@@ -202,8 +189,7 @@ expensive.
 
 ### Stable (under construction)
 
-The [stable
-curve](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/src/curve/stable.rs)
+The [stable curve](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/src/curve/stable.rs)
 from [curve.fi](https://www.curve.fi/), has a different shape to prioritize 
 "stable" trading, meaning prices that stay constant through trading. Most 
 importantly, prices don't change as quickly as the constant product curve, so a
@@ -221,8 +207,7 @@ and a more complete version can be found at the
 
 ### Offset
 
-The [offset
-curve](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/src/curve/offset.rs)
+The [offset curve](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/src/curve/offset.rs)
 can be seen as a combination of the constant price and constant product curve.
 It follows the constant product curve dynamics, but allows for the token swap
 creator to set an "offset" on one side. The invariant for the curve is:
