@@ -1,6 +1,5 @@
 use std::{convert::TryInto, mem::size_of};
 
-use arrayref::array_refs;
 use solana_program::program_error::ProgramError;
 
 use crate::{
@@ -48,8 +47,8 @@ pub enum TimelockInstruction {
     ///   7. `[writable]` Uninitialized Destination account for first admin token
     ///   8. `[writable]` Uninitialized Destination account for first signatory token
     ///   9. `[]` Timelock Program
-    ///   10. `[]` Rent sysvar
-    ///   11. '[]` Token program id
+    ///   10. '[]` Token program id
+    ///   11. `[]` Rent sysvar
     InitTimelockSet {
         /// Determine what type of timelock config you want
         config: TimelockConfig,
@@ -167,9 +166,14 @@ pub enum TimelockInstruction {
     /// [Requires Signatory token]
     /// Mints voting tokens for a destination account to be used during the voting process.
     ///
-    ///   0. `[writable]` Timelock set account pub key.
-    ///   1. `[]` Timelock program account pub key.
-    ///   2. `[]` Destination account pub key.
+    ///   0. `[writable]` Timelock set account.
+    ///   1. `[writable]` Voting account.
+    ///   2. `[writable]` Voting mint account.
+    ///   3. `[writable]` Signatory account
+    ///   4. `[writable]` Signatory validation account.
+    ///   5. `[]` Timelock program account pub key.
+    ///   6. `[]` Token program account.
+    ///   7. `[]` Rent sysvar
     MintVotingTokens {
         /// How many voting tokens to mint
         voting_token_amount: u64,
@@ -230,6 +234,12 @@ impl TimelockInstruction {
             9 => {
                 let (voting_token_amount, _) = Self::unpack_u64(rest)?;
                 Self::Vote {
+                    voting_token_amount,
+                }
+            }
+            10 => {
+                let (voting_token_amount, _) = Self::unpack_u64(rest)?;
+                Self::MintVotingTokens {
                     voting_token_amount,
                 }
             }
@@ -332,7 +342,10 @@ impl TimelockInstruction {
             }
             Self::MintVotingTokens {
                 voting_token_amount,
-            } => {}
+            } => {
+                buf.push(10);
+                buf.extend_from_slice(&voting_token_amount.to_le_bytes());
+            }
         }
         buf
     }

@@ -37,10 +37,9 @@ pub fn process_init_timelock_set<'a>(
     let destination_admin_account_info = next_account_info(account_info_iter)?;
     let destination_sig_account_info = next_account_info(account_info_iter)?;
     let timelock_program_info = next_account_info(account_info_iter)?;
-
+    let token_program_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
-    let token_program_info = next_account_info(account_info_iter)?;
 
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_info)?;
 
