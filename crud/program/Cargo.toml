@@ -1,0 +1,28 @@
+[package]
+name = "spl-crud"
+version = "0.1.0"
+description = "Solana Program Library Associated Token Account"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[features]
+no-entrypoint = []
+test-bpf = []
+
+[dependencies]
+borsh = "0.7.1"
+borsh-derive = "0.7.1"
+solana-program = "1.5.5"
+
+[dev-dependencies]
+solana-program-test = "1.5.5"
+solana-sdk = "1.5.5"
+tokio = { version = "0.3", features = ["macros"]}
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
