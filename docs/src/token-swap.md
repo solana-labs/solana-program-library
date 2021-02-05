@@ -42,7 +42,7 @@ The Token Swap Program's source is available on
 [JavaScript
 bindings](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/client/token-swap.js)
 are available that support loading the Token Swap Program on to a chain and
-issue instructions.
+issuing instructions.
 
 Example user interface built and maintained by Serum team is available
 [here](https://github.com/project-serum/oyster-swap)
