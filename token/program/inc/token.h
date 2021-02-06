@@ -89,14 +89,12 @@ typedef enum Token_COption_Pubkey_Tag {
     Token_COption_Pubkey_Some_Pubkey,
 } Token_COption_Pubkey_Tag;
 
-typedef struct Token_COption_Pubkey_Token_Some_Body_Pubkey {
-    Token_Pubkey _0;
-} Token_COption_Pubkey_Token_Some_Body_Pubkey;
-
 typedef struct Token_COption_Pubkey {
     Token_COption_Pubkey_Tag tag;
     union {
-        Token_COption_Pubkey_Token_Some_Body_Pubkey some;
+        struct {
+            Token_Pubkey some;
+        };
     };
 } Token_COption_Pubkey;
 
@@ -430,7 +428,7 @@ typedef struct Token_TokenInstruction_Token_InitializeMint_Body {
     /**
      * The freeze authority/multisignature of the mint.
      */
-    Token_COption_Pubkey freeze_authority;
+    struct Token_COption_Pubkey freeze_authority;
 } Token_TokenInstruction_Token_InitializeMint_Body;
 
 typedef struct Token_TokenInstruction_Token_InitializeMultisig_Body {
@@ -463,7 +461,7 @@ typedef struct Token_TokenInstruction_Token_SetAuthority_Body {
     /**
      * The new authority
      */
-    Token_COption_Pubkey new_authority;
+    struct Token_COption_Pubkey new_authority;
 } Token_TokenInstruction_Token_SetAuthority_Body;
 
 typedef struct Token_TokenInstruction_Token_MintTo_Body {
@@ -550,7 +548,7 @@ typedef struct Token_Mint {
      * mint creation. If no mint authority is present then the mint has a fixed supply and no
      * further tokens may be minted.
      */
-    Token_COption_Pubkey mint_authority;
+    struct Token_COption_Pubkey mint_authority;
     /**
      * Total supply of tokens.
      */
@@ -566,7 +564,7 @@ typedef struct Token_Mint {
     /**
      * Optional authority to freeze token accounts.
      */
-    Token_COption_Pubkey freeze_authority;
+    struct Token_COption_Pubkey freeze_authority;
 } Token_Mint;
 
 /**
@@ -583,14 +581,12 @@ typedef enum Token_COption_u64_Tag {
     Token_COption_u64_Some_u64,
 } Token_COption_u64_Tag;
 
-typedef struct Token_COption_u64_Token_Some_Body_u64 {
-    uint64_t _0;
-} Token_COption_u64_Token_Some_Body_u64;
-
 typedef struct Token_COption_u64 {
     Token_COption_u64_Tag tag;
     union {
-        Token_COption_u64_Token_Some_Body_u64 some;
+        struct {
+            uint64_t some;
+        };
     };
 } Token_COption_u64;
 
@@ -614,7 +610,7 @@ typedef struct Token_Account {
      * If `delegate` is `Some` then `delegated_amount` represents
      * the amount authorized by the delegate
      */
-    Token_COption_Pubkey delegate;
+    struct Token_COption_Pubkey delegate;
     /**
      * The account's state
      */
@@ -624,7 +620,7 @@ typedef struct Token_Account {
      * is required to be rent-exempt, so the value is used by the Processor to ensure that wrapped
      * SOL accounts do not drop below this threshold.
      */
-    Token_COption_u64 is_native;
+    struct Token_COption_u64 is_native;
     /**
      * The amount delegated
      */
@@ -632,7 +628,7 @@ typedef struct Token_Account {
     /**
      * Optional authority to close the account.
      */
-    Token_COption_Pubkey close_authority;
+    struct Token_COption_Pubkey close_authority;
 } Token_Account;
 
 /**
