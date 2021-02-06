@@ -414,6 +414,19 @@ typedef enum Token_TokenInstruction_Tag {
      *   3. ..3+M `[signer]` M signer accounts.
      */
     Token_TokenInstruction_BurnChecked,
+    /**
+     * Like InitializeAccount, but the owner pubkey is passed via instruction data
+     * rather than the accounts list. This variant may be preferable when using
+     * Cross Program Invocation from an instruction that does not need the owner's
+     * `AccountInfo` otherwise.
+     *
+     * Accounts expected by this instruction:
+     *
+     *   0. `[writable]`  The account to initialize.
+     *   1. `[]` The mint this account will be associated with.
+     *   3. `[]` Rent sysvar
+     */
+    Token_TokenInstruction_InitializeAccount2,
 } Token_TokenInstruction_Tag;
 
 typedef struct Token_TokenInstruction_Token_InitializeMint_Body {
@@ -522,6 +535,13 @@ typedef struct Token_TokenInstruction_Token_BurnChecked_Body {
     uint8_t decimals;
 } Token_TokenInstruction_Token_BurnChecked_Body;
 
+typedef struct Token_TokenInstruction_Token_InitializeAccount2_Body {
+    /**
+     * The new account's owner/multisignature.
+     */
+    Token_Pubkey owner;
+} Token_TokenInstruction_Token_InitializeAccount2_Body;
+
 typedef struct Token_TokenInstruction {
     Token_TokenInstruction_Tag tag;
     union {
@@ -536,6 +556,7 @@ typedef struct Token_TokenInstruction {
         Token_TokenInstruction_Token_ApproveChecked_Body approve_checked;
         Token_TokenInstruction_Token_MintToChecked_Body mint_to_checked;
         Token_TokenInstruction_Token_BurnChecked_Body burn_checked;
+        Token_TokenInstruction_Token_InitializeAccount2_Body initialize_account2;
     };
 } Token_TokenInstruction;
 
