@@ -108,7 +108,7 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * The `InitializeMint` instruction requires no signers and MUST be
      * included within the same Transaction as the system program's
-     * `CreateInstruction` that creates the account being initialized.
+     * `CreateAccount` instruction that creates the account being initialized.
      * Otherwise another party can acquire ownership of the uninitialized
      * account.
      *
@@ -128,7 +128,7 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * The `InitializeAccount` instruction requires no signers and MUST be
      * included within the same Transaction as the system program's
-     * `CreateInstruction` that creates the account being initialized.
+     * `CreateAccount` instruction that creates the account being initialized.
      * Otherwise another party can acquire ownership of the uninitialized
      * account.
      *
@@ -150,7 +150,7 @@ typedef enum Token_TokenInstruction_Tag {
      *
      * The `InitializeMultisig` instruction requires no signers and MUST be
      * included within the same Transaction as the system program's
-     * `CreateInstruction` that creates the account being initialized.
+     * `CreateAccount` instruction that creates the account being initialized.
      * Otherwise another party can acquire ownership of the uninitialized
      * account.
      *
@@ -226,7 +226,7 @@ typedef enum Token_TokenInstruction_Tag {
      *
      *   * Multisignature authority
      *   0. `[writable]` The mint or account to change the authority of.
-     *   1. `[]` The mint's or account's multisignature authority.
+     *   1. `[]` The mint's or account's current multisignature authority.
      *   2. ..2+M `[signer]` M signer accounts
      */
     Token_TokenInstruction_SetAuthority,
