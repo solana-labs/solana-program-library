@@ -8,14 +8,14 @@
 #include <stdlib.h>
 
 /**
- * Maximum number of multisignature signers (max N)
- */
-#define Token_MAX_SIGNERS 11
-
-/**
  * Minimum number of multisignature signers (min N)
  */
 #define Token_MIN_SIGNERS 1
+
+/**
+ * Maximum number of multisignature signers (max N)
+ */
+#define Token_MAX_SIGNERS 11
 
 /**
  * Account state.
@@ -263,9 +263,9 @@ typedef enum Token_TokenInstruction_Tag {
      *
      *   * Multisignature owner/delegate
      *   0. `[writable]` The account to burn from.
-     *   1. '[writable]' The token mint.
+     *   1. `[writable]` The token mint.
      *   2. `[]` The account's multisignature owner/delegate.
-     *   3. ..3+M '[signer]' M signer accounts.
+     *   3. ..3+M `[signer]` M signer accounts.
      */
     Token_TokenInstruction_Burn,
     /**
