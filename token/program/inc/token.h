@@ -326,7 +326,7 @@ typedef enum Token_TokenInstruction_Tag {
      * account.
      *
      * This instruction differs from Transfer in that the token mint and
-     * decimals value is asserted by the caller.  This may be useful when
+     * decimals value is checked by the caller.  This may be useful when
      * creating transactions offline or within a hardware wallet.
      *
      * Accounts expected by this instruction:
@@ -344,13 +344,13 @@ typedef enum Token_TokenInstruction_Tag {
      *   3. `[]` The source account's multisignature owner/delegate.
      *   4. ..4+M `[signer]` M signer accounts.
      */
-    Token_TokenInstruction_Transfer2,
+    Token_TokenInstruction_TransferChecked,
     /**
      * Approves a delegate.  A delegate is given the authority over tokens on
      * behalf of the source account's owner.
      *
      * This instruction differs from Approve in that the token mint and
-     * decimals value is asserted by the caller.  This may be useful when
+     * decimals value is checked by the caller.  This may be useful when
      * creating transactions offline or within a hardware wallet.
      *
      * Accounts expected by this instruction:
@@ -368,13 +368,13 @@ typedef enum Token_TokenInstruction_Tag {
      *   3. `[]` The source account's multisignature owner.
      *   4. ..4+M `[signer]` M signer accounts
      */
-    Token_TokenInstruction_Approve2,
+    Token_TokenInstruction_ApproveChecked,
     /**
      * Mints new tokens to an account.  The native mint does not support
      * minting.
      *
      * This instruction differs from MintTo in that the decimals value is
-     * asserted by the caller.  This may be useful when creating transactions
+     * checked by the caller.  This may be useful when creating transactions
      * offline or within a hardware wallet.
      *
      * Accounts expected by this instruction:
@@ -390,13 +390,13 @@ typedef enum Token_TokenInstruction_Tag {
      *   2. `[]` The mint's multisignature mint-tokens authority.
      *   3. ..3+M `[signer]` M signer accounts.
      */
-    Token_TokenInstruction_MintTo2,
+    Token_TokenInstruction_MintToChecked,
     /**
-     * Burns tokens by removing them from an account.  `Burn2` does not
+     * Burns tokens by removing them from an account.  `BurnChecked` does not
      * support accounts associated with the native mint, use `CloseAccount`
      * instead.
      *
-     * This instruction differs from Burn in that the decimals value is asserted
+     * This instruction differs from Burn in that the decimals value is checked
      * by the caller. This may be useful when creating transactions offline or
      * within a hardware wallet.
      *
@@ -413,7 +413,7 @@ typedef enum Token_TokenInstruction_Tag {
      *   2. `[]` The account's multisignature owner/delegate.
      *   3. ..3+M `[signer]` M signer accounts.
      */
-    Token_TokenInstruction_Burn2,
+    Token_TokenInstruction_BurnChecked,
 } Token_TokenInstruction_Tag;
 
 typedef struct Token_TokenInstruction_Token_InitializeMint_Body {
@@ -478,7 +478,7 @@ typedef struct Token_TokenInstruction_Token_Burn_Body {
     uint64_t amount;
 } Token_TokenInstruction_Token_Burn_Body;
 
-typedef struct Token_TokenInstruction_Token_Transfer2_Body {
+typedef struct Token_TokenInstruction_Token_TransferChecked_Body {
     /**
      * The amount of tokens to transfer.
      */
@@ -487,9 +487,9 @@ typedef struct Token_TokenInstruction_Token_Transfer2_Body {
      * Expected number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
-} Token_TokenInstruction_Token_Transfer2_Body;
+} Token_TokenInstruction_Token_TransferChecked_Body;
 
-typedef struct Token_TokenInstruction_Token_Approve2_Body {
+typedef struct Token_TokenInstruction_Token_ApproveChecked_Body {
     /**
      * The amount of tokens the delegate is approved for.
      */
@@ -498,9 +498,9 @@ typedef struct Token_TokenInstruction_Token_Approve2_Body {
      * Expected number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
-} Token_TokenInstruction_Token_Approve2_Body;
+} Token_TokenInstruction_Token_ApproveChecked_Body;
 
-typedef struct Token_TokenInstruction_Token_MintTo2_Body {
+typedef struct Token_TokenInstruction_Token_MintToChecked_Body {
     /**
      * The amount of new tokens to mint.
      */
@@ -509,9 +509,9 @@ typedef struct Token_TokenInstruction_Token_MintTo2_Body {
      * Expected number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
-} Token_TokenInstruction_Token_MintTo2_Body;
+} Token_TokenInstruction_Token_MintToChecked_Body;
 
-typedef struct Token_TokenInstruction_Token_Burn2_Body {
+typedef struct Token_TokenInstruction_Token_BurnChecked_Body {
     /**
      * The amount of tokens to burn.
      */
@@ -520,7 +520,7 @@ typedef struct Token_TokenInstruction_Token_Burn2_Body {
      * Expected number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
-} Token_TokenInstruction_Token_Burn2_Body;
+} Token_TokenInstruction_Token_BurnChecked_Body;
 
 typedef struct Token_TokenInstruction {
     Token_TokenInstruction_Tag tag;
@@ -532,10 +532,10 @@ typedef struct Token_TokenInstruction {
         Token_TokenInstruction_Token_SetAuthority_Body set_authority;
         Token_TokenInstruction_Token_MintTo_Body mint_to;
         Token_TokenInstruction_Token_Burn_Body burn;
-        Token_TokenInstruction_Token_Transfer2_Body transfer2;
-        Token_TokenInstruction_Token_Approve2_Body approve2;
-        Token_TokenInstruction_Token_MintTo2_Body mint_to2;
-        Token_TokenInstruction_Token_Burn2_Body burn2;
+        Token_TokenInstruction_Token_TransferChecked_Body transfer_checked;
+        Token_TokenInstruction_Token_ApproveChecked_Body approve_checked;
+        Token_TokenInstruction_Token_MintToChecked_Body mint_to_checked;
+        Token_TokenInstruction_Token_BurnChecked_Body burn_checked;
     };
 } Token_TokenInstruction;
 
