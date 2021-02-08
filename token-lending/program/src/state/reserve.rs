@@ -854,6 +854,16 @@ mod test {
                 ..Obligation::default()
             };
 
+            // Ensure that the token conversion fits in a Decimal
+            {
+                let token_converter = MockConverter(token_conversion_rate);
+                let decimal_repay_amount = Decimal::from(obligation.max_liquidation_amount()?);
+                // Calculate the amount of collateral that will be received
+                let receive_liquidity_amount_result =
+                    token_converter.convert(decimal_repay_amount, &Pubkey::default());
+                prop_assume!(receive_liquidity_amount_result.is_ok());
+            }
+
             // Liquidate with max amount to ensure obligation can be liquidated
             let liquidate_result = Reserve::_liquidate_obligation(
                 &obligation,
