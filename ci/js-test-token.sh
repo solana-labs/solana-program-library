@@ -9,6 +9,6 @@ cd token/js
 npm install
 npm run lint
 npm run flow
-npx tsc --esModuleInterop module.d.ts
+npm run defs
 npm run start-with-test-validator
 PROGRAM_VERSION=2.0.4 npm run start-with-test-validator

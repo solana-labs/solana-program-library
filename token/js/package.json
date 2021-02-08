@@ -37,6 +37,7 @@
     "cluster:devnet": "cp cluster-devnet.env .env",
     "cluster:testnet": "cp cluster-testnet.env .env",
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env",
+    "defs": "set -ex; flow check-contents < module.flow.js; tsc --esModuleInterop module.d.ts",
     "pretty": "prettier --check '{,cli*/**/}*.[jt]s'",
     "pretty:fix": "prettier --write '{,cli*/**/}*.[jt]s'"
   },
@@ -44,6 +45,7 @@
     "@babel/runtime": "^7.10.5",
     "@solana/web3.js": "^0.91.0",
     "bn.js": "^5.1.0",
+    "buffer": "6.0.1",
     "buffer-layout": "^1.2.0",
     "dotenv": "8.2.0",
     "mkdirp": "1.0.4"
@@ -59,16 +61,20 @@
     "@rollup/plugin-babel": "^5.1.0",
     "@rollup/plugin-commonjs": "^17.0.0",
     "@types/bn.js": "^5.1.0",
+    "@typescript-eslint/eslint-plugin": "^4.14.2",
+    "@typescript-eslint/parser": "^4.14.2",
     "babel-eslint": "^10.1.0",
     "eslint": "^7.4.0",
+    "eslint-plugin-flowtype": "^5.2.0",
     "eslint-plugin-import": "^2.22.0",
-    "flow-bin": "0.142.0",
+    "flow-bin": "^0.144.0",
     "flow-typed": "^3.2.0",
     "mz": "^2.7.0",
     "prettier": "^2.0.5",
     "rollup": "^2.23.0",
     "rollup-plugin-copy": "^3.3.0",
     "start-server-and-test": "^1.11.6",
+    "typescript": "^4.1.3",
     "watch": "^1.0.2"
   },
   "engines": {
