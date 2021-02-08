@@ -28,7 +28,7 @@ pub fn spl_token_swap_swap<'a>(
             token_program.key,
             pool.key,
             authority.key,
-            // user_transfer.key,
+            user_transfer.key,
             source.key,
             swap_source.key,
             swap_destination.key,
@@ -62,8 +62,6 @@ pub fn spl_token_swap_withdraw_single<'a>(
     destination: AccountInfo<'a>,
     pool_mint: AccountInfo<'a>,
     pool_fee: AccountInfo<'a>,
-    host_fee: AccountInfo<'a>,
-
     destination_token_amount: u64,
     maximum_pool_token_amount: u64,
 ) -> ProgramResult {
@@ -73,9 +71,9 @@ pub fn spl_token_swap_withdraw_single<'a>(
             token_program.key,
             pool.key,
             authority.key,
+            user_transfer.key,
             pool_mint.key,
             pool_fee.key,
-            // user_transfer.key,
             source.key,
             swap_source.key,
             swap_destination.key,

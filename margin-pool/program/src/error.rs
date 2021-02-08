@@ -83,9 +83,9 @@ pub enum MarginPoolError {
     /// The provided mint does not match the token swap mint
     #[error("The provided mint does not match the token swap mint")]
     InvalidMint,
-    /// Insuficient funds to open a position
-    #[error("Insuficient funds to open a position")]
-    InsufficeintFunds,
+    /// Insufficient funds to open a position
+    #[error("Insufficient funds to open a position")]
+    InsufficientFunds,
     #[error("Token Swap failed")]
     SwapFaild,
 }

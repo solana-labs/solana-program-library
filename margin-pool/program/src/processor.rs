@@ -359,18 +359,19 @@ impl Processor {
         };
 
         // Token swap program implements now withdraw and swap as atomic operation
-        /*spl_token_swap_withdraw_single(
-            token_swap_program_info.key,
-            token_program_info.key,
-            token_swap_info.key,
-            authority_info.key,
-            user_transfer_info.key,
-            pool_token_source_info.key,
-            token_source_info.key,
-            token_dest_info.key,
-            position_escrow_info.key,
-            token_mint_info.key,
-        );*/
+        // spl_token_swap_withdraw_single(
+        //     token_swap_program_info.key,
+        //     token_program_info.key,
+        //     token_swap_info.key,
+        //     authority_info.key,
+        //     user_transfer_info.key,
+        //     pool_token_source_info.key,
+        //     token_source_info.key,
+        //     token_dest_info.key,
+        //     position_escrow_info.key,
+        //     token_mint_info.key,
+        //     swap_info.pool_fee_account,
+        // );
 
         let swap_info = Self::unpack_token_swap(&token_swap_info.data.borrow())?;
         let p2 = Self::token_swap_price(&swap_info, &source_account.mint);
@@ -384,8 +385,8 @@ impl Processor {
         let needed: u64 = u64::try_from(needed).map_err(|_| MarginPoolError::CalculationFailure)?;
 
         if amount_in < needed {
-            msg!("Insuficient funds");
-            return Err(MarginPoolError::InsufficeintFunds.into());
+            msg!("Insufficient funds");
+            return Err(MarginPoolError::InsufficientFunds.into());
         }
         position.charge_yield();
         position.collateral_amount += amount_in;
@@ -626,7 +627,7 @@ impl PrintProgramError for MarginPoolError {
             MarginPoolError::InvalidMint => {
                 msg!("Error: Swap input token accounts have the same mint")
             }
-            MarginPoolError::InsufficeintFunds => msg!("Error: Margin Pool insufficient funds"),
+            MarginPoolError::InsufficientFunds => msg!("Error: Margin Pool insufficient funds"),
             MarginPoolError::SwapFaild => msg!("Error: Margin Pool swap faild"),
         }
     }
