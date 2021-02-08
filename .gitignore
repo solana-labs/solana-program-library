@@ -7,5 +7,4 @@ node_modules
 ./package-lock.json
 hfuzz_target
 hfuzz_workspace
-proptest-regressions
 **/*.so
