@@ -15,7 +15,13 @@ use solana_sdk::{
 };
 use spl_stake_pool::*;
 
-async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, StakeAccount) {
+async fn setup() -> (
+    BanksClient,
+    Keypair,
+    Hash,
+    StakePoolAccounts,
+    ValidatorStakeAccount,
+) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -25,7 +31,7 @@ async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, StakeAccount
 
     let user = Keypair::new();
 
-    let user_stake = StakeAccount::new_with_target_authority(
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );

@@ -16,7 +16,13 @@ use solana_sdk::{
 use spl_stake_pool::*;
 use spl_token::error as token_error;
 
-async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, StakeAccount) {
+async fn setup() -> (
+    BanksClient,
+    Keypair,
+    Hash,
+    StakePoolAccounts,
+    ValidatorStakeAccount,
+) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -24,7 +30,7 @@ async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, StakeAccount
         .await
         .unwrap();
 
-    let validator_stake_account: StakeAccount = simple_add_validator_stake_account(
+    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -50,10 +56,13 @@ async fn test_stake_pool_deposit() {
     // make stake account
     let user_stake = Keypair::new();
     let lockup = stake::Lockup::default();
+
+    let stake_authority = Keypair::new();
     let authorized = stake::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
+        staker: stake_authority.pubkey(),
+        withdrawer: stake_authority.pubkey(),
     };
+
     let stake_lamports = create_independent_stake_account(
         &mut banks_client,
         &payer,
@@ -63,6 +72,46 @@ async fn test_stake_pool_deposit() {
         &lockup,
     )
     .await;
+
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator_stake_account.vote,
+    )
+    .await;
+    delegate_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.pubkey(),
+        &stake_authority,
+        &validator_stake_account.vote.pubkey(),
+    )
+    .await;
+
+    // Change authority to the stake pool's deposit
+    authorize_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.pubkey(),
+        &stake_authority,
+        &stake_pool_accounts.deposit_authority,
+        stake::StakeAuthorize::Withdrawer,
+    )
+    .await;
+    authorize_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.pubkey(),
+        &stake_authority,
+        &stake_pool_accounts.deposit_authority,
+        stake::StakeAuthorize::Staker,
+    )
+    .await;
+
     // make pool token account
     let user_pool_account = Keypair::new();
     create_token_account(
@@ -79,10 +128,8 @@ async fn test_stake_pool_deposit() {
     // Save stake pool state before depositing
     let stake_pool_before =
         get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool_before = state::State::deserialize(&stake_pool_before.data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let stake_pool_before =
+        state::StakePool::deserialize(&stake_pool_before.data.as_slice()).unwrap();
 
     // Save validator stake account record before depositing
     let validator_stake_list = get_account(
@@ -120,10 +167,7 @@ async fn test_stake_pool_deposit() {
 
     // Stake pool should add its balance to the pool balance
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::State::deserialize(&stake_pool.data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let stake_pool = state::StakePool::deserialize(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(
         stake_pool.stake_total,
         stake_pool_before.stake_total + stake_lamports
@@ -239,6 +283,20 @@ async fn test_stake_pool_deposit_with_wrong_pool_fee_account() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
+    let lockup = stake::Lockup::default();
+    let authorized = stake::Authorized {
+        staker: stake_pool_accounts.deposit_authority,
+        withdrawer: stake_pool_accounts.deposit_authority,
+    };
+    create_independent_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake,
+        &authorized,
+        &lockup,
+    )
+    .await;
 
     // make pool token account
     let user_pool_account = Keypair::new();
@@ -289,6 +347,20 @@ async fn test_stake_pool_deposit_with_wrong_token_program_id() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
+    let lockup = stake::Lockup::default();
+    let authorized = stake::Authorized {
+        staker: stake_pool_accounts.deposit_authority,
+        withdrawer: stake_pool_accounts.deposit_authority,
+    };
+    create_independent_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake,
+        &authorized,
+        &lockup,
+    )
+    .await;
 
     // make pool token account
     let user_pool_account = Keypair::new();
@@ -351,6 +423,20 @@ async fn test_stake_pool_deposit_with_wrong_validator_stake_list_account() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
+    let lockup = stake::Lockup::default();
+    let authorized = stake::Authorized {
+        staker: stake_pool_accounts.deposit_authority,
+        withdrawer: stake_pool_accounts.deposit_authority,
+    };
+    create_independent_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake,
+        &authorized,
+        &lockup,
+    )
+    .await;
 
     // make pool token account
     let user_pool_account = Keypair::new();
@@ -402,13 +488,13 @@ async fn test_stake_pool_deposit_where_stake_acc_not_in_stake_state() {
         .await
         .unwrap();
 
-    let validator_stake_account = StakeAccount::new_with_target_authority(
+    let validator_stake_account = ValidatorStakeAccount::new_with_target_authority(
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );
 
     let user_stake_authority = Keypair::new();
-    create_stake_account(
+    create_validator_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -434,6 +520,20 @@ async fn test_stake_pool_deposit_where_stake_acc_not_in_stake_state() {
     .unwrap();
 
     let user_stake_acc = Keypair::new();
+    let lockup = stake::Lockup::default();
+    let authorized = stake::Authorized {
+        staker: stake_pool_accounts.deposit_authority,
+        withdrawer: stake_pool_accounts.deposit_authority,
+    };
+    create_independent_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake_acc,
+        &authorized,
+        &lockup,
+    )
+    .await;
     let transaction_error = stake_pool_accounts
         .deposit_stake(
             &mut banks_client,
@@ -470,7 +570,7 @@ async fn test_stake_pool_deposit_to_unknown_validator() {
         .await
         .unwrap();
 
-    let validator_stake_account = StakeAccount::new_with_target_authority(
+    let validator_stake_account = ValidatorStakeAccount::new_with_target_authority(
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );
@@ -548,6 +648,20 @@ async fn test_stake_pool_deposit_with_wrong_deposit_authority() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
+    let lockup = stake::Lockup::default();
+    let authorized = stake::Authorized {
+        staker: stake_pool_accounts.deposit_authority,
+        withdrawer: stake_pool_accounts.deposit_authority,
+    };
+    create_independent_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake,
+        &authorized,
+        &lockup,
+    )
+    .await;
 
     // make pool token account
     let user_pool_account = Keypair::new();
@@ -602,6 +716,20 @@ async fn test_stake_pool_deposit_with_wrong_withdraw_authority() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
+    let lockup = stake::Lockup::default();
+    let authorized = stake::Authorized {
+        staker: stake_pool_accounts.deposit_authority,
+        withdrawer: stake_pool_accounts.deposit_authority,
+    };
+    create_independent_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake,
+        &authorized,
+        &lockup,
+    )
+    .await;
 
     // make pool token account
     let user_pool_account = Keypair::new();

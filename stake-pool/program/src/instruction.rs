@@ -35,11 +35,13 @@ pub enum StakePoolInstruction {
     ///   Initializes a new StakePool.
     ///
     ///   0. `[w]` New StakePool to create.
-    ///   1. `[]` Owner
+    ///   1. `[s]` Owner
     ///   2. `[w]` Uninitialized validator stake list storage account
     ///   3. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
     ///   4. `[]` Pool Account to deposit the generated fee for owner.
-    ///   5. `[]` Token program id
+    ///   5. `[]` Clock sysvar
+    ///   6. `[]` Rent sysvar
+    ///   7. `[]` Token program id
     Initialize(InitArgs),
 
     ///   Creates new program account for accumulating stakes for a particular validator
@@ -253,11 +255,12 @@ pub fn initialize(
     let data = init_data.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, true),
-        AccountMeta::new_readonly(*owner, false),
+        AccountMeta::new_readonly(*owner, true),
         AccountMeta::new(*validator_stake_list, false),
         AccountMeta::new_readonly(*pool_mint, false),
         AccountMeta::new_readonly(*owner_pool_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {

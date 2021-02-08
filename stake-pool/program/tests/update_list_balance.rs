@@ -35,7 +35,7 @@ async fn test_update_list_balance() {
         .unwrap();
 
     // Add several accounts
-    let mut stake_accounts: Vec<StakeAccount> = vec![];
+    let mut stake_accounts: Vec<ValidatorStakeAccount> = vec![];
     const STAKE_ACCOUNTS: u64 = 3;
     for _ in 0..STAKE_ACCOUNTS {
         stake_accounts.push(
