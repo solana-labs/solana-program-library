@@ -12,6 +12,7 @@ use solana_sdk::{
 use spl_token::instruction::approve;
 use spl_token_lending::{
     instruction::repay_reserve_liquidity, math::Decimal, processor::process_instruction,
+    state::SLOTS_PER_YEAR,
 };
 
 const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
@@ -35,12 +36,15 @@ async fn test_success() {
         processor!(process_instruction),
     );
 
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(80_000);
+
     const OBLIGATION_LOAN: u64 = 1;
     const OBLIGATION_COLLATERAL: u64 = 500;
 
     let user_accounts_owner = Keypair::new();
-    let sol_usdc_dex_market =
-        TestDexMarket::setup(&mut test, "sol_usdc", SOL_USDC_BIDS, SOL_USDC_ASKS);
+    let user_transfer_authority = Keypair::new();
+    let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
@@ -50,6 +54,7 @@ async fn test_success() {
         &lending_market,
         AddReserveArgs {
             config: TEST_RESERVE_CONFIG,
+            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -65,6 +70,7 @@ async fn test_success() {
         &lending_market,
         AddReserveArgs {
             config: TEST_RESERVE_CONFIG,
+            slots_elapsed: SLOTS_PER_YEAR,
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_decimals: 9,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
@@ -78,10 +84,13 @@ async fn test_success() {
         &mut test,
         &user_accounts_owner,
         &lending_market,
-        &usdc_reserve,
-        &sol_reserve,
-        OBLIGATION_COLLATERAL,
-        Decimal::from(OBLIGATION_LOAN),
+        AddObligationArgs {
+            slots_elapsed: SLOTS_PER_YEAR,
+            borrow_reserve: &usdc_reserve,
+            collateral_reserve: &sol_reserve,
+            collateral_amount: OBLIGATION_COLLATERAL,
+            borrowed_liquidity_wads: Decimal::from(OBLIGATION_LOAN),
+        },
     );
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
@@ -91,7 +100,7 @@ async fn test_success() {
             approve(
                 &spl_token::id(),
                 &usdc_reserve.user_liquidity_account,
-                &lending_market.authority,
+                &user_transfer_authority.pubkey(),
                 &user_accounts_owner.pubkey(),
                 &[],
                 OBLIGATION_LOAN,
@@ -100,7 +109,7 @@ async fn test_success() {
             approve(
                 &spl_token::id(),
                 &obligation.token_account,
-                &lending_market.authority,
+                &user_transfer_authority.pubkey(),
                 &user_accounts_owner.pubkey(),
                 &[],
                 OBLIGATION_COLLATERAL,
@@ -120,11 +129,15 @@ async fn test_success() {
                 obligation.token_account,
                 lending_market.keypair.pubkey(),
                 lending_market.authority,
+                user_transfer_authority.pubkey(),
             ),
         ],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    transaction.sign(
+        &[&payer, &user_accounts_owner, &user_transfer_authority],
+        recent_blockhash,
+    );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 }

@@ -1,5 +1,6 @@
 use spl_token_swap_fuzz::{
-    native_account_data::NativeAccountData, native_token::get_token_balance,
+    native_account_data::NativeAccountData,
+    native_token::{get_token_balance, transfer},
     native_token_swap::NativeTokenSwap,
 };
 
@@ -231,27 +232,24 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
         + get_token_balance(&token_swap.token_b_account);
     assert_eq!(before_total_token_b, after_total_token_b);
 
-    // final check to make sure that withdrawing everything works
-    let mut withdrawn_token_a_account = token_swap.create_token_a_account(0);
-    let mut withdrawn_token_b_account = token_swap.create_token_b_account(0);
+    // Final check to make sure that withdrawing everything works
+    //
+    // First, transfer all pool tokens to the fee account to avoid withdrawal
+    // fees and a potential crash when withdrawing just 1 pool token.
+    let mut fee_account = token_swap.pool_fee_account.clone();
     for mut pool_account in pool_accounts.values_mut() {
-        token_swap
-            .withdraw_all(
-                &mut pool_account,
-                &mut withdrawn_token_a_account,
-                &mut withdrawn_token_b_account,
-            )
-            .unwrap();
+        let pool_token_amount = get_token_balance(&pool_account);
+        if pool_token_amount > 0 {
+            transfer(&mut pool_account, &mut fee_account, pool_token_amount);
+        }
     }
     let mut pool_account = token_swap.pool_token_account.clone();
-    token_swap
-        .withdraw_all(
-            &mut pool_account,
-            &mut withdrawn_token_a_account,
-            &mut withdrawn_token_b_account,
-        )
-        .unwrap();
-    let mut fee_account = token_swap.pool_fee_account.clone();
+    let pool_token_amount = get_token_balance(&pool_account);
+    transfer(&mut pool_account, &mut fee_account, pool_token_amount);
+
+    // Withdraw everything once again
+    let mut withdrawn_token_a_account = token_swap.create_token_a_account(0);
+    let mut withdrawn_token_b_account = token_swap.create_token_b_account(0);
     token_swap
         .withdraw_all(
             &mut fee_account,

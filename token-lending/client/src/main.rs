@@ -12,7 +12,7 @@ use spl_token::{
 };
 use spl_token_lending::{
     instruction::{init_lending_market, init_reserve},
-    state::{LendingMarket, Reserve, ReserveConfig},
+    state::{LendingMarket, Reserve, ReserveConfig, ReserveFees},
 };
 use std::str::FromStr;
 
@@ -59,6 +59,10 @@ pub fn main() {
         min_borrow_rate: 0,
         optimal_borrow_rate: 4,
         max_borrow_rate: 30,
+        fees: ReserveFees {
+            borrow_fee_wad: 100_000_000_000_000, // 1 bp
+            host_fee_percentage: 20,
+        },
     };
 
     let (usdc_reserve_pubkey, _usdc_reserve) = create_reserve(
@@ -81,6 +85,10 @@ pub fn main() {
         min_borrow_rate: 0,
         optimal_borrow_rate: 2,
         max_borrow_rate: 15,
+        fees: ReserveFees {
+            borrow_fee_wad: 1_000_000_000_000, // 0.01 bp
+            host_fee_percentage: 20,
+        },
     };
 
     let (sol_reserve_pubkey, _sol_reserve) = create_reserve(
@@ -103,6 +111,10 @@ pub fn main() {
         min_borrow_rate: 0,
         optimal_borrow_rate: 2,
         max_borrow_rate: 15,
+        fees: ReserveFees {
+            borrow_fee_wad: 10_000_000_000_000, // 0.1 bp
+            host_fee_percentage: 25,
+        },
     };
 
     let (srm_reserve_pubkey, _srm_reserve) = create_reserve(
@@ -163,11 +175,10 @@ pub fn create_reserve(
     let reserve_pubkey = reserve_keypair.pubkey();
     let collateral_mint_keypair = Keypair::new();
     let collateral_supply_keypair = Keypair::new();
+    let collateral_fees_receiver_keypair = Keypair::new();
     let liquidity_supply_keypair = Keypair::new();
     let user_collateral_token_keypair = Keypair::new();
-
-    let (authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_keypair.pubkey().to_bytes()[..32]], &id());
+    let user_transfer_authority = Keypair::new();
 
     let liquidity_source_account = client.get_account(&liquidity_source_pubkey).unwrap();
     let liquidity_source_token = Token::unpack(&liquidity_source_account.data).unwrap();
@@ -192,6 +203,13 @@ pub fn create_reserve(
             create_account(
                 &payer.pubkey(),
                 &collateral_supply_keypair.pubkey(),
+                token_balance,
+                Token::LEN as u64,
+                &spl_token::id(),
+            ),
+            create_account(
+                &payer.pubkey(),
+                &collateral_fees_receiver_keypair.pubkey(),
                 token_balance,
                 Token::LEN as u64,
                 &spl_token::id(),
@@ -242,7 +260,7 @@ pub fn create_reserve(
             approve(
                 &spl_token::id(),
                 &liquidity_source_pubkey,
-                &authority_pubkey,
+                &user_transfer_authority.pubkey(),
                 &payer.pubkey(),
                 &[],
                 liquidity_source_token.amount,
@@ -259,14 +277,19 @@ pub fn create_reserve(
                 liquidity_supply_keypair.pubkey(),
                 collateral_mint_keypair.pubkey(),
                 collateral_supply_keypair.pubkey(),
+                collateral_fees_receiver_keypair.pubkey(),
                 lending_market_keypair.pubkey(),
+                user_transfer_authority.pubkey(),
                 dex_market_pubkey,
             ),
         ],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(&vec![payer, &lending_market_keypair], recent_blockhash);
+    transaction.sign(
+        &vec![payer, &lending_market_keypair, &user_transfer_authority],
+        recent_blockhash,
+    );
 
     client.send_and_confirm_transaction(&transaction).unwrap();
 

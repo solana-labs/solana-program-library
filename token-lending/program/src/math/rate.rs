@@ -5,6 +5,7 @@
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(clippy::manual_range_contains)]
 
+use crate::math::common::*;
 use std::fmt;
 use uint::construct_uint;
 
@@ -16,15 +17,6 @@ construct_uint! {
 /// Small decimal value precise to 18 digits
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Rate(pub U128);
-
-/// Scale of precision
-pub const SCALE: usize = 18;
-/// Identity
-pub const WAD: u64 = 1_000_000_000_000_000_000;
-/// Half of identity
-pub const HALF_WAD: u64 = 500_000_000_000_000_000;
-/// Scale for percentages
-pub const PERCENT_SCALER: u64 = 10_000_000_000_000_000;
 
 impl Rate {
     /// One

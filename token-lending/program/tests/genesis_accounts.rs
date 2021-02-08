@@ -2,10 +2,12 @@
 
 mod helpers;
 
-use helpers::genesis::GenesisAccounts;
 use helpers::*;
 use solana_sdk::signature::Keypair;
-use spl_token_lending::{instruction::BorrowAmountType, state::INITIAL_COLLATERAL_RATE};
+use spl_token_lending::{
+    instruction::BorrowAmountType,
+    state::{INITIAL_COLLATERAL_RATE, PROGRAM_VERSION},
+};
 
 #[tokio::test]
 async fn test_success() {
@@ -82,7 +84,6 @@ async fn test_success() {
             liquidity_amount: INITIAL_SRM_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_decimals: srm_mint.decimals,
             liquidity_mint_pubkey: srm_mint.pubkey,
-            user_liquidity_amount: USER_SOL_DEPOSIT_LAMPORTS,
             config: TEST_RESERVE_CONFIG,
             ..AddReserveArgs::default()
         },
@@ -92,7 +93,7 @@ async fn test_success() {
 
     // Verify lending market
     let lending_market_info = lending_market.get_state(&mut banks_client).await;
-    assert_eq!(lending_market_info.is_initialized, true);
+    assert_eq!(lending_market_info.version, PROGRAM_VERSION);
     assert_eq!(lending_market_info.quote_token_mint, usdc_mint.pubkey);
 
     // Verify reserves
@@ -250,27 +251,31 @@ async fn test_success() {
         )
         .await;
 
-    let mut genesis_accounts = GenesisAccounts::default();
-    lending_market
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-    sol_reserve
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-    srm_reserve
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-    usdc_reserve
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-    sol_usdc_dex_market
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-    srm_usdc_dex_market
-        .add_to_genesis(&mut banks_client, &mut genesis_accounts)
-        .await;
-
     // Only dump the accounts if the feature is specified
     #[cfg(feature = "test-dump-genesis-accounts")]
-    genesis_accounts.write_yaml();
+    {
+        use helpers::genesis::GenesisAccounts;
+        let mut genesis_accounts = GenesisAccounts::default();
+        lending_market
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        sol_reserve
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        srm_reserve
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        usdc_reserve
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        sol_usdc_dex_market
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        srm_usdc_dex_market
+            .add_to_genesis(&mut banks_client, &mut genesis_accounts)
+            .await;
+        genesis_accounts
+            .insert_upgradeable_program(spl_token_lending::id(), "spl_token_lending.so");
+        genesis_accounts.write_yaml();
+    }
 }
