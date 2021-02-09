@@ -9,7 +9,7 @@ use {
 };
 
 #[tokio::test]
-async fn test_precise_sqrt() {
+async fn test_precise_sqrt_u64_max() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
     // This is way too big!  It's possible to dial down the numbers to get to
@@ -22,6 +22,37 @@ async fn test_precise_sqrt() {
         &[instruction::precise_sqrt(u64::MAX)],
         Some(&payer.pubkey()),
     );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_precise_sqrt_u32_max() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_bpf_compute_max_units(170_000);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::precise_sqrt(u32::MAX as u64)],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_sqrt() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    // Dial down the BPF compute budget to detect if the program gets bloated in the future
+    pc.set_bpf_compute_max_units(10_000);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction =
+        Transaction::new_with_payer(&[instruction::sqrt(u64::MAX)], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }

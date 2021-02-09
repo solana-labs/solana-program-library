@@ -1,7 +1,9 @@
-//! Precise calculations using unsigned integers
+//! Math operations using unsigned integers
+
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
+pub mod approximations;
 mod entrypoint;
 pub mod error;
 pub mod instruction;

@@ -1,7 +1,7 @@
 //! Program state processor
 
 use {
-    crate::{instruction::MathInstruction, precise_number::PreciseNumber},
+    crate::{approximations::sqrt, instruction::MathInstruction, precise_number::PreciseNumber},
     borsh::BorshDeserialize,
     solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey},
 };
@@ -18,6 +18,12 @@ pub fn process_instruction(
             msg!("Calculating square root using PreciseNumber");
             let radicand = PreciseNumber::new(radicand as u128).unwrap();
             let result = radicand.sqrt().unwrap().to_imprecise().unwrap() as u64;
+            msg!("{}", result);
+            Ok(())
+        }
+        MathInstruction::SquareRoot { radicand } => {
+            msg!("Calculating square root");
+            let result = sqrt(radicand).unwrap();
             msg!("{}", result);
             Ok(())
         }

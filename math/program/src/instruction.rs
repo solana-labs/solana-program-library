@@ -1,4 +1,4 @@
-//! Program instructions
+//! Program instructions, used for end-to-end testing and instruction counts
 
 use {
     crate::id,
@@ -18,6 +18,14 @@ pub enum MathInstruction {
         /// calculated
         radicand: u64,
     },
+    /// Calculate the integer square root of the given u64
+    ///
+    /// No accounts required for this instruction
+    SquareRoot {
+        /// Number underneath the square root sign, whose square root will be
+        /// calculated
+        radicand: u64,
+    },
 }
 
 /// Create PreciseSquareRoot instruction
@@ -26,6 +34,17 @@ pub fn precise_sqrt(radicand: u64) -> Instruction {
         program_id: id(),
         accounts: vec![],
         data: MathInstruction::PreciseSquareRoot { radicand }
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Create SquareRoot instruction
+pub fn sqrt(radicand: u64) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::SquareRoot { radicand }
             .try_to_vec()
             .unwrap(),
     }
