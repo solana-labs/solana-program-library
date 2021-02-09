@@ -5,35 +5,6 @@ use crate::uint::U256;
 // Allows for easy swapping between different internal representations
 type InnerUint = U256;
 
-impl InnerUint {
-    /// Returns selt to the power of b
-    pub fn checked_u8_power(&self, b: u8) -> Option<InnerUint> {
-        let mut result = *self;
-        for _ in 1..b {
-            result = result.checked_mul(*self)?;
-        }
-        Some(result)
-    }
-
-    /// Returns self multiplied by b
-    pub fn checked_u8_mul(&self, b: u8) -> Option<InnerUint> {
-        let mut result = *self;
-        for _ in 1..b {
-            result = result.checked_add(*self)?;
-        }
-        Some(result)
-    }
-
-    /// Returns true of values differ not more than by 1
-    pub fn almost_equal(&self, b: &InnerUint) -> Option<bool> {
-        if self > b {
-            Some(self.checked_sub(*b)? <= InnerUint::one())
-        } else {
-            Some(b.checked_sub(*self)? <= InnerUint::one())
-        }
-    }
-}
-
 /// The representation of the number one as a precise number as 10^12
 pub const ONE: u128 = 1_000_000_000_000;
 

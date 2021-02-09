@@ -46,10 +46,8 @@ mod tests {
 
     fn check_square_root(radicand: u64) {
         let root = sqrt(radicand).unwrap() as u128;
-        let check = root.checked_pow(2).unwrap();
         let lower_bound = root.saturating_sub(1).checked_pow(2).unwrap();
         let upper_bound = root.checked_add(1).unwrap().checked_pow(2).unwrap();
-        println!("radicand {} root {} check {}", radicand, root, check);
         assert!(radicand as u128 <= upper_bound);
         assert!(radicand as u128 >= lower_bound);
     }
