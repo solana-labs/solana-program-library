@@ -36,3 +36,5 @@ updates:
   labels:
     - "automerge"
   open-pull-requests-limit: 3
+  ignore:
+    - dependency-name: "cbindgen"
