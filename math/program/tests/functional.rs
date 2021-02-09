@@ -1,0 +1,27 @@
+// Mark this test as BPF-only due to current `ProgramTest` limitations when CPIing into the system program
+#![cfg(feature = "test-bpf")]
+
+use {
+    solana_program::pubkey::Pubkey,
+    solana_program_test::{processor, ProgramTest},
+    solana_sdk::{signature::Signer, transaction::Transaction},
+    spl_math::{id, instruction, processor::process_instruction},
+};
+
+#[tokio::test]
+async fn test_precise_sqrt() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    // This is way too big!  It's possible to dial down the numbers to get to
+    // something reasonable, but the better option is to do everything in u64
+    pc.set_bpf_compute_max_units(350_000);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::precise_sqrt(u64::MAX)],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
