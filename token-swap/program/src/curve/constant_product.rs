@@ -1,17 +1,19 @@
 //! The Uniswap invariant calculator.
 
-use solana_program::{
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
-};
-
-use crate::{
-    curve::calculator::{
-        map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
-        TradeDirection, TradingTokenResult,
+use {
+    solana_program::{
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack, Sealed},
     },
-    curve::math::{CheckedCeilDiv, PreciseNumber},
-    error::SwapError,
+    crate::{
+        curve::calculator::{
+            map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
+            TradeDirection, TradingTokenResult,
+        },
+        curve::math::CheckedCeilDiv,
+        error::SwapError,
+    },
+    spl_math::precise_number::PreciseNumber,
 };
 
 /// ConstantProductCurve struct implementing CurveCalculator

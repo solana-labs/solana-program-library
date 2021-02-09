@@ -1,6 +1,6 @@
 //! The curve.fi invariant calculator.
 
-use crate::{curve::math::U256, error::SwapError};
+use crate::error::SwapError;
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
@@ -14,8 +14,8 @@ use crate::curve::{
     constant_product::{
         normalized_value, pool_tokens_to_trading_tokens, trading_tokens_to_pool_tokens,
     },
-    math::PreciseNumber,
 };
+use spl_math::{uint::U256, precise_number::PreciseNumber};
 use arrayref::{array_mut_ref, array_ref};
 use std::convert::TryFrom;
 
