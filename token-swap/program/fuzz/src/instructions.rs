@@ -10,7 +10,6 @@ use spl_token_swap::{
         calculator::CurveCalculator,
         constant_product::ConstantProductCurve,
         fees::Fees,
-        math::PreciseNumber,
     },
     error::SwapError,
     instruction::{
@@ -19,6 +18,7 @@ use spl_token_swap::{
     },
 };
 
+use spl_math::precise_number::PreciseNumber;
 use spl_token::error::TokenError;
 
 use honggfuzz::fuzz;

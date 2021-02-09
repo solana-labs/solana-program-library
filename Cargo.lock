@@ -3947,6 +3947,7 @@ dependencies = [
  "arbitrary",
  "honggfuzz",
  "solana-program",
+ "spl-math",
  "spl-token 3.0.1",
  "spl-token-swap",
 ]
