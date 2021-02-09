@@ -15,8 +15,8 @@ use crate::curve::{
         normalized_value, pool_tokens_to_trading_tokens, trading_tokens_to_pool_tokens,
     },
 };
-use spl_math::{uint::U256, precise_number::PreciseNumber};
 use arrayref::{array_mut_ref, array_ref};
+use spl_math::{precise_number::PreciseNumber, uint::U256};
 use std::convert::TryFrom;
 
 const N_COINS: u8 = 2;

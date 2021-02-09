@@ -8,17 +8,18 @@ use {
                 TradingTokenResult,
             },
             constant_product::{
-                normalized_value, pool_tokens_to_trading_tokens, swap, trading_tokens_to_pool_tokens,
+                normalized_value, pool_tokens_to_trading_tokens, swap,
+                trading_tokens_to_pool_tokens,
             },
         },
         error::SwapError,
     },
+    arrayref::{array_mut_ref, array_ref},
     solana_program::{
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack, Sealed},
     },
     spl_math::precise_number::PreciseNumber,
-    arrayref::{array_mut_ref, array_ref},
 };
 
 /// Offset curve, uses ConstantProduct under the hood, but adds an offset to
