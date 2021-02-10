@@ -8,6 +8,7 @@ use solana_program::{
 };
 
 
+/// Uninitialized version value, all instances are at least version 1
 pub const UNINITIALIZED_VERSION: u8 = 0;
 
 /// Program states.
@@ -43,5 +44,16 @@ impl Sealed for Pool {}
 impl IsInitialized for Pool {
     fn is_initialized(&self) -> bool {
         self.version != UNINITIALIZED_VERSION
+    }
+}
+
+impl Pack for Pool {
+    const LEN: usize = 1;
+
+    fn pack_into_slice(&self, _output: &mut [u8]) {
+        unimplemented!();
+    }
+    fn unpack_from_slice(_input: &[u8]) -> Result<Self, ProgramError> {
+        unimplemented!();
     }
 }
