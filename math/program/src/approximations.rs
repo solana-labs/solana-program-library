@@ -20,7 +20,9 @@ pub fn sqrt<T: CheckedAdd + CheckedDiv + One + Zero + Eq + Copy>(radicand: T) ->
     let mut last_guess = guess;
     for _ in 0..SQRT_ITERATIONS {
         // x_k+1 = (x_k + radicand / x_k) / 2
-        guess = last_guess.checked_add(&radicand.checked_div(&last_guess)?)?.checked_div(&two)?;
+        guess = last_guess
+            .checked_add(&radicand.checked_div(&last_guess)?)?
+            .checked_div(&two)?;
         if last_guess == guess {
             break;
         } else {
@@ -32,10 +34,7 @@ pub fn sqrt<T: CheckedAdd + CheckedDiv + One + Zero + Eq + Copy>(radicand: T) ->
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        proptest::prelude::*,
-    };
+    use {super::*, proptest::prelude::*};
 
     fn check_square_root(radicand: u128) {
         let root = sqrt(radicand).unwrap();
