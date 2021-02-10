@@ -66,8 +66,10 @@ async fn test_sqrt_u128() {
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
-    let mut transaction =
-        Transaction::new_with_payer(&[instruction::sqrt_u128(u64::MAX as u128)], Some(&payer.pubkey()));
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::sqrt_u128(u64::MAX as u128)],
+        Some(&payer.pubkey()),
+    );
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }
