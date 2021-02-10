@@ -8,7 +8,7 @@ members = [
   "examples/rust/transfer-lamports",
   "feature-proposal/program",
   "feature-proposal/cli",
-  "math/program",
+  "libraries/math",
   "memo/program",
   "shared-memory/program",
   "stake-pool/cli",
