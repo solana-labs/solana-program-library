@@ -3722,6 +3722,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-math"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "borsh-derive",
+ "num-derive",
+ "num-traits",
+ "proptest",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "thiserror",
+ "tokio 0.3.6",
+ "uint",
+]
+
+[[package]]
 name = "spl-memo"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3901,9 +3918,9 @@ dependencies = [
  "sim",
  "solana-program",
  "solana-sdk",
+ "spl-math",
  "spl-token 3.0.1",
  "thiserror",
- "uint",
 ]
 
 [[package]]
@@ -3913,6 +3930,7 @@ dependencies = [
  "arbitrary",
  "honggfuzz",
  "solana-program",
+ "spl-math",
  "spl-token 3.0.1",
  "spl-token-swap",
 ]

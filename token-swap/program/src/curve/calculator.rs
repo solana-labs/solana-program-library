@@ -1,7 +1,6 @@
 //! Swap calculations
 
-use crate::{curve::math::PreciseNumber, error::SwapError};
-use std::fmt::Debug;
+use {crate::error::SwapError, spl_math::precise_number::PreciseNumber, std::fmt::Debug};
 
 /// Initial amount of pool tokens for swap contract, hard-coded to something
 /// "sensible" given a maximum of u128.
@@ -174,8 +173,8 @@ pub trait CurveCalculator: Debug + DynPack {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::curve::math::U256;
     use proptest::prelude::*;
+    use spl_math::uint::U256;
 
     /// The epsilon for most curves when performing the conversion test,
     /// comparing a one-sided deposit to a swap + deposit.

@@ -1,22 +1,25 @@
 //! The Uniswap invariant calculator with an extra offset
 
-use crate::{
-    curve::{
-        calculator::{
-            CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
-            TradingTokenResult,
+use {
+    crate::{
+        curve::{
+            calculator::{
+                CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
+                TradingTokenResult,
+            },
+            constant_product::{
+                normalized_value, pool_tokens_to_trading_tokens, swap,
+                trading_tokens_to_pool_tokens,
+            },
         },
-        constant_product::{
-            normalized_value, pool_tokens_to_trading_tokens, swap, trading_tokens_to_pool_tokens,
-        },
-        math::PreciseNumber,
+        error::SwapError,
     },
-    error::SwapError,
-};
-use arrayref::{array_mut_ref, array_ref};
-use solana_program::{
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
+    arrayref::{array_mut_ref, array_ref},
+    solana_program::{
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack, Sealed},
+    },
+    spl_math::precise_number::PreciseNumber,
 };
 
 /// Offset curve, uses ConstantProduct under the hood, but adds an offset to

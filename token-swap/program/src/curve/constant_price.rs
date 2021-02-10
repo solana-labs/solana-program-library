@@ -5,7 +5,7 @@ use crate::{
         map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
         TradeDirection, TradingTokenResult,
     },
-    curve::math::{CheckedCeilDiv, PreciseNumber, U256},
+    curve::math::CheckedCeilDiv,
     error::SwapError,
 };
 use arrayref::{array_mut_ref, array_ref};
@@ -13,6 +13,7 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
 };
+use spl_math::{precise_number::PreciseNumber, uint::U256};
 
 /// ConstantPriceCurve struct implementing CurveCalculator
 #[derive(Clone, Debug, Default, PartialEq)]
