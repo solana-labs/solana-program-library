@@ -68,8 +68,9 @@ pub enum StakePoolInstruction {
     ///   6. `[w]` User account to receive pool tokens
     ///   7. `[w]` Pool token mint account
     ///   8. `[]` Clock sysvar (required)
-    ///   9. `[]` Pool token program id,
-    ///  10. `[]` Stake program id,
+    ///   9. '[]' Sysvar stake history account
+    ///  10. `[]` Pool token program id,
+    ///  11. `[]` Stake program id,
     AddValidatorStakeAccount,
 
     ///   Removes validator stake account from the pool
@@ -324,6 +325,7 @@ pub fn add_validator_stake_account(
         AccountMeta::new(*pool_tokens_to, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(*stake_program_id, false),
     ];

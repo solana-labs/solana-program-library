@@ -1419,7 +1419,7 @@ fn main() {
         ("withdraw", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
             let burn_from: Pubkey = pubkey_of(arg_matches, "burn_from").unwrap();
-            // convert pool tokens
+            // convert from float to int, using sol_to_lamports because they have the same precision as SOL
             let amount: u64 = sol_to_lamports(value_t_or_exit!(arg_matches, "amount", f64));
             let stake_receiver: Option<Pubkey> = pubkey_of(arg_matches, "stake_receiver");
             command_withdraw(&config, &pool_account, amount, &burn_from, &stake_receiver)
