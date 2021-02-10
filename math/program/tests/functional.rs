@@ -46,8 +46,8 @@ async fn test_precise_sqrt_u32_max() {
 async fn test_sqrt() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    // Dial down the BPF compute budget to detect if the program gets bloated in the future
-    pc.set_bpf_compute_max_units(10_000);
+    // Dial down the BPF compute budget to detect if the operation gets bloated in the future
+    pc.set_bpf_compute_max_units(2_500);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
