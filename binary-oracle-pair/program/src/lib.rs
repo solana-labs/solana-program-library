@@ -1,3 +1,4 @@
+//! binary oracle pair
 #![deny(missing_docs)]
 
 pub mod error;
@@ -11,4 +12,5 @@ mod entrypoint;
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
 
+// Binary Oracle Pair id
 solana_program::declare_id!("11111111111111111111111111111111");

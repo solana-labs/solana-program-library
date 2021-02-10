@@ -3,16 +3,20 @@
 //use crate::{
 //    error::PoolError,
 //};
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
+//use num_derive::{FromPrimitive, ToPrimitive};
+//use num_traits::{FromPrimitive, ToPrimitive};
 use solana_program::{
     //instruction::{AccountMeta},
-    //program_error::ProgramError,
+    program_error::ProgramError,
+    program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
+    clock::Slot,
     //sysvar,
 };
+
 //use std::{convert::TryInto, mem::size_of};
 
+/// Instruction definition
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {
 
@@ -74,4 +78,22 @@ pub enum Instruction {
     ///   1. `[signer]` decider pubkey
     ///   2. '[]` Sysvar Clock
     Decide(bool),
+}
+
+impl Sealed for Instruction {}
+impl IsInitialized for Instruction {
+    fn is_initialized(&self) -> bool {
+        unimplemented!();
+    }
+}
+
+impl Pack for Instruction {
+    const LEN: usize = 1;
+
+    fn pack_into_slice(&self, _output: &mut [u8]) {
+        unimplemented!();
+    }
+    fn unpack_from_slice(_input: &[u8]) -> Result<Self, ProgramError> {
+        unimplemented!();
+    }
 }
