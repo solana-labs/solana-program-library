@@ -401,6 +401,7 @@ async fn test_not_owner_try_to_add_validator_stake_account_without_signature() {
         AccountMeta::new(user_pool_account.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(stake::id(), false),
     ];
