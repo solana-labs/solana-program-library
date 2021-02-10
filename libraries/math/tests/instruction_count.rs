@@ -43,7 +43,7 @@ async fn test_precise_sqrt_u32_max() {
 }
 
 #[tokio::test]
-async fn test_sqrt() {
+async fn test_sqrt_u64() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
     // Dial down the BPF compute budget to detect if the operation gets bloated in the future
@@ -52,7 +52,37 @@ async fn test_sqrt() {
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction =
-        Transaction::new_with_payer(&[instruction::sqrt(u64::MAX)], Some(&payer.pubkey()));
+        Transaction::new_with_payer(&[instruction::sqrt_u64(u64::MAX)], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_sqrt_u128() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    // Dial down the BPF compute budget to detect if the operation gets bloated in the future
+    pc.set_bpf_compute_max_units(5_500);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction =
+        Transaction::new_with_payer(&[instruction::sqrt_u128(u64::MAX as u128)], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_sqrt_u128_max() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    // This is pretty big too!
+    pc.set_bpf_compute_max_units(90_000);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction =
+        Transaction::new_with_payer(&[instruction::sqrt_u128(u128::MAX)], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }

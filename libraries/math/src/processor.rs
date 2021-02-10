@@ -21,8 +21,14 @@ pub fn process_instruction(
             msg!("{}", result);
             Ok(())
         }
-        MathInstruction::SquareRoot { radicand } => {
-            msg!("Calculating square root");
+        MathInstruction::SquareRootU64 { radicand } => {
+            msg!("Calculating u64 square root");
+            let result = sqrt(radicand).unwrap();
+            msg!("{}", result);
+            Ok(())
+        }
+        MathInstruction::SquareRootU128 { radicand } => {
+            msg!("Calculating u128 square root");
             let result = sqrt(radicand).unwrap();
             msg!("{}", result);
             Ok(())

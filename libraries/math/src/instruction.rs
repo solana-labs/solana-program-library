@@ -21,10 +21,18 @@ pub enum MathInstruction {
     /// Calculate the integer square root of the given u64
     ///
     /// No accounts required for this instruction
-    SquareRoot {
+    SquareRootU64 {
         /// Number underneath the square root sign, whose square root will be
         /// calculated
         radicand: u64,
+    },
+    /// Calculate the integer square root of the given u128
+    ///
+    /// No accounts required for this instruction
+    SquareRootU128 {
+        /// Number underneath the square root sign, whose square root will be
+        /// calculated
+        radicand: u128,
     },
 }
 
@@ -40,11 +48,22 @@ pub fn precise_sqrt(radicand: u64) -> Instruction {
 }
 
 /// Create SquareRoot instruction
-pub fn sqrt(radicand: u64) -> Instruction {
+pub fn sqrt_u64(radicand: u64) -> Instruction {
     Instruction {
         program_id: id(),
         accounts: vec![],
-        data: MathInstruction::SquareRoot { radicand }
+        data: MathInstruction::SquareRootU64 { radicand }
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Create SquareRoot instruction
+pub fn sqrt_u128(radicand: u128) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::SquareRootU128 { radicand }
             .try_to_vec()
             .unwrap(),
     }
