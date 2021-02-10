@@ -35,11 +35,13 @@ pub enum StakePoolInstruction {
     ///   Initializes a new StakePool.
     ///
     ///   0. `[w]` New StakePool to create.
-    ///   1. `[]` Owner
+    ///   1. `[s]` Owner
     ///   2. `[w]` Uninitialized validator stake list storage account
     ///   3. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
     ///   4. `[]` Pool Account to deposit the generated fee for owner.
-    ///   5. `[]` Token program id
+    ///   5. `[]` Clock sysvar
+    ///   6. `[]` Rent sysvar
+    ///   7. `[]` Token program id
     Initialize(InitArgs),
 
     ///   Creates new program account for accumulating stakes for a particular validator
@@ -66,8 +68,9 @@ pub enum StakePoolInstruction {
     ///   6. `[w]` User account to receive pool tokens
     ///   7. `[w]` Pool token mint account
     ///   8. `[]` Clock sysvar (required)
-    ///   9. `[]` Pool token program id,
-    ///  10. `[]` Stake program id,
+    ///   9. '[]' Sysvar stake history account
+    ///  10. `[]` Pool token program id,
+    ///  11. `[]` Stake program id,
     AddValidatorStakeAccount,
 
     ///   Removes validator stake account from the pool
@@ -253,11 +256,12 @@ pub fn initialize(
     let data = init_data.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, true),
-        AccountMeta::new_readonly(*owner, false),
+        AccountMeta::new_readonly(*owner, true),
         AccountMeta::new(*validator_stake_list, false),
         AccountMeta::new_readonly(*pool_mint, false),
         AccountMeta::new_readonly(*owner_pool_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {
@@ -321,6 +325,7 @@ pub fn add_validator_stake_account(
         AccountMeta::new(*pool_tokens_to, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(*stake_program_id, false),
     ];

@@ -4,7 +4,7 @@ use crate::{
     error::StakePoolError,
     instruction::{InitArgs, StakePoolInstruction},
     stake,
-    state::{StakePool, State, ValidatorStakeInfo, ValidatorStakeList},
+    state::{StakePool, ValidatorStakeInfo, ValidatorStakeList},
     PROGRAM_VERSION,
 };
 use bincode::deserialize;
@@ -22,9 +22,11 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
     rent::Rent,
+    stake_history::StakeHistory,
     system_instruction,
     sysvar::Sysvar,
 };
+use spl_token::state::Mint;
 
 /// Program state handler.
 pub struct Processor {}
@@ -293,26 +295,58 @@ impl Processor {
         // Clock sysvar account
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
+        // Rent sysvar account
+        let rent_info = next_account_info(account_info_iter)?;
+        let rent = &Rent::from_account_info(rent_info)?;
         // Token program ID
         let token_program_info = next_account_info(account_info_iter)?;
 
+        // Check if transaction was signed by owner
+        if !owner_info.is_signer {
+            return Err(StakePoolError::SignatureMissing.into());
+        }
+
+        let mut stake_pool = StakePool::deserialize(&stake_pool_info.data.borrow())?;
         // Stake pool account should not be already initialized
-        if State::Unallocated != State::deserialize(&stake_pool_info.data.borrow())? {
+        if stake_pool.is_initialized() {
             return Err(StakePoolError::AlreadyInUse.into());
         }
 
         // Check if validator stake list storage is unitialized
         let mut validator_stake_list =
             ValidatorStakeList::deserialize(&validator_stake_list_info.data.borrow())?;
-        if validator_stake_list.is_initialized {
+        if validator_stake_list.is_initialized() {
             return Err(StakePoolError::AlreadyInUse.into());
         }
-        validator_stake_list.is_initialized = true;
+        validator_stake_list.version = ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION;
         validator_stake_list.validators.clear();
+
+        // Check if stake pool account is rent-exempt
+        if !rent.is_exempt(stake_pool_info.lamports(), stake_pool_info.data_len()) {
+            return Err(StakePoolError::AccountNotRentExempt.into());
+        }
+
+        // Check if validator stake list account is rent-exempt
+        if !rent.is_exempt(
+            validator_stake_list_info.lamports(),
+            validator_stake_list_info.data_len(),
+        ) {
+            return Err(StakePoolError::AccountNotRentExempt.into());
+        }
 
         // Numerator should be smaller than or equal to denominator (fee <= 1)
         if init.fee.numerator > init.fee.denominator {
             return Err(StakePoolError::FeeTooHigh.into());
+        }
+
+        // Check if fee account's owner the same as token program id
+        if owner_fee_info.owner != token_program_info.key {
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
+
+        // Check pool mint program ID
+        if pool_mint_info.owner != token_program_info.key {
+            return Err(ProgramError::IncorrectProgramId);
         }
 
         // Check for owner fee account to have proper mint assigned
@@ -322,41 +356,39 @@ impl Processor {
             return Err(StakePoolError::WrongAccountMint.into());
         }
 
-        // Check pool mint program ID
-        if pool_mint_info.owner != token_program_info.key {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
         let (_, deposit_bump_seed) = Self::find_authority_bump_seed(
             program_id,
             stake_pool_info.key,
             Self::AUTHORITY_DEPOSIT,
         );
-        let (_, withdraw_bump_seed) = Self::find_authority_bump_seed(
+        let (withdraw_authority_key, withdraw_bump_seed) = Self::find_authority_bump_seed(
             program_id,
             stake_pool_info.key,
             Self::AUTHORITY_WITHDRAW,
         );
+
+        let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
+
+        if !pool_mint.mint_authority.contains(&withdraw_authority_key) {
+            return Err(StakePoolError::WrongMintingAuthority.into());
+        }
 
         validator_stake_list.serialize(&mut validator_stake_list_info.data.borrow_mut())?;
 
         msg!("Clock data: {:?}", clock_info.data.borrow());
         msg!("Epoch: {}", clock.epoch);
 
-        let stake_pool = State::Init(StakePool {
-            version: PROGRAM_VERSION,
-            owner: *owner_info.key,
-            deposit_bump_seed,
-            withdraw_bump_seed,
-            validator_stake_list: *validator_stake_list_info.key,
-            pool_mint: *pool_mint_info.key,
-            owner_fee_account: *owner_fee_info.key,
-            token_program_id: *token_program_info.key,
-            stake_total: 0,
-            pool_total: 0,
-            last_update_epoch: clock.epoch,
-            fee: init.fee,
-        });
+        stake_pool.version = PROGRAM_VERSION;
+        stake_pool.owner = *owner_info.key;
+        stake_pool.deposit_bump_seed = deposit_bump_seed;
+        stake_pool.withdraw_bump_seed = withdraw_bump_seed;
+        stake_pool.validator_stake_list = *validator_stake_list_info.key;
+        stake_pool.pool_mint = *pool_mint_info.key;
+        stake_pool.owner_fee_account = *owner_fee_info.key;
+        stake_pool.token_program_id = *token_program_info.key;
+        stake_pool.last_update_epoch = clock.epoch;
+        stake_pool.fee = init.fee;
+
         stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())
     }
 
@@ -412,35 +444,20 @@ impl Processor {
 
         // Fund the associated token account with the minimum balance to be rent exempt
         let required_lamports = 1 + rent.minimum_balance(std::mem::size_of::<stake::StakeState>());
-        // Fund new account
-        invoke(
-            &system_instruction::transfer(
+
+        // Create new stake account
+        invoke_signed(
+            &system_instruction::create_account(
                 &funder_info.key,
-                stake_account_info.key,
+                &stake_account_info.key,
                 required_lamports,
-            ),
-            &[
-                funder_info.clone(),
-                stake_account_info.clone(),
-                system_program_info.clone(),
-            ],
-        )?;
-        // Allocate account space
-        invoke_signed(
-            &system_instruction::allocate(
-                stake_account_info.key,
                 std::mem::size_of::<stake::StakeState>() as u64,
+                &stake::id(),
             ),
-            &[stake_account_info.clone(), system_program_info.clone()],
+            &[funder_info.clone(), stake_account_info.clone()],
             &[&stake_account_signer_seeds],
         )?;
-        // Assign account to the stake program
-        invoke_signed(
-            &system_instruction::assign(stake_account_info.key, &stake::id()),
-            &[stake_account_info.clone(), system_program_info.clone()],
-            &[&stake_account_signer_seeds],
-        )?;
-        // Initialize stake account
+
         invoke(
             &stake::initialize(
                 &stake_account_info.key,
@@ -483,6 +500,9 @@ impl Processor {
         // Clock sysvar account
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
+        // Stake history sysvar account
+        let stake_history_info = next_account_info(account_info_iter)?;
+        let stake_history = &StakeHistory::from_account_info(stake_history_info)?;
         // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
         // Staking program id
@@ -493,8 +513,11 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        // Get stake pool stake (and check if it is iniaialized)
-        let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+        // Get stake pool stake (and check if it is initialized)
+        let mut stake_pool = StakePool::deserialize(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_initialized() {
+            return Err(StakePoolError::InvalidState.into());
+        }
 
         // Check authority accounts
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
@@ -523,7 +546,7 @@ impl Processor {
         // Read validator stake list account and check if it is valid
         let mut validator_stake_list =
             ValidatorStakeList::deserialize(&validator_stake_list_info.data.borrow())?;
-        if !validator_stake_list.is_initialized {
+        if !validator_stake_list.is_initialized() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -568,7 +591,8 @@ impl Processor {
             token_amount,
         )?;
 
-        // TODO: Check if stake is warmed up
+        // Check if stake is warmed up
+        Self::check_stake_activation(stake_account_info, clock, stake_history)?;
 
         // Add validator to the list and save
         validator_stake_list.validators.push(ValidatorStakeInfo {
@@ -582,7 +606,7 @@ impl Processor {
         stake_pool.pool_total += token_amount;
         // Only update stake total if the last state update epoch is current
         stake_pool.stake_total += stake_lamports;
-        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
+        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())?;
 
         Ok(())
     }
@@ -622,8 +646,11 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        // Get stake pool stake (and check if it is iniaialized)
-        let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+        // Get stake pool stake (and check if it is initialized)
+        let mut stake_pool = StakePool::deserialize(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_initialized() {
+            return Err(StakePoolError::InvalidState.into());
+        }
 
         // Check authority account
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
@@ -651,7 +678,7 @@ impl Processor {
         // Read validator stake list account and check if it is valid
         let mut validator_stake_list =
             ValidatorStakeList::deserialize(&validator_stake_list_info.data.borrow())?;
-        if !validator_stake_list.is_initialized {
+        if !validator_stake_list.is_initialized() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -706,7 +733,7 @@ impl Processor {
         stake_pool.pool_total -= token_amount;
         // Only update stake total if the last state update epoch is current
         stake_pool.stake_total -= stake_lamports;
-        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
+        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())?;
 
         Ok(())
     }
@@ -728,7 +755,7 @@ impl Processor {
         // Read validator stake list account and check if it is valid
         let mut validator_stake_list =
             ValidatorStakeList::deserialize(&validator_stake_list_info.data.borrow())?;
-        if !validator_stake_list.is_initialized {
+        if !validator_stake_list.is_initialized() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -779,8 +806,11 @@ impl Processor {
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
 
-        // Get stake pool stake (and check if it is iniaialized)
-        let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+        // Get stake pool stake (and check if it is initialized)
+        let mut stake_pool = StakePool::deserialize(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_initialized() {
+            return Err(StakePoolError::InvalidState.into());
+        }
 
         // Check validator stake account list storage
         if *validator_stake_list_info.key != stake_pool.validator_stake_list {
@@ -790,7 +820,7 @@ impl Processor {
         // Read validator stake list account and check if it is valid
         let validator_stake_list =
             ValidatorStakeList::deserialize(&validator_stake_list_info.data.borrow())?;
-        if !validator_stake_list.is_initialized {
+        if !validator_stake_list.is_initialized() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -804,8 +834,37 @@ impl Processor {
 
         stake_pool.stake_total = total_balance;
         stake_pool.last_update_epoch = clock.epoch;
-        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
+        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())?;
 
+        Ok(())
+    }
+
+    /// Check stake activation status
+    pub fn check_stake_activation(
+        _stake_info: &AccountInfo,
+        _clock: &Clock,
+        _stake_history: &StakeHistory,
+    ) -> ProgramResult {
+        // TODO: remove conditional compilation when time travel in tests is possible
+        //#[cfg(not(feature = "test-bpf"))]
+        // This check is commented to make tests run without special command line arguments
+        /*{
+            let stake_acc_state: stake::StakeState =
+                deserialize(&stake_info.data.borrow()).unwrap();
+            let delegation = stake_acc_state.delegation();
+            if let Some(delegation) = delegation {
+                let target_epoch = clock.epoch;
+                let history = Some(stake_history);
+                let fix_stake_deactivate = true;
+                let (effective, activating, deactivating) = delegation
+                    .stake_activating_and_deactivating(target_epoch, history, fix_stake_deactivate);
+                if activating != 0 || deactivating != 0 || effective == 0 {
+                    return Err(StakePoolError::UserStakeNotActive.into());
+                }
+            } else {
+                return Err(StakePoolError::WrongStakeState.into());
+            }
+        }*/
         Ok(())
     }
 
@@ -822,7 +881,7 @@ impl Processor {
         let withdraw_info = next_account_info(account_info_iter)?;
         // Stake account to join the pool (withdraw should be set to stake pool deposit)
         let stake_info = next_account_info(account_info_iter)?;
-        // Valdidator stake account to merge with
+        // Validator stake account to merge with
         let validator_stake_account_info = next_account_info(account_info_iter)?;
         // User account to receive pool tokens
         let dest_user_info = next_account_info(account_info_iter)?;
@@ -835,6 +894,7 @@ impl Processor {
         let clock = &Clock::from_account_info(clock_info)?;
         // Stake history sysvar account
         let stake_history_info = next_account_info(account_info_iter)?;
+        let stake_history = &StakeHistory::from_account_info(stake_history_info)?;
         // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
         // Stake program id
@@ -845,7 +905,13 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+        let mut stake_pool = StakePool::deserialize(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_initialized() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        // Check if stake is active
+        Self::check_stake_activation(stake_info, clock, stake_history)?;
 
         // Check authority accounts
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
@@ -871,7 +937,7 @@ impl Processor {
         // Read validator stake list account and check if it is valid
         let mut validator_stake_list =
             ValidatorStakeList::deserialize(&validator_stake_list_info.data.borrow())?;
-        if !validator_stake_list.is_initialized {
+        if !validator_stake_list.is_initialized() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -954,7 +1020,7 @@ impl Processor {
         )?;
         stake_pool.pool_total += pool_amount;
         stake_pool.stake_total += stake_lamports;
-        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
+        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())?;
 
         validator_list_item.balance = **validator_stake_account_info.lamports.borrow();
         validator_stake_list.serialize(&mut validator_stake_list_info.data.borrow_mut())?;
@@ -965,7 +1031,7 @@ impl Processor {
     /// Processes [Withdraw](enum.Instruction.html).
     pub fn process_withdraw(
         program_id: &Pubkey,
-        stake_amount: u64,
+        pool_amount: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -998,7 +1064,10 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+        let mut stake_pool = StakePool::deserialize(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_initialized() {
+            return Err(StakePoolError::InvalidState.into());
+        }
 
         // Check authority account
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
@@ -1020,7 +1089,7 @@ impl Processor {
         // Read validator stake list account and check if it is valid
         let mut validator_stake_list =
             ValidatorStakeList::deserialize(&validator_stake_list_info.data.borrow())?;
-        if !validator_stake_list.is_initialized {
+        if !validator_stake_list.is_initialized() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -1031,8 +1100,8 @@ impl Processor {
             .find_mut(&validator_account)
             .ok_or(StakePoolError::ValidatorNotFound)?;
 
-        let pool_amount = stake_pool
-            .calc_pool_withdraw_amount(stake_amount)
+        let stake_amount = stake_pool
+            .calc_lamports_amount(pool_amount)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         Self::stake_split(
@@ -1084,7 +1153,7 @@ impl Processor {
 
         stake_pool.pool_total -= pool_amount;
         stake_pool.stake_total -= stake_amount;
-        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
+        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())?;
 
         validator_list_item.balance = **stake_split_from.lamports.borrow();
         validator_stake_list.serialize(&mut validator_stake_list_info.data.borrow_mut())?;
@@ -1112,7 +1181,10 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        let stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+        let stake_pool = StakePool::deserialize(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_initialized() {
+            return Err(StakePoolError::InvalidState.into());
+        }
 
         // Check authority account
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
@@ -1142,7 +1214,10 @@ impl Processor {
         let new_owner_info = next_account_info(account_info_iter)?;
         let new_owner_fee_info = next_account_info(account_info_iter)?;
 
-        let mut stake_pool = State::deserialize(&stake_pool_info.data.borrow())?.stake_pool()?;
+        let mut stake_pool = StakePool::deserialize(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_initialized() {
+            return Err(StakePoolError::InvalidState.into());
+        }
 
         // Check owner validity and signature
         stake_pool.check_owner(owner_info)?;
@@ -1156,7 +1231,7 @@ impl Processor {
 
         stake_pool.owner = *new_owner_info.key;
         stake_pool.owner_fee_account = *new_owner_fee_info.key;
-        State::Init(stake_pool).serialize(&mut stake_pool_info.data.borrow_mut())?;
+        stake_pool.serialize(&mut stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
     /// Processes [Instruction](enum.Instruction.html).
@@ -1213,27 +1288,30 @@ impl PrintProgramError for StakePoolError {
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
         match self {
-            StakePoolError::AlreadyInUse => msg!("Error: AlreadyInUse"),
-            StakePoolError::InvalidProgramAddress => msg!("Error: InvalidProgramAddress"),
-            StakePoolError::InvalidState => msg!("Error: InvalidState"),
-            StakePoolError::CalculationFailure => msg!("Error: CalculationFailure"),
-            StakePoolError::FeeTooHigh => msg!("Error: FeeTooHigh"),
-            StakePoolError::WrongAccountMint => msg!("Error: WrongAccountMint"),
-            StakePoolError::NonZeroBalance => msg!("Error: NonZeroBalance"),
-            StakePoolError::WrongOwner => msg!("Error: WrongOwner"),
-            StakePoolError::SignatureMissing => msg!("Error: SignatureMissing"),
-            StakePoolError::InvalidValidatorStakeList => msg!("Error: InvalidValidatorStakeList"),
-            StakePoolError::InvalidFeeAccount => msg!("Error: InvalidFeeAccount"),
-            StakePoolError::WrongPoolMint => msg!("Error: WrongPoolMint"),
-            StakePoolError::WrongStakeState => msg!("Error: WrongStakeState"),
-            StakePoolError::ValidatorAlreadyAdded => msg!("Error: ValidatorAlreadyAdded"),
-            StakePoolError::ValidatorNotFound => msg!("Error: ValidatorNotFound"),
-            StakePoolError::InvalidStakeAccountAddress => msg!("Error: InvalidStakeAccountAddress"),
-            StakePoolError::StakeListOutOfDate => msg!("Error: StakeListOutOfDate"),
-            StakePoolError::StakeListAndPoolOutOfDate => msg!("Error: StakeListAndPoolOutOfDate"),
+            StakePoolError::AlreadyInUse => msg!("Error: The account cannot be initialized because it is already being used"),
+            StakePoolError::InvalidProgramAddress => msg!("Error: The program address provided doesn't match the value generated by the program"),
+            StakePoolError::InvalidState => msg!("Error: The stake pool state is invalid"),
+            StakePoolError::CalculationFailure => msg!("Error: The calculation failed"),
+            StakePoolError::FeeTooHigh => msg!("Error: Stake pool fee > 1"),
+            StakePoolError::WrongAccountMint => msg!("Error: Token account is associated with the wrong mint"),
+            StakePoolError::NonZeroBalance => msg!("Error: Account balance should be zero"),
+            StakePoolError::WrongOwner => msg!("Error: Wrong pool owner account"),
+            StakePoolError::SignatureMissing => msg!("Error: Required signature is missing"),
+            StakePoolError::InvalidValidatorStakeList => msg!("Error: Invalid validator stake list account"),
+            StakePoolError::InvalidFeeAccount => msg!("Error: Invalid owner fee account"),
+            StakePoolError::WrongPoolMint => msg!("Error: Specified pool mint account is wrong"),
+            StakePoolError::WrongStakeState => msg!("Error: Stake account is not in the state expected by the program"),
+            StakePoolError::UserStakeNotActive => msg!("Error: User stake is not active"),
+            StakePoolError::ValidatorAlreadyAdded => msg!("Error: Stake account voting for this validator already exists in the pool"),
+            StakePoolError::ValidatorNotFound => msg!("Error: Stake account for this validator not found in the pool"),
+            StakePoolError::InvalidStakeAccountAddress => msg!("Error: Stake account address not properly derived from the validator address"),
+            StakePoolError::StakeListOutOfDate => msg!("Error: Identify validator stake accounts with old balances and update them"),
+            StakePoolError::StakeListAndPoolOutOfDate => msg!("Error: First update old validator stake account balances and then pool stake balance"),
             StakePoolError::UnknownValidatorStakeAccount => {
-                msg!("Error: UnknownValidatorStakeAccount")
+                msg!("Error: Validator stake account is not found in the list storage")
             }
+            StakePoolError::WrongMintingAuthority => msg!("Error: Wrong minting authority set for mint pool account"),
+            StakePoolError::AccountNotRentExempt => msg!("Error: Account is not rent-exempt"),
         }
     }
 }

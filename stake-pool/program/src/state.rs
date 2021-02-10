@@ -1,7 +1,7 @@
 //! State transition types
 
 use crate::error::StakePoolError;
-use crate::instruction::{unpack, Fee};
+use crate::instruction::Fee;
 use crate::processor::Processor;
 use core::convert::TryInto;
 use solana_program::{
@@ -44,6 +44,8 @@ pub struct StakePool {
     pub fee: Fee,
 }
 impl StakePool {
+    /// Length of state data when serialized
+    pub const LEN: usize = size_of::<StakePool>();
     /// calculate the pool tokens that should be minted
     pub fn calc_pool_deposit_amount(&self, stake_lamports: u64) -> Option<u64> {
         if self.stake_total == 0 {
@@ -57,6 +59,15 @@ impl StakePool {
             (stake_lamports as u128)
                 .checked_mul(self.pool_total as u128)?
                 .checked_div(self.stake_total as u128)?,
+        )
+        .ok()
+    }
+    /// calculate lamports amount
+    pub fn calc_lamports_amount(&self, pool_tokens: u64) -> Option<u64> {
+        u64::try_from(
+            (pool_tokens as u128)
+                .checked_mul(self.stake_total as u128)?
+                .checked_div(self.pool_total as u128)?,
         )
         .ok()
     }
@@ -114,66 +125,33 @@ impl StakePool {
         }
         Ok(())
     }
-}
 
-/// Program states.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[allow(clippy::large_enum_variant)]
-pub enum State {
-    /// Unallocated state, may be initialized into another state.
-    Unallocated,
-    /// Initialized state.
-    Init(StakePool),
-}
-
-impl State {
-    /// Length of state data when serialized
-    pub const LEN: usize = size_of::<u8>() + size_of::<StakePool>();
-    /// Deserializes a byte buffer into a [State](struct.State.html).
-    /// TODO efficient unpacking here
-    pub fn deserialize(input: &[u8]) -> Result<State, ProgramError> {
-        if input.len() < size_of::<u8>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        Ok(match input[0] {
-            0 => State::Unallocated,
-            1 => {
-                // We send whole input here, because unpack skips the first byte
-                let swap: &StakePool = unpack(&input)?;
-                State::Init(*swap)
-            }
-            _ => return Err(ProgramError::InvalidAccountData),
-        })
+    /// Check if StakePool is initialized
+    pub fn is_initialized(&self) -> bool {
+        self.version > 0
     }
 
-    /// Serializes [State](struct.State.html) into a byte buffer.
-    /// TODO efficient packing here
+    /// Deserializes a byte buffer into a [StakePool](struct.StakePool.html).
+    pub fn deserialize(input: &[u8]) -> Result<StakePool, ProgramError> {
+        if input.len() < size_of::<StakePool>() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        let stake_pool: &StakePool = unsafe { &*(&input[0] as *const u8 as *const StakePool) };
+
+        Ok(*stake_pool)
+    }
+
+    /// Serializes [StakePool](struct.StakePool.html) into a byte buffer.
     pub fn serialize(&self, output: &mut [u8]) -> ProgramResult {
-        if output.len() < size_of::<u8>() {
+        if output.len() < size_of::<StakePool>() {
             return Err(ProgramError::InvalidAccountData);
         }
-        match self {
-            Self::Unallocated => output[0] = 0,
-            Self::Init(swap) => {
-                if output.len() < size_of::<u8>() + size_of::<StakePool>() {
-                    return Err(ProgramError::InvalidAccountData);
-                }
-                output[0] = 1;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut StakePool) };
-                *value = *swap;
-            }
-        }
+        #[allow(clippy::cast_ptr_alignment)]
+        let value = unsafe { &mut *(&mut output[0] as *mut u8 as *mut StakePool) };
+        *value = *self;
+
         Ok(())
-    }
-    /// Gets the `StakePool` from `State`
-    pub fn stake_pool(&self) -> Result<StakePool, ProgramError> {
-        if let State::Init(swap) = &self {
-            Ok(*swap)
-        } else {
-            Err(StakePoolError::InvalidState.into())
-        }
     }
 }
 
@@ -183,8 +161,8 @@ const MAX_VALIDATOR_STAKE_ACCOUNTS: usize = 1000;
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ValidatorStakeList {
-    /// False if not yet initialized
-    pub is_initialized: bool,
+    /// Validator stake list version
+    pub version: u8,
     /// List of all validator stake accounts and their info
     pub validators: Vec<ValidatorStakeInfo>,
 }
@@ -211,6 +189,9 @@ impl ValidatorStakeList {
     /// Header length
     pub const HEADER_LEN: usize = size_of::<u8>() + size_of::<u16>();
 
+    /// Version of validator stake list
+    pub const VALIDATOR_STAKE_LIST_VERSION: u8 = 1;
+
     /// Check if contains validator with particular pubkey
     pub fn contains(&self, validator: &Pubkey) -> bool {
         self.validators
@@ -231,6 +212,11 @@ impl ValidatorStakeList {
             .find(|x| x.validator_account == *validator)
     }
 
+    /// Check if validator stake list is initialized
+    pub fn is_initialized(&self) -> bool {
+        self.version > 0
+    }
+
     /// Deserializes a byte buffer into a ValidatorStakeList.
     pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < Self::LEN {
@@ -239,7 +225,7 @@ impl ValidatorStakeList {
 
         if input[0] == 0 {
             return Ok(ValidatorStakeList {
-                is_initialized: false,
+                version: 0,
                 validators: vec![],
             });
         }
@@ -262,7 +248,7 @@ impl ValidatorStakeList {
             to += ValidatorStakeInfo::LEN;
         }
         Ok(ValidatorStakeList {
-            is_initialized: true,
+            version: input[0],
             validators,
         })
     }
@@ -275,7 +261,7 @@ impl ValidatorStakeList {
         if self.validators.len() > MAX_VALIDATOR_STAKE_ACCOUNTS {
             return Err(ProgramError::InvalidAccountData);
         }
-        output[0] = if self.is_initialized { 1 } else { 0 };
+        output[0] = self.version;
         output[1..3].copy_from_slice(&u16::to_le_bytes(self.validators.len() as u16));
         let mut from = Self::HEADER_LEN;
         let mut to = from + ValidatorStakeInfo::LEN;
@@ -324,7 +310,7 @@ mod test {
     fn test_state_packing() {
         // Not initialized
         let stake_list = ValidatorStakeList {
-            is_initialized: false,
+            version: 0,
             validators: vec![],
         };
         let mut bytes: [u8; ValidatorStakeList::LEN] = [0; ValidatorStakeList::LEN];
@@ -334,7 +320,7 @@ mod test {
 
         // Empty
         let stake_list = ValidatorStakeList {
-            is_initialized: true,
+            version: ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
             validators: vec![],
         };
         let mut bytes: [u8; ValidatorStakeList::LEN] = [0; ValidatorStakeList::LEN];
@@ -344,7 +330,7 @@ mod test {
 
         // With several accounts
         let stake_list = ValidatorStakeList {
-            is_initialized: true,
+            version: ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
             validators: vec![
                 ValidatorStakeInfo {
                     validator_account: Pubkey::new_from_array([1; 32]),

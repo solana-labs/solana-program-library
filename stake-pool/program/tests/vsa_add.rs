@@ -24,7 +24,7 @@ async fn setup() -> (
     Keypair,
     Hash,
     StakePoolAccounts,
-    StakeAccount,
+    ValidatorStakeAccount,
     Keypair,
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
@@ -36,7 +36,7 @@ async fn setup() -> (
 
     let user = Keypair::new();
 
-    let user_stake = StakeAccount::new_with_target_authority(
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );
@@ -117,7 +117,7 @@ async fn test_add_validator_stake_account() {
     assert_eq!(
         validator_stake_list,
         state::ValidatorStakeList {
-            is_initialized: true,
+            version: state::ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
             validators: vec![state::ValidatorStakeInfo {
                 validator_account: user_stake.vote.pubkey(),
                 last_update_epoch: 0,
@@ -401,6 +401,7 @@ async fn test_not_owner_try_to_add_validator_stake_account_without_signature() {
         AccountMeta::new(user_pool_account.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(stake::id(), false),
     ];
@@ -443,12 +444,12 @@ async fn test_add_validator_stake_account_when_stake_acc_not_in_stake_state() {
 
     let user = Keypair::new();
 
-    let user_stake = StakeAccount::new_with_target_authority(
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );
     let user_stake_authority = Keypair::new();
-    create_stake_account(
+    create_validator_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,

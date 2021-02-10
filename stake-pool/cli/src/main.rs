@@ -39,7 +39,6 @@ use spl_stake_pool::{
     stake::StakeAuthorize,
     stake::StakeState,
     state::StakePool,
-    state::State as PoolState,
     state::ValidatorStakeList,
 };
 use spl_token::{
@@ -148,7 +147,7 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
         .get_minimum_balance_for_rent_exemption(TokenAccount::LEN)?;
     let pool_account_balance = config
         .rpc_client
-        .get_minimum_balance_for_rent_exemption(PoolState::LEN)?;
+        .get_minimum_balance_for_rent_exemption(StakePool::LEN)?;
     let validator_stake_list_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(ValidatorStakeList::LEN)?;
@@ -193,7 +192,7 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
                 &config.fee_payer.pubkey(),
                 &pool_account.pubkey(),
                 pool_account_balance,
-                PoolState::LEN as u64,
+                StakePool::LEN as u64,
                 &spl_stake_pool::id(),
             ),
             // Validator stake account list storage
@@ -245,6 +244,7 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
         &validator_stake_list,
         &mint_account,
         &pool_fee_account,
+        config.owner.as_ref(),
     ];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
@@ -289,10 +289,7 @@ fn command_vsa_add(
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = PoolState::deserialize(pool_data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     let mut total_rent_free_balances: u64 = 0;
 
@@ -383,10 +380,7 @@ fn command_vsa_remove(
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = PoolState::deserialize(pool_data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
@@ -512,10 +506,7 @@ fn command_deposit(
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = PoolState::deserialize(pool_data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     // Get stake account data
     let stake_data = config.rpc_client.get_account_data(&stake)?;
@@ -624,10 +615,7 @@ fn command_deposit(
 fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = PoolState::deserialize(pool_data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
@@ -657,10 +645,7 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
 fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = PoolState::deserialize(pool_data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
     let validator_stake_list_data = config
         .rpc_client
         .get_account_data(&pool_data.validator_stake_list)?;
@@ -804,10 +789,7 @@ fn command_withdraw(
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = PoolState::deserialize(pool_data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
@@ -827,19 +809,21 @@ fn command_withdraw(
     }
 
     // Check burn_from balance
-    let max_withdraw_amount = pool_tokens_to_stake_amount(&pool_data, account_data.amount);
-    if max_withdraw_amount < amount {
+    if account_data.amount < amount {
         return Err(format!(
-            "Not enough token balance to withdraw {} SOL.\nMaximum withdraw amount is {} SOL.",
+            "Not enough token balance to withdraw {} pool tokens.\nMaximum withdraw amount is {} pool tokens.",
             lamports_to_sol(amount),
-            lamports_to_sol(max_withdraw_amount)
+            lamports_to_sol(account_data.amount)
         )
         .into());
     }
 
+    // Convert pool tokens amount to lamports
+    let sol_withdraw_amount = pool_tokens_to_stake_amount(&pool_data, amount);
+
     // Get the list of accounts to withdraw from
     let withdraw_from: Vec<WithdrawAccount> =
-        prepare_withdraw_accounts(config, &pool_withdraw_authority, amount)?;
+        prepare_withdraw_accounts(config, &pool_withdraw_authority, sol_withdraw_amount)?;
 
     // Construct transaction to withdraw from withdraw_from account list
     let mut instructions: Vec<Instruction> = vec![];
@@ -847,9 +831,6 @@ fn command_withdraw(
     let stake_receiver_account = Keypair::new(); // Will be added to signers if creating new account
 
     let mut total_rent_free_balances: u64 = 0;
-
-    // Calculate amount of tokens to burn
-    let tokens_to_burn = stake_amount_to_pool_tokens(&pool_data, amount);
 
     instructions.push(
         // Approve spending token
@@ -859,7 +840,7 @@ fn command_withdraw(
             &pool_withdraw_authority,
             &config.owner.pubkey(),
             &[],
-            tokens_to_burn,
+            amount,
         )?,
     );
 
@@ -940,10 +921,7 @@ fn command_set_staking_auth(
     new_staker: &Pubkey,
 ) -> CommandResult {
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = PoolState::deserialize(pool_data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
@@ -981,10 +959,7 @@ fn command_set_owner(
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = PoolState::deserialize(pool_data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     // If new accounts are missing in the arguments use the old ones
     let new_owner: Pubkey = match new_owner {
@@ -1264,7 +1239,7 @@ fn main() {
                     .value_name("AMOUNT")
                     .takes_value(true)
                     .required(true)
-                    .help("Amount in SOL to withdraw from the pool."),
+                    .help("Amount of pool tokens to burn and get rewards."),
             )
             .arg(
                 Arg::with_name("burn_from")
@@ -1444,6 +1419,7 @@ fn main() {
         ("withdraw", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
             let burn_from: Pubkey = pubkey_of(arg_matches, "burn_from").unwrap();
+            // convert from float to int, using sol_to_lamports because they have the same precision as SOL
             let amount: u64 = sol_to_lamports(value_t_or_exit!(arg_matches, "amount", f64));
             let stake_receiver: Option<Pubkey> = pubkey_of(arg_matches, "stake_receiver");
             command_withdraw(&config, &pool_account, amount, &burn_from, &stake_receiver)

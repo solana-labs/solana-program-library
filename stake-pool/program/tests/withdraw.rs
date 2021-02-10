@@ -22,9 +22,8 @@ async fn setup() -> (
     Keypair,
     Hash,
     StakePoolAccounts,
-    StakeAccount,
+    ValidatorStakeAccount,
     DepositInfo,
-    u64,
     u64,
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
@@ -34,7 +33,7 @@ async fn setup() -> (
         .await
         .unwrap();
 
-    let validator_stake_account: StakeAccount = simple_add_validator_stake_account(
+    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -52,7 +51,6 @@ async fn setup() -> (
     .await;
 
     let tokens_to_burn = deposit_info.pool_tokens / 4;
-    let lamports_to_withdraw = tokens_to_burn; // For now math is 1:1
 
     // Delegate tokens for burning
     delegate_tokens(
@@ -74,7 +72,6 @@ async fn setup() -> (
         validator_stake_account,
         deposit_info,
         tokens_to_burn,
-        lamports_to_withdraw,
     )
 }
 
@@ -88,7 +85,6 @@ async fn test_stake_pool_withdraw() {
         validator_stake_account,
         deposit_info,
         tokens_to_burn,
-        lamports_to_withdraw,
     ) = setup().await;
 
     // Create stake account to withdraw to
@@ -104,10 +100,8 @@ async fn test_stake_pool_withdraw() {
     // Save stake pool state before withdrawal
     let stake_pool_before =
         get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool_before = state::State::deserialize(&stake_pool_before.data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let stake_pool_before =
+        state::StakePool::deserialize(&stake_pool_before.data.as_slice()).unwrap();
 
     // Save validator stake account record before withdrawal
     let validator_stake_list = get_account(
@@ -135,20 +129,17 @@ async fn test_stake_pool_withdraw() {
             &deposit_info.user_pool_account,
             &validator_stake_account.stake_account,
             &new_authority,
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .await
         .unwrap();
 
     // Check pool stats
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::State::deserialize(&stake_pool.data.as_slice())
-        .unwrap()
-        .stake_pool()
-        .unwrap();
+    let stake_pool = state::StakePool::deserialize(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(
         stake_pool.stake_total,
-        stake_pool_before.stake_total - lamports_to_withdraw
+        stake_pool_before.stake_total - tokens_to_burn
     );
     assert_eq!(
         stake_pool.pool_total,
@@ -168,7 +159,7 @@ async fn test_stake_pool_withdraw() {
         .unwrap();
     assert_eq!(
         validator_stake_item.balance,
-        validator_stake_item_before.balance - lamports_to_withdraw
+        validator_stake_item_before.balance - tokens_to_burn
     );
 
     // Check tokens burned
@@ -192,7 +183,7 @@ async fn test_stake_pool_withdraw() {
         get_account(&mut banks_client, &user_stake_recipient.pubkey()).await;
     assert_eq!(
         user_stake_recipient_account.lamports,
-        initial_stake_lamports + lamports_to_withdraw
+        initial_stake_lamports + tokens_to_burn
     );
 }
 
@@ -205,8 +196,7 @@ async fn test_stake_pool_withdraw_with_wrong_stake_program() {
         stake_pool_accounts,
         validator_stake_account,
         deposit_info,
-        _,
-        lamports_to_withdraw,
+        tokens_to_burn,
     ) = setup().await;
 
     // Create stake account to withdraw to
@@ -228,7 +218,7 @@ async fn test_stake_pool_withdraw_with_wrong_stake_program() {
             &stake_pool_accounts.pool_mint.pubkey(),
             &spl_token::id(),
             &wrong_stake_program.pubkey(),
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -257,8 +247,7 @@ async fn test_stake_pool_withdraw_with_wrong_withdraw_authority() {
         mut stake_pool_accounts,
         validator_stake_account,
         deposit_info,
-        _,
-        lamports_to_withdraw,
+        tokens_to_burn,
     ) = setup().await;
 
     // Create stake account to withdraw to
@@ -276,7 +265,7 @@ async fn test_stake_pool_withdraw_with_wrong_withdraw_authority() {
             &deposit_info.user_pool_account,
             &validator_stake_account.stake_account,
             &new_authority,
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .await
         .err()
@@ -303,8 +292,7 @@ async fn test_stake_pool_withdraw_with_wrong_token_program_id() {
         stake_pool_accounts,
         validator_stake_account,
         deposit_info,
-        _,
-        lamports_to_withdraw,
+        tokens_to_burn,
     ) = setup().await;
 
     // Create stake account to withdraw to
@@ -326,7 +314,7 @@ async fn test_stake_pool_withdraw_with_wrong_token_program_id() {
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
             &stake::id(),
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -355,8 +343,7 @@ async fn test_stake_pool_withdraw_with_wrong_validator_stake_list() {
         mut stake_pool_accounts,
         validator_stake_account,
         deposit_info,
-        _,
-        lamports_to_withdraw,
+        tokens_to_burn,
     ) = setup().await;
 
     // Create stake account to withdraw to
@@ -374,7 +361,7 @@ async fn test_stake_pool_withdraw_with_wrong_validator_stake_list() {
             &deposit_info.user_pool_account,
             &validator_stake_account.stake_account,
             &new_authority,
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .await
         .err()
@@ -403,13 +390,13 @@ async fn test_stake_pool_withdraw_when_stake_acc_not_in_stake_state() {
         .await
         .unwrap();
 
-    let validator_stake_account = StakeAccount::new_with_target_authority(
+    let validator_stake_account = ValidatorStakeAccount::new_with_target_authority(
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );
 
     let user_stake_authority = Keypair::new();
-    create_stake_account(
+    create_validator_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -455,7 +442,6 @@ async fn test_stake_pool_withdraw_when_stake_acc_not_in_stake_state() {
     let pool_tokens = get_token_balance(&mut banks_client, &user_pool_account).await;
 
     let tokens_to_burn = pool_tokens / 4;
-    let lamports_to_withdraw = tokens_to_burn; // For now math is 1:1
 
     // Delegate tokens for burning
     delegate_tokens(
@@ -483,7 +469,7 @@ async fn test_stake_pool_withdraw_when_stake_acc_not_in_stake_state() {
             &user_pool_account,
             &validator_stake_account.stake_account,
             &new_authority,
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .await
         .err()
@@ -510,7 +496,7 @@ async fn test_stake_pool_withdraw_from_unknown_validator() {
         .await
         .unwrap();
 
-    let validator_stake_account = StakeAccount::new_with_target_authority(
+    let validator_stake_account = ValidatorStakeAccount::new_with_target_authority(
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );
@@ -518,7 +504,7 @@ async fn test_stake_pool_withdraw_from_unknown_validator() {
         .create_and_delegate(&mut banks_client, &payer, &recent_blockhash)
         .await;
 
-    let user_stake = StakeAccount::new_with_target_authority(
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );
@@ -573,7 +559,6 @@ async fn test_stake_pool_withdraw_from_unknown_validator() {
     let pool_tokens = get_token_balance(&mut banks_client, &user_pool_account).await;
 
     let tokens_to_burn = pool_tokens / 4;
-    let lamports_to_withdraw = tokens_to_burn; // For now math is 1:1
 
     // Delegate tokens for burning
     delegate_tokens(
@@ -601,7 +586,7 @@ async fn test_stake_pool_withdraw_from_unknown_validator() {
             &user_pool_account,
             &validator_stake_account.stake_account,
             &new_authority,
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .await
         .err()
@@ -628,8 +613,7 @@ async fn test_stake_pool_double_withdraw_to_the_same_account() {
         stake_pool_accounts,
         validator_stake_account,
         deposit_info,
-        _,
-        lamports_to_withdraw,
+        tokens_to_burn,
     ) = setup().await;
 
     // Create stake account to withdraw to
@@ -652,7 +636,7 @@ async fn test_stake_pool_double_withdraw_to_the_same_account() {
             &deposit_info.user_pool_account,
             &validator_stake_account.stake_account,
             &new_authority,
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .await
         .unwrap();
@@ -668,7 +652,7 @@ async fn test_stake_pool_double_withdraw_to_the_same_account() {
             &deposit_info.user_pool_account,
             &validator_stake_account.stake_account,
             &new_authority,
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .await
         .err()
@@ -691,7 +675,7 @@ async fn test_stake_pool_withdraw_token_delegate_was_not_setup() {
         .await
         .unwrap();
 
-    let validator_stake_account: StakeAccount = simple_add_validator_stake_account(
+    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -709,7 +693,6 @@ async fn test_stake_pool_withdraw_token_delegate_was_not_setup() {
     .await;
 
     let tokens_to_burn = deposit_info.pool_tokens / 4;
-    let lamports_to_withdraw = tokens_to_burn; // For now math is 1:1
 
     // Create stake account to withdraw to
     let user_stake_recipient = Keypair::new();
@@ -731,7 +714,7 @@ async fn test_stake_pool_withdraw_token_delegate_was_not_setup() {
             &deposit_info.user_pool_account,
             &validator_stake_account.stake_account,
             &new_authority,
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .await
         .err()
@@ -760,7 +743,7 @@ async fn test_stake_pool_withdraw_with_low_delegation() {
         .await
         .unwrap();
 
-    let validator_stake_account: StakeAccount = simple_add_validator_stake_account(
+    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -778,7 +761,6 @@ async fn test_stake_pool_withdraw_with_low_delegation() {
     .await;
 
     let tokens_to_burn = deposit_info.pool_tokens / 4;
-    let lamports_to_withdraw = tokens_to_burn; // For now math is 1:1
 
     // Delegate tokens for burning
     delegate_tokens(
@@ -812,7 +794,7 @@ async fn test_stake_pool_withdraw_with_low_delegation() {
             &deposit_info.user_pool_account,
             &validator_stake_account.stake_account,
             &new_authority,
-            lamports_to_withdraw,
+            tokens_to_burn,
         )
         .await
         .err()

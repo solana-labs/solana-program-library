@@ -24,7 +24,7 @@ async fn setup() -> (
     Keypair,
     Hash,
     StakePoolAccounts,
-    StakeAccount,
+    ValidatorStakeAccount,
     Keypair,
     Keypair,
 ) {
@@ -37,7 +37,7 @@ async fn setup() -> (
 
     let user = Keypair::new();
 
-    let user_stake = StakeAccount::new_with_target_authority(
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );
@@ -132,7 +132,7 @@ async fn test_remove_validator_stake_account() {
     assert_eq!(
         validator_stake_list,
         state::ValidatorStakeList {
-            is_initialized: true,
+            version: state::ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
             validators: vec![]
         }
     );
@@ -530,12 +530,12 @@ async fn test_remove_validator_stake_account_when_stake_acc_not_in_stake_state()
 
     let user = Keypair::new();
 
-    let user_stake = StakeAccount::new_with_target_authority(
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );
     let user_stake_authority = Keypair::new();
-    create_stake_account(
+    create_validator_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,
