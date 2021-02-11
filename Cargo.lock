@@ -3932,6 +3932,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-zol"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "borsh",
+ "curve25519-dalek 2.1.0",
+ "elgamal_ristretto 0.2.4 (git+https://github.com/garious/elgamal?rev=5537b4ca9b9c6ef868ec059bb6e97209dea966a0)",
+ "getrandom 0.1.16",
+ "num-derive",
+ "num-traits",
+ "rand 0.7.3",
+ "rand_core 0.5.1",
+ "solana-program",
+ "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
