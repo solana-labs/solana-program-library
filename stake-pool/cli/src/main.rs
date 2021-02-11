@@ -1360,7 +1360,7 @@ fn main() {
             verbose,
             owner,
             fee_payer,
-            commitment_config: CommitmentConfig::single(),
+            commitment_config: CommitmentConfig::confirmed(),
         }
     };
 
