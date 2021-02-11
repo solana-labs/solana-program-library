@@ -3848,7 +3848,7 @@ dependencies = [
  "getrandom 0.1.16",
  "num-derive",
  "num-traits",
- "rand 0.7.3",
+ "rand 0.8.2",
  "solana-program",
  "subtle 2.2.3",
  "thiserror",
