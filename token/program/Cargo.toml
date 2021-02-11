@@ -1,6 +1,6 @@
 [package]
 name = "spl-token"
-version = "3.0.1"
+version = "3.1.0"
 description = "Solana Program Library Token"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
