@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-token",
-  "version": "0.0.13",
+  "version": "0.1.0",
   "description": "SPL Token JavaScript API",
   "license": "MIT",
   "author": "Solana Maintainers <maintainers@solana.com>",
@@ -43,7 +43,7 @@
   "dependencies": {
     "@babel/runtime": "^7.10.5",
     "@solana/web3.js": "^0.91.0",
-    "bn.js": "^5.0.0",
+    "bn.js": "^5.1.0",
     "buffer-layout": "^1.2.0",
     "dotenv": "8.2.0",
     "mkdirp": "1.0.4"
@@ -58,6 +58,7 @@
     "@babel/preset-flow": "^7.10.4",
     "@rollup/plugin-babel": "^5.1.0",
     "@rollup/plugin-commonjs": "^17.0.0",
+    "@types/bn.js": "^5.1.0",
     "babel-eslint": "^10.1.0",
     "eslint": "^7.4.0",
     "eslint-plugin-import": "^2.22.0",
