@@ -13,7 +13,7 @@ import {Token, NATIVE_MINT} from '../client/token';
 import {url} from '../url';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {sleep} from '../client/util/sleep';
-import {Store} from '../client/util/store';
+import {Store} from './store';
 
 // Loaded token program's program id
 let programId: PublicKey;
