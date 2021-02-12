@@ -100,7 +100,4 @@ $ git push upstream --tags
 ### Publish to Crates.io
 
 Navigate to the program directory and run `cargo package`
-to test the build. Then run `cargo publish`. (Currently, programs with generated
-C bindings fail the final step of verification due to the location of the
-generated file. Once you are certain the crate is ready, run `cargo publish --no-verify`
-to bypass this error.)
+to test the build. Then run `cargo publish`.
