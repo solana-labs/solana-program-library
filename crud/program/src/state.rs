@@ -82,6 +82,6 @@ pub mod tests {
         expected.extend_from_slice(&TEST_PUBKEY.to_bytes());
         expected.extend_from_slice(&data);
         let err: ProgramError = AccountData::try_from_slice(&expected).unwrap_err().into();
-        assert!(matches!(err, ProgramError::SerializationError(_)));
+        assert!(matches!(err, ProgramError::IOError(_)));
     }
 }

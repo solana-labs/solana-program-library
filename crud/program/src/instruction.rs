@@ -119,7 +119,7 @@ mod tests {
         let err: ProgramError = CrudInstruction::try_from_slice(&expected)
             .unwrap_err()
             .into();
-        assert!(matches!(err, ProgramError::SerializationError(_)));
+        assert!(matches!(err, ProgramError::IOError(_)));
     }
 
     #[test]
