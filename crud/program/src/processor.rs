@@ -1,48 +1,97 @@
 //! Program state processor
 
-use crate::{instruction::CrudInstruction, state::Document};
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    msg,
-    program::{invoke, invoke_signed},
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    rent::Rent,
-    system_instruction,
-    sysvar::Sysvar,
+use {
+    crate::{
+        error::CrudError,
+        instruction::CrudInstruction,
+        state::{AccountData, Data},
+    },
+    borsh::{BorshDeserialize, BorshSerialize},
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        msg,
+        program_error::ProgramError,
+        program_pack::IsInitialized,
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
+    },
 };
 
 /// Instruction processor
 pub fn process_instruction(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    let instruction = CrudInstruction<Document>::try_from_slice(input)?;
+    let instruction = CrudInstruction::try_from_slice(input)?;
     let account_info_iter = &mut accounts.iter();
 
     match instruction {
-        CrudInstruction::Create {
-            document,
-        } => {
+        CrudInstruction::Create { data } => {
             msg!("CrudInstruction::Create");
 
             let data_info = next_account_info(account_info_iter)?;
+            let owner_info = next_account_info(account_info_iter)?;
             let rent_sysvar_info = next_account_info(account_info_iter)?;
             let rent = &Rent::from_account_info(rent_sysvar_info)?;
+
+            let mut account_data = AccountData::try_from_slice(*data_info.data.borrow())?;
+            if account_data.is_initialized() {
+                return Err(ProgramError::AccountAlreadyInitialized);
+            }
+
+            if !rent.is_exempt(data_info.lamports(), data_info.data_len()) {
+                return Err(ProgramError::AccountNotRentExempt);
+            }
+            account_data.owner = *owner_info.key;
+            account_data.data = data;
+            account_data.version = AccountData::CURRENT_VERSION;
+            account_data
+                .serialize(&mut *data_info.data.borrow_mut())
+                .map_err(|e| e.into())
         }
 
-        CrudInstruction::Update {
-            document,
-        } => {
+        CrudInstruction::Update { data } => {
             msg!("CrudInstruction::Update");
-
             let data_info = next_account_info(account_info_iter)?;
-            let existing_document = Document::try_from_slice(&data_info.data.borrow())?;
             let owner_info = next_account_info(account_info_iter)?;
+            let mut account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
+            if account_data.owner != *owner_info.key {
+                return Err(CrudError::IncorrectOwner.into());
+            }
+            if !owner_info.is_signer {
+                return Err(ProgramError::MissingRequiredSignature);
+            }
+            account_data.data = data;
+            account_data
+                .serialize(&mut *data_info.data.borrow_mut())
+                .map_err(|e| e.into())
+        }
+
+        CrudInstruction::Delete => {
+            msg!("CrudInstruction::Delete");
+            let data_info = next_account_info(account_info_iter)?;
+            let owner_info = next_account_info(account_info_iter)?;
+            let destination_info = next_account_info(account_info_iter)?;
+            let mut account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
+            if account_data.owner != *owner_info.key {
+                return Err(CrudError::IncorrectOwner.into());
+            }
+            if !owner_info.is_signer {
+                return Err(ProgramError::MissingRequiredSignature);
+            }
+            let destination_starting_lamports = destination_info.lamports();
+            let data_lamports = data_info.lamports();
+            **data_info.lamports.borrow_mut() = 0;
+            **destination_info.lamports.borrow_mut() = destination_starting_lamports
+                .checked_add(data_lamports)
+                .ok_or(CrudError::Overflow)?;
+            account_data.data = Data::default();
+            account_data
+                .serialize(&mut *data_info.data.borrow_mut())
+                .map_err(|e| e.into())
         }
     }
-
-    Ok(())
 }

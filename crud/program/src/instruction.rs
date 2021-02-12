@@ -1,12 +1,9 @@
 //! Program instructions
 
-use crate::state::Document;
+use crate::{state::Data, *};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
-    msg,
-    program_error::ProgramError,
-    program_pack::{Pack, Sealed},
     pubkey::Pubkey,
     sysvar,
 };
@@ -18,11 +15,12 @@ pub enum CrudInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    /// 0. `[writeable, signer]` Document account, must be uninitialized
-    /// 1. `[]` Rent sysvar, to check for rent exemption
+    /// 0. `[writeable, signer]` Data account, must be uninitialized
+    /// 1. `[]` Document owner
+    /// 2. `[]` Rent sysvar, to check for rent exemption
     Create {
         /// Data to be filled into the account
-        document: Document,
+        data: Data,
     },
 
     /// Update the provided document account
@@ -33,55 +31,105 @@ pub enum CrudInstruction {
     /// 1. `[signer]` Current owner of the document
     Update {
         /// Data to replace the existing document data
-        document: Document,
+        data: Data,
     },
+
+    /// Delete the provided document account, draining lamports to recipient account
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    /// 0. `[writeable]` Document account, must be previously initialized (version != 0)
+    /// 1. `[signer]` Owner of the document
+    /// 2. `[]` Receiver of drained lamports
+    Delete,
 }
 
 /// Create a `CrudInstruction::Create` instruction
-pub fn create(
-    document_address: &Pubkey,
-    document: Document
-) -> Instruction {
-    Instruction {
-        program_id: id(),
-        accounts: vec![
-            AccountMeta::new(*document_address, true),
+pub fn create(data_account: &Pubkey, owner: &Pubkey, data: Data) -> Instruction {
+    Instruction::new_from_borsh(
+        id(),
+        &CrudInstruction::Create { data },
+        vec![
+            AccountMeta::new(*data_account, true),
+            AccountMeta::new_readonly(*owner, false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
-        data: CrudInstruction::Create {
-            document
-        }
-        .pack_into_vec(),
-    }
+    )
 }
 
 /// Create a `CrudInstruction::Update` instruction
-pub fn update(document_address: &Pubkey, signer: &Pubkey, updated_document: Document) -> Instruction {
-    Instruction {
-        program_id: id(),
-        accounts: vec![
-            AccountMeta::new(*document_address, false),
+pub fn update(data_account: &Pubkey, signer: &Pubkey, data: Data) -> Instruction {
+    Instruction::new_from_borsh(
+        id(),
+        &CrudInstruction::Update { data },
+        vec![
+            AccountMeta::new(*data_account, false),
             AccountMeta::new_readonly(*signer, true),
         ],
-        data: CrudInstruction::Update {
-            document
-        }.pack_into_vec(),
-    }
+    )
+}
+
+/// Create a `CrudInstruction::Delete` instruction
+pub fn delete(data_account: &Pubkey, signer: &Pubkey, receiver: &Pubkey) -> Instruction {
+    Instruction::new_from_borsh(
+        id(),
+        &CrudInstruction::Delete,
+        vec![
+            AccountMeta::new(*data_account, false),
+            AccountMeta::new_readonly(*signer, true),
+            AccountMeta::new(*receiver, false),
+        ],
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::tests::TEST_DATA;
+    use solana_program::program_error::ProgramError;
 
     #[test]
-    fn test_serialize_bytes() {
+    fn serialize_create() {
+        let instruction = CrudInstruction::Create { data: TEST_DATA };
+        let mut expected = vec![0];
+        expected.append(&mut TEST_DATA.try_to_vec().unwrap());
+        assert_eq!(instruction.try_to_vec().unwrap(), expected);
+        assert_eq!(
+            CrudInstruction::try_from_slice(&expected).unwrap(),
+            instruction
+        );
     }
 
     #[test]
-    fn test_serialize_large_slice() {
+    fn serialize_update() {
+        let instruction = CrudInstruction::Update { data: TEST_DATA };
+        let mut expected = vec![1];
+        expected.append(&mut TEST_DATA.try_to_vec().unwrap());
+        assert_eq!(instruction.try_to_vec().unwrap(), expected);
+        assert_eq!(
+            CrudInstruction::try_from_slice(&expected).unwrap(),
+            instruction
+        );
     }
 
     #[test]
-    fn state_deserialize_invalid() {
+    fn deserialize_invalid_instruction() {
+        let mut expected = vec![12];
+        expected.append(&mut TEST_DATA.try_to_vec().unwrap());
+        let err: ProgramError = CrudInstruction::try_from_slice(&expected)
+            .unwrap_err()
+            .into();
+        assert!(matches!(err, ProgramError::SerializationError(_)));
+    }
+
+    #[test]
+    fn serialize_delete() {
+        let instruction = CrudInstruction::Delete;
+        let expected = vec![2];
+        assert_eq!(instruction.try_to_vec().unwrap(), expected);
+        assert_eq!(
+            CrudInstruction::try_from_slice(&expected).unwrap(),
+            instruction
+        );
     }
 }
