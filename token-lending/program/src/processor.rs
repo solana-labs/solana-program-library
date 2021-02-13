@@ -76,12 +76,13 @@ pub fn process_instruction(
             msg!("Instruction: Accrue Interest");
             process_accrue_interest(program_id, accounts)
         }
-        LendingInstruction::AdjustObligationCollateral {
-            amount,
-            amount_type,
-        } => {
-            msg!("Instruction: Adjust Obligation Collateral");
-            process_adjust_obligation_collateral(program_id, amount, amount_type, accounts)
+        LendingInstruction::DepositObligationCollateral { collateral_amount } => {
+            msg!("Instruction: Deposit Obligation Collateral");
+            process_deposit_obligation_collateral(program_id, collateral_amount, accounts)
+        }
+        LendingInstruction::WithdrawObligationCollateral { collateral_amount } => {
+            msg!("Instruction: Withdraw Obligation Collateral");
+            process_withdraw_obligation_collateral(program_id, collateral_amount, accounts)
         }
     }
 }
@@ -1288,7 +1289,8 @@ fn process_deposit_obligation_collateral(
 
     obligation.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
 
-    obligation.deposited_collateral_tokens = obligation.deposited_collateral_tokens
+    obligation.deposited_collateral_tokens = obligation
+        .deposited_collateral_tokens
         .checked_add(collateral_amount)
         .ok_or(LendingError::MathOverflow)?;
 
@@ -1494,8 +1496,8 @@ fn process_withdraw_obligation_collateral(
     }
 
     let obligation_token_amount = {
-        let withdraw_pct = Decimal::from(collateral_amount)
-            .try_div(obligation_collateral_amount)?;
+        let withdraw_pct =
+            Decimal::from(collateral_amount).try_div(obligation_collateral_amount)?;
         let token_amount: Decimal = withdraw_pct.try_mul(obligation_token_mint.supply)?;
         token_amount.try_floor_u64()?
     };
