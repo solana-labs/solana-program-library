@@ -1335,8 +1335,8 @@ fn process_adjust_obligation_collateral(
         // if increasing collateral
         AdjustObligationCollateralAmountType::CollateralDepositAmount => {
             // @TODO: is there a case where overcollateralization shouldn't be allowed?
-            obligation.deposited_collateral_tokens = token_amount
-                .checked_add(collateral_withdraw_amount)
+            obligation.deposited_collateral_tokens = obligation_collateral_amount
+                .checked_add(token_amount)
                 .ok_or(LendingError::MathOverflow)?;
         }
         // if decreasing collateral
@@ -1380,8 +1380,8 @@ fn process_adjust_obligation_collateral(
                 return Err(LendingError::UnhealthyObligation.into());
             }
 
-            obligation.deposited_collateral_tokens = token_amount
-                .checked_sub(collateral_withdraw_amount)
+            obligation.deposited_collateral_tokens = obligation_collateral_amount
+                .checked_sub(token_amount)
                 .ok_or(LendingError::MathOverflow)?;
         }
     }

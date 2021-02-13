@@ -218,7 +218,7 @@ pub enum LendingInstruction {
     ///   3. `[]` Borrow reserve account.
     ///   4. `[writable]` Obligation
     ///   5. `[writable]` Obligation token mint
-    ///   6. `[writable]` Obligation token output
+    ///   6. `[writable]` Obligation token input or output
     ///   7. `[]` Lending market account.
     ///   8. `[]` Derived lending market authority.
     ///   9. `[]` User transfer authority ($authority).
@@ -788,26 +788,25 @@ pub fn adjust_obligation_collateral(
     dex_market_order_book_side_pubkey: Pubkey,
     memory_pubkey: Pubkey,
 ) -> Instruction {
-    let mut accounts = vec![
-        AccountMeta::new(source_or_destination_collateral_pubkey, false),
-        AccountMeta::new_readonly(deposit_or_withdraw_reserve_pubkey, false),
-        AccountMeta::new(deposit_or_withdraw_reserve_collateral_supply_pubkey, false),
-        AccountMeta::new_readonly(borrow_reserve_pubkey, false),
-        AccountMeta::new(obligation_pubkey, false),
-        AccountMeta::new(obligation_mint_pubkey, false),
-        AccountMeta::new(obligation_input_or_output_pubkey, false),
-        AccountMeta::new_readonly(lending_market_pubkey, false),
-        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
-        AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
-        AccountMeta::new_readonly(dex_market_pubkey, false),
-        AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
-        AccountMeta::new_readonly(memory_pubkey, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(spl_token::id(), false),
-    ];
     Instruction {
         program_id,
-        accounts,
+        accounts: vec![
+            AccountMeta::new(source_or_destination_collateral_pubkey, false),
+            AccountMeta::new_readonly(deposit_or_withdraw_reserve_pubkey, false),
+            AccountMeta::new(deposit_or_withdraw_reserve_collateral_supply_pubkey, false),
+            AccountMeta::new_readonly(borrow_reserve_pubkey, false),
+            AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new(obligation_mint_pubkey, false),
+            AccountMeta::new(obligation_input_or_output_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
+            AccountMeta::new_readonly(dex_market_pubkey, false),
+            AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
+            AccountMeta::new_readonly(memory_pubkey, false),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
         data: LendingInstruction::AdjustObligationCollateral {
             amount,
             amount_type,
