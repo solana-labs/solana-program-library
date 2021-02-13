@@ -3,7 +3,7 @@
 use crate::{
     dex_market::{DexMarket, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
-    instruction::{BorrowAmountType, LendingInstruction},
+    instruction::{BorrowAmountType, AdjustObligationCollateralAmountType, LendingInstruction},
     math::{Decimal, TryAdd, WAD},
     state::{
         LendingMarket, LiquidateResult, NewObligationParams, NewReserveParams, Obligation,
@@ -75,6 +75,13 @@ pub fn process_instruction(
         LendingInstruction::AccrueReserveInterest => {
             msg!("Instruction: Accrue Interest");
             process_accrue_interest(program_id, accounts)
+        }
+        LendingInstruction::AdjustObligationCollateral {
+            amount,
+            amount_type,
+        } => {
+            msg!("Instruction: Adjust Obligation Collateral");
+            process_adjust_obligation_collateral(program_id, amount, amount_type, accounts)
         }
     }
 }
@@ -1171,6 +1178,228 @@ fn process_accrue_interest(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
 
         reserve.accrue_interest(clock.slot)?;
         Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+    }
+
+    Ok(())
+}
+
+#[inline(never)] // avoid stack frame limit
+// @TODO: various params and accounts are only used for deposit or withdrawal.
+//          code could be simpler with separate functions
+fn process_adjust_obligation_collateral(
+    program_id: &Pubkey,
+    token_amount: u64,
+    token_amount_type: AdjustObligationCollateralAmountType,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    if token_amount == 0 {
+        return Err(LendingError::InvalidAmount.into());
+    }
+
+    let account_info_iter = &mut accounts.iter();
+
+    // iterate accounts
+    // @TODO: is using one account each for source/deposit and destination/withdraw a problem?
+    let source_or_destination_collateral_info = next_account_info(account_info_iter)?;
+
+    let deposit_or_withdraw_reserve_info = next_account_info(account_info_iter)?;
+    let deposit_or_withdraw_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
+
+    let borrow_reserve_info = next_account_info(account_info_iter)?;
+
+    let obligation_info = next_account_info(account_info_iter)?;
+
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
+
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
+    let dex_market_info = next_account_info(account_info_iter)?;
+    let dex_market_orders_info = next_account_info(account_info_iter)?;
+
+    let memory = next_account_info(account_info_iter)?;
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+
+    // Ensure memory is owned by this program so that we don't have to zero it out
+    if memory.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.token_program_id != token_program_id.key {
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
+
+    let deposit_or_withdraw_reserve = Reserve::unpack(&deposit_or_withdraw_reserve_info.data.borrow())?;
+    // @TODO: check if this logic is valid for withdraw
+    if deposit_or_withdraw_reserve_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    // @TODO: check if & reference is valid
+    if &deposit_or_withdraw_reserve.lending_market != lending_market_info.key {
+        msg!("Invalid reserve lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
+    if borrow_reserve_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if borrow_reserve.lending_market != deposit_or_withdraw_reserve.lending_market {
+        return Err(LendingError::LendingMarketMismatch.into());
+    }
+
+    if deposit_or_withdraw_reserve.config.loan_to_value_ratio == 0 {
+        return Err(LendingError::ReserveCollateralDisabled.into());
+    }
+
+    if deposit_or_withdraw_reserve_info.key == borrow_reserve_info.key {
+        return Err(LendingError::DuplicateReserve.into());
+    }
+
+    if &deposit_or_withdraw_reserve.collateral.supply_pubkey != deposit_or_withdraw_reserve_collateral_supply_info.key {
+        msg!("Invalid deposit or withdraw reserve collateral supply account input");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    if &deposit_or_withdraw_reserve.collateral.supply_pubkey == source_or_destination_collateral_info.key {
+        msg!("Cannot use deposit reserve collateral supply as source or destination collateral account input");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    // TODO: handle case when neither reserve is the quote currency
+    if borrow_reserve.dex_market.is_none() && deposit_or_withdraw_reserve.dex_market.is_none() {
+        msg!("One reserve must have a dex market");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if let COption::Some(dex_market_pubkey) = borrow_reserve.dex_market {
+        if &dex_market_pubkey != dex_market_info.key {
+            msg!("Invalid dex market account input");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
+    }
+    if let COption::Some(dex_market_pubkey) = deposit_or_withdraw_reserve.dex_market {
+        if &dex_market_pubkey != dex_market_info.key {
+            msg!("Invalid dex market account input");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
+    }
+
+    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
+    if obligation_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
+    // @TODO: should this be comparing with deposit_or_withdraw_reserve_collateral_supply_info.key?
+    if &obligation.collateral_reserve != deposit_or_withdraw_reserve_info.key {
+        msg!("Invalid deposit or withdraw reserve account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    // accrue interest and update rates
+    assert_last_update_slot(&deposit_or_withdraw_reserve, clock.slot)?;
+    // @TODO: can this check be conditional?
+    assert_last_update_slot(&borrow_reserve, clock.slot)?;
+
+    // @TODO: should this be done even when depositing?
+    obligation.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
+
+    // @TODO: is this idiomatic?
+    match token_amount_type {
+        // if increasing collateral
+        AdjustObligationCollateralAmountType::CollateralDepositAmount => {
+            // @TODO: is there a case where overcollateralization shouldn't be allowed?
+            obligation.deposited_collateral_tokens += token_amount;
+        }
+        // if decreasing collateral
+        AdjustObligationCollateralAmountType::CollateralWithdrawAmount => {
+            // @TODO: is this variable name descriptive enough?
+            let collateral_amount = obligation.deposited_collateral_tokens;
+
+            // @TODO: can these next checks be combined? e.g. collateral_amount <= token_amount
+            if collateral_amount == 0 {
+                return Err(LendingError::ObligationEmpty.into());
+            }
+
+            if collateral_amount < token_amount {
+                // @TODO: does this need a different error type?
+                return Err(LendingError::ObligationEmpty.into());
+            }
+
+            if collateral_amount == token_amount {
+                // @TODO: do obligations ever allow withdrawing all collateral?
+                return Err(LendingError::ObligationEmpty.into());
+            }
+
+            // Check obligation health
+            let trade_simulator = TradeSimulator::new(
+                dex_market_info,
+                dex_market_orders_info,
+                memory,
+                &lending_market.quote_token_mint,
+                // @TODO: are these mint accounts correct?
+                &borrow_reserve.liquidity.mint_pubkey,
+                &deposit_or_withdraw_reserve.liquidity.mint_pubkey,
+            )?;
+
+            // @TODO: this seems simpler than obligation.loan_to_value but is there a tradeoff?
+            let borrow_amount = obligation.borrowed_liquidity_wads.try_ceil_u64()?;
+            // @TODO: is this using the correct reserve account?
+            let required_collateral_amount = deposit_or_withdraw_reserve.required_collateral_for_borrow(
+                borrow_amount,
+                &borrow_reserve.liquidity.mint_pubkey,
+                trade_simulator,
+            )?;
+
+            if collateral_amount - token_amount < required_collateral_amount {
+                return Err(LendingError::UnhealthyObligation.into());
+            }
+
+            obligation.deposited_collateral_tokens -= token_amount;
+        }
+    }
+
+    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
+
+    // @TODO: is this idiomatic?
+    match token_amount_type {
+        // if increasing collateral
+        AdjustObligationCollateralAmountType::CollateralDepositAmount => {
+            // deposit collateral
+            spl_token_transfer(TokenTransferParams {
+                source: source_or_destination_collateral_info.clone(),
+                destination: deposit_or_withdraw_reserve_collateral_supply_info.clone(),
+                amount: token_amount,
+                authority: user_transfer_authority_info.clone(),
+                authority_signer_seeds: &[],
+                token_program: token_program_id.clone(),
+            })?;
+        }
+        // if decreasing collateral
+        AdjustObligationCollateralAmountType::CollateralWithdrawAmount => {
+            let authority_signer_seeds = &[
+                lending_market_info.key.as_ref(),
+                &[lending_market.bump_seed],
+            ];
+            let lending_market_authority_pubkey =
+                Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+            if lending_market_authority_info.key != &lending_market_authority_pubkey {
+                return Err(LendingError::InvalidMarketAuthority.into());
+            }
+
+            // withdraw collateral
+            spl_token_transfer(TokenTransferParams {
+                source: deposit_or_withdraw_reserve_collateral_supply_info.clone(),
+                destination: source_or_destination_collateral_info.clone(),
+                amount: token_amount,
+                authority: lending_market_authority_info.clone(),
+                authority_signer_seeds,
+                token_program: token_program_id.clone(),
+            })?;
+        }
     }
 
     Ok(())

@@ -23,6 +23,15 @@ pub enum BorrowAmountType {
     CollateralDepositAmount,
 }
 
+/// Describe how the obligation collateral adjustment input amount should be treated
+#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
+pub enum AdjustObligationCollateralAmountType {
+    /// Treat amount as amount of collateral tokens to deposit
+    CollateralDepositAmount,
+    /// Treat amount as amount of collateral tokens to withdraw
+    CollateralWithdrawAmount,
+}
+
 /// Instructions supported by the lending program.
 #[derive(Clone, Debug, PartialEq)]
 pub enum LendingInstruction {
@@ -197,6 +206,31 @@ pub enum LendingInstruction {
     ///   1. `[writable]` Reserve account.
     ///   .. `[writable]` Additional reserve accounts.
     AccrueReserveInterest,
+
+    /// @TODO: update documentation if processor or below method changes
+    /// Deposit additional collateral to or withdraw excess collateral from an obligation.
+    /// The loan must remain healthy.
+    ///
+    ///   0. `[writable]` Source or destination collateral token account, minted by deposit reserve
+    ///                     collateral mint. $authority can transfer $collateral_amount
+    ///   1. `[]` Deposit or withdraw reserve account.
+    ///   2. `[writable]` Deposit or withdraw reserve collateral supply SPL Token account
+    ///   3. `[]` Borrow reserve account.
+    ///   4. `[writable]` Obligation
+    ///   5. `[]` Lending market account.
+    ///   6. `[]` Derived lending market authority.
+    ///   7. `[]` User transfer authority ($authority).
+    ///   8. `[]` Dex market
+    ///   9. `[]` Dex market order book side
+    ///   10 `[]` Temporary memory
+    ///   11 `[]` Clock sysvar
+    ///   12 '[]` Token program id
+    AdjustObligationCollateral {
+        /// Amount whose usage depends on `amount_type`
+        amount: u64,
+        /// Describe how the amount should be treated
+        amount_type: AdjustObligationCollateralAmountType,
+    },
 }
 
 impl LendingInstruction {
@@ -266,6 +300,16 @@ impl LendingInstruction {
                 Self::LiquidateObligation { liquidity_amount }
             }
             8 => Self::AccrueReserveInterest,
+            9 => {
+                let (amount, rest) = Self::unpack_u64(rest)?;
+                let (amount_type, _rest) = Self::unpack_u8(rest)?;
+                let amount_type = AdjustObligationCollateralAmountType::from_u8(amount_type)
+                    .ok_or(LendingError::InstructionUnpackError)?;
+                Self::AdjustObligationCollateral {
+                    amount,
+                    amount_type,
+                }
+            }
             _ => return Err(LendingError::InstructionUnpackError.into()),
         })
     }
@@ -375,6 +419,14 @@ impl LendingInstruction {
             }
             Self::AccrueReserveInterest => {
                 buf.push(8);
+            }
+            Self::AdjustObligationCollateral {
+                amount,
+                amount_type,
+            } => {
+                buf.push(9);
+                buf.extend_from_slice(&amount.to_le_bytes());
+                buf.extend_from_slice(&amount_type.to_u8().unwrap().to_le_bytes());
             }
         }
         buf
@@ -710,5 +762,50 @@ pub fn accrue_reserve_interest(program_id: Pubkey, reserve_pubkeys: Vec<Pubkey>)
         program_id,
         accounts,
         data: LendingInstruction::AccrueReserveInterest.pack(),
+    }
+}
+
+/// Creates an 'AdjustObligationCollateral' instruction.
+#[allow(clippy::too_many_arguments)]
+/// @TODO: update here if processor or above documentation changes
+pub fn adjust_obligation_collateral(
+    program_id: Pubkey,
+    amount: u64,
+    amount_type: AdjustObligationCollateralAmountType,
+    source_or_destination_collateral_pubkey: Pubkey,
+    deposit_or_withdraw_reserve_pubkey: Pubkey,
+    deposit_or_withdraw_reserve_collateral_supply_pubkey: Pubkey,
+    borrow_reserve_pubkey: Pubkey,
+    obligation_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    lending_market_authority_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
+    dex_market_pubkey: Pubkey,
+    dex_market_order_book_side_pubkey: Pubkey,
+    memory_pubkey: Pubkey,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(source_or_destination_collateral_pubkey, false),
+        AccountMeta::new_readonly(deposit_or_withdraw_reserve_pubkey, false),
+        AccountMeta::new(deposit_or_withdraw_reserve_collateral_supply_pubkey, false),
+        AccountMeta::new_readonly(borrow_reserve_pubkey, false),
+        AccountMeta::new(obligation_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
+        AccountMeta::new_readonly(dex_market_pubkey, false),
+        AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
+        AccountMeta::new_readonly(memory_pubkey, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::AdjustObligationCollateral {
+            amount,
+            amount_type,
+        }
+        .pack(),
     }
 }

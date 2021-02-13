@@ -125,6 +125,11 @@ pub enum LendingError {
     /// Token burn failed
     #[error("Token burn failed")]
     TokenBurnFailed,
+
+    // 35
+    /// Cannot make obligation unhealthy
+    #[error("Cannot make obligation unhealthy")]
+    UnhealthyObligation,
 }
 
 impl From<LendingError> for ProgramError {
