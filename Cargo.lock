@@ -3888,6 +3888,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-timelock-client"
+version = "0.1.0"
+dependencies = [
+ "solana-client",
+ "solana-program",
+ "solana-sdk",
+ "spl-timelock",
+ "spl-token 3.0.1",
+]
+
+[[package]]
 name = "spl-token"
 version = "3.1.0"
 dependencies = [

@@ -1,7 +1,11 @@
 //! Error types
 
 use num_derive::FromPrimitive;
-use solana_program::{decode_error::DecodeError, program_error::ProgramError};
+use solana_program::{
+    decode_error::DecodeError,
+    msg,
+    program_error::{PrintProgramError, ProgramError},
+};
 use thiserror::Error;
 
 /// Errors that may be returned by the TokenLending program.
@@ -70,6 +74,12 @@ pub enum TimelockError {
     /// Token burn failed
     #[error("Token burn failed")]
     TokenBurnFailed,
+}
+
+impl PrintProgramError for TimelockError {
+    fn print<E>(&self) {
+        msg!(&self.to_string());
+    }
 }
 
 impl From<TimelockError> for ProgramError {
