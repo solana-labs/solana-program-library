@@ -4,6 +4,7 @@
 
 import assert from 'assert';
 import BN from 'bn.js';
+import {Buffer} from 'buffer';
 import * as BufferLayout from 'buffer-layout';
 import type {Connection, TransactionSignature} from '@solana/web3.js';
 import {

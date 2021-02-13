@@ -72,6 +72,15 @@ declare module '@solana/spl-token' {
       programId: PublicKey,
       payer: Account,
     );
+    static getMinBalanceRentForExemptMint(
+      connection: Connection,
+    ): Promise<number>;
+    static getMinBalanceRentForExemptAccount(
+      connection: Connection,
+    ): Promise<number>;
+    static getMinBalanceRentForExemptMultisig(
+      connection: Connection,
+    ): Promise<number>;
     static createMint(
       connection: Connection,
       payer: Account,
@@ -80,7 +89,6 @@ declare module '@solana/spl-token' {
       decimals: number,
       programId: PublicKey,
     ): Promise<Token>;
-    static getAccount(connection: Connection): Promise<Account>;
     createAccount(owner: PublicKey): Promise<PublicKey>;
     static createWrappedNativeAccount(
       connection: Connection,
