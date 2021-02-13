@@ -22,10 +22,7 @@ use solana_program::{
 use spl_token::state::Mint;
 
 /// Create a new timelock set
-pub fn process_init_timelock_set<'a>(
-    program_id: &'a Pubkey,
-    accounts: &'a [AccountInfo<'a>],
-) -> ProgramResult {
+pub fn process_init_timelock_set(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let signatory_mint_account_info = next_account_info(account_info_iter)?;
