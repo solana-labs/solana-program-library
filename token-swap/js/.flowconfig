@@ -1,15 +1,10 @@
 [ignore]
 <PROJECT_ROOT>/node_modules/*
 
-[include]
-../../token/js/url.js
-../../token/js/cli/*
-../../token/js/client/*
-
 [libs]
 node_modules/@solana/web3.js/module.flow.js
+node_modules/@solana/spl-token/module.flow.js
 flow-typed/
-../../token/js/module.flow.js
 
 [options]
 

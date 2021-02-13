@@ -10,8 +10,8 @@ import {
   Transaction,
   BPF_LOADER_PROGRAM_ID,
 } from '@solana/web3.js';
+import {AccountLayout, Token} from '@solana/spl-token';
 
-import {AccountLayout, Token} from '../../../token/js/client/token';
 import {TokenSwap, CurveType} from '../client/token-swap';
 import {sendAndConfirmTransaction} from '../client/util/send-and-confirm-transaction';
 import {Store} from '../client/util/store';
@@ -421,6 +421,7 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
   let userAccountA = await mintA.createAccount(owner.publicKey);
   await mintA.mintTo(userAccountA, owner, [], SWAP_AMOUNT_IN);
 
+  // $FlowFixMe[prop-missing]
   const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
     connection,
   );
