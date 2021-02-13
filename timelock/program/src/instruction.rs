@@ -1,6 +1,11 @@
 use std::{convert::TryInto, mem::size_of};
 
-use solana_program::program_error::ProgramError;
+use solana_program::{
+    instruction::{AccountMeta, Instruction},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+    sysvar,
+};
 
 use crate::{
     error::TimelockError,
@@ -11,7 +16,7 @@ use crate::{
 };
 
 /// Used for telling caller what type of format you want back
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Format {
     /// JSON format
     JSON,
@@ -25,7 +30,7 @@ impl Default for Format {
 }
 
 /// Instructions supported by the Timelock program.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone)]
 pub enum TimelockInstruction {
     /// Initializes a new Timelock Program.
     ///
@@ -348,5 +353,22 @@ impl TimelockInstruction {
             }
         }
         buf
+    }
+}
+
+/// Creates an 'InitTimelockProgram' instruction.
+pub fn init_timelock_program(
+    program_id: Pubkey,
+    timelock_pubkey: Pubkey,
+    token_program: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(timelock_pubkey, true),
+            AccountMeta::new_readonly(token_program, false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+        ],
+        data: TimelockInstruction::InitTimelockProgram.pack(),
     }
 }

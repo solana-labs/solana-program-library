@@ -8,7 +8,7 @@ use solana_program::{
 /// Max instruction limit for generics
 pub const INSTRUCTION_LIMIT: usize = 2_000_000;
 /// First iteration of generic instruction
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone)]
 pub struct CustomSingleSignerTimelockTransaction {
     /// NOTE all Transaction structs MUST have slot as first u64 entry in byte buffer.
 
@@ -21,6 +21,21 @@ pub struct CustomSingleSignerTimelockTransaction {
     /// authority key (pda) used to run the program
     pub authority_key: Pubkey,
 }
+
+impl PartialEq for CustomSingleSignerTimelockTransaction {
+    fn eq(&self, other: &CustomSingleSignerTimelockTransaction) -> bool {
+        if self.instruction.len() != other.instruction.len() {
+            return false;
+        }
+        for n in 0..self.instruction.len() {
+            if self.instruction[n] != other.instruction[n] {
+                return false;
+            }
+        }
+        self.slot == other.slot && self.authority_key.to_bytes() == other.authority_key.to_bytes()
+    }
+}
+
 impl Sealed for CustomSingleSignerTimelockTransaction {}
 impl IsInitialized for CustomSingleSignerTimelockTransaction {
     fn is_initialized(&self) -> bool {
