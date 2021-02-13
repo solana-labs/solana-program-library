@@ -27,7 +27,7 @@ impl IsInitialized for TimelockProgram {
 
 const TIMELOCK_LEN: usize = 65;
 impl Pack for TimelockProgram {
-    const LEN: usize = 33;
+    const LEN: usize = 65;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_LEN];

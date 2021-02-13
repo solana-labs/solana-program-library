@@ -6,7 +6,7 @@ use solana_program::{
 };
 
 /// Max instruction limit for generics
-pub const INSTRUCTION_LIMIT: usize = 2_000_000;
+pub const INSTRUCTION_LIMIT: usize = 255;
 /// First iteration of generic instruction
 #[derive(Clone)]
 pub struct CustomSingleSignerTimelockTransaction {
