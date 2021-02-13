@@ -217,14 +217,16 @@ pub enum LendingInstruction {
     ///   2. `[writable]` Deposit or withdraw reserve collateral supply SPL Token account
     ///   3. `[]` Borrow reserve account.
     ///   4. `[writable]` Obligation
-    ///   5. `[]` Lending market account.
-    ///   6. `[]` Derived lending market authority.
-    ///   7. `[]` User transfer authority ($authority).
-    ///   8. `[]` Dex market
-    ///   9. `[]` Dex market order book side
-    ///   10 `[]` Temporary memory
-    ///   11 `[]` Clock sysvar
-    ///   12 '[]` Token program id
+    ///   5. `[writable]` Obligation token mint
+    ///   6. `[writable]` Obligation token output
+    ///   7. `[]` Lending market account.
+    ///   8. `[]` Derived lending market authority.
+    ///   9. `[]` User transfer authority ($authority).
+    ///   10 `[]` Dex market
+    ///   11 `[]` Dex market order book side
+    ///   12 `[]` Temporary memory
+    ///   13 `[]` Clock sysvar
+    ///   14 '[]` Token program id
     AdjustObligationCollateral {
         /// Amount whose usage depends on `amount_type`
         amount: u64,
@@ -777,6 +779,8 @@ pub fn adjust_obligation_collateral(
     deposit_or_withdraw_reserve_collateral_supply_pubkey: Pubkey,
     borrow_reserve_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
+    obligation_mint_pubkey: Pubkey,
+    obligation_input_or_output_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_authority_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
@@ -790,6 +794,8 @@ pub fn adjust_obligation_collateral(
         AccountMeta::new(deposit_or_withdraw_reserve_collateral_supply_pubkey, false),
         AccountMeta::new_readonly(borrow_reserve_pubkey, false),
         AccountMeta::new(obligation_pubkey, false),
+        AccountMeta::new(obligation_mint_pubkey, false),
+        AccountMeta::new(obligation_input_or_output_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
