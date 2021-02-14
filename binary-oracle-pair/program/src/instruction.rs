@@ -24,12 +24,11 @@ pub enum Instruction {
     ///
     ///   0. `[writable]` Pool account.
     ///   1. `[]` authority create_program_address(&[Token-swap account])`
-    ///   1. `[]` Deposit currency SPL Token mint. Must be initialized.
-    ///   2. `[]` Rent sysvar
-    ///   3. '[]` Token program id
+    ///   2. `[]` Decider authority
+    ///   3. `[]` Deposit currency SPL Token mint. Must be initialized.
+    ///   4. `[]` Rent sysvar
+    ///   5. '[]` Token program id
     InitPool {
-        /// authority that decides the result
-        decider: Pubkey,
         /// mint end slot
         mint_end_slot: Slot,
         /// decide end slot
