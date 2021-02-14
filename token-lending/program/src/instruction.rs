@@ -205,16 +205,13 @@ pub enum LendingInstruction {
     ///                     mint. $authority can transfer $collateral_amount
     ///   1. `[]` Deposit reserve account.
     ///   2. `[writable]` Deposit reserve collateral supply SPL Token account
-    ///   3. `[]` Borrow reserve account.
-    ///   4. `[writable]` Obligation
-    ///   5. `[writable]` Obligation token mint
-    ///   6. `[writable]` Obligation token output
-    ///   7. `[]` Lending market account.
-    ///   8. `[]` Derived lending market authority.
-    ///   9. `[]` User transfer authority ($authority).
-    ///   10 `[]` Temporary memory
-    ///   11 `[]` Clock sysvar
-    ///   12 '[]` Token program id
+    ///   3. `[writable]` Obligation
+    ///   4. `[writable]` Obligation token mint
+    ///   5. `[writable]` Obligation token output
+    ///   6. `[]` Lending market account.
+    ///   7. `[]` Derived lending market authority.
+    ///   8. `[]` User transfer authority ($authority).
+    ///   9. '[]` Token program id
     DepositObligationCollateral {
         /// Amount of collateral to deposit
         collateral_amount: u64,
@@ -784,14 +781,12 @@ pub fn deposit_obligation_collateral(
     source_collateral_pubkey: Pubkey,
     deposit_reserve_pubkey: Pubkey,
     deposit_reserve_collateral_supply_pubkey: Pubkey,
-    borrow_reserve_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
     obligation_mint_pubkey: Pubkey,
     obligation_output_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_authority_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
-    memory_pubkey: Pubkey,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -799,15 +794,12 @@ pub fn deposit_obligation_collateral(
             AccountMeta::new(source_collateral_pubkey, false),
             AccountMeta::new_readonly(deposit_reserve_pubkey, false),
             AccountMeta::new(deposit_reserve_collateral_supply_pubkey, false),
-            AccountMeta::new_readonly(borrow_reserve_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new(obligation_mint_pubkey, false),
             AccountMeta::new(obligation_output_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
-            AccountMeta::new_readonly(memory_pubkey, false),
-            AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: LendingInstruction::DepositObligationCollateral { collateral_amount }.pack(),
