@@ -76,7 +76,11 @@ pub fn write(data_account: &Pubkey, signer: &Pubkey, data: Data) -> Instruction 
 }
 
 /// Create a `CrudInstruction::SetAuthority` instruction
-pub fn set_authority(data_account: &Pubkey, signer: &Pubkey, new_authority: &Pubkey) -> Instruction {
+pub fn set_authority(
+    data_account: &Pubkey,
+    signer: &Pubkey,
+    new_authority: &Pubkey,
+) -> Instruction {
     Instruction::new_with_borsh(
         id(),
         &CrudInstruction::SetAuthority,

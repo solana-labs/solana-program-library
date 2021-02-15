@@ -102,7 +102,11 @@ async fn initialize_with_seed_success() {
         &[&context.payer, &authority],
         context.last_blockhash,
     );
-    context.banks_client.process_transaction(transaction).await.unwrap();
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
     let account_data = context
         .banks_client
         .get_account_data_with_borsh::<AccountData>(account)
@@ -126,7 +130,10 @@ async fn initialize_twice_fail() {
         .await
         .unwrap();
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::initialize(&account.pubkey(), &authority.pubkey())],
+        &[instruction::initialize(
+            &account.pubkey(),
+            &authority.pubkey(),
+        )],
         Some(&context.payer.pubkey()),
         &[&context.payer],
         context.last_blockhash,
