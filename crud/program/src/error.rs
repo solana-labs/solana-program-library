@@ -4,7 +4,7 @@ use num_derive::FromPrimitive;
 use solana_program::{decode_error::DecodeError, program_error::ProgramError};
 use thiserror::Error;
 
-/// Errors that may be returned by the TokenSwap program.
+/// Errors that may be returned by the program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum CrudError {
     /// Incorrect owner provided on update or delete

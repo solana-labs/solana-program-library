@@ -29,8 +29,8 @@ pub fn process_instruction(
     let account_info_iter = &mut accounts.iter();
 
     match instruction {
-        CrudInstruction::Create { data } => {
-            msg!("CrudInstruction::Create");
+        CrudInstruction::Initialize => {
+            msg!("CrudInstruction::Initialize");
 
             let data_info = next_account_info(account_info_iter)?;
             let owner_info = next_account_info(account_info_iter)?;
@@ -45,20 +45,19 @@ pub fn process_instruction(
             if !rent.is_exempt(data_info.lamports(), data_info.data_len()) {
                 return Err(ProgramError::AccountNotRentExempt);
             }
-            account_data.owner = *owner_info.key;
-            account_data.data = data;
+            account_data.authority = *owner_info.key;
             account_data.version = AccountData::CURRENT_VERSION;
             account_data
                 .serialize(&mut *data_info.data.borrow_mut())
                 .map_err(|e| e.into())
         }
 
-        CrudInstruction::Update { data } => {
-            msg!("CrudInstruction::Update");
+        CrudInstruction::Write { data } => {
+            msg!("CrudInstruction::Write");
             let data_info = next_account_info(account_info_iter)?;
             let owner_info = next_account_info(account_info_iter)?;
             let mut account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
-            if account_data.owner != *owner_info.key {
+            if account_data.authority != *owner_info.key {
                 return Err(CrudError::IncorrectOwner.into());
             }
             if !owner_info.is_signer {
@@ -70,13 +69,31 @@ pub fn process_instruction(
                 .map_err(|e| e.into())
         }
 
-        CrudInstruction::Delete => {
-            msg!("CrudInstruction::Delete");
+        CrudInstruction::SetAuthority => {
+            msg!("CrudInstruction::SetAuthority");
+            let data_info = next_account_info(account_info_iter)?;
+            let owner_info = next_account_info(account_info_iter)?;
+            let new_authority_info = next_account_info(account_info_iter)?;
+            let mut account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
+            if account_data.authority != *owner_info.key {
+                return Err(CrudError::IncorrectOwner.into());
+            }
+            if !owner_info.is_signer {
+                return Err(ProgramError::MissingRequiredSignature);
+            }
+            account_data.authority = *new_authority_info.key;
+            account_data
+                .serialize(&mut *data_info.data.borrow_mut())
+                .map_err(|e| e.into())
+        }
+
+        CrudInstruction::CloseAccount => {
+            msg!("CrudInstruction::CloseAccount");
             let data_info = next_account_info(account_info_iter)?;
             let owner_info = next_account_info(account_info_iter)?;
             let destination_info = next_account_info(account_info_iter)?;
             let mut account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
-            if account_data.owner != *owner_info.key {
+            if account_data.authority != *owner_info.key {
                 return Err(CrudError::IncorrectOwner.into());
             }
             if !owner_info.is_signer {

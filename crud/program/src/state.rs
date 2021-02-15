@@ -11,7 +11,7 @@ pub struct AccountData {
     pub version: u8,
 
     /// The account allowed to update the data
-    pub owner: Pubkey,
+    pub authority: Pubkey,
 
     /// The data contained by the account, could be anything or serializable
     pub data: Data,
@@ -57,7 +57,7 @@ pub mod tests {
     /// AccountData for tests
     pub const TEST_ACCOUNT_DATA: AccountData = AccountData {
         version: TEST_VERSION,
-        owner: TEST_PUBKEY,
+        authority: TEST_PUBKEY,
         data: TEST_DATA,
     };
 

@@ -8,7 +8,7 @@ use solana_program::{
     sysvar,
 };
 
-/// Instructions supported by the Feature Proposal program
+/// Instructions supported by the program
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, PartialEq)]
 pub enum CrudInstruction {
     /// Create a new document
@@ -16,39 +16,45 @@ pub enum CrudInstruction {
     /// Accounts expected by this instruction:
     ///
     /// 0. `[writeable, signer]` Data account, must be uninitialized
-    /// 1. `[]` Document owner
+    /// 1. `[]` Document authority
     /// 2. `[]` Rent sysvar, to check for rent exemption
-    Create {
-        /// Data to be filled into the account
-        data: Data,
-    },
+    Initialize,
 
-    /// Update the provided document account
+    /// Write to the provided data account
     ///
     /// Accounts expected by this instruction:
     ///
     /// 0. `[writeable]` Document account, must be previously initialized (version != 0)
-    /// 1. `[signer]` Current owner of the document
-    Update {
+    /// 1. `[signer]` Current authority of the document
+    Write {
         /// Data to replace the existing document data
         data: Data,
     },
 
-    /// Delete the provided document account, draining lamports to recipient account
+    /// Update the authority of the provided data account
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    /// 0. `[writeable]` Document account, must be previously initialized (version != 0)
+    /// 1. `[signer]` Current authority of the document
+    /// 2. `[]` New authority of the document
+    SetAuthority,
+
+    /// Close the provided document account, draining lamports to recipient account
     ///
     /// Accounts expected by this instruction:
     ///
     /// 0. `[writeable]` Document account, must be previously initialized (version != 0)
     /// 1. `[signer]` Owner of the document
-    /// 2. `[]` Receiver of drained lamports
-    Delete,
+    /// 2. `[]` Receiver of account lamports
+    CloseAccount,
 }
 
-/// Create a `CrudInstruction::Create` instruction
-pub fn create(data_account: &Pubkey, owner: &Pubkey, data: Data) -> Instruction {
-    Instruction::new_from_borsh(
+/// Create a `CrudInstruction::Initialize` instruction
+pub fn initialize(data_account: &Pubkey, owner: &Pubkey) -> Instruction {
+    Instruction::new_with_borsh(
         id(),
-        &CrudInstruction::Create { data },
+        &CrudInstruction::Initialize,
         vec![
             AccountMeta::new(*data_account, true),
             AccountMeta::new_readonly(*owner, false),
@@ -57,11 +63,11 @@ pub fn create(data_account: &Pubkey, owner: &Pubkey, data: Data) -> Instruction 
     )
 }
 
-/// Create a `CrudInstruction::Update` instruction
-pub fn update(data_account: &Pubkey, signer: &Pubkey, data: Data) -> Instruction {
-    Instruction::new_from_borsh(
+/// Create a `CrudInstruction::Write` instruction
+pub fn write(data_account: &Pubkey, signer: &Pubkey, data: Data) -> Instruction {
+    Instruction::new_with_borsh(
         id(),
-        &CrudInstruction::Update { data },
+        &CrudInstruction::Write { data },
         vec![
             AccountMeta::new(*data_account, false),
             AccountMeta::new_readonly(*signer, true),
@@ -69,11 +75,24 @@ pub fn update(data_account: &Pubkey, signer: &Pubkey, data: Data) -> Instruction
     )
 }
 
-/// Create a `CrudInstruction::Delete` instruction
-pub fn delete(data_account: &Pubkey, signer: &Pubkey, receiver: &Pubkey) -> Instruction {
-    Instruction::new_from_borsh(
+/// Create a `CrudInstruction::SetAuthority` instruction
+pub fn set_authority(data_account: &Pubkey, signer: &Pubkey, new_authority: &Pubkey) -> Instruction {
+    Instruction::new_with_borsh(
         id(),
-        &CrudInstruction::Delete,
+        &CrudInstruction::SetAuthority,
+        vec![
+            AccountMeta::new(*data_account, false),
+            AccountMeta::new_readonly(*signer, true),
+            AccountMeta::new_readonly(*new_authority, false),
+        ],
+    )
+}
+
+/// Create a `CrudInstruction::CloseAccount` instruction
+pub fn close_account(data_account: &Pubkey, signer: &Pubkey, receiver: &Pubkey) -> Instruction {
+    Instruction::new_with_borsh(
+        id(),
+        &CrudInstruction::CloseAccount,
         vec![
             AccountMeta::new(*data_account, false),
             AccountMeta::new_readonly(*signer, true),
@@ -89,9 +108,20 @@ mod tests {
     use solana_program::program_error::ProgramError;
 
     #[test]
-    fn serialize_create() {
-        let instruction = CrudInstruction::Create { data: TEST_DATA };
-        let mut expected = vec![0];
+    fn serialize_initialize() {
+        let instruction = CrudInstruction::Initialize;
+        let expected = vec![0];
+        assert_eq!(instruction.try_to_vec().unwrap(), expected);
+        assert_eq!(
+            CrudInstruction::try_from_slice(&expected).unwrap(),
+            instruction
+        );
+    }
+
+    #[test]
+    fn serialize_write() {
+        let instruction = CrudInstruction::Write { data: TEST_DATA };
+        let mut expected = vec![1];
         expected.append(&mut TEST_DATA.try_to_vec().unwrap());
         assert_eq!(instruction.try_to_vec().unwrap(), expected);
         assert_eq!(
@@ -101,10 +131,20 @@ mod tests {
     }
 
     #[test]
-    fn serialize_update() {
-        let instruction = CrudInstruction::Update { data: TEST_DATA };
-        let mut expected = vec![1];
-        expected.append(&mut TEST_DATA.try_to_vec().unwrap());
+    fn serialize_set_authority() {
+        let instruction = CrudInstruction::SetAuthority;
+        let expected = vec![2];
+        assert_eq!(instruction.try_to_vec().unwrap(), expected);
+        assert_eq!(
+            CrudInstruction::try_from_slice(&expected).unwrap(),
+            instruction
+        );
+    }
+
+    #[test]
+    fn serialize_close_account() {
+        let instruction = CrudInstruction::CloseAccount;
+        let expected = vec![3];
         assert_eq!(instruction.try_to_vec().unwrap(), expected);
         assert_eq!(
             CrudInstruction::try_from_slice(&expected).unwrap(),
@@ -120,16 +160,5 @@ mod tests {
             .unwrap_err()
             .into();
         assert!(matches!(err, ProgramError::IOError(_)));
-    }
-
-    #[test]
-    fn serialize_delete() {
-        let instruction = CrudInstruction::Delete;
-        let expected = vec![2];
-        assert_eq!(instruction.try_to_vec().unwrap(), expected);
-        assert_eq!(
-            CrudInstruction::try_from_slice(&expected).unwrap(),
-            instruction
-        );
     }
 }
