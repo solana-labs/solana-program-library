@@ -45,7 +45,7 @@
     "@babel/runtime": "^7.10.5",
     "@solana/web3.js": "^0.91.2",
     "bn.js": "^5.1.0",
-    "buffer": "6.0.1",
+    "buffer": "6.0.3",
     "buffer-layout": "^1.2.0",
     "dotenv": "8.2.0"
   },
