@@ -42,18 +42,13 @@ pub enum TimelockInstruction {
     /// Initializes a new empty Timelocked set of Instructions that will be executed at various slots in the future in draft mode.
     /// Grants Admin token to caller.
     ///
-    ///   0. `[writable]` Uninitialized Timelock set account
-    ///   1. `[writable]` Uninitialized Signatory Mint account
+    ///   1. `[writable]` Uninitialized Timelock set account
     ///   2. `[writable]` Uninitialized Admin Mint account
-    ///   3. `[writable]` Uninitialized Voting Mint account
-    ///   4. `[writable]` Uninitialized Signatory Validation account
-    ///   5. `[writable]` Uninitialized Admin Validation account
-    ///   6. `[writable]` Uninitialized Voting Validation account
-    ///   7. `[writable]` Uninitialized Destination account for first admin token
-    ///   8. `[writable]` Uninitialized Destination account for first signatory token
-    ///   9. `[]` Timelock Program
-    ///   10. '[]` Token program id
-    ///   11. `[]` Rent sysvar
+    ///   3. `[writable]` Uninitialized Admin Validation account
+    ///   4. `[writable]` Uninitialized Destination account for first admin token
+    ///   5. `[]` Timelock Program
+    ///   6. '[]` Token program id
+    ///   7. `[]` Rent sysvar
     InitTimelockSet {
         /// Determine what type of timelock config you want
         config: TimelockConfig,
