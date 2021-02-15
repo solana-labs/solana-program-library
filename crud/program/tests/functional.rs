@@ -75,6 +75,45 @@ async fn initialize_success() {
 }
 
 #[tokio::test]
+async fn initialize_with_seed_success() {
+    let mut context = program_test().start_with_context().await;
+
+    let authority = Keypair::new();
+    let seed = "storage";
+    let account = Pubkey::create_with_seed(&authority.pubkey(), seed, &id()).unwrap();
+    let data = Data {
+        bytes: [111u8; Data::DATA_SIZE],
+    };
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            system_instruction::create_account_with_seed(
+                &context.payer.pubkey(),
+                &account,
+                &authority.pubkey(),
+                seed,
+                1.max(Rent::default().minimum_balance(get_packed_len::<AccountData>())),
+                get_packed_len::<AccountData>() as u64,
+                &id(),
+            ),
+            instruction::initialize(&account, &authority.pubkey()),
+            instruction::write(&account, &authority.pubkey(), data.clone()),
+        ],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &authority],
+        context.last_blockhash,
+    );
+    context.banks_client.process_transaction(transaction).await.unwrap();
+    let account_data = context
+        .banks_client
+        .get_account_data_with_borsh::<AccountData>(account)
+        .await
+        .unwrap();
+    assert_eq!(account_data.data, data);
+    assert_eq!(account_data.authority, authority.pubkey());
+    assert_eq!(account_data.version, AccountData::CURRENT_VERSION);
+}
+
+#[tokio::test]
 async fn initialize_twice_fail() {
     let mut context = program_test().start_with_context().await;
 
@@ -89,7 +128,7 @@ async fn initialize_twice_fail() {
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::initialize(&account.pubkey(), &authority.pubkey())],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &account],
+        &[&context.payer],
         context.last_blockhash,
     );
     assert_eq!(

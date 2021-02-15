@@ -15,7 +15,7 @@ pub enum CrudInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    /// 0. `[writeable, signer]` Data account, must be uninitialized
+    /// 0. `[writeable]` Data account, must be uninitialized
     /// 1. `[]` Document authority
     /// 2. `[]` Rent sysvar, to check for rent exemption
     Initialize,
@@ -25,7 +25,7 @@ pub enum CrudInstruction {
     /// Accounts expected by this instruction:
     ///
     /// 0. `[writeable]` Document account, must be previously initialized (version != 0)
-    /// 1. `[signer]` Current authority of the document
+    /// 1. `[signer]` Current document authority
     Write {
         /// Data to replace the existing document data
         data: Data,
@@ -45,19 +45,19 @@ pub enum CrudInstruction {
     /// Accounts expected by this instruction:
     ///
     /// 0. `[writeable]` Document account, must be previously initialized (version != 0)
-    /// 1. `[signer]` Owner of the document
+    /// 1. `[signer]` Document authority
     /// 2. `[]` Receiver of account lamports
     CloseAccount,
 }
 
 /// Create a `CrudInstruction::Initialize` instruction
-pub fn initialize(data_account: &Pubkey, owner: &Pubkey) -> Instruction {
+pub fn initialize(data_account: &Pubkey, authority: &Pubkey) -> Instruction {
     Instruction::new_with_borsh(
         id(),
         &CrudInstruction::Initialize,
         vec![
-            AccountMeta::new(*data_account, true),
-            AccountMeta::new_readonly(*owner, false),
+            AccountMeta::new(*data_account, false),
+            AccountMeta::new_readonly(*authority, false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
     )
