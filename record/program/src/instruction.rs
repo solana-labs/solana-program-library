@@ -10,7 +10,7 @@ use solana_program::{
 
 /// Instructions supported by the program
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, PartialEq)]
-pub enum CrudInstruction {
+pub enum RecordInstruction {
     /// Create a new document
     ///
     /// Accounts expected by this instruction:
@@ -52,11 +52,11 @@ pub enum CrudInstruction {
     CloseAccount,
 }
 
-/// Create a `CrudInstruction::Initialize` instruction
+/// Create a `RecordInstruction::Initialize` instruction
 pub fn initialize(data_account: &Pubkey, authority: &Pubkey) -> Instruction {
     Instruction::new_with_borsh(
         id(),
-        &CrudInstruction::Initialize,
+        &RecordInstruction::Initialize,
         vec![
             AccountMeta::new(*data_account, false),
             AccountMeta::new_readonly(*authority, false),
@@ -65,11 +65,11 @@ pub fn initialize(data_account: &Pubkey, authority: &Pubkey) -> Instruction {
     )
 }
 
-/// Create a `CrudInstruction::Write` instruction
+/// Create a `RecordInstruction::Write` instruction
 pub fn write(data_account: &Pubkey, signer: &Pubkey, offset: u64, data: Vec<u8>) -> Instruction {
     Instruction::new_with_borsh(
         id(),
-        &CrudInstruction::Write { offset, data },
+        &RecordInstruction::Write { offset, data },
         vec![
             AccountMeta::new(*data_account, false),
             AccountMeta::new_readonly(*signer, true),
@@ -77,7 +77,7 @@ pub fn write(data_account: &Pubkey, signer: &Pubkey, offset: u64, data: Vec<u8>)
     )
 }
 
-/// Create a `CrudInstruction::SetAuthority` instruction
+/// Create a `RecordInstruction::SetAuthority` instruction
 pub fn set_authority(
     data_account: &Pubkey,
     signer: &Pubkey,
@@ -85,7 +85,7 @@ pub fn set_authority(
 ) -> Instruction {
     Instruction::new_with_borsh(
         id(),
-        &CrudInstruction::SetAuthority,
+        &RecordInstruction::SetAuthority,
         vec![
             AccountMeta::new(*data_account, false),
             AccountMeta::new_readonly(*signer, true),
@@ -94,11 +94,11 @@ pub fn set_authority(
     )
 }
 
-/// Create a `CrudInstruction::CloseAccount` instruction
+/// Create a `RecordInstruction::CloseAccount` instruction
 pub fn close_account(data_account: &Pubkey, signer: &Pubkey, receiver: &Pubkey) -> Instruction {
     Instruction::new_with_borsh(
         id(),
-        &CrudInstruction::CloseAccount,
+        &RecordInstruction::CloseAccount,
         vec![
             AccountMeta::new(*data_account, false),
             AccountMeta::new_readonly(*signer, true),
@@ -115,11 +115,11 @@ mod tests {
 
     #[test]
     fn serialize_initialize() {
-        let instruction = CrudInstruction::Initialize;
+        let instruction = RecordInstruction::Initialize;
         let expected = vec![0];
         assert_eq!(instruction.try_to_vec().unwrap(), expected);
         assert_eq!(
-            CrudInstruction::try_from_slice(&expected).unwrap(),
+            RecordInstruction::try_from_slice(&expected).unwrap(),
             instruction
         );
     }
@@ -128,7 +128,7 @@ mod tests {
     fn serialize_write() {
         let data = TEST_DATA.try_to_vec().unwrap();
         let offset = 0u64;
-        let instruction = CrudInstruction::Write {
+        let instruction = RecordInstruction::Write {
             offset: 0,
             data: data.clone(),
         };
@@ -137,29 +137,29 @@ mod tests {
         expected.append(&mut data.try_to_vec().unwrap());
         assert_eq!(instruction.try_to_vec().unwrap(), expected);
         assert_eq!(
-            CrudInstruction::try_from_slice(&expected).unwrap(),
+            RecordInstruction::try_from_slice(&expected).unwrap(),
             instruction
         );
     }
 
     #[test]
     fn serialize_set_authority() {
-        let instruction = CrudInstruction::SetAuthority;
+        let instruction = RecordInstruction::SetAuthority;
         let expected = vec![2];
         assert_eq!(instruction.try_to_vec().unwrap(), expected);
         assert_eq!(
-            CrudInstruction::try_from_slice(&expected).unwrap(),
+            RecordInstruction::try_from_slice(&expected).unwrap(),
             instruction
         );
     }
 
     #[test]
     fn serialize_close_account() {
-        let instruction = CrudInstruction::CloseAccount;
+        let instruction = RecordInstruction::CloseAccount;
         let expected = vec![3];
         assert_eq!(instruction.try_to_vec().unwrap(), expected);
         assert_eq!(
-            CrudInstruction::try_from_slice(&expected).unwrap(),
+            RecordInstruction::try_from_slice(&expected).unwrap(),
             instruction
         );
     }
@@ -168,7 +168,7 @@ mod tests {
     fn deserialize_invalid_instruction() {
         let mut expected = vec![12];
         expected.append(&mut TEST_DATA.try_to_vec().unwrap());
-        let err: ProgramError = CrudInstruction::try_from_slice(&expected)
+        let err: ProgramError = RecordInstruction::try_from_slice(&expected)
             .unwrap_err()
             .into();
         assert!(matches!(err, ProgramError::IOError(_)));

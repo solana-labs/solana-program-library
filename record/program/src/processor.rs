@@ -2,8 +2,8 @@
 
 use {
     crate::{
-        error::CrudError,
-        instruction::CrudInstruction,
+        error::RecordError,
+        instruction::RecordInstruction,
         state::{AccountData, Data},
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -25,12 +25,12 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    let instruction = CrudInstruction::try_from_slice(input)?;
+    let instruction = RecordInstruction::try_from_slice(input)?;
     let account_info_iter = &mut accounts.iter();
 
     match instruction {
-        CrudInstruction::Initialize => {
-            msg!("CrudInstruction::Initialize");
+        RecordInstruction::Initialize => {
+            msg!("RecordInstruction::Initialize");
 
             let data_info = next_account_info(account_info_iter)?;
             let owner_info = next_account_info(account_info_iter)?;
@@ -52,13 +52,13 @@ pub fn process_instruction(
                 .map_err(|e| e.into())
         }
 
-        CrudInstruction::Write { offset, data } => {
-            msg!("CrudInstruction::Write");
+        RecordInstruction::Write { offset, data } => {
+            msg!("RecordInstruction::Write");
             let data_info = next_account_info(account_info_iter)?;
             let owner_info = next_account_info(account_info_iter)?;
             let account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
             if account_data.authority != *owner_info.key {
-                return Err(CrudError::IncorrectOwner.into());
+                return Err(RecordError::IncorrectOwner.into());
             }
             if !owner_info.is_signer {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -73,14 +73,14 @@ pub fn process_instruction(
             }
         }
 
-        CrudInstruction::SetAuthority => {
-            msg!("CrudInstruction::SetAuthority");
+        RecordInstruction::SetAuthority => {
+            msg!("RecordInstruction::SetAuthority");
             let data_info = next_account_info(account_info_iter)?;
             let owner_info = next_account_info(account_info_iter)?;
             let new_authority_info = next_account_info(account_info_iter)?;
             let mut account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
             if account_data.authority != *owner_info.key {
-                return Err(CrudError::IncorrectOwner.into());
+                return Err(RecordError::IncorrectOwner.into());
             }
             if !owner_info.is_signer {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -91,14 +91,14 @@ pub fn process_instruction(
                 .map_err(|e| e.into())
         }
 
-        CrudInstruction::CloseAccount => {
-            msg!("CrudInstruction::CloseAccount");
+        RecordInstruction::CloseAccount => {
+            msg!("RecordInstruction::CloseAccount");
             let data_info = next_account_info(account_info_iter)?;
             let owner_info = next_account_info(account_info_iter)?;
             let destination_info = next_account_info(account_info_iter)?;
             let mut account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
             if account_data.authority != *owner_info.key {
-                return Err(CrudError::IncorrectOwner.into());
+                return Err(RecordError::IncorrectOwner.into());
             }
             if !owner_info.is_signer {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -108,7 +108,7 @@ pub fn process_instruction(
             **data_info.lamports.borrow_mut() = 0;
             **destination_info.lamports.borrow_mut() = destination_starting_lamports
                 .checked_add(data_lamports)
-                .ok_or(CrudError::Overflow)?;
+                .ok_or(RecordError::Overflow)?;
             account_data.data = Data::default();
             account_data
                 .serialize(&mut *data_info.data.borrow_mut())

@@ -16,8 +16,8 @@ use {
         transaction::{Transaction, TransactionError},
         transport,
     },
-    spl_crud::{
-        error::CrudError,
+    spl_record::{
+        error::RecordError,
         id, instruction,
         processor::process_instruction,
         state::{AccountData, Data},
@@ -25,7 +25,7 @@ use {
 };
 
 fn program_test() -> ProgramTest {
-    ProgramTest::new("spl_crud", id(), processor!(process_instruction))
+    ProgramTest::new("spl_record", id(), processor!(process_instruction))
 }
 
 async fn initialize_storage_account(
@@ -235,7 +235,7 @@ async fn write_fail_wrong_authority() {
             .unwrap(),
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(CrudError::IncorrectOwner as u32)
+            InstructionError::Custom(RecordError::IncorrectOwner as u32)
         )
     );
 }
@@ -261,7 +261,7 @@ async fn write_fail_unsigned() {
     let transaction = Transaction::new_signed_with_payer(
         &[Instruction::new_with_borsh(
             id(),
-            &instruction::CrudInstruction::Write { offset: 0, data },
+            &instruction::RecordInstruction::Write { offset: 0, data },
             vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(authority.pubkey(), false),
@@ -341,7 +341,7 @@ async fn close_account_fail_wrong_authority() {
     let transaction = Transaction::new_signed_with_payer(
         &[Instruction::new_with_borsh(
             id(),
-            &instruction::CrudInstruction::CloseAccount,
+            &instruction::RecordInstruction::CloseAccount,
             vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(wrong_authority.pubkey(), true),
@@ -361,7 +361,7 @@ async fn close_account_fail_wrong_authority() {
             .unwrap(),
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(CrudError::IncorrectOwner as u32)
+            InstructionError::Custom(RecordError::IncorrectOwner as u32)
         )
     );
 }
@@ -382,7 +382,7 @@ async fn close_account_fail_unsigned() {
     let transaction = Transaction::new_signed_with_payer(
         &[Instruction::new_with_borsh(
             id(),
-            &instruction::CrudInstruction::CloseAccount,
+            &instruction::RecordInstruction::CloseAccount,
             vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(authority.pubkey(), false),
@@ -488,7 +488,7 @@ async fn set_authority_fail_wrong_authority() {
     let transaction = Transaction::new_signed_with_payer(
         &[Instruction::new_with_borsh(
             id(),
-            &instruction::CrudInstruction::SetAuthority,
+            &instruction::RecordInstruction::SetAuthority,
             vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(wrong_authority.pubkey(), true),
@@ -508,7 +508,7 @@ async fn set_authority_fail_wrong_authority() {
             .unwrap(),
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(CrudError::IncorrectOwner as u32)
+            InstructionError::Custom(RecordError::IncorrectOwner as u32)
         )
     );
 }
@@ -529,7 +529,7 @@ async fn set_authority_fail_unsigned() {
     let transaction = Transaction::new_signed_with_payer(
         &[Instruction::new_with_borsh(
             id(),
-            &instruction::CrudInstruction::SetAuthority,
+            &instruction::RecordInstruction::SetAuthority,
             vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(authority.pubkey(), false),

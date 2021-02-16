@@ -1,4 +1,4 @@
-//! CRUD program
+//! Record program
 #![deny(missing_docs)]
 
 mod entrypoint;

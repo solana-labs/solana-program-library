@@ -1,7 +1,7 @@
 [package]
-name = "spl-crud"
+name = "spl-record"
 version = "0.1.0"
-description = "Solana Program Library Associated Token Account"
+description = "Solana Program Library Record Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"

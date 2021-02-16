@@ -6,7 +6,7 @@ use thiserror::Error;
 
 /// Errors that may be returned by the program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
-pub enum CrudError {
+pub enum RecordError {
     /// Incorrect owner provided on update or delete
     #[error("Incorrect owner provided on update or delete")]
     IncorrectOwner,
@@ -15,13 +15,13 @@ pub enum CrudError {
     #[error("Calculation overflow")]
     Overflow,
 }
-impl From<CrudError> for ProgramError {
-    fn from(e: CrudError) -> Self {
+impl From<RecordError> for ProgramError {
+    fn from(e: RecordError) -> Self {
         ProgramError::Custom(e as u32)
     }
 }
-impl<T> DecodeError<T> for CrudError {
+impl<T> DecodeError<T> for RecordError {
     fn type_of() -> &'static str {
-        "CRUD Error"
+        "Record Error"
     }
 }
