@@ -198,7 +198,6 @@ pub enum LendingInstruction {
     ///   .. `[writable]` Additional reserve accounts.
     AccrueReserveInterest,
 
-    /// @TODO: update documentation if processor or below method changes
     /// Deposit additional collateral to an obligation.
     ///
     ///   0. `[writable]` Source collateral token account, minted by deposit reserve collateral
@@ -217,7 +216,6 @@ pub enum LendingInstruction {
         collateral_amount: u64,
     },
 
-    /// @TODO: update documentation if processor or below method changes
     /// Withdraw excess collateral from an obligation. The loan must remain healthy.
     ///
     ///   0. `[writable]` Destination collateral token account, minted by withdraw reserve
@@ -774,7 +772,6 @@ pub fn accrue_reserve_interest(program_id: Pubkey, reserve_pubkeys: Vec<Pubkey>)
 
 /// Creates a 'DepositObligationCollateral' instruction.
 #[allow(clippy::too_many_arguments)]
-/// @TODO: update here if processor or above documentation changes
 pub fn deposit_obligation_collateral(
     program_id: Pubkey,
     collateral_amount: u64,
@@ -808,7 +805,6 @@ pub fn deposit_obligation_collateral(
 
 /// Creates an 'WithdrawObligationCollateral' instruction.
 #[allow(clippy::too_many_arguments)]
-/// @TODO: update here if processor or above documentation changes
 pub fn withdraw_obligation_collateral(
     program_id: Pubkey,
     collateral_amount: u64,
