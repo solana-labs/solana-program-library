@@ -21,7 +21,7 @@ pub enum Instruction {
     /// Initializes a new binary oracle pair pool.
     ///
     ///   0. `[writable]` Pool account.
-    ///   1. `[]` authority create_program_address(&[Token-swap account])`
+    ///   1. `[]` authority create_program_address(&[binary-oracle-pair account])`
     ///   2. `[]` Decider authority
     ///   3. `[]` Deposit currency SPL Token mint. Must be initialized.
     ///   4. `[]` Rent sysvar
