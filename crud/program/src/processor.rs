@@ -52,21 +52,25 @@ pub fn process_instruction(
                 .map_err(|e| e.into())
         }
 
-        CrudInstruction::Write { data } => {
+        CrudInstruction::Write { offset, data } => {
             msg!("CrudInstruction::Write");
             let data_info = next_account_info(account_info_iter)?;
             let owner_info = next_account_info(account_info_iter)?;
-            let mut account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
+            let account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
             if account_data.authority != *owner_info.key {
                 return Err(CrudError::IncorrectOwner.into());
             }
             if !owner_info.is_signer {
                 return Err(ProgramError::MissingRequiredSignature);
             }
-            account_data.data = data;
-            account_data
-                .serialize(&mut *data_info.data.borrow_mut())
-                .map_err(|e| e.into())
+            let start = AccountData::WRITABLE_START_INDEX + offset as usize;
+            let end = start + data.len();
+            if end > data_info.data.borrow().len() {
+                Err(ProgramError::AccountDataTooSmall)
+            } else {
+                data_info.data.borrow_mut()[start..end].copy_from_slice(&data);
+                Ok(())
+            }
         }
 
         CrudInstruction::SetAuthority => {

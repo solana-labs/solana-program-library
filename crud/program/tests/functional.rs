@@ -2,6 +2,7 @@
 #![cfg(feature = "test-bpf")]
 
 use {
+    borsh::BorshSerialize,
     solana_program::{
         borsh::get_packed_len,
         instruction::{AccountMeta, Instruction, InstructionError},
@@ -43,7 +44,12 @@ async fn initialize_storage_account(
                 &id(),
             ),
             instruction::initialize(&account.pubkey(), &authority.pubkey()),
-            instruction::write(&account.pubkey(), &authority.pubkey(), data),
+            instruction::write(
+                &account.pubkey(),
+                &authority.pubkey(),
+                0,
+                data.try_to_vec().unwrap(),
+            ),
         ],
         Some(&context.payer.pubkey()),
         &[&context.payer, account, authority],
@@ -96,7 +102,7 @@ async fn initialize_with_seed_success() {
                 &id(),
             ),
             instruction::initialize(&account, &authority.pubkey()),
-            instruction::write(&account, &authority.pubkey(), data.clone()),
+            instruction::write(&account, &authority.pubkey(), 0, data.try_to_vec().unwrap()),
         ],
         Some(&context.payer.pubkey()),
         &[&context.payer, &authority],
@@ -169,7 +175,8 @@ async fn write_success() {
         &[instruction::write(
             &account.pubkey(),
             &authority.pubkey(),
-            new_data.clone(),
+            0,
+            new_data.try_to_vec().unwrap(),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &authority],
@@ -212,7 +219,8 @@ async fn write_fail_wrong_authority() {
         &[instruction::write(
             &account.pubkey(),
             &wrong_authority.pubkey(),
-            new_data.clone(),
+            0,
+            new_data.try_to_vec().unwrap(),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_authority],
@@ -247,11 +255,13 @@ async fn write_fail_unsigned() {
 
     let data = Data {
         bytes: [200u8; Data::DATA_SIZE],
-    };
+    }
+    .try_to_vec()
+    .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[Instruction::new_with_borsh(
             id(),
-            &instruction::CrudInstruction::Write { data },
+            &instruction::CrudInstruction::Write { offset: 0, data },
             vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(authority.pubkey(), false),
@@ -438,7 +448,8 @@ async fn set_authority_success() {
         &[instruction::write(
             &account.pubkey(),
             &new_authority.pubkey(),
-            new_data.clone(),
+            0,
+            new_data.try_to_vec().unwrap(),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &new_authority],

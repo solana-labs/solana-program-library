@@ -1,6 +1,6 @@
 //! Program instructions
 
-use crate::{state::Data, *};
+use crate::id;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
@@ -15,7 +15,7 @@ pub enum CrudInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    /// 0. `[writeable]` Data account, must be uninitialized
+    /// 0. `[writable]` Data account, must be uninitialized
     /// 1. `[]` Document authority
     /// 2. `[]` Rent sysvar, to check for rent exemption
     Initialize,
@@ -24,18 +24,20 @@ pub enum CrudInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    /// 0. `[writeable]` Document account, must be previously initialized (version != 0)
+    /// 0. `[writable]` Document account, must be previously initialized (version != 0)
     /// 1. `[signer]` Current document authority
     Write {
+        /// Offset to start writing data, expressed as `u64`.
+        offset: u64,
         /// Data to replace the existing document data
-        data: Data,
+        data: Vec<u8>,
     },
 
     /// Update the authority of the provided data account
     ///
     /// Accounts expected by this instruction:
     ///
-    /// 0. `[writeable]` Document account, must be previously initialized (version != 0)
+    /// 0. `[writable]` Document account, must be previously initialized (version != 0)
     /// 1. `[signer]` Current authority of the document
     /// 2. `[]` New authority of the document
     SetAuthority,
@@ -44,7 +46,7 @@ pub enum CrudInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    /// 0. `[writeable]` Document account, must be previously initialized (version != 0)
+    /// 0. `[writable]` Document account, must be previously initialized (version != 0)
     /// 1. `[signer]` Document authority
     /// 2. `[]` Receiver of account lamports
     CloseAccount,
@@ -64,10 +66,10 @@ pub fn initialize(data_account: &Pubkey, authority: &Pubkey) -> Instruction {
 }
 
 /// Create a `CrudInstruction::Write` instruction
-pub fn write(data_account: &Pubkey, signer: &Pubkey, data: Data) -> Instruction {
+pub fn write(data_account: &Pubkey, signer: &Pubkey, offset: u64, data: Vec<u8>) -> Instruction {
     Instruction::new_with_borsh(
         id(),
-        &CrudInstruction::Write { data },
+        &CrudInstruction::Write { offset, data },
         vec![
             AccountMeta::new(*data_account, false),
             AccountMeta::new_readonly(*signer, true),
@@ -124,9 +126,15 @@ mod tests {
 
     #[test]
     fn serialize_write() {
-        let instruction = CrudInstruction::Write { data: TEST_DATA };
+        let data = TEST_DATA.try_to_vec().unwrap();
+        let offset = 0u64;
+        let instruction = CrudInstruction::Write {
+            offset: 0,
+            data: data.clone(),
+        };
         let mut expected = vec![1];
-        expected.append(&mut TEST_DATA.try_to_vec().unwrap());
+        expected.extend_from_slice(&offset.to_le_bytes());
+        expected.append(&mut data.try_to_vec().unwrap());
         assert_eq!(instruction.try_to_vec().unwrap(), expected);
         assert_eq!(
             CrudInstruction::try_from_slice(&expected).unwrap(),

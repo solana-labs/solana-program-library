@@ -13,7 +13,7 @@ pub struct AccountData {
     /// The account allowed to update the data
     pub authority: Pubkey,
 
-    /// The data contained by the account, could be anything or serializable
+    /// The data contained by the account, could be anything serializable
     pub data: Data,
 }
 
@@ -32,6 +32,9 @@ impl Data {
 impl AccountData {
     /// Version to fill in on new created accounts
     pub const CURRENT_VERSION: u8 = 1;
+
+    /// Start of writable account data, after version and authority
+    pub const WRITABLE_START_INDEX: usize = 33;
 }
 
 impl IsInitialized for AccountData {
