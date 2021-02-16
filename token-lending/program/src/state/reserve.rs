@@ -92,15 +92,14 @@ impl Reserve {
         }
     }
 
-    // @TODO: document
-    /// Check obligation health
-    pub fn check_obligation_health(
+    /// Calculate the recommended collateral for an obligation
+    pub fn recommended_collateral(
         &self,
         obligation: &Obligation,
         liquidity_token_mint: &Pubkey,
         token_converter: impl TokenConverter,
-    ) -> Result<ObligationHealthResult, ProgramError> {
-        Self::_check_obligation_health(
+    ) -> Result<u64, ProgramError> {
+        Self::_recommended_collateral(
             obligation,
             liquidity_token_mint,
             self.collateral_exchange_rate()?,
@@ -109,54 +108,29 @@ impl Reserve {
         )
     }
 
-    fn _check_obligation_health(
+    fn _recommended_collateral(
         obligation: &Obligation,
         liquidity_token_mint: &Pubkey,
         collateral_exchange_rate: CollateralExchangeRate,
         collateral_reserve_config: &ReserveConfig,
         mut token_converter: impl TokenConverter,
-    ) -> Result<ObligationHealthResult, ProgramError> {
-        // @TODO: does this approach make sense?
+    ) -> Result<u64, ProgramError> {
         let borrow_token_price = token_converter.best_price(liquidity_token_mint)?;
         let decimal_collateral = Decimal::from(obligation.deposited_collateral_tokens);
         let collateral_value = collateral_exchange_rate
             .decimal_collateral_to_liquidity(decimal_collateral)?
             .try_div(borrow_token_price)?;
+
         let loan_to_value = obligation
             .borrowed_liquidity_wads
             .try_div(collateral_value)?;
-
-        let deposit_amount: u64;
-        let withdraw_amount: u64;
-
         let reserve_loan_to_value =
             Decimal::from_percent(collateral_reserve_config.loan_to_value_ratio);
-        // @TODO: does this math make sense?
-        // ratio of the obligation loan to value to reserve loan to value
         let loan_to_value_ratio = loan_to_value.try_div(reserve_loan_to_value)?;
-        // @TODO: is this comparison safe and idiomatic?
-        if loan_to_value_ratio.lt(&Decimal::one()) {
-            // healthy, up to `withdraw_amount` of collateral could be withdrawn
-            deposit_amount = 0;
-            withdraw_amount = decimal_collateral
-                .try_mul(loan_to_value_ratio)?
-                .try_floor_u64()?;
-        } else if loan_to_value_ratio.gt(&Decimal::one()) {
-            // unhealthy, at least `deposit_amount` of collateral should be deposited
-            deposit_amount = decimal_collateral
-                .try_mul(loan_to_value_ratio)?
-                .try_ceil_u64()?;
-            withdraw_amount = 0;
-        } else {
-            deposit_amount = 0;
-            withdraw_amount = 0;
-        }
 
-        Ok(ObligationHealthResult {
-            loan_to_value,
-            deposit_amount,
-            withdraw_amount,
-        })
+        decimal_collateral
+            .try_mul(loan_to_value_ratio)?
+            .try_ceil_u64()
     }
 
     /// Liquidate part of an unhealthy obligation

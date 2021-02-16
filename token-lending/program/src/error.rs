@@ -127,12 +127,15 @@ pub enum LendingError {
     TokenBurnFailed,
 
     // 35
+    /// Cannot withdraw from an unhealthy obligation
+    #[error("Cannot withdraw from an unhealthy obligation")]
+    ObligationUnhealthy,
     /// Cannot make obligation unhealthy
     #[error("Cannot make obligation unhealthy")]
     UnhealthyObligation,
-    /// Invalid collateral withdraw
-    #[error("Invalid collateral withdraw")]
-    InvalidCollateralWithdraw,
+    /// Invalid obligation collateral
+    #[error("Invalid obligation collateral")]
+    InvalidObligationCollateral,
 }
 
 impl From<LendingError> for ProgramError {

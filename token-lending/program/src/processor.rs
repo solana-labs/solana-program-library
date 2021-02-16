@@ -7,8 +7,7 @@ use crate::{
     math::{Decimal, TryAdd, WAD},
     state::{
         LendingMarket, LiquidateResult, NewObligationParams, NewReserveParams, Obligation,
-        ObligationHealthResult, RepayResult, Reserve, ReserveCollateral, ReserveConfig,
-        ReserveLiquidity, PROGRAM_VERSION,
+        RepayResult, Reserve, ReserveCollateral, ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
     },
 };
 use num_traits::FromPrimitive;
@@ -1426,8 +1425,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::ObligationEmpty.into());
     }
     if obligation_collateral_amount < collateral_amount {
-        // @TODO: could this still use a more descriptive error type?
-        return Err(LendingError::InvalidCollateralWithdraw.into());
+        return Err(LendingError::InvalidObligationCollateral.into());
     }
 
     let trade_simulator = TradeSimulator::new(
@@ -1439,25 +1437,26 @@ fn process_withdraw_obligation_collateral(
         &withdraw_reserve.liquidity.mint_pubkey,
     )?;
 
-    let ObligationHealthResult {
-        withdraw_amount, ..
-    } = withdraw_reserve.check_obligation_health(
+    let recommended_collateral = withdraw_reserve.recommended_collateral(
         &obligation,
         &borrow_reserve.liquidity.mint_pubkey,
         trade_simulator,
     )?;
+    if obligation_collateral_amount < recommended_collateral {
+        return Err(LendingError::ObligationUnhealthy.into());
+    }
 
-    // @TODO: is it better to fail (safe) or to withdraw up to the allowed amount (user friendly)?
-    if collateral_amount > withdraw_amount {
+    let remaining_collateral = obligation_collateral_amount
+        .checked_sub(collateral_amount)
+        .ok_or(LendingError::MathOverflow)?;
+    if remaining_collateral < recommended_collateral {
         return Err(LendingError::UnhealthyObligation.into());
     }
 
-    obligation.deposited_collateral_tokens = obligation_collateral_amount
-        .checked_sub(collateral_amount)
-        .ok_or(LendingError::MathOverflow)?;
-
     let obligation_token_amount = obligation
         .collateral_to_obligation_token_amount(collateral_amount, obligation_token_mint.supply)?;
+
+    obligation.deposited_collateral_tokens = remaining_collateral;
 
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
