@@ -7,7 +7,8 @@ use crate::{
     math::{Decimal, TryAdd, WAD},
     state::{
         LendingMarket, LiquidateResult, NewObligationParams, NewReserveParams, Obligation,
-        RepayResult, Reserve, ReserveCollateral, ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
+        ObligationHealthResult, RepayResult, Reserve, ReserveCollateral, ReserveConfig,
+        ReserveLiquidity, PROGRAM_VERSION,
     },
 };
 use num_traits::FromPrimitive;
@@ -1424,20 +1425,11 @@ fn process_withdraw_obligation_collateral(
     if obligation_collateral_amount == 0 {
         return Err(LendingError::ObligationEmpty.into());
     }
-
-    // @TODO: can these next checks be combined? e.g. obligation_collateral_amount <= collateral_amount
     if obligation_collateral_amount < collateral_amount {
-        // @TODO: does this need a different error type?
-        return Err(LendingError::ObligationEmpty.into());
+        // @TODO: could this still use a more descriptive error type?
+        return Err(LendingError::InvalidCollateralWithdraw.into());
     }
 
-    if obligation_collateral_amount == collateral_amount {
-        // @TODO: do obligations ever allow withdrawing all collateral?
-        return Err(LendingError::ObligationEmpty.into());
-    }
-
-    // @FIXME: https://github.com/solana-labs/solana-program-library/pull/1229#discussion_r575807886
-    // Check obligation health
     let trade_simulator = TradeSimulator::new(
         dex_market_info,
         dex_market_orders_info,
@@ -1447,26 +1439,25 @@ fn process_withdraw_obligation_collateral(
         &withdraw_reserve.liquidity.mint_pubkey,
     )?;
 
-    // @FIXME: https://github.com/solana-labs/solana-program-library/pull/1229#discussion_r575806271
-    let borrow_amount = obligation.borrowed_liquidity_wads.try_ceil_u64()?;
-    let required_collateral_amount = withdraw_reserve.required_collateral_for_borrow(
-        borrow_amount,
+    let ObligationHealthResult {
+        withdraw_amount, ..
+    } = withdraw_reserve.check_obligation_health(
+        &obligation,
         &borrow_reserve.liquidity.mint_pubkey,
         trade_simulator,
     )?;
 
-    let remaining_collateral_amount = obligation_collateral_amount
-        .checked_sub(collateral_amount)
-        .ok_or(LendingError::MathOverflow)?;
-
-    if remaining_collateral_amount < required_collateral_amount {
+    // @TODO: is it better to fail (safe) or to withdraw up to the allowed amount (user friendly)?
+    if collateral_amount > withdraw_amount {
         return Err(LendingError::UnhealthyObligation.into());
     }
 
+    obligation.deposited_collateral_tokens = obligation_collateral_amount
+        .checked_sub(collateral_amount)
+        .ok_or(LendingError::MathOverflow)?;
+
     let obligation_token_amount = obligation
         .collateral_to_obligation_token_amount(collateral_amount, obligation_token_mint.supply)?;
-
-    obligation.deposited_collateral_tokens = remaining_collateral_amount;
 
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 

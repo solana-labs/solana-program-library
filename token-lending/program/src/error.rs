@@ -130,6 +130,9 @@ pub enum LendingError {
     /// Cannot make obligation unhealthy
     #[error("Cannot make obligation unhealthy")]
     UnhealthyObligation,
+    /// Invalid collateral withdraw
+    #[error("Invalid collateral withdraw")]
+    InvalidCollateralWithdraw,
 }
 
 impl From<LendingError> for ProgramError {
