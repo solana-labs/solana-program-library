@@ -26,6 +26,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2a4ec343196209d6594e19543ae87a39f96d5534d7174822a3ad825dd6ed7e"
 
 [[package]]
+name = "ahash"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -248,6 +254,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "borsh"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5a26c53ddf60281f18e7a29b20db7ba3db82a9d81b9650bfaa02d646f50d364"
+dependencies = [
+ "borsh-derive 0.8.1",
+ "hashbrown",
+]
+
+[[package]]
 name = "borsh-derive"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -327,6 +343,25 @@ name = "bs58"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "771fe0050b883fcc3ea2359b1a96bcfbc090b7116eae7c3c512c7a083fdf23d3"
+
+[[package]]
+name = "bulletproofs"
+version = "4.0.0"
+source = "git+https://github.com/garious/bulletproofs?rev=200bbcd4cb9ad6fc533232fcd4a00c893921f184#200bbcd4cb9ad6fc533232fcd4a00c893921f184"
+dependencies = [
+ "byteorder",
+ "clear_on_drop",
+ "curve25519-dalek-ng",
+ "digest 0.9.0",
+ "merlin",
+ "rand 0.8.2",
+ "rand_core 0.6.1",
+ "serde",
+ "serde_derive",
+ "sha3",
+ "subtle-ng",
+ "thiserror",
+]
 
 [[package]]
 name = "bumpalo"
@@ -496,6 +531,15 @@ dependencies = [
  "textwrap",
  "unicode-width",
  "vec_map",
+]
+
+[[package]]
+name = "clear_on_drop"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9cc5db465b294c3fa986d5bbb0f3017cd850bff6dd6c52f9ccff8b4d21b7b08"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -772,6 +816,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "curve25519-dalek-ng"
+version = "4.0.1"
+source = "git+https://github.com/garious/curve25519-dalek?rev=fcef1fa11b3d3e89a1abf8986386ba9ae375392c#fcef1fa11b3d3e89a1abf8986386ba9ae375392c"
+dependencies = [
+ "borsh 0.8.1",
+ "byteorder",
+ "digest 0.9.0",
+ "rand_core 0.6.1",
+ "serde",
+ "subtle-ng",
+ "zeroize",
+]
+
+[[package]]
 name = "dashmap"
 version = "4.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -898,6 +956,22 @@ name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+
+[[package]]
+name = "elgamal_ristretto"
+version = "0.2.4"
+source = "git+https://github.com/garious/elgamal?rev=892dbe115104bcb8cc26d79f9676c836ff6c018e#892dbe115104bcb8cc26d79f9676c836ff6c018e"
+dependencies = [
+ "bincode",
+ "borsh 0.8.1",
+ "clear_on_drop",
+ "curve25519-dalek-ng",
+ "rand_core 0.6.1",
+ "serde",
+ "sha2 0.9.3",
+ "solana-sdk",
+ "zkp",
+]
 
 [[package]]
 name = "encode_unicode"
@@ -1301,6 +1375,9 @@ name = "hashbrown"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
+dependencies = [
+ "ahash",
+]
 
 [[package]]
 name = "heck"
@@ -1790,6 +1867,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "157b4208e3059a8f9e78d559edc658e13df41410cb3ae03979c83130067fdd87"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "merlin"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58c38e2799fc0978b65dfff8023ec7843e2330bb462f19198840b34b6582397d"
+dependencies = [
+ "byteorder",
+ "keccak",
+ "rand_core 0.6.1",
+ "zeroize",
 ]
 
 [[package]]
@@ -3701,7 +3790,7 @@ dependencies = [
 name = "spl-feature-proposal"
 version = "1.0.0"
 dependencies = [
- "borsh",
+ "borsh 0.7.2",
  "borsh-derive 0.8.1",
  "futures 0.3.12",
  "solana-program",
@@ -3729,7 +3818,7 @@ dependencies = [
 name = "spl-math"
 version = "0.1.0"
 dependencies = [
- "borsh",
+ "borsh 0.7.2",
  "borsh-derive 0.8.1",
  "num-derive",
  "num-traits",
@@ -3936,14 +4025,16 @@ name = "spl-zol"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "borsh",
- "curve25519-dalek 2.1.0",
- "elgamal_ristretto 0.2.4 (git+https://github.com/garious/elgamal?rev=5537b4ca9b9c6ef868ec059bb6e97209dea966a0)",
+ "borsh 0.8.1",
+ "bulletproofs",
+ "curve25519-dalek-ng",
+ "elgamal_ristretto",
  "getrandom 0.1.16",
+ "merlin",
  "num-derive",
  "num-traits",
- "rand 0.7.3",
- "rand_core 0.5.1",
+ "rand 0.8.2",
+ "rand_core 0.6.1",
  "solana-program",
  "solana-sdk",
  "thiserror",
@@ -3978,6 +4069,12 @@ name = "subtle"
 version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
+
+[[package]]
+name = "subtle-ng"
+version = "2.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8049cf85f0e715d6af38dde439cb0ccb91f67fb9f5f63c80f8b43e48356e1a3f"
 
 [[package]]
 name = "symlink"
@@ -4939,6 +5036,19 @@ dependencies = [
  "quote 1.0.8",
  "syn 1.0.58",
  "synstructure",
+]
+
+[[package]]
+name = "zkp"
+version = "0.8.0"
+source = "git+https://github.com/garious/zkp?rev=e4b350e123476fcbd4b54d36a5d446d4aef5d842#e4b350e123476fcbd4b54d36a5d446d4aef5d842"
+dependencies = [
+ "curve25519-dalek-ng",
+ "merlin",
+ "rand 0.8.2",
+ "serde",
+ "serde_derive",
+ "thiserror",
 ]
 
 [[package]]

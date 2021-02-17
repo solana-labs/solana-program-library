@@ -13,18 +13,20 @@ default = ["elgamal_ristretto/program"]
 
 [dependencies]
 bincode = "1.3"
-borsh = "0.7.1"
-curve25519-dalek = { git = "https://github.com/garious/curve25519-dalek", rev = "60efef3553d6bf3d7f3b09b5f97acd54d72529ff", features = ["borsh"] }
-elgamal_ristretto = { git = "https://github.com/garious/elgamal", rev = "5537b4ca9b9c6ef868ec059bb6e97209dea966a0", default-features = false }
+borsh = "0.8"
+bulletproofs = { version = "4", git = "https://github.com/garious/bulletproofs", rev = "200bbcd4cb9ad6fc533232fcd4a00c893921f184" }
+curve25519-dalek = { package = "curve25519-dalek-ng", default-features = false, git = "https://github.com/garious/curve25519-dalek", rev = "fcef1fa11b3d3e89a1abf8986386ba9ae375392c", features = ["borsh"] }
+elgamal_ristretto = { git = "https://github.com/garious/elgamal", rev = "892dbe115104bcb8cc26d79f9676c836ff6c018e", default-features = false }
 getrandom = { version = "0.1.15", features = ["dummy"] }
+merlin = "3"
 num-derive = "0.3"
 num-traits = "0.2"
-rand = "0.7.3"
+rand = "0.8"
 solana-program = "1.5.6"
 thiserror = "1.0"
 
 [dev-dependencies]
-rand_core = "0.5.1"
+rand_core = "0.6"
 solana-sdk = "1.5.6"
 
 [lib]
