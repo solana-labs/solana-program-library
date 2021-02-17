@@ -65,13 +65,13 @@ pub enum TimelockInstruction {
     /// their signatory token indicating they are satisfied with the instruction queue. They'll receive an signatory token
     /// as a result of this call that they can burn later.
     ///
-    ///   0. `[writable]` Uninitialized new signatory account.
+    ///   0. `[writable]` Initiaslized new signatory account.
     ///   1. `[writable]` Signatory mint account.
     ///   2. `[writable]` Admin account.
     ///   3. `[writable]` Admin validation account.
     ///   4. `[]` Timelock set account.
-    ///   5. `[]` Timelock program account.
-    ///   6. `[]` Rent sysvar
+    ///   5. `[]` Timelock program mint authority
+    ///   6. `[]` Timelock program account.
     ///   7. '[]` Token program id.
     AddSigner,
 
@@ -83,8 +83,9 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` Admin account.
     ///   3. `[writable]` Admin validation account.
     ///   4. `[]` Timelock set account.
-    ///   5. `[]` Timelock program account.
-    ///   6. '[]` Token program id.
+    ///   5. `[]` Timelock program mint authority
+    ///   6. `[]` Timelock program account.
+    ///   7. '[]` Token program id.
     RemoveSigner,
 
     /// [Requires Signatory token]
@@ -150,8 +151,9 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Signatory account
     ///   2. `[writable]` Signatory validation account.
     ///   3. `[writable]` Signatory mint account.
-    ///   4. `[]` Timelock program account pub key.
-    ///   5. `[]` Token program account.
+    ///   4. `[]` Timelock program mint authority
+    ///   5. `[]` Timelock program account pub key.
+    ///   6. `[]` Token program account.
     Sign,
 
     /// [Requires Voting tokens]
@@ -162,8 +164,9 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Voting account.
     ///   2. `[writable]` Voting mint account.
     ///   3. `[writable]` Voting validation account.
-    ///   4. `[]` Timelock program account pub key.
-    ///   5. `[]` Token program account.
+    ///   4. `[]` Timelock program mint authority
+    ///   5. `[]` Timelock program account pub key.
+    ///   6. `[]` Token program account.
     Vote {
         /// How many voting tokens to burn
         voting_token_amount: u64,
@@ -177,9 +180,9 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` Voting mint account.
     ///   3. `[writable]` Signatory account
     ///   4. `[writable]` Signatory validation account.
-    ///   5. `[]` Timelock program account pub key.
-    ///   6. `[]` Token program account.
-    ///   7. `[]` Rent sysvar
+    ///   6. `[]` Timelock program mint authority
+    ///   7. `[]` Timelock program account pub key.
+    ///   8. `[]` Token program account.
     MintVotingTokens {
         /// How many voting tokens to mint
         voting_token_amount: u64,

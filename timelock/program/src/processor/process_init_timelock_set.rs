@@ -8,9 +8,8 @@ use crate::{
     },
     utils::{
         assert_initialized, assert_rent_exempt, assert_same_version_as_program,
-        assert_token_program_is_correct, assert_uninitialized, spl_token_init_account,
-        spl_token_init_mint, spl_token_mint_to, TokenInitializeAccountParams,
-        TokenInitializeMintParams, TokenMintToParams,
+        assert_token_program_is_correct, assert_uninitialized, spl_token_mint_to,
+        TokenMintToParams,
     },
 };
 use solana_program::{
@@ -20,7 +19,7 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{rent::Rent, Sysvar},
 };
-use spl_token::state::Mint;
+use spl_token::state::{Account, Mint};
 
 /// Create a new timelock set
 pub fn process_init_timelock_set(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
@@ -66,6 +65,8 @@ pub fn process_init_timelock_set(program_id: &Pubkey, accounts: &[AccountInfo]) 
     let _admin_mint: Mint = assert_initialized(admin_mint_account_info)?;
     let _voting_mint: Mint = assert_initialized(voting_mint_account_info)?;
     let _signatory_mint: Mint = assert_initialized(signatory_mint_account_info)?;
+    let _sig_acct: Account = assert_initialized(destination_sig_account_info)?;
+    let _admin_acct: Account = assert_initialized(destination_admin_account_info)?;
 
     TimelockSet::pack(
         new_timelock_set.clone(),
