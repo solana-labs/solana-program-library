@@ -1,5 +1,6 @@
 //! Program state processor
 use crate::{
+    error::TimelockError,
     state::timelock_program::TimelockProgram,
     state::{enums::TimelockStateStatus, timelock_set::TimelockSet},
     utils::{
@@ -17,7 +18,7 @@ use spl_token::state::Mint;
 
 /// Vote on the timelock
 pub fn process_vote(
-    _: &Pubkey,
+    program_id: &Pubkey,
     accounts: &[AccountInfo],
     voting_token_amount: u64,
 ) -> ProgramResult {
@@ -26,6 +27,7 @@ pub fn process_vote(
     let voting_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
     let voting_validation_account_info = next_account_info(account_info_iter)?;
+    let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
@@ -39,12 +41,14 @@ pub fn process_vote(
         timelock_program_account_info,
         token_program_account_info,
     )?;
-    let (_, bump_seed) = Pubkey::find_program_address(
-        &[timelock_set_account_info.key.as_ref()],
-        timelock_program_account_info.key,
-    );
 
-    let authority_signer_seeds = &[token_program_account_info.key.as_ref(), &[bump_seed]];
+    let (authority_key, bump_seed) =
+        Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
+    if timelock_program_authority_info.key != &authority_key {
+        return Err(TimelockError::InvalidTimelockAuthority.into());
+    }
+    let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
+
     let mint: Mint = assert_initialized(voting_mint_account_info)?;
     let now_remaining = mint.supply - voting_token_amount;
     let total_ever_existed = timelock_set.state.total_voting_tokens_minted;
@@ -52,7 +56,7 @@ pub fn process_vote(
     spl_token_burn(TokenBurnParams {
         mint: voting_mint_account_info.clone(),
         amount: voting_token_amount,
-        authority: timelock_program_account_info.clone(),
+        authority: timelock_program_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_account_info.clone(),
         source: voting_account_info.clone(),

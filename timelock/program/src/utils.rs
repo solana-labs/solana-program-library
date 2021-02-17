@@ -16,6 +16,7 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::rent::Rent,
 };
+use spl_token::state::Account;
 
 /// Attempts to transfer the token to the timelock set's validation account and back to the person again.
 /// Can only be done if done in a transaction that has authority to do so. Serves as a check
@@ -26,6 +27,9 @@ pub fn assert_is_permissioned<'a>(
     timelock_program_info: &AccountInfo<'a>,
     token_program_info: &AccountInfo<'a>,
 ) -> ProgramResult {
+    let _perm_account: Account = assert_initialized(perm_account_info)?;
+    let _perm_validation: Account = assert_initialized(perm_validation_account_info)?;
+
     let (_, bump_seed) =
         Pubkey::find_program_address(&[perm_account_info.key.as_ref()], timelock_program_info.key);
 
