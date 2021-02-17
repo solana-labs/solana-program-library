@@ -42,13 +42,19 @@ pub enum TimelockInstruction {
     /// Initializes a new empty Timelocked set of Instructions that will be executed at various slots in the future in draft mode.
     /// Grants Admin token to caller.
     ///
-    ///   1. `[writable]` Uninitialized Timelock set account
+    ///   0. `[writable]` Uninitialized Timelock set account .
+    ///   1. `[writable]` Uninitialized Signatory Mint account
     ///   2. `[writable]` Uninitialized Admin Mint account
-    ///   3. `[writable]` Uninitialized Admin Validation account
-    ///   4. `[writable]` Uninitialized Destination account for first admin token
-    ///   5. `[]` Timelock Program
-    ///   6. '[]` Token program id
-    ///   7. `[]` Rent sysvar
+    ///   3. `[writable]` Uninitialized Voting Mint account
+    ///   4. `[writable]` Uninitialized Signatory Validation account
+    ///   5. `[writable]` Uninitialized Admin Validation account
+    ///   6. `[writable]` Uninitialized Voting Validation account
+    ///   7. `[writable]` Uninitialized Destination account for first admin token
+    ///   8. `[writable]` Uninitialized Destination account for first signatory token
+    ///   9. `[]` Timelock program mint authority
+    ///   10. `[]` Timelock Program
+    ///   11. '[]` Token program id
+    ///   12. `[]` Rent sysvar
     InitTimelockSet {
         /// Determine what type of timelock config you want
         config: TimelockConfig,
@@ -179,34 +185,7 @@ pub enum TimelockInstruction {
         voting_token_amount: u64,
     },
     /* TODO add execute ability and reset ability /// []
-    Execute {},
-
-    /// Reset
-    Reset {},*/
-    /// Adds signatory mint to new timelock set. Gives signatory token to admin caller.
-    ///
-    ///   0. `[writable]` Uninitialized Timelock set account
-    ///   1. `[writable]` Initialized Admin Token account
-    ///   2. `[writable]` Initialized Admin mint account
-    ///   3. `[writable]` Uninitialized Signatory Mint account
-    ///   4. `[writable]` Uninitialized Signatory Validation account
-    ///   5. `[writable]` Uninitialized Destination account for first signatory token
-    ///   6. `[]` Timelock Program
-    ///   7. '[]` Token program id
-    ///   8. `[]` Rent sysvar
-    AddSignatoryMint,
-
-    /// Adds voting mint to new timelock set.
-    ///
-    ///   0. `[writable]` Uninitialized Timelock set account
-    ///   1. `[writable]` Initialized Admin Token account
-    ///   2. `[writable]` Initialized Admin mint account
-    ///   3. `[writable]` Uninitialized Voting Mint account
-    ///   4. `[writable]` Uninitialized Voting Validation account
-    ///   5. `[]` Timelock Program
-    ///   6. '[]` Token program id
-    ///   7. `[]` Rent sysvar
-    AddVotingMint,
+    Execute {},*/
 }
 
 impl TimelockInstruction {
@@ -267,8 +246,6 @@ impl TimelockInstruction {
                     voting_token_amount,
                 }
             }
-            11 => Self::AddSignatoryMint,
-            12 => Self::AddVotingMint,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -372,8 +349,6 @@ impl TimelockInstruction {
                 buf.push(10);
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
-            Self::AddSignatoryMint => buf.push(11),
-            Self::AddVotingMint => buf.push(12),
         }
         buf
     }
