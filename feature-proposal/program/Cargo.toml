@@ -14,7 +14,7 @@ test-bpf = []
 [dependencies]
 borsh = "0.7.1"
 borsh-derive = "0.7.1"
-solana-program = "1.5.6"
+solana-program = "1.5.8"
 spl-token = { version = "3.1", path = "../../token/program", features = ["no-entrypoint"] }
 
 
