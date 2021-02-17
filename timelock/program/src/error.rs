@@ -15,21 +15,25 @@ pub enum TimelockError {
     #[error("Failed to unpack instruction data")]
     InstructionUnpackError,
 
-    /// Using the wrong version of the timelock program for this code version
-    #[error("Using a timelock program account from a different version than this program version")]
-    InvalidTimelockVersionError,
+    /// The account cannot be initialized because it is already in use.
+    #[error("Account is already initialized")]
+    AlreadyInitialized,
 
     /// Using the wrong version of the timelock set for this code version
     #[error("Using a timelock set from a different version than this program version")]
     InvalidTimelockSetVersionError,
 
-    /// The account cannot be initialized because it is already in use.
-    #[error("Account is already initialized")]
-    AlreadyInitialized,
-
     /// Too high position in txn array
     #[error("Too high a position given in txn array")]
     TooHighPositionInTxnArrayError,
+
+    /// Invalid program derived address from a timelock account
+    #[error("Invalid PDA given for a timelock program account")]
+    InvalidTimelockAuthority,
+
+    /// Using the wrong version of the timelock program for this code version
+    #[error("Using a timelock program account from a different version than this program version")]
+    InvalidTimelockVersionError,
 
     /// Timelock Transaction not found on the Timelock Set
     #[error("Timelock Transaction not found on the Timelock Set")]

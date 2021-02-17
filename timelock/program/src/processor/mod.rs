@@ -1,7 +1,5 @@
 pub mod process_add_custom_single_signer_transaction;
-pub mod process_add_signatory_mint;
 pub mod process_add_signer;
-pub mod process_add_voting_mint;
 pub mod process_delete_timelock_set;
 pub mod process_init_timelock_program;
 pub mod process_init_timelock_set;
@@ -14,9 +12,7 @@ pub mod process_vote;
 
 use crate::instruction::TimelockInstruction;
 use process_add_custom_single_signer_transaction::process_add_custom_single_signer_transaction;
-use process_add_signatory_mint::process_add_signatory_mint;
 use process_add_signer::process_add_signer;
-use process_add_voting_mint::process_add_voting_mint;
 use process_delete_timelock_set::process_delete_timelock_set;
 use process_init_timelock_program::process_init_timelock_program;
 use process_init_timelock_set::process_init_timelock_set;
@@ -93,14 +89,6 @@ pub fn process_instruction(
         } => {
             msg!("Instruction: Mint Voting Tokens");
             process_mint_voting_tokens(program_id, accounts, voting_token_amount)
-        }
-        TimelockInstruction::AddSignatoryMint => {
-            msg!("Instruction: Adding Signatory Mint");
-            process_add_signatory_mint(program_id, accounts)
-        }
-        TimelockInstruction::AddVotingMint => {
-            msg!("Instruction: Adding Voting Mint");
-            process_add_voting_mint(program_id, accounts)
         }
     }
 }
