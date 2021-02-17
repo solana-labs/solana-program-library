@@ -26,12 +26,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2a4ec343196209d6594e19543ae87a39f96d5534d7174822a3ad825dd6ed7e"
 
 [[package]]
-name = "ahash"
-version = "0.4.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
-
-[[package]]
 name = "aho-corasick"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -250,17 +244,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b42b13fa9bf62be34702e5ee4526aff22530ae22fe34a0c4290d30d5e4e782e6"
 dependencies = [
- "borsh-derive 0.7.2",
-]
-
-[[package]]
-name = "borsh"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5a26c53ddf60281f18e7a29b20db7ba3db82a9d81b9650bfaa02d646f50d364"
-dependencies = [
- "borsh-derive 0.8.1",
- "hashbrown",
+ "borsh-derive",
 ]
 
 [[package]]
@@ -269,21 +253,8 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6aaa45f8eec26e4bf71e7e5492cf53a91591af8f871f422d550e7cc43f6b927"
 dependencies = [
- "borsh-derive-internal 0.7.2",
- "borsh-schema-derive-internal 0.7.2",
- "proc-macro2 1.0.24",
- "syn 1.0.58",
-]
-
-[[package]]
-name = "borsh-derive"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b637a47728b78a78cd7f4b85bf06d71ef4221840e059a38f048be2422bf673b2"
-dependencies = [
- "borsh-derive-internal 0.8.1",
- "borsh-schema-derive-internal 0.8.1",
- "proc-macro-crate",
+ "borsh-derive-internal",
+ "borsh-schema-derive-internal",
  "proc-macro2 1.0.24",
  "syn 1.0.58",
 ]
@@ -300,32 +271,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "borsh-derive-internal"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d813fa25eb0bed78c36492cff4415f38c760d6de833d255ba9095bd8ebb7d725"
-dependencies = [
- "proc-macro2 1.0.24",
- "quote 1.0.8",
- "syn 1.0.58",
-]
-
-[[package]]
 name = "borsh-schema-derive-internal"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85b38abfda570837b0949c2c7ebd31417e15607861c23eacb2f668c69f6f3bf7"
-dependencies = [
- "proc-macro2 1.0.24",
- "quote 1.0.8",
- "syn 1.0.58",
-]
-
-[[package]]
-name = "borsh-schema-derive-internal"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcf78ee4a98c8cb9eba1bac3d3e2a1ea3d7673c719ce691e67b5cbafc472d3b7"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
@@ -512,15 +461,6 @@ dependencies = [
  "textwrap",
  "unicode-width",
  "vec_map",
-]
-
-[[package]]
-name = "clear_on_drop"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9cc5db465b294c3fa986d5bbb0f3017cd850bff6dd6c52f9ccff8b4d21b7b08"
-dependencies = [
- "cc",
 ]
 
 [[package]]
@@ -797,20 +737,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "curve25519-dalek-ng"
-version = "4.0.1"
-source = "git+https://github.com/garious/curve25519-dalek?rev=fcef1fa11b3d3e89a1abf8986386ba9ae375392c#fcef1fa11b3d3e89a1abf8986386ba9ae375392c"
-dependencies = [
- "borsh 0.8.1",
- "byteorder",
- "digest 0.9.0",
- "rand_core 0.6.1",
- "serde",
- "subtle-ng",
- "zeroize",
-]
-
-[[package]]
 name = "dashmap"
 version = "4.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -937,22 +863,6 @@ name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
-
-[[package]]
-name = "elgamal_ristretto"
-version = "0.2.4"
-source = "git+https://github.com/garious/elgamal?rev=892dbe115104bcb8cc26d79f9676c836ff6c018e#892dbe115104bcb8cc26d79f9676c836ff6c018e"
-dependencies = [
- "bincode",
- "borsh 0.8.1",
- "clear_on_drop",
- "curve25519-dalek-ng",
- "rand_core 0.6.1",
- "serde",
- "sha2 0.9.3",
- "solana-sdk",
- "zkp",
-]
 
 [[package]]
 name = "encode_unicode"
@@ -1356,9 +1266,6 @@ name = "hashbrown"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
-dependencies = [
- "ahash",
-]
 
 [[package]]
 name = "heck"
@@ -1848,18 +1755,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "157b4208e3059a8f9e78d559edc658e13df41410cb3ae03979c83130067fdd87"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "merlin"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58c38e2799fc0978b65dfff8023ec7843e2330bb462f19198840b34b6582397d"
-dependencies = [
- "byteorder",
- "keccak",
- "rand_core 0.6.1",
- "zeroize",
 ]
 
 [[package]]
@@ -3771,8 +3666,8 @@ dependencies = [
 name = "spl-feature-proposal"
 version = "1.0.0"
 dependencies = [
- "borsh 0.7.2",
- "borsh-derive 0.7.2",
+ "borsh",
+ "borsh-derive",
  "futures 0.3.12",
  "solana-program",
  "solana-program-test",
@@ -3799,8 +3694,8 @@ dependencies = [
 name = "spl-math"
 version = "0.1.0"
 dependencies = [
- "borsh 0.7.2",
- "borsh-derive 0.7.2",
+ "borsh",
+ "borsh-derive",
  "num-derive",
  "num-traits",
  "proptest",
@@ -3889,23 +3784,6 @@ dependencies = [
  "solana-sdk",
  "spl-stake-pool",
  "spl-token 3.1.0",
-]
-
-[[package]]
-name = "spl-themis-ristretto"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "borsh 0.8.1",
- "curve25519-dalek-ng",
- "elgamal_ristretto",
- "getrandom 0.1.16",
- "num-derive",
- "num-traits",
- "rand 0.8.2",
- "solana-program",
- "subtle 2.2.3",
- "thiserror",
 ]
 
 [[package]]
@@ -4047,12 +3925,6 @@ name = "subtle"
 version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
-
-[[package]]
-name = "subtle-ng"
-version = "2.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8049cf85f0e715d6af38dde439cb0ccb91f67fb9f5f63c80f8b43e48356e1a3f"
 
 [[package]]
 name = "symlink"
@@ -5014,19 +4886,6 @@ dependencies = [
  "quote 1.0.8",
  "syn 1.0.58",
  "synstructure",
-]
-
-[[package]]
-name = "zkp"
-version = "0.8.0"
-source = "git+https://github.com/garious/zkp?rev=e4b350e123476fcbd4b54d36a5d446d4aef5d842#e4b350e123476fcbd4b54d36a5d446d4aef5d842"
-dependencies = [
- "curve25519-dalek-ng",
- "merlin",
- "rand 0.8.2",
- "serde",
- "serde_derive",
- "thiserror",
 ]
 
 [[package]]
