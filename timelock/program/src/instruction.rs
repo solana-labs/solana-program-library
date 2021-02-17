@@ -43,14 +43,14 @@ pub enum TimelockInstruction {
     /// Grants Admin token to caller.
     ///
     ///   0. `[writable]` Uninitialized Timelock set account .
-    ///   1. `[writable]` Uninitialized Signatory Mint account
-    ///   2. `[writable]` Uninitialized Admin Mint account
-    ///   3. `[writable]` Uninitialized Voting Mint account
-    ///   4. `[writable]` Uninitialized Signatory Validation account
-    ///   5. `[writable]` Uninitialized Admin Validation account
-    ///   6. `[writable]` Uninitialized Voting Validation account
-    ///   7. `[writable]` Uninitialized Destination account for first admin token
-    ///   8. `[writable]` Uninitialized Destination account for first signatory token
+    ///   1. `[writable]` Initialized Signatory Mint account
+    ///   2. `[writable]` Initialized Admin Mint account
+    ///   3. `[writable]` Initialized Voting Mint account
+    ///   4. `[writable]` Initialized Signatory Validation account
+    ///   5. `[writable]` Initialized Admin Validation account
+    ///   6. `[writable]` Initialized Voting Validation account
+    ///   7. `[writable]` Initialized Destination account for first admin token
+    ///   8. `[writable]` Initialized Destination account for first signatory token
     ///   9. `[]` Timelock program mint authority
     ///   10. `[]` Timelock Program
     ///   11. '[]` Token program id
@@ -65,8 +65,8 @@ pub enum TimelockInstruction {
     /// their signatory token indicating they are satisfied with the instruction queue. They'll receive an signatory token
     /// as a result of this call that they can burn later.
     ///
-    ///   0. `[writable]` Initiaslized new signatory account.
-    ///   1. `[writable]` Signatory mint account.
+    ///   0. `[writable]` Initialized new signatory account.
+    ///   1. `[writable]` Initialized Signatory mint account.
     ///   2. `[writable]` Admin account.
     ///   3. `[writable]` Admin validation account.
     ///   4. `[]` Timelock set account.
