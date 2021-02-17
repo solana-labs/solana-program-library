@@ -464,15 +464,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clear_on_drop"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9cc5db465b294c3fa986d5bbb0f3017cd850bff6dd6c52f9ccff8b4d21b7b08"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "cloudabi"
 version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -721,20 +712,6 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "2.1.0"
-source = "git+https://github.com/garious/curve25519-dalek?rev=60efef3553d6bf3d7f3b09b5f97acd54d72529ff#60efef3553d6bf3d7f3b09b5f97acd54d72529ff"
-dependencies = [
- "borsh",
- "byteorder",
- "digest 0.8.1",
- "rand_core 0.5.1",
- "serde",
- "subtle 2.2.3",
- "zeroize",
-]
-
-[[package]]
-name = "curve25519-dalek"
 version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "434e1720189a637d44fe464f4df1e6eb900b4835255b14354497c78af37d9bb8"
@@ -886,22 +863,6 @@ name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
-
-[[package]]
-name = "elgamal_ristretto"
-version = "0.2.4"
-source = "git+https://github.com/garious/elgamal?rev=db1eef8e01b8a6e93d3bdc64ab2c1acb39cb64d6#db1eef8e01b8a6e93d3bdc64ab2c1acb39cb64d6"
-dependencies = [
- "bincode",
- "borsh",
- "clear_on_drop",
- "curve25519-dalek 2.1.0",
- "rand_core 0.5.1",
- "serde",
- "sha2 0.8.2",
- "solana-sdk",
- "zkp",
-]
 
 [[package]]
 name = "encode_unicode"
@@ -1794,18 +1755,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "157b4208e3059a8f9e78d559edc658e13df41410cb3ae03979c83130067fdd87"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "merlin"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e261cf0f8b3c42ded9f7d2bb59dea03aa52bc8a1cbc7482f9fc3fd1229d3b42"
-dependencies = [
- "byteorder",
- "keccak",
- "rand_core 0.5.1",
- "zeroize",
 ]
 
 [[package]]
@@ -3838,23 +3787,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-themis-ristretto"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "borsh",
- "curve25519-dalek 2.1.0",
- "elgamal_ristretto",
- "getrandom 0.1.16",
- "num-derive",
- "num-traits",
- "rand 0.7.3",
- "solana-program",
- "subtle 2.2.3",
- "thiserror",
-]
-
-[[package]]
 name = "spl-token"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4954,19 +4886,6 @@ dependencies = [
  "quote 1.0.8",
  "syn 1.0.58",
  "synstructure",
-]
-
-[[package]]
-name = "zkp"
-version = "0.7.0"
-source = "git+https://github.com/garious/zkp?rev=ed9eba6de4214fe67466b662b0d8017c3645c3f8#ed9eba6de4214fe67466b662b0d8017c3645c3f8"
-dependencies = [
- "curve25519-dalek 2.1.0",
- "merlin",
- "rand 0.7.3",
- "serde",
- "serde_derive",
- "thiserror",
 ]
 
 [[package]]
