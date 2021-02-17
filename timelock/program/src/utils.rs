@@ -17,12 +17,13 @@ use solana_program::{
     sysvar::rent::Rent,
 };
 use spl_token::state::Account;
-/*
+
+/* TODO come back to this conundrum later..
 pub fn get_authority_signer_seeds<'a>(
-    timelock_program_account_info: &AccountInfo<'a>,
-    timelock_program_authority_info: &AccountInfo<'a>,
-    program_id: &Pubkey,
-) -> Result<&[&[u8]; 2], ProgramError> {
+    timelock_program_account_info: &'a AccountInfo<'a>,
+    timelock_program_authority_info: &'a AccountInfo<'a>,
+    program_id: &'a Pubkey,
+) -> Result<&'a [&'a [u8]; 2], ProgramError> {
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
     if timelock_program_authority_info.key != &authority_key {
