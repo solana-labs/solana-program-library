@@ -3196,9 +3196,9 @@ dependencies = [
 
 [[package]]
 name = "solana-frozen-abi"
-version = "1.5.6"
+version = "1.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a6f89a4b701e0a6dc3197895273b780d7967b7337105aac9a807f23ca1106c7"
+checksum = "dc44c8096d5847d8cf7f3af3cce565de554cb56371decf93b060633ca8588913"
 dependencies = [
  "bs58 0.3.1",
  "bv",
@@ -3216,9 +3216,9 @@ dependencies = [
 
 [[package]]
 name = "solana-frozen-abi-macro"
-version = "1.5.6"
+version = "1.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f004ee725b1310bc96e2f75ad6b867a47ac14af6d7cc68e27b3178355d12d95"
+checksum = "f905159beff1b53e4ba8b018a9d13d96ba164c3973bf3b9d587e730bcc14fc18"
 dependencies = [
  "lazy_static",
  "proc-macro2 1.0.24",
@@ -3229,9 +3229,9 @@ dependencies = [
 
 [[package]]
 name = "solana-logger"
-version = "1.5.6"
+version = "1.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ace944d99fc8a38278bbc144e97fd8a0f65033ba0fd77f6854b86b7a31e5402b"
+checksum = "d83a006d97da5514a4475141573383d3fcd71c729ff78494f96bb531cf734d21"
 dependencies = [
  "env_logger",
  "lazy_static",
@@ -3288,9 +3288,9 @@ dependencies = [
 
 [[package]]
 name = "solana-program"
-version = "1.5.6"
+version = "1.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d23b36300dc29d14b37726613ed7d5fc000283350a56d5691b1e767ea79ea5e2"
+checksum = "c2007bf285617f8a783e96b20ccd2f8d813549090a5b520f22e5f65b3cd9b157"
 dependencies = [
  "bincode",
  "bs58 0.3.1",
@@ -3467,9 +3467,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk-macro"
-version = "1.5.6"
+version = "1.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31b12629227630e582c7fb7060f91bc42f32ddfc50d2e610108f48a13baa8d79"
+checksum = "b8a6635f1798c8ff1b88bb0fad1d4693c011f36a73c9ae03f198203144edcabb"
 dependencies = [
  "bs58 0.3.1",
  "proc-macro2 1.0.24",
