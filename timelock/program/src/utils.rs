@@ -17,6 +17,20 @@ use solana_program::{
     sysvar::rent::Rent,
 };
 use spl_token::state::Account;
+/*
+pub fn get_authority_signer_seeds<'a>(
+    timelock_program_account_info: &AccountInfo<'a>,
+    timelock_program_authority_info: &AccountInfo<'a>,
+    program_id: &Pubkey,
+) -> Result<&[&[u8]; 2], ProgramError> {
+    let (authority_key, bump_seed) =
+        Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
+    if timelock_program_authority_info.key != &authority_key {
+        return Err(TimelockError::InvalidTimelockAuthority.into());
+    }
+    let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
+    Ok(&*authority_signer_seeds)
+}*/
 
 /// Attempts to transfer the token to the timelock set's validation account and back to the person again.
 /// Can only be done if done in a transaction that has authority to do so. Serves as a check
