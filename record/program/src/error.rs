@@ -7,9 +7,9 @@ use thiserror::Error;
 /// Errors that may be returned by the program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum RecordError {
-    /// Incorrect owner provided on update or delete
-    #[error("Incorrect owner provided on update or delete")]
-    IncorrectOwner,
+    /// Incorrect authority provided on update or delete
+    #[error("Incorrect authority provided on update or delete")]
+    IncorrectAuthority,
 
     /// Calculation overflow
     #[error("Calculation overflow")]

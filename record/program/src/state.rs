@@ -6,7 +6,7 @@ use {
 
 /// Struct wrapping data and providing metadata
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, BorshSchema, PartialEq)]
-pub struct AccountData {
+pub struct RecordData {
     /// Struct version, allows for upgrades to the program
     pub version: u8,
 
@@ -29,7 +29,7 @@ impl Data {
     pub const DATA_SIZE: usize = 8;
 }
 
-impl AccountData {
+impl RecordData {
     /// Version to fill in on new created accounts
     pub const CURRENT_VERSION: u8 = 1;
 
@@ -37,10 +37,10 @@ impl AccountData {
     pub const WRITABLE_START_INDEX: usize = 33;
 }
 
-impl IsInitialized for AccountData {
+impl IsInitialized for RecordData {
     /// Is initialized
     fn is_initialized(&self) -> bool {
-        self.version != 0
+        self.version == Self::CURRENT_VERSION
     }
 }
 
@@ -57,23 +57,23 @@ pub mod tests {
     pub const TEST_BYTES: [u8; Data::DATA_SIZE] = [42; Data::DATA_SIZE];
     /// Data for tests
     pub const TEST_DATA: Data = Data { bytes: TEST_BYTES };
-    /// AccountData for tests
-    pub const TEST_ACCOUNT_DATA: AccountData = AccountData {
+    /// RecordData for tests
+    pub const TEST_RECORD_DATA: RecordData = RecordData {
         version: TEST_VERSION,
         authority: TEST_PUBKEY,
         data: TEST_DATA,
     };
 
     #[test]
-    fn serialize_document() {
+    fn serialize_data() {
         let mut expected = vec![];
         expected.push(TEST_VERSION);
         expected.extend_from_slice(&TEST_PUBKEY.to_bytes());
         expected.extend_from_slice(&TEST_DATA.bytes);
-        assert_eq!(TEST_ACCOUNT_DATA.try_to_vec().unwrap(), expected);
+        assert_eq!(TEST_RECORD_DATA.try_to_vec().unwrap(), expected);
         assert_eq!(
-            AccountData::try_from_slice(&expected).unwrap(),
-            TEST_ACCOUNT_DATA
+            RecordData::try_from_slice(&expected).unwrap(),
+            TEST_RECORD_DATA
         );
     }
 
@@ -84,7 +84,7 @@ pub mod tests {
         expected.push(TEST_VERSION);
         expected.extend_from_slice(&TEST_PUBKEY.to_bytes());
         expected.extend_from_slice(&data);
-        let err: ProgramError = AccountData::try_from_slice(&expected).unwrap_err().into();
+        let err: ProgramError = RecordData::try_from_slice(&expected).unwrap_err().into();
         assert!(matches!(err, ProgramError::IOError(_)));
     }
 }

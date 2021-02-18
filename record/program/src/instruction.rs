@@ -11,54 +11,54 @@ use solana_program::{
 /// Instructions supported by the program
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, PartialEq)]
 pub enum RecordInstruction {
-    /// Create a new document
+    /// Create a new record
     ///
     /// Accounts expected by this instruction:
     ///
-    /// 0. `[writable]` Data account, must be uninitialized
-    /// 1. `[]` Document authority
+    /// 0. `[writable]` Record account, must be uninitialized
+    /// 1. `[]` Record authority
     /// 2. `[]` Rent sysvar, to check for rent exemption
     Initialize,
 
-    /// Write to the provided data account
+    /// Write to the provided record account
     ///
     /// Accounts expected by this instruction:
     ///
-    /// 0. `[writable]` Document account, must be previously initialized (version != 0)
-    /// 1. `[signer]` Current document authority
+    /// 0. `[writable]` Record account, must be previously initialized
+    /// 1. `[signer]` Current record authority
     Write {
-        /// Offset to start writing data, expressed as `u64`.
+        /// Offset to start writing record, expressed as `u64`.
         offset: u64,
-        /// Data to replace the existing document data
+        /// Data to replace the existing record data
         data: Vec<u8>,
     },
 
-    /// Update the authority of the provided data account
+    /// Update the authority of the provided record account
     ///
     /// Accounts expected by this instruction:
     ///
-    /// 0. `[writable]` Document account, must be previously initialized (version != 0)
-    /// 1. `[signer]` Current authority of the document
-    /// 2. `[]` New authority of the document
+    /// 0. `[writable]` Record account, must be previously initialized
+    /// 1. `[signer]` Current record authority
+    /// 2. `[]` New record authority
     SetAuthority,
 
-    /// Close the provided document account, draining lamports to recipient account
+    /// Close the provided record account, draining lamports to recipient account
     ///
     /// Accounts expected by this instruction:
     ///
-    /// 0. `[writable]` Document account, must be previously initialized (version != 0)
-    /// 1. `[signer]` Document authority
+    /// 0. `[writable]` Record account, must be previously initialized
+    /// 1. `[signer]` Record authority
     /// 2. `[]` Receiver of account lamports
     CloseAccount,
 }
 
 /// Create a `RecordInstruction::Initialize` instruction
-pub fn initialize(data_account: &Pubkey, authority: &Pubkey) -> Instruction {
+pub fn initialize(record_account: &Pubkey, authority: &Pubkey) -> Instruction {
     Instruction::new_with_borsh(
         id(),
         &RecordInstruction::Initialize,
         vec![
-            AccountMeta::new(*data_account, false),
+            AccountMeta::new(*record_account, false),
             AccountMeta::new_readonly(*authority, false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
@@ -66,12 +66,12 @@ pub fn initialize(data_account: &Pubkey, authority: &Pubkey) -> Instruction {
 }
 
 /// Create a `RecordInstruction::Write` instruction
-pub fn write(data_account: &Pubkey, signer: &Pubkey, offset: u64, data: Vec<u8>) -> Instruction {
+pub fn write(record_account: &Pubkey, signer: &Pubkey, offset: u64, data: Vec<u8>) -> Instruction {
     Instruction::new_with_borsh(
         id(),
         &RecordInstruction::Write { offset, data },
         vec![
-            AccountMeta::new(*data_account, false),
+            AccountMeta::new(*record_account, false),
             AccountMeta::new_readonly(*signer, true),
         ],
     )
@@ -79,7 +79,7 @@ pub fn write(data_account: &Pubkey, signer: &Pubkey, offset: u64, data: Vec<u8>)
 
 /// Create a `RecordInstruction::SetAuthority` instruction
 pub fn set_authority(
-    data_account: &Pubkey,
+    record_account: &Pubkey,
     signer: &Pubkey,
     new_authority: &Pubkey,
 ) -> Instruction {
@@ -87,7 +87,7 @@ pub fn set_authority(
         id(),
         &RecordInstruction::SetAuthority,
         vec![
-            AccountMeta::new(*data_account, false),
+            AccountMeta::new(*record_account, false),
             AccountMeta::new_readonly(*signer, true),
             AccountMeta::new_readonly(*new_authority, false),
         ],
@@ -95,12 +95,12 @@ pub fn set_authority(
 }
 
 /// Create a `RecordInstruction::CloseAccount` instruction
-pub fn close_account(data_account: &Pubkey, signer: &Pubkey, receiver: &Pubkey) -> Instruction {
+pub fn close_account(record_account: &Pubkey, signer: &Pubkey, receiver: &Pubkey) -> Instruction {
     Instruction::new_with_borsh(
         id(),
         &RecordInstruction::CloseAccount,
         vec![
-            AccountMeta::new(*data_account, false),
+            AccountMeta::new(*record_account, false),
             AccountMeta::new_readonly(*signer, true),
             AccountMeta::new(*receiver, false),
         ],

@@ -4,7 +4,7 @@ use {
     crate::{
         error::RecordError,
         instruction::RecordInstruction,
-        state::{AccountData, Data},
+        state::{RecordData, Data},
     },
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
@@ -18,6 +18,21 @@ use {
         sysvar::Sysvar,
     },
 };
+
+fn check_authority(
+    authority_info: &AccountInfo,
+    expected_authority: &Pubkey
+) -> ProgramResult {
+    if expected_authority != authority_info.key {
+        msg!("Incorrect record authority provided");
+        return Err(RecordError::IncorrectAuthority.into());
+    }
+    if !authority_info.is_signer {
+        msg!("Record authority signature missing");
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    Ok(())
+}
 
 /// Instruction processor
 pub fn process_instruction(
@@ -33,20 +48,21 @@ pub fn process_instruction(
             msg!("RecordInstruction::Initialize");
 
             let data_info = next_account_info(account_info_iter)?;
-            let owner_info = next_account_info(account_info_iter)?;
+            let authority_info = next_account_info(account_info_iter)?;
             let rent_sysvar_info = next_account_info(account_info_iter)?;
             let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-            let mut account_data = AccountData::try_from_slice(*data_info.data.borrow())?;
+            let mut account_data = RecordData::try_from_slice(*data_info.data.borrow())?;
             if account_data.is_initialized() {
+                msg!("Record account already initialized");
                 return Err(ProgramError::AccountAlreadyInitialized);
             }
 
             if !rent.is_exempt(data_info.lamports(), data_info.data_len()) {
                 return Err(ProgramError::AccountNotRentExempt);
             }
-            account_data.authority = *owner_info.key;
-            account_data.version = AccountData::CURRENT_VERSION;
+            account_data.authority = *authority_info.key;
+            account_data.version = RecordData::CURRENT_VERSION;
             account_data
                 .serialize(&mut *data_info.data.borrow_mut())
                 .map_err(|e| e.into())
@@ -55,15 +71,14 @@ pub fn process_instruction(
         RecordInstruction::Write { offset, data } => {
             msg!("RecordInstruction::Write");
             let data_info = next_account_info(account_info_iter)?;
-            let owner_info = next_account_info(account_info_iter)?;
-            let account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
-            if account_data.authority != *owner_info.key {
-                return Err(RecordError::IncorrectOwner.into());
+            let authority_info = next_account_info(account_info_iter)?;
+            let account_data = RecordData::try_from_slice(&data_info.data.borrow())?;
+            if !account_data.is_initialized() {
+                msg!("Record account not initialized");
+                return Err(ProgramError::UninitializedAccount);
             }
-            if !owner_info.is_signer {
-                return Err(ProgramError::MissingRequiredSignature);
-            }
-            let start = AccountData::WRITABLE_START_INDEX + offset as usize;
+            check_authority(authority_info, &account_data.authority)?;
+            let start = RecordData::WRITABLE_START_INDEX + offset as usize;
             let end = start + data.len();
             if end > data_info.data.borrow().len() {
                 Err(ProgramError::AccountDataTooSmall)
@@ -76,15 +91,14 @@ pub fn process_instruction(
         RecordInstruction::SetAuthority => {
             msg!("RecordInstruction::SetAuthority");
             let data_info = next_account_info(account_info_iter)?;
-            let owner_info = next_account_info(account_info_iter)?;
+            let authority_info = next_account_info(account_info_iter)?;
             let new_authority_info = next_account_info(account_info_iter)?;
-            let mut account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
-            if account_data.authority != *owner_info.key {
-                return Err(RecordError::IncorrectOwner.into());
+            let mut account_data = RecordData::try_from_slice(&data_info.data.borrow())?;
+            if !account_data.is_initialized() {
+                msg!("Record account not initialized");
+                return Err(ProgramError::UninitializedAccount);
             }
-            if !owner_info.is_signer {
-                return Err(ProgramError::MissingRequiredSignature);
-            }
+            check_authority(authority_info, &account_data.authority)?;
             account_data.authority = *new_authority_info.key;
             account_data
                 .serialize(&mut *data_info.data.borrow_mut())
@@ -94,15 +108,14 @@ pub fn process_instruction(
         RecordInstruction::CloseAccount => {
             msg!("RecordInstruction::CloseAccount");
             let data_info = next_account_info(account_info_iter)?;
-            let owner_info = next_account_info(account_info_iter)?;
+            let authority_info = next_account_info(account_info_iter)?;
             let destination_info = next_account_info(account_info_iter)?;
-            let mut account_data = AccountData::try_from_slice(&data_info.data.borrow())?;
-            if account_data.authority != *owner_info.key {
-                return Err(RecordError::IncorrectOwner.into());
+            let mut account_data = RecordData::try_from_slice(&data_info.data.borrow())?;
+            if !account_data.is_initialized() {
+                msg!("Record not initialized");
+                return Err(ProgramError::UninitializedAccount);
             }
-            if !owner_info.is_signer {
-                return Err(ProgramError::MissingRequiredSignature);
-            }
+            check_authority(authority_info, &account_data.authority)?;
             let destination_starting_lamports = destination_info.lamports();
             let data_lamports = data_info.lamports();
             **data_info.lamports.borrow_mut() = 0;

@@ -20,7 +20,7 @@ use {
         error::RecordError,
         id, instruction,
         processor::process_instruction,
-        state::{AccountData, Data},
+        state::{RecordData, Data},
     },
 };
 
@@ -39,8 +39,8 @@ async fn initialize_storage_account(
             system_instruction::create_account(
                 &context.payer.pubkey(),
                 &account.pubkey(),
-                1.max(Rent::default().minimum_balance(get_packed_len::<AccountData>())),
-                get_packed_len::<AccountData>() as u64,
+                1.max(Rent::default().minimum_balance(get_packed_len::<RecordData>())),
+                get_packed_len::<RecordData>() as u64,
                 &id(),
             ),
             instruction::initialize(&account.pubkey(), &authority.pubkey()),
@@ -72,12 +72,12 @@ async fn initialize_success() {
         .unwrap();
     let account_data = context
         .banks_client
-        .get_account_data_with_borsh::<AccountData>(account.pubkey())
+        .get_account_data_with_borsh::<RecordData>(account.pubkey())
         .await
         .unwrap();
     assert_eq!(account_data.data, data);
     assert_eq!(account_data.authority, authority.pubkey());
-    assert_eq!(account_data.version, AccountData::CURRENT_VERSION);
+    assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
 }
 
 #[tokio::test]
@@ -97,8 +97,8 @@ async fn initialize_with_seed_success() {
                 &account,
                 &authority.pubkey(),
                 seed,
-                1.max(Rent::default().minimum_balance(get_packed_len::<AccountData>())),
-                get_packed_len::<AccountData>() as u64,
+                1.max(Rent::default().minimum_balance(get_packed_len::<RecordData>())),
+                get_packed_len::<RecordData>() as u64,
                 &id(),
             ),
             instruction::initialize(&account, &authority.pubkey()),
@@ -115,12 +115,12 @@ async fn initialize_with_seed_success() {
         .unwrap();
     let account_data = context
         .banks_client
-        .get_account_data_with_borsh::<AccountData>(account)
+        .get_account_data_with_borsh::<RecordData>(account)
         .await
         .unwrap();
     assert_eq!(account_data.data, data);
     assert_eq!(account_data.authority, authority.pubkey());
-    assert_eq!(account_data.version, AccountData::CURRENT_VERSION);
+    assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
 }
 
 #[tokio::test]
@@ -190,12 +190,12 @@ async fn write_success() {
 
     let account_data = context
         .banks_client
-        .get_account_data_with_borsh::<AccountData>(account.pubkey())
+        .get_account_data_with_borsh::<RecordData>(account.pubkey())
         .await
         .unwrap();
     assert_eq!(account_data.data, new_data);
     assert_eq!(account_data.authority, authority.pubkey());
-    assert_eq!(account_data.version, AccountData::CURRENT_VERSION);
+    assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
 }
 
 #[tokio::test]
@@ -235,7 +235,7 @@ async fn write_fail_wrong_authority() {
             .unwrap(),
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(RecordError::IncorrectOwner as u32)
+            InstructionError::Custom(RecordError::IncorrectAuthority as u32)
         )
     );
 }
@@ -320,7 +320,7 @@ async fn close_account_success() {
         .unwrap();
     assert_eq!(
         account.lamports,
-        1.max(Rent::default().minimum_balance(get_packed_len::<AccountData>()))
+        1.max(Rent::default().minimum_balance(get_packed_len::<RecordData>()))
     );
 }
 
@@ -361,7 +361,7 @@ async fn close_account_fail_wrong_authority() {
             .unwrap(),
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(RecordError::IncorrectOwner as u32)
+            InstructionError::Custom(RecordError::IncorrectAuthority as u32)
         )
     );
 }
@@ -436,7 +436,7 @@ async fn set_authority_success() {
 
     let account_data = context
         .banks_client
-        .get_account_data_with_borsh::<AccountData>(account.pubkey())
+        .get_account_data_with_borsh::<RecordData>(account.pubkey())
         .await
         .unwrap();
     assert_eq!(account_data.authority, new_authority.pubkey());
@@ -463,12 +463,12 @@ async fn set_authority_success() {
 
     let account_data = context
         .banks_client
-        .get_account_data_with_borsh::<AccountData>(account.pubkey())
+        .get_account_data_with_borsh::<RecordData>(account.pubkey())
         .await
         .unwrap();
     assert_eq!(account_data.data, new_data);
     assert_eq!(account_data.authority, new_authority.pubkey());
-    assert_eq!(account_data.version, AccountData::CURRENT_VERSION);
+    assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
 }
 
 #[tokio::test]
@@ -508,7 +508,7 @@ async fn set_authority_fail_wrong_authority() {
             .unwrap(),
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(RecordError::IncorrectOwner as u32)
+            InstructionError::Custom(RecordError::IncorrectAuthority as u32)
         )
     );
 }
