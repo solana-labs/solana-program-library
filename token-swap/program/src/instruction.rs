@@ -92,11 +92,11 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
     pub maximum_pool_token_amount: u64,
 }
 
-/// Instructions supported by the SwapInfo program.
+/// Instructions supported by the token swap program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
 pub enum SwapInstruction {
-    ///   Initializes a new SwapInfo.
+    ///   Initializes a new swap
     ///
     ///   0. `[writable, signer]` New Token-swap to create.
     ///   1. `[]` swap authority derived from `create_program_address(&[Token-swap account])`

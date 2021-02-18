@@ -6,9 +6,7 @@ use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::{
-    math::Decimal,
-    processor::process_instruction,
-    state::{INITIAL_COLLATERAL_RATE, SLOTS_PER_YEAR},
+    math::Decimal, processor::process_instruction, state::INITIAL_COLLATERAL_RATIO,
 };
 
 const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
@@ -26,14 +24,14 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(160_000);
+    test.set_bpf_compute_max_units(97_000);
 
     // set loan values to about 90% of collateral value so that it gets liquidated
     const USDC_LOAN: u64 = 2 * FRACTIONAL_TO_USDC;
-    const USDC_LOAN_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATE * LAMPORTS_TO_SOL;
+    const USDC_LOAN_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATIO * LAMPORTS_TO_SOL;
 
     const SOL_LOAN: u64 = LAMPORTS_TO_SOL;
-    const SOL_LOAN_USDC_COLLATERAL: u64 = 2 * INITIAL_COLLATERAL_RATE * FRACTIONAL_TO_USDC;
+    const SOL_LOAN_USDC_COLLATERAL: u64 = 2 * INITIAL_COLLATERAL_RATIO * FRACTIONAL_TO_USDC;
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
@@ -50,11 +48,11 @@ async fn test_success() {
         &lending_market,
         AddReserveArgs {
             config: reserve_config,
-            slots_elapsed: SLOTS_PER_YEAR,
+            initial_borrow_rate: 1,
             liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
-            borrow_amount: USDC_LOAN,
+            borrow_amount: USDC_LOAN * 101 / 100,
             user_liquidity_amount: USDC_LOAN,
             collateral_amount: SOL_LOAN_USDC_COLLATERAL,
             ..AddReserveArgs::default()
@@ -67,13 +65,13 @@ async fn test_success() {
         &lending_market,
         AddReserveArgs {
             config: reserve_config,
-            slots_elapsed: SLOTS_PER_YEAR,
+            initial_borrow_rate: 1,
             liquidity_amount: INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS,
             liquidity_mint_decimals: 9,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
             dex_market_pubkey: Some(sol_usdc_dex_market.pubkey),
             collateral_amount: USDC_LOAN_SOL_COLLATERAL,
-            borrow_amount: SOL_LOAN,
+            borrow_amount: SOL_LOAN * 101 / 100,
             user_liquidity_amount: SOL_LOAN,
             ..AddReserveArgs::default()
         },
@@ -84,7 +82,6 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddObligationArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             borrow_reserve: &usdc_reserve,
             collateral_reserve: &sol_reserve,
             collateral_amount: USDC_LOAN_SOL_COLLATERAL,
@@ -97,7 +94,6 @@ async fn test_success() {
         &user_accounts_owner,
         &lending_market,
         AddObligationArgs {
-            slots_elapsed: SLOTS_PER_YEAR,
             borrow_reserve: &sol_reserve,
             collateral_reserve: &usdc_reserve,
             collateral_amount: SOL_LOAN_USDC_COLLATERAL,
@@ -144,7 +140,10 @@ async fn test_success() {
     assert!(usdc_liquidated > USDC_LOAN / 2);
     assert_eq!(
         usdc_liquidated,
-        usdc_loan_state.borrowed_liquidity_wads.round_u64()
+        usdc_loan_state
+            .borrowed_liquidity_wads
+            .try_floor_u64()
+            .unwrap()
     );
 
     let sol_liquidity_supply =
@@ -154,6 +153,9 @@ async fn test_success() {
     assert!(sol_liquidated > SOL_LOAN / 2);
     assert_eq!(
         sol_liquidated,
-        sol_loan_state.borrowed_liquidity_wads.round_u64()
+        sol_loan_state
+            .borrowed_liquidity_wads
+            .try_floor_u64()
+            .unwrap()
     );
 }

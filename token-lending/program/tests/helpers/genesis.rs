@@ -38,7 +38,7 @@ impl GenesisAccounts {
             find_file(filename).unwrap_or_else(|| panic!("couldn't find {}", filename));
         let program_data = read_file(program_file);
         let upgrade_authority_keypair =
-            read_keypair_file("tests/fixtures/lending_market.json").unwrap();
+            read_keypair_file("tests/fixtures/lending_market_owner.json").unwrap();
 
         let programdata_address =
             Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id()).0;

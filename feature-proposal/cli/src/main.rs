@@ -161,10 +161,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     solana_logger::setup_with_default("solana=info");
-    let rpc_client = RpcClient::new_with_commitment(
-        config.json_rpc_url.clone(),
-        CommitmentConfig::single_gossip(),
-    );
+    let rpc_client =
+        RpcClient::new_with_commitment(config.json_rpc_url.clone(), CommitmentConfig::confirmed());
 
     match (sub_command, sub_matches) {
         ("address", Some(arg_matches)) => {

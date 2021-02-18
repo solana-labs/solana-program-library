@@ -2,6 +2,7 @@
  * @flow
  */
 
+import {Buffer} from 'buffer';
 import assert from 'assert';
 import BN from 'bn.js';
 import * as BufferLayout from 'buffer-layout';

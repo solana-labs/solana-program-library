@@ -9,22 +9,22 @@ members = [
   "feature-proposal/program",
   "margin-pool/program",
   "feature-proposal/cli",
+  "libraries/math",
   "memo/program",
   "shared-memory/program",
   "stake-pool/cli",
   "stake-pool/program",
-  "themis/program_ristretto",
   "token-lending/program",
   "token-lending/client",
   "token-swap/program",
   "token-swap/program/fuzz",
   "token/cli",
   "token/program",
-  "token/program-v3",
   "utils/cgen",
   "utils/test-client",
 ]
 exclude = [
   "themis/client_ristretto",
+  "themis/program_ristretto",
   "token/perf-monitor", # TODO: Rework perf-monitor to use solana-program-test, avoiding the need to link directly with the BPF VM
 ]

@@ -14,17 +14,17 @@
 if [[ -n $SOLANA_VERSION ]]; then
   solana_version="$SOLANA_VERSION"
 else
-  solana_version=v1.5.0
+  solana_version=v1.5.5
 fi
 
 export solana_version="$solana_version"
 export solana_docker_image=solanalabs/solana:"$solana_version"
+export PATH="$HOME"/.local/share/solana/install/active_release/bin:"$PATH"
 
 if [[ -n $1 ]]; then
   case $1 in
   install)
     sh -c "$(curl -sSfL https://release.solana.com/$solana_version/install)"
-    export PATH="$HOME"/.local/share/solana/install/active_release/bin:"$PATH"
     solana --version
     ;;
   *)

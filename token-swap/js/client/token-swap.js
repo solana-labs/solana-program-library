@@ -4,6 +4,7 @@
 
 import assert from 'assert';
 import BN from 'bn.js';
+import {Buffer} from 'buffer';
 import * as BufferLayout from 'buffer-layout';
 import type {Connection, TransactionSignature} from '@solana/web3.js';
 import {
@@ -58,6 +59,7 @@ export class Numberu64 extends BN {
  */
 export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struct(
   [
+    BufferLayout.u8('version'),
     BufferLayout.u8('isInitialized'),
     BufferLayout.u8('nonce'),
     Layout.publicKey('tokenProgramId'),

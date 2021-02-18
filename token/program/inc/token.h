@@ -8,14 +8,14 @@
 #include <stdlib.h>
 
 /**
- * Maximum number of multisignature signers (max N)
- */
-#define Token_MAX_SIGNERS 11
-
-/**
  * Minimum number of multisignature signers (min N)
  */
 #define Token_MIN_SIGNERS 1
+
+/**
+ * Maximum number of multisignature signers (max N)
+ */
+#define Token_MAX_SIGNERS 11
 
 /**
  * Account state.
@@ -89,14 +89,12 @@ typedef enum Token_COption_Pubkey_Tag {
     Token_COption_Pubkey_Some_Pubkey,
 } Token_COption_Pubkey_Tag;
 
-typedef struct Token_COption_Pubkey_Token_Some_Body_Pubkey {
-    Token_Pubkey _0;
-} Token_COption_Pubkey_Token_Some_Body_Pubkey;
-
 typedef struct Token_COption_Pubkey {
     Token_COption_Pubkey_Tag tag;
     union {
-        Token_COption_Pubkey_Token_Some_Body_Pubkey some;
+        struct {
+            Token_Pubkey some;
+        };
     };
 } Token_COption_Pubkey;
 
@@ -105,11 +103,14 @@ typedef struct Token_COption_Pubkey {
  */
 typedef enum Token_TokenInstruction_Tag {
     /**
-     * Initializes a new mint and optionally deposits all the newly minted tokens in an account.
+     * Initializes a new mint and optionally deposits all the newly minted
+     * tokens in an account.
      *
-     * The `InitializeMint` instruction requires no signers and MUST be included within
-     * the same Transaction as the system program's `CreateInstruction` that creates the account
-     * being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
+     * The `InitializeMint` instruction requires no signers and MUST be
+     * included within the same Transaction as the system program's
+     * `CreateAccount` instruction that creates the account being initialized.
+     * Otherwise another party can acquire ownership of the uninitialized
+     * account.
      *
      * Accounts expected by this instruction:
      *
@@ -119,14 +120,17 @@ typedef enum Token_TokenInstruction_Tag {
      */
     Token_TokenInstruction_InitializeMint,
     /**
-     * Initializes a new account to hold tokens.  If this account is associated with the native
-     * mint then the token balance of the initialized account will be equal to the amount of SOL
-     * in the account. If this account is associated with another mint, that mint must be
-     * initialized before this command can succeed.
+     * Initializes a new account to hold tokens.  If this account is associated
+     * with the native mint then the token balance of the initialized account
+     * will be equal to the amount of SOL in the account. If this account is
+     * associated with another mint, that mint must be initialized before this
+     * command can succeed.
      *
-     * The `InitializeAccount` instruction requires no signers and MUST be included within
-     * the same Transaction as the system program's `CreateInstruction` that creates the account
-     * being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
+     * The `InitializeAccount` instruction requires no signers and MUST be
+     * included within the same Transaction as the system program's
+     * `CreateAccount` instruction that creates the account being initialized.
+     * Otherwise another party can acquire ownership of the uninitialized
+     * account.
      *
      * Accounts expected by this instruction:
      *
@@ -139,25 +143,30 @@ typedef enum Token_TokenInstruction_Tag {
     /**
      * Initializes a multisignature account with N provided signers.
      *
-     * Multisignature accounts can used in place of any single owner/delegate accounts in any
-     * token instruction that require an owner/delegate to be present.  The variant field represents the
-     * number of signers (M) required to validate this multisignature account.
+     * Multisignature accounts can used in place of any single owner/delegate
+     * accounts in any token instruction that require an owner/delegate to be
+     * present.  The variant field represents the number of signers (M)
+     * required to validate this multisignature account.
      *
-     * The `InitializeMultisig` instruction requires no signers and MUST be included within
-     * the same Transaction as the system program's `CreateInstruction` that creates the account
-     * being initialized.  Otherwise another party can acquire ownership of the uninitialized account.
+     * The `InitializeMultisig` instruction requires no signers and MUST be
+     * included within the same Transaction as the system program's
+     * `CreateAccount` instruction that creates the account being initialized.
+     * Otherwise another party can acquire ownership of the uninitialized
+     * account.
      *
      * Accounts expected by this instruction:
      *
      *   0. `[writable]` The multisignature account to initialize.
      *   1. `[]` Rent sysvar
-     *   2. ..2+N. `[]` The signer accounts, must equal to N where 1 <= N <= 11.
+     *   2. ..2+N. `[]` The signer accounts, must equal to N where 1 <= N <=
+     *      11.
      */
     Token_TokenInstruction_InitializeMultisig,
     /**
-     * Transfers tokens from one account to another either directly or via a delegate.  If this
-     * account is associated with the native mint then equal amounts of SOL and Tokens will be
-     * transferred to the destination account.
+     * Transfers tokens from one account to another either directly or via a
+     * delegate.  If this account is associated with the native mint then equal
+     * amounts of SOL and Tokens will be transferred to the destination
+     * account.
      *
      * Accounts expected by this instruction:
      *
@@ -174,8 +183,8 @@ typedef enum Token_TokenInstruction_Tag {
      */
     Token_TokenInstruction_Transfer,
     /**
-     * Approves a delegate.  A delegate is given the authority over
-     * tokens on behalf of the source account's owner.
+     * Approves a delegate.  A delegate is given the authority over tokens on
+     * behalf of the source account's owner.
      *
      * Accounts expected by this instruction:
      *
@@ -217,12 +226,13 @@ typedef enum Token_TokenInstruction_Tag {
      *
      *   * Multisignature authority
      *   0. `[writable]` The mint or account to change the authority of.
-     *   1. `[]` The mint's or account's multisignature authority.
+     *   1. `[]` The mint's or account's current multisignature authority.
      *   2. ..2+M `[signer]` M signer accounts
      */
     Token_TokenInstruction_SetAuthority,
     /**
-     * Mints new tokens to an account.  The native mint does not support minting.
+     * Mints new tokens to an account.  The native mint does not support
+     * minting.
      *
      * Accounts expected by this instruction:
      *
@@ -239,8 +249,8 @@ typedef enum Token_TokenInstruction_Tag {
      */
     Token_TokenInstruction_MintTo,
     /**
-     * Burns tokens by removing them from an account.  `Burn` does not support accounts
-     * associated with the native mint, use `CloseAccount` instead.
+     * Burns tokens by removing them from an account.  `Burn` does not support
+     * accounts associated with the native mint, use `CloseAccount` instead.
      *
      * Accounts expected by this instruction:
      *
@@ -251,9 +261,9 @@ typedef enum Token_TokenInstruction_Tag {
      *
      *   * Multisignature owner/delegate
      *   0. `[writable]` The account to burn from.
-     *   1. '[writable]' The token mint.
+     *   1. `[writable]` The token mint.
      *   2. `[]` The account's multisignature owner/delegate.
-     *   3. ..3+M '[signer]' M signer accounts.
+     *   3. ..3+M `[signer]` M signer accounts.
      */
     Token_TokenInstruction_Burn,
     /**
@@ -275,7 +285,8 @@ typedef enum Token_TokenInstruction_Tag {
      */
     Token_TokenInstruction_CloseAccount,
     /**
-     * Freeze an Initialized account using the Mint's freeze_authority (if set).
+     * Freeze an Initialized account using the Mint's freeze_authority (if
+     * set).
      *
      * Accounts expected by this instruction:
      *
@@ -309,13 +320,14 @@ typedef enum Token_TokenInstruction_Tag {
      */
     Token_TokenInstruction_ThawAccount,
     /**
-     * Transfers tokens from one account to another either directly or via a delegate.  If this
-     * account is associated with the native mint then equal amounts of SOL and Tokens will be
-     * transferred to the destination account.
+     * Transfers tokens from one account to another either directly or via a
+     * delegate.  If this account is associated with the native mint then equal
+     * amounts of SOL and Tokens will be transferred to the destination
+     * account.
      *
-     * This instruction differs from Transfer in that the token mint and decimals value is
-     * asserted by the caller.  This may be useful when creating transactions offline or within a
-     * hardware wallet.
+     * This instruction differs from Transfer in that the token mint and
+     * decimals value is checked by the caller.  This may be useful when
+     * creating transactions offline or within a hardware wallet.
      *
      * Accounts expected by this instruction:
      *
@@ -332,14 +344,14 @@ typedef enum Token_TokenInstruction_Tag {
      *   3. `[]` The source account's multisignature owner/delegate.
      *   4. ..4+M `[signer]` M signer accounts.
      */
-    Token_TokenInstruction_Transfer2,
+    Token_TokenInstruction_TransferChecked,
     /**
-     * Approves a delegate.  A delegate is given the authority over
-     * tokens on behalf of the source account's owner.
+     * Approves a delegate.  A delegate is given the authority over tokens on
+     * behalf of the source account's owner.
      *
-     * This instruction differs from Approve in that the token mint and decimals value is asserted
-     * by the caller.  This may be useful when creating transactions offline or within a hardware
-     * wallet.
+     * This instruction differs from Approve in that the token mint and
+     * decimals value is checked by the caller.  This may be useful when
+     * creating transactions offline or within a hardware wallet.
      *
      * Accounts expected by this instruction:
      *
@@ -356,12 +368,14 @@ typedef enum Token_TokenInstruction_Tag {
      *   3. `[]` The source account's multisignature owner.
      *   4. ..4+M `[signer]` M signer accounts
      */
-    Token_TokenInstruction_Approve2,
+    Token_TokenInstruction_ApproveChecked,
     /**
-     * Mints new tokens to an account.  The native mint does not support minting.
+     * Mints new tokens to an account.  The native mint does not support
+     * minting.
      *
-     * This instruction differs from MintTo in that the decimals value is asserted by the
-     * caller.  This may be useful when creating transactions offline or within a hardware wallet.
+     * This instruction differs from MintTo in that the decimals value is
+     * checked by the caller.  This may be useful when creating transactions
+     * offline or within a hardware wallet.
      *
      * Accounts expected by this instruction:
      *
@@ -376,13 +390,15 @@ typedef enum Token_TokenInstruction_Tag {
      *   2. `[]` The mint's multisignature mint-tokens authority.
      *   3. ..3+M `[signer]` M signer accounts.
      */
-    Token_TokenInstruction_MintTo2,
+    Token_TokenInstruction_MintToChecked,
     /**
-     * Burns tokens by removing them from an account.  `Burn2` does not support accounts
-     * associated with the native mint, use `CloseAccount` instead.
+     * Burns tokens by removing them from an account.  `BurnChecked` does not
+     * support accounts associated with the native mint, use `CloseAccount`
+     * instead.
      *
-     * This instruction differs from Burn in that the decimals value is asserted by the caller.
-     * This may be useful when creating transactions offline or within a hardware wallet.
+     * This instruction differs from Burn in that the decimals value is checked
+     * by the caller. This may be useful when creating transactions offline or
+     * within a hardware wallet.
      *
      * Accounts expected by this instruction:
      *
@@ -397,7 +413,20 @@ typedef enum Token_TokenInstruction_Tag {
      *   2. `[]` The account's multisignature owner/delegate.
      *   3. ..3+M `[signer]` M signer accounts.
      */
-    Token_TokenInstruction_Burn2,
+    Token_TokenInstruction_BurnChecked,
+    /**
+     * Like InitializeAccount, but the owner pubkey is passed via instruction data
+     * rather than the accounts list. This variant may be preferable when using
+     * Cross Program Invocation from an instruction that does not need the owner's
+     * `AccountInfo` otherwise.
+     *
+     * Accounts expected by this instruction:
+     *
+     *   0. `[writable]`  The account to initialize.
+     *   1. `[]` The mint this account will be associated with.
+     *   3. `[]` Rent sysvar
+     */
+    Token_TokenInstruction_InitializeAccount2,
 } Token_TokenInstruction_Tag;
 
 typedef struct Token_TokenInstruction_Token_InitializeMint_Body {
@@ -412,12 +441,13 @@ typedef struct Token_TokenInstruction_Token_InitializeMint_Body {
     /**
      * The freeze authority/multisignature of the mint.
      */
-    Token_COption_Pubkey freeze_authority;
+    struct Token_COption_Pubkey freeze_authority;
 } Token_TokenInstruction_Token_InitializeMint_Body;
 
 typedef struct Token_TokenInstruction_Token_InitializeMultisig_Body {
     /**
-     * The number of signers (M) required to validate this multisignature account.
+     * The number of signers (M) required to validate this multisignature
+     * account.
      */
     uint8_t m;
 } Token_TokenInstruction_Token_InitializeMultisig_Body;
@@ -444,7 +474,7 @@ typedef struct Token_TokenInstruction_Token_SetAuthority_Body {
     /**
      * The new authority
      */
-    Token_COption_Pubkey new_authority;
+    struct Token_COption_Pubkey new_authority;
 } Token_TokenInstruction_Token_SetAuthority_Body;
 
 typedef struct Token_TokenInstruction_Token_MintTo_Body {
@@ -461,7 +491,7 @@ typedef struct Token_TokenInstruction_Token_Burn_Body {
     uint64_t amount;
 } Token_TokenInstruction_Token_Burn_Body;
 
-typedef struct Token_TokenInstruction_Token_Transfer2_Body {
+typedef struct Token_TokenInstruction_Token_TransferChecked_Body {
     /**
      * The amount of tokens to transfer.
      */
@@ -470,9 +500,9 @@ typedef struct Token_TokenInstruction_Token_Transfer2_Body {
      * Expected number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
-} Token_TokenInstruction_Token_Transfer2_Body;
+} Token_TokenInstruction_Token_TransferChecked_Body;
 
-typedef struct Token_TokenInstruction_Token_Approve2_Body {
+typedef struct Token_TokenInstruction_Token_ApproveChecked_Body {
     /**
      * The amount of tokens the delegate is approved for.
      */
@@ -481,9 +511,9 @@ typedef struct Token_TokenInstruction_Token_Approve2_Body {
      * Expected number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
-} Token_TokenInstruction_Token_Approve2_Body;
+} Token_TokenInstruction_Token_ApproveChecked_Body;
 
-typedef struct Token_TokenInstruction_Token_MintTo2_Body {
+typedef struct Token_TokenInstruction_Token_MintToChecked_Body {
     /**
      * The amount of new tokens to mint.
      */
@@ -492,9 +522,9 @@ typedef struct Token_TokenInstruction_Token_MintTo2_Body {
      * Expected number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
-} Token_TokenInstruction_Token_MintTo2_Body;
+} Token_TokenInstruction_Token_MintToChecked_Body;
 
-typedef struct Token_TokenInstruction_Token_Burn2_Body {
+typedef struct Token_TokenInstruction_Token_BurnChecked_Body {
     /**
      * The amount of tokens to burn.
      */
@@ -503,7 +533,14 @@ typedef struct Token_TokenInstruction_Token_Burn2_Body {
      * Expected number of base 10 digits to the right of the decimal place.
      */
     uint8_t decimals;
-} Token_TokenInstruction_Token_Burn2_Body;
+} Token_TokenInstruction_Token_BurnChecked_Body;
+
+typedef struct Token_TokenInstruction_Token_InitializeAccount2_Body {
+    /**
+     * The new account's owner/multisignature.
+     */
+    Token_Pubkey owner;
+} Token_TokenInstruction_Token_InitializeAccount2_Body;
 
 typedef struct Token_TokenInstruction {
     Token_TokenInstruction_Tag tag;
@@ -515,10 +552,11 @@ typedef struct Token_TokenInstruction {
         Token_TokenInstruction_Token_SetAuthority_Body set_authority;
         Token_TokenInstruction_Token_MintTo_Body mint_to;
         Token_TokenInstruction_Token_Burn_Body burn;
-        Token_TokenInstruction_Token_Transfer2_Body transfer2;
-        Token_TokenInstruction_Token_Approve2_Body approve2;
-        Token_TokenInstruction_Token_MintTo2_Body mint_to2;
-        Token_TokenInstruction_Token_Burn2_Body burn2;
+        Token_TokenInstruction_Token_TransferChecked_Body transfer_checked;
+        Token_TokenInstruction_Token_ApproveChecked_Body approve_checked;
+        Token_TokenInstruction_Token_MintToChecked_Body mint_to_checked;
+        Token_TokenInstruction_Token_BurnChecked_Body burn_checked;
+        Token_TokenInstruction_Token_InitializeAccount2_Body initialize_account2;
     };
 } Token_TokenInstruction;
 
@@ -531,7 +569,7 @@ typedef struct Token_Mint {
      * mint creation. If no mint authority is present then the mint has a fixed supply and no
      * further tokens may be minted.
      */
-    Token_COption_Pubkey mint_authority;
+    struct Token_COption_Pubkey mint_authority;
     /**
      * Total supply of tokens.
      */
@@ -547,7 +585,7 @@ typedef struct Token_Mint {
     /**
      * Optional authority to freeze token accounts.
      */
-    Token_COption_Pubkey freeze_authority;
+    struct Token_COption_Pubkey freeze_authority;
 } Token_Mint;
 
 /**
@@ -564,14 +602,12 @@ typedef enum Token_COption_u64_Tag {
     Token_COption_u64_Some_u64,
 } Token_COption_u64_Tag;
 
-typedef struct Token_COption_u64_Token_Some_Body_u64 {
-    uint64_t _0;
-} Token_COption_u64_Token_Some_Body_u64;
-
 typedef struct Token_COption_u64 {
     Token_COption_u64_Tag tag;
     union {
-        Token_COption_u64_Token_Some_Body_u64 some;
+        struct {
+            uint64_t some;
+        };
     };
 } Token_COption_u64;
 
@@ -595,7 +631,7 @@ typedef struct Token_Account {
      * If `delegate` is `Some` then `delegated_amount` represents
      * the amount authorized by the delegate
      */
-    Token_COption_Pubkey delegate;
+    struct Token_COption_Pubkey delegate;
     /**
      * The account's state
      */
@@ -605,7 +641,7 @@ typedef struct Token_Account {
      * is required to be rent-exempt, so the value is used by the Processor to ensure that wrapped
      * SOL accounts do not drop below this threshold.
      */
-    Token_COption_u64 is_native;
+    struct Token_COption_u64 is_native;
     /**
      * The amount delegated
      */
@@ -613,7 +649,7 @@ typedef struct Token_Account {
     /**
      * Optional authority to close the account.
      */
-    Token_COption_Pubkey close_authority;
+    struct Token_COption_Pubkey close_authority;
 } Token_Account;
 
 /**

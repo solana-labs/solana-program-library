@@ -1674,10 +1674,7 @@ fn main() {
         let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
 
         Config {
-            rpc_client: RpcClient::new_with_commitment(
-                json_rpc_url,
-                CommitmentConfig::single_gossip(),
-            ),
+            rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
             verbose,
             owner,
             fee_payer,

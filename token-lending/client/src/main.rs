@@ -47,7 +47,7 @@ pub fn main() {
     };
 
     let quote_token_mint = usdc_mint_pubkey;
-    let (lending_market_keypair, _lending_market) =
+    let (lending_market_owner, lending_market_pubkey, _lending_market) =
         create_lending_market(&mut client, quote_token_mint, &payer);
 
     let usdc_liquidity_source = Pubkey::from_str(USDC_TOKEN_ACCOUNT).unwrap();
@@ -68,7 +68,8 @@ pub fn main() {
     let (usdc_reserve_pubkey, _usdc_reserve) = create_reserve(
         &mut client,
         usdc_reserve_config,
-        &lending_market_keypair,
+        lending_market_pubkey,
+        &lending_market_owner,
         None,
         usdc_liquidity_source,
         &payer,
@@ -94,7 +95,8 @@ pub fn main() {
     let (sol_reserve_pubkey, _sol_reserve) = create_reserve(
         &mut client,
         sol_reserve_config,
-        &lending_market_keypair,
+        lending_market_pubkey,
+        &lending_market_owner,
         Some(sol_usdc_dex_market.pubkey),
         sol_liquidity_source,
         &payer,
@@ -120,7 +122,8 @@ pub fn main() {
     let (srm_reserve_pubkey, _srm_reserve) = create_reserve(
         &mut client,
         srm_reserve_config,
-        &lending_market_keypair,
+        lending_market_pubkey,
+        &lending_market_owner,
         Some(srm_usdc_dex_market.pubkey),
         srm_liquidity_source,
         &payer,
@@ -133,8 +136,9 @@ pub fn create_lending_market(
     client: &mut RpcClient,
     quote_token_mint: Pubkey,
     payer: &Keypair,
-) -> (Keypair, LendingMarket) {
-    let keypair = read_keypair_file(&format!("{}/lending_market.json", KEYPAIR_PATH)).unwrap();
+) -> (Keypair, Pubkey, LendingMarket) {
+    let owner = read_keypair_file(&format!("{}/lending_market_owner.json", KEYPAIR_PATH)).unwrap();
+    let keypair = Keypair::new();
     let pubkey = keypair.pubkey();
 
     let mut transaction = Transaction::new_with_payer(
@@ -148,7 +152,7 @@ pub fn create_lending_market(
                 LendingMarket::LEN as u64,
                 &id(),
             ),
-            init_lending_market(id(), pubkey, quote_token_mint),
+            init_lending_market(id(), pubkey, owner.pubkey(), quote_token_mint),
         ],
         Some(&payer.pubkey()),
     );
@@ -160,13 +164,14 @@ pub fn create_lending_market(
     let account = client.get_account(&pubkey).unwrap();
     let lending_market = LendingMarket::unpack(&account.data).unwrap();
 
-    (keypair, lending_market)
+    (owner, pubkey, lending_market)
 }
 
 pub fn create_reserve(
     client: &mut RpcClient,
     config: ReserveConfig,
-    lending_market_keypair: &Keypair,
+    lending_market_pubkey: Pubkey,
+    lending_market_owner: &Keypair,
     dex_market_pubkey: Option<Pubkey>,
     liquidity_source_pubkey: Pubkey,
     payer: &Keypair,
@@ -278,7 +283,8 @@ pub fn create_reserve(
                 collateral_mint_keypair.pubkey(),
                 collateral_supply_keypair.pubkey(),
                 collateral_fees_receiver_keypair.pubkey(),
-                lending_market_keypair.pubkey(),
+                lending_market_pubkey,
+                lending_market_owner.pubkey(),
                 user_transfer_authority.pubkey(),
                 dex_market_pubkey,
             ),
@@ -287,7 +293,7 @@ pub fn create_reserve(
     );
 
     transaction.sign(
-        &vec![payer, &lending_market_keypair, &user_transfer_authority],
+        &vec![payer, &lending_market_owner, &user_transfer_authority],
         recent_blockhash,
     );
 

@@ -2,14 +2,24 @@
  * Flow Library definition for spl-token
  *
  * This file is manually maintained
- *
  */
+
+import BN from 'bn.js'; // eslint-disable-line
+import {Buffer} from 'buffer';
+import {Layout} from 'buffer-layout';
+import {
+  Account,
+  Connection,
+  PublicKey,
+  TransactionInstruction,
+} from '@solana/web3.js';
+import type {TransactionSignature} from '@solana/web3.js';
 
 declare module '@solana/spl-token' {
   declare export var TOKEN_PROGRAM_ID;
   declare export class u64 extends BN {
-    toBuffer(): Buffer;
-    static fromBuffer(buffer: Buffer): u64;
+    toBuffer(): typeof Buffer;
+    static fromBuffer(buffer: typeof Buffer): u64;
   }
   declare export type AuthorityType =
     | 'MintTokens'
@@ -17,7 +27,7 @@ declare module '@solana/spl-token' {
     | 'AccountOwner'
     | 'CloseAccount';
   declare export var NATIVE_MINT: PublicKey;
-  declare export var MintLayout: Layout;
+  declare export var MintLayout: typeof Layout;
   declare export type MintInfo = {|
     mintAuthority: null | PublicKey,
     supply: u64,
@@ -25,7 +35,7 @@ declare module '@solana/spl-token' {
     isInitialized: boolean,
     freezeAuthority: null | PublicKey,
   |};
-  declare export var AccountLayout: Layout;
+  declare export var AccountLayout: typeof Layout;
   declare export type AccountInfo = {|
     mint: PublicKey,
     owner: PublicKey,
@@ -64,6 +74,15 @@ declare module '@solana/spl-token' {
       programId: PublicKey,
       payer: Account,
     ): Token;
+    static getMinBalanceRentForExemptMint(
+      connection: Connection,
+    ): Promise<number>;
+    static getMinBalanceRentForExemptAccount(
+      connection: Connection,
+    ): Promise<number>;
+    static getMinBalanceRentForExemptMultisig(
+      connection: Connection,
+    ): Promise<number>;
     static createMint(
       connection: Connection,
       payer: Account,
@@ -72,7 +91,6 @@ declare module '@solana/spl-token' {
       decimals: number,
       programId: PublicKey,
     ): Promise<Token>;
-    static getAccount(connection: Connection): Promise<Account>;
     createAccount(owner: PublicKey): Promise<PublicKey>;
     static createWrappedNativeAccount(
       connection: Connection,

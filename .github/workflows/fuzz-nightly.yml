@@ -34,8 +34,6 @@ jobs:
             ~/.cargo/git
             target
           key: cargo-fuzz-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-fuzz-
 
       - uses: actions/cache@v2
         with:
@@ -43,8 +41,6 @@ jobs:
             ~/.cargo/bin/cargo-hfuzz
             ~/.cargo/bin/cargo-honggfuzz
           key: cargo-fuzz-bins-${{ runner.os }}
-          restore-keys: |
-            cargo-fuzz-bins-${{ runner.os }}-
 
       - uses: actions/cache@v2
         with:

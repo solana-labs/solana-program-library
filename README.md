@@ -74,7 +74,7 @@ master. Once a program is tested and deemed ready for release:
 
   * Increment the version number in the program's Cargo.toml
   * Generate a new program ID and replace in `<program>/program-id.md` and `<program>/src/lib.rs`
-  * Run `cargo build <program>` to update relevant C bindings. (Note the
+  * Run `cargo build-bpf <program>` to update relevant C bindings. (Note the
     location of the generated `spl_<program>.so` for attaching to the Github
     release.)
   * Open a PR with these version changes and merge after passing CI.
@@ -100,7 +100,4 @@ $ git push upstream --tags
 ### Publish to Crates.io
 
 Navigate to the program directory and run `cargo package`
-to test the build. Then run `cargo publish`. (Currently, programs with generated
-C bindings fail the final step of verification due to the location of the
-generated file. Once you are certain the crate is ready, run `cargo publish --no-verify`
-to bypass this error.)
+to test the build. Then run `cargo publish`.
