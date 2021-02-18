@@ -3,8 +3,10 @@
 use crate::{
     error::TimelockError,
     state::{
+        timelock_config::TimelockConfig,
         timelock_program::TimelockProgram,
         timelock_set::{TimelockSet, TIMELOCK_SET_VERSION},
+        timelock_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
         assert_initialized, assert_rent_exempt, assert_same_version_as_program,
@@ -22,7 +24,13 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 /// Create a new timelock set
-pub fn process_init_timelock_set(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+pub fn process_init_timelock_set(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    config: TimelockConfig,
+    name: [u8; NAME_SIZE],
+    desc_link: [u8; DESC_SIZE],
+) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let signatory_mint_account_info = next_account_info(account_info_iter)?;
@@ -45,6 +53,9 @@ pub fn process_init_timelock_set(program_id: &Pubkey, accounts: &[AccountInfo]) 
 
     let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
     new_timelock_set.version = TIMELOCK_SET_VERSION;
+    new_timelock_set.config = config;
+    new_timelock_set.state.desc_link = desc_link;
+    new_timelock_set.state.name = name;
 
     assert_same_version_as_program(&timelock_program, &new_timelock_set)?;
     assert_token_program_is_correct(&timelock_program, token_program_info)?;

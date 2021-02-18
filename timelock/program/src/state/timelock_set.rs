@@ -2,7 +2,7 @@ use super::UNINITIALIZED_VERSION;
 use super::{enums::TimelockStateStatus, timelock_config::TimelockConfig};
 use super::{
     enums::{ConsensusAlgorithm, ExecutionType, TimelockType},
-    timelock_state::TimelockState,
+    timelock_state::{TimelockState, DESC_SIZE, NAME_SIZE},
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
@@ -14,7 +14,7 @@ use solana_program::{
 /// STRUCT VERSION
 pub const TIMELOCK_SET_VERSION: u8 = 1;
 /// Single instance of a timelock
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone)]
 pub struct TimelockSet {
     /// Version of the struct
     pub version: u8,
@@ -39,7 +39,7 @@ pub struct TimelockSet {
     /// Used to validate voting tokens in a round trip transfer
     pub voting_validation: Pubkey,
 
-    /// Reserve state
+    /// Timelock state
     pub state: TimelockState,
 
     /// configuration values
@@ -53,9 +53,9 @@ impl IsInitialized for TimelockSet {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 525;
+const TIMELOCK_SET_LEN: usize = 525 + DESC_SIZE + NAME_SIZE;
 impl Pack for TimelockSet {
-    const LEN: usize = 525;
+    const LEN: usize = 525 + DESC_SIZE + NAME_SIZE;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_SET_LEN];
@@ -71,6 +71,8 @@ impl Pack for TimelockSet {
             voting_validation,
             timelock_state_status,
             total_voting_tokens_minted,
+            desc_link,
+            name,
             timelock_txn_1,
             timelock_txn_2,
             timelock_txn_3,
@@ -85,7 +87,8 @@ impl Pack for TimelockSet {
             execution_type,
             timelock_type,
         ) = array_refs![
-            input, 1, 32, 32, 32, 32, 32, 32, 1, 8, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1, 1, 1
+            input, 1, 32, 32, 32, 32, 32, 32, 1, 8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32, 32,
+            32, 32, 32, 32, 1, 1, 1
         ];
         let version = u8::from_le_bytes(*version);
         let total_voting_tokens_minted = u64::from_le_bytes(*total_voting_tokens_minted);
@@ -125,6 +128,8 @@ impl Pack for TimelockSet {
                         Pubkey::new_from_array(*timelock_txn_9),
                         Pubkey::new_from_array(*timelock_txn_10),
                     ],
+                    desc_link: *desc_link,
+                    name: *name,
                 },
                 config: TimelockConfig {
                     consensus_algorithm: match consensus_algorithm {
@@ -161,6 +166,8 @@ impl Pack for TimelockSet {
             voting_validation,
             timelock_state_status,
             total_voting_tokens_minted,
+            desc_link,
+            name,
             timelock_txn_1,
             timelock_txn_2,
             timelock_txn_3,
@@ -175,8 +182,8 @@ impl Pack for TimelockSet {
             execution_type,
             timelock_type,
         ) = mut_array_refs![
-            output, 1, 32, 32, 32, 32, 32, 32, 1, 8, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1, 1,
-            1
+            output, 1, 32, 32, 32, 32, 32, 32, 1, 8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32, 32,
+            32, 32, 32, 32, 1, 1, 1
         ];
         *version = self.version.to_le_bytes();
         signatory_mint.copy_from_slice(self.signatory_mint.as_ref());
@@ -194,6 +201,8 @@ impl Pack for TimelockSet {
         }
         .to_le_bytes();
         *total_voting_tokens_minted = self.state.total_voting_tokens_minted.to_le_bytes();
+        desc_link.copy_from_slice(self.state.desc_link.as_ref());
+        name.copy_from_slice(self.state.name.as_ref());
         timelock_txn_1.copy_from_slice(self.state.timelock_transactions[0].as_ref());
         timelock_txn_2.copy_from_slice(self.state.timelock_transactions[1].as_ref());
         timelock_txn_3.copy_from_slice(self.state.timelock_transactions[2].as_ref());

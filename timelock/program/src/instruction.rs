@@ -10,8 +10,12 @@ use solana_program::{
 use crate::{
     error::TimelockError,
     state::{
-        custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT, enums::ConsensusAlgorithm,
-        enums::ExecutionType, enums::TimelockType, timelock_config::TimelockConfig,
+        custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT,
+        enums::ConsensusAlgorithm,
+        enums::ExecutionType,
+        enums::TimelockType,
+        timelock_config::TimelockConfig,
+        timelock_state::{DESC_SIZE, NAME_SIZE},
     },
 };
 
@@ -58,6 +62,10 @@ pub enum TimelockInstruction {
     InitTimelockSet {
         /// Determine what type of timelock config you want
         config: TimelockConfig,
+        /// Link to gist explaining proposal
+        desc_link: [u8; DESC_SIZE],
+        /// name of proposal
+        name: [u8; NAME_SIZE],
     },
 
     /// [Requires Admin token]
@@ -199,25 +207,43 @@ impl TimelockInstruction {
             .ok_or(TimelockError::InstructionUnpackError)?;
         Ok(match tag {
             0 => Self::InitTimelockProgram,
-            1 => Self::InitTimelockSet {
-                config: TimelockConfig {
-                    consensus_algorithm: match input[0] {
-                        0 => ConsensusAlgorithm::Majority,
-                        1 => ConsensusAlgorithm::SuperMajority,
-                        2 => ConsensusAlgorithm::FullConsensus,
-                        _ => ConsensusAlgorithm::Majority,
+            1 => {
+                let (consensus_algorithm, rest) = Self::unpack_u8(input)?;
+                let (execution_type, rest) = Self::unpack_u8(rest)?;
+                let (timelock_type, rest) = Self::unpack_u8(rest)?;
+
+                let (input_desc_link, input_name) = rest.split_at(DESC_SIZE + 1);
+                let mut desc_link: [u8; DESC_SIZE] = [0; DESC_SIZE];
+                let mut name: [u8; NAME_SIZE] = [0; NAME_SIZE];
+                for n in 0..(DESC_SIZE - 1) {
+                    desc_link[n] = input_desc_link[n];
+                }
+
+                for n in 0..(NAME_SIZE - 1) {
+                    name[n] = input_name[n];
+                }
+                Self::InitTimelockSet {
+                    config: TimelockConfig {
+                        consensus_algorithm: match consensus_algorithm {
+                            0 => ConsensusAlgorithm::Majority,
+                            1 => ConsensusAlgorithm::SuperMajority,
+                            2 => ConsensusAlgorithm::FullConsensus,
+                            _ => ConsensusAlgorithm::Majority,
+                        },
+                        execution_type: match execution_type {
+                            0 => ExecutionType::AllOrNothing,
+                            1 => ExecutionType::AnyAboveVoteFinishSlot,
+                            _ => ExecutionType::AllOrNothing,
+                        },
+                        timelock_type: match timelock_type {
+                            0 => TimelockType::CustomSingleSignerV1,
+                            _ => TimelockType::CustomSingleSignerV1,
+                        },
                     },
-                    execution_type: match input[1] {
-                        0 => ExecutionType::AllOrNothing,
-                        1 => ExecutionType::AnyAboveVoteFinishSlot,
-                        _ => ExecutionType::AllOrNothing,
-                    },
-                    timelock_type: match input[2] {
-                        0 => TimelockType::CustomSingleSignerV1,
-                        _ => TimelockType::CustomSingleSignerV1,
-                    },
-                },
-            },
+                    desc_link,
+                    name,
+                }
+            }
             2 => Self::AddSigner,
             3 => Self::RemoveSigner,
             4 => {
@@ -306,7 +332,11 @@ impl TimelockInstruction {
             Self::InitTimelockProgram => {
                 buf.push(0);
             }
-            Self::InitTimelockSet { config } => {
+            Self::InitTimelockSet {
+                config,
+                desc_link,
+                name,
+            } => {
                 buf.push(1);
                 match config.consensus_algorithm {
                     ConsensusAlgorithm::Majority => buf.push(0),
@@ -320,6 +350,8 @@ impl TimelockInstruction {
                 match config.timelock_type {
                     TimelockType::CustomSingleSignerV1 => buf.push(0),
                 }
+                buf.extend_from_slice(desc_link);
+                buf.extend_from_slice(name);
             }
             Self::AddSigner => buf.push(2),
             Self::RemoveSigner => buf.push(3),

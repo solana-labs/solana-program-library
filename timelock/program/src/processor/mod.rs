@@ -36,9 +36,13 @@ pub fn process_instruction(
             msg!("Instruction: Init Timelock Program");
             process_init_timelock_program(program_id, accounts)
         }
-        TimelockInstruction::InitTimelockSet { config } => {
+        TimelockInstruction::InitTimelockSet {
+            config,
+            name,
+            desc_link,
+        } => {
             msg!("Instruction: Init Timelock Set");
-            process_init_timelock_set(program_id, accounts)
+            process_init_timelock_set(program_id, accounts, config, name, desc_link)
         }
         TimelockInstruction::AddSigner => {
             msg!("Instruction: Add Signer");
