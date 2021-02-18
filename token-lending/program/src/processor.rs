@@ -1437,20 +1437,20 @@ fn process_withdraw_obligation_collateral(
         &withdraw_reserve.liquidity.mint_pubkey,
     )?;
 
-    let recommended_collateral = withdraw_reserve.recommended_collateral(
+    let minimum_collateral = withdraw_reserve.minimum_collateral(
         &obligation,
         &borrow_reserve.liquidity.mint_pubkey,
         trade_simulator,
     )?;
-    if obligation_collateral_amount < recommended_collateral {
-        return Err(LendingError::ObligationUnhealthy.into());
+    if obligation_collateral_amount < minimum_collateral {
+        return Err(LendingError::ObligationCollateralBelowMinimum.into());
     }
 
     let remaining_collateral = obligation_collateral_amount
         .checked_sub(collateral_amount)
         .ok_or(LendingError::MathOverflow)?;
-    if remaining_collateral < recommended_collateral {
-        return Err(LendingError::UnhealthyObligation.into());
+    if remaining_collateral < minimum_collateral {
+        return Err(LendingError::ObligationCollateralWithdrawMinimum.into());
     }
 
     let obligation_token_amount = obligation

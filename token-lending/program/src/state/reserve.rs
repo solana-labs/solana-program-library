@@ -92,14 +92,14 @@ impl Reserve {
         }
     }
 
-    /// Calculate the recommended collateral for an obligation
-    pub fn recommended_collateral(
+    /// Calculate the minimum collateral for an obligation
+    pub fn minimum_collateral(
         &self,
         obligation: &Obligation,
         liquidity_token_mint: &Pubkey,
         token_converter: impl TokenConverter,
     ) -> Result<u64, ProgramError> {
-        Self::_recommended_collateral(
+        Self::_minimum_collateral(
             obligation,
             liquidity_token_mint,
             self.collateral_exchange_rate()?,
@@ -108,7 +108,7 @@ impl Reserve {
         )
     }
 
-    fn _recommended_collateral(
+    fn _minimum_collateral(
         obligation: &Obligation,
         liquidity_token_mint: &Pubkey,
         collateral_exchange_rate: CollateralExchangeRate,
@@ -116,19 +116,13 @@ impl Reserve {
         mut token_converter: impl TokenConverter,
     ) -> Result<u64, ProgramError> {
         let borrow_token_price = token_converter.best_price(liquidity_token_mint)?;
-        let decimal_collateral = Decimal::from(obligation.deposited_collateral_tokens);
-        let collateral_value = collateral_exchange_rate
-            .decimal_collateral_to_liquidity(decimal_collateral)?
-            .try_div(borrow_token_price)?;
-
-        let loan_to_value = obligation
-            .borrowed_liquidity_wads
-            .try_div(collateral_value)?;
+        let loan_to_value =
+            obligation.loan_to_value(collateral_exchange_rate, borrow_token_price)?;
         let reserve_loan_to_value =
             Decimal::from_percent(collateral_reserve_config.loan_to_value_ratio);
         let loan_to_value_ratio = loan_to_value.try_div(reserve_loan_to_value)?;
 
-        decimal_collateral
+        Decimal::from(obligation.deposited_collateral_tokens)
             .try_mul(loan_to_value_ratio)?
             .try_ceil_u64()
     }
@@ -415,17 +409,6 @@ pub struct LiquidateResult {
     pub settle_amount: Decimal,
     /// Amount that will be repaid as u64
     pub repay_amount: u64,
-}
-
-/// Obligation health result
-#[derive(Debug)]
-pub struct ObligationHealthResult {
-    /// Loan to value ratio
-    pub loan_to_value: Decimal,
-    /// Amount of deficit collateral to deposit
-    pub deposit_amount: u64,
-    /// Amount of excess collateral to withdraw
-    pub withdraw_amount: u64,
 }
 
 /// Reserve liquidity
