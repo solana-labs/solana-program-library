@@ -18,7 +18,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
 };
-use spl_token_swap::state::SwapInfo;
+use spl_token_swap::state::SwapV1;
 use std::collections::HashSet;
 use std::convert::TryFrom;
 
@@ -31,8 +31,8 @@ impl Processor {
     }
 
     /// Unpacks a spl_token `Account`.
-    pub fn unpack_token_swap(data: &[u8]) -> Result<SwapInfo, MarginPoolError> {
-        SwapInfo::unpack(data).map_err(|_| MarginPoolError::ExpectedAccount)
+    pub fn unpack_token_swap(data: &[u8]) -> Result<SwapV1, MarginPoolError> {
+        SwapV1::unpack(data).map_err(|_| MarginPoolError::ExpectedAccount)
     }
 
     /// Unpacks a spl_token `Account`.
@@ -272,7 +272,7 @@ impl Processor {
         MarginPool::pack(obj, &mut margin_pool_info.data.borrow_mut())?;
         Ok(())
     }
-    fn token_swap_price(swap_info: &SwapInfo, source: &Pubkey) -> u64 {
+    fn token_swap_price(swap_info: &SwapV1, source: &Pubkey) -> u64 {
         unimplemented!();
     }
     /// Processes an [Swap](enum.Instruction.html).

@@ -3726,6 +3726,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-margin-pool"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "solana-sdk",
+ "spl-token 3.1.0",
+ "spl-token-swap",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-math"
 version = "0.1.0"
 dependencies = [
