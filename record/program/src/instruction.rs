@@ -5,7 +5,6 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
-    sysvar,
 };
 
 /// Instructions supported by the program
@@ -17,7 +16,6 @@ pub enum RecordInstruction {
     ///
     /// 0. `[writable]` Record account, must be uninitialized
     /// 1. `[]` Record authority
-    /// 2. `[]` Rent sysvar, to check for rent exemption
     Initialize,
 
     /// Write to the provided record account
@@ -60,7 +58,6 @@ pub fn initialize(record_account: &Pubkey, authority: &Pubkey) -> Instruction {
         vec![
             AccountMeta::new(*record_account, false),
             AccountMeta::new_readonly(*authority, false),
-            AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
     )
 }

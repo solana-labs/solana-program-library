@@ -14,8 +14,6 @@ use {
         program_error::ProgramError,
         program_pack::IsInitialized,
         pubkey::Pubkey,
-        rent::Rent,
-        sysvar::Sysvar,
     },
 };
 
@@ -49,8 +47,6 @@ pub fn process_instruction(
 
             let data_info = next_account_info(account_info_iter)?;
             let authority_info = next_account_info(account_info_iter)?;
-            let rent_sysvar_info = next_account_info(account_info_iter)?;
-            let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
             let mut account_data = RecordData::try_from_slice(*data_info.data.borrow())?;
             if account_data.is_initialized() {
@@ -58,9 +54,6 @@ pub fn process_instruction(
                 return Err(ProgramError::AccountAlreadyInitialized);
             }
 
-            if !rent.is_exempt(data_info.lamports(), data_info.data_len()) {
-                return Err(ProgramError::AccountNotRentExempt);
-            }
             account_data.authority = *authority_info.key;
             account_data.version = RecordData::CURRENT_VERSION;
             account_data
