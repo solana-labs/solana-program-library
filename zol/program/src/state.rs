@@ -1,16 +1,61 @@
 use crate::error::ZolError;
 use borsh::{BorshDeserialize, BorshSerialize};
+use bulletproofs::RangeProof;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use elgamal_ristretto::{ciphertext::Ciphertext, public::PublicKey};
 use solana_program::program_error::ProgramError;
+use std::io::{Error, ErrorKind, Write};
 
-// TODO: Choose a range proof (probably Bulletproofs)
-#[derive(BorshSerialize, BorshDeserialize)]
-pub struct SolvencyProof {}
+pub struct SolvencyProof(RangeProof);
+
+impl BorshSerialize for SolvencyProof {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+        BorshSerialize::serialize(&self.0.to_bytes(), writer)
+    }
+}
+
+impl BorshDeserialize for SolvencyProof {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self, Error> {
+        let bytes: Vec<u8> = BorshDeserialize::deserialize(buf)?;
+        let proof = RangeProof::from_bytes(&bytes).map_err(|_| {
+            Error::new(
+                ErrorKind::InvalidInput,
+                "range proof deserialization failed",
+            )
+        })?;
+        Ok(Self(proof))
+    }
+}
 
 impl SolvencyProof {
-    pub fn verify(&self) -> Result<(), ProgramError> {
-        // TODO
+    pub fn new(proof: RangeProof) -> Self {
+        Self(proof)
+    }
+
+    pub fn verify(&self, ciphertext: &Ciphertext) -> Result<(), ProgramError> {
+        use bulletproofs::{BulletproofGens, PedersenGens};
+        use merlin::Transcript;
+
+        let pc_gens = PedersenGens::default();
+        let bp_gens = BulletproofGens::new(64, 1);
+
+        // TODO: This doesn't make any sense
+        let committed_value = ciphertext.get_points().0.compress();
+
+        // Verification requires a transcript with identical initial state:
+        let mut verifier_transcript = Transcript::new(b"example");
+        let _result: Result<(), ProgramError> = self
+            .0
+            .verify_single(
+                &bp_gens,
+                &pc_gens,
+                &mut verifier_transcript,
+                &committed_value,
+                32,
+            )
+            .map_err(|_| ZolError::SolvencyProofVerificationFailed.into());
+
+        // TODO: return real result
         Ok(())
     }
 }
@@ -20,6 +65,10 @@ impl SolvencyProof {
 pub struct EquivalenceProof {}
 
 impl EquivalenceProof {
+    pub fn new() -> Self {
+        Self {}
+    }
+
     pub fn verify(&self) -> Result<(), ProgramError> {
         // TODO
         Ok(())

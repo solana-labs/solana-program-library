@@ -20,6 +20,10 @@ pub enum ZolError {
     /// Deposit from invalid account
     #[error("Deposit from invalid account")]
     DepositFromInvalidAccount,
+
+    /// Solvency Proof Verification Failed
+    #[error("Solvency proof verification failed")]
+    SolvencyProofVerificationFailed,
 }
 impl From<ZolError> for ProgramError {
     fn from(e: ZolError) -> Self {
@@ -41,6 +45,9 @@ impl PrintProgramError for ZolError {
             ZolError::InvalidInstruction => println!("Error: Invalid instruction"),
             ZolError::UnexpectedStateType => println!("Error: Unexpected State type"),
             ZolError::DepositFromInvalidAccount => println!("Error: Deposit from invalid account"),
+            ZolError::SolvencyProofVerificationFailed => {
+                println!("Error: Solvency proof verification failed")
+            }
         }
     }
 }

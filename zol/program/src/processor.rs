@@ -88,8 +88,6 @@ fn withdraw(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    solvency_proof.verify()?;
-
     let mut sender_state = State::deserialize(&sender_account.data.borrow())?;
 
     let encoded_amount = Scalar::from(amount) * RISTRETTO_BASEPOINT_POINT;
@@ -99,6 +97,9 @@ fn withdraw(
     sender_state.user_mut()?.encrypted_amount -= encrypted_amount;
     **vault_account.lamports.borrow_mut() -= amount;
     **recipient_account.lamports.borrow_mut() += amount;
+
+    // Ensure the debit results in a positive balance
+    solvency_proof.verify(&sender_state.user_mut()?.encrypted_amount)?;
 
     sender_state.serialize(&mut sender_account.data.borrow_mut())
 }
@@ -118,7 +119,6 @@ fn transfer(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    solvency_proof.verify()?;
     equivalence_proof.verify()?;
 
     let mut sender_state = State::deserialize(&sender_account.data.borrow())?;
@@ -126,6 +126,9 @@ fn transfer(
 
     sender_state.user_mut()?.encrypted_amount -= sender_amount;
     recipient_state.user_mut()?.encrypted_amount += recipient_amount;
+
+    // Ensure the debit results in a positive balance
+    solvency_proof.verify(&sender_state.user_mut()?.encrypted_amount)?;
 
     sender_state.serialize(&mut sender_account.data.borrow_mut())?;
     recipient_state.serialize(&mut recipient_account.data.borrow_mut())
@@ -296,12 +299,42 @@ mod tests {
         let bob_account_info = (&bob_pubkey, true, &mut account).into();
         initialize_user(&bob_account_info, bob_encryption_pubkey.clone()).unwrap();
 
+        //
         // Transfer ZOL from Alice to Bob
-        let alice_solvency_proof = SolvencyProof {};
+        //
+        use bulletproofs::{BulletproofGens, PedersenGens, RangeProof};
+        use curve25519_dalek::scalar::Scalar;
+        use merlin::Transcript;
+        use rand::thread_rng;
+
+        let pc_gens = PedersenGens::default();
+        let bp_gens = BulletproofGens::new(64, 1);
+
+        // The balance after a debit - we want to prove lies in the range [0, 2^32)
+        let alice_end_balance = 0u64;
+
+        let blinding = Scalar::random(&mut thread_rng());
+
+        // The proof can be chained to an existing transcript.
+        // Here we create a transcript with a doctest domain separator.
+        let mut prover_transcript = Transcript::new(b"example");
+
+        // Create a 32-bit rangeproof.
+        let (proof, _committed_value) = RangeProof::prove_single(
+            &bp_gens,
+            &pc_gens,
+            &mut prover_transcript,
+            alice_end_balance,
+            &blinding,
+            32,
+        )
+        .unwrap();
+
+        let alice_solvency_proof = SolvencyProof::new(proof.clone());
         let encoded_amount = Scalar::from(42u64) * RISTRETTO_BASEPOINT_POINT;
         let sender_amount = alice_encryption_pubkey.encrypt(&encoded_amount);
         let recipient_amount = bob_encryption_pubkey.encrypt(&encoded_amount);
-        let equivalence_proof = EquivalenceProof {};
+        let equivalence_proof = EquivalenceProof::new();
         transfer(
             &alice_account_info,
             &bob_account_info,
@@ -313,7 +346,7 @@ mod tests {
         .unwrap();
 
         // Withdraw from Bob. Verify Mint has its SOL back.
-        let bob_solvency_proof = SolvencyProof {};
+        let bob_solvency_proof = SolvencyProof::new(proof);
         withdraw(
             &bob_account_info,
             &vault_account_info,
