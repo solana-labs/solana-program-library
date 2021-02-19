@@ -37,21 +37,6 @@ pub enum PoolError {
     /// Invalid signer
     #[error("Input account must be a signer")]
     InvalidSigner,
-    /// Invalid account input
-    #[error("Invalid account input")]
-    InvalidAccountInput,
-    /// Math operation overflow
-    #[error("Math operation overflow")]
-    MathOverflow,
-    /// Memory is too small
-    #[error("Memory is too small")]
-    MemoryTooSmall,
-    /// Trade simulation error
-    #[error("Trade simulation error")]
-    TradeSimulationError,
-    /// Invalid dex order book side
-    #[error("Invalid dex order book side")]
-    DexInvalidOrderBookSide,
     /// Token initialize mint failed
     #[error("Token initialize mint failed")]
     TokenInitializeMintFailed,
