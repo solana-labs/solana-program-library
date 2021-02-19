@@ -39,8 +39,12 @@ impl SolvencyProof {
         let pc_gens = PedersenGens::default();
         let bp_gens = BulletproofGens::new(64, 1);
 
-        // TODO: This doesn't make any sense
-        let committed_value = ciphertext.get_points().0.compress();
+        // TODO: This isn't quite right. It hopes second part of the
+        // ElGamal-encrypted tuple is the same as the Pedersen commitment
+        // produced by the Bulletproofs library. That might be close, but
+        // no luck with the shot-in-the-dark approach of using the ElGamal
+        // secret key as the proof's blinding factor.
+        let committed_value = ciphertext.get_points().1.compress();
 
         // Verification requires a transcript with identical initial state:
         let mut verifier_transcript = Transcript::new(b"example");

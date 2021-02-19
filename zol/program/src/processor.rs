@@ -396,6 +396,13 @@ mod tests {
         )
         .expect("A real program could handle errors");
 
+        // TODO: Test relationship between Penderson commitment and ElGamal encryption
+        //let sk = SecretKey::from(blinding);
+        //let pk = PublicKey::from(&sk);
+        //let encoded_amount = Scalar::from(secret_value) * RISTRETTO_BASEPOINT_POINT;
+        //let ciphertext = pk.encrypt(&encoded_amount);
+        //assert_eq!(ciphertext.get_points().1.compress(), committed_value);
+
         // Verification requires a transcript with identical initial state:
         let mut verifier_transcript = Transcript::new(b"doctest example");
         assert!(proof
