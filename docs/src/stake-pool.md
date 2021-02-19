@@ -120,9 +120,10 @@ In order to accommodate large numbers of user deposits into the stake pool, the
 stake pool only manages one stake account per validator. To add a new validator
 to the stake pool, we first create a validator-associated stake account.
 
-According to [validators.app](https://www.validators.app/), the top validator is
+Looking at [validators.app](https://www.validators.app/) or other Solana validator
+lists, we choose some validators at random and start with
 identity `8SQEcP4FaYQySktNQeyxF3w8pvArx3oMEh7fPrzkN9pu` on vote account 
-`2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3` so let's create a stake account
+`2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3`. Let's create a validator stake account
 delegated to that vote account.
 
 ```sh
@@ -179,7 +180,7 @@ Signature: 5Xg7d5v2bjgVc4o1T8dU9JBHTssb8CR9J4XW1oXxuAPJ72F7ANFcxuB81r9ky7GbyKwUP
 Now that we have delegated the stakes, we need to wait an epoch for the delegation
 to activate.
 
-### Example: Add validator stake account
+### Example: (Admin only) Add validator stake account
 
 As mentioned in the last step, the stake pool only manages one stake account per
 validator. Also, the stake pool only processes fully activated stake accounts.
@@ -190,13 +191,52 @@ the stake activates, we can add them to the stake pool.
 $ spl-stake-pool add-validator-stake --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
 ```
 
+Users can start depositing their activated stakes into the stake pool, as
+long as they are delegated to the same vote account, which was
+`FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13` in this example.  You can also
+double-check that at any time using the base Solana command-line utility.
+
+```sh
+$ solana stake-account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
 TODO
+Balance: 0.002282881 SOL
+Rent Exempt Reserve: 0.00228288 SOL
+Delegated Stake: 0.000000001 SOL
+Active Stake: 0.000000001 SOL
+Activating Stake: 0 SOL
+Stake activates starting from epoch: 161
+Delegated Vote Account Address: 2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3
+Stake Authority: 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+Withdraw Authority: 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+```
+
+### Example: List validator stake accounts
+
+In order to deposit into the stake pool, a user must first delegate some stake
+to one of the validator stake accounts associated with the stake pool. The
+command-line utility has a special instruction for finding out which vote
+accounts are already associated with the stake pool.
+
+```sh
+$ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
+TODO
+```
+
+If the manager has recently created the stake pool, and there are no stake
+accounts present yet, the command-line utility will inform us.
+
+```sh
+$ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
+No accounts found.
+```
 
 ### Example: Deposit stake
 
 Stake pools only accept deposits from fully staked accounts, so we must first
 create stake accounts and delegate them to one of the validators managed by the
-stake pool, `2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3` in this example.
+stake pool. Using the `list` command from the previous section, we see that
+`2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3` is a valid vote account, so let's
+create a stake account and delegate our stake there.
 
 ```sh
 $ solana-keygen new --no-passphrase -o stake-account.json
@@ -219,26 +259,101 @@ the stake pool.
 
 ```sh
 $ spl-stake-pool deposit --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake 4F4AYKZbNtDnu7uQey2Vkz9VgkVtLE6XWLezYjc9yxZa
+TODO
 ```
 
-TODO
+In return, the stake pool has sent us staking derivatives in the form of SPL
+tokens.  We can double-check our stake pool account using the SPL token
+command-line utility.
 
 ### Example: Update
 
+Every epoch, the network pays out rewards to stake accounts managed by the stake
+pool, increasing the value of staking derivative SPL tokens given on deposit.
+In order to calculate the proper value of these stake pool tokens, we must update
+the total value managed by the stake pool.
+
+The Solana transaction processor has two important limitations:
+
+* size of the overall transaction, limited to roughly 1 MTU / packet
+* computation budget per instruction
+
+A stake pool may manage hundreds of staking accounts, so it is impossible to
+updating the total value of the stake pool in one instruction. Thankfully, the
+command-line utility does all of the work of breaking up transactions.
+
+```sh
+$ spl-stake-pool update --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 
 TODO
+```
+
+If another user already updated the stake pool balance for the current epoch, we
+see different output.
+
+```sh
+$ spl-stake-pool update --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 
+Stake pool balances are up to date, no update required.
+```
 
 ### Example: Withdraw stake
 
+Whenever we want to recover SOL plus accrued rewards, we can provide our
+staking derivative SPL tokens in exchange for an activated stake account.
+
+Let's withdraw 10 of our staking derivative tokens from the stake pool.
+
+```sh
+$ spl-stake-pool withdraw --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC  --amount 10 --burn-from 111111111111111111
 TODO
+```
 
-### Example: Remove validator stake account
+Our 10 tokens were taken, and in exchange we received a fully active stake
+account with X tokens, delegated to X. We can leave this stake account as it is,
+or we can deactivate it as a normal stake account.
 
+```sh
+$ solana deactivate-stake XXXXXXXXX
 TODO
+```
 
-### Example: Set staking authority
+Once the stake is no longer active, we can use it as normal fungible SOL.
 
+### Example: (Admin only) Remove validator stake account
+
+If the stake pool manager wants to stop delegating to a vote account, they can
+totally remove the validator stake account from the stake pool.
+
+```sh
+$ spl-stake-pool remove-validator-stake --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN --burn-from XXXXXXX
 TODO
+```
 
-### Example: Set owner
+This operation works just like `withdraw`, in that the stake pool manager provides
+SPL staking derivatives in exchange for an activated stake account. The difference
+is that the validator stake account is totally removed from the stake pool.
 
+### Example: (Admin only) Set staking authority
+
+In order to manage the stake accounts more directly, the stake pool owner can 
+set the stake authority of the stake pool's managed accounts.
+
+```sh
+$ spl-stake-pool set-staking-auth --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake-account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN --new-staker 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
 TODO
+```
+
+Now, the new staker can perform any normal staking operations, including deactivating
+or re-staking.
+
+Important security note: the stake pool program only gives staking authority to
+the pool owner and always retains withdraw authority. Therefore, a malicious 
+stake pool manager cannot steal funds from the stake pool.
+
+### Example: (Admin only) Set owner
+
+The stake pool owner may pass their admin privileges to another account.
+
+```sh
+$ spl-stake-pool --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --new-owner 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+Signature: 39N5gkaqXuWm6JPEUWfenKXeG4nSa71p7iHb9zurvdZcsWmbjdmSXwLVYfhAVHWucTY77sJ8SkUNpVpVAhe4eZ53
+```
