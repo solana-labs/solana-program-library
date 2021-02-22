@@ -11,6 +11,10 @@ use std::mem::size_of;
 pub const UNINITIALIZED_VERSION: u8 = 0;
 /// Initialized pool version
 pub const POOL_VERSION: u8 = 1;
+/// Token pass decimals
+pub const TOKEN_PASS_DECIMALS: u8 = 0;
+/// Token fail decimals
+pub const TOKEN_FAIL_DECIMALS: u8 = 0;
 
 /// Program states.
 #[repr(C)]

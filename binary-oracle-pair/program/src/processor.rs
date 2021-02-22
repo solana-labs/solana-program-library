@@ -1,6 +1,10 @@
 //! Program state processor
 
-use crate::{error::PoolError, instruction::PoolInstruction, state::Pool, state::POOL_VERSION};
+use crate::{
+    error::PoolError,
+    instruction::PoolInstruction,
+    state::{Pool, POOL_VERSION, TOKEN_FAIL_DECIMALS, TOKEN_PASS_DECIMALS},
+};
 use borsh::BorshDeserialize;
 use solana_program::{
     account_info::next_account_info,
@@ -13,10 +17,9 @@ use solana_program::{
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
     rent::Rent,
-    system_instruction,
     sysvar::Sysvar,
 };
-use spl_token::state::Mint;
+use spl_token::state::{Mint, Account};
 
 /// Program state handler.
 pub struct Processor {}
@@ -42,20 +45,16 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let pool_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
-        let funding_account_info = next_account_info(account_info_iter)?;
         let decider_info = next_account_info(account_info_iter)?;
         let deposit_token_mint_info = next_account_info(account_info_iter)?;
-        // uninitialized
         let deposit_account_info = next_account_info(account_info_iter)?;
-        // uninitialized
         let token_pass_mint_info = next_account_info(account_info_iter)?;
-        // uninitialized
         let token_fail_mint_info = next_account_info(account_info_iter)?;
         let rent_info = next_account_info(account_info_iter)?;
         let rent = &Rent::from_account_info(rent_info)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let mut pool = Pool::unpack(&pool_account_info.data.borrow())?;
+        let mut pool = Pool::unpack_unchecked(&pool_account_info.data.borrow())?;
         // Pool account should not be already initialized
         if pool.is_initialized() {
             return Err(PoolError::AlreadyInUse.into());
@@ -72,28 +71,28 @@ impl Processor {
         }
 
         // Check if deposit token mint is initialized
-        let deposit_token_mint = Mint::unpack(&deposit_token_mint_info.data.borrow())?;
-        if !deposit_token_mint.is_initialized() {
-            return Err(PoolError::UninitializedTokenMint.into());
-        }
+        Mint::unpack(&deposit_token_mint_info.data.borrow())?;
 
+        // Check if bump seed is correct
         let authority = Self::authority_id(program_id, pool_account_info.key, bump_seed)?;
         if &authority != authority_info.key {
             return Err(PoolError::InvalidAuthorityAccount.into());
         }
 
-        let account_rent = rent.minimum_balance(spl_token::state::Account::LEN);
-        // Create and initialize deposit token account
-        invoke(
-            &system_instruction::create_account(
-                funding_account_info.key,
-                deposit_account_info.key,
-                account_rent,
-                spl_token::state::Account::LEN as u64,
-                token_program_info.key,
-            ),
-            &[funding_account_info.clone(), deposit_account_info.clone()],
-        )?;
+        let deposit_account = Account::unpack_unchecked(&deposit_account_info.data.borrow())?;
+        if deposit_account.is_initialized() {
+            return Err(PoolError::DepositAccountInUse.into());
+        }
+
+        let token_pass = Mint::unpack_unchecked(&token_pass_mint_info.data.borrow())?;
+        if token_pass.is_initialized() {
+            return Err(PoolError::TokenMintInUse.into());
+        }
+
+        let token_fail = Mint::unpack_unchecked(&token_fail_mint_info.data.borrow())?;
+        if token_fail.is_initialized() {
+            return Err(PoolError::TokenMintInUse.into());
+        }
 
         invoke(
             &spl_token::instruction::initialize_account(
@@ -103,20 +102,13 @@ impl Processor {
                 authority_info.key,
             )
             .unwrap(),
-            &[],
-        )?;
-
-        let mint_rent = rent.minimum_balance(spl_token::state::Mint::LEN);
-        // Create and initialize token pass mint
-        invoke(
-            &system_instruction::create_account(
-                funding_account_info.key,
-                token_pass_mint_info.key,
-                mint_rent,
-                spl_token::state::Mint::LEN as u64,
-                &spl_token::id(),
-            ),
-            &[funding_account_info.clone(), token_pass_mint_info.clone()],
+            &[
+                token_program_info.clone(),
+                deposit_account_info.clone(),
+                deposit_token_mint_info.clone(),
+                authority_info.clone(),
+                rent_info.clone(),
+            ],
         )?;
 
         invoke(
@@ -125,22 +117,14 @@ impl Processor {
                 token_pass_mint_info.key,
                 authority_info.key,
                 None,
-                0, // TODO: create constant
+                TOKEN_PASS_DECIMALS,
             )
             .unwrap(),
-            &[],
-        )?;
-
-        // Create and initialize token fail mint
-        invoke(
-            &system_instruction::create_account(
-                funding_account_info.key,
-                token_fail_mint_info.key,
-                mint_rent,
-                spl_token::state::Mint::LEN as u64,
-                &spl_token::id(),
-            ),
-            &[funding_account_info.clone(), token_fail_mint_info.clone()],
+            &[
+                token_program_info.clone(),
+                token_pass_mint_info.clone(),
+                rent_info.clone(),
+            ],
         )?;
 
         invoke(
@@ -149,10 +133,14 @@ impl Processor {
                 token_fail_mint_info.key,
                 authority_info.key,
                 None,
-                0, // TODO: create constant
+                TOKEN_FAIL_DECIMALS,
             )
             .unwrap(),
-            &[],
+            &[
+                token_program_info.clone(),
+                token_fail_mint_info.clone(),
+                rent_info.clone(),
+            ],
         )?;
 
         pool.version = POOL_VERSION;
