@@ -7,6 +7,7 @@ use thiserror::Error;
 /// Errors that may be returned by the StakePool program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum StakePoolError {
+    // 0.
     /// The account cannot be initialized because it is already being used.
     #[error("AlreadyInUse")]
     AlreadyInUse,
@@ -22,6 +23,8 @@ pub enum StakePoolError {
     /// Stake pool fee > 1.
     #[error("FeeTooHigh")]
     FeeTooHigh,
+
+    // 5.
     /// Token account is associated with the wrong mint.
     #[error("WrongAccountMint")]
     WrongAccountMint,
@@ -34,6 +37,8 @@ pub enum StakePoolError {
     /// Invalid validator stake list account.
     #[error("InvalidValidatorStakeList")]
     InvalidValidatorStakeList,
+
+    // 10.
     /// Invalid owner fee account.
     #[error("InvalidFeeAccount")]
     InvalidFeeAccount,
@@ -51,6 +56,8 @@ pub enum StakePoolError {
     /// Stake account voting for this validator already exists in the pool.
     #[error("ValidatorAlreadyAdded")]
     ValidatorAlreadyAdded,
+
+    // 15.
     /// Stake account for this validator not found in the pool.
     #[error("ValidatorNotFound")]
     ValidatorNotFound,
@@ -68,6 +75,8 @@ pub enum StakePoolError {
     /// Validator stake account is not found in the list storage.
     #[error("UnknownValidatorStakeAccount")]
     UnknownValidatorStakeAccount,
+
+    // 20.
     /// Wrong minting authority set for mint pool account
     #[error("WrongMintingAuthority")]
     WrongMintingAuthority,
