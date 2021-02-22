@@ -13,9 +13,15 @@ pub enum PoolError {
     /// Invalid instruction data passed in.
     #[error("Failed to unpack instruction data")]
     InstructionUnpackError,
-    /// The account cannot be initialized because it is already in use.
-    #[error("Account is already initialized")]
-    AlreadyInitialized,
+    /// Pool account already in use
+    #[error("Pool account already in use")]
+    AlreadyInUse,
+    /// Invalid seed or bump_seed was provided
+    #[error("Failed to generate program account because of invalid data")]
+    InvalidAuthorityData,
+    /// Invalid authority account provided
+    #[error("Invalid authority account provided")]
+    InvalidAuthorityAccount,
     /// Lamport balance below rent-exempt threshold.
     #[error("Lamport balance below rent-exempt threshold")]
     NotRentExempt,
@@ -28,6 +34,9 @@ pub enum PoolError {
     /// Expected an SPL Token mint
     #[error("Input token mint account is not valid")]
     InvalidTokenMint,
+    /// Token mint uninitialized
+    #[error("Token mint uninitialized")]
+    UninitializedTokenMint,
     /// Expected a different SPL Token program
     #[error("Input token program account is not valid")]
     InvalidTokenProgram,

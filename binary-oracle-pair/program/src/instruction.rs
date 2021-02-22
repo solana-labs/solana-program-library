@@ -1,7 +1,14 @@
 //! Instruction types
 
+use crate::error::PoolError;
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::clock::Slot;
+use solana_program::{
+    clock::Slot,
+    instruction::{AccountMeta, Instruction},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+    sysvar,
+};
 
 /// Initialize arguments for pool
 #[repr(C)]
@@ -17,15 +24,19 @@ pub struct InitArgs {
 
 /// Instruction definition
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
-pub enum Instruction {
+pub enum PoolInstruction {
     /// Initializes a new binary oracle pair pool.
     ///
     ///   0. `[w]` Pool account.
     ///   1. `[]` authority create_program_address(&[binary-oracle-pair account])`
-    ///   2. `[]` Decider authority
-    ///   3. `[]` Deposit currency SPL Token mint. Must be initialized.
-    ///   4. `[]` Rent sysvar
-    ///   5. '[]` Token program id
+    ///   2. `[ws]` Funding account (must be a system account)
+    ///   3. `[]` Decider authority
+    ///   4. `[]` Deposit currency SPL Token mint. Must be initialized.
+    ///   5. `[ws]` Deposit token account
+    ///   6. `[ws]` Token Pass mint
+    ///   7. `[ws]` Token Fail mint
+    ///   8. `[]` Rent sysvar
+    ///   9. '[]` Token program id
     InitPool(InitArgs),
 
     ///   Deposit in the pool.
@@ -68,4 +79,41 @@ pub enum Instruction {
     ///   1. `[s]` decider pubkey
     ///   2. '[]` Sysvar Clock
     Decide(bool),
+}
+
+/// Create `InitPool` instruction
+pub fn init_pool(
+    program_id: &Pubkey,
+    pool: &Pubkey,
+    authority: &Pubkey,
+    funding_account: &Pubkey,
+    decider: &Pubkey,
+    deposit_token_mint: &Pubkey,
+    deposit_account: &Pubkey,
+    token_pass_mint: &Pubkey,
+    token_fail_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    init_args: InitArgs,
+) -> Result<Instruction, ProgramError> {
+    let init_data = PoolInstruction::InitPool(init_args);
+    let data = init_data
+        .try_to_vec()
+        .or(Err(ProgramError::InvalidArgument))?;
+    let accounts = vec![
+        AccountMeta::new_readonly(*pool, false),
+        AccountMeta::new_readonly(*authority, false),
+        AccountMeta::new(*funding_account, true),
+        AccountMeta::new_readonly(*decider, false),
+        AccountMeta::new_readonly(*deposit_token_mint, false),
+        AccountMeta::new(*deposit_account, true),
+        AccountMeta::new(*token_pass_mint, false),
+        AccountMeta::new(*token_fail_mint, false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
 }

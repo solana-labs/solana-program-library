@@ -10,7 +10,7 @@ edition = "2018"
 [features]
 no-entrypoint = []
 production = []
-fuzz = ["arbitrary"]
+test-bpf = []
 
 [dependencies]
 arrayref = "0.3.6"
@@ -24,8 +24,9 @@ arbitrary = { version = "0.4", features = ["derive"], optional = true }
 borsh = "0.8.1"
 
 [dev-dependencies]
+solana-program-test = "1.5.3"
 solana-sdk = "1.5.0"
-proptest = "0.10"
+tokio = { version = "0.3", features = ["macros"]}
 
 [lib]
 crate-type = ["cdylib", "lib"]
