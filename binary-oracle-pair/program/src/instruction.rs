@@ -1,9 +1,7 @@
 //! Instruction types
 
-use solana_program::{
-    clock::Slot,
-};
-use borsh::{BorshSerialize, BorshDeserialize};
+use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::clock::Slot;
 
 /// Initialize arguments for pool
 #[repr(C)]
@@ -28,7 +26,7 @@ pub enum Instruction {
     ///   3. `[]` Deposit currency SPL Token mint. Must be initialized.
     ///   4. `[]` Rent sysvar
     ///   5. '[]` Token program id
-    InitPool (InitArgs),
+    InitPool(InitArgs),
 
     ///   Deposit in the pool.
     ///
