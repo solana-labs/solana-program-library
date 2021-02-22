@@ -16,6 +16,7 @@ use solana_program::{
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
+    native_token::sol_to_lamports,
     program::{invoke, invoke_signed},
     program_error::PrintProgramError,
     program_error::ProgramError,
@@ -442,8 +443,9 @@ impl Processor {
             &[bump_seed],
         ];
 
-        // Fund the associated token account with the minimum balance to be rent exempt
-        let required_lamports = 1 + rent.minimum_balance(std::mem::size_of::<stake::StakeState>());
+        // Fund the stake account with 1 SOL + rent-exempt balance
+        let required_lamports =
+            sol_to_lamports(1.0) + rent.minimum_balance(std::mem::size_of::<stake::StakeState>());
 
         // Create new stake account
         invoke_signed(
