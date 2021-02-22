@@ -1,11 +1,7 @@
 //! State transition types
 
 use {
-    crate::{
-        error::StakePoolError,
-        instruction::Fee,
-        processor::Processor,
-    },
+    crate::{error::StakePoolError, instruction::Fee, processor::Processor},
     solana_program::{
         account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
         pubkey::Pubkey,
