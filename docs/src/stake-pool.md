@@ -189,6 +189,8 @@ the stake activates, we can add them to the stake pool.
 
 ```sh
 $ spl-stake-pool add-validator-stake --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
+Creating account to receive tokens Gu8xqzYFg2sPHWHhUivKNBeF9uikiauihLs9hLzziKu7
+Signature: 3N1K89rGV9gWueTTrPGTDBwKAp8BikQhKHMFoREw98Q1piXFeZSSxqfnRQexrfAZQfrpYH9qwsaPWRruwkVeBivV
 ```
 
 Users can start depositing their activated stakes into the stake pool, as
@@ -198,7 +200,6 @@ double-check that at any time using the base Solana command-line utility.
 
 ```sh
 $ solana stake-account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
-TODO
 Balance: 0.002282881 SOL
 Rent Exempt Reserve: 0.00228288 SOL
 Delegated Stake: 0.000000001 SOL
@@ -219,7 +220,11 @@ accounts are already associated with the stake pool.
 
 ```sh
 $ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
-TODO
+E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    0.002282881 SOL
+CrStLEWfme37kDc3nubK9HsmWR5dsuVUuqEKqTR4Mc5E    0.002282881 SOL
+FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    0.002282881 SOL
+FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13    0.002282881 SOL
+Total: 0.009131524 SOL
 ```
 
 If the manager has recently created the stake pool, and there are no stake
