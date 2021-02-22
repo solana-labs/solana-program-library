@@ -2,12 +2,15 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use solana_program::instruction::AccountMeta;
-use solana_program::instruction::Instruction;
-use solana_program::program_error::ProgramError;
-use solana_program::pubkey::Pubkey;
-use solana_program::sysvar;
-use std::mem::size_of;
+use {
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        pubkey::Pubkey,
+        sysvar,
+    },
+    std::mem::size_of,
+};
 
 /// Fee rate as a ratio
 /// Fee is minted on deposit
@@ -89,7 +92,7 @@ pub enum StakePoolInstruction {
     RemoveValidatorStakeAccount,
 
     ///   Updates balances of validator stake accounts in the pool
-    ///   
+    ///
     ///   0. `[w]` Validator stake list storage account
     ///   1. `[]` Sysvar clock account
     ///   2. ..2+N ` [] N validator stake accounts to update balances

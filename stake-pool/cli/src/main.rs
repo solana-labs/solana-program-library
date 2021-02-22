@@ -53,7 +53,6 @@ struct Config {
     verbose: bool,
     owner: Box<dyn Signer>,
     fee_payer: Box<dyn Signer>,
-    commitment_config: CommitmentConfig,
 }
 
 type Error = Box<dyn std::error::Error>;
@@ -530,6 +529,7 @@ fn command_deposit(
     // Calculate validator stake account address linked to the pool
     let (validator_stake_account, _) =
         PoolProcessor::find_stake_address_for_validator(&spl_stake_pool::id(), &validator, pool);
+    println!("Depositing into stake account {}", validator_stake_account);
 
     let mut instructions: Vec<Instruction> = vec![];
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
@@ -615,7 +615,7 @@ fn command_deposit(
 fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
@@ -645,7 +645,7 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
 fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
     let validator_stake_list_data = config
         .rpc_client
         .get_account_data(&pool_data.validator_stake_list)?;
@@ -1356,11 +1356,10 @@ fn main() {
         let verbose = matches.is_present("verbose");
 
         Config {
-            rpc_client: RpcClient::new(json_rpc_url),
+            rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
             verbose,
             owner,
             fee_payer,
-            commitment_config: CommitmentConfig::confirmed(),
         }
     };
 
@@ -1440,15 +1439,9 @@ fn main() {
     }
     .and_then(|transaction| {
         if let Some(transaction) = transaction {
-            // TODO: Upgrade to solana-client 1.3 and
-            // `send_and_confirm_transaction_with_spinner_and_commitment()` with single
-            // confirmation by default for better UX
             let signature = config
                 .rpc_client
-                .send_and_confirm_transaction_with_spinner_and_commitment(
-                    &transaction,
-                    config.commitment_config,
-                )?;
+                .send_and_confirm_transaction_with_spinner(&transaction)?;
             println!("Signature: {}", signature);
         }
         Ok(())

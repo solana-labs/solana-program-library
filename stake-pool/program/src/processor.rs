@@ -1296,7 +1296,6 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::CalculationFailure => msg!("Error: The calculation failed"),
             StakePoolError::FeeTooHigh => msg!("Error: Stake pool fee > 1"),
             StakePoolError::WrongAccountMint => msg!("Error: Token account is associated with the wrong mint"),
-            StakePoolError::NonZeroBalance => msg!("Error: Account balance should be zero"),
             StakePoolError::WrongOwner => msg!("Error: Wrong pool owner account"),
             StakePoolError::SignatureMissing => msg!("Error: Required signature is missing"),
             StakePoolError::InvalidValidatorStakeList => msg!("Error: Invalid validator stake list account"),
