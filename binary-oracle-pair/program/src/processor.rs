@@ -19,7 +19,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
-use spl_token::state::{Mint, Account};
+use spl_token::state::{Account, Mint};
 
 /// Program state handler.
 pub struct Processor {}

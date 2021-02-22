@@ -58,11 +58,12 @@ impl PrintProgramError for PoolError {
             PoolError::AlreadyInUse => msg!("Error: Pool account already in use"),
             PoolError::DepositAccountInUse => msg!("Error: Deposit account already in use"),
             PoolError::TokenMintInUse => msg!("Error: Token account already in use"),
-            PoolError::InvalidAuthorityData => msg!("Error: Failed to generate program account because of invalid data"),
+            PoolError::InvalidAuthorityData => {
+                msg!("Error: Failed to generate program account because of invalid data")
+            }
             PoolError::InvalidAuthorityAccount => msg!("Error: Invalid authority account provided"),
             PoolError::NotRentExempt => msg!("Error: Lamport balance below rent-exempt threshold"),
             PoolError::InvalidTokenMint => msg!("Error: Input token mint account is not valid"),
-            
         }
     }
 }
