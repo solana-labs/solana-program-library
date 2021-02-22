@@ -1,6 +1,5 @@
 //! Instruction types
 
-use crate::error::PoolError;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     clock::Slot,
@@ -28,28 +27,26 @@ pub enum PoolInstruction {
     /// Initializes a new binary oracle pair pool.
     ///
     ///   0. `[w]` Pool account.
-    ///   1. `[]` authority create_program_address(&[binary-oracle-pair account])`
-    ///   2. `[ws]` Funding account (must be a system account)
-    ///   3. `[]` Decider authority
-    ///   4. `[]` Deposit currency SPL Token mint. Must be initialized.
-    ///   5. `[ws]` Deposit token account
-    ///   6. `[ws]` Token Pass mint
-    ///   7. `[ws]` Token Fail mint
-    ///   8. `[]` Rent sysvar
-    ///   9. '[]` Token program id
+    ///   1. `[]` Authority
+    ///   2. `[]` Decider authority
+    ///   3. `[]` Deposit currency SPL Token mint. Must be initialized.
+    ///   4. `[w]` Deposit token account
+    ///   5. `[w]` Token Pass mint
+    ///   6. `[w]` Token Fail mint
+    ///   7. `[]` Rent sysvar
+    ///   8. '[]` Token program id
     InitPool(InitArgs),
 
     ///   Deposit in the pool.
     ///
     ///   0. `[]` Pool
     ///   1. `[]` authority
-    ///   2. `[]` user transfer authority - don't need
-    ///   3. `[w]` token SOURCE Account, amount is transferable by user transfer authority,
-    ///   4. `[w]` token_P PASS mint
-    ///   5. `[w]` token_F FAIL mint
-    ///   6. `[w]` token_P DESTINATION Account assigned to USER as the owner.
-    ///   7. `[w]` token_F DESTINATION Account assigned to USER as the owner.
-    ///   8. '[]` Token program id
+    ///   2. `[w]` token SOURCE Account, amount is transferable by user transfer authority,
+    ///   3. `[w]` token_P PASS mint
+    ///   4. `[w]` token_F FAIL mint
+    ///   5. `[w]` token_P DESTINATION Account assigned to USER as the owner.
+    ///   6. `[w]` token_F DESTINATION Account assigned to USER as the owner.
+    ///   7. '[]` Token program id
     Deposit(u64),
 
     ///   Withdraw from the pool.
@@ -86,7 +83,6 @@ pub fn init_pool(
     program_id: &Pubkey,
     pool: &Pubkey,
     authority: &Pubkey,
-    funding_account: &Pubkey,
     decider: &Pubkey,
     deposit_token_mint: &Pubkey,
     deposit_account: &Pubkey,
@@ -100,12 +96,11 @@ pub fn init_pool(
         .try_to_vec()
         .or(Err(ProgramError::InvalidArgument))?;
     let accounts = vec![
-        AccountMeta::new_readonly(*pool, false),
+        AccountMeta::new(*pool, false),
         AccountMeta::new_readonly(*authority, false),
-        AccountMeta::new(*funding_account, true),
         AccountMeta::new_readonly(*decider, false),
         AccountMeta::new_readonly(*deposit_token_mint, false),
-        AccountMeta::new(*deposit_account, true),
+        AccountMeta::new(*deposit_account, false),
         AccountMeta::new(*token_pass_mint, false),
         AccountMeta::new(*token_fail_mint, false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
