@@ -9,6 +9,8 @@ use std::mem::size_of;
 
 /// Uninitialized version value, all instances are at least version 1
 pub const UNINITIALIZED_VERSION: u8 = 0;
+/// Initialized pool version
+pub const POOL_VERSION: u8 = 1;
 
 /// Program states.
 #[repr(C)]
@@ -35,6 +37,12 @@ pub struct Pool {
     /// decider key
     pub decider: Pubkey,
 
+    /// mint end slot
+    pub mint_end_slot: u64,
+
+    /// decide end slot
+    pub decide_end_slot: u64,
+
     /// decision boolean
     pub decision: Option<bool>,
 }
@@ -47,7 +55,7 @@ impl IsInitialized for Pool {
 }
 
 impl Pack for Pool {
-    const LEN: usize = size_of::<Self>() + 1; // +1 because of Option<> type
+    const LEN: usize = size_of::<Self>();
 
     fn pack_into_slice(&self, output: &mut [u8]) {
         output[0] = self.version;
@@ -57,7 +65,9 @@ impl Pack for Pool {
         output[66..98].copy_from_slice(&self.token_pass_mint.to_bytes());
         output[98..130].copy_from_slice(&self.token_fail_mint.to_bytes());
         output[130..162].copy_from_slice(&self.decider.to_bytes());
-        output[162..].copy_from_slice(&[
+        output[162..170].copy_from_slice(&self.mint_end_slot.to_le_bytes());
+        output[170..178].copy_from_slice(&self.decide_end_slot.to_le_bytes());
+        output[178..180].copy_from_slice(&[
             if self.decision.is_some() { 1 } else { 0 },
             self.decision.unwrap_or(false) as u8,
         ]);
@@ -71,10 +81,18 @@ impl Pack for Pool {
             token_pass_mint: Pubkey::new(&input[66..98]),
             token_fail_mint: Pubkey::new(&input[98..130]),
             decider: Pubkey::new(&input[130..162]),
-            decision: if input[162] == 0 {
+            mint_end_slot: u64::from_le_bytes([
+                input[162], input[163], input[164], input[165], input[166], input[167], input[168],
+                input[169],
+            ]),
+            decide_end_slot: u64::from_le_bytes([
+                input[170], input[171], input[172], input[173], input[174], input[175], input[176],
+                input[177],
+            ]),
+            decision: if input[178] == 0 {
                 None
             } else {
-                if input[163] == 1 {
+                if input[179] == 1 {
                     Some(true)
                 } else {
                     Some(false)
@@ -97,6 +115,8 @@ mod test {
             token_pass_mint: Pubkey::new_unique(),
             token_fail_mint: Pubkey::new_unique(),
             decider: Pubkey::new_unique(),
+            mint_end_slot: 433,
+            decide_end_slot: 5546,
             decision: Some(false),
         };
 
