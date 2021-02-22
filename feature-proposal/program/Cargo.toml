@@ -20,7 +20,7 @@ spl-token = { version = "3.1", path = "../../token/program", features = ["no-ent
 
 [dev-dependencies]
 futures = "0.3"
-solana-program-test = "1.5.6"
+solana-program-test = "1.5.8"
 solana-sdk = "1.5.6"
 tokio = { version = "0.3", features = ["macros"]}
 
