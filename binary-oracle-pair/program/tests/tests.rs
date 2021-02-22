@@ -136,7 +136,7 @@ async fn test_init_pool() {
         decide_end_slot: 2000,
         bump_seed,
     };
-    
+
     let mut transaction = Transaction::new_with_payer(
         &[
             system_instruction::create_account(
