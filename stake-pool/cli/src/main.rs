@@ -676,7 +676,7 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
         )?);
     }
 
-    if instructions.is_empty() {
+    if instructions.is_empty() && pool_data.last_update_epoch == epoch_info.epoch {
         println!("Stake pool balances are up to date, no update required.");
         Ok(None)
     } else {
