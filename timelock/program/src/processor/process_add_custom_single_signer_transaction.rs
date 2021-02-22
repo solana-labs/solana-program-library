@@ -30,8 +30,10 @@ pub fn process_add_custom_single_signer_transaction(
     position: u8,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let timelock_set_account_info = next_account_info(account_info_iter)?;
+
     let timelock_txn_account_info = next_account_info(account_info_iter)?;
+    let timelock_set_account_info = next_account_info(account_info_iter)?;
+
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;

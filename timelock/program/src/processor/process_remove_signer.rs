@@ -11,6 +11,7 @@ use crate::{
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    program_pack::Pack,
     pubkey::Pubkey,
 };
 use spl_token::state::{Account, Mint};
@@ -27,7 +28,7 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
@@ -57,5 +58,11 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         token_program: token_program_account_info.clone(),
         source: remove_signatory_account_info.clone(),
     })?;
+    timelock_set.state.total_signing_tokens_minted -= 1;
+
+    TimelockSet::pack(
+        timelock_set.clone(),
+        &mut timelock_set_account_info.data.borrow_mut(),
+    )?;
     Ok(())
 }

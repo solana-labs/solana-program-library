@@ -56,6 +56,8 @@ pub fn process_init_timelock_set(
     new_timelock_set.config = config;
     new_timelock_set.state.desc_link = desc_link;
     new_timelock_set.state.name = name;
+    new_timelock_set.state.total_signing_tokens_minted = 1;
+    new_timelock_set.state.total_voting_tokens_minted = 0;
 
     assert_same_version_as_program(&timelock_program, &new_timelock_set)?;
     assert_token_program_is_correct(&timelock_program, token_program_info)?;
