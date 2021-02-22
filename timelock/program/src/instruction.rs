@@ -2,6 +2,7 @@ use std::{convert::TryInto, mem::size_of};
 
 use solana_program::{
     instruction::{AccountMeta, Instruction},
+    msg,
     program_error::ProgramError,
     pubkey::Pubkey,
     sysvar,
@@ -101,8 +102,8 @@ pub enum TimelockInstruction {
     /// Creates a PDA using your authority to be used to later execute the instruction.
     /// This transaction needs to contain authority to execute the program.
     ///
-    ///   0. `[writable]` Timelock set account.
-    ///   1. `[writable]` Uninitialized Timelock Transaction account.
+    ///   0. `[writable]` Uninitialized Timelock Transaction account.
+    ///   1. `[writable]` Timelock set account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
     ///   4. `[]` Timelock program account.
@@ -208,11 +209,11 @@ impl TimelockInstruction {
         Ok(match tag {
             0 => Self::InitTimelockProgram,
             1 => {
-                let (consensus_algorithm, rest) = Self::unpack_u8(input)?;
+                let (consensus_algorithm, rest) = Self::unpack_u8(rest)?;
                 let (execution_type, rest) = Self::unpack_u8(rest)?;
                 let (timelock_type, rest) = Self::unpack_u8(rest)?;
 
-                let (input_desc_link, input_name) = rest.split_at(DESC_SIZE + 1);
+                let (input_desc_link, input_name) = rest.split_at(DESC_SIZE);
                 let mut desc_link: [u8; DESC_SIZE] = [0; DESC_SIZE];
                 let mut name: [u8; NAME_SIZE] = [0; NAME_SIZE];
                 for n in 0..(DESC_SIZE - 1) {
@@ -247,8 +248,11 @@ impl TimelockInstruction {
             2 => Self::AddSigner,
             3 => Self::RemoveSigner,
             4 => {
+                msg!("come on dude");
                 let (slot, rest) = Self::unpack_u64(rest)?;
+                msg!("Picked up slot {:?}", slot);
                 let (instruction, rest) = Self::unpack_instructions(rest)?;
+                msg!("Picked up instruction");
                 let (position, _) = Self::unpack_u8(rest)?;
                 Self::AddCustomSingleSignerTransaction {
                     slot,

@@ -18,6 +18,9 @@ pub struct TimelockState {
     /// Total voting tokens minted, for use comparing to supply remaining during consensus
     pub total_voting_tokens_minted: u64,
 
+    /// Total signatory tokens minted, for use comparing to supply remaining during draft period
+    pub total_signing_tokens_minted: u64,
+
     /// Array of pubkeys pointing at TimelockTransactions, up to 10
     pub timelock_transactions: [Pubkey; TRANSACTION_SLOTS],
 
