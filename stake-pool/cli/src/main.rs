@@ -53,7 +53,6 @@ struct Config {
     verbose: bool,
     owner: Box<dyn Signer>,
     fee_payer: Box<dyn Signer>,
-    commitment_config: CommitmentConfig,
 }
 
 type Error = Box<dyn std::error::Error>;
@@ -615,7 +614,7 @@ fn command_deposit(
 fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
@@ -1356,11 +1355,10 @@ fn main() {
         let verbose = matches.is_present("verbose");
 
         Config {
-            rpc_client: RpcClient::new(json_rpc_url),
+            rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
             verbose,
             owner,
             fee_payer,
-            commitment_config: CommitmentConfig::confirmed(),
         }
     };
 
@@ -1440,15 +1438,9 @@ fn main() {
     }
     .and_then(|transaction| {
         if let Some(transaction) = transaction {
-            // TODO: Upgrade to solana-client 1.3 and
-            // `send_and_confirm_transaction_with_spinner_and_commitment()` with single
-            // confirmation by default for better UX
             let signature = config
                 .rpc_client
-                .send_and_confirm_transaction_with_spinner_and_commitment(
-                    &transaction,
-                    config.commitment_config,
-                )?;
+                .send_and_confirm_transaction_with_spinner(&transaction)?;
             println!("Signature: {}", signature);
         }
         Ok(())
