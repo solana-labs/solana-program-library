@@ -529,6 +529,7 @@ fn command_deposit(
     // Calculate validator stake account address linked to the pool
     let (validator_stake_account, _) =
         PoolProcessor::find_stake_address_for_validator(&spl_stake_pool::id(), &validator, pool);
+    println!("Depositing into stake account {}", validator_stake_account);
 
     let mut instructions: Vec<Instruction> = vec![];
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
@@ -644,7 +645,7 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
 fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
     let validator_stake_list_data = config
         .rpc_client
         .get_account_data(&pool_data.validator_stake_list)?;
@@ -675,7 +676,7 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
         )?);
     }
 
-    if instructions.is_empty() {
+    if instructions.is_empty() && pool_data.last_update_epoch == epoch_info.epoch {
         println!("Stake pool balances are up to date, no update required.");
         Ok(None)
     } else {
