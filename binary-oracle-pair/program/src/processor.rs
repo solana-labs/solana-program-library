@@ -3,7 +3,7 @@
 use crate::{
     error::PoolError,
     instruction::PoolInstruction,
-    state::{Pool, POOL_VERSION, TOKEN_FAIL_DECIMALS, TOKEN_PASS_DECIMALS},
+    state::{Pool, POOL_VERSION},
 };
 use borsh::BorshDeserialize;
 use solana_program::{
@@ -71,7 +71,7 @@ impl Processor {
         }
 
         // Check if deposit token mint is initialized
-        Mint::unpack(&deposit_token_mint_info.data.borrow())?;
+        let deposit_token_mint = Mint::unpack(&deposit_token_mint_info.data.borrow())?;
 
         // Check if bump seed is correct
         let authority = Self::authority_id(program_id, pool_account_info.key, bump_seed)?;
@@ -117,7 +117,7 @@ impl Processor {
                 token_pass_mint_info.key,
                 authority_info.key,
                 None,
-                TOKEN_PASS_DECIMALS,
+                deposit_token_mint.decimals,
             )
             .unwrap(),
             &[
@@ -133,7 +133,7 @@ impl Processor {
                 token_fail_mint_info.key,
                 authority_info.key,
                 None,
-                TOKEN_FAIL_DECIMALS,
+                deposit_token_mint.decimals,
             )
             .unwrap(),
             &[
