@@ -37,19 +37,23 @@ pub fn get_authority_signer_seeds<'a>(
 /// Can only be done if done in a transaction that has authority to do so. Serves as a check
 /// That the person is who they say they are!
 pub fn assert_is_permissioned<'a>(
+    program_id: &Pubkey,
     perm_account_info: &AccountInfo<'a>,
     perm_validation_account_info: &AccountInfo<'a>,
     timelock_program_info: &AccountInfo<'a>,
     token_program_info: &AccountInfo<'a>,
+    timelock_authority_info: &AccountInfo<'a>,
 ) -> ProgramResult {
     let _perm_account: Account = assert_initialized(perm_account_info)?;
     let _perm_validation: Account = assert_initialized(perm_validation_account_info)?;
 
-    let (_, bump_seed) =
-        Pubkey::find_program_address(&[perm_account_info.key.as_ref()], timelock_program_info.key);
-
+    let (authority_key, bump_seed) =
+        Pubkey::find_program_address(&[timelock_program_info.key.as_ref()], program_id);
+    if timelock_authority_info.key != &authority_key {
+        return Err(TimelockError::InvalidTimelockAuthority.into());
+    }
     let authority_signer_seeds = &[timelock_program_info.key.as_ref(), &[bump_seed]];
-
+    msg!("1");
     // If both accounts arent correct mint type, it explodes
     // If token amount is <1, it explodes. Perfect check.
     // If authority isnt right, it explodes.
@@ -57,22 +61,22 @@ pub fn assert_is_permissioned<'a>(
         source: perm_account_info.clone(),
         destination: perm_validation_account_info.clone(),
         amount: 1,
-        authority: timelock_program_info.clone(),
+        authority: timelock_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
     // Now give it back
-
+    msg!("2");
     spl_token_transfer(TokenTransferParams {
         source: perm_validation_account_info.clone(),
         destination: perm_account_info.clone(),
         amount: 1,
-        authority: timelock_program_info.clone(),
+        authority: timelock_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
-
+    msg!("3");
     Ok(())
 }
 

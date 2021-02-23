@@ -106,8 +106,9 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Timelock set account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Timelock program account.
-    ///   5. `[]` Token program account.
+    ///   4. `[]` Timelock program authority
+    ///   5. `[]` Timelock program account.
+    ///   6. `[]` Token program account.
     AddCustomSingleSignerTransaction {
         /// Slot during which this will run
         slot: u64,
@@ -124,8 +125,9 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Timelock Transaction account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Timelock program account pub key.
-    ///   5. `[]` Token program account.
+    ///   4. `[]` Timelock program authority.
+    ///   5. `[]` Timelock program account pub key.
+    ///   6. `[]` Token program account.
     RemoveTransaction,
 
     /// [Requires Signatory token]
@@ -135,8 +137,9 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Timelock Transaction account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Timelock program account pub key.
-    ///   5. `[]` Token program account.
+    ///   4. `[]` Timelock program authority.
+    ///   5. `[]` Timelock program account pub key.
+    ///   6. `[]` Token program account.
     UpdateTransactionSlot {
         /// On what slot this transaction slot will now run
         slot: u64,
@@ -148,8 +151,9 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Timelock set account pub key.
     ///   1. `[writable]` Admin account
     ///   2. `[writable]` Admin validation account.
-    ///   3. `[]` Timelock program account pub key.
-    ///   4. `[]` Token program account.
+    ///   3. `[]` Timelock program authority.
+    ///   4. `[]` Timelock program account pub key.
+    ///   5. `[]` Token program account.
     DeleteTimelockSet,
 
     /// [Requires Signatory token]
@@ -248,11 +252,8 @@ impl TimelockInstruction {
             2 => Self::AddSigner,
             3 => Self::RemoveSigner,
             4 => {
-                msg!("come on dude");
                 let (slot, rest) = Self::unpack_u64(rest)?;
-                msg!("Picked up slot {:?}", slot);
                 let (instruction, rest) = Self::unpack_instructions(rest)?;
-                msg!("Picked up instruction");
                 let (position, _) = Self::unpack_u8(rest)?;
                 Self::AddCustomSingleSignerTransaction {
                     slot,
@@ -303,7 +304,7 @@ impl TimelockInstruction {
                 return Err(TimelockError::InstructionUnpackError.into());
             }
 
-            let (input_instruction, rest) = input.split_at(INSTRUCTION_LIMIT + 1);
+            let (input_instruction, rest) = input.split_at(INSTRUCTION_LIMIT);
             let mut instruction: [u8; INSTRUCTION_LIMIT] = [0; INSTRUCTION_LIMIT];
             for n in 0..(INSTRUCTION_LIMIT - 1) {
                 instruction[n] = input_instruction[n];

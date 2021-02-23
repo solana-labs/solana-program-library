@@ -34,10 +34,12 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_draft(&timelock_set)?;
     assert_is_permissioned(
+        program_id,
         admin_account_info,
         admin_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
+        timelock_program_authority_info,
     )?;
     let _account: Account = assert_initialized(remove_signatory_account_info)?;
     let _mint: Mint = assert_initialized(signatory_mint_info)?;

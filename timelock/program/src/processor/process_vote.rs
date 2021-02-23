@@ -36,10 +36,12 @@ pub fn process_vote(
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_voting(&timelock_set)?;
     assert_is_permissioned(
+        program_id,
         voting_account_info,
         voting_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
+        timelock_program_authority_info,
     )?;
 
     let (authority_key, bump_seed) =

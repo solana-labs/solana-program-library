@@ -32,10 +32,12 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
     assert_is_permissioned(
+        program_id,
         signatory_account_info,
         signatory_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
+        timelock_program_authority_info,
     )?;
 
     let (authority_key, bump_seed) =
