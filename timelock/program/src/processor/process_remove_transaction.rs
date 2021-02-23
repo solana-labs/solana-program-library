@@ -15,12 +15,13 @@ use solana_program::{
 };
 
 /// Removes a txn from a transaction set
-pub fn process_remove_transaction(_: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_txn_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
+    let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
@@ -30,10 +31,12 @@ pub fn process_remove_transaction(_: &Pubkey, accounts: &[AccountInfo]) -> Progr
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
     assert_is_permissioned(
+        program_id,
         signatory_account_info,
         signatory_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
+        timelock_program_authority_info,
     )?;
 
     let mut found: bool = false;

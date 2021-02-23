@@ -56,16 +56,13 @@ pub fn process_instruction(
             slot,
             instruction,
             position,
-        } => {
-            msg!("Instruction: Add Custom Single Signer Transaction");
-            process_add_custom_single_signer_transaction(
-                program_id,
-                accounts,
-                slot,
-                instruction,
-                position,
-            )
-        }
+        } => process_add_custom_single_signer_transaction(
+            program_id,
+            accounts,
+            slot,
+            instruction,
+            position,
+        ),
         TimelockInstruction::RemoveTransaction => {
             msg!("Instruction: Remove Transaction");
             process_remove_transaction(program_id, accounts)

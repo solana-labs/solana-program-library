@@ -39,10 +39,12 @@ pub fn process_mint_voting_tokens(
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
     assert_is_permissioned(
+        program_id,
         signatory_account_info,
         signatory_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
+        timelock_program_authority_info,
     )?;
     let _voting_account: Account = assert_initialized(voting_account_info)?;
     let _voting_mint: Mint = assert_initialized(voting_mint_account_info)?;
