@@ -3,12 +3,21 @@ title: Stake Pool Program
 ---
 
 A program for pooling together SOL to be staked by an off-chain agent running
-SoM (Stake-o-Matic) which redistributes the stakes across the network and tries
+a Delegation bot which redistributes the stakes across the network and tries
 to maximize censorship resistance and rewards.
 
 ## Overview
 
-Information regarding staking and stake programming is available at:
+SOL token holders can earn rewards and help secure the network by staking tokens
+to one or more validators. Rewards for staked tokens are based on the current
+inflation rate, total number of SOL staked on the network, and an individual 
+validator’s uptime and commission (fee).
+
+Stake pools are an alternative method of earning staking rewards. This on-chain
+program pools together SOL to be staked by a manager, allowing SOL holders to
+stake and earn rewards without managing stakes.
+
+Additional information regarding staking and stake programming is available at:
 
 - https://solana.com/staking
 - https://docs.solana.com/staking/stake-programming
@@ -284,7 +293,7 @@ The Solana transaction processor has two important limitations:
 * computation budget per instruction
 
 A stake pool may manage hundreds of staking accounts, so it is impossible to
-updating the total value of the stake pool in one instruction. Thankfully, the
+update the total value of the stake pool in one instruction. Thankfully, the
 command-line utility does all of the work of breaking up transactions.
 
 ```sh
@@ -293,7 +302,7 @@ TODO
 ```
 
 If another user already updated the stake pool balance for the current epoch, we
-see different output.
+see a different output.
 
 ```sh
 $ spl-stake-pool update --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 
