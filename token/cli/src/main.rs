@@ -432,8 +432,13 @@ fn command_transfer(
                 "Error: Failed to get token balance of sender address {}: {}",
                 sender, err
             )
-        })?
-        .ui_amount;
+        })?;
+    let sender_balance = sender_balance.ui_amount.parse::<f64>().map_err(|err| {
+        format!(
+            "Error: Failed to get token balance of sender address {}: {}",
+            sender, err
+        )
+    })?;
     let ui_amount = ui_amount.unwrap_or(sender_balance);
 
     println!(
@@ -726,8 +731,18 @@ fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> Comma
             .rpc_client
             .get_token_account(&account)?
             .ok_or_else(|| format!("Could not find token account {}", account))?;
+        let source_amount = source_account
+            .token_amount
+            .amount
+            .parse::<u64>()
+            .map_err(|err| {
+                format!(
+                    "Token account {} balance could not be parsed: {}",
+                    account, err
+                )
+            })?;
 
-        if !source_account.is_native && source_account.token_amount.ui_amount > 0.0 {
+        if !source_account.is_native && source_amount > 0 {
             return Err(format!(
                 "Account {} still has {} tokens; empty the account in order to close it.",
                 account, source_account.token_amount.ui_amount
@@ -865,6 +880,11 @@ fn command_gc(config: &Config) -> CommandResult {
                         .pubkey
                         .parse::<Pubkey>()
                         .unwrap_or_else(|err| panic!("Invalid token account: {}", err));
+                    let token_amount = ui_token_account
+                        .token_amount
+                        .amount
+                        .parse::<u64>()
+                        .unwrap_or_else(|err| panic!("Invalid token amount: {}", err));
 
                     let close_authority =
                         ui_token_account.close_authority.map_or(config.owner, |s| {
@@ -876,10 +896,7 @@ fn command_gc(config: &Config) -> CommandResult {
                     entry.insert(
                         token_account,
                         (
-                            spl_token::ui_amount_to_amount(
-                                ui_token_account.token_amount.ui_amount,
-                                ui_token_account.token_amount.decimals,
-                            ),
+                            token_amount,
                             ui_token_account.token_amount.decimals,
                             frozen,
                             close_authority,
