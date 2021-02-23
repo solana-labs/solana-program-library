@@ -41,7 +41,7 @@ pub enum PoolInstruction {
     ///
     ///   0. `[]` Pool
     ///   1. `[]` authority
-    ///   2. `[w]` token SOURCE Account, amount is transferable by user transfer authority,
+    ///   2. `[w]` token SOURCE Account, amount is transferable by pool authority with allowances,
     ///   3. `[w]` Deposit token account
     ///   4. `[w]` token_P PASS mint
     ///   5. `[w]` token_F FAIL mint
@@ -60,12 +60,11 @@ pub enum PoolInstruction {
     ///
     ///   0. `[]` Pool
     ///   1. `[]` authority
-    ///   2. `[]` user transfer authority - don't need
-    ///   4. `[w]` token_P PASS SOURCE Account
-    ///   5. `[w]` token_F FAIL SOURCE Account
+    ///   2. `[w]` token_P PASS SOURCE Account
+    ///   3. `[w]` token_F FAIL SOURCE Account
     ///   4. `[w]` token_P PASS DESTINATION mint
     ///   5. `[w]` token_F FAIL DESTINATION mint
-    ///   7. `[w]` deposit SOURCE Account
+    ///   6. `[w]` deposit SOURCE Account
     ///   7. `[w]` deposit DESTINATION Account assigned to USER as the owner.
     ///   8. '[]` Token program id
     ///   9. '[]` Sysvar Clock
@@ -120,7 +119,7 @@ pub fn deposit(
     pool: &Pubkey,
     authority: &Pubkey,
     user_token_account: &Pubkey,
-    deposit_token_account: &Pubkey,
+    pool_deposit_token_account: &Pubkey,
     token_pass_mint: &Pubkey,
     token_fail_mint: &Pubkey,
     token_pass_destination_account: &Pubkey,
@@ -136,7 +135,7 @@ pub fn deposit(
         AccountMeta::new_readonly(*pool, false),
         AccountMeta::new_readonly(*authority, false),
         AccountMeta::new(*user_token_account, false),
-        AccountMeta::new(*deposit_token_account, false),
+        AccountMeta::new(*pool_deposit_token_account, false),
         AccountMeta::new(*token_pass_mint, false),
         AccountMeta::new(*token_fail_mint, false),
         AccountMeta::new(*token_pass_destination_account, false),

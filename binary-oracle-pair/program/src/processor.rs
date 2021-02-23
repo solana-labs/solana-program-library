@@ -235,7 +235,7 @@ impl Processor {
         let pool_account_info = next_account_info(account_info_iter)?;
         let authority_account_info = next_account_info(account_info_iter)?;
         let user_token_account_info = next_account_info(account_info_iter)?;
-        let deposit_token_account_info = next_account_info(account_info_iter)?;
+        let pool_deposit_token_account_info = next_account_info(account_info_iter)?;
         let token_pass_mint_info = next_account_info(account_info_iter)?;
         let token_fail_mint_info = next_account_info(account_info_iter)?;
         let token_pass_destination_account_info = next_account_info(account_info_iter)?;
@@ -258,7 +258,7 @@ impl Processor {
         Self::transfer(
             pool_account_info.key,
             pool.bump_seed,
-            deposit_token_account_info.clone(),
+            pool_deposit_token_account_info.clone(),
             authority_account_info.clone(),
             token_program_id_info.clone(),
             user_token_account_info.clone(),
@@ -284,6 +284,7 @@ impl Processor {
             authority_account_info.clone(),
             amount,
         )?;
+        
         Ok(())
     }
 
