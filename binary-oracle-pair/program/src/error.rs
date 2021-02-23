@@ -34,6 +34,9 @@ pub enum PoolError {
     /// Expected an SPL Token mint
     #[error("Input token mint account is not valid")]
     InvalidTokenMint,
+    /// Amount should be more than zero
+    #[error("Amount should be more than zero")]
+    InvalidAmount,
 }
 
 impl From<PoolError> for ProgramError {
@@ -64,6 +67,7 @@ impl PrintProgramError for PoolError {
             PoolError::InvalidAuthorityAccount => msg!("Error: Invalid authority account provided"),
             PoolError::NotRentExempt => msg!("Error: Lamport balance below rent-exempt threshold"),
             PoolError::InvalidTokenMint => msg!("Error: Input token mint account is not valid"),
+            PoolError::InvalidAmount => msg!("Amount should be more than zero"),
         }
     }
 }

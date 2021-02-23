@@ -42,11 +42,12 @@ pub enum PoolInstruction {
     ///   0. `[]` Pool
     ///   1. `[]` authority
     ///   2. `[w]` token SOURCE Account, amount is transferable by user transfer authority,
-    ///   3. `[w]` token_P PASS mint
-    ///   4. `[w]` token_F FAIL mint
-    ///   5. `[w]` token_P DESTINATION Account assigned to USER as the owner.
-    ///   6. `[w]` token_F DESTINATION Account assigned to USER as the owner.
-    ///   7. '[]` Token program id
+    ///   3. `[w]` Deposit token account
+    ///   4. `[w]` token_P PASS mint
+    ///   5. `[w]` token_F FAIL mint
+    ///   6. `[w]` token_P DESTINATION Account assigned to USER as the owner.
+    ///   7. `[w]` token_F DESTINATION Account assigned to USER as the owner.
+    ///   8. '[]` Token program id
     Deposit(u64),
 
     ///   Withdraw from the pool.
@@ -104,6 +105,42 @@ pub fn init_pool(
         AccountMeta::new(*token_pass_mint, false),
         AccountMeta::new(*token_fail_mint, false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Create `Deposit` instruction
+pub fn deposit(
+    program_id: &Pubkey,
+    pool: &Pubkey,
+    authority: &Pubkey,
+    user_token_account: &Pubkey,
+    deposit_token_account: &Pubkey,
+    token_pass_mint: &Pubkey,
+    token_fail_mint: &Pubkey,
+    token_pass_destination_account: &Pubkey,
+    token_fail_destination_account: &Pubkey,
+    token_program_id: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    let init_data = PoolInstruction::Deposit(amount);
+    let data = init_data
+        .try_to_vec()
+        .or(Err(ProgramError::InvalidArgument))?;
+    let accounts = vec![
+        AccountMeta::new_readonly(*pool, false),
+        AccountMeta::new_readonly(*authority, false),
+        AccountMeta::new(*user_token_account, false),
+        AccountMeta::new(*deposit_token_account, false),
+        AccountMeta::new(*token_pass_mint, false),
+        AccountMeta::new(*token_fail_mint, false),
+        AccountMeta::new(*token_pass_destination_account, false),
+        AccountMeta::new(*token_fail_destination_account, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {
