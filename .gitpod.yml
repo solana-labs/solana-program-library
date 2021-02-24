@@ -11,6 +11,7 @@ tasks:
       npm run cluster:devnet
       solana config set --ws https://devnet.solana.com
       solana config set --url https://devnet.solana.com
+      solana-keygen new
     command: |
       rustup toolchain link bpf node_modules/@solana/web3.js/bpf-sdk/dependencies/rust-bpf
       gp open README-gitpod.md
