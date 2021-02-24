@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_pack_position() {
-        let fees = Position {
+        let position = Position {
             version: 1,
             collateral_amount: 10,
             size: 20,
@@ -90,10 +90,10 @@ mod tests {
         };
 
         let mut packed = [0u8; Position::LEN];
-        fees.pack_into_slice(&mut packed);
+        position.pack_into_slice(&mut packed);
 
         let unpacked = Position::unpack_from_slice(&packed).unwrap();
 
-        assert_eq!(fees, unpacked);
+        assert_eq!(position, unpacked);
     }
 }

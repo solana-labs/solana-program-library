@@ -1,5 +1,6 @@
 use crate::error::MarginPoolError;
 use crate::state::fees::Fees;
+use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::account_info::AccountInfo;
 use solana_program::program_error::ProgramError;
 use solana_program::program_pack::{IsInitialized, Pack, Sealed};
@@ -53,12 +54,118 @@ pub struct MarginPool {
 }
 
 impl Pack for MarginPool {
-    const LEN: usize = 291;
-    fn unpack_from_slice(_input: &[u8]) -> Result<Self, ProgramError> {
-        unimplemented!();
+    const LEN: usize = 450;
+
+    fn pack_into_slice(&self, output: &mut [u8]) {
+        let output = array_mut_ref![output, 0, 450];
+        let (
+            version,
+            nonce,
+            token_lp,
+            token_a,
+            token_b,
+            pool_mint,
+            token_a_mint,
+            token_b_mint,
+            token_lp_mint,
+            token_swap,
+            escrow_a,
+            escrow_b,
+            fees,
+            token_program_id,
+            token_swap_program_id,
+        ) = mut_array_refs![
+            output,
+            1,
+            1,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            Fees::LEN,
+            32,
+            32
+        ];
+
+        *version = self.version.to_le_bytes();
+        *nonce = self.nonce.to_le_bytes();
+        token_lp.copy_from_slice(self.token_lp.as_ref());
+        token_a.copy_from_slice(self.token_a.as_ref());
+        token_b.copy_from_slice(self.token_b.as_ref());
+        pool_mint.copy_from_slice(self.pool_mint.as_ref());
+        token_a_mint.copy_from_slice(self.token_a_mint.as_ref());
+        token_b_mint.copy_from_slice(self.token_b_mint.as_ref());
+        token_lp_mint.copy_from_slice(self.token_lp_mint.as_ref());
+        token_swap.copy_from_slice(self.token_swap.as_ref());
+        escrow_a.copy_from_slice(self.escrow_a.as_ref());
+        escrow_a.copy_from_slice(self.escrow_a.as_ref());
+        escrow_b.copy_from_slice(self.escrow_b.as_ref());
+        self.fees.pack_into_slice(fees);
+        token_program_id.copy_from_slice(self.token_program_id.as_ref());
+        token_swap_program_id.copy_from_slice(self.token_swap_program_id.as_ref());
     }
-    fn pack_into_slice(&self, _output: &mut [u8]) {
-        unimplemented!();
+
+    fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
+        let input = array_ref![input, 0, 450];
+
+        let (
+            version,
+            nonce,
+            token_lp,
+            token_a,
+            token_b,
+            pool_mint,
+            token_a_mint,
+            token_b_mint,
+            token_lp_mint,
+            token_swap,
+            escrow_a,
+            escrow_b,
+            fees,
+            token_program_id,
+            token_swap_program_id,
+        ) = array_refs![
+            input,
+            1,
+            1,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            Fees::LEN,
+            32,
+            32
+        ];
+
+        Ok(Self {
+            version: u8::from_le_bytes(*version),
+            nonce: u8::from_le_bytes(*nonce),
+            token_lp: Pubkey::new_from_array(*token_lp),
+            token_a: Pubkey::new_from_array(*token_a),
+            token_b: Pubkey::new_from_array(*token_b),
+            pool_mint: Pubkey::new_from_array(*pool_mint),
+            token_a_mint: Pubkey::new_from_array(*token_a_mint),
+            token_b_mint: Pubkey::new_from_array(*token_b_mint),
+            token_lp_mint: Pubkey::new_from_array(*token_lp_mint),
+            token_swap: Pubkey::new_from_array(*token_swap),
+            escrow_a: Pubkey::new_from_array(*escrow_a),
+            escrow_b: Pubkey::new_from_array(*escrow_b),
+            fees: Fees::unpack_from_slice(fees).unwrap(),
+            token_program_id: Pubkey::new_from_array(*token_program_id),
+            token_swap_program_id: Pubkey::new_from_array(*token_swap_program_id),
+        })
     }
 }
 
@@ -113,5 +220,47 @@ impl MarginPool {
             .ok_or(MarginPoolError::CalculationFailure)?
             .checked_div(pool_balance)
             .ok_or(MarginPoolError::CalculationFailure)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pack_margin_pool() {
+        let pool = MarginPool {
+            version: 1,
+            nonce: 2,
+            token_lp: Pubkey::new_from_array([1u8; 32]),
+            token_a: Pubkey::new_from_array([2u8; 32]),
+            token_b: Pubkey::new_from_array([3u8; 32]),
+            pool_mint: Pubkey::new_from_array([4u8; 32]),
+            token_a_mint: Pubkey::new_from_array([5u8; 32]),
+            token_b_mint: Pubkey::new_from_array([6u8; 32]),
+            token_lp_mint: Pubkey::new_from_array([7u8; 32]),
+            token_swap: Pubkey::new_from_array([8u8; 32]),
+            escrow_a: Pubkey::new_from_array([9u8; 32]),
+            escrow_b: Pubkey::new_from_array([10u8; 32]),
+            fees: Fees {
+                position_fee_numerator: 1,
+                position_fee_denominator: 11,
+                owner_withdraw_fee_numerator: 2,
+                owner_withdraw_fee_denominator: 12,
+                owner_position_fee_numerator: 3,
+                owner_position_fee_denominator: 13,
+                host_position_fee_numerator: 4,
+                host_position_fee_denominator: 14,
+            },
+            token_program_id: Pubkey::new_from_array([11u8; 32]),
+            token_swap_program_id: Pubkey::new_from_array([12u8; 32]),
+        };
+
+        let mut packed = [0u8; MarginPool::LEN];
+        pool.pack_into_slice(&mut packed);
+
+        let unpacked = MarginPool::unpack_from_slice(&packed).unwrap();
+
+        assert_eq!(pool, unpacked);
     }
 }
