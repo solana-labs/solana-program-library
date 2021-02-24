@@ -183,3 +183,26 @@ pub fn withdraw(
         data,
     })
 }
+
+/// Create `Decide` instruction
+pub fn decide(
+    program_id: &Pubkey,
+    pool: &Pubkey,
+    decider: &Pubkey,
+    decision: bool,
+) -> Result<Instruction, ProgramError> {
+    let init_data = PoolInstruction::Decide(decision);
+    let data = init_data
+        .try_to_vec()
+        .or(Err(ProgramError::InvalidArgument))?;
+    let accounts = vec![
+        AccountMeta::new(*pool, false),
+        AccountMeta::new_readonly(*decider, true),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}

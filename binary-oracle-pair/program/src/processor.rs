@@ -471,6 +471,43 @@ impl Processor {
         }
         Ok(())
     }
+
+    /// Process Decide instruction
+    pub fn process_decide(
+        _program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        decision: bool,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let pool_account_info = next_account_info(account_info_iter)?;
+        let decider_account_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
+        let clock = &Clock::from_account_info(clock_info)?;
+
+        let mut pool = Pool::unpack(&pool_account_info.data.borrow())?;
+
+        if *decider_account_info.key != pool.decider {
+            return Err(PoolError::WrongDeciderAccount.into());
+        }
+
+        if !decider_account_info.is_signer {
+            return Err(PoolError::SignatureMissing.into());
+        }
+
+        if pool.decision != None {
+            return Err(PoolError::DecisionAlreadyMade.into());
+        }
+
+        let current_slot = clock.slot;
+        if current_slot < pool.mint_end_slot || current_slot > pool.decide_end_slot {
+            return Err(PoolError::InvalidSlotForDecision.into());
+        }
+
+        pool.decision = Some(decision);
+
+        Pool::pack(pool, &mut pool_account_info.data.borrow_mut())
+    }
+
     /// Processes an instruction
     pub fn process_instruction(
         program_id: &Pubkey,
@@ -498,7 +535,10 @@ impl Processor {
                 msg!("Instruction: Withdraw");
                 Self::process_withdraw(program_id, accounts, amount)
             }
-            _ => unimplemented!(),
+            PoolInstruction::Decide(decision) => {
+                msg!("Instruction: Decide");
+                Self::process_decide(program_id, accounts, decision)
+            }
         }
     }
 }

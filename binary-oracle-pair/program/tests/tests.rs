@@ -183,7 +183,7 @@ impl TestPool {
         .unwrap();
 
         let init_args = instruction::InitArgs {
-            mint_end_slot: 1000,
+            mint_end_slot: 0,
             decide_end_slot: 2000,
             bump_seed: self.bump_seed,
         };
@@ -607,4 +607,50 @@ async fn test_withdraw() {
     let user_fail_tokens_after =
         get_token_balance(&mut banks_client, &user_fail_account.pubkey()).await;
     assert_eq!(user_fail_tokens_after, 0);
+}
+
+#[tokio::test]
+async fn test_decide() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+
+    let pool = TestPool::create();
+
+    pool.init_pool(&mut banks_client, &payer, &recent_blockhash)
+        .await;
+
+    let pool_account_data_before = banks_client
+        .get_account(pool.pool_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let pool_data_before = state::Pool::unpack(pool_account_data_before.data.as_slice()).unwrap();
+
+    assert!(pool_data_before.decision.is_none());
+
+    let decision = true;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::decide(
+            &id(),
+            &pool.pool_account.pubkey(),
+            &pool.decider.pubkey(),
+            decision,
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+    );
+
+    transaction.sign(&[&payer, &pool.decider], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    let pool_account_data_after = banks_client
+        .get_account(pool.pool_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let pool_data_after = state::Pool::unpack(pool_account_data_after.data.as_slice()).unwrap();
+
+    assert!(pool_data_after.decision.unwrap());
 }

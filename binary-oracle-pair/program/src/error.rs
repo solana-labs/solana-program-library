@@ -43,6 +43,18 @@ pub enum PoolError {
     /// Token account's owner doesn't match with user account
     #[error("Token account's owner doesn't match with user account")]
     InvalidAccountsOwner,
+    /// Wrong decider account
+    #[error("Wrong decider account was sent")]
+    WrongDeciderAccount,
+    /// Signature missing in transaction
+    #[error("Signature missing in transaction")]
+    SignatureMissing,
+    /// Decision was already made for this pool
+    #[error("Decision was already made for this pool")]
+    DecisionAlreadyMade,
+    /// Decision can't be made in current slot
+    #[error("Decision can't be made in current slot")]
+    InvalidSlotForDecision,
 }
 
 impl From<PoolError> for ProgramError {
@@ -78,6 +90,10 @@ impl PrintProgramError for PoolError {
             PoolError::InvalidAccountsOwner => {
                 msg!("Token account's owner doesn't match with user account")
             }
+            PoolError::WrongDeciderAccount => msg!("Wrong decider account was sent"),
+            PoolError::SignatureMissing => msg!("Signature missing in transaction"),
+            PoolError::DecisionAlreadyMade => msg!("Decision was already made for this pool"),
+            PoolError::InvalidSlotForDecision => msg!("Decision can't be made in current slot"),
         }
     }
 }
