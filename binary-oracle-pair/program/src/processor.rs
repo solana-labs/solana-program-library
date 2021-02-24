@@ -9,7 +9,7 @@ use borsh::BorshDeserialize;
 use solana_program::{
     account_info::next_account_info,
     account_info::AccountInfo,
-    clock::Slot,
+    clock::{Clock, Slot},
     entrypoint::ProgramResult,
     msg,
     program::{invoke, invoke_signed},
@@ -20,6 +20,7 @@ use solana_program::{
     sysvar::Sysvar,
 };
 use spl_token::state::{Account, Mint};
+use std::cmp;
 
 /// Program state handler.
 pub struct Processor {}
@@ -97,6 +98,40 @@ impl Processor {
                 mint_account,
                 destination_account,
                 authority_account,
+            ],
+            signers,
+        )
+    }
+
+    /// Burn tokens
+    pub fn burn<'a>(
+        pool_pub_key: &Pubkey,
+        bump_seed: u8,
+        token_program_id: AccountInfo<'a>,
+        mint_account: AccountInfo<'a>,
+        source_account: AccountInfo<'a>,
+        authority_account: AccountInfo<'a>,
+        amount: u64,
+    ) -> ProgramResult {
+        let me_bytes = pool_pub_key.to_bytes();
+        let authority_signature_seeds = [&me_bytes[..32], &[bump_seed]];
+        let signers = &[&authority_signature_seeds[..]];
+
+        invoke_signed(
+            &spl_token::instruction::burn(
+                token_program_id.key,
+                source_account.key,
+                mint_account.key,
+                authority_account.key,
+                &[authority_account.key],
+                amount,
+            )
+            .unwrap(),
+            &[
+                token_program_id,
+                authority_account,
+                source_account,
+                mint_account,
             ],
             signers,
         )
@@ -246,6 +281,18 @@ impl Processor {
             return Err(PoolError::InvalidAmount.into());
         }
 
+        let user_token_account = Account::unpack(&user_token_account_info.data.borrow())?;
+        let token_pass_destination_account =
+            Account::unpack(&token_pass_destination_account_info.data.borrow())?;
+        let token_fail_destination_account =
+            Account::unpack(&token_fail_destination_account_info.data.borrow())?;
+
+        if user_token_account.owner != token_pass_destination_account.owner
+            && user_token_account.owner != token_fail_destination_account.owner
+        {
+            return Err(PoolError::InvalidAccountsOwner.into());
+        }
+
         let pool = Pool::unpack(&pool_account_info.data.borrow())?;
 
         let authority_pub_key =
@@ -284,10 +331,146 @@ impl Processor {
             authority_account_info.clone(),
             amount,
         )?;
-        
+
         Ok(())
     }
 
+    /// Process Withdraw instruction
+    pub fn process_withdraw(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        amount: u64,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let pool_account_info = next_account_info(account_info_iter)?;
+        let authority_account_info = next_account_info(account_info_iter)?;
+        let pool_deposit_token_account_info = next_account_info(account_info_iter)?;
+        let token_pass_user_account_info = next_account_info(account_info_iter)?;
+        let token_fail_user_account_info = next_account_info(account_info_iter)?;
+        let token_pass_mint_info = next_account_info(account_info_iter)?;
+        let token_fail_mint_info = next_account_info(account_info_iter)?;
+        let user_token_destination_account_info = next_account_info(account_info_iter)?;
+        let token_program_id_info = next_account_info(account_info_iter)?;
+
+        if amount == 0 {
+            return Err(PoolError::InvalidAmount.into());
+        }
+
+        let user_pass_token_account = Account::unpack(&token_pass_user_account_info.data.borrow())?;
+        let user_fail_token_account = Account::unpack(&token_fail_user_account_info.data.borrow())?;
+        let user_token_destination_account =
+            Account::unpack(&user_token_destination_account_info.data.borrow())?;
+
+        if user_pass_token_account.owner != user_fail_token_account.owner
+            && user_pass_token_account.owner != user_token_destination_account.owner
+        {
+            return Err(PoolError::InvalidAccountsOwner.into());
+        }
+
+        let pool = Pool::unpack(&pool_account_info.data.borrow())?;
+
+        let authority_pub_key =
+            Self::authority_id(program_id, pool_account_info.key, pool.bump_seed)?;
+        if *authority_account_info.key != authority_pub_key {
+            return Err(PoolError::InvalidAuthorityAccount.into());
+        }
+
+        if pool.decision == None {
+            let possible_withdraw_amount = cmp::min(
+                user_pass_token_account.amount,
+                user_fail_token_account.amount,
+            );
+            if possible_withdraw_amount < amount {
+                return Err(PoolError::InsufficientFunds.into());
+            }
+
+            // Burn PASS tokens
+            Self::burn(
+                &pool_account_info.key,
+                pool.bump_seed,
+                token_program_id_info.clone(),
+                token_pass_mint_info.clone(),
+                token_pass_user_account_info.clone(),
+                authority_account_info.clone(),
+                possible_withdraw_amount,
+            )?;
+
+            // Burn FAIL tokens
+            Self::burn(
+                &pool_account_info.key,
+                pool.bump_seed,
+                token_program_id_info.clone(),
+                token_fail_mint_info.clone(),
+                token_fail_user_account_info.clone(),
+                authority_account_info.clone(),
+                possible_withdraw_amount,
+            )?;
+
+            // Transfer deposit tokens from pool deposit account to user destination account
+            Self::transfer(
+                &pool_account_info.key,
+                pool.bump_seed,
+                user_token_destination_account_info.clone(),
+                authority_account_info.clone(),
+                token_program_id_info.clone(),
+                pool_deposit_token_account_info.clone(),
+                possible_withdraw_amount,
+            )?;
+        } else if pool.decision == Some(false) {
+            if user_fail_token_account.amount < amount {
+                return Err(PoolError::InsufficientFunds.into());
+            }
+
+            // Burn FAIL tokens
+            Self::burn(
+                &pool_account_info.key,
+                pool.bump_seed,
+                token_program_id_info.clone(),
+                token_fail_mint_info.clone(),
+                token_fail_user_account_info.clone(),
+                authority_account_info.clone(),
+                amount,
+            )?;
+
+            // Transfer deposit tokens from pool deposit account to user destination account
+            Self::transfer(
+                &pool_account_info.key,
+                pool.bump_seed,
+                user_token_destination_account_info.clone(),
+                authority_account_info.clone(),
+                token_program_id_info.clone(),
+                pool_deposit_token_account_info.clone(),
+                amount,
+            )?;
+        } else {
+            if user_pass_token_account.amount < amount {
+                return Err(PoolError::InsufficientFunds.into());
+            }
+
+            // Burn PASS tokens
+            Self::burn(
+                &pool_account_info.key,
+                pool.bump_seed,
+                token_program_id_info.clone(),
+                token_pass_mint_info.clone(),
+                token_pass_user_account_info.clone(),
+                authority_account_info.clone(),
+                amount,
+            )?;
+
+            // Transfer deposit tokens from pool deposit account to user destination account
+            Self::transfer(
+                &pool_account_info.key,
+                pool.bump_seed,
+                user_token_destination_account_info.clone(),
+                authority_account_info.clone(),
+                token_program_id_info.clone(),
+                pool_deposit_token_account_info.clone(),
+                amount,
+            )?;
+        }
+        Ok(())
+    }
     /// Processes an instruction
     pub fn process_instruction(
         program_id: &Pubkey,

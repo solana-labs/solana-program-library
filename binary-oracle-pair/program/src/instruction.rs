@@ -41,7 +41,7 @@ pub enum PoolInstruction {
     ///
     ///   0. `[]` Pool
     ///   1. `[]` authority
-    ///   2. `[w]` token SOURCE Account, amount is transferable by pool authority with allowances,
+    ///   2. `[w]` token SOURCE Account, amount is transferable by pool authority with allowances.
     ///   3. `[w]` Deposit token account
     ///   4. `[w]` token_P PASS mint
     ///   5. `[w]` token_F FAIL mint
@@ -60,14 +60,13 @@ pub enum PoolInstruction {
     ///
     ///   0. `[]` Pool
     ///   1. `[]` authority
-    ///   2. `[w]` token_P PASS SOURCE Account
-    ///   3. `[w]` token_F FAIL SOURCE Account
-    ///   4. `[w]` token_P PASS DESTINATION mint
-    ///   5. `[w]` token_F FAIL DESTINATION mint
-    ///   6. `[w]` deposit SOURCE Account
+    ///   2. `[w]` pool deposit token account
+    ///   3. `[w]` token_P PASS SOURCE Account
+    ///   4. `[w]` token_F FAIL SOURCE Account
+    ///   5. `[w]` token_P PASS mint
+    ///   6. `[w]` token_F FAIL mint
     ///   7. `[w]` deposit DESTINATION Account assigned to USER as the owner.
     ///   8. '[]` Token program id
-    ///   9. '[]` Sysvar Clock
     Withdraw(u64),
 
     ///  Trigger the decision.
@@ -140,6 +139,42 @@ pub fn deposit(
         AccountMeta::new(*token_fail_mint, false),
         AccountMeta::new(*token_pass_destination_account, false),
         AccountMeta::new(*token_fail_destination_account, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Create `Withdraw` instruction
+pub fn withdraw(
+    program_id: &Pubkey,
+    pool: &Pubkey,
+    authority: &Pubkey,
+    pool_deposit_token_account: &Pubkey,
+    token_pass_user_account: &Pubkey,
+    token_fail_user_account: &Pubkey,
+    token_pass_mint: &Pubkey,
+    token_fail_mint: &Pubkey,
+    user_token_destination_account: &Pubkey,
+    token_program_id: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    let init_data = PoolInstruction::Withdraw(amount);
+    let data = init_data
+        .try_to_vec()
+        .or(Err(ProgramError::InvalidArgument))?;
+    let accounts = vec![
+        AccountMeta::new_readonly(*pool, false),
+        AccountMeta::new_readonly(*authority, false),
+        AccountMeta::new(*pool_deposit_token_account, false),
+        AccountMeta::new(*token_pass_user_account, false),
+        AccountMeta::new(*token_fail_user_account, false),
+        AccountMeta::new(*token_pass_mint, false),
+        AccountMeta::new(*token_fail_mint, false),
+        AccountMeta::new(*user_token_destination_account, true),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {

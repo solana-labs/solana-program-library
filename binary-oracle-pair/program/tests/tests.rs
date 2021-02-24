@@ -384,7 +384,7 @@ async fn test_deposit() {
         &recent_blockhash,
         &user_pass_account,
         &pool.token_pass_mint.pubkey(),
-        &user_account.pubkey(),
+        &user_account_owner.pubkey(),
     )
     .await
     .unwrap();
@@ -396,7 +396,7 @@ async fn test_deposit() {
         &recent_blockhash,
         &user_fail_account,
         &pool.token_fail_mint.pubkey(),
-        &user_account.pubkey(),
+        &user_account_owner.pubkey(),
     )
     .await
     .unwrap();
@@ -430,7 +430,8 @@ async fn test_deposit() {
     assert_eq!(user_balance_after, 0);
 
     // Check balance of pool deposit account
-    let pool_deposit_account_balance = get_token_balance(&mut banks_client, &pool.pool_deposit_account.pubkey()).await;
+    let pool_deposit_account_balance =
+        get_token_balance(&mut banks_client, &pool.pool_deposit_account.pubkey()).await;
     assert_eq!(pool_deposit_account_balance, deposit_amount);
 
     // Check if user has PASS and FAIL tokens

@@ -37,6 +37,12 @@ pub enum PoolError {
     /// Amount should be more than zero
     #[error("Amount should be more than zero")]
     InvalidAmount,
+    /// Insufficient funds to withdraw
+    #[error("Insufficient funds to withdraw")]
+    InsufficientFunds,
+    /// Token account's owner doesn't match with user account
+    #[error("Token account's owner doesn't match with user account")]
+    InvalidAccountsOwner,
 }
 
 impl From<PoolError> for ProgramError {
@@ -68,6 +74,10 @@ impl PrintProgramError for PoolError {
             PoolError::NotRentExempt => msg!("Error: Lamport balance below rent-exempt threshold"),
             PoolError::InvalidTokenMint => msg!("Error: Input token mint account is not valid"),
             PoolError::InvalidAmount => msg!("Amount should be more than zero"),
+            PoolError::InsufficientFunds => msg!("Insufficient funds to withdraw"),
+            PoolError::InvalidAccountsOwner => {
+                msg!("Token account's owner doesn't match with user account")
+            }
         }
     }
 }
