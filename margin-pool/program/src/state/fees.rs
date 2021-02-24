@@ -87,3 +87,29 @@ impl Pack for Fees {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pack_fees() {
+        let fees = Fees {
+            position_fee_numerator: 1,
+            position_fee_denominator: 11,
+            owner_withdraw_fee_numerator: 2,
+            owner_withdraw_fee_denominator: 12,
+            owner_position_fee_numerator: 3,
+            owner_position_fee_denominator: 13,
+            host_position_fee_numerator: 4,
+            host_position_fee_denominator: 14,
+        };
+
+        let mut packed = [0u8; Fees::LEN];
+        fees.pack_into_slice(&mut packed);
+
+        let unpacked = Fees::unpack_from_slice(&packed).unwrap();
+
+        assert_eq!(fees, unpacked);
+    }
+}
