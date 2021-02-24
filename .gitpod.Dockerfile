@@ -1,5 +1,5 @@
 FROM node
-
+# NOTE THIS SOMETIMES DON'T WORK BECAUSE CANT DOWNLOAD SOME DEPENDENCY BUT DEFAULT with dependencies from gitpod.yml works
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
     ca-certificates curl file \

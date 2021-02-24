@@ -1,5 +1,8 @@
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/solana-labs/solana-program-library)
 
+# WARNING
+In gitpod sometimes provided container does not work because fails to install some dependency because of timeout or something.
+However if you run .gitpod.yml and pick default container it should work too
 
 # Solana Program Library
 
