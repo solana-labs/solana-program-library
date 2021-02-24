@@ -494,6 +494,10 @@ impl Processor {
                 msg!("Instruction: Deposit");
                 Self::process_deposit(program_id, accounts, amount)
             }
+            PoolInstruction::Withdraw(amount) => {
+                msg!("Instruction: Withdraw");
+                Self::process_withdraw(program_id, accounts, amount)
+            }
             _ => unimplemented!(),
         }
     }

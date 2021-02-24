@@ -40,8 +40,8 @@ pub enum PoolInstruction {
     ///   Deposit in the pool.
     ///
     ///   0. `[]` Pool
-    ///   1. `[]` authority
-    ///   2. `[w]` token SOURCE Account, amount is transferable by pool authority with allowances.
+    ///   1. `[]` Authority
+    ///   2. `[w]` Token SOURCE Account, amount is transferable by pool authority with allowances.
     ///   3. `[w]` Deposit token account
     ///   4. `[w]` token_P PASS mint
     ///   5. `[w]` token_F FAIL mint
@@ -59,20 +59,20 @@ pub enum PoolInstruction {
     ///   AND current slot is > decide_end_slot.
     ///
     ///   0. `[]` Pool
-    ///   1. `[]` authority
-    ///   2. `[w]` pool deposit token account
+    ///   1. `[]` Authority
+    ///   2. `[w]` Pool deposit token account
     ///   3. `[w]` token_P PASS SOURCE Account
     ///   4. `[w]` token_F FAIL SOURCE Account
     ///   5. `[w]` token_P PASS mint
     ///   6. `[w]` token_F FAIL mint
-    ///   7. `[w]` deposit DESTINATION Account assigned to USER as the owner.
+    ///   7. `[w]` Deposit DESTINATION Account assigned to USER as the owner.
     ///   8. '[]` Token program id
     Withdraw(u64),
 
     ///  Trigger the decision.
     ///  Call only succeeds once and if current slot > mint_end slot AND < decide_end slot
     ///   0. `[]` Pool
-    ///   1. `[s]` decider pubkey
+    ///   1. `[s]` Decider pubkey
     ///   2. '[]` Sysvar Clock
     Decide(bool),
 }
@@ -174,7 +174,7 @@ pub fn withdraw(
         AccountMeta::new(*token_fail_user_account, false),
         AccountMeta::new(*token_pass_mint, false),
         AccountMeta::new(*token_fail_mint, false),
-        AccountMeta::new(*user_token_destination_account, true),
+        AccountMeta::new(*user_token_destination_account, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {

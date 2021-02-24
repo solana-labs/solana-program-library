@@ -239,6 +239,111 @@ impl TestPool {
         );
         banks_client.process_transaction(transaction).await.unwrap();
     }
+
+    pub async fn prepare_accounts_for_deposit(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        deposit_tokens_to_mint: u64,
+        deposit_tokens_for_allowance: u64,
+        user_account: &Keypair,
+        user_account_owner: &Keypair,
+        user_pass_account: &Keypair,
+        user_fail_account: &Keypair,
+    ) {
+        // Create user account
+        create_token_account(
+            banks_client,
+            payer,
+            recent_blockhash,
+            user_account,
+            &self.deposit_token_mint.pubkey(),
+            &user_account_owner.pubkey(),
+        )
+        .await
+        .unwrap();
+
+        // Mint to him some deposit tokens
+        mint_tokens_to(
+            banks_client,
+            payer,
+            recent_blockhash,
+            &self.deposit_token_mint.pubkey(),
+            &user_account.pubkey(),
+            &self.deposit_token_mint_owner,
+            deposit_tokens_to_mint,
+        )
+        .await
+        .unwrap();
+
+        // Give allowance to pool authority
+        approve_delegate(
+            banks_client,
+            payer,
+            recent_blockhash,
+            &user_account.pubkey(),
+            &self.authority,
+            user_account_owner,
+            deposit_tokens_for_allowance,
+        )
+        .await
+        .unwrap();
+
+        // Create token accounts for PASS and FAIL tokens
+        create_token_account(
+            banks_client,
+            payer,
+            recent_blockhash,
+            user_pass_account,
+            &self.token_pass_mint.pubkey(),
+            &user_account_owner.pubkey(),
+        )
+        .await
+        .unwrap();
+
+        create_token_account(
+            banks_client,
+            payer,
+            recent_blockhash,
+            user_fail_account,
+            &self.token_fail_mint.pubkey(),
+            &user_account_owner.pubkey(),
+        )
+        .await
+        .unwrap();
+    }
+
+    pub async fn make_deposit(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        user_account: &Keypair,
+        user_pass_account: &Keypair,
+        user_fail_account: &Keypair,
+        deposit_amount: u64,
+    ) {
+        let mut transaction = Transaction::new_with_payer(
+            &[instruction::deposit(
+                &id(),
+                &self.pool_account.pubkey(),
+                &self.authority,
+                &user_account.pubkey(),
+                &self.pool_deposit_account.pubkey(),
+                &self.token_pass_mint.pubkey(),
+                &self.token_fail_mint.pubkey(),
+                &user_pass_account.pubkey(),
+                &user_fail_account.pubkey(),
+                &spl_token::id(),
+                deposit_amount,
+            )
+            .unwrap()],
+            Some(&payer.pubkey()),
+        );
+        transaction.sign(&[payer], *recent_blockhash);
+        banks_client.process_transaction(transaction).await.unwrap();
+    }
 }
 
 pub async fn create_mint(
@@ -336,94 +441,38 @@ async fn test_deposit() {
     pool.init_pool(&mut banks_client, &payer, &recent_blockhash)
         .await;
 
-    // Create user account
     let user_account = Keypair::new();
     let user_account_owner = Keypair::new();
-    create_token_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_account,
-        &pool.deposit_token_mint.pubkey(),
-        &user_account_owner.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    // Mint to him some deposit tokens
-    mint_tokens_to(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &pool.deposit_token_mint.pubkey(),
-        &user_account.pubkey(),
-        &pool.deposit_token_mint_owner,
-        deposit_amount,
-    )
-    .await
-    .unwrap();
-
-    // Give allowance to pool authority
-    approve_delegate(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_account.pubkey(),
-        &pool.authority,
-        &user_account_owner,
-        deposit_amount,
-    )
-    .await
-    .unwrap();
-
-    // Create token accounts for PASS and FAIL tokens
     let user_pass_account = Keypair::new();
-    create_token_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_pass_account,
-        &pool.token_pass_mint.pubkey(),
-        &user_account_owner.pubkey(),
-    )
-    .await
-    .unwrap();
-
     let user_fail_account = Keypair::new();
-    create_token_account(
+
+    pool.prepare_accounts_for_deposit(
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        deposit_amount,
+        deposit_amount,
+        &user_account,
+        &user_account_owner,
+        &user_pass_account,
         &user_fail_account,
-        &pool.token_fail_mint.pubkey(),
-        &user_account_owner.pubkey(),
     )
-    .await
-    .unwrap();
+    .await;
 
     let user_balance_before = get_token_balance(&mut banks_client, &user_account.pubkey()).await;
     assert_eq!(user_balance_before, deposit_amount);
 
     // Make deposit
-    let mut transaction = Transaction::new_with_payer(
-        &[instruction::deposit(
-            &id(),
-            &pool.pool_account.pubkey(),
-            &pool.authority,
-            &user_account.pubkey(),
-            &pool.pool_deposit_account.pubkey(),
-            &pool.token_pass_mint.pubkey(),
-            &pool.token_fail_mint.pubkey(),
-            &user_pass_account.pubkey(),
-            &user_fail_account.pubkey(),
-            &spl_token::id(),
-            deposit_amount,
-        )
-        .unwrap()],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer], recent_blockhash);
-    banks_client.process_transaction(transaction).await.unwrap();
+    pool.make_deposit(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_account,
+        &user_pass_account,
+        &user_fail_account,
+        deposit_amount,
+    )
+    .await;
 
     // Check balance of user account
     let user_balance_after = get_token_balance(&mut banks_client, &user_account.pubkey()).await;
@@ -440,4 +489,122 @@ async fn test_deposit() {
 
     let user_fail_tokens = get_token_balance(&mut banks_client, &user_fail_account.pubkey()).await;
     assert_eq!(user_fail_tokens, deposit_amount);
+}
+
+#[tokio::test]
+async fn test_withdraw() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+
+    let deposit_amount = 100;
+
+    let pool = TestPool::create();
+
+    pool.init_pool(&mut banks_client, &payer, &recent_blockhash)
+        .await;
+
+    let user_account = Keypair::new();
+    let user_account_owner = Keypair::new();
+    let user_pass_account = Keypair::new();
+    let user_fail_account = Keypair::new();
+
+    pool.prepare_accounts_for_deposit(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        deposit_amount,
+        deposit_amount,
+        &user_account,
+        &user_account_owner,
+        &user_pass_account,
+        &user_fail_account,
+    )
+    .await;
+
+    // Make deposit
+    pool.make_deposit(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_account,
+        &user_pass_account,
+        &user_fail_account,
+        deposit_amount,
+    )
+    .await;
+
+    // Set allowances to burn PASS and FAIL tokens
+    approve_delegate(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_pass_account.pubkey(),
+        &pool.authority,
+        &user_account_owner,
+        deposit_amount,
+    )
+    .await
+    .unwrap();
+    approve_delegate(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_fail_account.pubkey(),
+        &pool.authority,
+        &user_account_owner,
+        deposit_amount,
+    )
+    .await
+    .unwrap();
+
+    let user_balance_before = get_token_balance(&mut banks_client, &user_account.pubkey()).await;
+    assert_eq!(user_balance_before, 0);
+
+    // Check balance of pool deposit account
+    let pool_deposit_account_balance =
+        get_token_balance(&mut banks_client, &pool.pool_deposit_account.pubkey()).await;
+    assert_eq!(pool_deposit_account_balance, deposit_amount);
+
+    // Check if user has PASS and FAIL tokens
+    let user_pass_tokens = get_token_balance(&mut banks_client, &user_pass_account.pubkey()).await;
+    assert_eq!(user_pass_tokens, deposit_amount);
+
+    let user_fail_tokens = get_token_balance(&mut banks_client, &user_fail_account.pubkey()).await;
+    assert_eq!(user_fail_tokens, deposit_amount);
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::withdraw(
+            &id(),
+            &pool.pool_account.pubkey(),
+            &pool.authority,
+            &pool.pool_deposit_account.pubkey(),
+            &user_pass_account.pubkey(),
+            &user_fail_account.pubkey(),
+            &pool.token_pass_mint.pubkey(),
+            &pool.token_fail_mint.pubkey(),
+            &user_account.pubkey(),
+            &spl_token::id(),
+            deposit_amount,
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    let user_balance_after = get_token_balance(&mut banks_client, &user_account.pubkey()).await;
+    assert_eq!(user_balance_after, deposit_amount);
+
+    // Check balance of pool deposit account after withdraw
+    let pool_deposit_account_balance_after =
+        get_token_balance(&mut banks_client, &pool.pool_deposit_account.pubkey()).await;
+    assert_eq!(pool_deposit_account_balance_after, 0);
+
+    // Check if program burned PASS and FAIL tokens
+    let user_pass_tokens_after =
+        get_token_balance(&mut banks_client, &user_pass_account.pubkey()).await;
+    assert_eq!(user_pass_tokens_after, 0);
+
+    let user_fail_tokens_after =
+        get_token_balance(&mut banks_client, &user_fail_account.pubkey()).await;
+    assert_eq!(user_fail_tokens_after, 0);
 }
