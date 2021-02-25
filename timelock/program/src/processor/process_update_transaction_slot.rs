@@ -24,7 +24,8 @@ pub fn process_update_transaction_slot(
     let timelock_txn_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_authority_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
+    let timelock_authority_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
@@ -39,7 +40,8 @@ pub fn process_update_transaction_slot(
         signatory_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
-        timelock_program_authority_info,
+        transfer_authority_info,
+        timelock_authority_account_info,
     )?;
 
     // All transactions have slot as first byte, adjust it.

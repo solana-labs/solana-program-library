@@ -42,6 +42,7 @@ pub fn assert_is_permissioned<'a>(
     perm_validation_account_info: &AccountInfo<'a>,
     timelock_program_info: &AccountInfo<'a>,
     token_program_info: &AccountInfo<'a>,
+    transfer_authority_info: &AccountInfo<'a>,
     timelock_authority_info: &AccountInfo<'a>,
 ) -> ProgramResult {
     let _perm_account: Account = assert_initialized(perm_account_info)?;
@@ -61,7 +62,7 @@ pub fn assert_is_permissioned<'a>(
         source: perm_account_info.clone(),
         destination: perm_validation_account_info.clone(),
         amount: 1,
-        authority: timelock_authority_info.clone(),
+        authority: transfer_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;

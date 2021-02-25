@@ -21,7 +21,8 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
     let timelock_txn_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_authority_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
+    let timelock_authority_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
@@ -36,7 +37,8 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
         signatory_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
-        timelock_program_authority_info,
+        transfer_authority_info,
+        timelock_authority_account_info,
     )?;
 
     let mut found: bool = false;

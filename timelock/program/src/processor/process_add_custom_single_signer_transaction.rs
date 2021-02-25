@@ -35,10 +35,10 @@ pub fn process_add_custom_single_signer_transaction(
 
     let timelock_txn_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
-
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_authority_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
+    let timelock_mint_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
@@ -60,7 +60,8 @@ pub fn process_add_custom_single_signer_transaction(
         signatory_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
-        timelock_program_authority_info,
+        transfer_authority_info,
+        timelock_mint_authority_info,
     )?;
     timelock_txn.version = CUSTOM_SINGLE_SIGNER_TIMELOCK_TRANSACTION_VERSION;
     timelock_txn.slot = slot;
