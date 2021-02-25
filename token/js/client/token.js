@@ -32,7 +32,7 @@ export const TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
  * which fails when using `publicKey.toBuffer()` directly because the bundled `Buffer`
  * class in `@solana/web3.js` is different from the bundled `Buffer` class in this package
  */
-function pubkeyToBuffer(publicKey: PublicKey): Buffer {
+function pubkeyToBuffer(publicKey: PublicKey): typeof Buffer {
   return Buffer.from(publicKey.toBuffer());
 }
 
