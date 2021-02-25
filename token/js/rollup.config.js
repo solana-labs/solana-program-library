@@ -7,8 +7,6 @@ import nodeResolve from '@rollup/plugin-node-resolve';
 import nodePolyfills from 'rollup-plugin-node-polyfills';
 import {terser} from 'rollup-plugin-terser';
 
-const env = process.env.NODE_ENV;
-
 function generateConfig(configType, format) {
   const browser = configType === 'browser';
   const bundle = format === 'iife';

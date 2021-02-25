@@ -1,7 +1,6 @@
 // @flow
 
 import * as BufferLayout from 'buffer-layout';
-import {Buffer} from 'buffer';
 
 /**
  * Layout for a public key
