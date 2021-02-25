@@ -4,7 +4,7 @@ use {
     crate::{
         error::RecordError,
         instruction::RecordInstruction,
-        state::{RecordData, Data},
+        state::{Data, RecordData},
     },
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
@@ -17,10 +17,7 @@ use {
     },
 };
 
-fn check_authority(
-    authority_info: &AccountInfo,
-    expected_authority: &Pubkey
-) -> ProgramResult {
+fn check_authority(authority_info: &AccountInfo, expected_authority: &Pubkey) -> ProgramResult {
     if expected_authority != authority_info.key {
         msg!("Incorrect record authority provided");
         return Err(RecordError::IncorrectAuthority.into());

@@ -20,7 +20,7 @@ use {
         error::RecordError,
         id, instruction,
         processor::process_instruction,
-        state::{RecordData, Data},
+        state::{Data, RecordData},
     },
 };
 
