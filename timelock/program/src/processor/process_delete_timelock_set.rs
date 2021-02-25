@@ -22,7 +22,8 @@ pub fn process_delete_timelock_set(program_id: &Pubkey, accounts: &[AccountInfo]
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let admin_account_info = next_account_info(account_info_iter)?;
     let admin_validation_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_authority_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
+    let timelock_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
 
@@ -39,7 +40,8 @@ pub fn process_delete_timelock_set(program_id: &Pubkey, accounts: &[AccountInfo]
         admin_validation_account_info,
         timelock_program_info,
         token_program_info,
-        timelock_program_authority_info,
+        transfer_authority_info,
+        timelock_authority_info,
     )?;
     timelock_set.state.status = TimelockStateStatus::Deleted;
     TimelockSet::pack(

@@ -27,6 +27,7 @@ pub fn process_vote(
     let voting_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
     let voting_validation_account_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
@@ -41,6 +42,7 @@ pub fn process_vote(
         voting_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
+        transfer_authority_info,
         timelock_program_authority_info,
     )?;
 

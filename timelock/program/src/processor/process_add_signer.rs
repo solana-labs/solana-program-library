@@ -5,8 +5,8 @@ use crate::{
     state::timelock_set::TimelockSet,
     utils::{
         assert_draft, assert_initialized, assert_is_permissioned, assert_proper_signatory_mint,
-        assert_same_version_as_program, assert_token_program_is_correct, spl_token_init_account,
-        spl_token_mint_to, TokenInitializeAccountParams, TokenMintToParams,
+        assert_same_version_as_program, assert_token_program_is_correct, spl_token_mint_to,
+        TokenMintToParams,
     },
 };
 use solana_program::{
@@ -25,6 +25,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
     let admin_account_info = next_account_info(account_info_iter)?;
     let admin_validation_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
@@ -41,6 +42,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
         admin_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
+        transfer_authority_info,
         timelock_program_authority_info,
     )?;
     let _sig_account: Account = assert_initialized(new_signatory_account_info)?;

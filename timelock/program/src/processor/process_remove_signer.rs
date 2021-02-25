@@ -24,6 +24,7 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let admin_account_info = next_account_info(account_info_iter)?;
     let admin_validation_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
@@ -39,6 +40,7 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         admin_validation_account_info,
         timelock_program_account_info,
         token_program_account_info,
+        transfer_authority_info,
         timelock_program_authority_info,
     )?;
     let _account: Account = assert_initialized(remove_signatory_account_info)?;

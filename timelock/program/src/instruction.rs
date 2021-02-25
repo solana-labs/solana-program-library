@@ -79,9 +79,10 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` Admin account.
     ///   3. `[writable]` Admin validation account.
     ///   4. `[]` Timelock set account.
-    ///   5. `[]` Timelock program mint authority
-    ///   6. `[]` Timelock program account.
-    ///   7. '[]` Token program id.
+    ///   5. `[]` Transfer authority
+    ///   6. `[]` Timelock program mint authority
+    ///   7. `[]` Timelock program account.
+    ///   8. '[]` Token program id.
     AddSigner,
 
     /// [Requires Admin token]
@@ -92,6 +93,7 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` Admin account.
     ///   3. `[writable]` Admin validation account.
     ///   4. `[]` Timelock set account.
+    ///   5. `[]` Transfer authority
     ///   5. `[]` Timelock program mint authority
     ///   6. `[]` Timelock program account.
     ///   7. '[]` Token program id.
@@ -106,9 +108,10 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Timelock set account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Timelock program authority
-    ///   5. `[]` Timelock program account.
-    ///   6. `[]` Token program account.
+    ///   4. `[]` Transfer authority
+    ///   5. `[]` Timelock mint authority
+    ///   6. `[]` Timelock program account.
+    ///   7. `[]` Token program account.
     AddCustomSingleSignerTransaction {
         /// Slot during which this will run
         slot: u64,
@@ -125,9 +128,10 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Timelock Transaction account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Timelock program authority.
-    ///   5. `[]` Timelock program account pub key.
-    ///   6. `[]` Token program account.
+    ///   4. `[]` Transfer Authority.
+    ///   5. `[]` Timelock mint authority
+    ///   6. `[]` Timelock program account pub key.
+    ///   7. `[]` Token program account.
     RemoveTransaction,
 
     /// [Requires Signatory token]
@@ -137,9 +141,10 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Timelock Transaction account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Timelock program authority.
-    ///   5. `[]` Timelock program account pub key.
-    ///   6. `[]` Token program account.
+    ///   4. `[]` Transfer authority.
+    ///   5. `[]` Timelock mint authority
+    ///   6. `[]` Timelock program account pub key.
+    ///   7. `[]` Token program account.
     UpdateTransactionSlot {
         /// On what slot this transaction slot will now run
         slot: u64,
@@ -151,9 +156,10 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Timelock set account pub key.
     ///   1. `[writable]` Admin account
     ///   2. `[writable]` Admin validation account.
-    ///   3. `[]` Timelock program authority.
-    ///   4. `[]` Timelock program account pub key.
-    ///   5. `[]` Token program account.
+    ///   3. `[]` Transfer authority.
+    ///   5. `[]` Timelock mint authority
+    ///   6. `[]` Timelock program account pub key.
+    ///   7. `[]` Token program account.
     DeleteTimelockSet,
 
     /// [Requires Signatory token]
@@ -164,9 +170,10 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Signatory account
     ///   2. `[writable]` Signatory validation account.
     ///   3. `[writable]` Signatory mint account.
-    ///   4. `[]` Timelock program mint authority
-    ///   5. `[]` Timelock program account pub key.
-    ///   6. `[]` Token program account.
+    ///   4. `[]` Transfer authority
+    ///   5. `[]` Timelock mint authority
+    ///   6. `[]` Timelock program account pub key.
+    ///   7. `[]` Token program account.
     Sign,
 
     /// [Requires Voting tokens]
@@ -177,9 +184,10 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Voting account.
     ///   2. `[writable]` Voting mint account.
     ///   3. `[writable]` Voting validation account.
-    ///   4. `[]` Timelock program mint authority
-    ///   5. `[]` Timelock program account pub key.
-    ///   6. `[]` Token program account.
+    ///   4. `[]` Transfer authority
+    ///   5. `[]` Timelock program mint authority
+    ///   6. `[]` Timelock program account pub key.
+    ///   7. `[]` Token program account.
     Vote {
         /// How many voting tokens to burn
         voting_token_amount: u64,
@@ -193,6 +201,7 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` Voting mint account.
     ///   3. `[writable]` Signatory account
     ///   4. `[writable]` Signatory validation account.
+    ///   5. `[]` Transfer authority
     ///   6. `[]` Timelock program mint authority
     ///   7. `[]` Timelock program account pub key.
     ///   8. `[]` Token program account.
