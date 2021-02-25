@@ -168,6 +168,6 @@ mod tests {
         let err: ProgramError = RecordInstruction::try_from_slice(&expected)
             .unwrap_err()
             .into();
-        assert!(matches!(err, ProgramError::IOError(_)));
+        assert!(matches!(err, ProgramError::BorshIoError(_)));
     }
 }

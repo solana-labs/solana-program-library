@@ -85,6 +85,6 @@ pub mod tests {
         expected.extend_from_slice(&TEST_PUBKEY.to_bytes());
         expected.extend_from_slice(&data);
         let err: ProgramError = RecordData::try_from_slice(&expected).unwrap_err().into();
-        assert!(matches!(err, ProgramError::IOError(_)));
+        assert!(matches!(err, ProgramError::BorshIoError(_)));
     }
 }
