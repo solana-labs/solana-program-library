@@ -55,6 +55,9 @@ pub enum PoolError {
     /// Decision can't be made in current slot
     #[error("Decision can't be made in current slot")]
     InvalidSlotForDecision,
+    /// No decision has been made yet
+    #[error("No decision has been made yet")]
+    NoDecisionMadeYet,
 }
 
 impl From<PoolError> for ProgramError {
@@ -85,15 +88,20 @@ impl PrintProgramError for PoolError {
             PoolError::InvalidAuthorityAccount => msg!("Error: Invalid authority account provided"),
             PoolError::NotRentExempt => msg!("Error: Lamport balance below rent-exempt threshold"),
             PoolError::InvalidTokenMint => msg!("Error: Input token mint account is not valid"),
-            PoolError::InvalidAmount => msg!("Amount should be more than zero"),
-            PoolError::InsufficientFunds => msg!("Insufficient funds to withdraw"),
+            PoolError::InvalidAmount => msg!("Error: Amount should be more than zero"),
+            PoolError::InsufficientFunds => msg!("Error: Insufficient funds to withdraw"),
             PoolError::InvalidAccountsOwner => {
-                msg!("Token account's owner doesn't match with user account")
+                msg!("Error: Token account's owner doesn't match with user account")
             }
-            PoolError::WrongDeciderAccount => msg!("Wrong decider account was sent"),
-            PoolError::SignatureMissing => msg!("Signature missing in transaction"),
-            PoolError::DecisionAlreadyMade => msg!("Decision was already made for this pool"),
-            PoolError::InvalidSlotForDecision => msg!("Decision can't be made in current slot"),
+            PoolError::WrongDeciderAccount => msg!("Error: Wrong decider account was sent"),
+            PoolError::SignatureMissing => msg!("Error: Signature missing in transaction"),
+            PoolError::DecisionAlreadyMade => {
+                msg!("Error: Decision was already made for this pool")
+            }
+            PoolError::InvalidSlotForDecision => {
+                msg!("Error: Decision can't be made in current slot")
+            }
+            PoolError::NoDecisionMadeYet => msg!("Error: No decision has been made yet"),
         }
     }
 }

@@ -34,7 +34,7 @@ pub enum PoolInstruction {
     ///   5. `[w]` Token Pass mint. Should not be initialized
     ///   6. `[w]` Token Fail mint. Should not be initialized
     ///   7. `[]` Rent sysvar
-    ///   8. '[]` Token program id
+    ///   8. `[]` Token program id
     InitPool(InitArgs),
 
     ///   Deposit in the pool.
@@ -45,9 +45,9 @@ pub enum PoolInstruction {
     ///   3. `[w]` Deposit token account
     ///   4. `[w]` token_P PASS mint
     ///   5. `[w]` token_F FAIL mint
-    ///   6. `[w]` token_P DESTINATION Account assigned to USER as the owner.
-    ///   7. `[w]` token_F DESTINATION Account assigned to USER as the owner.
-    ///   8. '[]` Token program id
+    ///   6. `[w]` token_P DESTINATION Account
+    ///   7. `[w]` token_F DESTINATION Account
+    ///   8. `[]` Token program id
     Deposit(u64),
 
     ///   Withdraw from the pool.
@@ -65,15 +65,16 @@ pub enum PoolInstruction {
     ///   4. `[w]` token_F FAIL SOURCE Account
     ///   5. `[w]` token_P PASS mint
     ///   6. `[w]` token_F FAIL mint
-    ///   7. `[w]` Deposit DESTINATION Account assigned to USER as the owner.
-    ///   8. '[]` Token program id
+    ///   7. `[w]` Deposit DESTINATION Account
+    ///   8. `[]` Token program id
+    ///   9. `[]` Sysvar Clock
     Withdraw(u64),
 
     ///  Trigger the decision.
     ///  Call only succeeds once and if current slot > mint_end slot AND < decide_end slot
     ///   0. `[]` Pool
     ///   1. `[s]` Decider pubkey
-    ///   2. '[]` Sysvar Clock
+    ///   2. `[]` Sysvar Clock
     Decide(bool),
 }
 
@@ -176,6 +177,7 @@ pub fn withdraw(
         AccountMeta::new(*token_fail_mint, false),
         AccountMeta::new(*user_token_destination_account, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,

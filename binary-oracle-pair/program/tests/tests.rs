@@ -126,6 +126,8 @@ pub struct TestPool {
     pub token_pass_mint: Keypair,
     pub token_fail_mint: Keypair,
     pub decider: Keypair,
+    pub mint_end_slot: u64,
+    pub decide_end_slot: u64,
 }
 
 impl TestPool {
@@ -143,6 +145,8 @@ impl TestPool {
             token_pass_mint: Keypair::new(),
             token_fail_mint: Keypair::new(),
             decider: Keypair::new(),
+            mint_end_slot: 2,
+            decide_end_slot: 2000,
         }
     }
 
@@ -183,8 +187,8 @@ impl TestPool {
         .unwrap();
 
         let init_args = instruction::InitArgs {
-            mint_end_slot: 0,
-            decide_end_slot: 2000,
+            mint_end_slot: self.mint_end_slot,
+            decide_end_slot: self.decide_end_slot,
             bump_seed: self.bump_seed,
         };
 
@@ -611,14 +615,19 @@ async fn test_withdraw() {
 
 #[tokio::test]
 async fn test_decide() {
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let mut program_context = program_test().start_with_context().await;
 
     let pool = TestPool::create();
 
-    pool.init_pool(&mut banks_client, &payer, &recent_blockhash)
-        .await;
+    pool.init_pool(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+    )
+    .await;
 
-    let pool_account_data_before = banks_client
+    let pool_account_data_before = program_context
+        .banks_client
         .get_account(pool.pool_account.pubkey())
         .await
         .unwrap()
@@ -630,6 +639,10 @@ async fn test_decide() {
 
     let decision = true;
 
+    program_context
+        .warp_to_slot(pool.mint_end_slot + 1)
+        .unwrap();
+
     let mut transaction = Transaction::new_with_payer(
         &[instruction::decide(
             &id(),
@@ -638,13 +651,21 @@ async fn test_decide() {
             decision,
         )
         .unwrap()],
-        Some(&payer.pubkey()),
+        Some(&program_context.payer.pubkey()),
     );
 
-    transaction.sign(&[&payer, &pool.decider], recent_blockhash);
-    banks_client.process_transaction(transaction).await.unwrap();
+    transaction.sign(
+        &[&program_context.payer, &pool.decider],
+        program_context.last_blockhash,
+    );
+    program_context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
 
-    let pool_account_data_after = banks_client
+    let pool_account_data_after = program_context
+        .banks_client
         .get_account(pool.pool_account.pubkey())
         .await
         .unwrap()
