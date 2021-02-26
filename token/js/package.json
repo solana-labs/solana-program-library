@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.10.5",
-    "@solana/web3.js": "^0.92.1",
+    "@solana/web3.js": "^0.93.0",
     "bn.js": "^5.1.0",
     "buffer": "6.0.3",
     "buffer-layout": "^1.2.0",
