@@ -21,7 +21,6 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let account_info_iter = &mut accounts.iter();
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
-    let signatory_validation_account_info = next_account_info(account_info_iter)?;
     let signatory_mint_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
@@ -32,15 +31,6 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let sig_mint: Mint = assert_initialized(signatory_mint_info)?;
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
-    assert_is_permissioned(
-        program_id,
-        signatory_account_info,
-        signatory_validation_account_info,
-        timelock_program_account_info,
-        token_program_account_info,
-        transfer_authority_info,
-        timelock_program_authority_info,
-    )?;
 
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
@@ -48,11 +38,13 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
     let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
-
+    // the act of burning / signing is itself an assertion of permission...
+    // if you lack the ability to do this, you lack permission to do it. no need to assert permission before
+    // trying here.
     spl_token_burn(TokenBurnParams {
         mint: signatory_mint_info.clone(),
         amount: 1,
-        authority: timelock_program_authority_info.clone(),
+        authority: transfer_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_account_info.clone(),
         source: signatory_account_info.clone(),
