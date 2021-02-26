@@ -53,6 +53,7 @@ struct Config {
     verbose: bool,
     owner: Box<dyn Signer>,
     fee_payer: Box<dyn Signer>,
+    dry_run: bool,
 }
 
 type Error = Box<dyn std::error::Error>;
@@ -511,6 +512,9 @@ fn command_deposit(
     let stake_data = config.rpc_client.get_account_data(&stake)?;
     let stake_data: StakeState =
         deserialize(stake_data.as_slice()).or(Err("Invalid stake account data"))?;
+    if config.verbose {
+        println!("Depositing stake account {:?}", stake_data);
+    }
     let validator: Pubkey = match stake_data {
         StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
         _ => Err("Wrong stake account state, must be delegated to validator"),
@@ -529,7 +533,16 @@ fn command_deposit(
     // Calculate validator stake account address linked to the pool
     let (validator_stake_account, _) =
         PoolProcessor::find_stake_address_for_validator(&spl_stake_pool::id(), &validator, pool);
-    println!("Depositing into stake account {}", validator_stake_account);
+    let validator_stake_data = config
+        .rpc_client
+        .get_account_data(&validator_stake_account)?;
+    let validator_stake_data: StakeState =
+        deserialize(validator_stake_data.as_slice()).or(Err("Invalid stake account data"))?;
+    if config.verbose {
+        println!("Depositing into stake account {:?}", validator_stake_data);
+    } else {
+        println!("Depositing into stake account {}", validator_stake_account);
+    }
 
     let mut instructions: Vec<Instruction> = vec![];
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
@@ -617,6 +630,21 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     let pool_data = config.rpc_client.get_account_data(&pool)?;
     let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
+    if config.verbose {
+        let validator_list = config
+            .rpc_client
+            .get_account_data(&pool_data.validator_stake_list)?;
+        let validator_stake_list_data =
+            ValidatorStakeList::deserialize(&validator_list.as_slice())?;
+        println!("Current validator list");
+        for validator in validator_stake_list_data.validators {
+            println!(
+                "Vote: {}\tBalance: {}\tEpoch: {}",
+                validator.validator_account, validator.balance, validator.last_update_epoch
+            );
+        }
+    }
+
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
         pool,
@@ -633,9 +661,16 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
 
     let mut total_balance: u64 = 0;
     for (pubkey, account) in accounts {
+        let stake_data: StakeState =
+            deserialize(account.data.as_slice()).or(Err("Invalid stake account data"))?;
         let balance = account.lamports;
         total_balance += balance;
-        println!("{}\t{} SOL", pubkey, lamports_to_sol(balance));
+        println!(
+            "Pubkey: {}\tVote: {}\t{} SOL",
+            pubkey,
+            stake_data.delegation().unwrap().voter_pubkey,
+            lamports_to_sol(balance)
+        );
     }
     println!("Total: {} SOL", lamports_to_sol(total_balance));
 
@@ -654,14 +689,19 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
 
     let epoch_info = config.rpc_client.get_epoch_info()?;
 
-    let accounts_to_update: Vec<&Pubkey> = validator_stake_list_data
+    let accounts_to_update: Vec<Pubkey> = validator_stake_list_data
         .validators
         .iter()
         .filter_map(|item| {
             if item.last_update_epoch >= epoch_info.epoch {
                 None
             } else {
-                Some(&item.validator_account)
+                let (stake_account, _) = PoolProcessor::find_stake_address_for_validator(
+                    &spl_stake_pool::id(),
+                    &item.validator_account,
+                    &pool,
+                );
+                Some(stake_account)
             }
         })
         .collect();
@@ -1034,6 +1074,13 @@ fn main() {
                 .help("Show additional information"),
         )
         .arg(
+            Arg::with_name("dry_run")
+                .long("dry-run")
+                .takes_value(false)
+                .global(true)
+                .help("Simluate transaction instead of executing"),
+        )
+        .arg(
             Arg::with_name("json_rpc_url")
                 .long("url")
                 .value_name("URL")
@@ -1354,12 +1401,14 @@ fn main() {
             exit(1);
         });
         let verbose = matches.is_present("verbose");
+        let dry_run = matches.is_present("dry_run");
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
             verbose,
             owner,
             fee_payer,
+            dry_run,
         }
     };
 
@@ -1439,10 +1488,15 @@ fn main() {
     }
     .and_then(|transaction| {
         if let Some(transaction) = transaction {
-            let signature = config
-                .rpc_client
-                .send_and_confirm_transaction_with_spinner(&transaction)?;
-            println!("Signature: {}", signature);
+            if config.dry_run {
+                let result = config.rpc_client.simulate_transaction(&transaction)?;
+                println!("Simulate result: {:?}", result);
+            } else {
+                let signature = config
+                    .rpc_client
+                    .send_and_confirm_transaction_with_spinner(&transaction)?;
+                println!("Signature: {}", signature);
+            }
         }
         Ok(())
     })

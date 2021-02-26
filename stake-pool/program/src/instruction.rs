@@ -377,11 +377,11 @@ pub fn remove_validator_stake_account(
 pub fn update_list_balance(
     program_id: &Pubkey,
     validator_stake_list_storage: &Pubkey,
-    validator_stake_list: &[&Pubkey],
+    validator_stake_list: &[Pubkey],
 ) -> Result<Instruction, ProgramError> {
     let mut accounts: Vec<AccountMeta> = validator_stake_list
         .iter()
-        .map(|pubkey| AccountMeta::new_readonly(**pubkey, false))
+        .map(|pubkey| AccountMeta::new_readonly(*pubkey, false))
         .collect();
     accounts.insert(0, AccountMeta::new(*validator_stake_list_storage, false));
     accounts.insert(1, AccountMeta::new_readonly(sysvar::clock::id(), false));
