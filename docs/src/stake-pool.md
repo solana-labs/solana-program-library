@@ -229,11 +229,11 @@ accounts are already associated with the stake pool.
 
 ```sh
 $ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
-E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    0.002282881 SOL
-CrStLEWfme37kDc3nubK9HsmWR5dsuVUuqEKqTR4Mc5E    0.002282881 SOL
-FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    0.002282881 SOL
-FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13    0.002282881 SOL
-Total: 0.009131524 SOL
+CrStLEWfme37kDc3nubK9HsmWR5dsuVUuqEKqTR4Mc5E    1.002282881 SOL
+E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    1.002282881 SOL
+FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    1.002282881 SOL
+FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13    1.002282881 SOL
+Total: 4.009131524 SOL
 ```
 
 If the manager has recently created the stake pool, and there are no stake
@@ -298,7 +298,7 @@ command-line utility does all of the work of breaking up transactions.
 
 ```sh
 $ spl-stake-pool update --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 
-TODO
+Signature: 3Yx1RH3Afqj5ckX8YvPCRt1DudVP4HuRPkh1dBPvTM9GqGxcB9ZXHGZPADVSZiaqKi166fevMG232EWxrRWswPtt
 ```
 
 If another user already updated the stake pool balance for the current epoch, we
@@ -353,7 +353,7 @@ set the stake authority of the stake pool's managed accounts.
 
 ```sh
 $ spl-stake-pool set-staking-auth --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake-account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN --new-staker 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
-TODO
+Signature: 39N5gkaqXuWm6JPEUWfenKXeG4nSa71p7iHb9zurvdZcsWmbjdmSXwLVYfhAVHWucTY77sJ8SkUNpVpVAhe4eZ53
 ```
 
 Now, the new staker can perform any normal staking operations, including deactivating
