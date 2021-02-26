@@ -533,7 +533,9 @@ fn command_deposit(
     // Calculate validator stake account address linked to the pool
     let (validator_stake_account, _) =
         PoolProcessor::find_stake_address_for_validator(&spl_stake_pool::id(), &validator, pool);
-    let validator_stake_data = config.rpc_client.get_account_data(&validator_stake_account)?;
+    let validator_stake_data = config
+        .rpc_client
+        .get_account_data(&validator_stake_account)?;
     let validator_stake_data: StakeState =
         deserialize(validator_stake_data.as_slice()).or(Err("Invalid stake account data"))?;
     if config.verbose {
@@ -629,12 +631,17 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     if config.verbose {
-        let validator_list = config.rpc_client.get_account_data(&pool_data.validator_stake_list)?;
+        let validator_list = config
+            .rpc_client
+            .get_account_data(&pool_data.validator_stake_list)?;
         let validator_stake_list_data =
             ValidatorStakeList::deserialize(&validator_list.as_slice())?;
         println!("Current validator list");
         for validator in validator_stake_list_data.validators {
-            println!("Vote: {}\tBalance: {}\tEpoch: {}", validator.validator_account, validator.balance, validator.last_update_epoch);
+            println!(
+                "Vote: {}\tBalance: {}\tEpoch: {}",
+                validator.validator_account, validator.balance, validator.last_update_epoch
+            );
         }
     }
 
@@ -658,7 +665,12 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
             deserialize(account.data.as_slice()).or(Err("Invalid stake account data"))?;
         let balance = account.lamports;
         total_balance += balance;
-        println!("Pubkey: {}\tVote: {}\t{} SOL", pubkey, stake_data.delegation().unwrap().voter_pubkey, lamports_to_sol(balance));
+        println!(
+            "Pubkey: {}\tVote: {}\t{} SOL",
+            pubkey,
+            stake_data.delegation().unwrap().voter_pubkey,
+            lamports_to_sol(balance)
+        );
     }
     println!("Total: {} SOL", lamports_to_sol(total_balance));
 
@@ -684,8 +696,11 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
             if item.last_update_epoch >= epoch_info.epoch {
                 None
             } else {
-                let (stake_account, _) =
-                    PoolProcessor::find_stake_address_for_validator(&spl_stake_pool::id(), &item.validator_account, &pool);
+                let (stake_account, _) = PoolProcessor::find_stake_address_for_validator(
+                    &spl_stake_pool::id(),
+                    &item.validator_account,
+                    &pool,
+                );
                 Some(stake_account)
             }
         })
@@ -1474,9 +1489,7 @@ fn main() {
     .and_then(|transaction| {
         if let Some(transaction) = transaction {
             if config.dry_run {
-                let result = config
-                    .rpc_client
-                    .simulate_transaction(&transaction)?;
+                let result = config.rpc_client.simulate_transaction(&transaction)?;
                 println!("Simulate result: {:?}", result);
             } else {
                 let signature = config
