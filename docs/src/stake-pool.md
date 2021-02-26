@@ -43,9 +43,12 @@ with examples using the command-line utility.
 
 ## Very important note concerning activated stakes
 
-In its current iteration, the stake pool only processes fully activated stakes.
+In its current iteration, the stake pool only processes totally active stakes.
 Deposits must come from fully active stakes, and withdrawals return a fully 
-active stake account.
+active stake account. Also, the deposited stake account's "credits observed" must
+match the destination account's "credits observed". Typically, this means you
+must wait an additional epoch after activation for your stake account to match
+up with the stake pool's account.
 
 This feature maintains fungibility of stake pool tokens. Fully activated stakes
 are not equivalent to inactive, activating, or deactivating stakes due to the
