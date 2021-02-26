@@ -168,12 +168,11 @@ pub enum TimelockInstruction {
     ///
     ///   0. `[writable]` Timelock set account pub key.
     ///   1. `[writable]` Signatory account
-    ///   2. `[writable]` Signatory validation account.
-    ///   3. `[writable]` Signatory mint account.
-    ///   4. `[]` Transfer authority
-    ///   5. `[]` Timelock mint authority
-    ///   6. `[]` Timelock program account pub key.
-    ///   7. `[]` Token program account.
+    ///   2. `[writable]` Signatory mint account.
+    ///   3. `[]` Transfer authority
+    ///   4. `[]` Timelock mint authority
+    ///   5. `[]` Timelock program account pub key.
+    ///   6. `[]` Token program account.
     Sign,
 
     /// [Requires Voting tokens]
@@ -183,11 +182,10 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Timelock set account.
     ///   1. `[writable]` Voting account.
     ///   2. `[writable]` Voting mint account.
-    ///   3. `[writable]` Voting validation account.
-    ///   4. `[]` Transfer authority
-    ///   5. `[]` Timelock program mint authority
-    ///   6. `[]` Timelock program account pub key.
-    ///   7. `[]` Token program account.
+    ///   3. `[]` Transfer authority
+    ///   4. `[]` Timelock program mint authority
+    ///   5. `[]` Timelock program account pub key.
+    ///   6. `[]` Token program account.
     Vote {
         /// How many voting tokens to burn
         voting_token_amount: u64,

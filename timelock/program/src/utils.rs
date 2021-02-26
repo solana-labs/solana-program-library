@@ -54,7 +54,7 @@ pub fn assert_is_permissioned<'a>(
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
     let authority_signer_seeds = &[timelock_program_info.key.as_ref(), &[bump_seed]];
-    msg!("1");
+
     // If both accounts arent correct mint type, it explodes
     // If token amount is <1, it explodes. Perfect check.
     // If authority isnt right, it explodes.
@@ -68,7 +68,6 @@ pub fn assert_is_permissioned<'a>(
     })?;
 
     // Now give it back
-    msg!("2");
     spl_token_transfer(TokenTransferParams {
         source: perm_validation_account_info.clone(),
         destination: perm_account_info.clone(),
@@ -77,7 +76,6 @@ pub fn assert_is_permissioned<'a>(
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
-    msg!("3");
     Ok(())
 }
 

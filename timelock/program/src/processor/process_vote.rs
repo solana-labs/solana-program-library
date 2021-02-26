@@ -26,7 +26,6 @@ pub fn process_vote(
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let voting_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
-    let voting_validation_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
@@ -36,15 +35,6 @@ pub fn process_vote(
 
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_voting(&timelock_set)?;
-    assert_is_permissioned(
-        program_id,
-        voting_account_info,
-        voting_validation_account_info,
-        timelock_program_account_info,
-        token_program_account_info,
-        transfer_authority_info,
-        timelock_program_authority_info,
-    )?;
 
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
@@ -56,11 +46,11 @@ pub fn process_vote(
     let mint: Mint = assert_initialized(voting_mint_account_info)?;
     let now_remaining = mint.supply - voting_token_amount;
     let total_ever_existed = timelock_set.state.total_voting_tokens_minted;
-
+    // The act of voting proves you are able to vote. No need to assert permission here.
     spl_token_burn(TokenBurnParams {
         mint: voting_mint_account_info.clone(),
         amount: voting_token_amount,
-        authority: timelock_program_authority_info.clone(),
+        authority: transfer_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_account_info.clone(),
         source: voting_account_info.clone(),
