@@ -31,7 +31,7 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Lending market account.
     ///   1. `[]` Quote currency SPL Token mint. Must be initialized.
     ///   2. `[]` Rent sysvar
-    ///   3. '[]` Token program id
+    ///   3. `[]` Token program id
     InitLendingMarket {
         /// Owner authority which can add new reserves
         market_owner: Pubkey,
@@ -54,7 +54,7 @@ pub enum LendingInstruction {
     ///   11 `[]` User transfer authority ($authority).
     ///   12 `[]` Clock sysvar
     ///   13 `[]` Rent sysvar
-    ///   14 '[]` Token program id
+    ///   14 `[]` Token program id
     ///   15 `[optional]` Serum DEX market account. Not required for quote currency reserves. Must be initialized and match quote and base currency.
     InitReserve {
         /// Initial amount of liquidity to deposit into the new reserve
@@ -75,7 +75,7 @@ pub enum LendingInstruction {
     ///   7. `[]` Derived lending market authority.
     ///   8. `[]` Clock sysvar
     ///   9. `[]` Rent sysvar
-    ///   10 '[]` Token program id
+    ///   10 `[]` Token program id
     InitObligation,
 
     /// Deposit liquidity into a reserve. The output is a collateral token representing ownership
@@ -90,7 +90,7 @@ pub enum LendingInstruction {
     ///   6. `[]` Derived lending market authority.
     ///   7. `[]` User transfer authority ($authority).
     ///   8. `[]` Clock sysvar
-    ///   9. '[]` Token program id
+    ///   9. `[]` Token program id
     DepositReserveLiquidity {
         /// Amount to deposit into the reserve
         liquidity_amount: u64,
@@ -107,7 +107,7 @@ pub enum LendingInstruction {
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
     ///   7. `[]` User transfer authority ($authority).
-    ///   8. '[]` Token program id
+    ///   8. `[]` Token program id
     WithdrawReserveLiquidity {
         /// Amount of collateral to deposit in exchange for liquidity
         collateral_amount: u64,
@@ -135,7 +135,7 @@ pub enum LendingInstruction {
     ///   14 `[]` Dex market order book side
     ///   15 `[]` Temporary memory
     ///   16 `[]` Clock sysvar
-    ///   17 '[]` Token program id
+    ///   17 `[]` Token program id
     ///   18 `[optional, writable]` Deposit reserve collateral host fee receiver account.
     BorrowReserveLiquidity {
         // TODO: slippage constraint
@@ -197,6 +197,45 @@ pub enum LendingInstruction {
     ///   1. `[writable]` Reserve account.
     ///   .. `[writable]` Additional reserve accounts.
     AccrueReserveInterest,
+
+    /// Make a flash loan.
+    ///
+    ///   0. `[writable]` Destination liquidity token account, minted by reserve liquidity mint.
+    ///   1. `[writable]` Reserve account.
+    ///   2. `[]` Lending market account.
+    ///   3. `[]` Derived lending market authority.
+    ///   4. `[]` Temporary memory
+    ///   5. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
+    ///   call it `executeOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
+    ///   6. `[]` Flash Loan Receiver Program Derived Account
+    ///   7. `[]` Token program id
+    /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`.
+    FlashLoan {
+        /// Amount to borrow
+        liquidity_amount: u64,
+    },
+
+    /// Start a flash loan. In the same transaction there must be a FlashLoanEnd.
+    ///
+    ///   0. `[writable]` Destination liquidity token account, minted by reserve liquidity mint.
+    ///   1. `[writable]` Reserve account.
+    ///   2. `[]` Lending market account.
+    ///   3. `[]` Derived lending market authority.
+    ///   4. `[writable]` Temporary memory
+    ///   5. `[]` Token program id
+    FlashLoanStart {
+        liquidity_amount: u64,
+    },
+
+    /// Start a flash loan. In the same transaction there must be a
+    ///
+    ///   0. `[writable]` Destination liquidity token account, minted by reserve liquidity mint.
+    ///   1. `[writable]` Reserve account.
+    ///   2. `[]` Lending market account.
+    ///   3. `[]` Derived lending market authority.
+    ///   4. `[]` Temporary memory
+    ///   5. `[]` Token program id
+    FlashLoanEnd
 }
 
 impl LendingInstruction {
@@ -266,6 +305,10 @@ impl LendingInstruction {
                 Self::LiquidateObligation { liquidity_amount }
             }
             8 => Self::AccrueReserveInterest,
+            9 => {
+                let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::FlashLoan { liquidity_amount }
+            }
             _ => return Err(LendingError::InstructionUnpackError.into()),
         })
     }
@@ -375,6 +418,10 @@ impl LendingInstruction {
             }
             Self::AccrueReserveInterest => {
                 buf.push(8);
+            }
+            Self::FlashLoan {liquidity_amount} => {
+                buf.push(9);
+                buf.extend_from_slice(&liquidity_amount.to_le_bytes());
             }
         }
         buf
@@ -710,5 +757,36 @@ pub fn accrue_reserve_interest(program_id: Pubkey, reserve_pubkeys: Vec<Pubkey>)
         program_id,
         accounts,
         data: LendingInstruction::AccrueReserveInterest.pack(),
+    }
+}
+
+/// Creates a `Flash Loan` instruction
+pub fn flash_loan(
+    program_id: Pubkey,
+    liquidity_amount: u64,
+    destination_account_pubkey: Pubkey,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    derived_lending_market_authority: Pubkey,
+    user_transfer_authority: Pubkey,
+    memory: Pubkey,
+    program_account_pubkey: Pubkey,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(destination_account_pubkey, false),
+        AccountMeta::new(reserve_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(derived_lending_market_authority, false),
+        AccountMeta::new_readonly(user_transfer_authority, true),
+        AccountMeta::new_readonly(memory, false),
+        AccountMeta::new_readonly(program_account_pubkey, false), // does this needs to be a signer?
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::FlashLoan {
+            liquidity_amount,
+        }.pack(),
     }
 }

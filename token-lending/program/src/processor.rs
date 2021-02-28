@@ -25,6 +25,7 @@ use solana_program::{
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 use spl_token::state::Account as Token;
+use spl_token::solana_program::sysvar::instructions::load_instruction_at;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -75,6 +76,10 @@ pub fn process_instruction(
         LendingInstruction::AccrueReserveInterest => {
             msg!("Instruction: Accrue Interest");
             process_accrue_interest(program_id, accounts)
+        }
+        LendingInstruction::FlashLoan { liquidity_amount } => {
+            msg!("Instruction: Flash Loan");
+            process_flash_loan(program_id, liquidity_amount, accounts)
         }
     }
 }
@@ -1175,6 +1180,71 @@ fn process_accrue_interest(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
 
     Ok(())
 }
+
+fn process_flash_loan(
+    program_id: &Pubkey, liquidity_amount: u64, accounts: &[AccountInfo]
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let destination_token_account_info = next_account_info(account_info_iter)?;
+    let reserve_account_info = next_account_info(account_info_iter)?;
+    let lending_market_account_info = next_account_info(account_info_iter)?;
+    let derived_lending_market_account_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
+    let temporary_memory_info = next_account_info(account_info_iter)?;
+    let program_account_info = next_account_info(account_info_iter)?;
+    let token_account = next_account_info(account_info_iter)?;
+
+    // Ensure memory is owned by this program so that we don't have to zero it out
+    if temporary_memory_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
+    let lending_market = LendingMarket::unpack(&lending_market_account_info.data.borrow())?;
+    if &lending_market.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.token_program_id != token_account.key {
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
+
+    if reserve_account_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    let reserve = Reserve::unpack(&reserve_account_info.data.borrow())?;
+    if &reserve.lending_market != lending_market_account_info.key {
+        msg!("Invalid reserve lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let authority_signer_seeds = &[
+        lending_market_account_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    if derived_lending_market_account_info.key != &lending_market_authority_pubkey {
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    // borrow liquidity
+    spl_token_transfer(TokenTransferParams {
+        source: reserve_account_info.clone(),
+        destination: destination_token_account_info.clone(),
+        amount: liquidity_amount.clone(),
+        authority: derived_lending_market_account_info.clone(),
+        authority_signer_seeds,
+        token_program: token_account.clone(),
+    })?;
+
+    // TODO: invoke the underlying program by providing the necessary binary
+
+    // TODO: check that the borrowed amount is returned plus fee.
+    // TODO: we can start with no fee first to simplify stuff.
+    Ok(())
+}
+
+
+
 
 fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
