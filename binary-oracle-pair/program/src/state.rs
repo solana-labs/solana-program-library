@@ -91,12 +91,10 @@ impl Pack for Pool {
             ]),
             decision: if input[178] == 0 {
                 None
+            } else if input[179] == 1 {
+                Some(true)
             } else {
-                if input[179] == 1 {
-                    Some(true)
-                } else {
-                    Some(false)
-                }
+                Some(false)
             },
         })
     }
