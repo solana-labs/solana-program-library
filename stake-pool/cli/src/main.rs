@@ -395,7 +395,9 @@ fn command_vsa_remove(
 
     // Calculate amount of tokens to burn
     let stake_account = config.rpc_client.get_account(&stake)?;
-    let tokens_to_burn = pool_data.calc_pool_withdraw_amount(stake_account.lamports).unwrap();
+    let tokens_to_burn = pool_data
+        .calc_pool_withdraw_amount(stake_account.lamports)
+        .unwrap();
 
     // Check balance and mint
     let account_data = config.rpc_client.get_account_data(&burn_from)?;
@@ -873,7 +875,10 @@ fn command_withdraw(
 
     // Go through prepared accounts and withdraw/claim them
     for withdraw_stake in withdraw_from {
-        let withdraw_amount = pool_data.calc_pool_withdraw_amount(withdraw_stake.amount).unwrap() + 1;
+        let withdraw_amount = pool_data
+            .calc_pool_withdraw_amount(withdraw_stake.amount)
+            .unwrap()
+            + 1;
         println!(
             "Withdrawing from account {}, amount {} SOL, {} pool tokens",
             withdraw_stake.pubkey,

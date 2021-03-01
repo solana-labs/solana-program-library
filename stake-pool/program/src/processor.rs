@@ -146,15 +146,7 @@ impl Processor {
 
         let ix = stake::split_only(stake_account.key, authority.key, amount, split_stake.key);
 
-        invoke_signed(
-            &ix,
-            &[
-                stake_account,
-                split_stake,
-                authority,
-            ],
-            signers,
-        )
+        invoke_signed(&ix, &[stake_account, split_stake, authority], signers)
     }
 
     /// Issue a stake_merge instruction.
