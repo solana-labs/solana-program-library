@@ -289,7 +289,7 @@ fn process_init_reserve(
     spl_token_init_account(TokenInitializeAccountParams {
         account: destination_collateral_info.clone(),
         mint: reserve_collateral_mint_info.clone(),
-        owner: lending_market_authority_info.clone(),
+        owner: user_transfer_authority_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_id.clone(),
     })?;
