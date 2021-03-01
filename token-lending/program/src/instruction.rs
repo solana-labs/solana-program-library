@@ -198,44 +198,30 @@ pub enum LendingInstruction {
     ///   .. `[writable]` Additional reserve accounts.
     AccrueReserveInterest,
 
-    /// Make a flash loan.
-    ///
-    ///   0. `[writable]` Destination liquidity token account, minted by reserve liquidity mint.
-    ///   1. `[writable]` Reserve account.
-    ///   2. `[]` Lending market account.
-    ///   3. `[]` Derived lending market authority.
-    ///   4. `[]` Temporary memory
-    ///   5. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
-    ///   call it `executeOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
-    ///   6. `[]` Flash Loan Receiver Program Derived Account
-    ///   7. `[]` Token program id
-    /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`.
-    FlashLoan {
-        /// Amount to borrow
-        liquidity_amount: u64,
-    },
-
     /// Start a flash loan. In the same transaction there must be a FlashLoanEnd.
     ///
     ///   0. `[writable]` Destination liquidity token account, minted by reserve liquidity mint.
     ///   1. `[writable]` Reserve account.
     ///   2. `[]` Lending market account.
     ///   3. `[]` Derived lending market authority.
-    ///   4. `[writable]` Temporary memory
+    ///   4. `[writable]` temporary memory.
     ///   5. `[]` Token program id
+    ///   6. `[]` Instruction Sys var
     FlashLoanStart {
+        /// The amount that is borrowed.
         liquidity_amount: u64,
+        /// The index of the `FlashLoanEnd` instruction in the transaction.
+        flash_loan_end_idx: u8,
     },
 
-    /// Start a flash loan. In the same transaction there must be a
+    /// End a flash loan.
     ///
-    ///   0. `[writable]` Destination liquidity token account, minted by reserve liquidity mint.
-    ///   1. `[writable]` Reserve account.
-    ///   2. `[]` Lending market account.
-    ///   3. `[]` Derived lending market authority.
-    ///   4. `[]` Temporary memory
-    ///   5. `[]` Token program id
-    FlashLoanEnd
+    ///   0. `[]` Reserve account.
+    ///   1. `[]` Lending market account.
+    ///   2. `[]` Derived lending market authority.
+    ///   3. `[]` temporary memory.
+    ///   4. `[]` Token program id
+    FlashLoanEnd,
 }
 
 impl LendingInstruction {
@@ -307,8 +293,10 @@ impl LendingInstruction {
             8 => Self::AccrueReserveInterest,
             9 => {
                 let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
-                Self::FlashLoan { liquidity_amount }
+                let (flash_loan_end_idx, _rest) = Self::unpack_u8(rest)?;
+                Self::FlashLoanStart { liquidity_amount, flash_loan_end_idx }
             }
+            10 => Self::FlashLoanEnd,
             _ => return Err(LendingError::InstructionUnpackError.into()),
         })
     }
@@ -419,9 +407,13 @@ impl LendingInstruction {
             Self::AccrueReserveInterest => {
                 buf.push(8);
             }
-            Self::FlashLoan {liquidity_amount} => {
+            Self::FlashLoanStart {liquidity_amount, flash_loan_end_idx} => {
                 buf.push(9);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+                buf.extend_from_slice(&flash_loan_end_idx.to_le_bytes());
+            }
+            Self::FlashLoanEnd => {
+                buf.push(10);
             }
         }
         buf
@@ -760,33 +752,59 @@ pub fn accrue_reserve_interest(program_id: Pubkey, reserve_pubkeys: Vec<Pubkey>)
     }
 }
 
-/// Creates a `Flash Loan` instruction
-pub fn flash_loan(
+/// Creates a `Flash Loan Start` instruction
+pub fn flash_loan_start(
     program_id: Pubkey,
     liquidity_amount: u64,
+    flash_loan_end_idx: u8,
     destination_account_pubkey: Pubkey,
     reserve_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
-    derived_lending_market_authority: Pubkey,
-    user_transfer_authority: Pubkey,
     memory: Pubkey,
-    program_account_pubkey: Pubkey,
 ) -> Instruction {
-    let mut accounts = vec![
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+
+    let accounts = vec![
         AccountMeta::new(destination_account_pubkey, false),
         AccountMeta::new(reserve_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
-        AccountMeta::new_readonly(derived_lending_market_authority, false),
-        AccountMeta::new_readonly(user_transfer_authority, true),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new(memory, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(sysvar::instructions::id(), false),
+
+    ];
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::FlashLoanStart {
+            liquidity_amount,
+            flash_loan_end_idx,
+        }.pack(),
+    }
+}
+
+/// Creates a `Flash Loan Start` instruction
+pub fn flash_loan_end(
+    program_id: Pubkey,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    memory: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(reserve_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(memory, false),
-        AccountMeta::new_readonly(program_account_pubkey, false), // does this needs to be a signer?
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
     Instruction {
         program_id,
         accounts,
-        data: LendingInstruction::FlashLoan {
-            liquidity_amount,
-        }.pack(),
+        data: LendingInstruction::FlashLoanEnd.pack(),
     }
 }
