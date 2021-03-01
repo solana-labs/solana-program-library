@@ -195,7 +195,7 @@ pub enum TimelockInstruction {
     /// Mints voting tokens for a destination account to be used during the voting process.
     ///
     ///   0. `[writable]` Timelock set account.
-    ///   1. `[writable]` Voting account.
+    ///   1. `[writable]` Initialized Voting account.
     ///   2. `[writable]` Voting mint account.
     ///   3. `[writable]` Signatory account
     ///   4. `[writable]` Signatory validation account.
