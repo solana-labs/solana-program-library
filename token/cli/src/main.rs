@@ -413,11 +413,13 @@ fn resolve_mint_info(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_transfer(
     config: &Config,
     sender: Pubkey,
     ui_amount: Option<f64>,
     recipient: Pubkey,
+    allow_empty_recipient: bool,
     fund_recipient: bool,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
@@ -453,67 +455,65 @@ fn command_transfer(
     let mut recipient_token_account = recipient;
     let mut minimum_balance_for_rent_exemption = 0;
 
-    if let Some(account_data) = config
+    let recipient_account_owner = config
         .rpc_client
         .get_account_with_commitment(&recipient, config.rpc_client.commitment())?
         .value
-    {
-        if account_data.owner == system_program::id() {
-            recipient_token_account = get_associated_token_address(&recipient, &mint_pubkey);
-            println!(
-                "  Recipient associated token account: {}",
-                recipient_token_account
-            );
+        .map(|account_data| account_data.owner);
 
-            let needs_funding = if let Some(recipient_token_account_data) = config
-                .rpc_client
-                .get_account_with_commitment(
-                    &recipient_token_account,
-                    config.rpc_client.commitment(),
-                )?
-                .value
-            {
-                if recipient_token_account_data.owner == system_program::id() {
-                    true
-                } else if recipient_token_account_data.owner == spl_token::id() {
-                    false
-                } else {
-                    return Err(
-                        format!("Error: Unsupported recipient address: {}", recipient).into(),
-                    );
-                }
-            } else {
+    if recipient_account_owner.is_none() && !allow_empty_recipient {
+        return Err("Error: The recipient has no balance. \
+                            Add `--allow-empty-recipient` to complete the transfer \
+                           "
+        .into());
+    }
+
+    if Some(spl_token::id()) != recipient_account_owner {
+        recipient_token_account = get_associated_token_address(&recipient, &mint_pubkey);
+        println!(
+            "  Recipient associated token account: {}",
+            recipient_token_account
+        );
+
+        let needs_funding = if let Some(recipient_token_account_data) = config
+            .rpc_client
+            .get_account_with_commitment(&recipient_token_account, config.rpc_client.commitment())?
+            .value
+        {
+            if recipient_token_account_data.owner == system_program::id() {
                 true
-            };
-
-            if needs_funding {
-                if fund_recipient {
-                    minimum_balance_for_rent_exemption += config
-                        .rpc_client
-                        .get_minimum_balance_for_rent_exemption(Account::LEN)?;
-                    println!(
-                        "  Funding recipient: {} ({} SOL)",
-                        recipient_token_account,
-                        lamports_to_sol(minimum_balance_for_rent_exemption)
-                    );
-                    instructions.push(create_associated_token_account(
-                        &config.fee_payer,
-                        &recipient,
-                        &mint_pubkey,
-                    ));
-                } else {
-                    return Err(
-                        "Error: Recipient's associated token account does not exist. \
-                                        Add `--fund-recipient` to fund their account"
-                            .into(),
-                    );
-                }
+            } else if recipient_token_account_data.owner == spl_token::id() {
+                false
+            } else {
+                return Err(format!("Error: Unsupported recipient address: {}", recipient).into());
             }
-        } else if account_data.owner != spl_token::id() {
-            return Err(format!("Error: Unsupported recipient address: {}", recipient).into());
+        } else {
+            true
+        };
+
+        if needs_funding {
+            if fund_recipient {
+                minimum_balance_for_rent_exemption += config
+                    .rpc_client
+                    .get_minimum_balance_for_rent_exemption(Account::LEN)?;
+                println!(
+                    "  Funding recipient: {} ({} SOL)",
+                    recipient_token_account,
+                    lamports_to_sol(minimum_balance_for_rent_exemption)
+                );
+                instructions.push(create_associated_token_account(
+                    &config.fee_payer,
+                    &recipient,
+                    &mint_pubkey,
+                ));
+            } else {
+                return Err(
+                    "Error: Recipient's associated token account does not exist. \
+                                    Add `--fund-recipient` to fund their account"
+                        .into(),
+                );
+            }
         }
-    } else {
-        return Err(format!("Error: Recipient does not exist: {}", recipient).into());
     }
 
     instructions.push(transfer_checked(
@@ -1292,6 +1292,12 @@ fn main() {
                                the associated token account")
                 )
                 .arg(
+                    Arg::with_name("allow_empty_recipient")
+                        .long("allow-empty-recipient")
+                        .takes_value(false)
+                        .help("Complete the transfer even if the recipient account does not exist")
+                )
+                .arg(
                     Arg::with_name("fund_recipient")
                         .long("fund-recipient")
                         .takes_value(false)
@@ -1801,11 +1807,13 @@ fn main() {
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(&arg_matches, MINT_DECIMALS_ARG.name);
             let fund_recipient = matches.is_present("fund_recipient");
+            let allow_empty_recipient = matches.is_present("allow_empty_recipient");
             command_transfer(
                 &config,
                 sender,
                 amount,
                 recipient,
+                allow_empty_recipient,
                 fund_recipient,
                 mint_address,
                 mint_decimals,

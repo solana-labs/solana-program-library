@@ -110,6 +110,7 @@ fn process_init_lending_market(
     assert_rent_exempt(rent, lending_market_info)?;
     let bump_seed = Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
     let mut new_lending_market: LendingMarket = assert_uninitialized(lending_market_info)?;
+    let bump_seed = Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
     new_lending_market.version = PROGRAM_VERSION;
     new_lending_market.bump_seed = bump_seed;
     new_lending_market.owner = market_owner;
@@ -301,7 +302,7 @@ fn process_init_reserve(
     spl_token_init_account(TokenInitializeAccountParams {
         account: destination_collateral_info.clone(),
         mint: reserve_collateral_mint_info.clone(),
-        owner: lending_market_authority_info.clone(),
+        owner: user_transfer_authority_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_id.clone(),
     })?;

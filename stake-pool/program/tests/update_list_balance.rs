@@ -2,12 +2,14 @@
 
 mod helpers;
 
-use crate::helpers::TEST_STAKE_AMOUNT;
-use helpers::*;
-use solana_program::pubkey::Pubkey;
-use solana_program_test::BanksClient;
-use solana_sdk::signature::Signer;
-use spl_stake_pool::*;
+use {
+    crate::helpers::TEST_STAKE_AMOUNT,
+    helpers::*,
+    solana_program::{native_token, pubkey::Pubkey},
+    solana_program_test::BanksClient,
+    solana_sdk::signature::Signer,
+    spl_stake_pool::*,
+};
 
 async fn get_list_sum(banks_client: &mut BanksClient, validator_stake_list_key: &Pubkey) -> u64 {
     let validator_stake_list = banks_client
@@ -64,7 +66,8 @@ async fn test_update_list_balance() {
     }
 
     let rent = banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::StakeState>()) + 1;
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::StakeState>())
+        + native_token::sol_to_lamports(1.0);
 
     // Check current balance in the list
     assert_eq!(
