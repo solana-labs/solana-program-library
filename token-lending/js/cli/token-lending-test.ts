@@ -9,7 +9,7 @@ import {
   PublicKey,
   BPF_LOADER_PROGRAM_ID,
 } from "@solana/web3.js";
-import { Token } from "@solana/spl-token";
+import { Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 import { LendingMarket } from "../client";
 import { Store } from "../client/util/store";
@@ -46,8 +46,8 @@ export async function createLendingMarket(): Promise<void> {
     100000000000 /* wag */
   );
 
-  console.log("creating quote token mint");
   const quoteMintAuthority = new Account();
+  console.log("Creating quote token mint authority", quoteMintAuthority.publicKey.toBase58());
   const quoteTokenMint = await Token.createMint(
     connection,
     payer,
@@ -56,8 +56,10 @@ export async function createLendingMarket(): Promise<void> {
     2,
     tokenProgramId
   );
-
+  
+  console.log("quote token mint: ", quoteTokenMint.publicKey.toBase58())
   const lendingMarketAccount = new Account();
+  console.log("creating lending market", lendingMarketAccount.publicKey.toBase58());
   await LendingMarket.create({
     connection,
     tokenProgramId,
@@ -122,10 +124,7 @@ async function GetPrograms(
       throw new Error("Program ids not found");
     }
   } catch (err) {
-    tokenProgramId = await loadProgram(
-      connection,
-      "../../target/bpfel-unknown-unknown/release/spl_token.so"
-    );
+    tokenProgramId = TOKEN_PROGRAM_ID;
     tokenLendingProgramId = await loadProgram(
       connection,
       "../../target/bpfel-unknown-unknown/release/spl_token_lending.so"
