@@ -395,7 +395,9 @@ fn command_vsa_remove(
 
     // Calculate amount of tokens to burn
     let stake_account = config.rpc_client.get_account(&stake)?;
-    let tokens_to_burn = stake_amount_to_pool_tokens(&pool_data, stake_account.lamports);
+    let tokens_to_burn = pool_data
+        .calc_pool_withdraw_amount(stake_account.lamports)
+        .unwrap();
 
     // Check balance and mint
     let account_data = config.rpc_client.get_account_data(&burn_from)?;
@@ -736,22 +738,6 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
     }
 }
 
-fn stake_amount_to_pool_tokens(pool_data: &StakePool, amount: u64) -> u64 {
-    (amount as u128)
-        .checked_mul(pool_data.pool_total as u128)
-        .unwrap()
-        .checked_div(pool_data.stake_total as u128)
-        .unwrap() as u64
-}
-
-fn pool_tokens_to_stake_amount(pool_data: &StakePool, tokens: u64) -> u64 {
-    (tokens as u128)
-        .checked_mul(pool_data.stake_total as u128)
-        .unwrap()
-        .checked_div(pool_data.pool_total as u128)
-        .unwrap() as u64
-}
-
 #[derive(PartialEq, Debug)]
 struct WithdrawAccount {
     pubkey: Pubkey,
@@ -859,7 +845,7 @@ fn command_withdraw(
     }
 
     // Convert pool tokens amount to lamports
-    let sol_withdraw_amount = pool_tokens_to_stake_amount(&pool_data, amount);
+    let sol_withdraw_amount = pool_data.calc_lamports_amount(amount).unwrap();
 
     // Get the list of accounts to withdraw from
     let withdraw_from: Vec<WithdrawAccount> =
@@ -869,8 +855,6 @@ fn command_withdraw(
     let mut instructions: Vec<Instruction> = vec![];
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
     let stake_receiver_account = Keypair::new(); // Will be added to signers if creating new account
-
-    let mut total_rent_free_balances: u64 = 0;
 
     instructions.push(
         // Approve spending token
@@ -887,12 +871,19 @@ fn command_withdraw(
     // Use separate mutable variable because withdraw might create a new account
     let mut stake_receiver: Option<Pubkey> = *stake_receiver_param;
 
+    let mut total_rent_free_balances = 0;
+
     // Go through prepared accounts and withdraw/claim them
     for withdraw_stake in withdraw_from {
+        let withdraw_amount = pool_data
+            .calc_pool_withdraw_amount(withdraw_stake.amount)
+            .unwrap()
+            + 1;
         println!(
-            "Withdrawing from account {}, amount {} SOL",
+            "Withdrawing from account {}, amount {} SOL, {} pool tokens",
             withdraw_stake.pubkey,
-            lamports_to_sol(withdraw_stake.amount)
+            lamports_to_sol(withdraw_stake.amount),
+            lamports_to_sol(withdraw_amount),
         );
 
         if stake_receiver.is_none() {
@@ -936,7 +927,7 @@ fn command_withdraw(
             &pool_data.pool_mint,
             &spl_token::id(),
             &stake_program_id(),
-            withdraw_stake.amount,
+            withdraw_amount,
         )?);
     }
 
