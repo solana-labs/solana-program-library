@@ -38,107 +38,107 @@ pub fn main() {
     println!("{}", path);
     let payer = read_keypair_file(path).unwrap();
 
-    // let mint_account = Keypair::new();
-    // println!("mint account public key is: {}", mint_account.pubkey());
-    // let create_mint_ix = create_account(
-    //     &payer.pubkey(),
-    //     &mint_account.pubkey(),
-    //     client
-    //         .get_minimum_balance_for_rent_exemption(Mint::LEN)
-    //         .unwrap(),
-    //     Mint::LEN as u64,
-    //     &token_pubkey,
-    // );
-    // let init_mint_ix = initialize_mint(
-    //     &token_pubkey,
-    //     &mint_account.pubkey(),
-    //     &payer.pubkey(),
-    //         Option::None,
-    //     6,
-    // ).unwrap();
-    //
-    // let token_account = Keypair::new();
-    // let token_account_pubkey = token_account.pubkey();
-    // println!("token account public key is: {}", token_account.pubkey());
-    // let create_token_account = create_account(
-    //     &payer.pubkey(),
-    //     &token_account.pubkey(),
-    //     client
-    //         .get_minimum_balance_for_rent_exemption(Token::LEN)
-    //         .unwrap(),
-    //     Token::LEN as u64,
-    //     &token_pubkey,
-    // );
-    // let init_token_account_ix = initialize_account(
-    //     &token_pubkey,
-    //     &token_account.pubkey(),
-    //     &mint_account.pubkey(),
-    //     &payer.pubkey(),
-    // ).unwrap();
-    //
-    // let mint_to_ix = mint_to(
-    //     &token_pubkey,
-    //     &mint_account.pubkey(),
-    //     &token_account.pubkey(),
-    //     &payer.pubkey(),
-    //     &[&payer.pubkey()],
-    //     10000000000000,
-    // ).unwrap();
-    //
-    //
-    // let mut transaction = Transaction::new_with_payer(
-    //     &[
-    //         create_mint_ix,
-    //         init_mint_ix,
-    //         create_token_account,
-    //         init_token_account_ix,
-    //         mint_to_ix,
-    //         create_memory_ix,
-    //     ],
-    //     Some(&payer.pubkey()),
-    // );
-    //
-    // let recent_blockhash = client.get_recent_blockhash().unwrap().0;
-    // transaction.sign(&[&payer, &mint_account, &token_account, &memory_account], recent_blockhash);
-    // client.send_and_confirm_transaction(&transaction).unwrap();
-    //
-    //
-    // let quote_token_mint = mint_account.pubkey();
-    // let (lending_market_owner, lending_market_pubkey, _lending_market) =
-    //     create_lending_market(&mut client, quote_token_mint, &payer);
-    // println!("created lending market: {}", lending_market_pubkey);
-    // let token_liquidity_source = token_account.pubkey();
-    // let token_reserve_config = ReserveConfig {
-    //     optimal_utilization_rate: 80,
-    //     loan_to_value_ratio: 75,
-    //     liquidation_bonus: 5,
-    //     liquidation_threshold: 80,
-    //     min_borrow_rate: 0,
-    //     optimal_borrow_rate: 4,
-    //     max_borrow_rate: 30,
-    //     fees: ReserveFees {
-    //         borrow_fee_wad: 100_000_000_000_000, // 1 bp
-    //         host_fee_percentage: 20,
-    //     },
-    // };
-    //
-    // let (usdc_reserve_pubkey, liquidity_supply, _usdc_reserve) = create_reserve(
-    //     &mut client,
-    //     token_reserve_config,
-    //     lending_market_pubkey,
-    //     &lending_market_owner,
-    //     None,
-    //     token_liquidity_source,
-    //     &payer,
-    // );
-    //
-    // println!("Created token reserve with pubkey: {} , liqudiity supply is {}", usdc_reserve_pubkey, liquidity_supply);
+    let mint_account = Keypair::new();
+    println!("mint account public key is: {}", mint_account.pubkey());
+    let create_mint_ix = create_account(
+        &payer.pubkey(),
+        &mint_account.pubkey(),
+        client
+            .get_minimum_balance_for_rent_exemption(Mint::LEN)
+            .unwrap(),
+        Mint::LEN as u64,
+        &token_pubkey,
+    );
+    let init_mint_ix = initialize_mint(
+        &token_pubkey,
+        &mint_account.pubkey(),
+        &payer.pubkey(),
+            Option::None,
+        6,
+    ).unwrap();
+
+    let token_account = Keypair::new();
+    let token_account_pubkey = token_account.pubkey();
+    println!("token account public key is: {}", token_account.pubkey());
+    let create_token_account = create_account(
+        &payer.pubkey(),
+        &token_account.pubkey(),
+        client
+            .get_minimum_balance_for_rent_exemption(Token::LEN)
+            .unwrap(),
+        Token::LEN as u64,
+        &token_pubkey,
+    );
+    let init_token_account_ix = initialize_account(
+        &token_pubkey,
+        &token_account.pubkey(),
+        &mint_account.pubkey(),
+        &payer.pubkey(),
+    ).unwrap();
+
+    let mint_to_ix = mint_to(
+        &token_pubkey,
+        &mint_account.pubkey(),
+        &token_account.pubkey(),
+        &payer.pubkey(),
+        &[&payer.pubkey()],
+        10000000000000,
+    ).unwrap();
 
 
-    let usdc_reserve_pubkey= Pubkey::from_str("GJzyrshGijbQDghMnJh4Qi6xBrubQsVXKxVxo5pvHcKQ").unwrap();
-    let lending_market_pubkey =  Pubkey::from_str("5o8EvxmsXYctyKkbDCypC7tNsw4a74mjECeb1bTSuQuD").unwrap();
-    let token_account_pubkey = Pubkey::from_str("78fgrduoYqEyM615MgCPa38oHEz9QoTTj3PTVo7S5Mq4").unwrap();
-    let liquidity_supply = Pubkey::from_str("Bt7Qifj7xvciRn3ywy1LSsXDFUUBWyNPTDbJaDpweGo5").unwrap();
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            create_mint_ix,
+            init_mint_ix,
+            create_token_account,
+            init_token_account_ix,
+            mint_to_ix,
+            create_memory_ix,
+        ],
+        Some(&payer.pubkey()),
+    );
+
+    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
+    transaction.sign(&[&payer, &mint_account, &token_account, &memory_account], recent_blockhash);
+    client.send_and_confirm_transaction(&transaction).unwrap();
+
+
+    let quote_token_mint = mint_account.pubkey();
+    let (lending_market_owner, lending_market_pubkey, _lending_market) =
+        create_lending_market(&mut client, quote_token_mint, &payer);
+    println!("created lending market: {}", lending_market_pubkey);
+    let token_liquidity_source = token_account.pubkey();
+    let token_reserve_config = ReserveConfig {
+        optimal_utilization_rate: 80,
+        loan_to_value_ratio: 75,
+        liquidation_bonus: 5,
+        liquidation_threshold: 80,
+        min_borrow_rate: 0,
+        optimal_borrow_rate: 4,
+        max_borrow_rate: 30,
+        fees: ReserveFees {
+            borrow_fee_wad: 100_000_000_000_000, // 1 bp
+            host_fee_percentage: 20,
+        },
+    };
+
+    let (usdc_reserve_pubkey, liquidity_supply, _usdc_reserve) = create_reserve(
+        &mut client,
+        token_reserve_config,
+        lending_market_pubkey,
+        &lending_market_owner,
+        None,
+        token_liquidity_source,
+        &payer,
+    );
+
+    println!("Created token reserve with pubkey: {} , liqudiity supply is {}", usdc_reserve_pubkey, liquidity_supply);
+
+
+    // let usdc_reserve_pubkey= Pubkey::from_str("GJzyrshGijbQDghMnJh4Qi6xBrubQsVXKxVxo5pvHcKQ").unwrap();
+    // let lending_market_pubkey =  Pubkey::from_str("5o8EvxmsXYctyKkbDCypC7tNsw4a74mjECeb1bTSuQuD").unwrap();
+    // let token_account_pubkey = Pubkey::from_str("78fgrduoYqEyM615MgCPa38oHEz9QoTTj3PTVo7S5Mq4").unwrap();
+    // let liquidity_supply = Pubkey::from_str("Bt7Qifj7xvciRn3ywy1LSsXDFUUBWyNPTDbJaDpweGo5").unwrap();
 
     let mut transaction = Transaction::new_with_payer(
         &[

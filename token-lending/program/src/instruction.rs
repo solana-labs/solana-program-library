@@ -753,7 +753,7 @@ pub fn accrue_reserve_interest(program_id: Pubkey, reserve_pubkeys: Vec<Pubkey>)
     }
 }
 
-/// Creates a `Flash Loan Start` instruction
+/// Creates a `FlashLoanStart` instruction
 pub fn flash_loan_start(
     program_id: Pubkey,
     liquidity_amount: u64,
@@ -787,7 +787,7 @@ pub fn flash_loan_start(
     }
 }
 
-/// Creates a `Flash Loan Start` instruction
+/// Creates a `FlashLoanEnd` instruction
 pub fn flash_loan_end(
     program_id: Pubkey,
     reserve_pubkey: Pubkey,
