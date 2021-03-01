@@ -103,6 +103,7 @@ impl Pack for Pool {
 }
 
 mod test {
+    #[cfg(test)]
     use super::*;
 
     #[test]
