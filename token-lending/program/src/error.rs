@@ -128,7 +128,9 @@ pub enum LendingError {
     /// Invalid flash loan return instruction
     #[error("Invalid flash loan return instruction.")]
     InvalidFlashLoanReturn,
-
+    /// Error parsing instruction
+    #[error("Error parsing instruction.")]
+    ErrorParsingInstruction,
 }
 
 impl From<LendingError> for ProgramError {

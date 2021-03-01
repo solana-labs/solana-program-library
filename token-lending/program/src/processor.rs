@@ -24,8 +24,8 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
-use spl_token::state::Account as Token;
-use spl_token::solana_program::sysvar::instructions::load_instruction_at;
+use spl_token::state::{Account as Token, Account};
+use spl_token::solana_program::sysvar::instructions::{load_instruction_at, load_current_index};
 use crate::instruction::LendingInstruction::FlashLoanEnd;
 use core::mem;
 use uint::byteorder::{LittleEndian, ByteOrder};
@@ -1191,14 +1191,14 @@ fn process_accrue_interest(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
 }
 
 fn process_flash_loan_start(
-    program_id: &Pubkey, liquidity_amount: u64, flash_loan_return_idx: u8, accounts: &[AccountInfo]
+    program_id: &Pubkey, liquidity_amount: u64, flash_loan_end_idx: u8, accounts: &[AccountInfo]
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let destination_token_account_info = next_account_info(account_info_iter)?;
     let reserve_account_info = next_account_info(account_info_iter)?;
+    let reserve_liquidity_account_info = next_account_info(account_info_iter)?;
     let lending_market_account_info = next_account_info(account_info_iter)?;
     let derived_lending_market_account_info = next_account_info(account_info_iter)?;
-    let temp_memory = next_account_info(account_info_iter)?;
     let token_account = next_account_info(account_info_iter)?;
     let instruction_account = next_account_info(account_info_iter)?;
 
@@ -1219,12 +1219,12 @@ fn process_flash_loan_start(
     }
 
     let flash_loan_end_instruction = load_instruction_at(
-        flash_loan_return_idx as usize,
+        flash_loan_end_idx as usize,
         &instruction_account.try_borrow_data()?,
-    ).map_err(|_| LendingError::InvalidFlashLoanReturn)?;
+    ).map_err(|_| LendingError::ErrorParsingInstruction)?;
 
-    // Question: not sure why we need this &....
     if &flash_loan_end_instruction.program_id != program_id {
+        msg!("program id not matching: {}, {}", &flash_loan_end_instruction.program_id, program_id);
         return Err(LendingError::InvalidFlashLoanReturn.into());
     }
 
@@ -1233,8 +1233,6 @@ fn process_flash_loan_start(
         msg!("Not a flash loan end instruction.");
         return Err(LendingError::InvalidFlashLoanReturn.into());
     }
-
-    // TODO: check that the flash loan temp memory is use in flash loan end.
 
     let authority_signer_seeds = &[
         lending_market_account_info.key.as_ref(),
@@ -1247,25 +1245,10 @@ fn process_flash_loan_start(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-
-    if temp_memory.owner != program_id {
-        msg!("Temp memory account is not owned by the program.");
-        return Err(ProgramError::IncorrectProgramId);
-    }
-
-    // The data must be large enough to hold a u64 count
-    if temp_memory.try_data_len()? < mem::size_of::<u64>() {
-        msg!("Temp memory account data length too small for u64");
-        return Err(ProgramError::InvalidAccountData);
-    }
-
-
-    let mut data = temp_memory.try_borrow_mut_data()?;
-    LittleEndian::write_u64(&mut data[0..], reserve.liquidity.available_amount);
-
+    msg!("Available amount: {}, transfer amount: {}", reserve.liquidity.available_amount, liquidity_amount);
     // borrow liquidity
     spl_token_transfer(TokenTransferParams {
-        source: reserve_account_info.clone(),
+        source: reserve_liquidity_account_info.clone(),
         destination: destination_token_account_info.clone(),
         amount: liquidity_amount.clone(),
         authority: derived_lending_market_account_info.clone(),
@@ -1281,11 +1264,8 @@ fn process_flash_loan_end(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let reserve_account_info = next_account_info(account_info_iter)?;
+    let reserve_liquidity_supply = next_account_info(account_info_iter)?;
     let lending_market_account_info = next_account_info(account_info_iter)?;
-    let _derived_lending_market_account_info = next_account_info(account_info_iter)?;
-    let temp_memory = next_account_info(account_info_iter)?;
-    let token_account = next_account_info(account_info_iter)?;
-
 
     if reserve_account_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
@@ -1297,9 +1277,10 @@ fn process_flash_loan_end(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let returned_amount = LittleEndian::read_u64(&temp_memory.try_borrow_data()?);
-    if reserve.liquidity.available_amount < returned_amount {
-        msg!("In sufficient returned liquidity for flash loan");
+    let token_account = Account::unpack_from_slice(&reserve_liquidity_supply.try_borrow_data()?)?;
+    // The invariant is that the available_amount is always the same as the amount in the token account.
+    if reserve.liquidity.available_amount > token_account.amount {
+        msg!("Insufficient returned liquidity for flash loan: {}, while it requires: {}", token_account.amount, reserve.liquidity.available_amount);
         return Err(LendingError::InsufficientLiquidity.into());
     }
 
