@@ -200,10 +200,10 @@ pub enum LendingInstruction {
 
     /// Deposit additional collateral to an obligation.
     ///
-    ///   0. `[writable]` Source collateral token account, minted by deposit reserve collateral
-    ///                     mint. $authority can transfer $collateral_amount
-    ///   1. `[]` Deposit reserve account.
-    ///   2. `[writable]` Deposit reserve collateral supply SPL Token account
+    ///   0. `[writable]` Source collateral token account, minted by deposit reserve collateral mint,
+    ///                     $authority can transfer $collateral_amount
+    ///   1. `[writable]` Destination deposit reserve collateral supply SPL Token account
+    ///   2. `[]` Deposit reserve account.
     ///   3. `[writable]` Obligation
     ///   4. `[writable]` Obligation token mint
     ///   5. `[writable]` Obligation token output
@@ -218,10 +218,10 @@ pub enum LendingInstruction {
 
     /// Withdraw excess collateral from an obligation. The loan must remain healthy.
     ///
-    ///   0. `[writable]` Destination collateral token account, minted by withdraw reserve
+    ///   0. `[writable]` Source withdraw reserve collateral supply SPL Token account
+    ///   1. `[writable]` Destination collateral token account, minted by withdraw reserve
     ///                     collateral mint. $authority can transfer $collateral_amount
-    ///   1. `[]` Withdraw reserve account.
-    ///   2. `[writable]` Withdraw reserve collateral supply SPL Token account
+    ///   2. `[]` Withdraw reserve account.
     ///   3. `[]` Borrow reserve account.
     ///   4. `[writable]` Obligation
     ///   5. `[writable]` Obligation token mint
@@ -776,8 +776,8 @@ pub fn deposit_obligation_collateral(
     program_id: Pubkey,
     collateral_amount: u64,
     source_collateral_pubkey: Pubkey,
+    destination_collateral_pubkey: Pubkey,
     deposit_reserve_pubkey: Pubkey,
-    deposit_reserve_collateral_supply_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
     obligation_mint_pubkey: Pubkey,
     obligation_output_pubkey: Pubkey,
@@ -789,8 +789,8 @@ pub fn deposit_obligation_collateral(
         program_id,
         accounts: vec![
             AccountMeta::new(source_collateral_pubkey, false),
+            AccountMeta::new(destination_collateral_pubkey, false),
             AccountMeta::new_readonly(deposit_reserve_pubkey, false),
-            AccountMeta::new(deposit_reserve_collateral_supply_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new(obligation_mint_pubkey, false),
             AccountMeta::new(obligation_output_pubkey, false),
@@ -808,9 +808,9 @@ pub fn deposit_obligation_collateral(
 pub fn withdraw_obligation_collateral(
     program_id: Pubkey,
     collateral_amount: u64,
+    source_collateral_pubkey: Pubkey,
     destination_collateral_pubkey: Pubkey,
     withdraw_reserve_pubkey: Pubkey,
-    withdraw_reserve_collateral_supply_pubkey: Pubkey,
     borrow_reserve_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
     obligation_mint_pubkey: Pubkey,
@@ -825,9 +825,9 @@ pub fn withdraw_obligation_collateral(
     Instruction {
         program_id,
         accounts: vec![
+            AccountMeta::new(source_collateral_pubkey, false),
             AccountMeta::new(destination_collateral_pubkey, false),
             AccountMeta::new_readonly(withdraw_reserve_pubkey, false),
-            AccountMeta::new(withdraw_reserve_collateral_supply_pubkey, false),
             AccountMeta::new_readonly(borrow_reserve_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new(obligation_mint_pubkey, false),

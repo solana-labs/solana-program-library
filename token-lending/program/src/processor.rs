@@ -1196,8 +1196,8 @@ fn process_deposit_obligation_collateral(
 
     let account_info_iter = &mut accounts.iter();
     let source_collateral_info = next_account_info(account_info_iter)?;
+    let destination_collateral_info = next_account_info(account_info_iter)?;
     let deposit_reserve_info = next_account_info(account_info_iter)?;
-    let deposit_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_token_mint_info = next_account_info(account_info_iter)?;
     let obligation_token_output_info = next_account_info(account_info_iter)?;
@@ -1225,12 +1225,12 @@ fn process_deposit_obligation_collateral(
     if deposit_reserve.config.loan_to_value_ratio == 0 {
         return Err(LendingError::ReserveCollateralDisabled.into());
     }
-    if &deposit_reserve.collateral.supply_pubkey != deposit_reserve_collateral_supply_info.key {
-        msg!("Invalid deposit or withdraw reserve collateral supply account input");
+    if &deposit_reserve.collateral.supply_pubkey != destination_collateral_info.key {
+        msg!("Invalid deposit reserve collateral supply account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &deposit_reserve.collateral.supply_pubkey == source_collateral_info.key {
-        msg!("Cannot use deposit reserve collateral supply as source or destination collateral account input");
+        msg!("Cannot use deposit reserve collateral supply as source collateral account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -1240,7 +1240,7 @@ fn process_deposit_obligation_collateral(
     }
 
     if &obligation.collateral_reserve != deposit_reserve_info.key {
-        msg!("Invalid deposit or withdraw reserve account");
+        msg!("Invalid deposit reserve account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -1277,7 +1277,7 @@ fn process_deposit_obligation_collateral(
     // deposit collateral
     spl_token_transfer(TokenTransferParams {
         source: source_collateral_info.clone(),
-        destination: deposit_reserve_collateral_supply_info.clone(),
+        destination: destination_collateral_info.clone(),
         amount: collateral_amount,
         authority: user_transfer_authority_info.clone(),
         authority_signer_seeds: &[],
@@ -1308,9 +1308,9 @@ fn process_withdraw_obligation_collateral(
     }
 
     let account_info_iter = &mut accounts.iter();
+    let source_collateral_info = next_account_info(account_info_iter)?;
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
-    let withdraw_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let borrow_reserve_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_token_mint_info = next_account_info(account_info_iter)?;
@@ -1362,13 +1362,15 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::DuplicateReserve.into());
     }
 
-    if &withdraw_reserve.collateral.supply_pubkey != withdraw_reserve_collateral_supply_info.key {
-        msg!("Invalid deposit or withdraw reserve collateral supply account input");
+    if &withdraw_reserve.collateral.supply_pubkey != source_collateral_info.key {
+        msg!("Invalid withdraw reserve collateral supply account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
     if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
-        msg!("Cannot use deposit reserve collateral supply as source or destination collateral account input");
+        msg!(
+            "Cannot use withdraw reserve collateral supply as destination collateral account input"
+        );
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -1396,7 +1398,7 @@ fn process_withdraw_obligation_collateral(
     }
 
     if &obligation.collateral_reserve != withdraw_reserve_info.key {
-        msg!("Invalid deposit or withdraw reserve account");
+        msg!("Invalid withdraw reserve account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -1482,7 +1484,7 @@ fn process_withdraw_obligation_collateral(
 
     // withdraw collateral
     spl_token_transfer(TokenTransferParams {
-        source: withdraw_reserve_collateral_supply_info.clone(),
+        source: source_collateral_info.clone(),
         destination: destination_collateral_info.clone(),
         amount: collateral_amount,
         authority: lending_market_authority_info.clone(),
