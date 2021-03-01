@@ -106,11 +106,7 @@ pub async fn approve_delegate(
 }
 
 pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -> u64 {
-    let token_account = banks_client
-        .get_account(token.clone())
-        .await
-        .unwrap()
-        .unwrap();
+    let token_account = banks_client.get_account(*token).await.unwrap().unwrap();
     let account_info: spl_token::state::Account =
         spl_token::state::Account::unpack_from_slice(token_account.data.as_slice()).unwrap();
     account_info.amount
@@ -244,6 +240,7 @@ impl TestPool {
         banks_client.process_transaction(transaction).await.unwrap();
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn prepare_accounts_for_deposit(
         &self,
         banks_client: &mut BanksClient,
@@ -318,6 +315,7 @@ impl TestPool {
         .unwrap();
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn make_deposit(
         &self,
         banks_client: &mut BanksClient,

@@ -79,6 +79,7 @@ pub enum PoolInstruction {
 }
 
 /// Create `InitPool` instruction
+#[allow(clippy::too_many_arguments)]
 pub fn init_pool(
     program_id: &Pubkey,
     pool: &Pubkey,
@@ -114,6 +115,7 @@ pub fn init_pool(
 }
 
 /// Create `Deposit` instruction
+#[allow(clippy::too_many_arguments)]
 pub fn deposit(
     program_id: &Pubkey,
     pool: &Pubkey,
@@ -150,6 +152,7 @@ pub fn deposit(
 }
 
 /// Create `Withdraw` instruction
+#[allow(clippy::too_many_arguments)]
 pub fn withdraw(
     program_id: &Pubkey,
     pool: &Pubkey,

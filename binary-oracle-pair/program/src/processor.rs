@@ -32,7 +32,7 @@ impl Processor {
         bump_seed: u8,
     ) -> Result<Pubkey, ProgramError> {
         Pubkey::create_program_address(&[&my_info.to_bytes()[..32], &[bump_seed]], program_id)
-            .or(Err(PoolError::InvalidAuthorityData.into()))
+            .map_err(|_| PoolError::InvalidAuthorityData.into())
     }
 
     /// Transfer tokens
