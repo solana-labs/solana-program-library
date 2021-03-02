@@ -315,7 +315,13 @@ export class Token {
     payer: Account,
     associatedProgramId: PublicKey,
   ) {
-    Object.assign(this, {connection, publicKey, programId, payer, associatedProgramId});
+    Object.assign(this, {
+      connection,
+      publicKey,
+      programId,
+      payer,
+      associatedProgramId,
+    });
   }
 
   /**
@@ -1288,9 +1294,7 @@ export class Token {
     );
   }
 
-  async createAssociatedTokenAccount(
-    ownerPublicKey: PublicKey,
-  ): Promise<void> {
+  async createAssociatedTokenAccount(ownerPublicKey: PublicKey): Promise<void> {
     const associatedAccount = await Token.getAssociatedTokenAddress(
       this.associatedProgramId,
       this.programId,
@@ -1308,7 +1312,7 @@ export class Token {
           this.payer.publicKey,
           ownerPublicKey,
           this.publicKey,
-          associatedAccount
+          associatedAccount,
         ),
       ),
       this.payer,
@@ -2147,16 +2151,14 @@ export class Token {
     associatedProgramId: PublicKey,
     programId: PublicKey,
     owner: PublicKey,
-    mint: PublicKey
+    mint: PublicKey,
   ): Promise<PublicKey> {
-     return (await PublicKey.findProgramAddress(
-       [
-          owner.toBuffer(),
-          programId.toBuffer(),
-          mint.toBuffer(),
-       ],
-       associatedProgramId,
-    ))[0];
+    return (
+      await PublicKey.findProgramAddress(
+        [owner.toBuffer(), programId.toBuffer(), mint.toBuffer()],
+        associatedProgramId,
+      )
+    )[0];
   }
 
   static createAssociatedTokenAccountInstruction(

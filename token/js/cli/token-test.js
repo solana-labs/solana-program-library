@@ -574,8 +574,6 @@ export async function nativeToken(): Promise<void> {
 
 export async function associatedToken(): Promise<void> {
   const connection = await getConnection();
-  const payer = await newAccountWithLamports(connection, 2000000000 /* wag */);
-  const lamportsToWrap = 1000000000;
 
   const owner = new Account();
   const associatedTokenAddress = await Token.getAssociatedTokenAddress(
