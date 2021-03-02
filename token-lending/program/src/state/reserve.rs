@@ -92,41 +92,6 @@ impl Reserve {
         }
     }
 
-    /// Calculate the minimum collateral for an obligation
-    pub fn minimum_collateral(
-        &self,
-        obligation: &Obligation,
-        liquidity_token_mint: &Pubkey,
-        token_converter: impl TokenConverter,
-    ) -> Result<u64, ProgramError> {
-        Self::_minimum_collateral(
-            obligation,
-            liquidity_token_mint,
-            self.collateral_exchange_rate()?,
-            &self.config,
-            token_converter,
-        )
-    }
-
-    fn _minimum_collateral(
-        obligation: &Obligation,
-        liquidity_token_mint: &Pubkey,
-        collateral_exchange_rate: CollateralExchangeRate,
-        collateral_reserve_config: &ReserveConfig,
-        mut token_converter: impl TokenConverter,
-    ) -> Result<u64, ProgramError> {
-        let borrow_token_price = token_converter.best_price(liquidity_token_mint)?;
-        let loan_to_value =
-            obligation.loan_to_value(collateral_exchange_rate, borrow_token_price)?;
-        let reserve_loan_to_value =
-            Decimal::from_percent(collateral_reserve_config.loan_to_value_ratio);
-        let loan_to_value_ratio = loan_to_value.try_div(reserve_loan_to_value)?;
-
-        Decimal::from(obligation.deposited_collateral_tokens)
-            .try_mul(loan_to_value_ratio)?
-            .try_ceil_u64()
-    }
-
     /// Liquidate part of an unhealthy obligation
     pub fn liquidate_obligation(
         &self,
@@ -986,75 +951,6 @@ mod test {
                     }
                 }
             }
-        }
-
-        #[test]
-        fn minimum_collateral(
-            collateral_amount in 0..=u32::MAX as u64,
-            token_conversion_rate in 1..=u64::MAX,
-            collateral_exchange_rate in collateral_exchange_rate_range(),
-            loan_to_value_ratio in 1..100u8,
-        ) {
-            let total_liquidity = 1_000_000;
-            let collateral_token_supply = collateral_exchange_rate
-                .liquidity_to_collateral(total_liquidity)?;
-            let reserve = Reserve {
-                collateral: ReserveCollateral {
-                    mint_total_supply: collateral_token_supply,
-                    ..ReserveCollateral::default()
-                },
-                liquidity: ReserveLiquidity {
-                    available_amount: total_liquidity,
-                    ..ReserveLiquidity::default()
-                },
-                config: ReserveConfig {
-                    loan_to_value_ratio,
-                    ..ReserveConfig::default()
-                },
-                ..Reserve::default()
-            };
-
-            let conversion_rate = Decimal::from_scaled_val(token_conversion_rate as u128);
-
-            let borrow_amount = reserve.allowed_borrow_for_collateral(
-                collateral_amount,
-                MockConverter(conversion_rate)
-            )?;
-
-            let obligation = &mut Obligation {
-                deposited_collateral_tokens: collateral_amount,
-                borrowed_liquidity_wads: borrow_amount.into(),
-                ..Obligation::default()
-            };
-
-            let minimum_collateral = reserve.minimum_collateral(
-                obligation,
-                &Pubkey::default(),
-                MockConverter(conversion_rate),
-            )?;
-
-            let borrow_token_price = MockConverter(conversion_rate).best_price(&Pubkey::default())?;
-            let decimal_loan_to_value_ratio = Decimal::from_percent(loan_to_value_ratio);
-
-            // The minimum collateral should be conservatively high, and therefore the obligation's
-            // loan to value should be slightly less or equal to the given loan to value ratio.
-            obligation.deposited_collateral_tokens = minimum_collateral;
-            let loan_to_value_at_minimum = obligation.loan_to_value(
-                collateral_exchange_rate,
-                borrow_token_price
-            )?;
-
-            // After decrementing the collateral below the minimum, the obligation's loan to value
-            // should be slightly more or equal to the given loan to value ratio.
-            obligation.deposited_collateral_tokens = minimum_collateral - 1;
-            let loan_to_value_below_minimum = obligation.loan_to_value(
-                collateral_exchange_rate,
-                borrow_token_price
-            )?;
-
-            // Assert that reversing the calculation returns approx loan to value ratio
-            assert!(loan_to_value_at_minimum <= decimal_loan_to_value_ratio);
-            assert!(loan_to_value_below_minimum >= decimal_loan_to_value_ratio);
         }
 
         #[test]

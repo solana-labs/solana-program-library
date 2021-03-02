@@ -1439,19 +1439,19 @@ fn process_withdraw_obligation_collateral(
         &withdraw_reserve.liquidity.mint_pubkey,
     )?;
 
-    let minimum_collateral = withdraw_reserve.minimum_collateral(
-        &obligation,
+    let required_collateral = withdraw_reserve.required_collateral_for_borrow(
+        obligation.borrowed_liquidity_wads.try_ceil_u64()?,
         &borrow_reserve.liquidity.mint_pubkey,
         trade_simulator,
     )?;
-    if obligation_collateral_amount < minimum_collateral {
-        return Err(LendingError::ObligationCollateralBelowMinimum.into());
+    if obligation_collateral_amount < required_collateral {
+        return Err(LendingError::ObligationCollateralMinimum.into());
     }
 
     let remaining_collateral = obligation_collateral_amount
         .checked_sub(collateral_amount)
         .ok_or(LendingError::MathOverflow)?;
-    if remaining_collateral < minimum_collateral {
+    if remaining_collateral < required_collateral {
         return Err(LendingError::ObligationCollateralWithdrawMinimum.into());
     }
 

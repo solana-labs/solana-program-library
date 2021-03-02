@@ -130,11 +130,11 @@ pub enum LendingError {
     /// Invalid obligation collateral amount
     #[error("Invalid obligation collateral amount")]
     InvalidObligationCollateral,
-    /// Obligation collateral is below minimum
-    #[error("Obligation collateral is below minimum")]
-    ObligationCollateralBelowMinimum,
-    /// Obligation collateral cannot be withdrawn to below minimum
-    #[error("Obligation collateral cannot be withdrawn to below minimum")]
+    /// Obligation collateral is already below minimum
+    #[error("Obligation collateral is already below minimum")]
+    ObligationCollateralMinimum,
+    /// Obligation collateral cannot be withdrawn below minimum
+    #[error("Obligation collateral cannot be withdrawn below minimum")]
     ObligationCollateralWithdrawMinimum,
 }
 
