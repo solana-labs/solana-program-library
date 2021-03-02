@@ -131,6 +131,9 @@ pub enum LendingError {
     /// Error parsing instruction
     #[error("Error parsing instruction.")]
     ErrorParsingInstruction,
+    /// Flash loan end index is invalid.
+    #[error("Flash loan end index is invalid.")]
+    InvalidFlashLoanEndIndex,
 }
 
 impl From<LendingError> for ProgramError {
