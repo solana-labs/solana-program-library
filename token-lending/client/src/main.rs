@@ -132,14 +132,14 @@ pub fn main() {
         &payer,
     );
 
-    println!("Created token reserve with pubkey: {} , liqudiity supply is {}", usdc_reserve_pubkey, liquidity_supply);
+    println!("Created token reserve with pubkey: {} , liquidity supply is {}", usdc_reserve_pubkey, liquidity_supply);
 
 
     // let usdc_reserve_pubkey= Pubkey::from_str("GJzyrshGijbQDghMnJh4Qi6xBrubQsVXKxVxo5pvHcKQ").unwrap();
     // let lending_market_pubkey =  Pubkey::from_str("5o8EvxmsXYctyKkbDCypC7tNsw4a74mjECeb1bTSuQuD").unwrap();
     // let token_account_pubkey = Pubkey::from_str("78fgrduoYqEyM615MgCPa38oHEz9QoTTj3PTVo7S5Mq4").unwrap();
     // let liquidity_supply = Pubkey::from_str("Bt7Qifj7xvciRn3ywy1LSsXDFUUBWyNPTDbJaDpweGo5").unwrap();
-
+    println!("Starting flash loan...");
     let mut transaction = Transaction::new_with_payer(
         &[
             flash_loan_start(

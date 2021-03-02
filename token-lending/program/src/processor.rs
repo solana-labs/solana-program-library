@@ -1219,9 +1219,9 @@ fn process_flash_loan_start(
         return Err(LendingError::InsufficientLiquidity.into());
     }
 
-    let current_idx = load_current_index(&instruction_account.try_borrow_data()?)?;
+    let current_idx = load_current_index(&instruction_account.try_borrow_data()?);
 
-    if current_idx > flash_loan_end_idx {
+    if current_idx > flash_loan_end_idx as u16 {
         return Err(LendingError::InvalidFlashLoanEndIndex.into());
     }
 
