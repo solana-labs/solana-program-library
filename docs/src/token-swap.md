@@ -49,10 +49,6 @@ document are available at:
 The Token Swap Program's source is available on
 [github](https://github.com/solana-labs/solana-program-library).
 
-### Building
-
-The Token Swap Program
-
 ## Interface
 
 [JavaScript
