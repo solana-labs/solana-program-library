@@ -27,6 +27,10 @@ export const TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
   'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
 );
 
+export const ASSOCIATED_TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
+  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
+);
+
 /**
  * Unfortunately, BufferLayout.encode uses an `instanceof` check for `Buffer`
  * which fails when using `publicKey.toBuffer()` directly because the bundled `Buffer`
@@ -2100,6 +2104,49 @@ export class Token {
     return new TransactionInstruction({
       keys,
       programId: programId,
+      data,
+    });
+  }
+
+  static async getAssociatedTokenAddress(
+    associatedProgramId: PublicKey,
+    programId: PublicKey,
+    owner: PublicKey,
+    mint: PublicKey
+  ): Promise<PublicKey> {
+     return (await PublicKey.findProgramAddress(
+       [
+          owner.toBuffer(),
+          programId.toBuffer(),
+          mint.toBuffer(),
+       ],
+       associatedProgramId,
+    ))[0];
+  }
+
+  static createAssociatedTokenAccountInstruction(
+    associatedProgramId: PublicKey,
+    programId: PublicKey,
+    payer: PublicKey,
+    owner: PublicKey,
+    mint: PublicKey,
+    associatedAccount: PublicKey,
+  ): TransactionInstruction {
+    const data = Buffer.alloc(0);
+
+    let keys = [
+      {pubkey: payer, isSigner: true, isWritable: true},
+      {pubkey: associatedAccount, isSigner: false, isWritable: true},
+      {pubkey: owner, isSigner: false, isWritable: false},
+      {pubkey: mint, isSigner: false, isWritable: false},
+      {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
+      {pubkey: programId, isSigner: false, isWritable: false},
+      {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+    ];
+
+    return new TransactionInstruction({
+      keys,
+      programId: associatedProgramId,
       data,
     });
   }
