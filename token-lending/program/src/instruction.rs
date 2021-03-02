@@ -205,8 +205,8 @@ pub enum LendingInstruction {
     ///   2. `[writable]` Reserve liquidity account.
     ///   3. `[]` Lending market account.
     ///   4. `[]` Derived lending market authority.
-    ///   5. `[]` Token program id
-    ///   6. `[]` Instruction Sys var
+    ///   5. `[]` Token program id.
+    ///   6. `[]` Instruction Sys var.
     FlashLoanStart {
         /// The amount that is borrowed.
         liquidity_amount: u64,
