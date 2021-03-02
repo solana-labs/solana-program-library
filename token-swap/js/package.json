@@ -22,24 +22,20 @@
     "/lib",
     "/module.flow.js"
   ],
-  "testnetDefaultChannel": "v1.3.17",
   "scripts": {
     "build": "rollup -c",
-    "start": "babel-node --ignore node_modules cli/main.js",
+    "start": "babel-node cli/main.js",
+    "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8 ../../target/deploy/spl_token_swap.so --reset --quiet' http://localhost:8899/health start",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
     "flow": "flow",
     "flow:watch": "watch 'flow' . --wait=1 --ignoreDirectoryPattern=/doc/",
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",
-    "build:program": "rm -f client/util/store/config.json; cargo build-bpf --manifest-path ../program/Cargo.toml",
+    "build:program": "cargo build-bpf --manifest-path ../program/Cargo.toml",
     "cluster:localnet": "rm -f .env",
     "cluster:devnet": "cp cluster-devnet.env .env",
     "cluster:testnet": "cp cluster-testnet.env .env",
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env",
-    "localnet:update": "solana-localnet update",
-    "localnet:up": "rm -f client/util/store/config.json; set -x; solana-localnet down; set -e; solana-localnet up",
-    "localnet:down": "solana-localnet down",
-    "localnet:logs": "solana-localnet logs -f",
     "pretty": "prettier --check '{,cli*/**/}*.[jt]s'",
     "pretty:fix": "prettier --write '{,cli*/**/}*.[jt]s'"
   },
@@ -73,6 +69,7 @@
     "prettier": "^2.1.2",
     "rollup": "^2.27.1",
     "rollup-plugin-copy": "^3.3.0",
+    "start-server-and-test": "^1.11.6",
     "watch": "^1.0.2"
   },
   "engines": {
