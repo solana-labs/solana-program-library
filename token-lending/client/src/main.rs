@@ -15,7 +15,6 @@ use spl_token_lending::{
     state::{LendingMarket, Reserve, ReserveConfig, ReserveFees},
 };
 use spl_token_lending::instruction::{flash_loan_start, flash_loan_end};
-use core::mem;
 use spl_token::instruction::transfer;
 use std::str::FromStr;
 
@@ -32,7 +31,7 @@ pub struct DexMarket {
 pub fn main() {
     let mut client = RpcClient::new("http://127.0.0.1:8899".to_owned());
 
-    let token_pubkey: Pubkey = Pubkey::from_str("HaKPT5FX84AvzZgNjX3qYWr7ucjWr1VLXLEUQJpHhUHH").unwrap();
+    let token_pubkey: Pubkey = Pubkey::from_str("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA").unwrap();
 
     let path = &format!("{}/id.json", KEYPAIR_PATH);
     println!("{}", path);
@@ -93,13 +92,12 @@ pub fn main() {
             create_token_account,
             init_token_account_ix,
             mint_to_ix,
-            create_memory_ix,
         ],
         Some(&payer.pubkey()),
     );
 
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
-    transaction.sign(&[&payer, &mint_account, &token_account, &memory_account], recent_blockhash);
+    transaction.sign(&[&payer, &mint_account, &token_account], recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
 
 
@@ -132,13 +130,12 @@ pub fn main() {
         &payer,
     );
 
-    println!("Created token reserve with pubkey: {} , liquidity supply is {}", usdc_reserve_pubkey, liquidity_supply);
+    println!("Created token reserve with pubkey: {}", usdc_reserve_pubkey);
+    println!("Liquidity supply pubkey is {}", liquidity_supply);
 
+    let balance = client.get_token_account_balance(&token_account.pubkey()).unwrap();
+    println!("Token account balance is: {}", balance.amount);
 
-    // let usdc_reserve_pubkey= Pubkey::from_str("GJzyrshGijbQDghMnJh4Qi6xBrubQsVXKxVxo5pvHcKQ").unwrap();
-    // let lending_market_pubkey =  Pubkey::from_str("5o8EvxmsXYctyKkbDCypC7tNsw4a74mjECeb1bTSuQuD").unwrap();
-    // let token_account_pubkey = Pubkey::from_str("78fgrduoYqEyM615MgCPa38oHEz9QoTTj3PTVo7S5Mq4").unwrap();
-    // let liquidity_supply = Pubkey::from_str("Bt7Qifj7xvciRn3ywy1LSsXDFUUBWyNPTDbJaDpweGo5").unwrap();
     println!("Starting flash loan...");
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -171,8 +168,8 @@ pub fn main() {
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
     transaction.sign(&[&payer], recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
+    
     println!("flash loan done!");
-
 }
 
 pub fn create_lending_market(
@@ -183,7 +180,7 @@ pub fn create_lending_market(
     let owner = read_keypair_file(&format!("{}/id.json", KEYPAIR_PATH)).unwrap();
     let keypair = Keypair::new();
     let pubkey = keypair.pubkey();
-    let token_pubkey: Pubkey = Pubkey::from_str("HaKPT5FX84AvzZgNjX3qYWr7ucjWr1VLXLEUQJpHhUHH").unwrap();
+    let token_pubkey: Pubkey = Pubkey::from_str("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA").unwrap();
 
 
     let mut transaction = Transaction::new_with_payer(
@@ -240,7 +237,7 @@ pub fn create_reserve(
     let token_balance = client
         .get_minimum_balance_for_rent_exemption(Token::LEN)
         .unwrap();
-    let token_pubkey: Pubkey = Pubkey::from_str("HaKPT5FX84AvzZgNjX3qYWr7ucjWr1VLXLEUQJpHhUHH").unwrap();
+    let token_pubkey: Pubkey = Pubkey::from_str("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA").unwrap();
     let mut transaction = Transaction::new_with_payer(
         &[
             create_account(

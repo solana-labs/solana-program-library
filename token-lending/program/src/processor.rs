@@ -27,8 +27,6 @@ use solana_program::{
 use spl_token::state::{Account as Token, Account};
 use spl_token::solana_program::sysvar::instructions::{load_instruction_at, load_current_index};
 use crate::instruction::LendingInstruction::FlashLoanEnd;
-use core::mem;
-use uint::byteorder::{LittleEndian, ByteOrder};
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -108,7 +106,7 @@ fn process_init_lending_market(
     }
 
     assert_rent_exempt(rent, lending_market_info)?;
-    let bump_seed = Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
+    let _bump_seed = Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
     let mut new_lending_market: LendingMarket = assert_uninitialized(lending_market_info)?;
     let bump_seed = Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
     new_lending_market.version = PROGRAM_VERSION;
