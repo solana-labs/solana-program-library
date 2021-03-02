@@ -9,7 +9,12 @@ import {
   BPF_LOADER_PROGRAM_ID,
 } from '@solana/web3.js';
 
-import {Token, NATIVE_MINT} from '../client/token';
+import {
+  Token,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  NATIVE_MINT,
+} from '../client/token';
 import {url} from '../url';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {sleep} from '../client/util/sleep';
@@ -84,7 +89,9 @@ async function GetPrograms(connection: Connection): Promise<void> {
   if (programVersion) {
     switch (programVersion) {
       case '2.0.4':
-        return new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+        programId = TOKEN_PROGRAM_ID;
+        associatedProgramId = ASSOCIATED_TOKEN_PROGRAM_ID;
+        break;
       default:
         throw new Error('Unknown program version');
     }
@@ -534,7 +541,13 @@ export async function nativeToken(): Promise<void> {
   const payer = await newAccountWithLamports(connection, 2000000000 /* wag */);
   const lamportsToWrap = 1000000000;
 
-  const token = new Token(connection, NATIVE_MINT, programId, payer);
+  const token = new Token(
+    connection,
+    NATIVE_MINT,
+    programId,
+    payer,
+    associatedProgramId,
+  );
   const owner = new Account();
   const native = await Token.createWrappedNativeAccount(
     connection,
