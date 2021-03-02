@@ -20,9 +20,13 @@ to fix constraints on fees and fee account owner. A developer can
 deploy the program, allow others to create pools, and earn a "protocol fee" on
 all activity.
 
-Fees are hard-coded in `program/src/constraints.rs`, and the fee account owner
-is specified as an environment variable: `SWAP_PROGRAM_OWNER_FEE_ADDRESS`. You
-can build the production version of Token Swap running on devnet, testnet, and
+Since Solana programs cannot contain any modifiable state, we must hard-code
+all constraints into the program.  `SwapConstraints` in `program/src/constraints.rs`
+contains all hard-coded fields for fees.  Additionally the
+`SWAP_PROGRAM_OWNER_FEE_ADDRESS` environment variable specifies the public key
+that must own all fee accounts.
+
+You can build the production version of Token Swap running on devnet, testnet, and
 mainnet-beta using the following command:
 
 ```sh
