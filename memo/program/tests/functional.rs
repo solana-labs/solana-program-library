@@ -128,12 +128,12 @@ async fn test_memo_compute_limits() {
     }
 
     let mut transaction =
-        Transaction::new_with_payer(&[build_memo(&memo[..566], &[])], Some(&payer.pubkey()));
+        Transaction::new_with_payer(&[build_memo(&memo[..565], &[])], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 
     let mut transaction =
-        Transaction::new_with_payer(&[build_memo(&memo[..567], &[])], Some(&payer.pubkey()));
+        Transaction::new_with_payer(&[build_memo(&memo[..568], &[])], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
     assert_eq!(
         banks_client
