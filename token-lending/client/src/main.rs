@@ -82,7 +82,7 @@ pub fn main() {
         &token_account.pubkey(),
         &payer.pubkey(),
         &[&payer.pubkey()],
-        10000000000000,
+        1_000_000_000,
     ).unwrap();
 
 
