@@ -6,7 +6,7 @@ homepage = "https://spl.solana.com/token"
 license = "Apache-2.0"
 name = "spl-token-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "2.0.6"
+version = "2.0.7"
 
 [dependencies]
 clap = "2.33.3"
