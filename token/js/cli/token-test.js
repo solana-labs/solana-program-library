@@ -17,6 +17,7 @@ import {Store} from './store';
 
 // Loaded token program's program id
 let programId: PublicKey;
+let associatedProgramId: PublicKey;
 
 // Accounts setup in createMint and used by all subsequent tests
 let testMintAuthority: Account;
@@ -78,7 +79,7 @@ async function loadProgram(
   return program_account.publicKey;
 }
 
-async function GetPrograms(connection: Connection): Promise<PublicKey> {
+async function GetPrograms(connection: Connection): Promise<void> {
   const programVersion = process.env.PROGRAM_VERSION;
   if (programVersion) {
     switch (programVersion) {
@@ -90,31 +91,36 @@ async function GetPrograms(connection: Connection): Promise<PublicKey> {
   }
 
   const store = new Store();
-  let tokenProgramId = null;
   try {
     const config = await store.load('config.json');
     console.log('Using pre-loaded Token program');
     console.log(
-      '  Note: To reload program remove client/util/store/config.json',
+      `  Note: To reload program remove ${Store.getFilename('config.json')}`,
     );
-    tokenProgramId = new PublicKey(config.tokenProgramId);
+    programId = new PublicKey(config.tokenProgramId);
+    associatedProgramId = new PublicKey(config.associatedTokenProgramId);
   } catch (err) {
-    tokenProgramId = await loadProgram(
+    programId = await loadProgram(
       connection,
       '../../target/bpfel-unknown-unknown/release/spl_token.so',
     );
+    associatedProgramId = await loadProgram(
+      connection,
+      '../../target/bpfel-unknown-unknown/release/spl_associated_token_account.so',
+    );
     await store.save('config.json', {
-      tokenProgramId: tokenProgramId.toString(),
+      tokenProgramId: programId.toString(),
+      associatedTokenProgramId: associatedProgramId.toString(),
     });
   }
-  return tokenProgramId;
 }
 
 export async function loadTokenProgram(): Promise<void> {
   const connection = await getConnection();
-  programId = await GetPrograms(connection);
+  await GetPrograms(connection);
 
   console.log('Token Program ID', programId.toString());
+  console.log('Associated Token Program ID', associatedProgramId.toString());
 }
 
 export async function createMint(): Promise<void> {
@@ -128,6 +134,7 @@ export async function createMint(): Promise<void> {
     testMintAuthority.publicKey,
     2,
     programId,
+    associatedProgramId,
   );
 
   const mintInfo = await testToken.getMintInfo();
@@ -563,4 +570,26 @@ export async function nativeToken(): Promise<void> {
   } else {
     throw new Error('Account not found');
   }
+}
+
+export async function associatedToken(): Promise<void> {
+  const connection = await getConnection();
+  const payer = await newAccountWithLamports(connection, 2000000000 /* wag */);
+  const lamportsToWrap = 1000000000;
+
+  const owner = new Account();
+  const associatedTokenAddress = await Token.getAssociatedTokenAddress(
+    associatedProgramId,
+    programId,
+    owner.publicKey,
+    testToken.publicKey,
+  );
+  // associated account shouldn't exist
+  let info = await connection.getAccountInfo(associatedTokenAddress);
+  assert(info == null);
+
+  await testToken.createAssociatedTokenAccount(owner.publicKey);
+  // associated account should exist now
+  info = await connection.getAccountInfo(associatedTokenAddress);
+  assert(info != null);
 }

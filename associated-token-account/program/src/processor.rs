@@ -27,12 +27,14 @@ pub fn process_instruction(
     let spl_token_mint_info = next_account_info(account_info_iter)?;
     let system_program_info = next_account_info(account_info_iter)?;
     let spl_token_program_info = next_account_info(account_info_iter)?;
+    let spl_token_program_id = spl_token_program_info.key;
     let rent_sysvar_info = next_account_info(account_info_iter)?;
 
-    let (associated_token_address, bump_seed) = get_associated_token_address_and_bump_seed(
+    let (associated_token_address, bump_seed) = get_associated_token_address_and_bump_seed_internal(
         &wallet_account_info.key,
         &spl_token_mint_info.key,
         program_id,
+        &spl_token_program_id,
     );
     if associated_token_address != *associated_token_account_info.key {
         msg!("Error: Associated address does not match seed derivation");
@@ -41,7 +43,7 @@ pub fn process_instruction(
 
     let associated_token_account_signer_seeds: &[&[_]] = &[
         &wallet_account_info.key.to_bytes(),
-        &spl_token::id().to_bytes(),
+        &spl_token_program_id.to_bytes(),
         &spl_token_mint_info.key.to_bytes(),
         &[bump_seed],
     ];
@@ -87,7 +89,7 @@ pub fn process_instruction(
 
     msg!("Assign the associated token account to the SPL Token program");
     invoke_signed(
-        &system_instruction::assign(associated_token_account_info.key, &spl_token::id()),
+        &system_instruction::assign(associated_token_account_info.key, &spl_token_program_id),
         &[
             associated_token_account_info.clone(),
             system_program_info.clone(),
@@ -98,7 +100,7 @@ pub fn process_instruction(
     msg!("Initialize the associated token account");
     invoke(
         &spl_token::instruction::initialize_account(
-            &spl_token::id(),
+            &spl_token_program_id,
             associated_token_account_info.key,
             spl_token_mint_info.key,
             wallet_account_info.key,

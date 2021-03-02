@@ -291,6 +291,11 @@ export class Token {
   programId: PublicKey;
 
   /**
+   * Program Identifier for the Associated Token program
+   */
+  associatedProgramId: PublicKey;
+
+  /**
    * Fee payer
    */
   payer: Account;
@@ -308,8 +313,9 @@ export class Token {
     publicKey: PublicKey,
     programId: PublicKey,
     payer: Account,
+    associatedProgramId: PublicKey,
   ) {
-    Object.assign(this, {connection, publicKey, programId, payer});
+    Object.assign(this, {connection, publicKey, programId, payer, associatedProgramId});
   }
 
   /**
@@ -367,6 +373,7 @@ export class Token {
     freezeAuthority: PublicKey | null,
     decimals: number,
     programId: PublicKey,
+    associatedProgramId: PublicKey,
   ): Promise<Token> {
     const mintAccount = new Account();
     const token = new Token(
@@ -374,6 +381,7 @@ export class Token {
       mintAccount.publicKey,
       programId,
       payer,
+      associatedProgramId,
     );
 
     // Allocate memory for the account
@@ -1277,6 +1285,33 @@ export class Token {
       ),
       this.payer,
       ...signers,
+    );
+  }
+
+  async createAssociatedTokenAccount(
+    ownerPublicKey: PublicKey,
+  ): Promise<void> {
+    const associatedAccount = await Token.getAssociatedTokenAddress(
+      this.associatedProgramId,
+      this.programId,
+      ownerPublicKey,
+      this.publicKey,
+    );
+
+    await sendAndConfirmTransaction(
+      'CreateAssociatedTokenAccount',
+      this.connection,
+      new Transaction().add(
+        Token.createAssociatedTokenAccountInstruction(
+          this.associatedProgramId,
+          this.programId,
+          this.payer.publicKey,
+          ownerPublicKey,
+          this.publicKey,
+          associatedAccount
+        ),
+      ),
+      this.payer,
     );
   }
 

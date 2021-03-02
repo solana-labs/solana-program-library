@@ -21,6 +21,7 @@ import {
   freezeThawAccount,
   closeAccount,
   nativeToken,
+  associatedToken,
 } from './token-test';
 
 async function main() {
@@ -56,6 +57,8 @@ async function main() {
   await multisig();
   console.log('Run test: nativeToken');
   await nativeToken();
+  console.log('Run test: associatedToken');
+  await associatedToken();
   console.log('Success\n');
 }
 
