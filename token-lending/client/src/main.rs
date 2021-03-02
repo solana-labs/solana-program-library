@@ -37,6 +37,7 @@ pub fn main() {
     println!("{}", path);
     let payer = read_keypair_file(path).unwrap();
 
+    // Create and initialize mint.
     let mint_account = Keypair::new();
     println!("mint account public key is: {}", mint_account.pubkey());
     let create_mint_ix = create_account(
@@ -56,6 +57,7 @@ pub fn main() {
         6,
     ).unwrap();
 
+    // Create, initialize and mint to a new token account.
     let token_account = Keypair::new();
     let token_account_pubkey = token_account.pubkey();
     println!("token account public key is: {}", token_account.pubkey());
@@ -74,7 +76,6 @@ pub fn main() {
         &mint_account.pubkey(),
         &payer.pubkey(),
     ).unwrap();
-
     let mint_to_ix = mint_to(
         &token_pubkey,
         &mint_account.pubkey(),
@@ -99,7 +100,6 @@ pub fn main() {
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
     transaction.sign(&[&payer, &mint_account, &token_account], recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
-
 
     let quote_token_mint = mint_account.pubkey();
     let (lending_market_owner, lending_market_pubkey, _lending_market) =
