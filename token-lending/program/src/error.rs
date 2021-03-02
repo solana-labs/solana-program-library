@@ -125,6 +125,15 @@ pub enum LendingError {
     /// Token burn failed
     #[error("Token burn failed")]
     TokenBurnFailed,
+    /// Invalid flash loan return instruction
+    #[error("Invalid flash loan return instruction.")]
+    InvalidFlashLoanReturn,
+    /// Error parsing instruction
+    #[error("Error parsing instruction.")]
+    ErrorParsingInstruction,
+    /// Flash loan end index is invalid.
+    #[error("Flash loan end index is invalid.")]
+    InvalidFlashLoanEndIndex,
 }
 
 impl From<LendingError> for ProgramError {

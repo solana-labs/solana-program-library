@@ -28,6 +28,15 @@ export const TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
 );
 
 /**
+ * Unfortunately, BufferLayout.encode uses an `instanceof` check for `Buffer`
+ * which fails when using `publicKey.toBuffer()` directly because the bundled `Buffer`
+ * class in `@solana/web3.js` is different from the bundled `Buffer` class in this package
+ */
+function pubkeyToBuffer(publicKey: PublicKey): typeof Buffer {
+  return Buffer.from(publicKey.toBuffer());
+}
+
+/**
  * 64-bit value
  */
 export class u64 extends BN {
@@ -1300,9 +1309,9 @@ export class Token {
         {
           instruction: 0, // InitializeMint instruction
           decimals,
-          mintAuthority: mintAuthority.toBuffer(),
+          mintAuthority: pubkeyToBuffer(mintAuthority),
           option: freezeAuthority === null ? 0 : 1,
-          freezeAuthority: (freezeAuthority || new PublicKey()).toBuffer(),
+          freezeAuthority: pubkeyToBuffer(freezeAuthority || new PublicKey()),
         },
         data,
       );
@@ -1544,7 +1553,7 @@ export class Token {
           instruction: 6, // SetAuthority instruction
           authorityType: AuthorityTypeCodes[authorityType],
           option: newAuthority === null ? 0 : 1,
-          newAuthority: (newAuthority || new PublicKey()).toBuffer(),
+          newAuthority: pubkeyToBuffer(newAuthority || new PublicKey()),
         },
         data,
       );

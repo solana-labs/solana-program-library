@@ -1,15 +1,14 @@
 //! State transition types
 
-use crate::error::StakePoolError;
-use crate::instruction::Fee;
-use crate::processor::Processor;
-use core::convert::TryInto;
-use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
-    pubkey::Pubkey,
+use {
+    crate::{error::StakePoolError, instruction::Fee, processor::Processor},
+    solana_program::{
+        account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
+        pubkey::Pubkey,
+    },
+    std::convert::{TryFrom, TryInto},
+    std::mem::size_of,
 };
-use std::convert::TryFrom;
-use std::mem::size_of;
 
 /// Initialized program details.
 #[repr(C)]

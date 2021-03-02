@@ -280,7 +280,7 @@ $ spl-token supply 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 1
 ```
 
-### Mutlisig usage
+### Multisig usage
 
 The main difference in `spl-token` command line usage when referencing multisig
 accounts is in specifying the `--owner` argument. Typically the signer specified
@@ -717,7 +717,7 @@ The Native Mint supply will always report 0, regardless of how much SOL is curre
 ### Rent-exemption
 
 To ensure a reliable calculation of supply, a consistency valid Mint, and
-consistently valid Multisig accounts all Solana accounts holding a Account,
+consistently valid Multisig accounts all Solana accounts holding an Account,
 Mint, or Multisig must contain enough SOL to be considered [rent
 exempt](https://docs.solana.com/implemented-proposals/rent)
 

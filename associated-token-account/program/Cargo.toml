@@ -12,7 +12,7 @@ no-entrypoint = []
 test-bpf = []
 
 [dependencies]
-solana-program = "1.5.6"
+solana-program = "1.5.8"
 spl-token = { version = "3.1", path = "../../token/program", features = ["no-entrypoint"] }
 
 [dev-dependencies]
