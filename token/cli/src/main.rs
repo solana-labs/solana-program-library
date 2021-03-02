@@ -4,7 +4,7 @@ use clap::{
 };
 use console::Emoji;
 use solana_account_decoder::{
-    parse_token::{TokenAccountType, UiAccountState, UiTokenAmount},
+    parse_token::{TokenAccountType, UiAccountState},
     UiAccountData,
 };
 use solana_clap_utils::{
@@ -424,7 +424,8 @@ fn command_transfer(
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
 ) -> CommandResult {
-    let sender_balance = config
+    let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, mint_address, mint_decimals)?;
+    let sender_token_amount = config
         .rpc_client
         .get_token_account_balance(&sender)
         .map_err(|err| {
@@ -432,24 +433,32 @@ fn command_transfer(
                 "Error: Failed to get token balance of sender address {}: {}",
                 sender, err
             )
-        })?
-        .ui_amount;
-    let ui_amount = ui_amount.unwrap_or(sender_balance);
+        })?;
+    let sender_balance = sender_token_amount.amount.parse::<u64>().map_err(|err| {
+        format!(
+            "Token account {} balance could not be parsed: {}",
+            sender, err
+        )
+    })?;
+    let transfer_balance = ui_amount
+        .map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, decimals))
+        .unwrap_or(sender_balance);
 
     println!(
         "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
-        ui_amount, sender, recipient
+        spl_token::amount_to_ui_amount(transfer_balance, decimals),
+        sender,
+        recipient
     );
-    if ui_amount > sender_balance {
+
+    if transfer_balance > sender_balance {
         return Err(format!(
             "Error: Sender has insufficient funds, current balance is {}",
-            sender_balance
+            sender_token_amount.real_number_string_trimmed()
         )
         .into());
     }
 
-    let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, mint_address, mint_decimals)?;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
     let mut instructions = vec![];
 
     let mut recipient_token_account = recipient;
@@ -523,7 +532,7 @@ fn command_transfer(
         &recipient_token_account,
         &config.owner,
         &config.multisigner_pubkeys,
-        amount,
+        transfer_balance,
         decimals,
     )?);
     Ok(Some((
@@ -726,11 +735,22 @@ fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> Comma
             .rpc_client
             .get_token_account(&account)?
             .ok_or_else(|| format!("Could not find token account {}", account))?;
+        let source_amount = source_account
+            .token_amount
+            .amount
+            .parse::<u64>()
+            .map_err(|err| {
+                format!(
+                    "Token account {} balance could not be parsed: {}",
+                    account, err
+                )
+            })?;
 
-        if !source_account.is_native && source_account.token_amount.ui_amount > 0.0 {
+        if !source_account.is_native && source_amount > 0 {
             return Err(format!(
                 "Account {} still has {} tokens; empty the account in order to close it.",
-                account, source_account.token_amount.ui_amount
+                account,
+                source_account.token_amount.real_number_string_trimmed()
             )
             .into());
         }
@@ -750,11 +770,11 @@ fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
     let balance = config.rpc_client.get_token_account_balance(&address)?;
 
     if config.verbose {
-        println!("ui amount: {}", balance.ui_amount);
+        println!("ui amount: {}", balance.real_number_string_trimmed());
         println!("decimals: {}", balance.decimals);
         println!("amount: {}", balance.amount);
     } else {
-        println!("{}", balance.ui_amount);
+        println!("{}", balance.real_number_string_trimmed());
     }
     Ok(None)
 }
@@ -762,7 +782,7 @@ fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
 fn command_supply(config: &Config, address: Pubkey) -> CommandResult {
     let supply = config.rpc_client.get_token_supply(&address)?;
 
-    println!("{}", supply.ui_amount);
+    println!("{}", supply.real_number_string_trimmed());
     Ok(None)
 }
 
@@ -805,14 +825,16 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                         if token.is_some() {
                             println!(
                                 "{:<44} {}{}",
-                                address, ui_token_account.token_amount.ui_amount, maybe_frozen
+                                address,
+                                ui_token_account.token_amount.real_number_string_trimmed(),
+                                maybe_frozen
                             )
                         } else {
                             println!(
                                 "{:<44} {:<44} {}{}",
                                 address,
                                 ui_token_account.mint,
-                                ui_token_account.token_amount.ui_amount,
+                                ui_token_account.token_amount.real_number_string_trimmed(),
                                 maybe_frozen
                             )
                         }
@@ -865,6 +887,11 @@ fn command_gc(config: &Config) -> CommandResult {
                         .pubkey
                         .parse::<Pubkey>()
                         .unwrap_or_else(|err| panic!("Invalid token account: {}", err));
+                    let token_amount = ui_token_account
+                        .token_amount
+                        .amount
+                        .parse::<u64>()
+                        .unwrap_or_else(|err| panic!("Invalid token amount: {}", err));
 
                     let close_authority =
                         ui_token_account.close_authority.map_or(config.owner, |s| {
@@ -876,10 +903,7 @@ fn command_gc(config: &Config) -> CommandResult {
                     entry.insert(
                         token_account,
                         (
-                            spl_token::ui_amount_to_amount(
-                                ui_token_account.token_amount.ui_amount,
-                                ui_token_account.token_amount.decimals,
-                            ),
+                            token_amount,
                             ui_token_account.token_amount.decimals,
                             frozen,
                             close_authority,
@@ -954,36 +978,13 @@ fn command_gc(config: &Config) -> CommandResult {
     Ok(Some((lamports_needed, instructions)))
 }
 
-fn stringify_ui_token_amount(amount: &UiTokenAmount) -> String {
-    let decimals = amount.decimals as usize;
-    if decimals > 0 {
-        let amount = u64::from_str(&amount.amount).unwrap();
-
-        // Left-pad zeros to decimals + 1, so we at least have an integer zero
-        let mut s = format!("{:01$}", amount, decimals + 1);
-
-        // Add the decimal point (Sorry, "," locales!)
-        s.insert(s.len() - decimals, '.');
-        s
-    } else {
-        amount.amount.clone()
-    }
-}
-
-fn stringify_ui_token_amount_trimmed(amount: &UiTokenAmount) -> String {
-    let s = stringify_ui_token_amount(amount);
-    let zeros_trimmed = s.trim_end_matches('0');
-    let decimal_trimmed = zeros_trimmed.trim_end_matches('.');
-    decimal_trimmed.to_string()
-}
-
 fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
     let account = config.rpc_client.get_token_account(&address)?.unwrap();
     println!();
     println_name_value("Address:", &address.to_string());
     println_name_value(
         "Balance:",
-        &stringify_ui_token_amount_trimmed(&account.token_amount),
+        &account.token_amount.real_number_string_trimmed(),
     );
     let mint = format!(
         "{}{}",
@@ -997,10 +998,7 @@ fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
         println!("Delegation:");
         println_name_value("  Delegate:", delegate);
         let allowance = account.delegated_amount.as_ref().unwrap();
-        println_name_value(
-            "  Allowance:",
-            &stringify_ui_token_amount_trimmed(&allowance),
-        );
+        println_name_value("  Allowance:", &allowance.real_number_string_trimmed());
     } else {
         println_name_value("Delegation:", "");
     }
