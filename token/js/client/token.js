@@ -313,14 +313,14 @@ export class Token {
     publicKey: PublicKey,
     programId: PublicKey,
     payer: Account,
-    associatedProgramId: PublicKey,
   ) {
     Object.assign(this, {
       connection,
       publicKey,
       programId,
       payer,
-      associatedProgramId,
+      // Hard code is ok; Overriding is needed only for tests
+      associatedProgramId: ASSOCIATED_TOKEN_PROGRAM_ID,
     });
   }
 
@@ -379,7 +379,6 @@ export class Token {
     freezeAuthority: PublicKey | null,
     decimals: number,
     programId: PublicKey,
-    associatedProgramId: PublicKey,
   ): Promise<Token> {
     const mintAccount = new Account();
     const token = new Token(
@@ -387,7 +386,6 @@ export class Token {
       mintAccount.publicKey,
       programId,
       payer,
-      associatedProgramId,
     );
 
     // Allocate memory for the account

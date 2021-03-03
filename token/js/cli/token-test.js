@@ -151,8 +151,10 @@ export async function createMint(): Promise<void> {
     testMintAuthority.publicKey,
     2,
     programId,
-    associatedProgramId,
   );
+  // HACK: override hard-coded ASSOCIATED_TOKEN_PROGRAM_ID with corresponding
+  // custom test fixture
+  testToken.associatedProgramId = associatedProgramId;
 
   const mintInfo = await testToken.getMintInfo();
   if (mintInfo.mintAuthority !== null) {
@@ -551,13 +553,7 @@ export async function nativeToken(): Promise<void> {
   const payer = await newAccountWithLamports(connection, 2000000000 /* wag */);
   const lamportsToWrap = 1000000000;
 
-  const token = new Token(
-    connection,
-    NATIVE_MINT,
-    programId,
-    payer,
-    associatedProgramId,
-  );
+  const token = new Token(connection, NATIVE_MINT, programId, payer);
   const owner = new Account();
   const native = await Token.createWrappedNativeAccount(
     connection,
