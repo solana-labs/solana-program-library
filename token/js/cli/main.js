@@ -11,6 +11,7 @@ import {
   createAssociatedToken,
   transfer,
   transferChecked,
+  transferCheckedAssociated,
   approveRevoke,
   failOnApproveOverspend,
   setAuthority,
@@ -41,6 +42,8 @@ async function main() {
   await transfer();
   console.log('Run test: transferChecked');
   await transferChecked();
+  console.log('Run test: transferCheckedAssociated');
+  await transferCheckedAssociated();
   console.log('Run test: approveRevoke');
   await approveRevoke();
   console.log('Run test: failOnApproveOverspend');

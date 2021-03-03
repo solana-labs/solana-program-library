@@ -27,6 +27,7 @@ let associatedProgramId: PublicKey;
 // Accounts setup in createMint and used by all subsequent tests
 let testMintAuthority: Account;
 let testToken: Token;
+let testTokenDecimals: number = 2;
 
 // Accounts setup in createAccount and used by all subsequent tests
 let testAccountOwner: Account;
@@ -149,7 +150,7 @@ export async function createMint(): Promise<void> {
     payer,
     testMintAuthority.publicKey,
     testMintAuthority.publicKey,
-    2,
+    testTokenDecimals,
     programId,
   );
   // HACK: override hard-coded ASSOCIATED_TOKEN_PROGRAM_ID with corresponding
@@ -163,7 +164,7 @@ export async function createMint(): Promise<void> {
     assert(mintInfo.mintAuthority !== null);
   }
   assert(mintInfo.supply.toNumber() === 0);
-  assert(mintInfo.decimals === 2);
+  assert(mintInfo.decimals === testTokenDecimals);
   assert(mintInfo.isInitialized === true);
   if (mintInfo.freezeAuthority !== null) {
     assert(mintInfo.freezeAuthority.equals(testMintAuthority.publicKey));
@@ -202,8 +203,8 @@ export async function createAssociatedToken(): Promise<void> {
   const associatedAddress = await Token.getAssociatedTokenAddress(
     associatedProgramId,
     programId,
-    owner.publicKey,
     testToken.publicKey,
+    owner.publicKey,
   );
 
   // associated account shouldn't exist
@@ -222,7 +223,7 @@ export async function createAssociatedToken(): Promise<void> {
   assert(info.owner.equals(owner.publicKey));
   assert(info.amount.toNumber() === 0);
 
-  // creating again should cause error for the associated token account
+  // creating again should cause TX error for the associated token account
   assert(
     await didThrow(testToken, testToken.createAssociatedTokenAccount, [
       owner.publicKey,
@@ -287,7 +288,7 @@ export async function transferChecked(): Promise<void> {
       testAccountOwner,
       [],
       100,
-      1,
+      testTokenDecimals - 1,
     ]),
   );
 
@@ -297,7 +298,7 @@ export async function transferChecked(): Promise<void> {
     testAccountOwner,
     [],
     100,
-    2,
+    testTokenDecimals,
   );
 
   const mintInfo = await testToken.getMintInfo();
@@ -308,6 +309,40 @@ export async function transferChecked(): Promise<void> {
 
   let testAccountInfo = await testToken.getAccountInfo(testAccount);
   assert(testAccountInfo.amount.toNumber() === 1800);
+}
+
+export async function transferCheckedAssociated(): Promise<void> {
+  let account;
+  const connection = await getConnection();
+
+  const associatedAccount = new Account();
+  const associatedAddress = await Token.getAssociatedTokenAddress(
+    associatedProgramId,
+    programId,
+    testToken.publicKey,
+    associatedAccount.publicKey,
+  );
+
+  account = await testToken.getOrCreateAssociatedTokenAccountInfo(
+    associatedAccount.publicKey,
+  );
+  assert(account.amount.toNumber() === 0);
+
+  // sanity check transfer works
+  await testToken.transferChecked(
+    testAccount,
+    associatedAddress,
+    testAccountOwner,
+    [],
+    123,
+    testTokenDecimals,
+  )
+
+  // creating is skipped if existing
+  account = await testToken.getOrCreateAssociatedTokenAccountInfo(
+    associatedAccount.publicKey,
+  );
+  assert(account.amount.toNumber() === 123);
 }
 
 export async function approveRevoke(): Promise<void> {
