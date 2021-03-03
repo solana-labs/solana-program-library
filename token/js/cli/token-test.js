@@ -312,15 +312,12 @@ export async function transferChecked(): Promise<void> {
 }
 
 export async function transferCheckedAssociated(): Promise<void> {
+  const dest = new Account().publicKey;
   let associatedAccount;
-  const destAccount = new Account();
 
-  associatedAccount = await testToken.getOrCreateAssociatedAccountInfo(
-    destAccount.publicKey,
-  );
+  associatedAccount = await testToken.getOrCreateAssociatedAccountInfo(dest);
   assert(associatedAccount.amount.toNumber() === 0);
 
-  // sanity check transfer works
   await testToken.transferChecked(
     testAccount,
     associatedAccount.address,
@@ -330,10 +327,7 @@ export async function transferCheckedAssociated(): Promise<void> {
     testTokenDecimals,
   );
 
-  // creating is skipped if existing
-  associatedAccount = await testToken.getOrCreateAssociatedAccountInfo(
-    destAccount.publicKey,
-  );
+  associatedAccount = await testToken.getOrCreateAssociatedAccountInfo(dest);
   assert(associatedAccount.amount.toNumber() === 123);
 }
 
