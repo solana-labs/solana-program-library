@@ -495,7 +495,10 @@ export class Token {
     return this.createAssociatedTokenAccountInternal(owner, associatedAddress);
   }
 
-  async createAssociatedTokenAccountInternal(owner: PublicKey, associatedAddress: PublicKey): Promise<PublicKey> {
+  async createAssociatedTokenAccountInternal(
+    owner: PublicKey,
+    associatedAddress: PublicKey,
+  ): Promise<PublicKey> {
     await sendAndConfirmTransaction(
       'CreateAssociatedTokenAccount',
       this.connection,
@@ -523,7 +526,9 @@ export class Token {
    * @param owner User account that will own the new account
    * @return Public key of the new associated account
    */
-  async getOrCreateAssociatedTokenAccountInfo(owner: PublicKey): Promise<AccountInfo> {
+  async getOrCreateAssociatedTokenAccountInfo(
+    owner: PublicKey,
+  ): Promise<AccountInfo> {
     const associatedAddress = await Token.getAssociatedTokenAddress(
       this.associatedProgramId,
       this.programId,
@@ -535,12 +540,15 @@ export class Token {
     // also this is optimum logic, considering tx fee, client-side computation, rpc roundtrips, guaranteed idempotency
     try {
       return await this.getAccountInfo(associatedAddress);
-    } catch(err) {
+    } catch (err) {
       if (err.message == FAILED_TO_FIND_ACCOUNT) {
         // as this isn't atomic, it's possible other can create associated accounts
         try {
-          await this.createAssociatedTokenAccountInternal(owner, associatedAddress);
-        } catch(err) {
+          await this.createAssociatedTokenAccountInternal(
+            owner,
+            associatedAddress,
+          );
+        } catch (err) {
           // ignore all errors; for now there is no API compatible way to selectively
           // ignore the expected instruction error if the associated account is existing already
         }

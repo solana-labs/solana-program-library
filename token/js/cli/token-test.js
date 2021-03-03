@@ -313,7 +313,6 @@ export async function transferChecked(): Promise<void> {
 
 export async function transferCheckedAssociated(): Promise<void> {
   let account;
-  const connection = await getConnection();
 
   const associatedAccount = new Account();
   const associatedAddress = await Token.getAssociatedTokenAddress(
@@ -336,7 +335,7 @@ export async function transferCheckedAssociated(): Promise<void> {
     [],
     123,
     testTokenDecimals,
-  )
+  );
 
   // creating is skipped if existing
   account = await testToken.getOrCreateAssociatedTokenAccountInfo(
