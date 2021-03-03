@@ -312,25 +312,18 @@ export async function transferChecked(): Promise<void> {
 }
 
 export async function transferCheckedAssociated(): Promise<void> {
-  let account;
+  let associatedAccount;
+  const destAccount = new Account();
 
-  const associatedAccount = new Account();
-  const associatedAddress = await Token.getAssociatedTokenAddress(
-    associatedProgramId,
-    programId,
-    testToken.publicKey,
-    associatedAccount.publicKey,
+  associatedAccount = await testToken.getOrCreateAssociatedAccountInfo(
+    destAccount.publicKey,
   );
-
-  account = await testToken.getOrCreateAssociatedAccountInfo(
-    associatedAccount.publicKey,
-  );
-  assert(account.amount.toNumber() === 0);
+  assert(associatedAccount.amount.toNumber() === 0);
 
   // sanity check transfer works
   await testToken.transferChecked(
     testAccount,
-    associatedAddress,
+    associatedAccount.address,
     testAccountOwner,
     [],
     123,
@@ -338,10 +331,10 @@ export async function transferCheckedAssociated(): Promise<void> {
   );
 
   // creating is skipped if existing
-  account = await testToken.getOrCreateAssociatedAccountInfo(
-    associatedAccount.publicKey,
+  associatedAccount = await testToken.getOrCreateAssociatedAccountInfo(
+    destAccount.publicKey,
   );
-  assert(account.amount.toNumber() === 123);
+  assert(associatedAccount.amount.toNumber() === 123);
 }
 
 export async function approveRevoke(): Promise<void> {

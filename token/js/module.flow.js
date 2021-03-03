@@ -38,6 +38,7 @@ declare module '@solana/spl-token' {
   |};
   declare export var AccountLayout: typeof Layout;
   declare export type AccountInfo = {|
+    address: PublicKey,
     mint: PublicKey,
     owner: PublicKey,
     amount: u64,

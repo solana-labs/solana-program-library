@@ -146,6 +146,11 @@ export const MintLayout: typeof BufferLayout.Structure = BufferLayout.struct([
  */
 type AccountInfo = {|
   /**
+   * The address of this account
+   */
+  address: PublicKey,
+
+  /**
    * The mint associated with this account
    */
   mint: PublicKey,
@@ -537,7 +542,7 @@ export class Token {
     );
 
     // This is the optimum logic, considering TX fee, client-side computation,
-    // rpc roundtripsa and guaranteed idempotent.
+    // RPC roundtrips and guaranteed idempotent.
     // Sadly we can't do this atomically;
     try {
       return await this.getAccountInfo(associatedAddress);
@@ -759,6 +764,7 @@ export class Token {
 
     const data = Buffer.from(info.data);
     const accountInfo = AccountLayout.decode(data);
+    accountInfo.address = account;
     accountInfo.mint = new PublicKey(accountInfo.mint);
     accountInfo.owner = new PublicKey(accountInfo.owner);
     accountInfo.amount = u64.fromBuffer(accountInfo.amount);
