@@ -100,13 +100,23 @@ async function GetPrograms(connection: Connection): Promise<void> {
   const store = new Store();
   try {
     const config = await store.load('config.json');
-    console.log('Using pre-loaded Token program');
+    console.log('Using pre-loaded Token programs');
     console.log(
       `  Note: To reload program remove ${Store.getFilename('config.json')}`,
     );
     programId = new PublicKey(config.tokenProgramId);
     associatedProgramId = new PublicKey(config.associatedTokenProgramId);
+    let info;
+    info = await connection.getAccountInfo(programId);
+    assert(info != null);
+    info = await connection.getAccountInfo(associatedProgramId);
+    assert(info != null);
   } catch (err) {
+    console.log(
+      'Checking pre-loaded Token programs failed, will load new programs:',
+    );
+    console.log({err});
+
     programId = await loadProgram(
       connection,
       '../../target/bpfel-unknown-unknown/release/spl_token.so',
@@ -596,7 +606,8 @@ export async function associatedToken(): Promise<void> {
     testToken.publicKey,
   );
   // associated account shouldn't exist
-  let info = await connection.getAccountInfo(associatedTokenAddress);
+  let info;
+  info = await connection.getAccountInfo(associatedTokenAddress);
   assert(info == null);
 
   await testToken.createAssociatedTokenAccount(owner.publicKey);
