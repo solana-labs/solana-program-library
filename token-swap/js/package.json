@@ -63,7 +63,7 @@
     "@babel/preset-flow": "^7.10.4",
     "@rollup/plugin-babel": "^5.2.1",
     "@rollup/plugin-commonjs": "^17.0.0",
-    "@solana/spl-token": "0.0.13",
+    "@solana/spl-token": "0.1.0",
     "babel-eslint": "^10.1.0",
     "eslint": "^7.9.0",
     "eslint-plugin-import": "^2.22.0",
