@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
 set -ex
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 source ./ci/solana-version.sh install
 
-(cd ../token/js && npm install)
+(cd token/js && npm install)
 
-cd ../token-swap/js
+cd token-swap/js
 npm install
 npm run lint
 npm run flow
