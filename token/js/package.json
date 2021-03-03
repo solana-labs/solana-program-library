@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-token",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "SPL Token JavaScript API",
   "license": "MIT",
   "author": "Solana Maintainers <maintainers@solana.com>",
