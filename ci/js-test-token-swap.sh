@@ -2,6 +2,7 @@
 
 set -ex
 cd "$(dirname "$0")"
+source ./ci/solana-version.sh install
 
 (cd ../token/js && npm install)
 
