@@ -88,8 +88,8 @@ declare module '@solana/spl-token' {
     static getAssociatedTokenAddress(
       associatedProgramId: PublicKey,
       programId: PublicKey,
-      owner: PublicKey,
       mint: PublicKey,
+      owner: PublicKey,
     ): Promise<PublicKey>;
     static createMint(
       connection: Connection,
@@ -111,6 +111,7 @@ declare module '@solana/spl-token' {
     createMultisig(m: number, signers: Array<PublicKey>): Promise<PublicKey>;
     getMintInfo(): Promise<MintInfo>;
     getAccountInfo(account: PublicKey): Promise<AccountInfo>;
+    getOrCreateAssociatedAccountInfo(account: PublicKey): Promise<AccountInfo>;
     getMultisigInfo(multisig: PublicKey): Promise<MultisigInfo>;
     transfer(
       source: PublicKey,
@@ -249,10 +250,10 @@ declare module '@solana/spl-token' {
     static createAssociatedTokenAccountInstruction(
       associatedProgramId: PublicKey,
       programId: PublicKey,
-      payer: PublicKey,
-      owner: PublicKey,
       mint: PublicKey,
       associatedAccount: PublicKey,
+      owner: PublicKey,
+      payer: PublicKey,
     ): TransactionInstruction;
   }
 }

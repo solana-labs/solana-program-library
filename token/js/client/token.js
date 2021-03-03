@@ -526,7 +526,7 @@ export class Token {
    * @param owner User account that will own the new account
    * @return Public key of the new associated account
    */
-  async getOrCreateAssociatedTokenAccountInfo(
+  async getOrCreateAssociatedAccountInfo(
     owner: PublicKey,
   ): Promise<AccountInfo> {
     const associatedAddress = await Token.getAssociatedTokenAddress(
@@ -536,21 +536,25 @@ export class Token {
       owner,
     );
 
-    // sadly we can't do this atomically;
-    // also this is optimum logic, considering tx fee, client-side computation, rpc roundtrips, guaranteed idempotency
+    // This is the optimum logic, considering TX fee, client-side computation,
+    // rpc roundtripsa and guaranteed idempotent.
+    // Sadly we can't do this atomically;
     try {
       return await this.getAccountInfo(associatedAddress);
     } catch (err) {
       if (err.message == FAILED_TO_FIND_ACCOUNT) {
-        // as this isn't atomic, it's possible other can create associated accounts
+        // as this isn't atomic, it's possible others can create associated
+        // accounts meanwhile
         try {
           await this.createAssociatedTokenAccountInternal(
             owner,
             associatedAddress,
           );
         } catch (err) {
-          // ignore all errors; for now there is no API compatible way to selectively
-          // ignore the expected instruction error if the associated account is existing already
+          // ignore all errors; for now there is no API compatible way to
+          // selectively.
+          // ignore the expected instruction error if the associated account is
+          // existing already
         }
       }
       return await this.getAccountInfo(associatedAddress);

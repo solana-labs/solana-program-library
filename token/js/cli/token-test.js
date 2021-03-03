@@ -322,7 +322,7 @@ export async function transferCheckedAssociated(): Promise<void> {
     associatedAccount.publicKey,
   );
 
-  account = await testToken.getOrCreateAssociatedTokenAccountInfo(
+  account = await testToken.getOrCreateAssociatedAccountInfo(
     associatedAccount.publicKey,
   );
   assert(account.amount.toNumber() === 0);
@@ -338,7 +338,7 @@ export async function transferCheckedAssociated(): Promise<void> {
   );
 
   // creating is skipped if existing
-  account = await testToken.getOrCreateAssociatedTokenAccountInfo(
+  account = await testToken.getOrCreateAssociatedAccountInfo(
     associatedAccount.publicKey,
   );
   assert(account.amount.toNumber() === 123);
