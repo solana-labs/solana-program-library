@@ -8,7 +8,7 @@ import {
   loadTokenProgram,
   createMint,
   createAccount,
-  createAssociatedToken,
+  createAssociatedAccount,
   transfer,
   transferChecked,
   transferCheckedAssociated,
@@ -32,8 +32,8 @@ async function main() {
   await createMint();
   console.log('Run test: createAccount');
   await createAccount();
-  console.log('Run test: createAssociatedToken');
-  await createAssociatedToken();
+  console.log('Run test: createAssociatedAccount');
+  await createAssociatedAccount();
   console.log('Run test: mintTo');
   await mintTo();
   console.log('Run test: mintToChecked');

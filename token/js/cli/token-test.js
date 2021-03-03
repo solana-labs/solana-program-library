@@ -195,7 +195,7 @@ export async function createAccount(): Promise<void> {
   assert(!testAccount2.equals(testAccount));
 }
 
-export async function createAssociatedToken(): Promise<void> {
+export async function createAssociatedAccount(): Promise<void> {
   let info;
   const connection = await getConnection();
 

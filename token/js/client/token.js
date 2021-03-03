@@ -32,6 +32,7 @@ export const ASSOCIATED_TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
 );
 
 const FAILED_TO_FIND_ACCOUNT = 'Failed to find account';
+const INVALID_ACCOUNT_OWNER = 'Invalid account owner';
 
 /**
  * Unfortunately, BufferLayout.encode uses an `instanceof` check for `Buffer`
@@ -524,12 +525,12 @@ export class Token {
   }
 
   /**
-   * Get the associated account or create one if not found.
+   * Retrieve the associated account or create one if not found.
    *
    * This account may then be used as a `transfer()` or `approve()` destination
    *
    * @param owner User account that will own the new account
-   * @return Public key of the new associated account
+   * @return The new associated account
    */
   async getOrCreateAssociatedAccountInfo(
     owner: PublicKey,
@@ -547,7 +548,14 @@ export class Token {
     try {
       return await this.getAccountInfo(associatedAddress);
     } catch (err) {
-      if (err.message == FAILED_TO_FIND_ACCOUNT) {
+      // INVALID_ACCOUNT_OWNER can be possible if the associatedAddress has
+      // already been received some lamports (= became system accounts).
+      // Assuming program derived addressing is safe, this is the only case
+      // for the INVALID_ACCOUNT_OWNER in this code-path
+      if (
+        err.message === FAILED_TO_FIND_ACCOUNT ||
+        err.message === INVALID_ACCOUNT_OWNER
+      ) {
         // as this isn't atomic, it's possible others can create associated
         // accounts meanwhile
         try {
@@ -557,12 +565,15 @@ export class Token {
           );
         } catch (err) {
           // ignore all errors; for now there is no API compatible way to
-          // selectively.
-          // ignore the expected instruction error if the associated account is
-          // existing already
+          // selectively ignore the expected instruction error if the
+          // associated account is existing already.
         }
+
+        // Now this should always succeed
+        return await this.getAccountInfo(associatedAddress);
+      } else {
+        throw err;
       }
-      return await this.getAccountInfo(associatedAddress);
     }
   }
 
@@ -756,7 +767,7 @@ export class Token {
       throw new Error(FAILED_TO_FIND_ACCOUNT);
     }
     if (!info.owner.equals(this.programId)) {
-      throw new Error(`Invalid account owner`);
+      throw new Error(INVALID_ACCOUNT_OWNER);
     }
     if (info.data.length != AccountLayout.span) {
       throw new Error(`Invalid account size`);
