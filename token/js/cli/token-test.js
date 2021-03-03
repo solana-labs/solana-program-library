@@ -592,22 +592,30 @@ export async function nativeToken(): Promise<void> {
 }
 
 export async function associatedToken(): Promise<void> {
+  let info;
   const connection = await getConnection();
 
   const owner = new Account();
-  const associatedTokenAddress = await Token.getAssociatedTokenAddress(
+  const associatedAddress = await Token.getAssociatedTokenAddress(
     associatedProgramId,
     programId,
     owner.publicKey,
     testToken.publicKey,
   );
+
   // associated account shouldn't exist
-  let info;
-  info = await connection.getAccountInfo(associatedTokenAddress);
+  info = await connection.getAccountInfo(associatedAddress);
   assert(info == null);
 
-  await testToken.createAssociatedTokenAccount(owner.publicKey);
+  const createdAddress = await testToken.createAssociatedTokenAccount(
+    owner.publicKey,
+  );
+  assert(createdAddress.equals(associatedAddress));
+
   // associated account should exist now
-  info = await connection.getAccountInfo(associatedTokenAddress);
+  info = await testToken.getAccountInfo(associatedAddress);
   assert(info != null);
+  assert(info.mint.equals(testToken.publicKey));
+  assert(info.owner.equals(owner.publicKey));
+  assert(info.amount.toNumber() === 0);
 }

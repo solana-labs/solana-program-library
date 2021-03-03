@@ -474,6 +474,33 @@ export class Token {
     return newAccount.publicKey;
   }
 
+  async createAssociatedTokenAccount(owner: PublicKey): Promise<PublicKey> {
+    const associatedAddress = await Token.getAssociatedTokenAddress(
+      this.associatedProgramId,
+      this.programId,
+      owner,
+      this.publicKey,
+    );
+
+    await sendAndConfirmTransaction(
+      'CreateAssociatedTokenAccount',
+      this.connection,
+      new Transaction().add(
+        Token.createAssociatedTokenAccountInstruction(
+          this.associatedProgramId,
+          this.programId,
+          this.payer.publicKey,
+          owner,
+          this.publicKey,
+          associatedAddress,
+        ),
+      ),
+      this.payer,
+    );
+
+    return associatedAddress;
+  }
+
   /**
    * Create and initialize a new account on the special native token mint.
    *
@@ -1289,31 +1316,6 @@ export class Token {
       ),
       this.payer,
       ...signers,
-    );
-  }
-
-  async createAssociatedTokenAccount(ownerPublicKey: PublicKey): Promise<void> {
-    const associatedAccount = await Token.getAssociatedTokenAddress(
-      this.associatedProgramId,
-      this.programId,
-      ownerPublicKey,
-      this.publicKey,
-    );
-
-    await sendAndConfirmTransaction(
-      'CreateAssociatedTokenAccount',
-      this.connection,
-      new Transaction().add(
-        Token.createAssociatedTokenAccountInstruction(
-          this.associatedProgramId,
-          this.programId,
-          this.payer.publicKey,
-          ownerPublicKey,
-          this.publicKey,
-          associatedAccount,
-        ),
-      ),
-      this.payer,
     );
   }
 

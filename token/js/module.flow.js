@@ -17,6 +17,7 @@ import type {TransactionSignature} from '@solana/web3.js';
 
 declare module '@solana/spl-token' {
   declare export var TOKEN_PROGRAM_ID;
+  declare export var ASSOCIATED_TOKEN_PROGRAM_ID;
   declare export class u64 extends BN {
     toBuffer(): typeof Buffer;
     static fromBuffer(buffer: typeof Buffer): u64;
@@ -67,6 +68,7 @@ declare module '@solana/spl-token' {
   declare export class Token {
     publicKey: PublicKey;
     programId: PublicKey;
+    associatedProgramId: PublicKey;
     payer: Account;
     constructor(
       connection: Connection,
@@ -83,6 +85,12 @@ declare module '@solana/spl-token' {
     static getMinBalanceRentForExemptMultisig(
       connection: Connection,
     ): Promise<number>;
+    static getAssociatedTokenAddress(
+      associatedProgramId: PublicKey,
+      programId: PublicKey,
+      owner: PublicKey,
+      mint: PublicKey,
+    ): Promise<PublicKey>;
     static createMint(
       connection: Connection,
       payer: Account,
@@ -92,6 +100,7 @@ declare module '@solana/spl-token' {
       programId: PublicKey,
     ): Promise<Token>;
     createAccount(owner: PublicKey): Promise<PublicKey>;
+    createAssociatedTokenAccount(owner: PublicKey): Promise<PublicKey>;
     static createWrappedNativeAccount(
       connection: Connection,
       programId: PublicKey,
@@ -236,6 +245,14 @@ declare module '@solana/spl-token' {
       mint: PublicKey,
       authority: PublicKey,
       multiSigners: Array<Account>,
+    ): TransactionInstruction;
+    static createAssociatedTokenAccountInstruction(
+      associatedProgramId: PublicKey,
+      programId: PublicKey,
+      payer: PublicKey,
+      owner: PublicKey,
+      mint: PublicKey,
+      associatedAccount: PublicKey,
     ): TransactionInstruction;
   }
 }
