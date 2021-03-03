@@ -91,7 +91,7 @@ async function GetPrograms(connection: Connection): Promise<void> {
       case '2.0.4':
         programId = TOKEN_PROGRAM_ID;
         associatedProgramId = ASSOCIATED_TOKEN_PROGRAM_ID;
-        break;
+        return;
       default:
         throw new Error('Unknown program version');
     }
