@@ -8,6 +8,7 @@ import {
   loadTokenProgram,
   createMint,
   createAccount,
+  createAssociatedToken,
   transfer,
   transferChecked,
   approveRevoke,
@@ -21,7 +22,6 @@ import {
   freezeThawAccount,
   closeAccount,
   nativeToken,
-  associatedToken,
 } from './token-test';
 
 async function main() {
@@ -31,6 +31,8 @@ async function main() {
   await createMint();
   console.log('Run test: createAccount');
   await createAccount();
+  console.log('Run test: createAssociatedToken');
+  await createAssociatedToken();
   console.log('Run test: mintTo');
   await mintTo();
   console.log('Run test: mintToChecked');
@@ -57,8 +59,6 @@ async function main() {
   await multisig();
   console.log('Run test: nativeToken');
   await nativeToken();
-  console.log('Run test: associatedToken');
-  await associatedToken();
   console.log('Success\n');
 }
 

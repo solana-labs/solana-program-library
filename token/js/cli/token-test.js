@@ -186,6 +186,48 @@ export async function createAccount(): Promise<void> {
   assert(accountInfo.isNative === false);
   assert(accountInfo.rentExemptReserve === null);
   assert(accountInfo.closeAuthority === null);
+
+  // you can create as many accounts as with same owner
+  const testAccount2 = await testToken.createAccount(
+    testAccountOwner.publicKey,
+  );
+  assert(!testAccount2.equals(testAccount));
+}
+
+export async function createAssociatedToken(): Promise<void> {
+  let info;
+  const connection = await getConnection();
+
+  const owner = new Account();
+  const associatedAddress = await Token.getAssociatedTokenAddress(
+    associatedProgramId,
+    programId,
+    owner.publicKey,
+    testToken.publicKey,
+  );
+
+  // associated account shouldn't exist
+  info = await connection.getAccountInfo(associatedAddress);
+  assert(info == null);
+
+  const createdAddress = await testToken.createAssociatedTokenAccount(
+    owner.publicKey,
+  );
+  assert(createdAddress.equals(associatedAddress));
+
+  // associated account should exist now
+  info = await testToken.getAccountInfo(associatedAddress);
+  assert(info != null);
+  assert(info.mint.equals(testToken.publicKey));
+  assert(info.owner.equals(owner.publicKey));
+  assert(info.amount.toNumber() === 0);
+
+  // creating again should cause error for the associated token account
+  assert(
+    await didThrow(testToken, testToken.createAssociatedTokenAccount, [
+      owner.publicKey,
+    ]),
+  );
 }
 
 export async function mintTo(): Promise<void> {
@@ -589,33 +631,4 @@ export async function nativeToken(): Promise<void> {
   } else {
     throw new Error('Account not found');
   }
-}
-
-export async function associatedToken(): Promise<void> {
-  let info;
-  const connection = await getConnection();
-
-  const owner = new Account();
-  const associatedAddress = await Token.getAssociatedTokenAddress(
-    associatedProgramId,
-    programId,
-    owner.publicKey,
-    testToken.publicKey,
-  );
-
-  // associated account shouldn't exist
-  info = await connection.getAccountInfo(associatedAddress);
-  assert(info == null);
-
-  const createdAddress = await testToken.createAssociatedTokenAccount(
-    owner.publicKey,
-  );
-  assert(createdAddress.equals(associatedAddress));
-
-  // associated account should exist now
-  info = await testToken.getAccountInfo(associatedAddress);
-  assert(info != null);
-  assert(info.mint.equals(testToken.publicKey));
-  assert(info.owner.equals(owner.publicKey));
-  assert(info.amount.toNumber() === 0);
 }
