@@ -140,14 +140,11 @@ async fn test_memo_compute_limits() {
         .await
         .unwrap_err()
         .unwrap();
-    assert!(
-        err == TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
-            || err
-                == TransactionError::InstructionError(
-                    0,
-                    InstructionError::ComputationalBudgetExceeded
-                )
-    );
+    let failed_to_complete =
+        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete);
+    let computational_budget_exceeded =
+        TransactionError::InstructionError(0, InstructionError::ComputationalBudgetExceeded);
+    assert!(err == failed_to_complete || err == computational_budget_exceeded);
 
     let mut memo = vec![];
     for _ in 0..100 {
@@ -168,14 +165,7 @@ async fn test_memo_compute_limits() {
         .await
         .unwrap_err()
         .unwrap();
-    assert!(
-        err == TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
-            || err
-                == TransactionError::InstructionError(
-                    0,
-                    InstructionError::ComputationalBudgetExceeded
-                )
-    );
+    assert!(err == failed_to_complete || err == computational_budget_exceeded);
 
     // Test num signers with 32-byte memo
     let memo = Pubkey::new_unique().to_bytes();
@@ -211,12 +201,5 @@ async fn test_memo_compute_limits() {
         .await
         .unwrap_err()
         .unwrap();
-    assert!(
-        err == TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
-            || err
-                == TransactionError::InstructionError(
-                    0,
-                    InstructionError::ComputationalBudgetExceeded
-                )
-    );
+    assert!(err == failed_to_complete || err == computational_budget_exceeded);
 }
