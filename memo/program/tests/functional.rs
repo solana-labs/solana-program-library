@@ -135,14 +135,16 @@ async fn test_memo_compute_limits() {
     let mut transaction =
         Transaction::new_with_payer(&[build_memo(&memo[..568], &[])], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
-        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
-    );
+    let err = banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    let failed_to_complete =
+        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete);
+    let computational_budget_exceeded =
+        TransactionError::InstructionError(0, InstructionError::ComputationalBudgetExceeded);
+    assert!(err == failed_to_complete || err == computational_budget_exceeded);
 
     let mut memo = vec![];
     for _ in 0..100 {
@@ -158,14 +160,12 @@ async fn test_memo_compute_limits() {
     let mut transaction =
         Transaction::new_with_payer(&[build_memo(&memo[..63], &[])], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
-        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
-    );
+    let err = banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert!(err == failed_to_complete || err == computational_budget_exceeded);
 
     // Test num signers with 32-byte memo
     let memo = Pubkey::new_unique().to_bytes();
@@ -196,12 +196,10 @@ async fn test_memo_compute_limits() {
         Some(&payer.pubkey()),
     );
     transaction.sign(&signers, recent_blockhash);
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
-        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
-    );
+    let err = banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert!(err == failed_to_complete || err == computational_budget_exceeded);
 }
