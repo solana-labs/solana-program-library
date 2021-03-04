@@ -5,6 +5,18 @@ title: Token Swap Program
 A Uniswap-like exchange for the Token program on the Solana blockchain,
 implementing multiple automated market maker (AMM) curves.
 
+Here is some important developer information regarding the program deployed on devnet,
+testnet, and mainnet-beta:
+
+| Information | Account Address |
+| --- | --- |
+| Token Swap Program | `SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8` |
+| Fee Owner | `HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN` |
+
+Check out
+[program repository](https://github.com/solana-labs/solana-program-library/tree/master/token-swap)
+for more developer information.
+
 ## Overview
 
 The Token Swap Program allows simple trading of token pairs without a

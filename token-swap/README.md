@@ -1,6 +1,7 @@
 # Token Swap Program
 
-A Uniswap-like exchange for the Token program on the Solana blockchain.
+A Uniswap-like exchange for the Token program on the Solana blockchain, deployed
+to `SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8` on all networks.
 
 Full documentation is available at https://spl.solana.com/token-swap
 
