@@ -135,13 +135,18 @@ async fn test_memo_compute_limits() {
     let mut transaction =
         Transaction::new_with_payer(&[build_memo(&memo[..568], &[])], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
-        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
+    let err = banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert!(
+        err == TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
+            || err
+                == TransactionError::InstructionError(
+                    0,
+                    InstructionError::ComputationalBudgetExceeded
+                )
     );
 
     let mut memo = vec![];
@@ -158,13 +163,18 @@ async fn test_memo_compute_limits() {
     let mut transaction =
         Transaction::new_with_payer(&[build_memo(&memo[..63], &[])], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
-        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
+    let err = banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert!(
+        err == TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
+            || err
+                == TransactionError::InstructionError(
+                    0,
+                    InstructionError::ComputationalBudgetExceeded
+                )
     );
 
     // Test num signers with 32-byte memo
@@ -196,12 +206,17 @@ async fn test_memo_compute_limits() {
         Some(&payer.pubkey()),
     );
     transaction.sign(&signers, recent_blockhash);
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
-        TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
+    let err = banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert!(
+        err == TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete)
+            || err
+                == TransactionError::InstructionError(
+                    0,
+                    InstructionError::ComputationalBudgetExceeded
+                )
     );
 }
