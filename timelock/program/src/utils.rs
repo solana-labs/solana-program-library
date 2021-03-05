@@ -9,6 +9,7 @@ use crate::{
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
+    instruction::Instruction,
     msg,
     program::{invoke, invoke_signed},
     program_error::ProgramError,
@@ -84,6 +85,14 @@ pub fn assert_not_in_voting_or_executing(timelock_set: &TimelockSet) -> ProgramR
     if timelock_set.state.status == TimelockStateStatus::Voting
         || timelock_set.state.status == TimelockStateStatus::Executing
     {
+        return Err(TimelockError::InvalidTimelockSetStateError.into());
+    }
+    Ok(())
+}
+
+/// Asserts a timelock set is in executing state.
+pub fn assert_executing(timelock_set: &TimelockSet) -> ProgramResult {
+    if timelock_set.state.status != TimelockStateStatus::Executing {
         return Err(TimelockError::InvalidTimelockSetStateError.into());
     }
     Ok(())
@@ -298,6 +307,24 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
     result.map_err(|_| TimelockError::TokenBurnFailed.into())
 }
 
+/// Issue a spl_token `Burn` instruction.
+#[inline(always)]
+pub fn execute(params: ExecuteParams<'_, '_>) -> ProgramResult {
+    let ExecuteParams {
+        instruction,
+        timelock_program_authority_info,
+        program_to_invoke_info,
+
+        authority_signer_seeds,
+    } = params;
+    let result = invoke_signed(
+        &instruction,
+        &[timelock_program_authority_info, program_to_invoke_info],
+        &[authority_signer_seeds],
+    );
+    result.map_err(|_| TimelockError::ExecutionFailed.into())
+}
+
 /// TokenInitializeMintParams
 pub struct TokenInitializeMintParams<'a: 'b, 'b> {
     /// mint
@@ -369,4 +396,16 @@ pub struct TokenBurnParams<'a: 'b, 'b> {
     pub authority_signer_seeds: &'b [&'b [u8]],
     /// token_program
     pub token_program: AccountInfo<'a>,
+}
+
+/// InvokeArbitraryParams
+pub struct ExecuteParams<'a: 'b, 'b> {
+    /// Instruction
+    pub instruction: Instruction,
+    /// timelock authority
+    pub timelock_program_authority_info: AccountInfo<'a>,
+    /// program to invoke
+    pub program_to_invoke_info: AccountInfo<'a>,
+    /// authority_signer_seeds
+    pub authority_signer_seeds: &'b [&'b [u8]],
 }

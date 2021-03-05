@@ -8,7 +8,7 @@ use solana_program::{
 };
 use thiserror::Error;
 
-/// Errors that may be returned by the TokenLending program.
+/// Errors that may be returned by the Timelock program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum TimelockError {
     /// Invalid instruction data passed in.
@@ -78,6 +78,18 @@ pub enum TimelockError {
     /// Token burn failed
     #[error("Token burn failed")]
     TokenBurnFailed,
+
+    ///Timelock Transaction already executed
+    #[error("Timelock Transaction already executed")]
+    TimelockTransactionAlreadyExecuted,
+
+    ///Timelock Transaction execution failed
+    #[error("Timelock Transaction execution failed")]
+    ExecutionFailed,
+
+    ///Invalid instruction end index, above instruction limit
+    #[error("Invalid instruction end index, above instruction limit")]
+    InvalidInstructionEndIndex,
 }
 
 impl PrintProgramError for TimelockError {

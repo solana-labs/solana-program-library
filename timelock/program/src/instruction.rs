@@ -119,6 +119,8 @@ pub enum TimelockInstruction {
         instruction: [u8; INSTRUCTION_LIMIT],
         /// Position in transaction array
         position: u8,
+        /// Point in instruction array where 0 padding begins - inclusive, index should be where actual instruction ends, not where 0s begin
+        instruction_end_index: u8,
     },
 
     /// [Requires Signatory token]
@@ -207,8 +209,18 @@ pub enum TimelockInstruction {
         /// How many voting tokens to mint
         voting_token_amount: u64,
     },
-    /* TODO add execute ability and reset ability /// []
-    Execute {},*/
+
+    /// Only used for testing. Requires no accounts of any kind.
+    Ping,
+
+    /// Executes a command in the timelock set.
+    ///
+    ///   0. `[writable]` Transaction account you wish to execute.
+    ///   1. `[]` Timelock set account.
+    ///   2. `[]` Program being invoked account
+    ///   3. `[]` Timelock program authority
+    ///   4. `[]` Timelock program account pub key.
+    Execute,
 }
 
 impl TimelockInstruction {
@@ -261,11 +273,13 @@ impl TimelockInstruction {
             4 => {
                 let (slot, rest) = Self::unpack_u64(rest)?;
                 let (instruction, rest) = Self::unpack_instructions(rest)?;
-                let (position, _) = Self::unpack_u8(rest)?;
+                let (position, rest) = Self::unpack_u8(rest)?;
+                let (instruction_end_index, _) = Self::unpack_u8(rest)?;
                 Self::AddCustomSingleSignerTransaction {
                     slot,
                     instruction,
                     position,
+                    instruction_end_index,
                 }
             }
             5 => Self::RemoveTransaction,
@@ -287,6 +301,8 @@ impl TimelockInstruction {
                     voting_token_amount,
                 }
             }
+            11 => Self::Ping,
+            12 => Self::Execute,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -371,11 +387,13 @@ impl TimelockInstruction {
                 slot,
                 instruction,
                 position,
+                instruction_end_index,
             } => {
                 buf.push(4);
                 buf.extend_from_slice(&slot.to_le_bytes());
                 buf.extend_from_slice(instruction);
                 buf.extend_from_slice(&position.to_le_bytes());
+                buf.extend_from_slice(&instruction_end_index.to_le_bytes());
             }
             Self::RemoveTransaction {} => buf.push(5),
             Self::UpdateTransactionSlot { slot } => {
@@ -396,6 +414,8 @@ impl TimelockInstruction {
                 buf.push(10);
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
+            Self::Ping => buf.push(11),
+            Self::Execute => buf.push(12),
         }
         buf
     }
