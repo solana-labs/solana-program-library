@@ -1,6 +1,7 @@
 pub mod process_add_custom_single_signer_transaction;
 pub mod process_add_signer;
 pub mod process_delete_timelock_set;
+pub mod process_execute;
 pub mod process_init_timelock_program;
 pub mod process_init_timelock_set;
 pub mod process_mint_voting_tokens;
@@ -14,6 +15,7 @@ use crate::instruction::TimelockInstruction;
 use process_add_custom_single_signer_transaction::process_add_custom_single_signer_transaction;
 use process_add_signer::process_add_signer;
 use process_delete_timelock_set::process_delete_timelock_set;
+use process_execute::process_execute;
 use process_init_timelock_program::process_init_timelock_program;
 use process_init_timelock_set::process_init_timelock_set;
 use process_mint_voting_tokens::process_mint_voting_tokens;
@@ -22,6 +24,7 @@ use process_remove_transaction::process_remove_transaction;
 use process_sign::process_sign;
 use process_update_transaction_slot::process_update_transaction_slot;
 use process_vote::process_vote;
+
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 /// Processes an instruction
@@ -56,12 +59,14 @@ pub fn process_instruction(
             slot,
             instruction,
             position,
+            instruction_end_index,
         } => process_add_custom_single_signer_transaction(
             program_id,
             accounts,
             slot,
             instruction,
             position,
+            instruction_end_index,
         ),
         TimelockInstruction::RemoveTransaction => {
             msg!("Instruction: Remove Transaction");
@@ -90,6 +95,14 @@ pub fn process_instruction(
         } => {
             msg!("Instruction: Mint Voting Tokens");
             process_mint_voting_tokens(program_id, accounts, voting_token_amount)
+        }
+        TimelockInstruction::Ping => {
+            msg!("Ping!");
+            Ok(())
+        }
+        TimelockInstruction::Execute => {
+            msg!("Instruction: Execute");
+            process_execute(program_id, accounts)
         }
     }
 }

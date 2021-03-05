@@ -29,6 +29,12 @@ pub struct CustomSingleSignerTimelockTransaction {
 
     /// authority key (pda) used to run the program
     pub authority_key: Pubkey,
+
+    /// Executed flag
+    pub executed: u8,
+
+    /// Instruction end index (inclusive)
+    pub instruction_end_index: u8,
 }
 
 impl PartialEq for CustomSingleSignerTimelockTransaction {
@@ -51,36 +57,42 @@ impl IsInitialized for CustomSingleSignerTimelockTransaction {
         self.version != UNINITIALIZED_VERSION
     }
 }
-const CUSTOM_SINGLE_SIGNER_LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 32;
+const CUSTOM_SINGLE_SIGNER_LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 32 + 1 + 1;
 impl Pack for CustomSingleSignerTimelockTransaction {
-    const LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 32;
+    const LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 32 + 1 + 1;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, CUSTOM_SINGLE_SIGNER_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, slot, instruction, authority_key) =
-            array_refs![input, 1, 8, INSTRUCTION_LIMIT, 32];
+        let (version, slot, instruction, authority_key, executed, instruction_end_index) =
+            array_refs![input, 1, 8, INSTRUCTION_LIMIT, 32, 1, 1];
         let version = u8::from_le_bytes(*version);
         let slot = u64::from_le_bytes(*slot);
         let authority_key = Pubkey::new_from_array(*authority_key);
+        let executed = u8::from_le_bytes(*executed);
+        let instruction_end_index = u8::from_le_bytes(*instruction_end_index);
 
         Ok(CustomSingleSignerTimelockTransaction {
             version,
             slot,
             instruction: *instruction,
             authority_key,
+            executed,
+            instruction_end_index,
         })
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, CUSTOM_SINGLE_SIGNER_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, slot, instruction, authority_key) =
-            mut_array_refs![output, 1, 8, INSTRUCTION_LIMIT, 32];
+        let (version, slot, instruction, authority_key, executed, instruction_end_index) =
+            mut_array_refs![output, 1, 8, INSTRUCTION_LIMIT, 32, 1, 1];
         *version = self.version.to_le_bytes();
         *slot = self.slot.to_le_bytes();
         instruction.copy_from_slice(self.instruction.as_ref());
         authority_key.copy_from_slice(self.authority_key.as_ref());
+        *executed = self.executed.to_le_bytes();
+        *instruction_end_index = self.instruction_end_index.to_le_bytes()
     }
 
     fn get_packed_len() -> usize {
