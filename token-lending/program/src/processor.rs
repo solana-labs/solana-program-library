@@ -568,21 +568,21 @@ fn process_withdraw(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    spl_token_transfer(TokenTransferParams {
-        source: reserve_liquidity_supply_info.clone(),
-        destination: destination_liquidity_info.clone(),
-        amount: liquidity_withdraw_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
-        token_program: token_program_id.clone(),
-    })?;
-
     spl_token_burn(TokenBurnParams {
         mint: reserve_collateral_mint_info.clone(),
         source: source_collateral_info.clone(),
         amount: collateral_amount,
         authority: user_transfer_authority_info.clone(),
         authority_signer_seeds: &[],
+        token_program: token_program_id.clone(),
+    })?;
+
+    spl_token_transfer(TokenTransferParams {
+        source: reserve_liquidity_supply_info.clone(),
+        destination: destination_liquidity_info.clone(),
+        amount: liquidity_withdraw_amount,
+        authority: lending_market_authority_info.clone(),
+        authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
 
