@@ -3797,6 +3797,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-record"
+version = "0.1.0"
+dependencies = [
+ "borsh 0.8.1",
+ "borsh-derive 0.8.1",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "thiserror",
+ "tokio 0.3.6",
+]
+
+[[package]]
 name = "spl-shared-memory"
 version = "2.0.6"
 dependencies = [
