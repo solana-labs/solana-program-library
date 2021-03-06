@@ -1445,14 +1445,14 @@ fn process_withdraw_obligation_collateral(
         trade_simulator,
     )?;
     if obligation_collateral_amount < required_collateral {
-        return Err(LendingError::ObligationCollateralMinimum.into());
+        return Err(LendingError::ObligationCollateralBelowRequired.into());
     }
 
     let remaining_collateral = obligation_collateral_amount
         .checked_sub(collateral_amount)
         .ok_or(LendingError::MathOverflow)?;
     if remaining_collateral < required_collateral {
-        return Err(LendingError::ObligationCollateralWithdrawMinimum.into());
+        return Err(LendingError::ObligationCollateralWithdrawBelowRequired.into());
     }
 
     let obligation_token_amount = obligation
