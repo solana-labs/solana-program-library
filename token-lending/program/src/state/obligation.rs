@@ -103,9 +103,10 @@ impl Obligation {
     }
 
     /// Liquidate part of obligation
-    pub fn liquidate(&mut self, settle_amount: Decimal, withdraw_amount: u64) -> ProgramResult {
-        self.borrowed_liquidity_wads = self.borrowed_liquidity_wads.try_sub(settle_amount)?;
-        self.deposited_collateral_tokens
+    pub fn liquidate(&mut self, repay_amount: Decimal, withdraw_amount: u64) -> ProgramResult {
+        self.borrowed_liquidity_wads = self.borrowed_liquidity_wads.try_sub(repay_amount)?;
+        self.deposited_collateral_tokens = self
+            .deposited_collateral_tokens
             .checked_sub(withdraw_amount)
             .ok_or(LendingError::MathOverflow)?;
         Ok(())
@@ -137,12 +138,7 @@ impl Obligation {
             token_amount.try_floor_u64()?
         };
 
-        self.borrowed_liquidity_wads =
-            self.borrowed_liquidity_wads.try_sub(decimal_repay_amount)?;
-        self.deposited_collateral_tokens = self
-            .deposited_collateral_tokens
-            .checked_sub(collateral_withdraw_amount)
-            .ok_or(LendingError::MathOverflow)?;
+        self.liquidate(decimal_repay_amount, collateral_withdraw_amount)?;
 
         Ok(RepayResult {
             decimal_repay_amount,
