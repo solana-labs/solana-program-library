@@ -742,13 +742,14 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
 struct WithdrawAccount {
     pubkey: Pubkey,
     account: Account,
-    amount: u64,
+    pool_amount: u64,
 }
 
 fn prepare_withdraw_accounts(
     config: &Config,
+    stake_pool: &StakePool,
     pool_withdraw_authority: &Pubkey,
-    amount: u64,
+    pool_amount: u64,
 ) -> Result<Vec<WithdrawAccount>, Error> {
     let mut accounts = get_authority_accounts(config, &pool_withdraw_authority);
     if accounts.is_empty() {
@@ -758,12 +759,13 @@ fn prepare_withdraw_accounts(
         .rpc_client
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
         + 1;
-    pick_withdraw_accounts(&mut accounts, amount, min_balance)
+    pick_withdraw_accounts(&mut accounts, stake_pool, pool_amount, min_balance)
 }
 
 fn pick_withdraw_accounts(
     accounts: &mut Vec<(Pubkey, Account)>,
-    amount: u64,
+    stake_pool: &StakePool,
+    pool_amount: u64,
     min_balance: u64,
 ) -> Result<Vec<WithdrawAccount>, Error> {
     // Sort from highest to lowest balance
@@ -771,21 +773,21 @@ fn pick_withdraw_accounts(
 
     // Prepare the list of accounts to withdraw from
     let mut withdraw_from: Vec<WithdrawAccount> = vec![];
-    let mut remaining_amount = amount;
+    let mut remaining_amount = pool_amount;
 
     // Go through available accounts and withdraw from largest to smallest
     for (pubkey, account) in accounts {
         if account.lamports <= min_balance {
             continue;
         }
-        let available_for_withdrawal = account.lamports - *MIN_STAKE_BALANCE;
+        let available_for_withdrawal = stake_pool.calc_lamports_amount(account.lamports - *MIN_STAKE_BALANCE).unwrap();
         let withdraw_amount = u64::min(available_for_withdrawal, remaining_amount);
 
         // Those accounts will be withdrawn completely with `claim` instruction
         withdraw_from.push(WithdrawAccount {
             pubkey: *pubkey,
             account: account.clone(),
-            amount: withdraw_amount,
+            pool_amount: withdraw_amount,
         });
         remaining_amount -= withdraw_amount;
 
@@ -797,8 +799,8 @@ fn pick_withdraw_accounts(
     // Not enough stake to withdraw the specified amount
     if remaining_amount > 0 {
         return Err(format!(
-            "No stake accounts found in this pool with enough balance to withdraw {} SOL.",
-            lamports_to_sol(amount)
+            "No stake accounts found in this pool with enough balance to withdraw {} pool tokens.",
+            lamports_to_sol(pool_amount)
         )
         .into());
     }
@@ -815,7 +817,7 @@ fn command_withdraw(
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
 
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
@@ -844,12 +846,9 @@ fn command_withdraw(
         .into());
     }
 
-    // Convert pool tokens amount to lamports
-    let sol_withdraw_amount = pool_data.calc_lamports_amount(amount).unwrap();
-
     // Get the list of accounts to withdraw from
     let withdraw_accounts: Vec<WithdrawAccount> =
-        prepare_withdraw_accounts(config, &pool_withdraw_authority, sol_withdraw_amount)?;
+        prepare_withdraw_accounts(config, &pool_data, &pool_withdraw_authority, amount)?;
 
     // Construct transaction to withdraw from withdraw_accounts account list
     let mut instructions: Vec<Instruction> = vec![];
@@ -875,15 +874,14 @@ fn command_withdraw(
 
     // Go through prepared accounts and withdraw/claim them
     for withdraw_stake in withdraw_accounts {
-        let withdraw_amount = pool_data
-            .calc_pool_withdraw_amount(withdraw_stake.amount)
-            .unwrap()
-            + 1;
+        // Convert pool tokens amount to lamports
+        let sol_withdraw_amount = pool_data.calc_lamports_amount(withdraw_stake.pool_amount).unwrap();
+
         println!(
             "Withdrawing from account {}, amount {} SOL, {} pool tokens",
             withdraw_stake.pubkey,
-            lamports_to_sol(withdraw_stake.amount),
-            lamports_to_sol(withdraw_amount),
+            lamports_to_sol(sol_withdraw_amount),
+            lamports_to_sol(withdraw_stake.pool_amount),
         );
 
         if stake_receiver.is_none() {
@@ -927,7 +925,7 @@ fn command_withdraw(
             &pool_data.pool_mint,
             &spl_token::id(),
             &stake_program_id(),
-            withdraw_amount,
+            withdraw_stake.pool_amount,
         )?);
     }
 
