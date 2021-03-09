@@ -90,6 +90,18 @@ pub enum TimelockError {
     ///Invalid instruction end index, above instruction limit
     #[error("Invalid instruction end index, above instruction limit")]
     InvalidInstructionEndIndex,
+
+    /// Token amount below zero
+    #[error("Token amount below zero")]
+    TokenAmountBelowZero,
+
+    /// Too early to execute this transaction
+    #[error("Too early to execute this transaction")]
+    TooEarlyToExecute,
+
+    /// Invalid cursor given for temp file call
+    #[error("Invalid cursor given for temp file call")]
+    InvalidCursor,
 }
 
 impl PrintProgramError for TimelockError {

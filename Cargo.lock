@@ -163,9 +163,9 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "bincode"
-version = "1.3.2"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d175dfa69e619905c4c3cdb7c3c203fa3bdd5d51184e3afdb2742c0280493772"
+checksum = "f30d3a39baa26f9651f17b375061f3233dde33424a8b72b0dbe93a68a0bc896d"
 dependencies = [
  "byteorder",
  "serde",
@@ -3863,40 +3863,6 @@ dependencies = [
  "solana-sdk",
  "spl-stake-pool",
  "spl-token 3.1.0",
-]
-
-[[package]]
-name = "spl-timelock"
-version = "0.0.1"
-dependencies = [
- "arrayref",
- "assert_matches",
- "base64 0.13.0",
- "bincode",
- "log",
- "num-derive",
- "num-traits",
- "proptest",
- "serde",
- "serde_yaml",
- "solana-program",
- "solana-program-test",
- "solana-sdk",
- "spl-token 3.0.1",
- "thiserror",
- "tokio 0.3.5",
- "uint",
-]
-
-[[package]]
-name = "spl-timelock-client"
-version = "0.1.0"
-dependencies = [
- "solana-client",
- "solana-program",
- "solana-sdk",
- "spl-timelock",
- "spl-token 3.0.1",
 ]
 
 [[package]]

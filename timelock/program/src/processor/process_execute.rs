@@ -13,11 +13,13 @@ use crate::{
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::Clock,
     entrypoint::ProgramResult,
     instruction::Instruction,
     message::Message,
     program_pack::Pack,
     pubkey::Pubkey,
+    sysvar::Sysvar,
 };
 extern crate base64;
 
@@ -32,6 +34,7 @@ pub fn process_execute(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
 
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     // For now we assume all transactions are CustomSingleSignerTransactions even though
     // this will not always be the case...we need to solve that inheritance issue later.
     let mut transaction: CustomSingleSignerTimelockTransaction =
@@ -50,10 +53,14 @@ pub fn process_execute(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         return Err(TimelockError::TimelockTransactionAlreadyExecuted.into());
     }
 
+    if clock.slot < transaction.slot {
+        return Err(TimelockError::TooEarlyToExecute.into());
+    }
+
     // instructions is an array of u8s representing base64 characters
     // which we got by toBase64-ing an array of u8s representing serialized message.
     // So we need to take u8s array, turn it into base64 string, then decode that, then take that string
-    // and turn it into an array of u8s. That array goes into Message::from.
+    // and turn it into an array of u8s. That array goes into bin deserialize.
     let base64_str = match std::str::from_utf8(
         &transaction.instruction[0..transaction.instruction_end_index as usize + 1],
     ) {

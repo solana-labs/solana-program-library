@@ -220,6 +220,7 @@ pub enum TimelockInstruction {
     ///   2. `[]` Program being invoked account
     ///   3. `[]` Timelock program authority
     ///   4. `[]` Timelock program account pub key.
+    ///   5. `[]` Clock sysvar.
     Execute,
 }
 
