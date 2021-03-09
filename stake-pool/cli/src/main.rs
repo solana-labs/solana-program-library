@@ -780,7 +780,9 @@ fn pick_withdraw_accounts(
         if account.lamports <= min_balance {
             continue;
         }
-        let available_for_withdrawal = stake_pool.calc_lamports_amount(account.lamports - *MIN_STAKE_BALANCE).unwrap();
+        let available_for_withdrawal = stake_pool
+            .calc_lamports_amount(account.lamports - *MIN_STAKE_BALANCE)
+            .unwrap();
         let withdraw_amount = u64::min(available_for_withdrawal, remaining_amount);
 
         // Those accounts will be withdrawn completely with `claim` instruction
@@ -875,7 +877,9 @@ fn command_withdraw(
     // Go through prepared accounts and withdraw/claim them
     for withdraw_stake in withdraw_accounts {
         // Convert pool tokens amount to lamports
-        let sol_withdraw_amount = pool_data.calc_lamports_amount(withdraw_stake.pool_amount).unwrap();
+        let sol_withdraw_amount = pool_data
+            .calc_lamports_amount(withdraw_stake.pool_amount)
+            .unwrap();
 
         println!(
             "Withdrawing from account {}, amount {} SOL, {} pool tokens",
