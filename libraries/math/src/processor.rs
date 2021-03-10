@@ -38,7 +38,7 @@ pub fn process_instruction(
             multiplier,
         } => {
             msg!("Calculating U64 Multiply");
-            let result = multiplicand + multiplier;
+            let result = multiplicand * multiplier;
             msg!("{}", result);
             Ok(())
         }
