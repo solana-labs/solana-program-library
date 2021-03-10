@@ -33,5 +33,34 @@ pub fn process_instruction(
             msg!("{}", result);
             Ok(())
         }
+        MathInstruction::U64Multiply {
+            multiplicand,
+            multiplier,
+        } => {
+            msg!("Calculating U64 Multiply");
+            let result = multiplicand + multiplier;
+            msg!("{}", result);
+            Ok(())
+        }
+        MathInstruction::F32Multiply {
+            multiplicand,
+            multiplier,
+        } => {
+            msg!("Calculating f32 Multiply");
+            let result = multiplicand * multiplier;
+            msg!("{}", result as u64);
+            Ok(())
+        }
+        MathInstruction::F32Divide { dividend, divisor } => {
+            msg!("Calculating f32 Divide");
+            let result = dividend / divisor;
+            msg!("{}", result as u64);
+            Ok(())
+        }
+        MathInstruction::Noop => {
+            msg!("Do nothing");
+            msg!("{}", 0_u64);
+            Ok(())
+        }
     }
 }
