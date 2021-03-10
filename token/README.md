@@ -8,3 +8,8 @@ utilize to create and use their tokens.
 Full documentation is available at https://spl.solana.com/token
 
 JavaScript binding are available in the `./js` directory.
+
+## Run tests
+
+- Cannot run all tests on Windows, but can on WSL2
+- Requires Python Developer Tools installed
