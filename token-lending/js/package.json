@@ -47,7 +47,7 @@
     "@rollup/plugin-commonjs": "^17.1.0",
     "@tsconfig/recommended": "^1.0.1",
     "@types/bn.js": "^5.1.0",
-    "@types/eslint": "^7.2.6",
+    "@types/eslint": "^7.2.7",
     "@types/eslint-plugin-prettier": "^3.1.0",
     "@types/mkdirp": "^1.0.1",
     "@types/mz": "^2.7.3",
