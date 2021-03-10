@@ -43,24 +43,20 @@ use std::{error, str::FromStr, time::Instant};
 // -------- UPDATE START -------
 const CLUSTER_ADDRESS: &str = "https://devnet.solana.com";
 const KEYPAIR_PATH: &str = "/Users/jprince/.config/solana/id.json";
-const YOUR_APP_KEYPAIR_PATH: &str =
-    "/Users/jprince/Documents/other/solana-program-library/target/deploy/spl_timelock-keypair.json";
 
 solana_program::declare_id!("BPFLoaderUpgradeab1e11111111111111111111111");
-const PUBKEY_PATH: &str = "/Users/jprince/.config/solana/bpf_place.json";
+const BUFFER_PATH: &str = "/Users/jprince/.config/solana/bpf_place.json";
 const DEPLOY_PATH: &str =
     "/Users/jprince/Documents/other/solana-program-library/target/deploy/spl_timelock.so";
-const TIMELOCK_PROGRAM_ID: &str = "FvJaWR4pMpkAjS7SoGq7Z3JNrbXUdDRW3aziYRJXiNq4";
-const TIMELOCK_PROGRAM_ACCOUNT_ID: &str = "FWuvgSsJiCWwxwRQ25TBmS9NVgqPVy8tWjdrUMeWWprn";
+const TIMELOCK_PROGRAM_ID: &str = "6FyMHpXABKVSt4DmqUYLMgWChJV8HFXJuF6CsgucbZ3G";
+const TIMELOCK_PROGRAM_ACCOUNT_ID: &str = "FNsF5k1dGz8mrq7unFeeNx8LqFn9bhKg6n6N5DLgQmfb";
 // -------- UPDATE END ---------
 
 pub fn main() {
     let client = RpcClient::new(CLUSTER_ADDRESS.to_owned());
 
     let payer = read_keypair_file(KEYPAIR_PATH).unwrap();
-    let your_app_key = read_keypair_file(YOUR_APP_KEYPAIR_PATH).unwrap();
-    let temp_acct_key = read_keypair_file(PUBKEY_PATH).unwrap();
-    let temp_acct_key_pub = temp_acct_key.pubkey();
+    let buffer_key = read_keypair_file(BUFFER_PATH).unwrap();
     let bytes = std::fs::read(DEPLOY_PATH).unwrap();
 
     let timelock_program_account_key = Pubkey::from_str(TIMELOCK_PROGRAM_ACCOUNT_ID).unwrap();
@@ -69,15 +65,19 @@ pub fn main() {
         &[timelock_program_account_key.as_ref()],
         &timelock_program_id,
     );
-    do_process_program_partial_upgrade(
+    let final_message = do_process_program_partial_upgrade(
         &client,
         &bytes.as_slice(),
         &timelock_program_id,
         &payer,
-        &temp_acct_key,
-        &your_app_key,
+        &buffer_key,
+        &authority_key,
     );
-    println!("Check out program buffer at {:?}", temp_acct_key.pubkey());
+    println!("Check out program buffer at {:?}", buffer_key.pubkey());
+    println!(
+        "This is the upgrade command to paste into your proposal: {:?}:",
+        base64::encode(final_message.serialize().as_slice())
+    )
 }
 
 const DATA_CHUNK_SIZE: usize = 800;
@@ -88,9 +88,8 @@ fn do_process_program_partial_upgrade(
     program_id: &Pubkey,
     user: &Keypair,
     buffer: &Keypair,
-    program_authority: &Keypair,
-) {
-    let loader_id = bpf_loader_upgradeable::id();
+    timelock_authority: &Pubkey,
+) -> Message {
     let data_len = program_data.len();
     let minimum_balance = rpc_client
         .get_minimum_balance_for_rent_exemption(
@@ -125,40 +124,52 @@ fn do_process_program_partial_upgrade(
         ));
     }
 
-    let mut final_messages: Vec<Message> = vec![];
+    let set_authority_messages: Vec<Message> = vec![
+        Message::new(
+            &[bpf_loader_upgradeable::set_buffer_authority(
+                &buffer.pubkey(),
+                &user.pubkey(),
+                &timelock_authority,
+            )],
+            Some(&user.pubkey()),
+        ),
+        Message::new(
+            &[bpf_loader_upgradeable::set_upgrade_authority(
+                &program_id,
+                &user.pubkey(),
+                Some(timelock_authority),
+            )],
+            Some(&user.pubkey()),
+        ),
+    ];
 
     let final_message = Message::new(
         &[bpf_loader_upgradeable::upgrade(
             program_id,
             &buffer.pubkey(),
-            &user.pubkey(),
-            &user.pubkey(),
+            &timelock_authority,
+            &timelock_authority,
         )],
         Some(&user.pubkey()),
     );
-    final_messages.push(final_message);
-
     send_deploy_messages(
         &rpc_client,
         &create_messages,
         &write_messages,
-        &final_messages,
+        &set_authority_messages,
         &buffer,
-        &user,
         &user,
     )
     .unwrap();
-    return;
-    //return final_message;
+    return final_message;
 }
 fn send_deploy_messages(
     rpc_client: &RpcClient,
     create_messages: &Vec<Message>,
     write_messages: &Vec<Message>,
-    final_messages: &Vec<Message>,
+    set_authority_messages: &Vec<Message>,
     buffer_signer: &Keypair,
     user: &Keypair,
-    program_authority: &Keypair,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (blockhash, _, last_valid_slot) = rpc_client
         .get_recent_blockhash_with_commitment(CommitmentConfig::confirmed())?
@@ -171,19 +182,30 @@ fn send_deploy_messages(
     }
     for message in write_messages.iter() {
         let mut tx = Transaction::new_unsigned(message.clone());
-        tx.try_sign(&[user, program_authority], blockhash)?;
+        tx.try_sign(&[user], blockhash)?;
         write_transactions.push(tx);
     }
-    for message in final_messages.iter() {
+    send_and_confirm_transactions_with_spinner(
+        &rpc_client,
+        write_transactions,
+        &[user, buffer_signer],
+        CommitmentConfig::confirmed(),
+        last_valid_slot,
+    )
+    .map_err(|err| format!("Data writes to account failed: {}", err))?;
+
+    let mut write_transactions = vec![];
+
+    for message in set_authority_messages.iter() {
         let mut tx = Transaction::new_unsigned(message.clone());
-        tx.try_sign(&[user, program_authority], blockhash)?;
+        tx.try_sign(&[user], blockhash)?;
         write_transactions.push(tx);
     }
 
     send_and_confirm_transactions_with_spinner(
         &rpc_client,
         write_transactions,
-        &[user, program_authority, buffer_signer],
+        &[user, buffer_signer],
         CommitmentConfig::confirmed(),
         last_valid_slot,
     )

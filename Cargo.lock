@@ -3819,7 +3819,6 @@ version = "0.0.1"
 dependencies = [
  "arrayref",
  "assert_matches",
- "base64 0.13.0",
  "bincode",
  "log",
  "num-derive",
@@ -3833,7 +3832,6 @@ dependencies = [
  "spl-token 3.0.1",
  "thiserror",
  "tokio 0.3.5",
- "uint",
 ]
 
 [[package]]
@@ -3852,6 +3850,7 @@ dependencies = [
 name = "spl-timelock-proposal-loader-client"
 version = "0.1.0"
 dependencies = [
+ "base64 0.13.0",
  "bincode",
  "solana-client",
  "solana-program",
