@@ -11,9 +11,7 @@ use crate::curve::{
         CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
         TradingTokenResult,
     },
-    constant_product::{
-        normalized_value, pool_tokens_to_trading_tokens, trading_tokens_to_pool_tokens,
-    },
+    constant_product::normalized_value,
 };
 use arrayref::{array_mut_ref, array_ref};
 use spl_math::{precise_number::PreciseNumber, uint::U256};
@@ -175,16 +173,27 @@ impl CurveCalculator for StableCurve {
         swap_token_b_amount: u128,
         round_direction: RoundDirection,
     ) -> Option<TradingTokenResult> {
-        pool_tokens_to_trading_tokens(
-            pool_tokens,
-            pool_token_supply,
-            swap_token_a_amount,
-            swap_token_b_amount,
-            round_direction,
-        )
+        let pool_token_amount = PreciseNumber::new(pool_tokens)?;
+        let pool_token_total_supply = PreciseNumber::new(pool_token_supply)?;
+        let pool_ratio = pool_token_amount.checked_div(&pool_token_total_supply)?;
+        let token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
+        let token_a_value = token_a_amount.checked_mul(&pool_ratio)?;
+        let token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
+        let token_b_value = token_b_amount.checked_mul(&pool_ratio)?;
+        match round_direction {
+            RoundDirection::Floor => Some(TradingTokenResult {
+                token_a_amount: token_a_value.floor()?.to_imprecise()?,
+                token_b_amount: token_b_value.floor()?.to_imprecise()?,
+            }),
+            RoundDirection::Ceiling => Some(TradingTokenResult {
+                token_a_amount: token_a_value.ceiling()?.to_imprecise()?,
+                token_b_amount: token_b_value.ceiling()?.to_imprecise()?,
+            }),
+        }
     }
 
     /// Get the amount of pool tokens for the given amount of token A or B.
+    /// Re-implementation of `calc_token_amount`: https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L267
     fn trading_tokens_to_pool_tokens(
         &self,
         source_amount: u128,
@@ -194,14 +203,36 @@ impl CurveCalculator for StableCurve {
         trade_direction: TradeDirection,
         round_direction: RoundDirection,
     ) -> Option<u128> {
-        trading_tokens_to_pool_tokens(
-            source_amount,
-            swap_token_a_amount,
-            swap_token_b_amount,
-            pool_supply,
-            trade_direction,
-            round_direction,
-        )
+        let (swap_source_amount, swap_destination_amount) = match trade_direction {
+            TradeDirection::AtoB => (swap_token_a_amount, swap_token_b_amount),
+            TradeDirection::BtoA => (swap_token_b_amount, swap_token_a_amount),
+        };
+        let leverage = self.amp.checked_mul(N_COINS as u64)?;
+        let d0 = compute_d(leverage, swap_source_amount, swap_destination_amount)?;
+        let (new_swap_source_amount, new_swap_destination_amount) = match trade_direction {
+            TradeDirection::AtoB => (swap_token_a_amount + source_amount, swap_token_b_amount),
+            TradeDirection::BtoA => (swap_token_b_amount - source_amount, swap_token_a_amount),
+        };
+        let d1 = compute_d(
+            leverage,
+            new_swap_source_amount,
+            new_swap_destination_amount,
+        )?;
+        let diff = match trade_direction {
+            TradeDirection::AtoB => d1.checked_sub(d0)?,
+            TradeDirection::BtoA => d0.checked_sub(d1)?,
+        };
+        let final_amount = (diff.checked_mul(pool_supply))?.checked_div(d0)?;
+        match round_direction {
+            RoundDirection::Floor => {
+                Some(PreciseNumber::new(final_amount)?.floor()?.to_imprecise()?)
+            }
+            RoundDirection::Ceiling => Some(
+                PreciseNumber::new(final_amount)?
+                    .ceiling()?
+                    .to_imprecise()?,
+            ),
+        }
     }
 
     fn normalized_value(
