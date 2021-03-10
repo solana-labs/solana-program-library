@@ -88,3 +88,63 @@ async fn test_sqrt_u128_max() {
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }
+
+#[tokio::test]
+async fn test_u64_multiply() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_bpf_compute_max_units(1300);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction =
+        Transaction::new_with_payer(&[instruction::u64_multiply(42, 84)], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_f32_multiply() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_bpf_compute_max_units(1500);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::f32_multiply(1.5_f32, 2.0_f32)],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_f32_divide() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_bpf_compute_max_units(1600);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::f32_divide(3_f32, 1.5_f32)],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_noop() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_bpf_compute_max_units(1200);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction =
+        Transaction::new_with_payer(&[instruction::noop()], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
