@@ -21,7 +21,7 @@ use solana_program::{instruction::Instruction, program_pack::Pack, pubkey::Pubke
 use solana_sdk::{
     account::Account,
     commitment_config::CommitmentConfig,
-    native_token::*,
+    native_token::{self, Sol},
     signature::{Keypair, Signer},
     system_instruction,
     transaction::Transaction,
@@ -62,7 +62,7 @@ type CommandResult = Result<Option<Transaction>, Error>;
 const STAKE_STATE_LEN: usize = 200;
 const MAX_ACCOUNTS_TO_UPDATE: usize = 10;
 lazy_static! {
-    static ref MIN_STAKE_BALANCE: u64 = sol_to_lamports(1.0);
+    static ref MIN_STAKE_BALANCE: u64 = native_token::sol_to_lamports(1.0);
 }
 
 macro_rules! unique_signers {
@@ -78,8 +78,8 @@ fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(),
         Err(format!(
             "Fee payer, {}, has insufficient balance: {} required, {} available",
             config.fee_payer.pubkey(),
-            lamports_to_sol(required_balance),
-            lamports_to_sol(balance)
+            Sol(required_balance),
+            Sol(balance)
         )
         .into())
     } else {
@@ -107,21 +107,6 @@ fn get_authority_accounts(config: &Config, authority: &Pubkey) -> Vec<(Pubkey, A
             },
         )
         .unwrap()
-}
-
-fn _check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
-    let balance = config.rpc_client.get_balance(&config.owner.pubkey())?;
-    if balance < required_balance {
-        Err(format!(
-            "Owner, {}, has insufficient balance: {} required, {} available",
-            config.owner.pubkey(),
-            lamports_to_sol(required_balance),
-            lamports_to_sol(balance)
-        )
-        .into())
-    } else {
-        Ok(())
-    }
 }
 
 fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
@@ -409,9 +394,11 @@ fn command_vsa_remove(
     }
 
     if account_data.amount < tokens_to_withdraw {
+        let pool_mint_data = config.rpc_client.get_account_data(&pool_data.pool_mint)?;
+        let pool_mint = TokenMint::unpack_from_slice(pool_mint_data.as_slice()).unwrap();
         return Err(format!(
-            "Not enough balance to withdraw to remove validator stake account from the pool. {} pool tokens needed.",
-            lamports_to_sol(tokens_to_withdraw)
+            "Not enough balance to burn to remove validator stake account from the pool. {} pool tokens needed.",
+            spl_token::amount_to_ui_amount(tokens_to_withdraw, pool_mint.decimals)
         ).into());
     }
 
@@ -668,13 +655,13 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
         let balance = account.lamports;
         total_balance += balance;
         println!(
-            "Pubkey: {}\tVote: {}\t{} SOL",
+            "Pubkey: {}\tVote: {}\t{}",
             pubkey,
             stake_data.delegation().unwrap().voter_pubkey,
-            lamports_to_sol(balance)
+            Sol(balance)
         );
     }
-    println!("Total: {} SOL", lamports_to_sol(total_balance));
+    println!("Total: {}", Sol(total_balance));
 
     Ok(None)
 }
@@ -759,12 +746,21 @@ fn prepare_withdraw_accounts(
         .rpc_client
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
         + 1;
-    pick_withdraw_accounts(&mut accounts, stake_pool, pool_amount, min_balance)
+    let pool_mint_data = config.rpc_client.get_account_data(&stake_pool.pool_mint)?;
+    let pool_mint = TokenMint::unpack_from_slice(pool_mint_data.as_slice()).unwrap();
+    pick_withdraw_accounts(
+        &mut accounts,
+        stake_pool,
+        &pool_mint,
+        pool_amount,
+        min_balance,
+    )
 }
 
 fn pick_withdraw_accounts(
     accounts: &mut Vec<(Pubkey, Account)>,
     stake_pool: &StakePool,
+    pool_mint: &TokenMint,
     pool_amount: u64,
     min_balance: u64,
 ) -> Result<Vec<WithdrawAccount>, Error> {
@@ -802,7 +798,7 @@ fn pick_withdraw_accounts(
     if remaining_amount > 0 {
         return Err(format!(
             "No stake accounts found in this pool with enough balance to withdraw {} pool tokens.",
-            lamports_to_sol(pool_amount)
+            spl_token::amount_to_ui_amount(pool_amount, pool_mint.decimals)
         )
         .into());
     }
@@ -813,13 +809,17 @@ fn pick_withdraw_accounts(
 fn command_withdraw(
     config: &Config,
     pool: &Pubkey,
-    amount: u64,
+    pool_amount: f64,
     withdraw_from: &Pubkey,
     stake_receiver_param: &Option<Pubkey>,
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
     let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
+
+    let pool_mint_data = config.rpc_client.get_account_data(&pool_data.pool_mint)?;
+    let pool_mint = TokenMint::unpack_from_slice(pool_mint_data.as_slice()).unwrap();
+    let pool_amount = spl_token::ui_amount_to_amount(pool_amount, pool_mint.decimals);
 
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
@@ -839,18 +839,18 @@ fn command_withdraw(
     }
 
     // Check withdraw_from balance
-    if account_data.amount < amount {
+    if account_data.amount < pool_amount {
         return Err(format!(
             "Not enough token balance to withdraw {} pool tokens.\nMaximum withdraw amount is {} pool tokens.",
-            lamports_to_sol(amount),
-            lamports_to_sol(account_data.amount)
+            spl_token::amount_to_ui_amount(pool_amount, pool_mint.decimals),
+            spl_token::amount_to_ui_amount(account_data.amount, pool_mint.decimals)
         )
         .into());
     }
 
     // Get the list of accounts to withdraw from
     let withdraw_accounts: Vec<WithdrawAccount> =
-        prepare_withdraw_accounts(config, &pool_data, &pool_withdraw_authority, amount)?;
+        prepare_withdraw_accounts(config, &pool_data, &pool_withdraw_authority, pool_amount)?;
 
     // Construct transaction to withdraw from withdraw_accounts account list
     let mut instructions: Vec<Instruction> = vec![];
@@ -865,7 +865,7 @@ fn command_withdraw(
             &pool_withdraw_authority,
             &config.owner.pubkey(),
             &[],
-            amount,
+            pool_amount,
         )?,
     );
 
@@ -882,10 +882,10 @@ fn command_withdraw(
             .unwrap();
 
         println!(
-            "Withdrawing from account {}, amount {} SOL, {} pool tokens",
+            "Withdrawing from account {}, amount {}, {} pool tokens",
             withdraw_stake.pubkey,
-            lamports_to_sol(sol_withdraw_amount),
-            lamports_to_sol(withdraw_stake.pool_amount),
+            Sol(sol_withdraw_amount),
+            spl_token::amount_to_ui_amount(withdraw_stake.pool_amount, pool_mint.decimals),
         );
 
         if stake_receiver.is_none() {
@@ -1460,13 +1460,12 @@ fn main() {
         ("withdraw", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
             let withdraw_from: Pubkey = pubkey_of(arg_matches, "withdraw_from").unwrap();
-            // convert from float to int, using sol_to_lamports because they have the same precision as SOL
-            let amount: u64 = sol_to_lamports(value_t_or_exit!(arg_matches, "amount", f64));
+            let pool_amount = value_t_or_exit!(arg_matches, "amount", f64);
             let stake_receiver: Option<Pubkey> = pubkey_of(arg_matches, "stake_receiver");
             command_withdraw(
                 &config,
                 &pool_account,
-                amount,
+                pool_amount,
                 &withdraw_from,
                 &stake_receiver,
             )
