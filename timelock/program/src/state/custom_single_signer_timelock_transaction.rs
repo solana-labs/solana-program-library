@@ -1,5 +1,6 @@
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
+    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
@@ -8,7 +9,10 @@ use solana_program::{
 use super::UNINITIALIZED_VERSION;
 
 /// Max instruction limit for generics
-pub const INSTRUCTION_LIMIT: usize = 255;
+pub const INSTRUCTION_LIMIT: usize = 500;
+
+/// Max accounts allowed in instruction
+pub const MAX_ACCOUNTS_ALLOWED: usize = 12;
 
 /// STRUCT VERSION
 pub const CUSTOM_SINGLE_SIGNER_TIMELOCK_TRANSACTION_VERSION: u8 = 1;
@@ -27,14 +31,11 @@ pub struct CustomSingleSignerTimelockTransaction {
     /// Instruction set
     pub instruction: [u8; INSTRUCTION_LIMIT],
 
-    /// authority key (pda) used to run the program
-    pub authority_key: Pubkey,
-
     /// Executed flag
     pub executed: u8,
 
     /// Instruction end index (inclusive)
-    pub instruction_end_index: u8,
+    pub instruction_end_index: u16,
 }
 
 impl PartialEq for CustomSingleSignerTimelockTransaction {
@@ -47,7 +48,7 @@ impl PartialEq for CustomSingleSignerTimelockTransaction {
                 return false;
             }
         }
-        self.slot == other.slot && self.authority_key.to_bytes() == other.authority_key.to_bytes()
+        self.slot == other.slot
     }
 }
 
@@ -57,26 +58,24 @@ impl IsInitialized for CustomSingleSignerTimelockTransaction {
         self.version != UNINITIALIZED_VERSION
     }
 }
-const CUSTOM_SINGLE_SIGNER_LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 32 + 1 + 1;
+const CUSTOM_SINGLE_SIGNER_LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2;
 impl Pack for CustomSingleSignerTimelockTransaction {
-    const LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 32 + 1 + 1;
+    const LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, CUSTOM_SINGLE_SIGNER_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, slot, instruction, authority_key, executed, instruction_end_index) =
-            array_refs![input, 1, 8, INSTRUCTION_LIMIT, 32, 1, 1];
+        let (version, slot, instruction, executed, instruction_end_index) =
+            array_refs![input, 1, 8, INSTRUCTION_LIMIT, 1, 2];
         let version = u8::from_le_bytes(*version);
         let slot = u64::from_le_bytes(*slot);
-        let authority_key = Pubkey::new_from_array(*authority_key);
         let executed = u8::from_le_bytes(*executed);
-        let instruction_end_index = u8::from_le_bytes(*instruction_end_index);
+        let instruction_end_index = u16::from_le_bytes(*instruction_end_index);
 
         Ok(CustomSingleSignerTimelockTransaction {
             version,
             slot,
             instruction: *instruction,
-            authority_key,
             executed,
             instruction_end_index,
         })
@@ -85,12 +84,11 @@ impl Pack for CustomSingleSignerTimelockTransaction {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, CUSTOM_SINGLE_SIGNER_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, slot, instruction, authority_key, executed, instruction_end_index) =
-            mut_array_refs![output, 1, 8, INSTRUCTION_LIMIT, 32, 1, 1];
+        let (version, slot, instruction, executed, instruction_end_index) =
+            mut_array_refs![output, 1, 8, INSTRUCTION_LIMIT, 1, 2];
         *version = self.version.to_le_bytes();
         *slot = self.slot.to_le_bytes();
         instruction.copy_from_slice(self.instruction.as_ref());
-        authority_key.copy_from_slice(self.authority_key.as_ref());
         *executed = self.executed.to_le_bytes();
         *instruction_end_index = self.instruction_end_index.to_le_bytes()
     }

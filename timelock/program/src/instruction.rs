@@ -120,7 +120,7 @@ pub enum TimelockInstruction {
         /// Position in transaction array
         position: u8,
         /// Point in instruction array where 0 padding begins - inclusive, index should be where actual instruction ends, not where 0s begin
-        instruction_end_index: u8,
+        instruction_end_index: u16,
     },
 
     /// [Requires Signatory token]
@@ -221,7 +221,11 @@ pub enum TimelockInstruction {
     ///   3. `[]` Timelock program authority
     ///   4. `[]` Timelock program account pub key.
     ///   5. `[]` Clock sysvar.
-    Execute,
+    ///   6+ Any extra accounts that are part of the instruction, in order
+    Execute {
+        /// Number of extra accounts
+        number_of_extra_accounts: u8,
+    },
 }
 
 impl TimelockInstruction {
@@ -275,7 +279,7 @@ impl TimelockInstruction {
                 let (slot, rest) = Self::unpack_u64(rest)?;
                 let (instruction, rest) = Self::unpack_instructions(rest)?;
                 let (position, rest) = Self::unpack_u8(rest)?;
-                let (instruction_end_index, _) = Self::unpack_u8(rest)?;
+                let (instruction_end_index, _) = Self::unpack_u16(rest)?;
                 Self::AddCustomSingleSignerTransaction {
                     slot,
                     instruction,
@@ -303,7 +307,12 @@ impl TimelockInstruction {
                 }
             }
             11 => Self::Ping,
-            12 => Self::Execute,
+            12 => {
+                let (number_of_extra_accounts, _) = Self::unpack_u8(rest)?;
+                Self::Execute {
+                    number_of_extra_accounts,
+                }
+            }
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -315,6 +324,34 @@ impl TimelockInstruction {
                 .get(..8)
                 .and_then(|slice| slice.try_into().ok())
                 .map(u64::from_le_bytes)
+                .ok_or(TimelockError::InstructionUnpackError)?;
+            Ok((amount, rest))
+        } else {
+            Err(TimelockError::InstructionUnpackError.into())
+        }
+    }
+
+    fn unpack_u16(input: &[u8]) -> Result<(u16, &[u8]), ProgramError> {
+        if input.len() >= 2 {
+            let (amount, rest) = input.split_at(2);
+            let amount = amount
+                .get(..2)
+                .and_then(|slice| slice.try_into().ok())
+                .map(u16::from_le_bytes)
+                .ok_or(TimelockError::InstructionUnpackError)?;
+            Ok((amount, rest))
+        } else {
+            Err(TimelockError::InstructionUnpackError.into())
+        }
+    }
+
+    fn unpack_u32(input: &[u8]) -> Result<(u32, &[u8]), ProgramError> {
+        if input.len() >= 4 {
+            let (amount, rest) = input.split_at(4);
+            let amount = amount
+                .get(..4)
+                .and_then(|slice| slice.try_into().ok())
+                .map(u32::from_le_bytes)
                 .ok_or(TimelockError::InstructionUnpackError)?;
             Ok((amount, rest))
         } else {
@@ -416,7 +453,12 @@ impl TimelockInstruction {
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
             Self::Ping => buf.push(11),
-            Self::Execute => buf.push(12),
+            Self::Execute {
+                number_of_extra_accounts,
+            } => {
+                buf.push(12);
+                buf.extend_from_slice(&number_of_extra_accounts.to_le_bytes());
+            }
         }
         buf
     }

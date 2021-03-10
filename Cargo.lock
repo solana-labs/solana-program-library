@@ -3827,6 +3827,10 @@ name = "spl-stake-pool"
 version = "0.1.0"
 dependencies = [
  "arrayref",
+<<<<<<< HEAD
+=======
+ "assert_matches",
+>>>>>>> WIP commit - added a prototype loader cli that creates a buffer ready to go and prints out a base64 command that you can use with proposals to upgrade your program. Also a bunch of fixes to execute to get it to work properly among other things. Will eventually fold prototype into solana cli.
  "bincode",
  "borsh 0.8.2",
  "num-derive",
@@ -3848,6 +3852,7 @@ dependencies = [
 name = "spl-stake-pool-cli"
 version = "2.0.1"
 dependencies = [
+ "base64 0.13.0",
  "bincode",
  "borsh 0.8.2",
  "bs58 0.4.0",

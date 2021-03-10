@@ -37,7 +37,7 @@ pub fn process_mint_voting_tokens(
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
 
-    if voting_token_amount < 0 {
+    if voting_token_amount < 0 as u64  {
         return Err(TimelockError::TokenAmountBelowZero.into());
     }
 

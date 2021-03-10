@@ -102,6 +102,18 @@ pub enum TimelockError {
     /// Invalid cursor given for temp file call
     #[error("Invalid cursor given for temp file call")]
     InvalidCursor,
+
+    /// Too many accounts in your arbitrary instruction
+    #[error("Too many accounts in your arbitrary instruction")]
+    TooManyAccountsInInstruction,
+
+    /// Invalid base58
+    #[error("InvalidBase58Length")]
+    InvalidBase58Length,
+
+    /// Invalid base 58 character
+    #[error("InvalidBase58Character")]
+    InvalidBase58Character
 }
 
 impl PrintProgramError for TimelockError {

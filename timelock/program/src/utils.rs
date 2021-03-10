@@ -154,7 +154,6 @@ pub fn assert_same_version_as_program(
 /// assert rent exempt
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
-        msg!(&rent.minimum_balance(account_info.data_len()).to_string());
         Err(TimelockError::NotRentExempt.into())
     } else {
         Ok(())
@@ -182,52 +181,6 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
     } else {
         Ok(account)
     }
-}
-
-/// Unpacks a spl_token `Mint`.
-pub fn unpack_mint(data: &[u8]) -> Result<spl_token::state::Mint, TimelockError> {
-    spl_token::state::Mint::unpack(data).map_err(|_| TimelockError::InvalidTokenMint)
-}
-
-/// Issue a spl_token `InitializeMint` instruction.
-#[inline(always)]
-pub fn spl_token_init_mint(params: TokenInitializeMintParams<'_, '_>) -> ProgramResult {
-    let TokenInitializeMintParams {
-        mint,
-        rent,
-        authority,
-        token_program,
-        decimals,
-    } = params;
-    let ix = spl_token::instruction::initialize_mint(
-        token_program.key,
-        mint.key,
-        authority,
-        None,
-        decimals,
-    )?;
-    let result = invoke(&ix, &[mint, rent, token_program]);
-    result.map_err(|_| TimelockError::TokenInitializeMintFailed.into())
-}
-
-/// Issue a spl_token `InitializeAccount` instruction.
-#[inline(always)]
-pub fn spl_token_init_account(params: TokenInitializeAccountParams<'_>) -> ProgramResult {
-    let TokenInitializeAccountParams {
-        account,
-        mint,
-        owner,
-        rent,
-        token_program,
-    } = params;
-    let ix = spl_token::instruction::initialize_account(
-        token_program.key,
-        account.key,
-        mint.key,
-        owner.key,
-    )?;
-    let result = invoke(&ix, &[account, mint, owner, rent, token_program]);
-    result.map_err(|_| TimelockError::TokenInitializeAccountFailed.into())
 }
 
 /// Issue a spl_token `Transfer` instruction.
@@ -312,46 +265,19 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
 pub fn execute(params: ExecuteParams<'_, '_>) -> ProgramResult {
     let ExecuteParams {
         instruction,
-        timelock_program_authority_info,
-        program_to_invoke_info,
-
         authority_signer_seeds,
+        account_infos,
     } = params;
+
     let result = invoke_signed(
         &instruction,
-        &[timelock_program_authority_info, program_to_invoke_info],
+        &account_infos.as_slice(),
         &[authority_signer_seeds],
     );
     result.map_err(|_| TimelockError::ExecutionFailed.into())
 }
 
-/// TokenInitializeMintParams
-pub struct TokenInitializeMintParams<'a: 'b, 'b> {
-    /// mint
-    pub mint: AccountInfo<'a>,
-    /// rent
-    pub rent: AccountInfo<'a>,
-    /// authority
-    pub authority: &'b Pubkey,
-    /// decimals
-    pub decimals: u8,
-    /// token_program
-    pub token_program: AccountInfo<'a>,
-}
 
-/// TokenInitializeAccountParams
-pub struct TokenInitializeAccountParams<'a> {
-    /// account
-    pub account: AccountInfo<'a>,
-    /// mint
-    pub mint: AccountInfo<'a>,
-    /// owner
-    pub owner: AccountInfo<'a>,
-    /// rent
-    pub rent: AccountInfo<'a>,
-    /// token_program
-    pub token_program: AccountInfo<'a>,
-}
 ///TokenTransferParams
 pub struct TokenTransferParams<'a: 'b, 'b> {
     /// source
@@ -398,14 +324,12 @@ pub struct TokenBurnParams<'a: 'b, 'b> {
     pub token_program: AccountInfo<'a>,
 }
 
-/// InvokeArbitraryParams
+/// ExecuteParams
 pub struct ExecuteParams<'a: 'b, 'b> {
     /// Instruction
     pub instruction: Instruction,
-    /// timelock authority
-    pub timelock_program_authority_info: AccountInfo<'a>,
-    /// program to invoke
-    pub program_to_invoke_info: AccountInfo<'a>,
     /// authority_signer_seeds
     pub authority_signer_seeds: &'b [&'b [u8]],
+    /// Account infos
+    pub account_infos: Vec<AccountInfo<'a>>,
 }

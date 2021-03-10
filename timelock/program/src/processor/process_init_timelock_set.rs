@@ -48,7 +48,6 @@ pub fn process_init_timelock_set(
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
 
-    msg!("hey there, im upgraded joe    pART DUES!");
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_info)?;
 
     assert_rent_exempt(rent, timelock_set_account_info)?;

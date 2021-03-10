@@ -18,6 +18,7 @@ use crate::{
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    msg,
     program_pack::Pack,
     pubkey::Pubkey,
 };
@@ -29,7 +30,7 @@ pub fn process_add_custom_single_signer_transaction(
     slot: u64,
     instruction: [u8; INSTRUCTION_LIMIT],
     position: u8,
-    instruction_end_index: u8,
+    instruction_end_index: u16,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -52,7 +53,7 @@ pub fn process_add_custom_single_signer_transaction(
         return Err(TimelockError::TooHighPositionInTxnArrayError.into());
     }
 
-    if instruction_end_index >= INSTRUCTION_LIMIT as u8 {
+    if instruction_end_index as usize >= INSTRUCTION_LIMIT as usize {
         return Err(TimelockError::InvalidInstructionEndIndex.into());
     }
 
@@ -67,6 +68,7 @@ pub fn process_add_custom_single_signer_transaction(
         transfer_authority_info,
         timelock_mint_authority_info,
     )?;
+
     timelock_txn.version = CUSTOM_SINGLE_SIGNER_TIMELOCK_TRANSACTION_VERSION;
     timelock_txn.slot = slot;
     timelock_txn.instruction = instruction;

@@ -100,9 +100,11 @@ pub fn process_instruction(
             msg!("Ping!");
             Ok(())
         }
-        TimelockInstruction::Execute => {
+        TimelockInstruction::Execute {
+            number_of_extra_accounts,
+        } => {
             msg!("Instruction: Execute");
-            process_execute(program_id, accounts)
+            process_execute(program_id, accounts, number_of_extra_accounts)
         }
     }
 }

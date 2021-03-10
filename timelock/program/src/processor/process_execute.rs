@@ -3,7 +3,9 @@ use crate::{
     error::TimelockError,
     state::timelock_program::TimelockProgram,
     state::{
-        custom_single_signer_timelock_transaction::CustomSingleSignerTimelockTransaction,
+        custom_single_signer_timelock_transaction::{
+            CustomSingleSignerTimelockTransaction, MAX_ACCOUNTS_ALLOWED,
+        },
         timelock_set::TimelockSet,
     },
     utils::{
@@ -17,24 +19,39 @@ use solana_program::{
     entrypoint::ProgramResult,
     instruction::Instruction,
     message::Message,
+    msg,
     program_pack::Pack,
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
-extern crate base64;
 
 /// Execute an instruction
-pub fn process_execute(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+pub fn process_execute(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    number_of_extra_accounts: u8,
+) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let transaction_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let program_to_invoke_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
+    let clock_info = next_account_info(account_info_iter)?;
+    let mut account_infos: Vec<AccountInfo> = vec![];
+    if number_of_extra_accounts > (MAX_ACCOUNTS_ALLOWED - 2) as u8 {
+        return Err(TimelockError::TooManyAccountsInInstruction.into());
+    }
+    for n in 0..number_of_extra_accounts {
+        account_infos.push(next_account_info(account_info_iter)?.clone())
+    }
+    account_infos.push(program_to_invoke_info.clone());
+    account_infos.push(timelock_program_authority_info.clone());
 
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::from_account_info(clock_info)?;
+
     // For now we assume all transactions are CustomSingleSignerTransactions even though
     // this will not always be the case...we need to solve that inheritance issue later.
     let mut transaction: CustomSingleSignerTimelockTransaction =
@@ -57,18 +74,7 @@ pub fn process_execute(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         return Err(TimelockError::TooEarlyToExecute.into());
     }
 
-    // instructions is an array of u8s representing base64 characters
-    // which we got by toBase64-ing an array of u8s representing serialized message.
-    // So we need to take u8s array, turn it into base64 string, then decode that, then take that string
-    // and turn it into an array of u8s. That array goes into bin deserialize.
-    let base64_str = match std::str::from_utf8(
-        &transaction.instruction[0..transaction.instruction_end_index as usize + 1],
-    ) {
-        Ok(val) => val,
-        Err(_) => return Err(TimelockError::InstructionUnpackError.into()),
-    };
-    let decoded_msg_vec = base64::decode(base64_str).unwrap();
-    let message: Message = match bincode::deserialize::<Message>(&decoded_msg_vec.as_slice()) {
+    let message: Message = match bincode::deserialize::<Message>(&transaction.instruction[0..transaction.instruction_end_index as usize + 1]) {
         Ok(val) => val,
         Err(_) => return Err(TimelockError::InstructionUnpackError.into()),
     };
@@ -78,12 +84,12 @@ pub fn process_execute(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
             Ok(val) => val,
             Err(_) => return Err(TimelockError::InstructionUnpackError.into()),
         };
+    //msg!("Data is {:?}", instruction.data);
 
     execute(ExecuteParams {
         instruction,
-        program_to_invoke_info: program_to_invoke_info.clone(),
-        timelock_program_authority_info: timelock_program_authority_info.clone(),
         authority_signer_seeds,
+        account_infos,
     })?;
 
     transaction.executed = 1;

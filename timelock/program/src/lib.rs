@@ -1,5 +1,4 @@
 #![deny(missing_docs)]
-
 //! A lending program for the Solana blockchain.
 
 pub mod entrypoint;
@@ -12,7 +11,8 @@ pub mod processor;
 pub mod state;
 /// utils
 pub mod utils;
-
+/// base 58 cheap util
+//pub mod base58;
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
 
