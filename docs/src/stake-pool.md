@@ -22,6 +22,52 @@ Additional information regarding staking and stake programming is available at:
 - https://solana.com/staking
 - https://docs.solana.com/staking/stake-programming
 
+## Motivation
+
+This document is intended for stake pool managers who want to create or manage
+stake pools, and users who want to provide staked SOL into an existing stake
+pool.
+
+In its current iteration, the stake pool only processes totally active stakes.
+Deposits must come from fully active stakes, and withdrawals return a fully 
+active stake account.
+
+This means that stake pool managers and users must be comfortable with creating
+and delegating stakes, which are more advanced operations than sending and
+receiving SPL tokens and SOL. Additional information on stake operations are
+available at:
+
+- https://docs.solana.com/cli/delegate-stake
+- https://docs.solana.com/cli/manage-stake-accounts
+
+To reach a wider audience of users, stake pool managers are encouraged
+to provide a market for their pool's staking derivatives, through an AMM
+like [Token Swap](token-swap.md).
+
+## Operation
+
+A stake pool manager creates a stake pool and includes validators that will
+receive delegations from the pool by creating "validator stake accounts" and
+activating a delegation on them. Once a validator stake account's delegation is
+active, the stake pool manager adds it to the stake pool.
+
+At this point, users can participate with deposits. They must delegate a stake
+account to the one of the validators in the stake pool. Once it's active, the
+user can deposit their stake into the pool in exchange for SPL staking derivatives
+representing their fractional ownership in pool. A percentage of the user's
+deposit goes to the pool manager as a fee.
+
+Over time, as the stake pool accrues staking rewards, the user's fractional
+ownership will be worth more than their initial deposit. Whenever the user chooses,
+they can withdraw their SPL staking derivatives in exchange for an activated stake.
+
+The stake pool manager can add and remove validators, or rebalance the pool by
+withdrawing stakes from the pool, deactivating them, reactivating them on another
+validator, then depositing back into the pool.
+
+These manager operations require SPL staking derivatives and staked SOL, so the
+stake pool manager will need liquidity on hand to properly manage the pool.
+
 ## Background
 
 Solana's programming model and the definitions of the Solana terms used in this
@@ -34,34 +80,6 @@ document are available at:
 
 The Stake Pool Program's source is available on
 [github](https://github.com/solana-labs/solana-program-library).
-
-## Design
-
-### Very important note concerning activated stakes
-
-In its current iteration, the stake pool only processes totally active stakes.
-Deposits must come from fully active stakes, and withdrawals return a fully 
-active stake account.
-
-Also, the deposited stake account's "credits observed" must match the destination
-account's "credits observed". Typically, this means you must wait an additional
-epoch after activation for your stake account to match up with the stake pool's account.
-
-This feature maintains fungibility of stake pool tokens. Fully activated stakes
-are not equivalent to inactive, activating, or deactivating stakes due to the
-time cost of staking. Otherwise, malicious actors can deposit stake in one state
-and withdraw it in another state without waiting.
-
-### Transaction sizes
-
-The Solana transaction processor has two important limitations:
-
-* size of the overall transaction, limited to roughly 1 MTU / packet
-* computation budget per instruction
-
-A stake pool may manage hundreds of staking accounts, so it is impossible to
-update the total value of the stake pool in one instruction. Thankfully, the
-command-line utility does all of the work of breaking up transactions.
 
 ## Command-line Utility
 
@@ -445,3 +463,30 @@ $ spl-stake-pool withdraw --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC  -
 Withdrawing from account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN, amount 8.867176377 SOL, 0.02 pool tokens
 Signature: 2xBPVPJ749AE4hHNCNYdjuHv1EdMvxm9uvvraWfTA7Urrvecwh9w64URCyLLroLQ2RKDGE2QELM2ZHd8qRkjavJM
 ```
+
+## Appendix
+
+### Activated stakes
+
+As mentioned earlier, the stake pool only processes active stakes. This feature
+maintains fungibility of stake pool tokens. Fully activated stakes
+are not equivalent to inactive, activating, or deactivating stakes due to the
+time cost of staking. Otherwise, malicious actors can deposit stake in one state
+and withdraw it in another state without waiting.
+
+### Staking Credits Observed on Deposit
+
+A deposited stake account's "credits observed" must match the destination
+account's "credits observed". Typically, this means you must wait an additional
+epoch after activation for your stake account to match up with the stake pool's account.
+
+### Transaction sizes
+
+The Solana transaction processor has two important limitations:
+
+* size of the overall transaction, limited to roughly 1 MTU / packet
+* computation budget per instruction
+
+A stake pool may manage hundreds of staking accounts, so it is impossible to
+update the total value of the stake pool in one instruction. Thankfully, the
+command-line utility breaks up transactions to avoid this issue for large pools.
