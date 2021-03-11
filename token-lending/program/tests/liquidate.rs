@@ -27,11 +27,12 @@ async fn test_success() {
     test.set_bpf_compute_max_units(97_000);
 
     // set loan values to about 90% of collateral value so that it gets liquidated
-    const USDC_LOAN: u64 = 2 * FRACTIONAL_TO_USDC;
+    // assumes SOL is ~$14
+    const USDC_LOAN: u64 = 12 * FRACTIONAL_TO_USDC;
     const USDC_LOAN_SOL_COLLATERAL: u64 = INITIAL_COLLATERAL_RATIO * LAMPORTS_TO_SOL;
 
     const SOL_LOAN: u64 = LAMPORTS_TO_SOL;
-    const SOL_LOAN_USDC_COLLATERAL: u64 = 2 * INITIAL_COLLATERAL_RATIO * FRACTIONAL_TO_USDC;
+    const SOL_LOAN_USDC_COLLATERAL: u64 = 12 * INITIAL_COLLATERAL_RATIO * FRACTIONAL_TO_USDC;
 
     let user_accounts_owner = Keypair::new();
     let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);

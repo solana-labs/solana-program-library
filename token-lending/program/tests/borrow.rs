@@ -16,15 +16,15 @@ const FRACTIONAL_TO_USDC: u64 = 1_000_000;
 #[tokio::test]
 async fn test_borrow_quote_currency() {
     // Using SOL/USDC max 3 bids:
-    //  $2.199,  300.0 SOL
-    //  $2.192,  213.3 SOL
-    //  $2.190, 1523.4 SOL
+    //  $13.988,  300.0 SOL
+    //  $13.960,  206.8 SOL
+    //  $13.928, 1000.0 SOL
     //
     // Collateral amount = 750 * 0.8 (LTV) = 600 SOL
-    // Borrow amount = 2.199 * 300 + 2.192 * 213.3 + 2.19 * 86.7 = 1,317.1266 USDC
+    // Borrow amount = 13.988 * 300 + 13.960 * 206.8 + 13.928 * 93.2 = 8,381.4176 USDC
     const SOL_COLLATERAL_AMOUNT_LAMPORTS: u64 = 750 * LAMPORTS_TO_SOL;
-    const USDC_BORROW_AMOUNT_FRACTIONAL: u64 = 1_317_126_600;
-    const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 10_000 * FRACTIONAL_TO_USDC;
+    const USDC_BORROW_AMOUNT_FRACTIONAL: u64 = 8_381_417_600;
+    const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 20_000 * FRACTIONAL_TO_USDC;
     const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 2 * SOL_COLLATERAL_AMOUNT_LAMPORTS;
 
     let mut test = ProgramTest::new(
@@ -171,15 +171,15 @@ async fn test_borrow_quote_currency() {
 
 #[tokio::test]
 async fn test_borrow_base_currency() {
-    // Using SOL/USDC min 3 asks:
-    //  $2.212, 1825.6 SOL
-    //  $2.211,  300.0 SOL
-    //  $2.210,  212.5 SOL
+    // Using SOL/USDC min 2 asks:
+    //  $14.074, 4707.1 SOL
+    //  $14.055, 1751.7 SOL
+    //  $13.989,   12.1 SOL
     //
-    // Borrow amount = 600 SOL
-    // Collateral amount = 2.21 * 212.5 + 2.211 * 300 + 2.212 * 87.5 = 1,326.475 USDC
-    const SOL_BORROW_AMOUNT_LAMPORTS: u64 = 600 * LAMPORTS_TO_SOL;
-    const USDC_COLLATERAL_LAMPORTS: u64 = 1_326_475_000;
+    // Borrow amount = 2000 SOL
+    // Collateral amount = 13.989 * 12.1 + 14.055 * 1751.7 + 14.074 * 236.2 = 28,113.6892 USDC
+    const SOL_BORROW_AMOUNT_LAMPORTS: u64 = 2000 * LAMPORTS_TO_SOL;
+    const USDC_COLLATERAL_LAMPORTS: u64 = 28_113_689_200;
     const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 5000 * LAMPORTS_TO_SOL;
     const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 2 * USDC_COLLATERAL_LAMPORTS;
 
