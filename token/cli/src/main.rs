@@ -44,6 +44,9 @@ use spl_token::{
 };
 use std::{collections::HashMap, process::exit, str::FromStr, sync::Arc};
 
+mod sort;
+use sort::sort_and_parse_token_accounts;
+
 static WARNING: Emoji = Emoji("⚠️", "!");
 
 pub const MINT_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
@@ -799,6 +802,9 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
         println!("None");
     }
 
+    let (mint_accounts, unsupported_accounts) =
+        sort_and_parse_token_accounts(&config.owner, accounts);
+
     if token.is_some() {
         println!("{:<44} Balance", "Account");
         println!("----------------------------------------------------");
@@ -806,47 +812,42 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
         println!("{:<44} {:<44} Balance", "Token", "Account");
         println!("-------------------------------------------------------------------------------------------------");
     }
-    for keyed_account in accounts {
-        let address = keyed_account.pubkey;
-
-        if let UiAccountData::Json(parsed_account) = keyed_account.account.data {
-            if parsed_account.program != "spl-token" {
-                println!(
-                    "{:<44} Unsupported account program: {}",
-                    address, parsed_account.program
-                );
+    for (_mint, accounts_list) in mint_accounts.iter() {
+        for account in accounts_list {
+            let maybe_frozen = if let UiAccountState::Frozen = account.ui_token_account.state {
+                format!(" {}  Frozen", WARNING)
             } else {
-                match serde_json::from_value(parsed_account.parsed) {
-                    Ok(TokenAccountType::Account(ui_token_account)) => {
-                        let maybe_frozen = if let UiAccountState::Frozen = ui_token_account.state {
-                            format!(" {}  Frozen", WARNING)
-                        } else {
-                            "".to_string()
-                        };
-                        if token.is_some() {
-                            println!(
-                                "{:<44} {}{}",
-                                address,
-                                ui_token_account.token_amount.real_number_string_trimmed(),
-                                maybe_frozen
-                            )
-                        } else {
-                            println!(
-                                "{:<44} {:<44} {}{}",
-                                ui_token_account.mint,
-                                address,
-                                ui_token_account.token_amount.real_number_string_trimmed(),
-                                maybe_frozen
-                            )
-                        }
-                    }
-                    Ok(_) => println!("{:<44} Unsupported token account", address),
-                    Err(err) => println!("{:<44} Account parse failure: {}", address, err),
-                }
+                "".to_string()
+            };
+            if token.is_some() {
+                println!(
+                    "{:<44} {}{}",
+                    account.address,
+                    account
+                        .ui_token_account
+                        .token_amount
+                        .real_number_string_trimmed(),
+                    maybe_frozen
+                )
+            } else {
+                println!(
+                    "{:<44} {:<44} {}{}",
+                    account.ui_token_account.mint,
+                    account.address,
+                    account
+                        .ui_token_account
+                        .token_amount
+                        .real_number_string_trimmed(),
+                    maybe_frozen
+                )
             }
-        } else {
-            println!("{:<44} Unsupported account data format", address);
         }
+    }
+    for unsupported_account in unsupported_accounts {
+        println!(
+            "{:<44} {}",
+            unsupported_account.address, unsupported_account.err
+        );
     }
     Ok(None)
 }
