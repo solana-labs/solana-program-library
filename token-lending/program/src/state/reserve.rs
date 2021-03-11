@@ -213,8 +213,9 @@ impl Reserve {
         };
 
         let (origination_fee, host_fee) =
-            self.config.fees.calculate_borrow_fees(collateral_amount)?;
+            self.config.fees.calculate_borrow_fees(borrow_amount)?;
 
+        // @FIXME: fees
         collateral_amount = collateral_amount
             .checked_sub(origination_fee)
             .ok_or(LendingError::MathOverflow)?;
@@ -385,6 +386,8 @@ pub struct ReserveLiquidity {
     pub mint_decimals: u8,
     /// Reserve liquidity supply address
     pub supply_pubkey: Pubkey,
+    /// Reserve liquidity fees receiver address
+    pub fees_receiver: Pubkey,
     /// Reserve liquidity available
     pub available_amount: u64,
     /// Reserve liquidity borrowed
@@ -393,11 +396,12 @@ pub struct ReserveLiquidity {
 
 impl ReserveLiquidity {
     /// New reserve liquidity info
-    pub fn new(mint_pubkey: Pubkey, mint_decimals: u8, supply_pubkey: Pubkey) -> Self {
+    pub fn new(mint_pubkey: Pubkey, mint_decimals: u8, supply_pubkey: Pubkey, fees_receiver: Pubkey) -> Self {
         Self {
             mint_pubkey,
             mint_decimals,
             supply_pubkey,
+            fees_receiver,
             available_amount: 0,
             borrowed_amount_wads: Decimal::zero(),
         }
@@ -451,17 +455,14 @@ pub struct ReserveCollateral {
     pub mint_total_supply: u64,
     /// Reserve collateral supply address
     pub supply_pubkey: Pubkey,
-    /// Reserve collateral fees receiver address
-    pub fees_receiver: Pubkey,
 }
 
 impl ReserveCollateral {
     /// New reserve collateral info
-    pub fn new(mint_pubkey: Pubkey, supply_pubkey: Pubkey, fees_receiver: Pubkey) -> Self {
+    pub fn new(mint_pubkey: Pubkey, supply_pubkey: Pubkey) -> Self {
         Self {
             mint_pubkey,
             supply_pubkey,
-            fees_receiver,
             ..Self::default()
         }
     }
@@ -545,9 +546,9 @@ pub struct ReserveConfig {
 
 /// Additional fee information on a reserve
 ///
-/// These exist separately from interest accrual fees, and are specifically for
-/// the program owner and frontend host.  The fees are paid out as a percentage
-/// of collateral token amounts during repayments and liquidations.
+/// These exist separately from interest accrual fees, and are specifically for the program owner
+/// and frontend host. The fees are paid out as a percentage of liquidity token amounts during
+/// repayments and liquidations.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ReserveFees {
     /// Fee assessed on `BorrowObligationLiquidity`, expressed as a Wad.
@@ -565,11 +566,11 @@ impl ReserveFees {
     /// Calculate the owner and host fees on borrow
     pub fn calculate_borrow_fees(
         &self,
-        collateral_amount: u64,
+        borrow_amount: u64,
     ) -> Result<(u64, u64), ProgramError> {
         let borrow_fee_rate = Rate::from_scaled_val(self.borrow_fee_wad);
         let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
-        if borrow_fee_rate > Rate::zero() && collateral_amount > 0 {
+        if borrow_fee_rate > Rate::zero() && borrow_amount > 0 {
             let need_to_assess_host_fee = host_fee_rate > Rate::zero();
             let minimum_fee = if need_to_assess_host_fee {
                 2 // 1 token to owner, 1 to host
@@ -578,7 +579,7 @@ impl ReserveFees {
             };
 
             let borrow_fee = borrow_fee_rate
-                .try_mul(collateral_amount)?
+                .try_mul(borrow_amount)?
                 .try_round_u64()?
                 .max(minimum_fee);
 
@@ -588,7 +589,7 @@ impl ReserveFees {
                 0
             };
 
-            if borrow_fee >= collateral_amount {
+            if borrow_fee >= borrow_amount {
                 Err(LendingError::BorrowTooSmall.into())
             } else {
                 Ok((borrow_fee, host_fee))
@@ -621,9 +622,9 @@ impl Pack for Reserve {
             liquidity_mint,
             liquidity_mint_decimals,
             liquidity_supply,
+            liquidity_fees_receiver,
             collateral_mint,
             collateral_supply,
-            collateral_fees_receiver,
             dex_market,
             optimal_utilization_rate,
             loan_to_value_ratio,
@@ -653,6 +654,7 @@ impl Pack for Reserve {
                 mint_pubkey: Pubkey::new_from_array(*liquidity_mint),
                 mint_decimals: u8::from_le_bytes(*liquidity_mint_decimals),
                 supply_pubkey: Pubkey::new_from_array(*liquidity_supply),
+                fees_receiver: Pubkey::new_from_array(*liquidity_fees_receiver),
                 available_amount: u64::from_le_bytes(*available_liquidity),
                 borrowed_amount_wads: unpack_decimal(total_borrows),
             },
@@ -660,7 +662,6 @@ impl Pack for Reserve {
                 mint_pubkey: Pubkey::new_from_array(*collateral_mint),
                 mint_total_supply: u64::from_le_bytes(*collateral_mint_supply),
                 supply_pubkey: Pubkey::new_from_array(*collateral_supply),
-                fees_receiver: Pubkey::new_from_array(*collateral_fees_receiver),
             },
             config: ReserveConfig {
                 optimal_utilization_rate: u8::from_le_bytes(*optimal_utilization_rate),
@@ -687,9 +688,9 @@ impl Pack for Reserve {
             liquidity_mint,
             liquidity_mint_decimals,
             liquidity_supply,
+            liquidity_fees_receiver,
             collateral_mint,
             collateral_supply,
-            collateral_fees_receiver,
             dex_market,
             optimal_utilization_rate,
             loan_to_value_ratio,
@@ -719,13 +720,13 @@ impl Pack for Reserve {
         liquidity_mint.copy_from_slice(self.liquidity.mint_pubkey.as_ref());
         *liquidity_mint_decimals = self.liquidity.mint_decimals.to_le_bytes();
         liquidity_supply.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
+        liquidity_fees_receiver.copy_from_slice(self.collateral.fees_receiver.as_ref());
         *available_liquidity = self.liquidity.available_amount.to_le_bytes();
         pack_decimal(self.liquidity.borrowed_amount_wads, total_borrows);
 
         // collateral info
         collateral_mint.copy_from_slice(self.collateral.mint_pubkey.as_ref());
         collateral_supply.copy_from_slice(self.collateral.supply_pubkey.as_ref());
-        collateral_fees_receiver.copy_from_slice(self.collateral.fees_receiver.as_ref());
         *collateral_mint_supply = self.collateral.mint_total_supply.to_le_bytes();
 
         // config

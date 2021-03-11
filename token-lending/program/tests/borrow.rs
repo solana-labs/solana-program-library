@@ -116,10 +116,11 @@ async fn test_borrow_quote_currency() {
 
     let borrow_fees = TEST_RESERVE_CONFIG
         .fees
-        .calculate_borrow_fees(collateral_deposit_amount)
+        .calculate_borrow_fees(borrow_amount)
         .unwrap()
         .0;
 
+    // @FIXME: fees
     let collateral_supply =
         get_token_balance(&mut banks_client, sol_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, collateral_deposit_amount - borrow_fees);
@@ -151,21 +152,22 @@ async fn test_borrow_quote_currency() {
     let collateral_deposited = 2 * collateral_deposit_amount;
     let (total_fee, host_fee) = TEST_RESERVE_CONFIG
         .fees
-        .calculate_borrow_fees(collateral_deposited)
+        .calculate_borrow_fees(borrow_amount)
         .unwrap();
 
     assert!(total_fee > 0);
     assert!(host_fee > 0);
 
+    // @FIXME: fees
     let collateral_supply =
         get_token_balance(&mut banks_client, sol_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, collateral_deposited - total_fee);
 
     let fee_balance =
-        get_token_balance(&mut banks_client, sol_reserve.collateral_fees_receiver).await;
+        get_token_balance(&mut banks_client, sol_reserve.liquidity_fees_receiver).await;
     assert_eq!(fee_balance, total_fee - host_fee);
 
-    let host_fee_balance = get_token_balance(&mut banks_client, sol_reserve.collateral_host).await;
+    let host_fee_balance = get_token_balance(&mut banks_client, sol_reserve.liquidity_host).await;
     assert_eq!(host_fee_balance, host_fee);
 }
 
@@ -272,10 +274,11 @@ async fn test_borrow_base_currency() {
 
     let borrow_fees = TEST_RESERVE_CONFIG
         .fees
-        .calculate_borrow_fees(collateral_deposit_amount)
+        .calculate_borrow_fees(borrow_amount)
         .unwrap()
         .0;
 
+    // @FIXME: fees
     let collateral_supply =
         get_token_balance(&mut banks_client, usdc_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, collateral_deposit_amount - borrow_fees);
@@ -302,7 +305,7 @@ async fn test_borrow_base_currency() {
 
     let (mut total_fee, mut host_fee) = TEST_RESERVE_CONFIG
         .fees
-        .calculate_borrow_fees(collateral_deposit_amount)
+        .calculate_borrow_fees(borrow_amount)
         .unwrap();
 
     // avoid rounding error by assessing fees individually
@@ -312,14 +315,15 @@ async fn test_borrow_base_currency() {
     assert!(total_fee > 0);
     assert!(host_fee > 0);
 
+    // @FIXME: fees
     let collateral_supply =
         get_token_balance(&mut banks_client, usdc_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, 2 * collateral_deposit_amount - total_fee);
 
     let fee_balance =
-        get_token_balance(&mut banks_client, usdc_reserve.collateral_fees_receiver).await;
+        get_token_balance(&mut banks_client, usdc_reserve.liquidity_fees_receiver).await;
     assert_eq!(fee_balance, total_fee - host_fee);
 
-    let host_fee_balance = get_token_balance(&mut banks_client, usdc_reserve.collateral_host).await;
+    let host_fee_balance = get_token_balance(&mut banks_client, usdc_reserve.liquidity_host).await;
     assert_eq!(host_fee_balance, host_fee);
 }

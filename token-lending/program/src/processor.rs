@@ -174,9 +174,9 @@ fn process_init_reserve(
     let reserve_info = next_account_info(account_info_iter)?;
     let reserve_liquidity_mint_info = next_account_info(account_info_iter)?;
     let reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
+    let reserve_liquidity_fees_receiver_info = next_account_info(account_info_iter)?;
     let reserve_collateral_mint_info = next_account_info(account_info_iter)?;
     let reserve_collateral_supply_info = next_account_info(account_info_iter)?;
-    let reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_owner_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
@@ -249,11 +249,11 @@ fn process_init_reserve(
         *reserve_liquidity_mint_info.key,
         reserve_liquidity_mint.decimals,
         *reserve_liquidity_supply_info.key,
+        *reserve_liquidity_fees_receiver_info.key,
     );
     let reserve_collateral_info = ReserveCollateral::new(
         *reserve_collateral_mint_info.key,
         *reserve_collateral_supply_info.key,
-        *reserve_collateral_fees_receiver_info.key,
     );
     let mut reserve = Reserve::new(NewReserveParams {
         current_slot: clock.slot,
@@ -283,17 +283,17 @@ fn process_init_reserve(
     })?;
 
     spl_token_init_account(TokenInitializeAccountParams {
-        account: reserve_collateral_supply_info.clone(),
-        mint: reserve_collateral_mint_info.clone(),
-        owner: lending_market_authority_info.clone(),
+        account: reserve_liquidity_fees_receiver_info.clone(),
+        mint: reserve_liquidity_mint_info.clone(),
+        owner: lending_market_owner_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_id.clone(),
     })?;
 
     spl_token_init_account(TokenInitializeAccountParams {
-        account: reserve_collateral_fees_receiver_info.clone(),
+        account: reserve_collateral_supply_info.clone(),
         mint: reserve_collateral_mint_info.clone(),
-        owner: lending_market_owner_info.clone(),
+        owner: lending_market_authority_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_id.clone(),
     })?;
@@ -617,9 +617,9 @@ fn process_borrow_obligation_liquidity(
     let destination_liquidity_info = next_account_info(account_info_iter)?;
     let deposit_reserve_info = next_account_info(account_info_iter)?;
     let deposit_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
-    let deposit_reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
     let borrow_reserve_info = next_account_info(account_info_iter)?;
     let borrow_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
+    let borrow_reserve_liquidity_fees_receiver_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_token_mint_info = next_account_info(account_info_iter)?;
     let obligation_token_output_info = next_account_info(account_info_iter)?;
@@ -683,14 +683,14 @@ fn process_borrow_obligation_liquidity(
         msg!("Cannot use deposit reserve collateral supply as source account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &deposit_reserve.collateral.fees_receiver
-        != deposit_reserve_collateral_fees_receiver_info.key
-    {
-        msg!("Invalid deposit reserve collateral fees receiver account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
     if &borrow_reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
         msg!("Cannot use borrow reserve liquidity supply as destination account input");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &borrow_reserve.liquidity.fees_receiver
+        != borrow_reserve_liquidity_fees_receiver_info.key
+    {
+        msg!("Invalid borrow reserve liquidity fees receiver account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -808,7 +808,7 @@ fn process_borrow_obligation_liquidity(
     if owner_fee > 0 {
         spl_token_transfer(TokenTransferParams {
             source: source_collateral_info.clone(),
-            destination: deposit_reserve_collateral_fees_receiver_info.clone(),
+            destination: borrow_reserve_liquidity_fees_receiver_info.clone(),
             amount: owner_fee,
             authority: user_transfer_authority_info.clone(),
             authority_signer_seeds: &[],

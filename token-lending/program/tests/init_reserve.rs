@@ -119,7 +119,7 @@ async fn test_already_initialized() {
             usdc_reserve.liquidity_supply,
             usdc_reserve.collateral_mint,
             usdc_reserve.collateral_supply,
-            usdc_reserve.collateral_fees_receiver,
+            usdc_reserve.liquidity_fees_receiver,
             lending_market.pubkey,
             lending_market.owner.pubkey(),
             user_transfer_authority.pubkey(),
