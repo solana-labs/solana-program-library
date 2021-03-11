@@ -38,12 +38,12 @@ pub fn main() {
 
     let sol_usdc_dex_market = DexMarket {
         name: "sol_usdc",
-        pubkey: Pubkey::from_str("7xMDbYTCqQEcK2aM9LbetGtNFJpzKdfXzLL5juaLh4GJ").unwrap(),
+        pubkey: Pubkey::from_str("9wFFyRfZBsuAha4YcuxcXLKwMxJR43S7fPfQLusDBzvT").unwrap(),
     };
 
     let srm_usdc_dex_market = DexMarket {
         name: "srm_usdc",
-        pubkey: Pubkey::from_str("CDdR97S8y96v3To93aKvi3nCnjUrbuVSuumw8FLvbVeg").unwrap(),
+        pubkey: Pubkey::from_str("ByRys5tuUWDgL73G8JBAEfkdFf8JWBzPBDHsBVQ5vbQA").unwrap(),
     };
 
     let quote_token_mint = usdc_mint_pubkey;

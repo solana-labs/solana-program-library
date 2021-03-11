@@ -42,7 +42,7 @@ async fn test_success() {
     const OBLIGATION_COLLATERAL: u64 = 10 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
 
     // from Reserve::required_collateral_for_borrow
-    const REQUIRED_COLLATERAL: u64 = 45_929_968_168;
+    const REQUIRED_COLLATERAL: u64 = 7_220_474_693;
     const WITHDRAW_COLLATERAL: u64 = OBLIGATION_COLLATERAL - REQUIRED_COLLATERAL;
 
     let user_accounts_owner = Keypair::new();
@@ -205,7 +205,7 @@ async fn test_withdraw_below_required() {
     const OBLIGATION_COLLATERAL: u64 = 10 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
 
     // from Reserve::required_collateral_for_borrow
-    const REQUIRED_COLLATERAL: u64 = 45_929_968_168;
+    const REQUIRED_COLLATERAL: u64 = 7_220_474_693;
     const WITHDRAW_COLLATERAL: u64 = OBLIGATION_COLLATERAL - REQUIRED_COLLATERAL + 1;
 
     let user_accounts_owner = Keypair::new();
