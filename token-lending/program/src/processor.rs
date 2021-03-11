@@ -51,30 +51,30 @@ pub fn process_instruction(
         }
         LendingInstruction::DepositReserveLiquidity { liquidity_amount } => {
             msg!("Instruction: Deposit");
-            process_deposit(program_id, liquidity_amount, accounts)
+            process_deposit_reserve_liquidity(program_id, liquidity_amount, accounts)
         }
         LendingInstruction::WithdrawReserveLiquidity { collateral_amount } => {
             msg!("Instruction: Withdraw");
-            process_withdraw(program_id, collateral_amount, accounts)
+            process_withdraw_reserve_liquidity(program_id, collateral_amount, accounts)
         }
-        LendingInstruction::BorrowReserveLiquidity {
+        LendingInstruction::BorrowObligationLiquidity {
             amount,
             amount_type,
         } => {
             msg!("Instruction: Borrow");
-            process_borrow(program_id, amount, amount_type, accounts)
+            process_borrow_obligation_liquidity(program_id, amount, amount_type, accounts)
         }
-        LendingInstruction::RepayReserveLiquidity { liquidity_amount } => {
+        LendingInstruction::RepayObligationLiquidity { liquidity_amount } => {
             msg!("Instruction: Repay");
-            process_repay(program_id, liquidity_amount, accounts)
+            process_repay_obligation_liquidity(program_id, liquidity_amount, accounts)
         }
         LendingInstruction::LiquidateObligation { liquidity_amount } => {
             msg!("Instruction: Liquidate");
-            process_liquidate(program_id, liquidity_amount, accounts)
+            process_liquidate_obligation(program_id, liquidity_amount, accounts)
         }
         LendingInstruction::AccrueReserveInterest => {
             msg!("Instruction: Accrue Interest");
-            process_accrue_interest(program_id, accounts)
+            process_accrue_reserve_interest(program_id, accounts)
         }
         LendingInstruction::DepositObligationCollateral { collateral_amount } => {
             msg!("Instruction: Deposit Obligation Collateral");
@@ -423,7 +423,7 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     Ok(())
 }
 
-fn process_deposit(
+fn process_deposit_reserve_liquidity(
     program_id: &Pubkey,
     liquidity_amount: u64,
     accounts: &[AccountInfo],
@@ -512,7 +512,7 @@ fn process_deposit(
     Ok(())
 }
 
-fn process_withdraw(
+fn process_withdraw_reserve_liquidity(
     program_id: &Pubkey,
     collateral_amount: u64,
     accounts: &[AccountInfo],
@@ -602,7 +602,7 @@ fn process_withdraw(
 }
 
 #[inline(never)] // avoid stack frame limit
-fn process_borrow(
+fn process_borrow_obligation_liquidity(
     program_id: &Pubkey,
     token_amount: u64,
     token_amount_type: BorrowAmountType,
@@ -840,7 +840,7 @@ fn process_borrow(
 }
 
 #[inline(never)] // avoid stack frame limit
-fn process_repay(
+fn process_repay_obligation_liquidity(
     program_id: &Pubkey,
     liquidity_amount: u64,
     accounts: &[AccountInfo],
@@ -996,7 +996,7 @@ fn process_repay(
 }
 
 #[inline(never)] // avoid stack frame limit
-fn process_liquidate(
+fn process_liquidate_obligation(
     program_id: &Pubkey,
     liquidity_amount: u64,
     accounts: &[AccountInfo],
@@ -1174,7 +1174,7 @@ fn process_liquidate(
 }
 
 #[inline(never)] // avoid stack frame limit
-fn process_accrue_interest(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+fn process_accrue_reserve_interest(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     for reserve_info in account_info_iter {

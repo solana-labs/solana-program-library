@@ -550,7 +550,7 @@ pub struct ReserveConfig {
 /// of collateral token amounts during repayments and liquidations.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ReserveFees {
-    /// Fee assessed on `BorrowReserveLiquidity`, expressed as a Wad.
+    /// Fee assessed on `BorrowObligationLiquidity`, expressed as a Wad.
     /// Must be between 0 and 10^18, such that 10^18 = 1.  A few examples for
     /// clarity:
     /// 1% = 10_000_000_000_000_000

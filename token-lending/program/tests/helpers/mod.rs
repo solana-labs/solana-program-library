@@ -15,7 +15,7 @@ use spl_token::{
 };
 use spl_token_lending::{
     instruction::{
-        borrow_reserve_liquidity, deposit_reserve_liquidity, init_lending_market, init_obligation,
+        borrow_obligation_liquidity, deposit_reserve_liquidity, init_lending_market, init_obligation,
         init_reserve, liquidate_obligation, BorrowAmountType,
     },
     math::{Decimal, Rate, TryAdd, TryMul},
@@ -662,7 +662,7 @@ impl TestLendingMarket {
                     65548,
                     &spl_token_lending::id(),
                 ),
-                borrow_reserve_liquidity(
+                borrow_obligation_liquidity(
                     spl_token_lending::id(),
                     amount,
                     borrow_amount_type,

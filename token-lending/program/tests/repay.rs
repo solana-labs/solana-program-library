@@ -11,7 +11,7 @@ use solana_sdk::{
 };
 use spl_token::instruction::approve;
 use spl_token_lending::{
-    instruction::repay_reserve_liquidity,
+    instruction::repay_obligation_liquidity,
     math::{Decimal, TryAdd, TryDiv, TryMul, TrySub},
     processor::process_instruction,
     state::{INITIAL_COLLATERAL_RATIO, SLOTS_PER_YEAR},
@@ -112,7 +112,7 @@ async fn test_success() {
                 OBLIGATION_COLLATERAL,
             )
             .unwrap(),
-            repay_reserve_liquidity(
+            repay_obligation_liquidity(
                 spl_token_lending::id(),
                 OBLIGATION_LOAN,
                 usdc_reserve.user_liquidity_account,

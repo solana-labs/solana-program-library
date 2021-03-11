@@ -373,14 +373,14 @@ impl LendingInstruction {
                 let (amount_type, _rest) = Self::unpack_u8(rest)?;
                 let amount_type = BorrowAmountType::from_u8(amount_type)
                     .ok_or(LendingError::InstructionUnpackError)?;
-                Self::BorrowReserveLiquidity {
+                Self::BorrowObligationLiquidity {
                     amount,
                     amount_type,
                 }
             }
             6 => {
                 let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
-                Self::RepayReserveLiquidity { liquidity_amount }
+                Self::RepayObligationLiquidity { liquidity_amount }
             }
             7 => {
                 let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
@@ -399,6 +399,9 @@ impl LendingInstruction {
                 let (new_owner, _rest) = Self::unpack_pubkey(rest)?;
                 Self::SetLendingMarketOwner { new_owner }
             }
+            12 => Self::RefreshObligationCollateral,
+            13 => Self::RefreshObligationLiquidity,
+            14 => Self::RefreshObligation,
             _ => return Err(LendingError::InstructionUnpackError.into()),
         })
     }
@@ -490,7 +493,7 @@ impl LendingInstruction {
                 buf.push(4);
                 buf.extend_from_slice(&collateral_amount.to_le_bytes());
             }
-            Self::BorrowReserveLiquidity {
+            Self::BorrowObligationLiquidity {
                 amount,
                 amount_type,
             } => {
@@ -498,7 +501,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&amount.to_le_bytes());
                 buf.extend_from_slice(&amount_type.to_u8().unwrap().to_le_bytes());
             }
-            Self::RepayReserveLiquidity { liquidity_amount } => {
+            Self::RepayObligationLiquidity { liquidity_amount } => {
                 buf.push(6);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
             }
@@ -520,6 +523,15 @@ impl LendingInstruction {
             Self::SetLendingMarketOwner { new_owner } => {
                 buf.push(11);
                 buf.extend_from_slice(new_owner.as_ref());
+            }
+            Self::RefreshObligationCollateral => {
+                buf.push(12);
+            }
+            Self::RefreshObligationLiquidity => {
+                buf.push(13);
+            }
+            Self::RefreshObligation => {
+                buf.push(14);
             }
         }
         buf
@@ -700,9 +712,9 @@ pub fn withdraw_reserve_liquidity(
     }
 }
 
-/// Creates a 'BorrowReserveLiquidity' instruction.
+/// Creates a 'BorrowObligationLiquidity' instruction.
 #[allow(clippy::too_many_arguments)]
-pub fn borrow_reserve_liquidity(
+pub fn borrow_obligation_liquidity(
     program_id: Pubkey,
     amount: u64,
     amount_type: BorrowAmountType,
@@ -753,7 +765,7 @@ pub fn borrow_reserve_liquidity(
     Instruction {
         program_id,
         accounts,
-        data: LendingInstruction::BorrowReserveLiquidity {
+        data: LendingInstruction::BorrowObligationLiquidity {
             amount,
             amount_type,
         }
@@ -761,9 +773,9 @@ pub fn borrow_reserve_liquidity(
     }
 }
 
-/// Creates a `RepayReserveLiquidity` instruction
+/// Creates a `RepayObligationLiquidity` instruction
 #[allow(clippy::too_many_arguments)]
-pub fn repay_reserve_liquidity(
+pub fn repay_obligation_liquidity(
     program_id: Pubkey,
     liquidity_amount: u64,
     source_liquidity_pubkey: Pubkey,
@@ -797,7 +809,7 @@ pub fn repay_reserve_liquidity(
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: LendingInstruction::RepayReserveLiquidity { liquidity_amount }.pack(),
+        data: LendingInstruction::RepayObligationLiquidity { liquidity_amount }.pack(),
     }
 }
 
