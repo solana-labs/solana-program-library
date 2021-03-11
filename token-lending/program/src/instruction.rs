@@ -34,7 +34,7 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Lending market account.
     ///   1. `[]` Quote currency SPL Token mint. Must be initialized.
     ///   2. `[]` Rent sysvar
-    ///   3. '[]` Token program id
+    ///   3. `[]` Token program id
     InitLendingMarket {
         /// Owner authority which can add new reserves
         market_owner: Pubkey,
@@ -60,7 +60,7 @@ pub enum LendingInstruction {
     ///   11 `[]` User transfer authority ($authority).
     ///   12 `[]` Clock sysvar
     ///   13 `[]` Rent sysvar
-    ///   14 '[]` Token program id
+    ///   14 `[]` Token program id
     ///   15 `[optional]` Serum DEX market account. Not required for quote currency reserves. Must be initialized and match quote and base currency.
     InitReserve {
         /// Initial amount of liquidity to deposit into the new reserve
@@ -84,7 +84,7 @@ pub enum LendingInstruction {
     ///   7. `[]` Derived lending market authority.
     ///   8. `[]` Clock sysvar
     ///   9. `[]` Rent sysvar
-    ///   10 '[]` Token program id
+    ///   10 `[]` Token program id
     InitObligation,
 
     // 3
@@ -102,7 +102,7 @@ pub enum LendingInstruction {
     ///   6. `[]` Derived lending market authority.
     ///   7. `[signer]` User transfer authority ($authority).
     ///   8. `[]` Clock sysvar
-    ///   9. '[]` Token program id
+    ///   9. `[]` Token program id
     DepositReserveLiquidity {
         /// Amount to deposit into the reserve
         liquidity_amount: u64,
@@ -122,7 +122,7 @@ pub enum LendingInstruction {
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
     ///   7. `[signer]` User transfer authority ($authority).
-    ///   8. '[]` Token program id
+    ///   8. `[]` Token program id
     WithdrawReserveLiquidity {
         /// Amount of collateral to deposit in exchange for liquidity
         collateral_amount: u64,
@@ -153,7 +153,7 @@ pub enum LendingInstruction {
     ///   14 `[]` Dex market order book side
     ///   15 `[]` Temporary memory
     ///   16 `[]` Clock sysvar
-    ///   17 '[]` Token program id
+    ///   17 `[]` Token program id
     ///   18 `[optional, writable]` Deposit reserve collateral host fee receiver account.
     BorrowReserveLiquidity {
         // TODO: slippage constraint
@@ -240,7 +240,7 @@ pub enum LendingInstruction {
     ///   6. `[]` Lending market account.
     ///   7. `[]` Derived lending market authority.
     ///   8. `[signer]` User transfer authority ($authority).
-    ///   9. '[]` Token program id
+    ///   9. `[]` Token program id
     DepositObligationCollateral {
         /// Amount of collateral to deposit
         collateral_amount: u64,
@@ -266,7 +266,7 @@ pub enum LendingInstruction {
     ///   11 `[]` Dex market order book side
     ///   12 `[]` Temporary memory
     ///   13 `[]` Clock sysvar
-    ///   14 '[]` Token program id
+    ///   14 `[]` Token program id
     WithdrawObligationCollateral {
         /// Amount of collateral to withdraw
         collateral_amount: u64,
