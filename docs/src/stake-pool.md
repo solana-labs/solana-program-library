@@ -292,11 +292,106 @@ We can also double-check that the stake pool no longer shows the stake account:
 
 ```sh
 $ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
-Pubkey: FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13    Vote: 8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm 1.002282881 SOL
-Pubkey: E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    Vote: HJiC8iJ4Sj846SswQuauFJK93UvV6zp3c2T6jzGqzhhz 11.25999747 SOL
-Pubkey: FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    Vote: 2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3 3.163134762 SOL
-Total: 15.425415113 SOL
+Pubkey: FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13    Vote: 8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm ◎1.002282881
+Pubkey: FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    Vote: 2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3 ◎3.410872673
+Pubkey: E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    Vote: HJiC8iJ4Sj846SswQuauFJK93UvV6zp3c2T6jzGqzhhz ◎11.436803652
+Total: ◎15.849959206
 ```
+
+#### Rebalance the stake pool
+
+As time goes on, deposits and withdrawals will happen to all of the stake accounts
+managed by the pool, and the stake pool manager may want to rebalance the stakes.
+
+For example, let's say the manager wants the same delegation to every validator
+in the pool. When they look at the state of the pool, they see:
+
+```sh
+$ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
+Pubkey: FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13    Vote: 8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm ◎1.002282881
+Pubkey: FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    Vote: 2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3 ◎3.410872673
+Pubkey: E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    Vote: HJiC8iJ4Sj846SswQuauFJK93UvV6zp3c2T6jzGqzhhz ◎11.436803652
+Total: ◎15.849959206
+```
+
+This isn't great! The last stake account, `E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie`
+has too much allocated. For their strategy, the manager wants the `15.849959206`
+SOL to be distributed evenly, meaning around `5.283319735` in each account. They need
+to move `4.281036854` to `FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13` and
+`1.872447062` to `FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN`.
+
+First, they need to withdraw a total of `6.153483916` from
+`E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie`. Using the `spl-token` utility,
+let's check the total supply of pool tokens:
+
+```sh
+$ spl-token supply Gmk71cM7j2RMorRsQrsyysM4HsByQx5PuDGtDdqGLWCS
+0.034692168
+```
+
+Given a total pool token supply of `0.034692168` and total staked SOL amount of
+`15.849959206`, let's calculate how many pool tokens to withdraw from the pool:
+
+```
+sol_to_withdraw * total_pool_tokens / total_sol_staked = pool_tokens_to_withdraw
+6.153483916 * 0.034692168 / 15.849959206 ~ 0.013468659
+```
+
+They withdraw that amount of pool tokens:
+
+```sh
+$ spl-stake-pool withdraw --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --amount 0.013468659 --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+Withdrawing from account E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie, amount ◎6.153483855, 0.013468659 pool tokens
+Creating account to receive stake 8ykyY7maA9HUfUphZHBkhsnydY5gFfyHFSfxCA7imqrk
+Signature: z8a5ZRfWdj8Fcsr3ttCJ731wFKyhZNcqoKEdV1RBCkzr3tHGQNCC56qvRVJ6oxyCVDqWZ3KL1Bkyn3sDpjYPDku
+```
+
+Because of rounding in the calculation a few lines above, it looks like we receive
+less than we should.  If we play that back the other way, we'll see that all is well:
+
+```
+pool_tokens_to_withdraw * total_sol_staked / total_pool_tokens = sol_to_withdraw
+0.013468659 * 15.849959206 / 0.034692168 ~ 6.153483855
+```
+
+Next, they deactivate the new received stake:
+
+```sh
+$ solana deactivate-stake 8ykyY7maA9HUfUphZHBkhsnydY5gFfyHFSfxCA7imqrk
+Signature: 4SuwZK5JvYkYVkM5yfu2x8x6iou6558teMwzphGECLmstMVoWbSvngUH48Ra24PrxtgUDyVDA8SXYS1qMyx3fjMj
+```
+
+Once the stake is deactivated during the next epoch, they split the stake
+and activate it on the other two validator vote accounts. For brevity, those
+commands are omitted.
+
+Eventually, we are left with stake account `4zppED2kFodUS2hBf8Fzeepu6yZ6QuyeNPBXCT9VU6fK`
+with `4.281036854` delegated to `8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm`
+and stake account `GCJnuFGCDzaToPwJtG5GiK4g3DJBfuhQy6388NyGcfwf` with `1.872447062`
+delegated to `2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3`.
+
+Once the new stakes are ready, the manager deposits them back into the stake pool:
+```sh
+$ spl-stake-pool deposit --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake GCJnuFGCDzaToPwJtG5GiK4g3DJBfuhQy6388NyGcfwf --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+Depositing into stake account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
+Signature: jKsdEr3zxF2zZs78rmrP3PmQiTwE7v15ieEuxp4db1VQe9owXVGM8nM3dJqVRHXPsS4frQW4gJ6xBfTTk2HvKDX
+$ spl-stake-pool deposit --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake 4zppED2kFodUS2hBf8Fzeepu6yZ6QuyeNPBXCT9VU6fK --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+Depositing into stake account FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13
+Signature: 3JXvTvea6F4Epd2krSxnTRZPB4gLZ8GqisFE58Z4ocV92fDN1HRMVPoPhJtYcfuF12vyQZUueKwVmkvL6Wgf2evc
+```
+
+Leaving them with a rebalanced stake pool!
+
+```sh
+$ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
+Pubkey: FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13    Vote: 8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm ◎5.283340235
+Pubkey: FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    Vote: 2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3 ◎5.283612231
+Pubkey: E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    Vote: HJiC8iJ4Sj846SswQuauFJK93UvV6zp3c2T6jzGqzhhz ◎5.284317422
+Total: ◎15.851269888
+```
+
+Due to staking rewards that accrued during the rebalancing process, the pool is
+not prefectly balanced. This is completely normal.
 
 #### Set staking authority
 
