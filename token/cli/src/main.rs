@@ -804,6 +804,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
 
     let (mint_accounts, unsupported_accounts) =
         sort_and_parse_token_accounts(&config.owner, accounts);
+    let mut gc_alert = false;
 
     if token.is_some() {
         println!("{:<44} Balance", "Account");
@@ -813,7 +814,16 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
         println!("-------------------------------------------------------------------------------------------------");
     }
     for (_mint, accounts_list) in mint_accounts.iter() {
+        let mut aux_counter = 1;
         for account in accounts_list {
+            let maybe_aux = if !account.is_associated {
+                gc_alert = true;
+                let message = format!(" (Aux-{})", aux_counter);
+                aux_counter += 1;
+                message
+            } else {
+                "".to_string()
+            };
             let maybe_frozen = if let UiAccountState::Frozen = account.ui_token_account.state {
                 format!(" {}  Frozen", WARNING)
             } else {
@@ -821,24 +831,26 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
             };
             if token.is_some() {
                 println!(
-                    "{:<44} {}{}",
+                    "{:<44} {}{}{}",
                     account.address,
                     account
                         .ui_token_account
                         .token_amount
                         .real_number_string_trimmed(),
-                    maybe_frozen
+                    maybe_aux,
+                    maybe_frozen,
                 )
             } else {
                 println!(
-                    "{:<44} {:<44} {}{}",
+                    "{:<44} {:<44} {}{}{}",
                     account.ui_token_account.mint,
                     account.address,
                     account
                         .ui_token_account
                         .token_amount
                         .real_number_string_trimmed(),
-                    maybe_frozen
+                    maybe_aux,
+                    maybe_frozen,
                 )
             }
         }
@@ -848,6 +860,10 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
             "{:<44} {}",
             unsupported_account.address, unsupported_account.err
         );
+    }
+    if gc_alert {
+        println!();
+        println!("* Please run `spl-token gc` to clean up Aux accounts");
     }
     Ok(None)
 }
