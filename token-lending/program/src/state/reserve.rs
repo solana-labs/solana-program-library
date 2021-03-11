@@ -635,7 +635,7 @@ impl Pack for Reserve {
             max_borrow_rate,
             borrow_fee_wad,
             host_fee_percentage,
-            cumulative_borrow_rate,
+            cumulative_borrow_rate_wads,
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
@@ -647,7 +647,7 @@ impl Pack for Reserve {
         Ok(Self {
             version: u8::from_le_bytes(*version),
             last_update_slot: u64::from_le_bytes(*last_update_slot),
-            cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate),
+            cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
             lending_market: Pubkey::new_from_array(*lending_market),
             dex_market: unpack_coption_key(dex_market)?,
             liquidity: ReserveLiquidity {
@@ -701,7 +701,7 @@ impl Pack for Reserve {
             max_borrow_rate,
             borrow_fee_wad,
             host_fee_percentage,
-            cumulative_borrow_rate,
+            cumulative_borrow_rate_wads,
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
@@ -712,7 +712,7 @@ impl Pack for Reserve {
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();
-        pack_decimal(self.cumulative_borrow_rate_wads, cumulative_borrow_rate);
+        pack_decimal(self.cumulative_borrow_rate_wads, cumulative_borrow_rate_wads);
         lending_market.copy_from_slice(self.lending_market.as_ref());
         pack_coption_key(&self.dex_market, dex_market);
 

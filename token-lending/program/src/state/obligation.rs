@@ -122,12 +122,12 @@ impl Obligation {
     }
 
     /// Accrue interest
-    pub fn accrue_interest(&mut self, cumulative_borrow_rate: Decimal) -> ProgramResult {
-        if cumulative_borrow_rate < self.cumulative_borrow_rate_wads {
+    pub fn accrue_interest(&mut self, cumulative_borrow_rate_wads: Decimal) -> ProgramResult {
+        if cumulative_borrow_rate_wads < self.cumulative_borrow_rate_wads {
             return Err(LendingError::NegativeInterestRate.into());
         }
 
-        let compounded_interest_rate: Rate = cumulative_borrow_rate
+        let compounded_interest_rate: Rate = cumulative_borrow_rate_wads
             .try_div(self.cumulative_borrow_rate_wads)?
             .try_into()?;
 
@@ -135,7 +135,7 @@ impl Obligation {
             .borrowed_liquidity_wads
             .try_mul(compounded_interest_rate)?;
 
-        self.cumulative_borrow_rate_wads = cumulative_borrow_rate;
+        self.cumulative_borrow_rate_wads = cumulative_borrow_rate_wads;
 
         Ok(())
     }
@@ -546,10 +546,10 @@ mod test {
                 ..Obligation::default()
             };
 
-            let next_cumulative_borrow_rate = Decimal::one().try_add(Decimal::from_scaled_val(new_borrow_rate))?;
-            state.accrue_interest(next_cumulative_borrow_rate)?;
+            let next_cumulative_borrow_rate_wads = Decimal::one().try_add(Decimal::from_scaled_val(new_borrow_rate))?;
+            state.accrue_interest(next_cumulative_borrow_rate_wads)?;
 
-            if next_cumulative_borrow_rate > cumulative_borrow_rate_wads {
+            if next_cumulative_borrow_rate_wads > cumulative_borrow_rate_wads {
                 assert!(state.borrowed_liquidity_wads > borrowed_liquidity_wads);
             } else {
                 assert!(state.borrowed_liquidity_wads == borrowed_liquidity_wads);

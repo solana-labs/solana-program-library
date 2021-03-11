@@ -382,11 +382,11 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     assert_uninitialized::<Obligation>(obligation_info)?;
     assert_last_update_slot(&borrow_reserve, clock.slot)?;
 
-    let cumulative_borrow_rate = borrow_reserve.cumulative_borrow_rate_wads;
+    let cumulative_borrow_rate_wads = borrow_reserve.cumulative_borrow_rate_wads;
     let obligation_mint_decimals = deposit_reserve.liquidity.mint_decimals;
     let obligation = Obligation::new(NewObligationParams {
         collateral_reserve: *deposit_reserve_info.key,
-        cumulative_borrow_rate_wads: cumulative_borrow_rate,
+        cumulative_borrow_rate_wads: cumulative_borrow_rate_wads,
         borrow_reserve: *borrow_reserve_info.key,
         token_mint: *obligation_token_mint_info.key,
     });
