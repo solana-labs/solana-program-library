@@ -240,6 +240,7 @@ pub fn create_reserve(
                     .get_minimum_balance_for_rent_exemption(Reserve::LEN)
                     .unwrap(),
                 Reserve::LEN as u64,
+                // @FIXME: shouldn't all references like this be spl_token::id()?
                 &id(),
             ),
         ],
