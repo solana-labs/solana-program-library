@@ -1611,8 +1611,8 @@ fn main() {
             path: default_signer_path,
             arg_name: default_signer_arg_name,
         };
-        // Owner doesn't sign when it's a multisig
-        let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name) {
+        // Owner doesn't sign when it's a multisig; and the `accounts` command is read-only
+        let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name) || sub_command == "accounts" {
             let owner_val = matches
                 .value_of("owner")
                 .unwrap_or(&cli_config.keypair_path);
