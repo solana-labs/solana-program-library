@@ -74,17 +74,15 @@ pub enum LendingInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[]` Deposit reserve account.
-    ///   1. `[]` Borrow reserve account.
-    ///   2. `[writable]` Obligation
-    ///   3. `[writable]` Obligation token mint
-    ///   4. `[writable]` Obligation token output
-    ///   5. `[]` Obligation token owner
-    ///   6. `[]` Lending market account.
-    ///   7. `[]` Derived lending market authority.
-    ///   8. `[]` Clock sysvar
-    ///   9. `[]` Rent sysvar
-    ///   10 `[]` Token program id
+    ///   0. `[writable]` Obligation
+    ///   1. `[writable]` Obligation token mint
+    ///   2. `[writable]` Obligation token output
+    ///   3. `[]` Obligation token owner
+    ///   4. `[]` Lending market account.
+    ///   5. `[]` Derived lending market authority.
+    ///   6. `[]` Clock sysvar
+    ///   7. `[]` Rent sysvar
+    ///   8. `[]` Token program id
     InitObligation,
 
     // 3
@@ -130,32 +128,25 @@ pub enum LendingInstruction {
 
     // 5
     /// Borrow tokens from a reserve by depositing collateral tokens. The number of borrowed tokens
-    /// is calculated by market price. The debt obligation is tokenized.
+    /// is calculated by market price. The debt obligation is tokenized. Requires a recently
+    /// refreshed obligation.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[writable]` Source collateral token account, minted by deposit reserve collateral mint,
-    ///                     $authority can transfer $collateral_amount
+    ///   0. `[writable]` Source borrow reserve liquidity supply SPL Token account
     ///   1. `[writable]` Destination liquidity token account, minted by borrow reserve liquidity mint
-    ///   2. `[]` Deposit reserve account.
-    ///   3. `[writable]` Deposit reserve collateral supply SPL Token account
-    ///   4. `[writable]` Deposit reserve collateral fee receiver account.
+    ///   2. `[writable]` Borrow reserve account.
+    ///   3. `[writable]` Borrow reserve liquidity fee receiver account.
     ///                     Must be the fee account specified at InitReserve.
-    ///   5. `[writable]` Borrow reserve account.
-    ///   6. `[writable]` Borrow reserve liquidity supply SPL Token account
-    ///   7. `[writable]` Obligation
-    ///   8. `[writable]` Obligation token mint
-    ///   9. `[writable]` Obligation token output
-    ///   10 `[]` Lending market account.
-    ///   11 `[]` Derived lending market authority.
-    ///   12 `[signer]` User transfer authority ($authority).
-    ///   13 `[]` Dex market
-    ///   14 `[]` Dex market order book side
-    ///   15 `[]` Temporary memory
-    ///   16 `[]` Clock sysvar
-    ///   17 `[]` Token program id
-    ///   18 `[optional, writable]` Deposit reserve collateral host fee receiver account.
-    BorrowReserveLiquidity {
+    ///   4. `[writable]` Obligation
+    ///   5. `[writable]` Obligation liquidity
+    ///   6. `[]` Lending market account.
+    ///   7. `[]` Derived lending market authority.
+    ///   8. `[signer]` User transfer authority ($authority).
+    ///   9. `[]` Clock sysvar
+    ///   10 `[]` Token program id
+    ///   11 `[optional, writable]` Borrow reserve liquidity host fee receiver account.
+    BorrowObligationLiquidity {
         // TODO: slippage constraint
         /// Amount whose usage depends on `amount_type`
         amount: u64,
@@ -164,33 +155,30 @@ pub enum LendingInstruction {
     },
 
     // 6
-    /// Repay loaned tokens to a reserve and receive collateral tokens. The obligation balance
-    /// will be recalculated for interest.
+    /// Repay loaned tokens to a reserve. The obligation balance will be recalculated for interest.
+    /// Requires a recently refreshed obligation.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source liquidity token account, minted by repay reserve liquidity mint
-    ///                     $authority can transfer $collateral_amount
-    ///   1. `[writable]` Destination collateral token account, minted by withdraw reserve collateral mint
+    ///                     $authority can transfer $liquidity_amount
+    ///   3. `[writable]` Destination repay reserve liquidity supply SPL Token account
     ///   2. `[writable]` Repay reserve account.
-    ///   3. `[writable]` Repay reserve liquidity supply SPL Token account
-    ///   4. `[]` Withdraw reserve account.
-    ///   5. `[writable]` Withdraw reserve collateral supply SPL Token account
-    ///   6. `[writable]` Obligation - initialized
-    ///   7. `[writable]` Obligation token mint
-    ///   8. `[writable]` Obligation token input, $authority can transfer calculated amount
+    ///   6. `[writable]` Obligation
+    ///   6. `[writable]` Obligation liquidity
     ///   9. `[]` Lending market account.
     ///   10 `[]` Derived lending market authority.
     ///   11 `[signer]` User transfer authority ($authority).
     ///   12 `[]` Clock sysvar
     ///   13 `[]` Token program id
-    RepayReserveLiquidity {
-        /// Amount of loan to repay
+    RepayObligationLiquidity {
+        /// Amount of liquidity to repay
         liquidity_amount: u64,
     },
 
     // 7
     /// Purchase collateral tokens at a discount rate if the chosen obligation is unhealthy.
+    /// Requires a recently refreshed obligation.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -201,12 +189,12 @@ pub enum LendingInstruction {
     ///   3. `[writable]` Repay reserve liquidity supply SPL Token account
     ///   4. `[]` Withdraw reserve account.
     ///   5. `[writable]` Withdraw reserve collateral supply SPL Token account
-    ///   6. `[writable]` Obligation - initialized
+    ///   6. `[writable]` Obligation
+    ///   6. `[writable]` Obligation collateral
+    ///   6. `[writable]` Obligation liquidity
     ///   7. `[]` Lending market account.
     ///   8. `[]` Derived lending market authority.
     ///   9. `[signer]` User transfer authority ($authority).
-    ///   10 `[]` Dex market
-    ///   11 `[]` Dex market order book side
     ///   12 `[]` Temporary memory
     ///   13 `[]` Clock sysvar
     ///   14 `[]` Token program id
@@ -226,7 +214,7 @@ pub enum LendingInstruction {
     AccrueReserveInterest,
 
     // 9
-    /// Deposit additional collateral to an obligation.
+    /// Deposit additional collateral to an obligation. Requires a recently refreshed obligation.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -235,19 +223,22 @@ pub enum LendingInstruction {
     ///   1. `[writable]` Destination deposit reserve collateral supply SPL Token account
     ///   2. `[]` Deposit reserve account.
     ///   3. `[writable]` Obligation
-    ///   4. `[writable]` Obligation token mint
-    ///   5. `[writable]` Obligation token output
-    ///   6. `[]` Lending market account.
-    ///   7. `[]` Derived lending market authority.
-    ///   8. `[signer]` User transfer authority ($authority).
-    ///   9. `[]` Token program id
+    ///   4. `[writable]` Obligation collateral
+    ///   5. `[writable]` Obligation token mint
+    ///   6. `[writable]` Obligation token output
+    ///   7. `[]` Lending market account.
+    ///   8. `[]` Derived lending market authority.
+    ///   9. `[signer]` User transfer authority ($authority).
+    ///   10 `[]` Clock sysvar
+    ///   11 `[]` Token program id
     DepositObligationCollateral {
         /// Amount of collateral to deposit
         collateral_amount: u64,
     },
 
     // 10
-    /// Withdraw excess collateral from an obligation. The loan must remain healthy.
+    /// Withdraw excess collateral from an obligation. The loan must remain healthy. Requires a
+    /// recently refreshed obligation.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -255,18 +246,15 @@ pub enum LendingInstruction {
     ///   1. `[writable]` Destination collateral token account, minted by withdraw reserve
     ///                     collateral mint. $authority can transfer $collateral_amount
     ///   2. `[]` Withdraw reserve account.
-    ///   3. `[]` Borrow reserve account.
-    ///   4. `[writable]` Obligation
+    ///   3. `[writable]` Obligation
+    ///   4. `[writable]` Obligation collateral
     ///   5. `[writable]` Obligation token mint
     ///   6. `[writable]` Obligation token input
     ///   7. `[]` Lending market account.
     ///   8. `[]` Derived lending market authority.
     ///   9. `[signer]` User transfer authority ($authority).
-    ///   10 `[]` Dex market
-    ///   11 `[]` Dex market order book side
-    ///   12 `[]` Temporary memory
-    ///   13 `[]` Clock sysvar
-    ///   14 `[]` Token program id
+    ///   10 `[]` Clock sysvar
+    ///   11 `[]` Token program id
     WithdrawObligationCollateral {
         /// Amount of collateral to withdraw
         collateral_amount: u64,
@@ -283,6 +271,53 @@ pub enum LendingInstruction {
         /// The new owner
         new_owner: Pubkey,
     },
+
+    // 12
+    /// Refresh market value of an obligation's collateral.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Obligation collateral account
+    ///   1. `[]` Deposit reserve account
+    ///   2. `[]` Dex market
+    ///   3. `[]` Dex market order book side
+    ///   4. `[]` Lending market account
+    ///   5. `[]` Derived lending market authority
+    ///   6. `[]` Temporary memory
+    ///   7. `[]` Clock sysvar
+    ///   8. `[]` Token program id
+    RefreshObligationCollateral,
+
+    // 13
+    /// Refresh market value and accrued interest of an obligation's liquidity.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Obligation liquidity account
+    ///   1. `[]` Borrow reserve account
+    ///   2. `[]` Dex market
+    ///   3. `[]` Dex market order book side
+    ///   4. `[]` Lending market account
+    ///   5. `[]` Derived lending market authority
+    ///   6. `[]` Temporary memory
+    ///   7. `[]` Clock sysvar
+    ///   8. `[]` Token program id
+    RefreshObligationLiquidity,
+
+    // 14
+    /// Refresh an obligation's loan to value ratio.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Obligation account
+    ///   1..1+NUM_COL `[]` Obligation collateral accounts
+    ///   2+NUM_COL..2+NUM_LIQ `[]` Obligation liquidity accounts
+    ///   3+NUM_COL+NUM_LIQ `[]` Lending market account
+    ///   4+NUM_COL+NUM_LIQ `[]` Derived lending market authority
+    ///   5+NUM_COL+NUM_LIQ `[]` Temporary memory
+    ///   6+NUM_COL+NUM_LIQ `[]` Clock sysvar
+    ///   7+NUM_COL+NUM_LIQ `[]` Token program id
+    RefreshObligation,
 }
 
 impl LendingInstruction {
