@@ -800,10 +800,10 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
     }
 
     if token.is_some() {
-        println!("Account                                      Balance");
+        println!("{:<44} Balance", "Account");
         println!("----------------------------------------------------");
     } else {
-        println!("Account                                      Token                                        Balance");
+        println!("{:<44} {:<44} Balance", "Token", "Account");
         println!("-------------------------------------------------------------------------------------------------");
     }
     for keyed_account in accounts {
@@ -833,8 +833,8 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                         } else {
                             println!(
                                 "{:<44} {:<44} {}{}",
-                                address,
                                 ui_token_account.mint,
+                                address,
                                 ui_token_account.token_amount.real_number_string_trimmed(),
                                 maybe_frozen
                             )
