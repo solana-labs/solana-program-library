@@ -806,12 +806,20 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
         sort_and_parse_token_accounts(&config.owner, accounts);
     let mut gc_alert = false;
 
-    if token.is_some() {
-        println!("{:<44} Balance", "Account");
-        println!("----------------------------------------------------");
+    if config.verbose {
+        if token.is_some() {
+            println!("{:<44} Balance", "Account");
+            println!("---------------------------------------------------------");
+        } else {
+            println!("{:<44} {:<44} Balance", "Token", "Account");
+            println!("------------------------------------------------------------------------------------------------------");
+        }
+    } else if token.is_some() {
+        println!("Balance");
+        println!("-------------");
     } else {
-        println!("{:<44} {:<44} Balance", "Token", "Account");
-        println!("-------------------------------------------------------------------------------------------------");
+        println!("{:<44} Balance", "Token");
+        println!("----------------------------------------------------------");
     }
     for (_mint, accounts_list) in mint_accounts.iter() {
         let mut aux_counter = 1;
@@ -829,10 +837,34 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
             } else {
                 "".to_string()
             };
-            if token.is_some() {
+            if config.verbose {
+                if token.is_some() {
+                    println!(
+                        "{:<44} {}{}{}",
+                        account.address,
+                        account
+                            .ui_token_account
+                            .token_amount
+                            .real_number_string_trimmed(),
+                        maybe_aux,
+                        maybe_frozen,
+                    )
+                } else {
+                    println!(
+                        "{:<44} {:<44} {}{}{}",
+                        account.ui_token_account.mint,
+                        account.address,
+                        account
+                            .ui_token_account
+                            .token_amount
+                            .real_number_string_trimmed(),
+                        maybe_aux,
+                        maybe_frozen,
+                    )
+                }
+            } else if token.is_some() {
                 println!(
-                    "{:<44} {}{}{}",
-                    account.address,
+                    "{}{}{}",
                     account
                         .ui_token_account
                         .token_amount
@@ -842,9 +874,8 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                 )
             } else {
                 println!(
-                    "{:<44} {:<44} {}{}{}",
+                    "{:<44} {}{}{}",
                     account.ui_token_account.mint,
-                    account.address,
                     account
                         .ui_token_account
                         .token_amount
