@@ -26,7 +26,10 @@ pub enum BorrowAmountType {
 /// Instructions supported by the lending program.
 #[derive(Clone, Debug, PartialEq)]
 pub enum LendingInstruction {
+    // 0
     /// Initializes a new lending market.
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Lending market account.
     ///   1. `[]` Quote currency SPL Token mint. Must be initialized.
@@ -37,7 +40,10 @@ pub enum LendingInstruction {
         market_owner: Pubkey,
     },
 
+    // 1
     /// Initializes a new lending market reserve.
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source liquidity token account.  $authority can transfer $liquidity_amount
     ///   1. `[writable]` Destination collateral token account - uninitialized
@@ -63,7 +69,10 @@ pub enum LendingInstruction {
         config: ReserveConfig,
     },
 
+    // 2
     /// Initializes a new loan obligation.
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[]` Deposit reserve account.
     ///   1. `[]` Borrow reserve account.
@@ -78,8 +87,11 @@ pub enum LendingInstruction {
     ///   10 '[]` Token program id
     InitObligation,
 
+    // 3
     /// Deposit liquidity into a reserve. The output is a collateral token representing ownership
     /// of the reserve liquidity pool.
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source liquidity token account. $authority can transfer $liquidity_amount
     ///   1. `[writable]` Destination collateral token account.
@@ -88,7 +100,7 @@ pub enum LendingInstruction {
     ///   4. `[writable]` Reserve collateral SPL Token mint.
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
-    ///   7. `[]` User transfer authority ($authority).
+    ///   7. `[signer]` User transfer authority ($authority).
     ///   8. `[]` Clock sysvar
     ///   9. '[]` Token program id
     DepositReserveLiquidity {
@@ -96,8 +108,11 @@ pub enum LendingInstruction {
         liquidity_amount: u64,
     },
 
+    // 4
     /// Withdraw tokens from a reserve. The input is a collateral token representing ownership
     /// of the reserve liquidity pool.
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source collateral token account. $authority can transfer $collateral_amount
     ///   1. `[writable]` Destination liquidity token account.
@@ -106,15 +121,18 @@ pub enum LendingInstruction {
     ///   4. `[writable]` Reserve liquidity supply SPL Token account.
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
-    ///   7. `[]` User transfer authority ($authority).
+    ///   7. `[signer]` User transfer authority ($authority).
     ///   8. '[]` Token program id
     WithdrawReserveLiquidity {
         /// Amount of collateral to deposit in exchange for liquidity
         collateral_amount: u64,
     },
 
+    // 5
     /// Borrow tokens from a reserve by depositing collateral tokens. The number of borrowed tokens
     /// is calculated by market price. The debt obligation is tokenized.
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source collateral token account, minted by deposit reserve collateral mint,
     ///                     $authority can transfer $collateral_amount
@@ -130,7 +148,7 @@ pub enum LendingInstruction {
     ///   9. `[writable]` Obligation token output
     ///   10 `[]` Lending market account.
     ///   11 `[]` Derived lending market authority.
-    ///   12 `[]` User transfer authority ($authority).
+    ///   12 `[signer]` User transfer authority ($authority).
     ///   13 `[]` Dex market
     ///   14 `[]` Dex market order book side
     ///   15 `[]` Temporary memory
@@ -145,8 +163,11 @@ pub enum LendingInstruction {
         amount_type: BorrowAmountType,
     },
 
+    // 6
     /// Repay loaned tokens to a reserve and receive collateral tokens. The obligation balance
     /// will be recalculated for interest.
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source liquidity token account, minted by repay reserve liquidity mint
     ///                     $authority can transfer $collateral_amount
@@ -160,7 +181,7 @@ pub enum LendingInstruction {
     ///   8. `[writable]` Obligation token input, $authority can transfer calculated amount
     ///   9. `[]` Lending market account.
     ///   10 `[]` Derived lending market authority.
-    ///   11 `[]` User transfer authority ($authority).
+    ///   11 `[signer]` User transfer authority ($authority).
     ///   12 `[]` Clock sysvar
     ///   13 `[]` Token program id
     RepayReserveLiquidity {
@@ -168,7 +189,10 @@ pub enum LendingInstruction {
         liquidity_amount: u64,
     },
 
+    // 7
     /// Purchase collateral tokens at a discount rate if the chosen obligation is unhealthy.
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source liquidity token account, minted by repay reserve liquidity mint
     ///                     $authority can transfer $collateral_amount
@@ -180,7 +204,7 @@ pub enum LendingInstruction {
     ///   6. `[writable]` Obligation - initialized
     ///   7. `[]` Lending market account.
     ///   8. `[]` Derived lending market authority.
-    ///   9. `[]` User transfer authority ($authority).
+    ///   9. `[signer]` User transfer authority ($authority).
     ///   10 `[]` Dex market
     ///   11 `[]` Dex market order book side
     ///   12 `[]` Temporary memory
@@ -191,14 +215,20 @@ pub enum LendingInstruction {
         liquidity_amount: u64,
     },
 
+    // 8
     /// Accrue interest on reserves
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[]` Clock sysvar
     ///   1. `[writable]` Reserve account.
     ///   .. `[writable]` Additional reserve accounts.
     AccrueReserveInterest,
 
+    // 9
     /// Deposit additional collateral to an obligation.
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source collateral token account, minted by deposit reserve collateral mint,
     ///                     $authority can transfer $collateral_amount
@@ -209,14 +239,17 @@ pub enum LendingInstruction {
     ///   5. `[writable]` Obligation token output
     ///   6. `[]` Lending market account.
     ///   7. `[]` Derived lending market authority.
-    ///   8. `[]` User transfer authority ($authority).
+    ///   8. `[signer]` User transfer authority ($authority).
     ///   9. '[]` Token program id
     DepositObligationCollateral {
         /// Amount of collateral to deposit
         collateral_amount: u64,
     },
 
+    // 10
     /// Withdraw excess collateral from an obligation. The loan must remain healthy.
+    ///
+    /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source withdraw reserve collateral supply SPL Token account
     ///   1. `[writable]` Destination collateral token account, minted by withdraw reserve
@@ -228,7 +261,7 @@ pub enum LendingInstruction {
     ///   6. `[writable]` Obligation token input
     ///   7. `[]` Lending market account.
     ///   8. `[]` Derived lending market authority.
-    ///   9. `[]` User transfer authority ($authority).
+    ///   9. `[signer]` User transfer authority ($authority).
     ///   10 `[]` Dex market
     ///   11 `[]` Dex market order book side
     ///   12 `[]` Temporary memory
@@ -237,6 +270,18 @@ pub enum LendingInstruction {
     WithdrawObligationCollateral {
         /// Amount of collateral to withdraw
         collateral_amount: u64,
+    },
+
+    // 11
+    /// Sets the new owner of a lending market.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The lending market to change the owner of.
+    ///   1. `[signer]` The current owner.
+    SetLendingMarketOwner {
+        /// The new owner
+        new_owner: Pubkey,
     },
 }
 
@@ -314,6 +359,10 @@ impl LendingInstruction {
             10 => {
                 let (collateral_amount, _rest) = Self::unpack_u64(rest)?;
                 Self::WithdrawObligationCollateral { collateral_amount }
+            }
+            11 => {
+                let (new_owner, _rest) = Self::unpack_pubkey(rest)?;
+                Self::SetLendingMarketOwner { new_owner }
             }
             _ => return Err(LendingError::InstructionUnpackError.into()),
         })
@@ -432,6 +481,10 @@ impl LendingInstruction {
             Self::WithdrawObligationCollateral { collateral_amount } => {
                 buf.push(10);
                 buf.extend_from_slice(&collateral_amount.to_le_bytes());
+            }
+            Self::SetLendingMarketOwner { new_owner } => {
+                buf.push(11);
+                buf.extend_from_slice(new_owner.as_ref());
             }
         }
         buf
@@ -803,7 +856,7 @@ pub fn deposit_obligation_collateral(
     }
 }
 
-/// Creates an 'WithdrawObligationCollateral' instruction.
+/// Creates a 'WithdrawObligationCollateral' instruction.
 #[allow(clippy::too_many_arguments)]
 pub fn withdraw_obligation_collateral(
     program_id: Pubkey,
@@ -842,5 +895,22 @@ pub fn withdraw_obligation_collateral(
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: LendingInstruction::WithdrawObligationCollateral { collateral_amount }.pack(),
+    }
+}
+
+/// Creates a 'SetLendingMarketOwner' instruction.
+pub fn set_lending_market_owner(
+    program_id: Pubkey,
+    lending_market_pubkey: Pubkey,
+    lending_market_owner: Pubkey,
+    new_owner: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_owner, true),
+        ],
+        data: LendingInstruction::SetLendingMarketOwner { new_owner }.pack(),
     }
 }
