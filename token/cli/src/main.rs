@@ -11,7 +11,8 @@ use solana_clap_utils::{
     fee_payer::fee_payer_arg,
     input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, signer_of, value_of},
     input_validators::{
-        is_amount, is_amount_or_all, is_parsable, is_url, is_valid_pubkey, is_valid_signer,
+        is_amount, is_amount_or_all, is_parsable, is_url_or_moniker, is_valid_pubkey,
+        is_valid_signer, normalize_to_url_if_moniker,
     },
     keypair::{pubkey_from_path, signer_from_path, DefaultSigner},
     nonce::*,
@@ -1081,20 +1082,25 @@ fn main() {
         })
         .arg(
             Arg::with_name("verbose")
-                .long("verbose")
                 .short("v")
+                .long("verbose")
                 .takes_value(false)
                 .global(true)
                 .help("Show additional information"),
         )
         .arg(
             Arg::with_name("json_rpc_url")
+                .short("u")
                 .long("url")
-                .value_name("URL")
+                .value_name("URL_OR_MONIKER")
                 .takes_value(true)
                 .global(true)
-                .validator(is_url)
-                .help("JSON RPC URL for the cluster.  Default from the configuration file."),
+                .validator(is_url_or_moniker)
+                .help(
+                    "URL for Solana's JSON RPC or moniker (or their first letter): \
+                       [mainnet-beta, testnet, devnet, localhost] \
+                    Default from the configuration file."
+                ),
         )
         .arg(
             Arg::with_name("owner")
@@ -1590,10 +1596,11 @@ fn main() {
         } else {
             solana_cli_config::Config::default()
         };
-        let json_rpc_url = matches
-            .value_of("json_rpc_url")
-            .unwrap_or(&cli_config.json_rpc_url)
-            .to_string();
+        let json_rpc_url = normalize_to_url_if_moniker(
+            matches
+                .value_of("json_rpc_url")
+                .unwrap_or(&cli_config.json_rpc_url),
+        );
 
         let default_signer_arg_name = "owner".to_string();
         let default_signer_path = matches
