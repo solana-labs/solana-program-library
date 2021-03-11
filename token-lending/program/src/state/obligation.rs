@@ -5,6 +5,7 @@ use crate::{
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
+    clock::Slot,
     entrypoint::ProgramResult,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
@@ -17,38 +18,63 @@ use std::convert::TryInto;
 pub struct Obligation {
     /// Version of the obligation
     pub version: u8,
-    /// Amount of collateral tokens deposited for this obligation
-    pub deposited_collateral_tokens: u64,
-    /// Reserve which collateral tokens were deposited into
-    pub collateral_reserve: Pubkey,
-    /// Borrow rate used for calculating interest.
-    pub cumulative_borrow_rate_wads: Decimal,
-    /// Amount of tokens borrowed for this obligation plus interest
-    pub borrowed_liquidity_wads: Decimal,
-    /// Reserve which tokens were borrowed from
-    pub borrow_reserve: Pubkey,
+    /// Collateral accounts for the obligation
+    pub collateral: Vec<Pubkey>,
+    /// Liquidity accounts for the obligation
+    pub liquidity: Vec<Pubkey>,
     /// Mint address of the tokens for this obligation
     pub token_mint: Pubkey,
+    /// Ratio of liquidity market value to collateral market value (weighted average)
+    pub loan_to_value: Decimal,
+    /// Last slot when collateral, liquidity, or loan to value updated
+    pub last_update_slot: Slot,
+}
+
+/// Obligation collateral state
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ObligationCollateral {
+    /// Reserve which collateral tokens were deposited into
+    pub deposit_reserve: Pubkey,
+    /// Amount of collateral tokens deposited for an obligation
+    pub deposited_tokens: u64,
+    /// Market value of collateral
+    pub market_value: u64,
+    /// Last slot when market value updated
+    pub last_update_slot: Slot,
+}
+
+/// Obligation liquidity state
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ObligationLiquidity {
+    /// Reserve which liquidity tokens were borrowed from
+    pub borrow_reserve: Pubkey,
+    /// Borrow rate used for calculating interest
+    pub cumulative_borrow_rate_wads: Decimal,
+    /// Amount of liquidity tokens borrowed for an obligation plus interest
+    pub borrowed_wads: Decimal,
+    /// Market value of liquidity
+    pub market_value: u64,
+    /// Last slot when market value and accrued interest updated
+    pub last_update_slot: Slot,
 }
 
 impl Obligation {
     /// Create new obligation
     pub fn new(params: NewObligationParams) -> Self {
         let NewObligationParams {
-            collateral_reserve,
-            borrow_reserve,
+            collateral,
+            liquidity,
             token_mint,
-            cumulative_borrow_rate_wads,
+            current_slot,
         } = params;
 
         Self {
             version: PROGRAM_VERSION,
-            deposited_collateral_tokens: 0,
-            collateral_reserve,
-            cumulative_borrow_rate_wads,
-            borrowed_liquidity_wads: Decimal::zero(),
-            borrow_reserve,
+            collateral,
+            liquidity,
             token_mint,
+            loan_to_value: Decimal::zero(),
+            last_update_slot: current_slot,
         }
     }
 
@@ -157,6 +183,13 @@ impl Obligation {
             obligation_token_amount,
         })
     }
+
+    /// Return slots elapsed since last update
+    fn update_slot(&mut self, slot: Slot) -> u64 {
+        let slots_elapsed = slot - self.last_update_slot;
+        self.last_update_slot = slot;
+        slots_elapsed
+    }
 }
 
 /// Obligation repay result
@@ -173,14 +206,14 @@ pub struct RepayResult {
 
 /// Create new obligation
 pub struct NewObligationParams {
-    /// Collateral reserve address
-    pub collateral_reserve: Pubkey,
-    /// Borrow reserve address
-    pub borrow_reserve: Pubkey,
+    /// Collateral for the obligation
+    pub collateral: Vec<Pubkey>,
+    /// Liquidity for the obligation
+    pub liquidity: Vec<Pubkey>,
     /// Obligation token mint address
     pub token_mint: Pubkey,
-    /// Borrow rate used for calculating interest.
-    pub cumulative_borrow_rate_wads: Decimal,
+    /// Current slot
+    pub current_slot: Slot,
 }
 
 impl Sealed for Obligation {}
@@ -190,58 +223,188 @@ impl IsInitialized for Obligation {
     }
 }
 
-const OBLIGATION_LEN: usize = 265;
-impl Pack for Obligation {
-    const LEN: usize = 265;
+const MAX_PUBKEYS: usize = 10;
+const PUBKEY_LEN: usize = 32;
 
-    /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
-    fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, OBLIGATION_LEN];
+const OBLIGATION_LEN: usize = 379; // 1 + 8 + 16 + 32 + 1 + 1 + (32 * 10)
+impl Pack for Obligation {
+    const LEN: usize = OBLIGATION_LEN;
+
+    fn pack_into_slice(&self, dst: &mut [u8]) {
+        let dst = array_mut_ref![dst, 0, OBLIGATION_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             version,
-            deposited_collateral_tokens,
-            collateral_supply,
-            cumulative_borrow_rate,
-            borrowed_liquidity_wads,
-            borrow_reserve,
+            last_update_slot,
+            loan_to_value,
             token_mint,
-            _padding,
-        ) = array_refs![input, 1, 8, 32, 16, 16, 32, 32, 128];
-        Ok(Self {
-            version: u8::from_le_bytes(*version),
-            deposited_collateral_tokens: u64::from_le_bytes(*deposited_collateral_tokens),
-            collateral_reserve: Pubkey::new_from_array(*collateral_supply),
-            cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate),
-            borrowed_liquidity_wads: unpack_decimal(borrowed_liquidity_wads),
-            borrow_reserve: Pubkey::new_from_array(*borrow_reserve),
-            token_mint: Pubkey::new_from_array(*token_mint),
-        })
-    }
-
-    fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, OBLIGATION_LEN];
-        let (
-            version,
-            deposited_collateral_tokens,
-            collateral_supply,
-            cumulative_borrow_rate,
-            borrowed_liquidity_wads,
-            borrow_reserve,
-            token_mint,
-            _padding,
-        ) = mut_array_refs![output, 1, 8, 32, 16, 16, 32, 32, 128];
+            num_collateral,
+            num_liquidity,
+            pubkeys_flat,
+        ) = mut_array_refs![dst, 1, 8, 16, PUBKEY_LEN, 1, 1, PUBKEY_LEN * MAX_PUBKEYS];
 
         *version = self.version.to_le_bytes();
-        *deposited_collateral_tokens = self.deposited_collateral_tokens.to_le_bytes();
-        collateral_supply.copy_from_slice(self.collateral_reserve.as_ref());
-        pack_decimal(self.cumulative_borrow_rate_wads, cumulative_borrow_rate);
-        pack_decimal(self.borrowed_liquidity_wads, borrowed_liquidity_wads);
-        borrow_reserve.copy_from_slice(self.borrow_reserve.as_ref());
+        *last_update_slot = self.last_update_slot.to_le_bytes();
+        pack_decimal(self.loan_to_value, loan_to_value);
         token_mint.copy_from_slice(self.token_mint.as_ref());
+
+        let collateral_len = self.collateral.len();
+        let liquidity_len = self.liquidity.len();
+
+        *num_collateral = collateral_len.to_le_bytes();
+        *num_liquidity = liquidity_len.to_le_bytes();
+
+        let mut offset = 0;
+        for src in self.collateral.iter() {
+            let dst_array = array_mut_ref![pubkeys_flat, offset, PUBKEY_LEN];
+            dst_array.copy_from_slice(src.as_ref());
+            offset += PUBKEY_LEN;
+        }
+        for src in self.liquidity.iter() {
+            let dst_array = array_mut_ref![pubkeys_flat, offset, PUBKEY_LEN];
+            dst_array.copy_from_slice(src.as_ref());
+            offset += PUBKEY_LEN;
+        }
+    }
+
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+        let src = array_ref![src, 0, OBLIGATION_LEN];
+        #[allow(clippy::ptr_offset_with_cast)]
+        let (
+            version,
+            last_update_slot,
+            loan_to_value,
+            token_mint,
+            num_collateral,
+            num_liquidity,
+            pubkeys_flat,
+        ) = array_refs![src, 1, 8, 16, PUBKEY_LEN, 1, 1, PUBKEY_LEN * MAX_PUBKEYS];
+
+        let collateral_len = u8::from_le_bytes(*num_collateral);
+        let liquidity_len = u8::from_le_bytes(*num_liquidity);
+        let total_len = collateral_len + liquidity_len;
+
+        let mut collateral = vec![];
+        let mut liquidity = vec![];
+
+        let mut offset = 0;
+        for src in pubkeys_flat.chunks(PUBKEY_LEN) {
+            if offset < collateral_len {
+                collateral.push(Pubkey::new(src));
+            } else if offset < total_len {
+                liquidity.push(Pubkey::new(src));
+            } else {
+                break;
+            }
+            offset += 1;
+        }
+
+        Ok(Self {
+            version: u8::from_le_bytes(*version),
+            last_update_slot: u64::from_le_bytes(*last_update_slot),
+            loan_to_value: unpack_decimal(loan_to_value),
+            token_mint: Pubkey::new_from_array(*token_mint),
+            collateral,
+            liquidity,
+        })
     }
 }
 
+impl Sealed for ObligationCollateral {}
+
+const OBLIGATION_COLLATERAL_LEN: usize = 184; // 32 + 8 + 8 + 8 + 128
+impl Pack for ObligationCollateral {
+    const LEN: usize = OBLIGATION_COLLATERAL_LEN;
+
+    fn pack_into_slice(&self, output: &mut [u8]) {
+        let output = array_mut_ref![output, 0, OBLIGATION_COLLATERAL_LEN];
+        let (deposit_reserve, deposited_tokens, market_value, last_update_slot, _padding) =
+            mut_array_refs![output, PUBKEY_LEN, 8, 8, 8, 128];
+
+        deposit_reserve.copy_from_slice(self.deposit_reserve.as_ref());
+        *deposited_tokens = self.deposited_tokens.to_le_bytes();
+        *market_value = self.market_value.to_le_bytes();
+        *last_update_slot = self.last_update_slot.to_le_bytes();
+    }
+
+    /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
+    fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
+        let input = array_ref![input, 0, OBLIGATION_COLLATERAL_LEN];
+        #[allow(clippy::ptr_offset_with_cast)]
+        let (deposit_reserve, deposited_tokens, market_value, last_update_slot, _padding) =
+            array_refs![input, PUBKEY_LEN, 8, 8, 8, 128];
+
+        Ok(Self {
+            deposit_reserve: Pubkey::new_from_array(*deposit_reserve),
+            deposited_tokens: u64::from_le_bytes(*deposited_tokens),
+            market_value: u64::from_le_bytes(*market_value),
+            last_update_slot: u64::from_le_bytes(*last_update_slot),
+        })
+    }
+}
+
+impl Sealed for ObligationLiquidity {}
+
+// /// Reserve which liquidity tokens were borrowed from
+// pub borrow_reserve: Pubkey,
+// /// Borrow rate used for calculating interest
+// pub cumulative_borrow_rate_wads: Decimal,
+// /// Amount of liquidity tokens borrowed for an obligation plus interest
+// pub borrowed_wads: Decimal,
+// /// Market value of liquidity
+// pub market_value: u64,
+// /// Last slot when market value and accrued interest updated
+// pub last_update_slot: Slot,
+
+const OBLIGATION_LIQUIDITY_LEN: usize = 208; // 32 + 16 + 16 + 8 + 8 + 128
+impl Pack for ObligationLiquidity {
+    const LEN: usize = OBLIGATION_LIQUIDITY_LEN;
+
+    fn pack_into_slice(&self, output: &mut [u8]) {
+        let output = array_mut_ref![output, 0, OBLIGATION_LIQUIDITY_LEN];
+        let (
+            borrow_reserve,
+            cumulative_borrow_rate_wads,
+            borrowed_wads,
+            market_value,
+            last_update_slot,
+            _padding,
+        ) = mut_array_refs![output, PUBKEY_LEN, 16, 16, 8, 8, 128];
+
+        borrow_reserve.copy_from_slice(self.borrow_reserve.as_ref());
+        pack_decimal(
+            self.cumulative_borrow_rate_wads,
+            cumulative_borrow_rate_wads,
+        );
+        pack_decimal(self.borrowed_wads, borrowed_wads);
+        *market_value = self.market_value.to_le_bytes();
+        *last_update_slot = self.last_update_slot.to_le_bytes();
+    }
+
+    /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
+    fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
+        let input = array_ref![input, 0, OBLIGATION_LIQUIDITY_LEN];
+        #[allow(clippy::ptr_offset_with_cast)]
+        let (
+            borrow_reserve,
+            cumulative_borrow_rate_wads,
+            borrowed_wads,
+            market_value,
+            last_update_slot,
+            _padding,
+        ) = array_refs![input, PUBKEY_LEN, 16, 16, 8, 8, 128];
+
+        Ok(Self {
+            borrow_reserve: Pubkey::new_from_array(*borrow_reserve),
+            cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
+            borrowed_wads: unpack_decimal(borrowed_wads),
+            market_value: u64::from_le_bytes(*market_value),
+            last_update_slot: u64::from_le_bytes(*last_update_slot),
+        })
+    }
+}
+
+// @FIXME: tests
 #[cfg(test)]
 mod test {
     use super::*;
