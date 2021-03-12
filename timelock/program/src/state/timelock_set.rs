@@ -1,7 +1,6 @@
-use super::{UNINITIALIZED_VERSION, enums::VotingEntryRule};
-use super::{enums::TimelockStateStatus, timelock_config::TimelockConfig};
+use super::{UNINITIALIZED_VERSION};
+use super::{enums::TimelockStateStatus};
 use super::{
-    enums::{ConsensusAlgorithm, ExecutionType, TimelockType},
     timelock_state::{TimelockState, DESC_SIZE, NAME_SIZE},
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
@@ -45,14 +44,8 @@ pub struct TimelockSet {
     /// Used to validate voting tokens in a round trip transfer
     pub voting_validation: Pubkey,
 
-    /// Governance mint (Only used when in Governance mode)
-    pub governance_mint: Pubkey,
-
     /// Governance holding account (Only used when in Governance mode)
     pub governance_holding: Pubkey,
-
-    /// Voting dump account for exchanged vote tokens
-    pub voting_dump: Pubkey,
 
     /// Yes Voting dump account for exchanged vote tokens
     pub yes_voting_dump: Pubkey,
@@ -60,11 +53,12 @@ pub struct TimelockSet {
     /// No Voting dump account for exchanged vote tokens
     pub no_voting_dump: Pubkey,
 
+    /// configuration values
+    pub config: Pubkey,
+
     /// Timelock state
     pub state: TimelockState,
 
-    /// configuration values
-    pub config: TimelockConfig,
 }
 
 impl Sealed for TimelockSet {}
@@ -74,9 +68,9 @@ impl IsInitialized for TimelockSet {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 750 + DESC_SIZE + NAME_SIZE;
+const TIMELOCK_SET_LEN: usize = 714 + DESC_SIZE + NAME_SIZE;
 impl Pack for TimelockSet {
-    const LEN: usize = 750 + DESC_SIZE + NAME_SIZE;
+    const LEN: usize = 714 + DESC_SIZE + NAME_SIZE;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_SET_LEN];
@@ -92,11 +86,10 @@ impl Pack for TimelockSet {
             signatory_validation,
             admin_validation,
             voting_validation,
-            governance_mint,
             governance_holding,
-            voting_dump,
             yes_voting_dump,
             no_voting_dump,
+            config,
             timelock_state_status,
             total_signing_tokens_minted,
             desc_link,
@@ -111,21 +104,13 @@ impl Pack for TimelockSet {
             timelock_txn_8,
             timelock_txn_9,
             timelock_txn_10,
-            consensus_algorithm,
-            execution_type,
-            timelock_type,
-            voting_entry_rule
         ) = array_refs![
-            input, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1,  8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32,
-            32, 32, 32, 32, 32, 1, 1, 1, 1
+            input, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1,  8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32,
+            32, 32, 32, 32, 32
         ];
         let version = u8::from_le_bytes(*version);
         let total_signing_tokens_minted = u64::from_le_bytes(*total_signing_tokens_minted);
         let timelock_state_status = u8::from_le_bytes(*timelock_state_status);
-        let consensus_algorithm = u8::from_le_bytes(*consensus_algorithm);
-        let execution_type = u8::from_le_bytes(*execution_type);
-        let timelock_type = u8::from_le_bytes(*timelock_type);
-        let voting_entry_rule = u8::from_le_bytes(*voting_entry_rule);
         match version {
             TIMELOCK_SET_VERSION | UNINITIALIZED_VERSION => Ok(Self {
                 version,
@@ -137,11 +122,10 @@ impl Pack for TimelockSet {
                 signatory_validation: Pubkey::new_from_array(*signatory_validation),
                 admin_validation: Pubkey::new_from_array(*admin_validation),
                 voting_validation: Pubkey::new_from_array(*voting_validation),
-                governance_mint: Pubkey::new_from_array(*governance_mint),
                 governance_holding: Pubkey::new_from_array(*governance_holding),
-                voting_dump: Pubkey::new_from_array(*voting_dump),
                 yes_voting_dump: Pubkey::new_from_array(*yes_voting_dump),
                 no_voting_dump: Pubkey::new_from_array(*no_voting_dump),
+                config: Pubkey::new_from_array(*config),
                 state: TimelockState {
                     status: match timelock_state_status {
                         0 => TimelockStateStatus::Draft,
@@ -167,30 +151,7 @@ impl Pack for TimelockSet {
                     desc_link: *desc_link,
                     name: *name,
                 },
-                config: TimelockConfig {
-                    consensus_algorithm: match consensus_algorithm {
-                        0 => ConsensusAlgorithm::Majority,
-                        1 => ConsensusAlgorithm::SuperMajority,
-                        2 => ConsensusAlgorithm::FullConsensus,
-                        _ => ConsensusAlgorithm::Majority,
-                    },
-                    execution_type: match execution_type {
-                        0 => ExecutionType::AllOrNothing,
-                        1 => ExecutionType::AnyAboveVoteFinishSlot,
-                        _ => ExecutionType::AllOrNothing,
-                    },
-                    timelock_type: match timelock_type {
-                        0 => TimelockType::Committee,
-                        1 => TimelockType::Governance,
-                        _ => TimelockType::Committee,
-                    },
-                    voting_entry_rule: match voting_entry_rule {
-                        0 => VotingEntryRule::DraftOnly,
-                        1 => VotingEntryRule::Anytime,
-                        _ => VotingEntryRule::DraftOnly,
-                    },
-
-                },
+                
             }),
             _ => Err(ProgramError::InvalidAccountData),
         }
@@ -209,11 +170,10 @@ impl Pack for TimelockSet {
             signatory_validation,
             admin_validation,
             voting_validation,
-            governance_mint,
             governance_holding,
-            voting_dump,
             yes_voting_dump,
             no_voting_dump,
+            config,
             timelock_state_status,
             total_signing_tokens_minted,
             desc_link,
@@ -228,13 +188,9 @@ impl Pack for TimelockSet {
             timelock_txn_8,
             timelock_txn_9,
             timelock_txn_10,
-            consensus_algorithm,
-            execution_type,
-            timelock_type,
-            voting_entry_rule,
         ) = mut_array_refs![
-            output, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1,  8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32,
-            32, 32, 32, 32, 32, 1, 1, 1, 1
+            output, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,32, 1,  8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32,
+            32, 32, 32, 32, 32
         ];
         *version = self.version.to_le_bytes();
         signatory_mint.copy_from_slice(self.signatory_mint.as_ref());
@@ -245,11 +201,10 @@ impl Pack for TimelockSet {
         signatory_validation.copy_from_slice(self.signatory_validation.as_ref());
         admin_validation.copy_from_slice(self.admin_validation.as_ref());
         voting_validation.copy_from_slice(self.voting_validation.as_ref());
-        governance_mint.copy_from_slice(self.governance_mint.as_ref());
         governance_holding.copy_from_slice(self.governance_holding.as_ref());
-        voting_dump.copy_from_slice(self.voting_dump.as_ref());
         yes_voting_dump.copy_from_slice(self.yes_voting_dump.as_ref());
         no_voting_dump.copy_from_slice(self.no_voting_dump.as_ref());
+        config.copy_from_slice(self.config.as_ref());
         *timelock_state_status = match self.state.status {
             TimelockStateStatus::Draft => 0 as u8,
             TimelockStateStatus::Voting => 1 as u8,
@@ -271,29 +226,7 @@ impl Pack for TimelockSet {
         timelock_txn_8.copy_from_slice(self.state.timelock_transactions[7].as_ref());
         timelock_txn_9.copy_from_slice(self.state.timelock_transactions[8].as_ref());
         timelock_txn_10.copy_from_slice(self.state.timelock_transactions[9].as_ref());
-        *consensus_algorithm = match self.config.consensus_algorithm {
-            ConsensusAlgorithm::Majority => 0 as u8,
-            ConsensusAlgorithm::SuperMajority => 1 as u8,
-            ConsensusAlgorithm::FullConsensus => 2 as u8,
-        }
-        .to_le_bytes();
-        *execution_type = match self.config.execution_type {
-            ExecutionType::AllOrNothing => 0 as u8,
-            ExecutionType::AnyAboveVoteFinishSlot => 1 as u8,
-        }
-        .to_le_bytes();
-        *timelock_type = match self.config.timelock_type {
-            TimelockType::Committee => 0 as u8,
-            TimelockType::Governance => 1 as u8,
-
-        }
-        .to_le_bytes();
-        *voting_entry_rule = match self.config.voting_entry_rule {
-            VotingEntryRule::DraftOnly => 0 as u8,
-            VotingEntryRule::Anytime => 1 as u8,
-
-        }
-        .to_le_bytes();
+       
     }
 
     fn get_packed_len() -> usize {

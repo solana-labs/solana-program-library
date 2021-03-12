@@ -1,12 +1,5 @@
 //! Program state processor
-use crate::{
-    error::TimelockError,
-    state::timelock_program::TimelockProgram,
-    state::timelock_set::TimelockSet,
-    utils::{
-        assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program,
-    },
-};
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::timelock_set::TimelockSet, utils::{assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -28,7 +21,7 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
 
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
-
+    assert_account_equiv(signatory_validation_account_info, &timelock_set.signatory_validation)?;
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
     assert_is_permissioned(

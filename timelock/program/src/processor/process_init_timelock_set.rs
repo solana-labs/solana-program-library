@@ -1,14 +1,9 @@
 //! Program state processor
 
-use crate::{error::TimelockError, state::{enums::TimelockType, timelock_config::TimelockConfig, timelock_program::TimelockProgram, timelock_set::{TimelockSet, TIMELOCK_SET_VERSION}, timelock_state::{DESC_SIZE, NAME_SIZE}}, utils::{
-        assert_initialized, assert_rent_exempt, assert_same_version_as_program,
-        assert_token_program_is_correct, assert_uninitialized, spl_token_mint_to,
-        TokenMintToParams,
-    }};
+use crate::{error::TimelockError, state::{enums::TimelockType, timelock_config::TimelockConfig, timelock_program::TimelockProgram, timelock_set::{TimelockSet, TIMELOCK_SET_VERSION}, timelock_state::{DESC_SIZE, NAME_SIZE}}, utils::{TokenMintToParams, assert_account_equiv, assert_initialized, assert_mint_matching, assert_rent_exempt, assert_same_version_as_program, assert_token_program_is_correct, assert_uninitialized, spl_token_mint_to}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    msg,
     program_pack::Pack,
     pubkey::Pubkey,
     sysvar::{rent::Rent, Sysvar},
@@ -19,7 +14,6 @@ use spl_token::state::{Account, Mint};
 pub fn process_init_timelock_set(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    config: TimelockConfig,
     name: [u8; NAME_SIZE],
     desc_link: [u8; DESC_SIZE],
 ) -> ProgramResult {
@@ -35,8 +29,11 @@ pub fn process_init_timelock_set(
     let voting_validation_account_info = next_account_info(account_info_iter)?;
     let destination_admin_account_info = next_account_info(account_info_iter)?;
     let destination_sig_account_info = next_account_info(account_info_iter)?;
+    let yes_voting_dump_account_info = next_account_info(account_info_iter)?;
+    let no_voting_dump_account_info = next_account_info(account_info_iter)?;
     let governance_holding_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
+    let timelock_config_account_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
@@ -44,15 +41,17 @@ pub fn process_init_timelock_set(
     let rent = &Rent::from_account_info(rent_info)?;
 
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_info)?;
+    let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    assert_account_equiv(governance_mint_account_info, &timelock_config.governance_mint)?;
 
     assert_rent_exempt(rent, timelock_set_account_info)?;
 
     let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
     new_timelock_set.version = TIMELOCK_SET_VERSION;
-    new_timelock_set.config = config;
     new_timelock_set.state.desc_link = desc_link;
     new_timelock_set.state.name = name;
     new_timelock_set.state.total_signing_tokens_minted = 1;
+    new_timelock_set.config = *timelock_config_account_info.key;
 
     assert_same_version_as_program(&timelock_program, &new_timelock_set)?;
     assert_token_program_is_correct(&timelock_program, token_program_info)?;
@@ -64,10 +63,11 @@ pub fn process_init_timelock_set(
     new_timelock_set.no_voting_mint = *no_voting_mint_account_info.key;
     new_timelock_set.signatory_mint = *signatory_mint_account_info.key;
 
-    if new_timelock_set.config.timelock_type == TimelockType::Governance  {
+    if timelock_config.timelock_type == TimelockType::Governance  {
         let _governance_mint: Mint = assert_initialized(governance_mint_account_info)?;
-        let _governance_holding: Account = assert_initialized(governance_holding_account_info)?;
-        new_timelock_set.governance_mint = *governance_mint_account_info.key;
+        let governance_holding: Account = assert_initialized(governance_holding_account_info)?;
+        assert_mint_matching(&governance_holding, governance_mint_account_info)?;
+        assert_rent_exempt(rent, governance_holding_account_info)?;
         new_timelock_set.governance_holding = *governance_holding_account_info.key;
     }
 
@@ -80,7 +80,6 @@ pub fn process_init_timelock_set(
     assert_rent_exempt(rent, yes_voting_mint_account_info)?;
     assert_rent_exempt(rent, no_voting_mint_account_info)?;
     assert_rent_exempt(rent, signatory_mint_account_info)?;
-    assert_rent_exempt(rent, governance_holding_account_info)?;
     assert_rent_exempt(rent, admin_validation_account_info)?;
     assert_rent_exempt(rent, signatory_validation_account_info)?;
     assert_rent_exempt(rent, voting_validation_account_info)?;
@@ -90,8 +89,21 @@ pub fn process_init_timelock_set(
     let _yes_voting_mint: Mint = assert_initialized(yes_voting_mint_account_info)?;
     let _no_voting_mint: Mint = assert_initialized(no_voting_mint_account_info)?;
     let _signatory_mint: Mint = assert_initialized(signatory_mint_account_info)?;
-    let _sig_acct: Account = assert_initialized(destination_sig_account_info)?;
-    let _admin_acct: Account = assert_initialized(destination_admin_account_info)?;
+    let sig_acct: Account = assert_initialized(destination_sig_account_info)?;
+    let admin_acct: Account = assert_initialized(destination_admin_account_info)?;
+    let sig_validation: Account = assert_initialized(signatory_validation_account_info)?;
+    let admin_validation: Account = assert_initialized(admin_validation_account_info)?;
+    let voting_validation: Account = assert_initialized(voting_validation_account_info)?;
+    let yes_voting_dump: Account = assert_initialized(yes_voting_dump_account_info)?;
+    let no_voting_dump: Account = assert_initialized(no_voting_dump_account_info)?;
+
+    assert_mint_matching(&sig_acct, signatory_mint_account_info)?;
+    assert_mint_matching(&admin_acct, admin_mint_account_info)?;
+    assert_mint_matching(&sig_validation, signatory_mint_account_info)?;
+    assert_mint_matching(&admin_validation, admin_mint_account_info)?;
+    assert_mint_matching(&voting_validation, voting_mint_account_info)?;
+    assert_mint_matching(&yes_voting_dump, yes_voting_mint_account_info)?;
+    assert_mint_matching(&no_voting_dump, no_voting_mint_account_info)?;
 
     TimelockSet::pack(
         new_timelock_set.clone(),

@@ -1,13 +1,5 @@
 //! Program state processor
-use crate::{
-    error::TimelockError,
-    state::timelock_program::TimelockProgram,
-    state::{enums::TimelockStateStatus, timelock_set::TimelockSet},
-    utils::{
-        assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program,
-        spl_token_burn, TokenBurnParams,
-    },
-};
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::TimelockStateStatus, timelock_set::TimelockSet}, utils::{TokenBurnParams, assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program, spl_token_burn}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -29,6 +21,7 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     let sig_mint: Mint = assert_initialized(signatory_mint_info)?;
+    assert_account_equiv(signatory_mint_info, &timelock_set.signatory_mint)?;
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
 
