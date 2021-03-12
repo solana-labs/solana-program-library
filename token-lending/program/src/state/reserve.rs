@@ -610,7 +610,7 @@ impl IsInitialized for Reserve {
 
 const RESERVE_LEN: usize = 602;
 impl Pack for Reserve {
-    const LEN: usize = 602;
+    const LEN: usize = RESERVE_LEN;
 
     /// Unpacks a byte buffer into a [ReserveInfo](struct.ReserveInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {

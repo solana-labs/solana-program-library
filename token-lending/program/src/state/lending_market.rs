@@ -30,7 +30,7 @@ impl IsInitialized for LendingMarket {
 
 const LENDING_MARKET_LEN: usize = 160;
 impl Pack for LendingMarket {
-    const LEN: usize = 160;
+    const LEN: usize = LENDING_MARKET_LEN;
 
     /// Unpacks a byte buffer into a [LendingMarketInfo](struct.LendingMarketInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
