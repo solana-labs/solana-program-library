@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenTransferParams, assert_account_equiv, assert_governance, assert_initialized, assert_same_version_as_program, spl_token_burn, spl_token_transfer}};
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenTransferParams, assert_account_equiv, assert_governance, assert_initialized, assert_token_program_is_correct, spl_token_burn, spl_token_transfer}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -36,6 +36,7 @@ pub fn process_withdraw_voting_tokens(
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
     assert_account_equiv(yes_voting_dump_account_info, &timelock_set.yes_voting_dump)?;
     assert_account_equiv(no_voting_dump_account_info, &timelock_set.no_voting_dump)?;
@@ -46,7 +47,6 @@ pub fn process_withdraw_voting_tokens(
         return Err(TimelockError::TokenAmountBelowZero.into());
     }
 
-    assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_governance(&timelock_config)?;
 
     let voting_account: Account = assert_initialized(voting_account_info)?;

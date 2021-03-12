@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{timelock_config::TimelockConfig, enums::VotingEntryRule, timelock_set::TimelockSet}, utils::{TokenMintToParams, assert_account_equiv, assert_committee, assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program, spl_token_mint_to}};
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{timelock_config::TimelockConfig, enums::VotingEntryRule, timelock_set::TimelockSet}, utils::{TokenMintToParams, assert_account_equiv, assert_committee, assert_draft, assert_initialized, assert_is_permissioned, assert_token_program_is_correct, spl_token_mint_to}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -29,6 +29,8 @@ pub fn process_mint_voting_tokens(
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
+
     assert_account_equiv(signatory_validation_account_info, &timelock_set.signatory_validation)?;
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
     assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
@@ -37,7 +39,6 @@ pub fn process_mint_voting_tokens(
         return Err(TimelockError::TokenAmountBelowZero.into());
     }
 
-    assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_committee(&timelock_config)?;
     if timelock_config.voting_entry_rule == VotingEntryRule::DraftOnly {
         assert_draft(&timelock_set)?;

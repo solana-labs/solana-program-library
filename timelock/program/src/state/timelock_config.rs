@@ -24,7 +24,9 @@ pub struct TimelockConfig {
     /// Minimum slot time-distance from creation of proposal for an instruction to be placed
     pub minimum_slot_waiting_period: u64,
     /// Governance mint (optional)
-    pub governance_mint: Pubkey
+    pub governance_mint: Pubkey,
+    /// Program ID that is tied to this config (optional)
+    pub program: Pubkey
 }
 
 
@@ -35,9 +37,9 @@ impl IsInitialized for TimelockConfig {
     }
 }
 
-const TIMELOCK_CONFIG_LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32;
+const TIMELOCK_CONFIG_LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32;
 impl Pack for TimelockConfig {
-    const LEN: usize = 1 + 1 + 1 + 1 + 1;
+    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_CONFIG_LEN];
@@ -50,9 +52,10 @@ impl Pack for TimelockConfig {
             timelock_type,
             voting_entry_rule,
             minimum_slot_waiting_period,
-            governance_mint
+            governance_mint,
+            program
         ) = array_refs![
-            input, 1,1,1,1,1,8,32
+            input, 1,1,1,1,1,8,32,32
         ];
         let version = u8::from_le_bytes(*version);
         let consensus_algorithm = u8::from_le_bytes(*consensus_algorithm);
@@ -86,7 +89,9 @@ impl Pack for TimelockConfig {
                     _ => VotingEntryRule::DraftOnly,
                 },
                 minimum_slot_waiting_period,
-                governance_mint: Pubkey::new_from_array(*governance_mint)
+                governance_mint: Pubkey::new_from_array(*governance_mint),
+                program: Pubkey::new_from_array(*program)
+
                 
             }),
             _ => Err(ProgramError::InvalidAccountData),
@@ -103,9 +108,10 @@ impl Pack for TimelockConfig {
             timelock_type,
             voting_entry_rule,
             minimum_slot_waiting_period,
-            governance_mint
+            governance_mint,
+            program
         ) = mut_array_refs![
-            output, 1, 1, 1, 1, 1, 8, 32
+            output, 1, 1, 1, 1, 1, 8, 32,32
         ];
         *version = self.version.to_le_bytes();
         *consensus_algorithm = match self.consensus_algorithm {
@@ -133,6 +139,7 @@ impl Pack for TimelockConfig {
         .to_le_bytes();
         *minimum_slot_waiting_period = self.minimum_slot_waiting_period.to_le_bytes();
         governance_mint.copy_from_slice(self.governance_mint.as_ref());
+        program.copy_from_slice(self.program.as_ref());
 
     }
 

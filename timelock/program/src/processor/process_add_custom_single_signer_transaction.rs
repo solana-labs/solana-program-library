@@ -6,7 +6,7 @@ use crate::{error::TimelockError, state::timelock_program::TimelockProgram, stat
         },
         timelock_set::TimelockSet,
         timelock_state::TRANSACTION_SLOTS,
-    }, utils::{assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program, assert_uninitialized}};
+    }, utils::{assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned, assert_token_program_is_correct, assert_uninitialized}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -36,6 +36,7 @@ pub fn process_add_custom_single_signer_transaction(
 
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
+    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
 
     let mut timelock_txn: CustomSingleSignerTimelockTransaction =
         assert_uninitialized(timelock_txn_account_info)?;
@@ -49,7 +50,6 @@ pub fn process_add_custom_single_signer_transaction(
     }
 
     assert_account_equiv(signatory_validation_account_info, &timelock_set.signatory_validation)?;
-    assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
     assert_is_permissioned(
         program_id,

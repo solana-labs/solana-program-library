@@ -12,6 +12,7 @@ pub mod process_remove_transaction;
 pub mod process_sign;
 pub mod process_update_transaction_slot;
 pub mod process_vote;
+pub mod process_init_timelock_config;
 
 use crate::instruction::TimelockInstruction;
 use process_add_custom_single_signer_transaction::process_add_custom_single_signer_transaction;
@@ -28,6 +29,7 @@ use process_update_transaction_slot::process_update_transaction_slot;
 use process_vote::process_vote;
 use process_deposit_voting_tokens::process_deposit_voting_tokens;
 use process_withdraw_voting_tokens::process_withdraw_voting_tokens;
+use process_init_timelock_config::process_init_timelock_config;
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 /// Processes an instruction
@@ -120,6 +122,16 @@ pub fn process_instruction(
         } => {
             msg!("Instruction: Withdraw Voting Tokens");
             process_withdraw_voting_tokens(program_id, accounts, voting_token_amount)
+        }
+        TimelockInstruction::InitTimelockConfig {
+            consensus_algorithm,
+            execution_type,
+            timelock_type,
+            voting_entry_rule,
+            minimum_slot_waiting_period
+        } => {
+            msg!("Instruction: Initialize Timelock Config");
+            process_init_timelock_config(program_id, accounts, consensus_algorithm, execution_type, timelock_type, voting_entry_rule, minimum_slot_waiting_period)
         }
     }
 }

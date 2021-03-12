@@ -272,6 +272,26 @@ pub enum TimelockInstruction {
         voting_token_amount: u64,
     },
 
+    ///   0. `[]` Uninitialized timelock config account with pubkey set to PDA with seeds of the 
+    ///           program account key, governance mint key, timelock program account key, token program account key and bpf upgradeable loader key.
+    ///   1. `[]` Program account to tie this config to.
+    ///   2. `[]` Governance mint to tie this config to (optional)
+    ///   3. `[]` Timelock program account pub key.
+    ///   4. `[]` Token program account.
+    ///   5. `[]` Rent sysvar
+    InitTimelockConfig {
+        /// Consensus Algorithm
+        consensus_algorithm: u8,
+        /// Execution type
+        execution_type: u8,
+        /// Timelock Type
+        timelock_type: u8,
+        /// Voting entry rule
+        voting_entry_rule: u8,
+        /// Minimum slot time-distance from creation of proposal for an instruction to be placed
+        minimum_slot_waiting_period: u64,
+    }
+
 }
 
 impl TimelockInstruction {
@@ -283,11 +303,6 @@ impl TimelockInstruction {
         Ok(match tag {
             0 => Self::InitTimelockProgram,
             1 => {
-                let (consensus_algorithm, rest) = Self::unpack_u8(rest)?;
-                let (execution_type, rest) = Self::unpack_u8(rest)?;
-                let (timelock_type, rest) = Self::unpack_u8(rest)?;
-                let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
-
                 let (input_desc_link, input_name) = rest.split_at(DESC_SIZE);
                 let mut desc_link: [u8; DESC_SIZE] = [0; DESC_SIZE];
                 let mut name: [u8; NAME_SIZE] = [0; NAME_SIZE];
@@ -356,6 +371,20 @@ impl TimelockInstruction {
                 let (voting_token_amount, _) = Self::unpack_u64(rest)?;
                 Self::WithdrawVotingTokens {
                     voting_token_amount,
+                }
+            }
+            15 =>  {
+                let (consensus_algorithm, rest) = Self::unpack_u8(rest)?;
+                let (execution_type, rest) = Self::unpack_u8(rest)?;
+                let (timelock_type, rest) = Self::unpack_u8(rest)?;
+                let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
+                let (minimum_slot_waiting_period, _) = Self::unpack_u64(rest)?;
+                Self::InitTimelockConfig {
+                    consensus_algorithm,
+                    execution_type,
+                    timelock_type,
+                    voting_entry_rule,
+                    minimum_slot_waiting_period
                 }
             }
             _ => return Err(TimelockError::InstructionUnpackError.into()),
@@ -491,6 +520,20 @@ impl TimelockInstruction {
             } => {
                 buf.push(14);
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
+            }
+            Self::InitTimelockConfig {
+                consensus_algorithm,
+                execution_type,
+                timelock_type,
+                voting_entry_rule,
+                minimum_slot_waiting_period,
+            } => {
+                buf.push(15);
+                buf.extend_from_slice(&consensus_algorithm.to_le_bytes());
+                buf.extend_from_slice(&execution_type.to_le_bytes());
+                buf.extend_from_slice(&timelock_type.to_le_bytes());
+                buf.extend_from_slice(&voting_entry_rule.to_le_bytes());
+                buf.extend_from_slice(&minimum_slot_waiting_period.to_le_bytes());
             }
         }
         buf

@@ -129,22 +129,6 @@ pub fn assert_token_program_is_correct(
     Ok(())
 }
 
-/// Asserts the timelock program and timelock set are running the same version constants as this code
-/// Otherwise throws an error telling user to find different version on the block chain for these accounts that is compatible
-pub fn assert_same_version_as_program(
-    timelock_program: &TimelockProgram,
-    timelock_set: &TimelockSet,
-) -> ProgramResult {
-    if timelock_program.version != TIMELOCK_VERSION {
-        return Err(TimelockError::InvalidTimelockVersionError.into());
-    }
-    if timelock_set.version != TIMELOCK_SET_VERSION {
-        return Err(TimelockError::InvalidTimelockSetVersionError.into());
-    }
-
-    Ok(())
-}
-
 /// asserts the timelock set is a committee type
 pub fn assert_committee(config: &TimelockConfig) -> ProgramResult {
     if config.timelock_type != TimelockType::Committee {
