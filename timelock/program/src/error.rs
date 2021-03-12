@@ -107,13 +107,9 @@ pub enum TimelockError {
     #[error("Too many accounts in your arbitrary instruction")]
     TooManyAccountsInInstruction,
 
-    /// Invalid base58
-    #[error("InvalidBase58Length")]
-    InvalidBase58Length,
-
-    /// Invalid base 58 character
-    #[error("InvalidBase58Character")]
-    InvalidBase58Character
+    /// Invalid timelock type for this action
+    #[error("Invalid timelock type for this action")]
+    InvalidTimelockType
 }
 
 impl PrintProgramError for TimelockError {

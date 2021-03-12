@@ -1,19 +1,10 @@
 //! Program state processor
 
-use crate::{
-    error::TimelockError,
-    state::{
-        timelock_config::TimelockConfig,
-        timelock_program::TimelockProgram,
-        timelock_set::{TimelockSet, TIMELOCK_SET_VERSION},
-        timelock_state::{DESC_SIZE, NAME_SIZE},
-    },
-    utils::{
+use crate::{error::TimelockError, state::{enums::TimelockType, timelock_config::TimelockConfig, timelock_program::TimelockProgram, timelock_set::{TimelockSet, TIMELOCK_SET_VERSION}, timelock_state::{DESC_SIZE, NAME_SIZE}}, utils::{
         assert_initialized, assert_rent_exempt, assert_same_version_as_program,
         assert_token_program_is_correct, assert_uninitialized, spl_token_mint_to,
         TokenMintToParams,
-    },
-};
+    }};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -37,11 +28,15 @@ pub fn process_init_timelock_set(
     let signatory_mint_account_info = next_account_info(account_info_iter)?;
     let admin_mint_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
+    let yes_voting_mint_account_info = next_account_info(account_info_iter)?;
+    let no_voting_mint_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
     let admin_validation_account_info = next_account_info(account_info_iter)?;
     let voting_validation_account_info = next_account_info(account_info_iter)?;
     let destination_admin_account_info = next_account_info(account_info_iter)?;
     let destination_sig_account_info = next_account_info(account_info_iter)?;
+    let governance_holding_account_info = next_account_info(account_info_iter)?;
+    let governance_mint_account_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
@@ -58,7 +53,6 @@ pub fn process_init_timelock_set(
     new_timelock_set.state.desc_link = desc_link;
     new_timelock_set.state.name = name;
     new_timelock_set.state.total_signing_tokens_minted = 1;
-    new_timelock_set.state.total_voting_tokens_minted = 0;
 
     assert_same_version_as_program(&timelock_program, &new_timelock_set)?;
     assert_token_program_is_correct(&timelock_program, token_program_info)?;
@@ -66,7 +60,16 @@ pub fn process_init_timelock_set(
 
     new_timelock_set.admin_mint = *admin_mint_account_info.key;
     new_timelock_set.voting_mint = *voting_mint_account_info.key;
+    new_timelock_set.yes_voting_mint = *yes_voting_mint_account_info.key;
+    new_timelock_set.no_voting_mint = *no_voting_mint_account_info.key;
     new_timelock_set.signatory_mint = *signatory_mint_account_info.key;
+
+    if new_timelock_set.config.timelock_type == TimelockType::Governance  {
+        let _governance_mint: Mint = assert_initialized(governance_mint_account_info)?;
+        let _governance_holding: Account = assert_initialized(governance_holding_account_info)?;
+        new_timelock_set.governance_mint = *governance_mint_account_info.key;
+        new_timelock_set.governance_holding = *governance_holding_account_info.key;
+    }
 
     new_timelock_set.admin_validation = *admin_validation_account_info.key;
     new_timelock_set.voting_validation = *voting_validation_account_info.key;
@@ -74,10 +77,18 @@ pub fn process_init_timelock_set(
 
     assert_rent_exempt(rent, admin_mint_account_info)?;
     assert_rent_exempt(rent, voting_mint_account_info)?;
+    assert_rent_exempt(rent, yes_voting_mint_account_info)?;
+    assert_rent_exempt(rent, no_voting_mint_account_info)?;
     assert_rent_exempt(rent, signatory_mint_account_info)?;
+    assert_rent_exempt(rent, governance_holding_account_info)?;
+    assert_rent_exempt(rent, admin_validation_account_info)?;
+    assert_rent_exempt(rent, signatory_validation_account_info)?;
+    assert_rent_exempt(rent, voting_validation_account_info)?;
 
     let _admin_mint: Mint = assert_initialized(admin_mint_account_info)?;
     let _voting_mint: Mint = assert_initialized(voting_mint_account_info)?;
+    let _yes_voting_mint: Mint = assert_initialized(yes_voting_mint_account_info)?;
+    let _no_voting_mint: Mint = assert_initialized(no_voting_mint_account_info)?;
     let _signatory_mint: Mint = assert_initialized(signatory_mint_account_info)?;
     let _sig_acct: Account = assert_initialized(destination_sig_account_info)?;
     let _admin_acct: Account = assert_initialized(destination_admin_account_info)?;

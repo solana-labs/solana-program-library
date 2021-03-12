@@ -57,12 +57,30 @@ impl Default for TimelockStateStatus {
 /// What type a timelock is
 #[derive(Clone, Debug, PartialEq)]
 pub enum TimelockType {
-    /// Only supported type for now - call the Upgrade program
-    CustomSingleSignerV1,
+    /// Meaning voters deposit their tokens from outside mint and "govern" the proposal
+    Governance,
+    /// Meaning Signatories grant votes to others who then vote on the proposal
+    Committee
 }
 
 impl Default for TimelockType {
     fn default() -> Self {
-        TimelockType::CustomSingleSignerV1
+        TimelockType::Committee
+    }
+}
+
+
+/// Rules for voters entering the timelock
+#[derive(Clone, Debug, PartialEq)]
+pub enum VotingEntryRule {
+    /// Meaning voters can only enter during draft period
+    DraftOnly,
+    /// Meaning voters can enter at any point in time
+    Anytime
+}
+
+impl Default for VotingEntryRule {
+    fn default() -> Self {
+        VotingEntryRule::DraftOnly
     }
 }

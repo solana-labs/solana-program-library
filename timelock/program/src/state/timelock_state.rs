@@ -15,9 +15,6 @@ pub struct TimelockState {
     /// Current state of the invoked instruction account
     pub status: TimelockStateStatus,
 
-    /// Total voting tokens minted, for use comparing to supply remaining during consensus
-    pub total_voting_tokens_minted: u64,
-
     /// Total signatory tokens minted, for use comparing to supply remaining during draft period
     pub total_signing_tokens_minted: u64,
 
