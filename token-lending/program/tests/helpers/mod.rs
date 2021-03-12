@@ -15,8 +15,8 @@ use spl_token::{
 };
 use spl_token_lending::{
     instruction::{
-        borrow_obligation_liquidity, deposit_reserve_liquidity, init_lending_market, init_obligation,
-        init_reserve, liquidate_obligation, BorrowAmountType,
+        borrow_obligation_liquidity, deposit_reserve_liquidity, init_lending_market,
+        init_obligation, init_reserve, liquidate_obligation, BorrowAmountType,
     },
     math::{Decimal, Rate, TryAdd, TryMul},
     processor::process_instruction,
@@ -1041,13 +1041,11 @@ impl TestObligation {
                 ),
                 init_obligation(
                     spl_token_lending::id(),
-                    deposit_reserve.pubkey,
-                    borrow_reserve.pubkey,
-                    lending_market.pubkey,
                     obligation.pubkey,
                     obligation.token_mint,
                     obligation.token_account,
                     user_accounts_owner.pubkey(),
+                    lending_market.pubkey,
                 ),
             ],
             Some(&payer.pubkey()),

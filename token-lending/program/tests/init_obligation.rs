@@ -131,13 +131,11 @@ async fn test_already_initialized() {
     let mut transaction = Transaction::new_with_payer(
         &[init_obligation(
             spl_token_lending::id(),
-            sol_reserve.pubkey,
-            usdc_reserve.pubkey,
-            lending_market.pubkey,
             usdc_obligation.pubkey,
             usdc_obligation.token_mint,
             usdc_obligation.token_account,
             user_accounts_owner.pubkey(),
+            lending_market.pubkey,
         )],
         Some(&payer.pubkey()),
     );
