@@ -1,5 +1,6 @@
 #![cfg(feature = "test-bpf")]
 
+use borsh::de::BorshDeserialize;
 use solana_program::{hash::Hash, program_pack::Pack, pubkey::Pubkey, system_instruction};
 use solana_program_test::*;
 use solana_sdk::{
@@ -105,6 +106,66 @@ pub async fn approve_delegate(
     Ok(())
 }
 
+pub async fn make_decision(
+    program_context: &mut ProgramTestContext,
+    pool_account: &Pubkey,
+    decider: &Keypair,
+    decision: bool,
+) -> Result<(), TransportError> {
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::decide(&id(), pool_account, &decider.pubkey(), decision).unwrap()],
+        Some(&program_context.payer.pubkey()),
+    );
+
+    transaction.sign(
+        &[&program_context.payer, decider],
+        program_context.last_blockhash,
+    );
+    program_context
+        .banks_client
+        .process_transaction(transaction)
+        .await?;
+    Ok(())
+}
+
+pub async fn make_withdraw(
+    program_context: &mut ProgramTestContext,
+    pool_account: &Pubkey,
+    authority: &Pubkey,
+    pool_deposit_account: &Pubkey,
+    user_pass_account: &Pubkey,
+    user_fail_account: &Pubkey,
+    token_pass_mint: &Pubkey,
+    token_fail_mint: &Pubkey,
+    user_account: &Pubkey,
+    withdraw_amount: u64,
+) -> Result<(), TransportError> {
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::withdraw(
+            &id(),
+            pool_account,
+            authority,
+            pool_deposit_account,
+            user_pass_account,
+            user_fail_account,
+            token_pass_mint,
+            token_fail_mint,
+            user_account,
+            &spl_token::id(),
+            withdraw_amount,
+        )
+        .unwrap()],
+        Some(&program_context.payer.pubkey()),
+    );
+    transaction.sign(&[&program_context.payer], program_context.last_blockhash);
+    program_context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+    Ok(())
+}
+
 pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -> u64 {
     let token_account = banks_client.get_account(*token).await.unwrap().unwrap();
     let account_info: spl_token::state::Account =
@@ -127,7 +188,7 @@ pub struct TestPool {
 }
 
 impl TestPool {
-    pub fn create() -> Self {
+    pub fn new() -> Self {
         let pool_account = Keypair::new();
         let (authority, bump_seed) =
             Pubkey::find_program_address(&[&pool_account.pubkey().to_bytes()[..32]], &id());
@@ -249,6 +310,7 @@ impl TestPool {
         deposit_tokens_to_mint: u64,
         deposit_tokens_for_allowance: u64,
         user_account: &Keypair,
+        authority: &Pubkey,
         user_account_owner: &Keypair,
         user_pass_account: &Keypair,
         user_fail_account: &Keypair,
@@ -284,7 +346,7 @@ impl TestPool {
             payer,
             recent_blockhash,
             &user_account.pubkey(),
-            &self.authority,
+            authority,
             user_account_owner,
             deposit_tokens_for_allowance,
         )
@@ -331,6 +393,8 @@ impl TestPool {
                 &id(),
                 &self.pool_account.pubkey(),
                 &self.authority,
+                &self.authority,
+                false,
                 &user_account.pubkey(),
                 &self.pool_deposit_account.pubkey(),
                 &self.token_pass_mint.pubkey(),
@@ -344,6 +408,41 @@ impl TestPool {
             Some(&payer.pubkey()),
         );
         transaction.sign(&[payer], *recent_blockhash);
+        banks_client.process_transaction(transaction).await.unwrap();
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn make_deposit_with_user_transfer_authority(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        user_account: &Keypair,
+        user_authority: &Keypair,
+        user_pass_account: &Keypair,
+        user_fail_account: &Keypair,
+        deposit_amount: u64,
+    ) {
+        let mut transaction = Transaction::new_with_payer(
+            &[instruction::deposit(
+                &id(),
+                &self.pool_account.pubkey(),
+                &self.authority,
+                &user_authority.pubkey(),
+                true,
+                &user_account.pubkey(),
+                &self.pool_deposit_account.pubkey(),
+                &self.token_pass_mint.pubkey(),
+                &self.token_fail_mint.pubkey(),
+                &user_pass_account.pubkey(),
+                &user_fail_account.pubkey(),
+                &spl_token::id(),
+                deposit_amount,
+            )
+            .unwrap()],
+            Some(&payer.pubkey()),
+        );
+        transaction.sign(&[payer, user_authority], *recent_blockhash);
         banks_client.process_transaction(transaction).await.unwrap();
     }
 }
@@ -418,7 +517,7 @@ async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Account
 async fn test_init_pool() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
 
-    let pool = TestPool::create();
+    let pool = TestPool::new();
 
     pool.init_pool(&mut banks_client, &payer, &recent_blockhash)
         .await;
@@ -429,16 +528,17 @@ async fn test_init_pool() {
     assert_eq!(pool_account_data.owner, id());
 
     // check if Pool is initialized
-    state::Pool::unpack(pool_account_data.data.as_slice()).unwrap();
+    let pool = state::Pool::try_from_slice(pool_account_data.data.as_slice()).unwrap();
+    assert!(pool.is_initialized());
 }
 
 #[tokio::test]
-async fn test_deposit() {
+async fn test_deposit_with_program_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
 
     let deposit_amount = 100;
 
-    let pool = TestPool::create();
+    let pool = TestPool::new();
 
     pool.init_pool(&mut banks_client, &payer, &recent_blockhash)
         .await;
@@ -455,6 +555,7 @@ async fn test_deposit() {
         deposit_amount,
         deposit_amount,
         &user_account,
+        &pool.authority,
         &user_account_owner,
         &user_pass_account,
         &user_fail_account,
@@ -494,18 +595,19 @@ async fn test_deposit() {
 }
 
 #[tokio::test]
-async fn test_withdraw() {
+async fn test_deposit_with_user_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
 
     let deposit_amount = 100;
 
-    let pool = TestPool::create();
+    let pool = TestPool::new();
 
     pool.init_pool(&mut banks_client, &payer, &recent_blockhash)
         .await;
 
     let user_account = Keypair::new();
     let user_account_owner = Keypair::new();
+    let user_transfer_authority = Keypair::new();
     let user_pass_account = Keypair::new();
     let user_fail_account = Keypair::new();
 
@@ -516,50 +618,32 @@ async fn test_withdraw() {
         deposit_amount,
         deposit_amount,
         &user_account,
+        &user_transfer_authority.pubkey(),
         &user_account_owner,
         &user_pass_account,
         &user_fail_account,
     )
     .await;
 
+    let user_balance_before = get_token_balance(&mut banks_client, &user_account.pubkey()).await;
+    assert_eq!(user_balance_before, deposit_amount);
+
     // Make deposit
-    pool.make_deposit(
+    pool.make_deposit_with_user_transfer_authority(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         &user_account,
+        &user_transfer_authority,
         &user_pass_account,
         &user_fail_account,
         deposit_amount,
     )
     .await;
 
-    // Set allowances to burn PASS and FAIL tokens
-    approve_delegate(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_pass_account.pubkey(),
-        &pool.authority,
-        &user_account_owner,
-        deposit_amount,
-    )
-    .await
-    .unwrap();
-    approve_delegate(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_fail_account.pubkey(),
-        &pool.authority,
-        &user_account_owner,
-        deposit_amount,
-    )
-    .await
-    .unwrap();
-
-    let user_balance_before = get_token_balance(&mut banks_client, &user_account.pubkey()).await;
-    assert_eq!(user_balance_before, 0);
+    // Check balance of user account
+    let user_balance_after = get_token_balance(&mut banks_client, &user_account.pubkey()).await;
+    assert_eq!(user_balance_after, 0);
 
     // Check balance of pool deposit account
     let pool_deposit_account_balance =
@@ -572,50 +656,421 @@ async fn test_withdraw() {
 
     let user_fail_tokens = get_token_balance(&mut banks_client, &user_fail_account.pubkey()).await;
     assert_eq!(user_fail_tokens, deposit_amount);
+}
 
-    let mut transaction = Transaction::new_with_payer(
-        &[instruction::withdraw(
-            &id(),
-            &pool.pool_account.pubkey(),
-            &pool.authority,
-            &pool.pool_deposit_account.pubkey(),
-            &user_pass_account.pubkey(),
-            &user_fail_account.pubkey(),
-            &pool.token_pass_mint.pubkey(),
-            &pool.token_fail_mint.pubkey(),
-            &user_account.pubkey(),
-            &spl_token::id(),
-            deposit_amount,
-        )
-        .unwrap()],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer], recent_blockhash);
-    banks_client.process_transaction(transaction).await.unwrap();
+#[tokio::test]
+async fn test_withdraw_no_decision() {
+    let mut program_context = program_test().start_with_context().await;
 
-    let user_balance_after = get_token_balance(&mut banks_client, &user_account.pubkey()).await;
-    assert_eq!(user_balance_after, deposit_amount);
+    let deposit_amount = 100;
+    let withdraw_amount = 50;
+
+    let pool = TestPool::new();
+
+    pool.init_pool(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+    )
+    .await;
+
+    let user_account = Keypair::new();
+    let user_account_owner = Keypair::new();
+    let user_pass_account = Keypair::new();
+    let user_fail_account = Keypair::new();
+
+    pool.prepare_accounts_for_deposit(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        deposit_amount,
+        deposit_amount,
+        &user_account,
+        &pool.authority,
+        &user_account_owner,
+        &user_pass_account,
+        &user_fail_account,
+    )
+    .await;
+
+    // Make deposit
+    pool.make_deposit(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        &user_account,
+        &user_pass_account,
+        &user_fail_account,
+        deposit_amount,
+    )
+    .await;
+
+    // Set allowances to burn PASS and FAIL tokens
+    approve_delegate(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        &user_pass_account.pubkey(),
+        &pool.authority,
+        &user_account_owner,
+        deposit_amount,
+    )
+    .await
+    .unwrap();
+    approve_delegate(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        &user_fail_account.pubkey(),
+        &pool.authority,
+        &user_account_owner,
+        deposit_amount,
+    )
+    .await
+    .unwrap();
+
+    let user_balance_before =
+        get_token_balance(&mut program_context.banks_client, &user_account.pubkey()).await;
+    assert_eq!(user_balance_before, 0);
+
+    // Check balance of pool deposit account
+    let pool_deposit_account_balance = get_token_balance(
+        &mut program_context.banks_client,
+        &pool.pool_deposit_account.pubkey(),
+    )
+    .await;
+    assert_eq!(pool_deposit_account_balance, deposit_amount);
+
+    // Check if user has PASS and FAIL tokens
+    let user_pass_tokens = get_token_balance(
+        &mut program_context.banks_client,
+        &user_pass_account.pubkey(),
+    )
+    .await;
+    assert_eq!(user_pass_tokens, deposit_amount);
+
+    let user_fail_tokens = get_token_balance(
+        &mut program_context.banks_client,
+        &user_fail_account.pubkey(),
+    )
+    .await;
+    assert_eq!(user_fail_tokens, deposit_amount);
+
+    make_withdraw(
+        &mut program_context,
+        &pool.pool_account.pubkey(),
+        &pool.authority,
+        &pool.pool_deposit_account.pubkey(),
+        &user_pass_account.pubkey(),
+        &user_fail_account.pubkey(),
+        &pool.token_pass_mint.pubkey(),
+        &pool.token_fail_mint.pubkey(),
+        &user_account.pubkey(),
+        withdraw_amount,
+    )
+    .await
+    .unwrap();
+
+    let user_balance_after =
+        get_token_balance(&mut program_context.banks_client, &user_account.pubkey()).await;
+    assert_eq!(user_balance_after, withdraw_amount);
 
     // Check balance of pool deposit account after withdraw
-    let pool_deposit_account_balance_after =
-        get_token_balance(&mut banks_client, &pool.pool_deposit_account.pubkey()).await;
-    assert_eq!(pool_deposit_account_balance_after, 0);
+    let pool_deposit_account_balance_after = get_token_balance(
+        &mut program_context.banks_client,
+        &pool.pool_deposit_account.pubkey(),
+    )
+    .await;
+    assert_eq!(
+        pool_deposit_account_balance_after,
+        deposit_amount - withdraw_amount
+    );
 
     // Check if program burned PASS and FAIL tokens
-    let user_pass_tokens_after =
-        get_token_balance(&mut banks_client, &user_pass_account.pubkey()).await;
-    assert_eq!(user_pass_tokens_after, 0);
+    let user_pass_tokens_after = get_token_balance(
+        &mut program_context.banks_client,
+        &user_pass_account.pubkey(),
+    )
+    .await;
+    assert_eq!(user_pass_tokens_after, deposit_amount - withdraw_amount);
 
-    let user_fail_tokens_after =
-        get_token_balance(&mut banks_client, &user_fail_account.pubkey()).await;
-    assert_eq!(user_fail_tokens_after, 0);
+    let user_fail_tokens_after = get_token_balance(
+        &mut program_context.banks_client,
+        &user_fail_account.pubkey(),
+    )
+    .await;
+    assert_eq!(user_fail_tokens_after, deposit_amount - withdraw_amount);
+}
+
+#[tokio::test]
+async fn test_withdraw_pass_decision() {
+    let mut program_context = program_test().start_with_context().await;
+
+    let deposit_amount = 100;
+    let withdraw_amount = 50;
+
+    let pool = TestPool::new();
+
+    pool.init_pool(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+    )
+    .await;
+
+    let user_account = Keypair::new();
+    let user_account_owner = Keypair::new();
+    let user_pass_account = Keypair::new();
+    let user_fail_account = Keypair::new();
+
+    pool.prepare_accounts_for_deposit(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        deposit_amount,
+        deposit_amount,
+        &user_account,
+        &pool.authority,
+        &user_account_owner,
+        &user_pass_account,
+        &user_fail_account,
+    )
+    .await;
+
+    // Make deposit
+    pool.make_deposit(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        &user_account,
+        &user_pass_account,
+        &user_fail_account,
+        deposit_amount,
+    )
+    .await;
+
+    // Set allowances to burn PASS and FAIL tokens
+    approve_delegate(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        &user_pass_account.pubkey(),
+        &pool.authority,
+        &user_account_owner,
+        deposit_amount,
+    )
+    .await
+    .unwrap();
+    approve_delegate(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        &user_fail_account.pubkey(),
+        &pool.authority,
+        &user_account_owner,
+        deposit_amount,
+    )
+    .await
+    .unwrap();
+
+    let decision = true;
+
+    program_context
+        .warp_to_slot(pool.mint_end_slot + 1)
+        .unwrap();
+
+    make_decision(
+        &mut program_context,
+        &pool.pool_account.pubkey(),
+        &pool.decider,
+        decision,
+    )
+    .await
+    .unwrap();
+
+    make_withdraw(
+        &mut program_context,
+        &pool.pool_account.pubkey(),
+        &pool.authority,
+        &pool.pool_deposit_account.pubkey(),
+        &user_pass_account.pubkey(),
+        &user_fail_account.pubkey(),
+        &pool.token_pass_mint.pubkey(),
+        &pool.token_fail_mint.pubkey(),
+        &user_account.pubkey(),
+        withdraw_amount,
+    )
+    .await
+    .unwrap();
+
+    let user_balance_after =
+        get_token_balance(&mut program_context.banks_client, &user_account.pubkey()).await;
+    assert_eq!(user_balance_after, withdraw_amount);
+
+    // Check balance of pool deposit account after withdraw
+    let pool_deposit_account_balance_after = get_token_balance(
+        &mut program_context.banks_client,
+        &pool.pool_deposit_account.pubkey(),
+    )
+    .await;
+    assert_eq!(
+        pool_deposit_account_balance_after,
+        deposit_amount - withdraw_amount
+    );
+
+    // Check if program burned PASS and FAIL tokens
+    let user_pass_tokens_after = get_token_balance(
+        &mut program_context.banks_client,
+        &user_pass_account.pubkey(),
+    )
+    .await;
+    assert_eq!(user_pass_tokens_after, deposit_amount - withdraw_amount);
+
+    let user_fail_tokens_after = get_token_balance(
+        &mut program_context.banks_client,
+        &user_fail_account.pubkey(),
+    )
+    .await;
+    assert_eq!(user_fail_tokens_after, deposit_amount);
+}
+
+#[tokio::test]
+async fn test_withdraw_fail_decision() {
+    let mut program_context = program_test().start_with_context().await;
+
+    let deposit_amount = 100;
+    let withdraw_amount = 50;
+
+    let pool = TestPool::new();
+
+    pool.init_pool(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+    )
+    .await;
+
+    let user_account = Keypair::new();
+    let user_account_owner = Keypair::new();
+    let user_pass_account = Keypair::new();
+    let user_fail_account = Keypair::new();
+
+    pool.prepare_accounts_for_deposit(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        deposit_amount,
+        deposit_amount,
+        &user_account,
+        &pool.authority,
+        &user_account_owner,
+        &user_pass_account,
+        &user_fail_account,
+    )
+    .await;
+
+    // Make deposit
+    pool.make_deposit(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        &user_account,
+        &user_pass_account,
+        &user_fail_account,
+        deposit_amount,
+    )
+    .await;
+
+    // Set allowances to burn PASS and FAIL tokens
+    approve_delegate(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        &user_pass_account.pubkey(),
+        &pool.authority,
+        &user_account_owner,
+        deposit_amount,
+    )
+    .await
+    .unwrap();
+    approve_delegate(
+        &mut program_context.banks_client,
+        &program_context.payer,
+        &program_context.last_blockhash,
+        &user_fail_account.pubkey(),
+        &pool.authority,
+        &user_account_owner,
+        deposit_amount,
+    )
+    .await
+    .unwrap();
+
+    let decision = false;
+
+    program_context
+        .warp_to_slot(pool.mint_end_slot + 1)
+        .unwrap();
+
+    make_decision(
+        &mut program_context,
+        &pool.pool_account.pubkey(),
+        &pool.decider,
+        decision,
+    )
+    .await
+    .unwrap();
+
+    make_withdraw(
+        &mut program_context,
+        &pool.pool_account.pubkey(),
+        &pool.authority,
+        &pool.pool_deposit_account.pubkey(),
+        &user_pass_account.pubkey(),
+        &user_fail_account.pubkey(),
+        &pool.token_pass_mint.pubkey(),
+        &pool.token_fail_mint.pubkey(),
+        &user_account.pubkey(),
+        withdraw_amount,
+    )
+    .await
+    .unwrap();
+
+    let user_balance_after =
+        get_token_balance(&mut program_context.banks_client, &user_account.pubkey()).await;
+    assert_eq!(user_balance_after, withdraw_amount);
+
+    // Check balance of pool deposit account after withdraw
+    let pool_deposit_account_balance_after = get_token_balance(
+        &mut program_context.banks_client,
+        &pool.pool_deposit_account.pubkey(),
+    )
+    .await;
+    assert_eq!(
+        pool_deposit_account_balance_after,
+        deposit_amount - withdraw_amount
+    );
+
+    // Check if program burned PASS and FAIL tokens
+    let user_pass_tokens_after = get_token_balance(
+        &mut program_context.banks_client,
+        &user_pass_account.pubkey(),
+    )
+    .await;
+    assert_eq!(user_pass_tokens_after, deposit_amount);
+
+    let user_fail_tokens_after = get_token_balance(
+        &mut program_context.banks_client,
+        &user_fail_account.pubkey(),
+    )
+    .await;
+    assert_eq!(user_fail_tokens_after, deposit_amount - withdraw_amount);
 }
 
 #[tokio::test]
 async fn test_decide() {
     let mut program_context = program_test().start_with_context().await;
 
-    let pool = TestPool::create();
+    let pool = TestPool::new();
 
     pool.init_pool(
         &mut program_context.banks_client,
@@ -631,9 +1086,10 @@ async fn test_decide() {
         .unwrap()
         .unwrap();
 
-    let pool_data_before = state::Pool::unpack(pool_account_data_before.data.as_slice()).unwrap();
+    let pool_data_before =
+        state::Pool::try_from_slice(pool_account_data_before.data.as_slice()).unwrap();
 
-    assert!(pool_data_before.decision.is_none());
+    assert_eq!(pool_data_before.decision, state::Decision::Undecided);
 
     let decision = true;
 
@@ -641,26 +1097,14 @@ async fn test_decide() {
         .warp_to_slot(pool.mint_end_slot + 1)
         .unwrap();
 
-    let mut transaction = Transaction::new_with_payer(
-        &[instruction::decide(
-            &id(),
-            &pool.pool_account.pubkey(),
-            &pool.decider.pubkey(),
-            decision,
-        )
-        .unwrap()],
-        Some(&program_context.payer.pubkey()),
-    );
-
-    transaction.sign(
-        &[&program_context.payer, &pool.decider],
-        program_context.last_blockhash,
-    );
-    program_context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .unwrap();
+    make_decision(
+        &mut program_context,
+        &pool.pool_account.pubkey(),
+        &pool.decider,
+        decision,
+    )
+    .await
+    .unwrap();
 
     let pool_account_data_after = program_context
         .banks_client
@@ -669,7 +1113,8 @@ async fn test_decide() {
         .unwrap()
         .unwrap();
 
-    let pool_data_after = state::Pool::unpack(pool_account_data_after.data.as_slice()).unwrap();
+    let pool_data_after =
+        state::Pool::try_from_slice(pool_account_data_after.data.as_slice()).unwrap();
 
-    assert!(pool_data_after.decision.unwrap());
+    assert_eq!(pool_data_after.decision, state::Decision::Pass);
 }

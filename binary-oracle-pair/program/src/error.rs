@@ -10,9 +10,6 @@ use thiserror::Error;
 /// Errors that may be returned by the Binary Oracle Pair program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum PoolError {
-    /// Invalid instruction data passed in.
-    #[error("Failed to unpack instruction data")]
-    InstructionUnpackError,
     /// Pool account already in use
     #[error("Pool account already in use")]
     AlreadyInUse,
@@ -37,12 +34,6 @@ pub enum PoolError {
     /// Amount should be more than zero
     #[error("Amount should be more than zero")]
     InvalidAmount,
-    /// Insufficient funds to withdraw
-    #[error("Insufficient funds to withdraw")]
-    InsufficientFunds,
-    /// Token account's owner doesn't match with user account
-    #[error("Token account's owner doesn't match with user account")]
-    InvalidAccountsOwner,
     /// Wrong decider account
     #[error("Wrong decider account was sent")]
     WrongDeciderAccount,
@@ -55,6 +46,9 @@ pub enum PoolError {
     /// Decision can't be made in current slot
     #[error("Decision can't be made in current slot")]
     InvalidSlotForDecision,
+    /// Deposit can't be made in current slot
+    #[error("Deposit can't be made in current slot")]
+    InvalidSlotForDeposit,
     /// No decision has been made yet
     #[error("No decision has been made yet")]
     NoDecisionMadeYet,
@@ -78,7 +72,6 @@ impl PrintProgramError for PoolError {
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
         match self {
-            PoolError::InstructionUnpackError => msg!("Error: Failed to unpack instruction data"),
             PoolError::AlreadyInUse => msg!("Error: Pool account already in use"),
             PoolError::DepositAccountInUse => msg!("Error: Deposit account already in use"),
             PoolError::TokenMintInUse => msg!("Error: Token account already in use"),
@@ -89,10 +82,6 @@ impl PrintProgramError for PoolError {
             PoolError::NotRentExempt => msg!("Error: Lamport balance below rent-exempt threshold"),
             PoolError::InvalidTokenMint => msg!("Error: Input token mint account is not valid"),
             PoolError::InvalidAmount => msg!("Error: Amount should be more than zero"),
-            PoolError::InsufficientFunds => msg!("Error: Insufficient funds to withdraw"),
-            PoolError::InvalidAccountsOwner => {
-                msg!("Error: Token account's owner doesn't match with user account")
-            }
             PoolError::WrongDeciderAccount => msg!("Error: Wrong decider account was sent"),
             PoolError::SignatureMissing => msg!("Error: Signature missing in transaction"),
             PoolError::DecisionAlreadyMade => {
@@ -101,6 +90,7 @@ impl PrintProgramError for PoolError {
             PoolError::InvalidSlotForDecision => {
                 msg!("Error: Decision can't be made in current slot")
             }
+            PoolError::InvalidSlotForDeposit => msg!("Deposit can't be made in current slot"),
             PoolError::NoDecisionMadeYet => msg!("Error: No decision has been made yet"),
         }
     }

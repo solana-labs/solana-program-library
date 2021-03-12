@@ -1,10 +1,7 @@
 //! State transition types
 
-use solana_program::{
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
-};
+use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::pubkey::Pubkey;
 use std::mem::size_of;
 
 /// Uninitialized version value, all instances are at least version 1
@@ -14,7 +11,7 @@ pub const POOL_VERSION: u8 = 1;
 
 /// Program states.
 #[repr(C)]
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct Pool {
     /// Initialized state.
     pub version: u8,
@@ -44,59 +41,27 @@ pub struct Pool {
     pub decide_end_slot: u64,
 
     /// decision boolean
-    pub decision: Option<bool>,
+    pub decision: Decision,
 }
 
-impl Sealed for Pool {}
-impl IsInitialized for Pool {
-    fn is_initialized(&self) -> bool {
+/// Decision status
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub enum Decision {
+    /// Decision was not made
+    Undecided,
+    /// Decision set at Pass
+    Pass,
+    /// Decision set at Fail
+    Fail,
+}
+
+impl Pool {
+    /// Length serialized data
+    pub const LEN: usize = size_of::<Pool>() - 13;
+
+    /// Check if Pool already initialized
+    pub fn is_initialized(&self) -> bool {
         self.version != UNINITIALIZED_VERSION
-    }
-}
-
-impl Pack for Pool {
-    const LEN: usize = size_of::<Self>();
-
-    fn pack_into_slice(&self, output: &mut [u8]) {
-        output[0] = self.version;
-        output[1] = self.bump_seed;
-        output[2..34].copy_from_slice(&self.token_program_id.to_bytes());
-        output[34..66].copy_from_slice(&self.deposit_account.to_bytes());
-        output[66..98].copy_from_slice(&self.token_pass_mint.to_bytes());
-        output[98..130].copy_from_slice(&self.token_fail_mint.to_bytes());
-        output[130..162].copy_from_slice(&self.decider.to_bytes());
-        output[162..170].copy_from_slice(&self.mint_end_slot.to_le_bytes());
-        output[170..178].copy_from_slice(&self.decide_end_slot.to_le_bytes());
-        output[178..180].copy_from_slice(&[
-            if self.decision.is_some() { 1 } else { 0 },
-            self.decision.unwrap_or(false) as u8,
-        ]);
-    }
-    fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        Ok(Pool {
-            version: input[0],
-            bump_seed: input[1],
-            token_program_id: Pubkey::new(&input[2..34]),
-            deposit_account: Pubkey::new(&input[34..66]),
-            token_pass_mint: Pubkey::new(&input[66..98]),
-            token_fail_mint: Pubkey::new(&input[98..130]),
-            decider: Pubkey::new(&input[130..162]),
-            mint_end_slot: u64::from_le_bytes([
-                input[162], input[163], input[164], input[165], input[166], input[167], input[168],
-                input[169],
-            ]),
-            decide_end_slot: u64::from_le_bytes([
-                input[170], input[171], input[172], input[173], input[174], input[175], input[176],
-                input[177],
-            ]),
-            decision: if input[178] == 0 {
-                None
-            } else if input[179] == 1 {
-                Some(true)
-            } else {
-                Some(false)
-            },
-        })
     }
 }
 
@@ -116,13 +81,12 @@ mod test {
             decider: Pubkey::new_unique(),
             mint_end_slot: 433,
             decide_end_slot: 5546,
-            decision: Some(false),
+            decision: Decision::Fail,
         };
 
-        let mut packed = vec![0u8; Pool::LEN];
-        Pool::pack(p.clone(), packed.as_mut_slice()).unwrap();
+        let packed = p.try_to_vec().unwrap();
 
-        let unpacked = Pool::unpack(packed.as_slice()).unwrap();
+        let unpacked = Pool::try_from_slice(packed.as_slice()).unwrap();
 
         assert_eq!(p, unpacked);
     }

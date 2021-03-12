@@ -41,18 +41,20 @@ pub enum PoolInstruction {
     ///
     ///   0. `[]` Pool
     ///   1. `[]` Authority
-    ///   2. `[w]` Token SOURCE Account, amount is transferable by pool authority with allowances.
-    ///   3. `[w]` Deposit token account
-    ///   4. `[w]` token_P PASS mint
-    ///   5. `[w]` token_F FAIL mint
-    ///   6. `[w]` token_P DESTINATION Account
-    ///   7. `[w]` token_F DESTINATION Account
-    ///   8. `[]` Token program id
+    ///   2. `[s]` User transfer authority
+    ///   3. `[w]` Token SOURCE Account, amount is transferable by pool authority with allowances.
+    ///   4. `[w]` Deposit token account
+    ///   5. `[w]` token_P PASS mint
+    ///   6. `[w]` token_F FAIL mint
+    ///   7. `[w]` token_P DESTINATION Account
+    ///   8. `[w]` token_F DESTINATION Account
+    ///   9. `[]` Sysvar Clock
+    ///   10. `[]` Token program id
     Deposit(u64),
 
     ///   Withdraw from the pool.
     ///   If current slot is < mint_end slot, 1 Pass AND 1 Fail token convert to 1 deposit
-    ///   If current slot is > mint_end slot && decide == Some(true), 1 Pass convert to 1 deposit
+    ///   If current slot is > decide_end_slot slot && decide == Some(true), 1 Pass convert to 1 deposit
     ///   otherwise 1 Fail converts to 1 deposit
     ///
     ///   Pass tokens convert 1:1 to the deposit token iff decision is set to Some(true)
@@ -66,8 +68,8 @@ pub enum PoolInstruction {
     ///   5. `[w]` token_P PASS mint
     ///   6. `[w]` token_F FAIL mint
     ///   7. `[w]` Deposit DESTINATION Account
-    ///   8. `[]` Token program id
-    ///   9. `[]` Sysvar Clock
+    ///   8. `[]` Sysvar Clock
+    ///   9. `[]` Token program id
     Withdraw(u64),
 
     ///  Trigger the decision.
@@ -93,9 +95,7 @@ pub fn init_pool(
     init_args: InitArgs,
 ) -> Result<Instruction, ProgramError> {
     let init_data = PoolInstruction::InitPool(init_args);
-    let data = init_data
-        .try_to_vec()
-        .or(Err(ProgramError::InvalidArgument))?;
+    let data = init_data.try_to_vec()?;
     let accounts = vec![
         AccountMeta::new(*pool, false),
         AccountMeta::new_readonly(*authority, false),
@@ -120,6 +120,8 @@ pub fn deposit(
     program_id: &Pubkey,
     pool: &Pubkey,
     authority: &Pubkey,
+    user_transfer_authority: &Pubkey,
+    is_user_authority_signer: bool,
     user_token_account: &Pubkey,
     pool_deposit_token_account: &Pubkey,
     token_pass_mint: &Pubkey,
@@ -130,18 +132,18 @@ pub fn deposit(
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     let init_data = PoolInstruction::Deposit(amount);
-    let data = init_data
-        .try_to_vec()
-        .or(Err(ProgramError::InvalidArgument))?;
+    let data = init_data.try_to_vec()?;
     let accounts = vec![
         AccountMeta::new_readonly(*pool, false),
         AccountMeta::new_readonly(*authority, false),
+        AccountMeta::new_readonly(*user_transfer_authority, is_user_authority_signer),
         AccountMeta::new(*user_token_account, false),
         AccountMeta::new(*pool_deposit_token_account, false),
         AccountMeta::new(*token_pass_mint, false),
         AccountMeta::new(*token_fail_mint, false),
         AccountMeta::new(*token_pass_destination_account, false),
         AccountMeta::new(*token_fail_destination_account, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {
@@ -167,9 +169,7 @@ pub fn withdraw(
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     let init_data = PoolInstruction::Withdraw(amount);
-    let data = init_data
-        .try_to_vec()
-        .or(Err(ProgramError::InvalidArgument))?;
+    let data = init_data.try_to_vec()?;
     let accounts = vec![
         AccountMeta::new_readonly(*pool, false),
         AccountMeta::new_readonly(*authority, false),
@@ -179,8 +179,8 @@ pub fn withdraw(
         AccountMeta::new(*token_pass_mint, false),
         AccountMeta::new(*token_fail_mint, false),
         AccountMeta::new(*user_token_destination_account, false),
-        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -197,9 +197,7 @@ pub fn decide(
     decision: bool,
 ) -> Result<Instruction, ProgramError> {
     let init_data = PoolInstruction::Decide(decision);
-    let data = init_data
-        .try_to_vec()
-        .or(Err(ProgramError::InvalidArgument))?;
+    let data = init_data.try_to_vec()?;
     let accounts = vec![
         AccountMeta::new(*pool, false),
         AccountMeta::new_readonly(*decider, true),
