@@ -48,17 +48,15 @@ pub enum TimelockInstruction {
     ///   8. `[writable]` Initialized Voting Validation account
     ///   9. `[writable]` Initialized Destination account for first admin token
     ///   10. `[writable]` Initialized Destination account for first signatory token
-    ///   11. `[writable]` Initialized Voting dump account
     ///   12. `[writable]` Initialized Yes voting dump account
     ///   13. `[writable]` Initialized No voting dump account
     ///   14. `[writable]` Initialized Government holding account (Optional, will be ignored if Committee, but some real value is necessary for consistent layout)
     ///   15. `[]` Government mint (Optional - will be ignored if Committee, but some real value is necessary for consistent layout)
-    ///   16. `[]` Timelock Program
-    ///   17. '[]` Token program id
-    ///   18. `[]` Rent sysvar
+    ///   16. `[]` Timelock config account.
+    ///   17. `[]` Timelock Program
+    ///   18. '[]` Token program id
+    ///   19. `[]` Rent sysvar
     InitTimelockSet {
-        /// Determine what type of timelock config you want
-        config: TimelockConfig,
         /// Link to gist explaining proposal
         desc_link: [u8; DESC_SIZE],
         /// name of proposal
@@ -184,10 +182,12 @@ pub enum TimelockInstruction {
     ///   4. `[writable]` Voting mint account.
     ///   5. `[writable]` Yes Voting mint account.
     ///   6. `[writable]` No Voting mint account.
-    ///   7. `[]` Transfer authority
-    ///   8. `[]` Timelock program mint authority
-    ///   9. `[]` Timelock program account pub key.
-    ///   10. `[]` Token program account.
+    ///   7. `[]` Governance mint account (optional, only for governance proposals).
+    ///   8. `[]` Timelock config account.
+    ///   9. `[]` Transfer authority
+    ///   10. `[]` Timelock program mint authority
+    ///   11. `[]` Timelock program account pub key.
+    ///   12. `[]` Token program account.
     Vote {
         /// How many voting tokens to burn yes
         yes_voting_token_amount: u64,
@@ -203,10 +203,11 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` Voting mint account.
     ///   3. `[writable]` Signatory account
     ///   4. `[writable]` Signatory validation account.
-    ///   5. `[]` Transfer authority
-    ///   6. `[]` Timelock program mint authority
-    ///   7. `[]` Timelock program account pub key.
-    ///   8. `[]` Token program account.
+    ///   5. `[]` Timelock config account.
+    ///   6. `[]` Transfer authority
+    ///   7. `[]` Timelock program mint authority
+    ///   8. `[]` Timelock program account pub key.
+    ///   9. `[]` Token program account.
     MintVotingTokens {
         /// How many voting tokens to mint
         voting_token_amount: u64,
@@ -239,10 +240,11 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` Governance holding account for timelock that will accept the tokens in escrow.
     ///   3. `[writable]` Voting mint account.
     ///   4. `[]` Timelock set account.
-    ///   5. `[]` Transfer authority
-    ///   6. `[]` Timelock program mint authority
-    ///   7. `[]` Timelock program account pub key.
-    ///   8. `[]` Token program account.
+    ///   5. `[]` Timelock config account.
+    ///   6. `[]` Transfer authority
+    ///   7. `[]` Timelock program mint authority
+    ///   8. `[]` Timelock program account pub key.
+    ///   9. `[]` Token program account.
     DepositVotingTokens {
         /// How many voting tokens to deposit
         voting_token_amount: u64,
@@ -256,14 +258,15 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` Initialized No Voting account from which to remove your voting tokens.
     ///   3. `[writable]` Governance token account that you wish your actual tokens to be returned to.
     ///   4. `[writable]` Governance holding account owned by the timelock that will has the actual tokens in escrow.
-    ///   5. `[writable]` Initialized Voting dump account owned by timelock set to which to send your voting tokens.
     ///   6. `[writable]` Initialized Yes Voting dump account owned by timelock set to which to send your voting tokens.
     ///   7. `[writable]` Initialized No Voting dump account owned by timelock set to which to send your voting tokens.
-    ///   8. `[]` Timelock set account.
-    ///   9. `[]` Transfer authority
-    ///   10. `[]` Timelock program mint authority
-    ///   11. `[]` Timelock program account pub key.
-    ///   12. `[]` Token program account.
+    ///   8. `[]` Voting mint account.
+    ///   9. `[]` Timelock set account.
+    ///   10. `[]` Timelock config account.
+    ///   11. `[]` Transfer authority
+    ///   12. `[]` Timelock program mint authority
+    ///   13. `[]` Timelock program account pub key.
+    ///   14. `[]` Token program account.
     WithdrawVotingTokens {
         /// How many voting tokens to withdrawal
         voting_token_amount: u64,
@@ -296,29 +299,6 @@ impl TimelockInstruction {
                     name[n] = input_name[n];
                 }
                 Self::InitTimelockSet {
-                    config: TimelockConfig {
-                        consensus_algorithm: match consensus_algorithm {
-                            0 => ConsensusAlgorithm::Majority,
-                            1 => ConsensusAlgorithm::SuperMajority,
-                            2 => ConsensusAlgorithm::FullConsensus,
-                            _ => ConsensusAlgorithm::Majority,
-                        },
-                        execution_type: match execution_type {
-                            0 => ExecutionType::AllOrNothing,
-                            1 => ExecutionType::AnyAboveVoteFinishSlot,
-                            _ => ExecutionType::AllOrNothing,
-                        },
-                        timelock_type: match timelock_type {
-                            0 => TimelockType::Committee,
-                            1 => TimelockType::Governance,
-                            _ => TimelockType::Committee,
-                        },
-                        voting_entry_rule: match voting_entry_rule {
-                            0 => VotingEntryRule::DraftOnly,
-                            1 => VotingEntryRule::Anytime,
-                            _ => VotingEntryRule::DraftOnly,
-                        },
-                    },
                     desc_link,
                     name,
                 }
@@ -450,24 +430,10 @@ impl TimelockInstruction {
                 buf.push(0);
             }
             Self::InitTimelockSet {
-                config,
                 desc_link,
                 name,
             } => {
                 buf.push(1);
-                match config.consensus_algorithm {
-                    ConsensusAlgorithm::Majority => buf.push(0),
-                    ConsensusAlgorithm::SuperMajority => buf.push(1),
-                    ConsensusAlgorithm::FullConsensus => buf.push(2),
-                }
-                match config.execution_type {
-                    ExecutionType::AllOrNothing => buf.push(0),
-                    ExecutionType::AnyAboveVoteFinishSlot => buf.push(1),
-                }
-                match config.timelock_type {
-                    TimelockType::Committee => buf.push(0),
-                    TimelockType::Governance => buf.push(1),
-                }
                 buf.extend_from_slice(desc_link);
                 buf.extend_from_slice(name);
             }

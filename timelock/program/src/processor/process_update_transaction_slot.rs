@@ -1,11 +1,5 @@
 //! Program state processor
-use crate::{
-    state::timelock_program::TimelockProgram,
-    state::timelock_set::TimelockSet,
-    utils::{
-        assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program,
-    },
-};
+use crate::{state::timelock_program::TimelockProgram, state::timelock_set::TimelockSet, utils::{assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program, assert_txn_in_set}};
 use arrayref::array_mut_ref;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -31,6 +25,7 @@ pub fn process_update_transaction_slot(
 
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
+    assert_account_equiv(signatory_validation_account_info, &timelock_set.signatory_validation)?;
 
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
@@ -43,6 +38,7 @@ pub fn process_update_transaction_slot(
         transfer_authority_info,
         timelock_authority_account_info,
     )?;
+    assert_txn_in_set(&timelock_set, timelock_txn_account_info)?;
 
     // All transactions have slot as first byte, adjust it.
     let mut mutable_data = timelock_txn_account_info.data.borrow_mut();

@@ -109,7 +109,15 @@ pub enum TimelockError {
 
     /// Invalid timelock type for this action
     #[error("Invalid timelock type for this action")]
-    InvalidTimelockType
+    InvalidTimelockType,
+
+    /// You have provided an account that doesnt match the pubkey on a timelock set or config object
+    #[error("You have provided an account that doesnt match the pubkey on a timelock set or config object")]
+    AccountsShouldMatch,
+
+    /// Provided wrong mint type for a token holding account on timelock set
+    #[error("Provided wrong mint type for a token holding account on timelock set")]
+    MintsShouldMatch
 }
 
 impl PrintProgramError for TimelockError {

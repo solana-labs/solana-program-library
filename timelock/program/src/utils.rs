@@ -1,4 +1,4 @@
-use crate::{error::TimelockError, state::{enums::{TimelockStateStatus, TimelockType}, timelock_program::{TimelockProgram, TIMELOCK_VERSION}, timelock_set::{TimelockSet, TIMELOCK_SET_VERSION}}};
+use crate::{error::TimelockError, state::{enums::{TimelockStateStatus, TimelockType}, timelock_config::TimelockConfig, timelock_program::{TimelockProgram, TIMELOCK_VERSION}, timelock_set::{TimelockSet, TIMELOCK_SET_VERSION}}};
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
@@ -146,8 +146,8 @@ pub fn assert_same_version_as_program(
 }
 
 /// asserts the timelock set is a committee type
-pub fn assert_committee(timelock_set: &TimelockSet) -> ProgramResult {
-    if timelock_set.config.timelock_type != TimelockType::Committee {
+pub fn assert_committee(config: &TimelockConfig) -> ProgramResult {
+    if config.timelock_type != TimelockType::Committee {
         return Err(TimelockError::InvalidTimelockType.into());
     }
 
@@ -156,9 +156,46 @@ pub fn assert_committee(timelock_set: &TimelockSet) -> ProgramResult {
 
 
 /// asserts the timelock set is a governance type
-pub fn assert_governance(timelock_set: &TimelockSet) -> ProgramResult {
-    if timelock_set.config.timelock_type != TimelockType::Governance {
+pub fn assert_governance(config: &TimelockConfig) -> ProgramResult {
+    if config.timelock_type != TimelockType::Governance {
         return Err(TimelockError::InvalidTimelockType.into());
+    }
+
+    Ok(())
+}
+
+/// asserts timelock txn is in timelock set
+pub fn assert_txn_in_set(timelock_set: &TimelockSet, timelock_txn_account_info: &AccountInfo) -> ProgramResult {
+    let mut found: bool = false;
+    for n in 0..timelock_set.state.timelock_transactions.len() {
+        if timelock_set.state.timelock_transactions[n].to_bytes()
+            == timelock_txn_account_info.key.to_bytes()
+        {
+            found = true;
+            break;
+        }
+    }
+
+    if !found {
+        return Err(TimelockError::TimelockTransactionNotFoundError.into());
+    }
+
+    Ok(())
+}
+
+/// asserts that two accounts are equivalent
+pub fn assert_account_equiv(acct: &AccountInfo, key: &Pubkey) -> ProgramResult {
+    if acct.key != key {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
+
+    Ok(())
+}
+
+/// Assert the account has a matching mint
+pub fn assert_mint_matching(acct: &Account, mint_info: &AccountInfo) -> ProgramResult {
+    if acct.mint != *mint_info.key {
+        return Err(TimelockError::MintsShouldMatch.into());
     }
 
     Ok(())

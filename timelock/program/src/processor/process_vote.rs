@@ -1,5 +1,5 @@
 //! Program state processor
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::TimelockStateStatus, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenMintToParams, assert_initialized, assert_is_permissioned, assert_same_version_as_program, assert_voting, spl_token_burn, spl_token_mint_to}};
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::{TimelockStateStatus, TimelockType}, timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenMintToParams, assert_account_equiv, assert_initialized, assert_is_permissioned, assert_same_version_as_program, assert_voting, spl_token_burn, spl_token_mint_to}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -23,12 +23,21 @@ pub fn process_vote(
     let voting_mint_account_info = next_account_info(account_info_iter)?;
     let yes_voting_mint_account_info = next_account_info(account_info_iter)?;
     let no_voting_mint_account_info = next_account_info(account_info_iter)?;
+    let governance_mint_account_info = next_account_info(account_info_iter)?;
+    let timelock_config_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
+
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
+    let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
+    assert_account_equiv(yes_voting_mint_account_info, &timelock_set.yes_voting_mint)?;
+    assert_account_equiv(no_voting_mint_account_info, &timelock_set.no_voting_mint)?;
+    assert_account_equiv(governance_mint_account_info, &timelock_config.governance_mint)?;
+    assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
 
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_voting(&timelock_set)?;
@@ -43,9 +52,24 @@ pub fn process_vote(
     let mint: Mint = assert_initialized(voting_mint_account_info)?;
     let yes_mint: Mint = assert_initialized(yes_voting_mint_account_info)?;
     let no_mint: Mint = assert_initialized(no_voting_mint_account_info)?;
-
-    let now_remaining_in_no_column = mint.supply + no_voting_token_amount - yes_voting_token_amount;
-    let total_ever_existed = mint.supply + yes_mint.supply + no_mint.supply;
+    let total_ever_existed = match timelock_config.timelock_type {
+        TimelockType::Governance => {
+            let governance_mint: Mint = assert_initialized(governance_mint_account_info)?;
+            governance_mint.supply
+        }
+        TimelockType::Committee => {
+            mint.supply + yes_mint.supply + no_mint.supply
+        }
+    };
+    let now_remaining_in_no_column = match timelock_config.timelock_type {
+        TimelockType::Governance => {
+            let governance_mint: Mint = assert_initialized(governance_mint_account_info)?;
+            governance_mint.supply - yes_voting_token_amount
+        }
+        TimelockType::Committee => {
+            mint.supply + no_voting_token_amount
+        }
+    };
     // The act of voting proves you are able to vote. No need to assert permission here.
     spl_token_burn(TokenBurnParams {
         mint: voting_mint_account_info.clone(),
@@ -75,7 +99,7 @@ pub fn process_vote(
     })?;
 
 
-    let tipped: bool = match timelock_set.config.consensus_algorithm {
+    let tipped: bool = match timelock_config.consensus_algorithm {
         crate::state::enums::ConsensusAlgorithm::Majority => {
             (now_remaining_in_no_column as f64 / total_ever_existed as f64) < 0.5
         }

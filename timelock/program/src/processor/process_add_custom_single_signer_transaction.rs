@@ -1,24 +1,15 @@
 //! Program state processor
-use crate::{
-    error::TimelockError,
-    state::timelock_program::TimelockProgram,
-    state::{
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{
         custom_single_signer_timelock_transaction::{
             CustomSingleSignerTimelockTransaction,
             CUSTOM_SINGLE_SIGNER_TIMELOCK_TRANSACTION_VERSION, INSTRUCTION_LIMIT,
         },
         timelock_set::TimelockSet,
         timelock_state::TRANSACTION_SLOTS,
-    },
-    utils::{
-        assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program,
-        assert_uninitialized,
-    },
-};
+    }, utils::{assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program, assert_uninitialized}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    msg,
     program_pack::Pack,
     pubkey::Pubkey,
 };
@@ -57,6 +48,7 @@ pub fn process_add_custom_single_signer_transaction(
         return Err(TimelockError::InvalidInstructionEndIndex.into());
     }
 
+    assert_account_equiv(signatory_validation_account_info, &timelock_set.signatory_validation)?;
     assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_draft(&timelock_set)?;
     assert_is_permissioned(
