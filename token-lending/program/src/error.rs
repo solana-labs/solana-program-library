@@ -126,7 +126,20 @@ pub enum LendingError {
     #[error("Token burn failed")]
     TokenBurnFailed,
 
+    // @FIXME: split up after 35
     // 35
+    // @FIXME: change name + message
+    /// ObligationAccountLimit
+    #[error("ObligationAccountLimit")]
+    ObligationAccountLimit,
+    // @FIXME: change name + message
+    /// ObligationAccountDuplicate
+    #[error("ObligationAccountDuplicate")]
+    ObligationAccountDuplicate,
+    // @FIXME: change name + message
+    /// ObligationAccountNotFound
+    #[error("ObligationAccountNotFound")]
+    ObligationAccountNotFound,
     /// Invalid obligation collateral amount
     #[error("Invalid obligation collateral amount")]
     InvalidObligationCollateral,
