@@ -87,6 +87,26 @@ pub fn process_instruction(
             msg!("Instruction: Set Lending Market Owner");
             process_set_lending_market_owner(program_id, new_owner, accounts)
         }
+        LendingInstruction::InitObligationCollateral => {
+            msg!("Instruction: Init Obligation Collateral");
+            process_init_obligation_collateral(program_id, accounts)
+        }
+        LendingInstruction::InitObligationLiquidity => {
+            msg!("Instruction: Init Obligation Liquidity");
+            process_init_obligation_liquidity(program_id, accounts)
+        }
+        LendingInstruction::RefreshObligationCollateral => {
+            msg!("Instruction: Refresh Obligation Collateral");
+            process_refresh_obligation_collateral(program_id, accounts)
+        }
+        LendingInstruction::RefreshObligationLiquidity => {
+            msg!("Instruction: Refresh Obligation Liquidity");
+            process_refresh_obligation_liquidity(program_id, accounts)
+        }
+        LendingInstruction::RefreshObligation => {
+            msg!("Instruction: Refresh Obligation");
+            process_refresh_obligation(program_id, accounts)
+        }
     }
 }
 
