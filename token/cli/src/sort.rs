@@ -26,9 +26,10 @@ pub struct UnsupportedAccount {
 pub fn sort_and_parse_token_accounts(
     owner: &Pubkey,
     accounts: Vec<RpcKeyedAccount>,
-) -> (MintAccounts, Vec<UnsupportedAccount>) {
+) -> (MintAccounts, Vec<UnsupportedAccount>, usize) {
     let mut mint_accounts: MintAccounts = BTreeMap::new();
     let mut unsupported_accounts = vec![];
+    let mut max_len_balance = 0;
     for keyed_account in accounts {
         let address = keyed_account.pubkey;
 
@@ -47,6 +48,11 @@ pub fn sort_and_parse_token_accounts(
                         } else {
                             false
                         };
+                        let len_balance = ui_token_account
+                            .token_amount
+                            .real_number_string_trimmed()
+                            .len();
+                        max_len_balance = max_len_balance.max(len_balance);
                         let parsed_account = ParsedTokenAccount {
                             address,
                             ui_token_account,
@@ -82,5 +88,5 @@ pub fn sort_and_parse_token_accounts(
     for (_, array) in mint_accounts.iter_mut() {
         array.sort_by(|a, b| b.is_associated.cmp(&a.is_associated));
     }
-    (mint_accounts, unsupported_accounts)
+    (mint_accounts, unsupported_accounts, max_len_balance)
 }

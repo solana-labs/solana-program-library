@@ -802,23 +802,26 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
         println!("None");
     }
 
-    let (mint_accounts, unsupported_accounts) =
+    let (mint_accounts, unsupported_accounts, max_len_balance) =
         sort_and_parse_token_accounts(&config.owner, accounts);
     let mut gc_alert = false;
 
     if config.verbose {
         if token.is_some() {
-            println!("{:<44} Balance", "Account");
+            println!("{:<44} {:<2$}", "Account", "Balance", max_len_balance);
             println!("---------------------------------------------------------");
         } else {
-            println!("{:<44} {:<44} Balance", "Token", "Account");
+            println!(
+                "{:<44} {:<44} {:<3$}",
+                "Token", "Account", "Balance", max_len_balance
+            );
             println!("------------------------------------------------------------------------------------------------------");
         }
     } else if token.is_some() {
-        println!("Balance");
+        println!("{:<1$}", "Balance", max_len_balance);
         println!("-------------");
     } else {
-        println!("{:<44} Balance", "Token");
+        println!("{:<44} {:<2$}", "Token", "Balance", max_len_balance);
         println!("----------------------------------------------------------");
     }
     for (_mint, accounts_list) in mint_accounts.iter() {
@@ -840,7 +843,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
             if config.verbose {
                 if token.is_some() {
                     println!(
-                        "{:<44} {}{}{}",
+                        "{:<44} {:<4$}{}{}",
                         account.address,
                         account
                             .ui_token_account
@@ -848,10 +851,11 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                             .real_number_string_trimmed(),
                         maybe_aux,
                         maybe_frozen,
+                        max_len_balance,
                     )
                 } else {
                     println!(
-                        "{:<44} {:<44} {}{}{}",
+                        "{:<44} {:<44} {:<5$}{}{}",
                         account.ui_token_account.mint,
                         account.address,
                         account
@@ -860,21 +864,23 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                             .real_number_string_trimmed(),
                         maybe_aux,
                         maybe_frozen,
+                        max_len_balance,
                     )
                 }
             } else if token.is_some() {
                 println!(
-                    "{}{}{}",
+                    "{:<3$}{}{}",
                     account
                         .ui_token_account
                         .token_amount
                         .real_number_string_trimmed(),
                     maybe_aux,
                     maybe_frozen,
+                    max_len_balance,
                 )
             } else {
                 println!(
-                    "{:<44} {}{}{}",
+                    "{:<44} {:<4$}{}{}",
                     account.ui_token_account.mint,
                     account
                         .ui_token_account
@@ -882,6 +888,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                         .real_number_string_trimmed(),
                     maybe_aux,
                     maybe_frozen,
+                    max_len_balance,
                 )
             }
         }
