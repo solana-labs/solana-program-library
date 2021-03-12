@@ -51,6 +51,15 @@ pub struct TimelockSet {
     /// Governance holding account (Only used when in Governance mode)
     pub governance_holding: Pubkey,
 
+    /// Voting dump account for exchanged vote tokens
+    pub voting_dump: Pubkey,
+
+    /// Yes Voting dump account for exchanged vote tokens
+    pub yes_voting_dump: Pubkey,
+
+    /// No Voting dump account for exchanged vote tokens
+    pub no_voting_dump: Pubkey,
+
     /// Timelock state
     pub state: TimelockState,
 
@@ -65,9 +74,9 @@ impl IsInitialized for TimelockSet {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 654 + DESC_SIZE + NAME_SIZE;
+const TIMELOCK_SET_LEN: usize = 750 + DESC_SIZE + NAME_SIZE;
 impl Pack for TimelockSet {
-    const LEN: usize = 654 + DESC_SIZE + NAME_SIZE;
+    const LEN: usize = 750 + DESC_SIZE + NAME_SIZE;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_SET_LEN];
@@ -85,6 +94,9 @@ impl Pack for TimelockSet {
             voting_validation,
             governance_mint,
             governance_holding,
+            voting_dump,
+            yes_voting_dump,
+            no_voting_dump,
             timelock_state_status,
             total_signing_tokens_minted,
             desc_link,
@@ -104,7 +116,7 @@ impl Pack for TimelockSet {
             timelock_type,
             voting_entry_rule
         ) = array_refs![
-            input, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1,  8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32,
+            input, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1,  8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32,
             32, 32, 32, 32, 32, 1, 1, 1, 1
         ];
         let version = u8::from_le_bytes(*version);
@@ -127,6 +139,9 @@ impl Pack for TimelockSet {
                 voting_validation: Pubkey::new_from_array(*voting_validation),
                 governance_mint: Pubkey::new_from_array(*governance_mint),
                 governance_holding: Pubkey::new_from_array(*governance_holding),
+                voting_dump: Pubkey::new_from_array(*voting_dump),
+                yes_voting_dump: Pubkey::new_from_array(*yes_voting_dump),
+                no_voting_dump: Pubkey::new_from_array(*no_voting_dump),
                 state: TimelockState {
                     status: match timelock_state_status {
                         0 => TimelockStateStatus::Draft,
@@ -196,6 +211,9 @@ impl Pack for TimelockSet {
             voting_validation,
             governance_mint,
             governance_holding,
+            voting_dump,
+            yes_voting_dump,
+            no_voting_dump,
             timelock_state_status,
             total_signing_tokens_minted,
             desc_link,
@@ -215,7 +233,7 @@ impl Pack for TimelockSet {
             timelock_type,
             voting_entry_rule,
         ) = mut_array_refs![
-            output, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1,  8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32,
+            output, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1,  8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32,
             32, 32, 32, 32, 32, 1, 1, 1, 1
         ];
         *version = self.version.to_le_bytes();
@@ -229,6 +247,9 @@ impl Pack for TimelockSet {
         voting_validation.copy_from_slice(self.voting_validation.as_ref());
         governance_mint.copy_from_slice(self.governance_mint.as_ref());
         governance_holding.copy_from_slice(self.governance_holding.as_ref());
+        voting_dump.copy_from_slice(self.voting_dump.as_ref());
+        yes_voting_dump.copy_from_slice(self.yes_voting_dump.as_ref());
+        no_voting_dump.copy_from_slice(self.no_voting_dump.as_ref());
         *timelock_state_status = match self.state.status {
             TimelockStateStatus::Draft => 0 as u8,
             TimelockStateStatus::Voting => 1 as u8,

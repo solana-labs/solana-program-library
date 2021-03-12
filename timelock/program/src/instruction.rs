@@ -48,11 +48,14 @@ pub enum TimelockInstruction {
     ///   8. `[writable]` Initialized Voting Validation account
     ///   9. `[writable]` Initialized Destination account for first admin token
     ///   10. `[writable]` Initialized Destination account for first signatory token
-    ///   11. `[writable]` Initialized Government holding account (Optional, will be ignored if Committee, but some real value is necessary for consistent layout)
-    ///   12. `[]` Government mint (Optional - will be ignored if Committee, but some real value is necessary for consistent layout)
-    ///   13. `[]` Timelock Program
-    ///   14. '[]` Token program id
-    ///   15. `[]` Rent sysvar
+    ///   11. `[writable]` Initialized Voting dump account
+    ///   12. `[writable]` Initialized Yes voting dump account
+    ///   13. `[writable]` Initialized No voting dump account
+    ///   14. `[writable]` Initialized Government holding account (Optional, will be ignored if Committee, but some real value is necessary for consistent layout)
+    ///   15. `[]` Government mint (Optional - will be ignored if Committee, but some real value is necessary for consistent layout)
+    ///   16. `[]` Timelock Program
+    ///   17. '[]` Token program id
+    ///   18. `[]` Rent sysvar
     InitTimelockSet {
         /// Determine what type of timelock config you want
         config: TimelockConfig,
@@ -235,14 +238,34 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Source governance token account to deposit tokens from.
     ///   2. `[writable]` Governance holding account for timelock that will accept the tokens in escrow.
     ///   3. `[writable]` Voting mint account.
-    ///   4. `[writable]` Governance mint account.
-    ///   5. `[]` Timelock set account.
-    ///   6. `[]` Transfer authority
-    ///   7. `[]` Timelock program mint authority
-    ///   8. `[]` Timelock program account pub key.
-    ///   9. `[]` Token program account.
+    ///   4. `[]` Timelock set account.
+    ///   5. `[]` Transfer authority
+    ///   6. `[]` Timelock program mint authority
+    ///   7. `[]` Timelock program account pub key.
+    ///   8. `[]` Token program account.
     DepositVotingTokens {
         /// How many voting tokens to deposit
+        voting_token_amount: u64,
+    },
+
+    /// [Requires voting tokens and a Governance timelock]
+    /// Withdraws voting tokens.
+    ///
+    ///   0. `[writable]` Initialized Voting account from which to remove your voting tokens.
+    ///   1. `[writable]` Initialized Yes Voting account from which to remove your voting tokens.
+    ///   2. `[writable]` Initialized No Voting account from which to remove your voting tokens.
+    ///   3. `[writable]` Governance token account that you wish your actual tokens to be returned to.
+    ///   4. `[writable]` Governance holding account owned by the timelock that will has the actual tokens in escrow.
+    ///   5. `[writable]` Initialized Voting dump account owned by timelock set to which to send your voting tokens.
+    ///   6. `[writable]` Initialized Yes Voting dump account owned by timelock set to which to send your voting tokens.
+    ///   7. `[writable]` Initialized No Voting dump account owned by timelock set to which to send your voting tokens.
+    ///   8. `[]` Timelock set account.
+    ///   9. `[]` Transfer authority
+    ///   10. `[]` Timelock program mint authority
+    ///   11. `[]` Timelock program account pub key.
+    ///   12. `[]` Token program account.
+    WithdrawVotingTokens {
+        /// How many voting tokens to withdrawal
         voting_token_amount: u64,
     },
 
@@ -346,6 +369,12 @@ impl TimelockInstruction {
             13 => {
                 let (voting_token_amount, _) = Self::unpack_u64(rest)?;
                 Self::DepositVotingTokens {
+                    voting_token_amount,
+                }
+            }
+            14 => {
+                let (voting_token_amount, _) = Self::unpack_u64(rest)?;
+                Self::WithdrawVotingTokens {
                     voting_token_amount,
                 }
             }
@@ -489,6 +518,12 @@ impl TimelockInstruction {
                 voting_token_amount,
             } => {
                 buf.push(13);
+                buf.extend_from_slice(&voting_token_amount.to_le_bytes());
+            }
+            Self::WithdrawVotingTokens {
+                voting_token_amount,
+            } => {
+                buf.push(14);
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
         }
