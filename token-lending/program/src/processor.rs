@@ -24,7 +24,6 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
-use spl_token::state::Account as Token;
 
 /// Processes an instruction
 pub fn process_instruction(
