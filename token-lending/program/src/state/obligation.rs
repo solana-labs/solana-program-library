@@ -166,7 +166,7 @@ impl Pack for Obligation {
     const LEN: usize = OBLIGATION_LEN;
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
-        let dst = array_mut_ref![dst, 0, OBLIGATION_LEN];
+        let output = array_mut_ref![dst, 0, OBLIGATION_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             version,
@@ -175,8 +175,17 @@ impl Pack for Obligation {
             token_mint,
             num_collateral,
             num_liquidity,
-            pubkeys_flat,
-        ) = mut_array_refs![dst, 1, 8, 16, PUBKEY_LEN, 1, 1, PUBKEY_LEN * MAX_PUBKEYS];
+            accounts_flat,
+        ) = mut_array_refs![
+            output,
+            1,
+            8,
+            16,
+            PUBKEY_LEN,
+            1,
+            1,
+            PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS
+        ];
 
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();
@@ -190,20 +199,20 @@ impl Pack for Obligation {
         *num_liquidity = liquidity_len.to_le_bytes();
 
         let mut offset = 0;
-        for src in self.collateral.iter() {
-            let dst_array = array_mut_ref![pubkeys_flat, offset, PUBKEY_LEN];
-            dst_array.copy_from_slice(src.as_ref());
+        for pubkey in self.collateral.iter() {
+            let account = array_mut_ref![accounts_flat, offset, PUBKEY_LEN];
+            account.copy_from_slice(pubkey.as_ref());
             offset += PUBKEY_LEN;
         }
-        for src in self.liquidity.iter() {
-            let dst_array = array_mut_ref![pubkeys_flat, offset, PUBKEY_LEN];
-            dst_array.copy_from_slice(src.as_ref());
+        for pubkey in self.liquidity.iter() {
+            let account = array_mut_ref![accounts_flat, offset, PUBKEY_LEN];
+            account.copy_from_slice(pubkey.as_ref());
             offset += PUBKEY_LEN;
         }
     }
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        let src = array_ref![src, 0, OBLIGATION_LEN];
+        let input = array_ref![src, 0, OBLIGATION_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             version,
@@ -212,22 +221,32 @@ impl Pack for Obligation {
             token_mint,
             num_collateral,
             num_liquidity,
-            pubkeys_flat,
-        ) = array_refs![src, 1, 8, 16, PUBKEY_LEN, 1, 1, PUBKEY_LEN * MAX_PUBKEYS];
+            accounts_flat,
+        ) = array_refs![
+            input,
+            1,
+            8,
+            16,
+            PUBKEY_LEN,
+            1,
+            1,
+            PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS
+        ];
 
-        let collateral_len = u8::from_le_bytes(*num_collateral);
-        let liquidity_len = u8::from_le_bytes(*num_liquidity);
+        let collateral_len = usize::from_le_bytes(*num_collateral);
+        let liquidity_len = usize::from_le_bytes(*num_liquidity);
         let total_len = collateral_len + liquidity_len;
 
-        let mut collateral = vec![];
-        let mut liquidity = vec![];
+        let mut collateral = Vec::with_capacity(collateral_len);
+        let mut liquidity = Vec::with_capacity(liquidity_len);
 
         let mut offset = 0;
-        for src in pubkeys_flat.chunks(PUBKEY_LEN) {
+        // @TODO: is there a more idiomatic/performant way to iterate?
+        for account in accounts_flat.chunks(PUBKEY_LEN) {
             if offset < collateral_len {
-                collateral.push(Pubkey::new(src));
+                collateral.push(Pubkey::new(account));
             } else if offset < total_len {
-                liquidity.push(Pubkey::new(src));
+                liquidity.push(Pubkey::new(account));
             } else {
                 break;
             }
