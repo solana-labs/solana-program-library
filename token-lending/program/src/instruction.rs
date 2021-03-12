@@ -214,7 +214,7 @@ pub enum LendingInstruction {
     AccrueReserveInterest,
 
     // 9
-    /// Deposit additional collateral to an obligation. Requires a recently refreshed obligation.
+    /// Deposit collateral to an obligation. Requires a recently refreshed obligation.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -273,50 +273,79 @@ pub enum LendingInstruction {
     },
 
     // 12
+    /// Initializes a new loan obligation collateral.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Obligation
+    ///   1. `[writable]` Obligation collateral
+    ///   2. `[]` Deposit reserve account.
+    ///   4. `[]` Lending market account.
+    ///   5. `[]` Derived lending market authority.
+    ///   6. `[]` Clock sysvar
+    ///   7. `[]` Rent sysvar
+    ///   8. `[]` Token program id
+    InitObligationCollateral,
+
+    // 13
+    /// Initializes a new loan obligation liquidity.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Obligation
+    ///   1. `[writable]` Obligation collateral
+    ///   2. `[]` Borrow reserve account.
+    ///   4. `[]` Lending market account.
+    ///   5. `[]` Derived lending market authority.
+    ///   6. `[]` Clock sysvar
+    ///   7. `[]` Rent sysvar
+    ///   8. `[]` Token program id
+    InitObligationLiquidity,
+
+    // 14
     /// Refresh market value of an obligation's collateral.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Obligation collateral account
     ///   1. `[]` Deposit reserve account
-    ///   2. `[]` Dex market
-    ///   3. `[]` Dex market order book side
-    ///   4. `[]` Lending market account
-    ///   5. `[]` Derived lending market authority
+    ///   2. `[]` Lending market account
+    ///   3. `[]` Derived lending market authority
+    ///   4. `[]` Dex market
+    ///   5. `[]` Dex market order book side
     ///   6. `[]` Temporary memory
     ///   7. `[]` Clock sysvar
     ///   8. `[]` Token program id
     RefreshObligationCollateral,
 
-    // 13
+    // 15
     /// Refresh market value and accrued interest of an obligation's liquidity.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Obligation liquidity account
     ///   1. `[]` Borrow reserve account
-    ///   2. `[]` Dex market
-    ///   3. `[]` Dex market order book side
-    ///   4. `[]` Lending market account
-    ///   5. `[]` Derived lending market authority
+    ///   2. `[]` Lending market account
+    ///   3. `[]` Derived lending market authority
+    ///   4. `[]` Dex market
+    ///   5. `[]` Dex market order book side
     ///   6. `[]` Temporary memory
     ///   7. `[]` Clock sysvar
     ///   8. `[]` Token program id
     RefreshObligationLiquidity,
 
-    // 14
+    // 16
     /// Refresh an obligation's loan to value ratio.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Obligation account
-    ///   1..1+NUM_COL `[]` Obligation collateral accounts
-    ///   2+NUM_COL..2+NUM_LIQ `[]` Obligation liquidity accounts
-    ///   3+NUM_COL+NUM_LIQ `[]` Lending market account
-    ///   4+NUM_COL+NUM_LIQ `[]` Derived lending market authority
-    ///   5+NUM_COL+NUM_LIQ `[]` Temporary memory
-    ///   6+NUM_COL+NUM_LIQ `[]` Clock sysvar
-    ///   7+NUM_COL+NUM_LIQ `[]` Token program id
+    ///   1..1+N `[]` All obligation collateral accounts, followed by obligation liquidity accounts
+    ///   2+N `[]` Lending market account
+    ///   3+N `[]` Derived lending market authority
+    ///   4+N `[]` Temporary memory
+    ///   5+N `[]` Clock sysvar
+    ///   6+N `[]` Token program id
     RefreshObligation,
 }
 
@@ -399,9 +428,11 @@ impl LendingInstruction {
                 let (new_owner, _rest) = Self::unpack_pubkey(rest)?;
                 Self::SetLendingMarketOwner { new_owner }
             }
-            12 => Self::RefreshObligationCollateral,
-            13 => Self::RefreshObligationLiquidity,
-            14 => Self::RefreshObligation,
+            12 => Self::InitObligationCollateral,
+            13 => Self::InitObligationLiquidity,
+            14 => Self::RefreshObligationCollateral,
+            15 => Self::RefreshObligationLiquidity,
+            16 => Self::RefreshObligation,
             _ => return Err(LendingError::InstructionUnpackError.into()),
         })
     }
@@ -524,14 +555,20 @@ impl LendingInstruction {
                 buf.push(11);
                 buf.extend_from_slice(new_owner.as_ref());
             }
-            Self::RefreshObligationCollateral => {
+            Self::InitObligationCollateral => {
                 buf.push(12);
             }
-            Self::RefreshObligationLiquidity => {
+            Self::InitObligationLiquidity => {
                 buf.push(13);
             }
-            Self::RefreshObligation => {
+            Self::RefreshObligationCollateral => {
                 buf.push(14);
+            }
+            Self::RefreshObligationLiquidity => {
+                buf.push(15);
+            }
+            Self::RefreshObligation => {
+                buf.push(16);
             }
         }
         buf
@@ -598,11 +635,9 @@ pub fn init_reserve(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
-
     if let Some(dex_market_pubkey) = dex_market_pubkey {
         accounts.push(AccountMeta::new_readonly(dex_market_pubkey, false));
     }
-
     Instruction {
         program_id,
         accounts,
@@ -618,32 +653,27 @@ pub fn init_reserve(
 #[allow(clippy::too_many_arguments)]
 pub fn init_obligation(
     program_id: Pubkey,
-    deposit_reserve_pubkey: Pubkey,
-    borrow_reserve_pubkey: Pubkey,
-    lending_market_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
     obligation_token_mint_pubkey: Pubkey,
     obligation_token_output_pubkey: Pubkey,
     obligation_token_owner_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
         Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
-    let accounts = vec![
-        AccountMeta::new_readonly(deposit_reserve_pubkey, false),
-        AccountMeta::new_readonly(borrow_reserve_pubkey, false),
-        AccountMeta::new(obligation_pubkey, false),
-        AccountMeta::new(obligation_token_mint_pubkey, false),
-        AccountMeta::new(obligation_token_output_pubkey, false),
-        AccountMeta::new_readonly(obligation_token_owner_pubkey, false),
-        AccountMeta::new_readonly(lending_market_pubkey, false),
-        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(spl_token::id(), false),
-    ];
     Instruction {
         program_id,
-        accounts,
+        accounts: vec![
+            AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new(obligation_token_mint_pubkey, false),
+            AccountMeta::new(obligation_token_output_pubkey, false),
+            AccountMeta::new_readonly(obligation_token_owner_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
         data: LendingInstruction::InitObligation.pack(),
     }
 }
@@ -857,7 +887,8 @@ pub fn liquidate_obligation(
 
 /// Creates an `AccrueReserveInterest` instruction
 pub fn accrue_reserve_interest(program_id: Pubkey, reserve_pubkeys: Vec<Pubkey>) -> Instruction {
-    let mut accounts = vec![AccountMeta::new_readonly(sysvar::clock::id(), false)];
+    let mut accounts = Vec::with_capacity(1 + reserve_pubkeys.len());
+    accounts.push(AccountMeta::new_readonly(sysvar::clock::id(), false));
     accounts.extend(
         reserve_pubkeys
             .into_iter()
@@ -879,6 +910,7 @@ pub fn deposit_obligation_collateral(
     destination_collateral_pubkey: Pubkey,
     deposit_reserve_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
+    obligation_collateral_pubkey: Pubkey,
     obligation_mint_pubkey: Pubkey,
     obligation_output_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
@@ -892,11 +924,13 @@ pub fn deposit_obligation_collateral(
             AccountMeta::new(destination_collateral_pubkey, false),
             AccountMeta::new_readonly(deposit_reserve_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new(obligation_collateral_pubkey, false),
             AccountMeta::new(obligation_mint_pubkey, false),
             AccountMeta::new(obligation_output_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: LendingInstruction::DepositObligationCollateral { collateral_amount }.pack(),
@@ -911,16 +945,13 @@ pub fn withdraw_obligation_collateral(
     source_collateral_pubkey: Pubkey,
     destination_collateral_pubkey: Pubkey,
     withdraw_reserve_pubkey: Pubkey,
-    borrow_reserve_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
+    obligation_collateral_pubkey: Pubkey,
     obligation_mint_pubkey: Pubkey,
     obligation_input_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_authority_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
-    dex_market_pubkey: Pubkey,
-    dex_market_order_book_side_pubkey: Pubkey,
-    memory_pubkey: Pubkey,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -928,16 +959,13 @@ pub fn withdraw_obligation_collateral(
             AccountMeta::new(source_collateral_pubkey, false),
             AccountMeta::new(destination_collateral_pubkey, false),
             AccountMeta::new_readonly(withdraw_reserve_pubkey, false),
-            AccountMeta::new_readonly(borrow_reserve_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new(obligation_collateral_pubkey, false),
             AccountMeta::new(obligation_mint_pubkey, false),
             AccountMeta::new(obligation_input_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
-            AccountMeta::new_readonly(dex_market_pubkey, false),
-            AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
-            AccountMeta::new_readonly(memory_pubkey, false),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
@@ -959,5 +987,149 @@ pub fn set_lending_market_owner(
             AccountMeta::new_readonly(lending_market_owner, true),
         ],
         data: LendingInstruction::SetLendingMarketOwner { new_owner }.pack(),
+    }
+}
+
+/// Creates an 'InitObligationCollateral' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn init_obligation_collateral(
+    program_id: Pubkey,
+    obligation_pubkey: Pubkey,
+    obligation_collateral_pubkey: Pubkey,
+    deposit_reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new(obligation_collateral_pubkey, false),
+            AccountMeta::new_readonly(deposit_reserve_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: LendingInstruction::InitObligationCollateral.pack(),
+    }
+}
+
+/// Creates an 'InitObligationLiquidity' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn init_obligation_liquidity(
+    program_id: Pubkey,
+    obligation_pubkey: Pubkey,
+    obligation_liquidity_pubkey: Pubkey,
+    borrow_reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new(obligation_liquidity_pubkey, false),
+            AccountMeta::new_readonly(borrow_reserve_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: LendingInstruction::InitObligationLiquidity.pack(),
+    }
+}
+
+/// Creates a 'RefreshObligationCollateral' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn refresh_obligation_collateral(
+    program_id: Pubkey,
+    obligation_collateral_pubkey: Pubkey,
+    deposit_reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    dex_market_pubkey: Pubkey,
+    dex_market_order_book_side_pubkey: Pubkey,
+    memory_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(obligation_collateral_pubkey, false),
+            AccountMeta::new_readonly(deposit_reserve_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(dex_market_pubkey, false),
+            AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
+            AccountMeta::new_readonly(memory_pubkey, false),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: LendingInstruction::RefreshObligationCollateral.pack(),
+    }
+}
+
+/// Creates a 'RefreshObligationLiquidity' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn refresh_obligation_liquidity(
+    program_id: Pubkey,
+    obligation_liquidity_pubkey: Pubkey,
+    borrow_reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    dex_market_pubkey: Pubkey,
+    dex_market_order_book_side_pubkey: Pubkey,
+    memory_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(obligation_liquidity_pubkey, false),
+            AccountMeta::new_readonly(borrow_reserve_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(dex_market_pubkey, false),
+            AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
+            AccountMeta::new_readonly(memory_pubkey, false),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: LendingInstruction::RefreshObligationLiquidity.pack(),
+    }
+}
+
+/// Creates a 'RefreshObligation' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn refresh_obligation(
+    program_id: Pubkey,
+    obligation_pubkey: Pubkey,
+    obligation_collateral_liquidity_pubkeys: Vec<Pubkey>,
+    lending_market_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+    let mut accounts = Vec::with_capacity(5 + obligation_collateral_liquidity_pubkeys.len());
+    accounts.push(AccountMeta::new(obligation_pubkey, false));
+    accounts.extend(
+        obligation_collateral_liquidity_pubkeys
+            .into_iter()
+            .map(|pubkey| AccountMeta::new_readonly(pubkey, false)),
+    );
+    accounts.extend(vec![
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ]);
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::RefreshObligationLiquidity.pack(),
     }
 }
