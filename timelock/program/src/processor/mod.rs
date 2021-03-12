@@ -6,6 +6,7 @@ pub mod process_init_timelock_program;
 pub mod process_init_timelock_set;
 pub mod process_mint_voting_tokens;
 pub mod process_deposit_voting_tokens;
+pub mod process_withdraw_voting_tokens;
 pub mod process_remove_signer;
 pub mod process_remove_transaction;
 pub mod process_sign;
@@ -26,7 +27,7 @@ use process_sign::process_sign;
 use process_update_transaction_slot::process_update_transaction_slot;
 use process_vote::process_vote;
 use process_deposit_voting_tokens::process_deposit_voting_tokens;
-
+use process_withdraw_voting_tokens::process_withdraw_voting_tokens;
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 /// Processes an instruction
@@ -114,6 +115,12 @@ pub fn process_instruction(
         } => {
             msg!("Instruction: Deposit Voting Tokens");
             process_deposit_voting_tokens(program_id, accounts, voting_token_amount)
+        }
+        TimelockInstruction::WithdrawVotingTokens {
+            voting_token_amount,
+        } => {
+            msg!("Instruction: Withdraw Voting Tokens");
+            process_withdraw_voting_tokens(program_id, accounts, voting_token_amount)
         }
     }
 }

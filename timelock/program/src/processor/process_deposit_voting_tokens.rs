@@ -19,7 +19,6 @@ pub fn process_deposit_voting_tokens(
     let source_governance_account_info = next_account_info(account_info_iter)?;
     let governance_holding_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
-    let governance_mint_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
@@ -41,9 +40,8 @@ pub fn process_deposit_voting_tokens(
 
     let _voting_account: Account = assert_initialized(voting_account_info)?;
     let _voting_mint: Mint = assert_initialized(voting_mint_account_info)?;
-    let _source_governance_account: Account = assert_initialized(governance_holding_account_info)?;
+    let _source_governance_account: Account = assert_initialized(source_governance_account_info)?;
     let _governance_account: Account = assert_initialized(governance_holding_account_info)?;
-    let _governance_mint: Mint = assert_initialized(governance_mint_account_info)?;
 
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);

@@ -44,7 +44,7 @@ pub fn process_vote(
     let yes_mint: Mint = assert_initialized(yes_voting_mint_account_info)?;
     let no_mint: Mint = assert_initialized(no_voting_mint_account_info)?;
 
-    let now_remaining = mint.supply - yes_voting_token_amount - no_voting_token_amount;
+    let now_remaining_in_no_column = mint.supply + no_voting_token_amount - yes_voting_token_amount;
     let total_ever_existed = mint.supply + yes_mint.supply + no_mint.supply;
     // The act of voting proves you are able to vote. No need to assert permission here.
     spl_token_burn(TokenBurnParams {
@@ -77,14 +77,14 @@ pub fn process_vote(
 
     let tipped: bool = match timelock_set.config.consensus_algorithm {
         crate::state::enums::ConsensusAlgorithm::Majority => {
-            (now_remaining as f64 / total_ever_existed as f64) < 0.5
+            (now_remaining_in_no_column as f64 / total_ever_existed as f64) < 0.5
         }
 
         crate::state::enums::ConsensusAlgorithm::SuperMajority => {
-            (now_remaining as f64 / total_ever_existed as f64) < 0.66
+            (now_remaining_in_no_column as f64 / total_ever_existed as f64) < 0.66
         }
 
-        crate::state::enums::ConsensusAlgorithm::FullConsensus => now_remaining == 0,
+        crate::state::enums::ConsensusAlgorithm::FullConsensus => now_remaining_in_no_column == 0,
     };
 
     if tipped {
