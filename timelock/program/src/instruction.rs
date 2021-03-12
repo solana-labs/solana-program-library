@@ -8,17 +8,7 @@ use solana_program::{
     sysvar,
 };
 
-use crate::{
-    error::TimelockError,
-    state::{
-        custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT,
-        enums::ConsensusAlgorithm,
-        enums::ExecutionType,
-        enums::TimelockType,
-        timelock_config::TimelockConfig,
-        timelock_state::{DESC_SIZE, NAME_SIZE},
-    },
-};
+use crate::{error::TimelockError, state::{custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT, enums::ConsensusAlgorithm, enums::ExecutionType, enums::{TimelockType, VotingEntryRule}, timelock_config::TimelockConfig, timelock_state::{DESC_SIZE, NAME_SIZE}}};
 
 /// Used for telling caller what type of format you want back
 #[derive(Clone, PartialEq)]
@@ -51,15 +41,18 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Initialized Signatory Mint account
     ///   2. `[writable]` Initialized Admin Mint account
     ///   3. `[writable]` Initialized Voting Mint account
-    ///   4. `[writable]` Initialized Signatory Validation account
-    ///   5. `[writable]` Initialized Admin Validation account
-    ///   6. `[writable]` Initialized Voting Validation account
-    ///   7. `[writable]` Initialized Destination account for first admin token
-    ///   8. `[writable]` Initialized Destination account for first signatory token
-    ///   9. `[]` Timelock program mint authority
-    ///   10. `[]` Timelock Program
-    ///   11. '[]` Token program id
-    ///   12. `[]` Rent sysvar
+    ///   4. `[writable]` Initialized Yes Voting Mint account
+    ///   5. `[writable]` Initialized No Voting Mint account
+    ///   6. `[writable]` Initialized Signatory Validation account
+    ///   7. `[writable]` Initialized Admin Validation account
+    ///   8. `[writable]` Initialized Voting Validation account
+    ///   9. `[writable]` Initialized Destination account for first admin token
+    ///   10. `[writable]` Initialized Destination account for first signatory token
+    ///   11. `[writable]` Initialized Government holding account (Optional, will be ignored if Committee, but some real value is necessary for consistent layout)
+    ///   12. `[]` Government mint (Optional - will be ignored if Committee, but some real value is necessary for consistent layout)
+    ///   13. `[]` Timelock Program
+    ///   14. '[]` Token program id
+    ///   15. `[]` Rent sysvar
     InitTimelockSet {
         /// Determine what type of timelock config you want
         config: TimelockConfig,
@@ -178,19 +171,25 @@ pub enum TimelockInstruction {
     Sign,
 
     /// [Requires Voting tokens]
-    /// Burns voting tokens, indicating you approve of running this set of transactions. If you tip the consensus,
-    /// then the transactions begin to be run at their time slots.
+    /// Burns voting tokens, indicating you approve and/or disapprove of running this set of transactions. If you tip the consensus,
+    /// then the transactions can begin to be run at their time slots when people click execute.
     ///
     ///   0. `[writable]` Timelock set account.
-    ///   1. `[writable]` Voting account.
-    ///   2. `[writable]` Voting mint account.
-    ///   3. `[]` Transfer authority
-    ///   4. `[]` Timelock program mint authority
-    ///   5. `[]` Timelock program account pub key.
-    ///   6. `[]` Token program account.
+    ///   1. `[writable]` Your Voting account.
+    ///   2. `[writable]` Your Yes-Voting account.
+    ///   3. `[writable]` Your No-Voting account.
+    ///   4. `[writable]` Voting mint account.
+    ///   5. `[writable]` Yes Voting mint account.
+    ///   6. `[writable]` No Voting mint account.
+    ///   7. `[]` Transfer authority
+    ///   8. `[]` Timelock program mint authority
+    ///   9. `[]` Timelock program account pub key.
+    ///   10. `[]` Token program account.
     Vote {
-        /// How many voting tokens to burn
-        voting_token_amount: u64,
+        /// How many voting tokens to burn yes
+        yes_voting_token_amount: u64,
+        /// How many voting tokens to burn no
+        no_voting_token_amount: u64
     },
 
     /// [Requires Signatory token]
@@ -226,6 +225,27 @@ pub enum TimelockInstruction {
         /// Number of extra accounts
         number_of_extra_accounts: u8,
     },
+
+    /// [Requires tokens of the Governance mint and a Governance timelock]
+    /// Deposits voting tokens to be used during the voting process in a timelock.
+    /// These tokens are removed from your account and can be returned by withdrawing
+    /// them from the timelock (but then you will miss the vote.)
+    ///
+    ///   0. `[writable]` Initialized Voting account to hold your received voting tokens.
+    ///   1. `[writable]` Source governance token account to deposit tokens from.
+    ///   2. `[writable]` Governance holding account for timelock that will accept the tokens in escrow.
+    ///   3. `[writable]` Voting mint account.
+    ///   4. `[writable]` Governance mint account.
+    ///   5. `[]` Timelock set account.
+    ///   6. `[]` Transfer authority
+    ///   7. `[]` Timelock program mint authority
+    ///   8. `[]` Timelock program account pub key.
+    ///   9. `[]` Token program account.
+    DepositVotingTokens {
+        /// How many voting tokens to deposit
+        voting_token_amount: u64,
+    },
+
 }
 
 impl TimelockInstruction {
@@ -240,6 +260,7 @@ impl TimelockInstruction {
                 let (consensus_algorithm, rest) = Self::unpack_u8(rest)?;
                 let (execution_type, rest) = Self::unpack_u8(rest)?;
                 let (timelock_type, rest) = Self::unpack_u8(rest)?;
+                let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
 
                 let (input_desc_link, input_name) = rest.split_at(DESC_SIZE);
                 let mut desc_link: [u8; DESC_SIZE] = [0; DESC_SIZE];
@@ -265,8 +286,14 @@ impl TimelockInstruction {
                             _ => ExecutionType::AllOrNothing,
                         },
                         timelock_type: match timelock_type {
-                            0 => TimelockType::CustomSingleSignerV1,
-                            _ => TimelockType::CustomSingleSignerV1,
+                            0 => TimelockType::Committee,
+                            1 => TimelockType::Governance,
+                            _ => TimelockType::Committee,
+                        },
+                        voting_entry_rule: match voting_entry_rule {
+                            0 => VotingEntryRule::DraftOnly,
+                            1 => VotingEntryRule::Anytime,
+                            _ => VotingEntryRule::DraftOnly,
                         },
                     },
                     desc_link,
@@ -295,9 +322,12 @@ impl TimelockInstruction {
             7 => Self::DeleteTimelockSet,
             8 => Self::Sign,
             9 => {
-                let (voting_token_amount, _) = Self::unpack_u64(rest)?;
+                let (yes_voting_token_amount, rest) = Self::unpack_u64(rest)?;
+                let (no_voting_token_amount, _) = Self::unpack_u64(rest)?;
+
                 Self::Vote {
-                    voting_token_amount,
+                    yes_voting_token_amount,
+                    no_voting_token_amount
                 }
             }
             10 => {
@@ -311,6 +341,12 @@ impl TimelockInstruction {
                 let (number_of_extra_accounts, _) = Self::unpack_u8(rest)?;
                 Self::Execute {
                     number_of_extra_accounts,
+                }
+            }
+            13 => {
+                let (voting_token_amount, _) = Self::unpack_u64(rest)?;
+                Self::DepositVotingTokens {
+                    voting_token_amount,
                 }
             }
             _ => return Err(TimelockError::InstructionUnpackError.into()),
@@ -338,20 +374,6 @@ impl TimelockInstruction {
                 .get(..2)
                 .and_then(|slice| slice.try_into().ok())
                 .map(u16::from_le_bytes)
-                .ok_or(TimelockError::InstructionUnpackError)?;
-            Ok((amount, rest))
-        } else {
-            Err(TimelockError::InstructionUnpackError.into())
-        }
-    }
-
-    fn unpack_u32(input: &[u8]) -> Result<(u32, &[u8]), ProgramError> {
-        if input.len() >= 4 {
-            let (amount, rest) = input.split_at(4);
-            let amount = amount
-                .get(..4)
-                .and_then(|slice| slice.try_into().ok())
-                .map(u32::from_le_bytes)
                 .ok_or(TimelockError::InstructionUnpackError)?;
             Ok((amount, rest))
         } else {
@@ -414,7 +436,8 @@ impl TimelockInstruction {
                     ExecutionType::AnyAboveVoteFinishSlot => buf.push(1),
                 }
                 match config.timelock_type {
-                    TimelockType::CustomSingleSignerV1 => buf.push(0),
+                    TimelockType::Committee => buf.push(0),
+                    TimelockType::Governance => buf.push(1),
                 }
                 buf.extend_from_slice(desc_link);
                 buf.extend_from_slice(name);
@@ -441,10 +464,13 @@ impl TimelockInstruction {
             Self::DeleteTimelockSet => buf.push(7),
             Self::Sign => buf.push(8),
             Self::Vote {
-                voting_token_amount,
+                yes_voting_token_amount,
+                no_voting_token_amount
             } => {
                 buf.push(9);
-                buf.extend_from_slice(&voting_token_amount.to_le_bytes());
+                buf.extend_from_slice(&yes_voting_token_amount.to_le_bytes());
+                buf.extend_from_slice(&no_voting_token_amount.to_le_bytes());
+
             }
             Self::MintVotingTokens {
                 voting_token_amount,
@@ -458,6 +484,12 @@ impl TimelockInstruction {
             } => {
                 buf.push(12);
                 buf.extend_from_slice(&number_of_extra_accounts.to_le_bytes());
+            }
+            Self::DepositVotingTokens {
+                voting_token_amount,
+            } => {
+                buf.push(13);
+                buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
         }
         buf

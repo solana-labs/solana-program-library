@@ -1,5 +1,5 @@
 use super::enums;
-use enums::{ConsensusAlgorithm, ExecutionType, TimelockType};
+use enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule};
 /// Timelock Config
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockConfig {
@@ -9,4 +9,6 @@ pub struct TimelockConfig {
     pub execution_type: ExecutionType,
     /// Timelock Type
     pub timelock_type: TimelockType,
+    /// Voting entry rule
+    pub voting_entry_rule: VotingEntryRule
 }

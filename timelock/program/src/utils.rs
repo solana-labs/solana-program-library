@@ -1,11 +1,4 @@
-use crate::{
-    error::TimelockError,
-    state::{
-        enums::TimelockStateStatus,
-        timelock_program::{TimelockProgram, TIMELOCK_VERSION},
-        timelock_set::{TimelockSet, TIMELOCK_SET_VERSION},
-    },
-};
+use crate::{error::TimelockError, state::{enums::{TimelockStateStatus, TimelockType}, timelock_program::{TimelockProgram, TIMELOCK_VERSION}, timelock_set::{TimelockSet, TIMELOCK_SET_VERSION}}};
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
@@ -151,6 +144,27 @@ pub fn assert_same_version_as_program(
 
     Ok(())
 }
+
+/// asserts the timelock set is a committee type
+pub fn assert_committee(timelock_set: &TimelockSet) -> ProgramResult {
+    if timelock_set.config.timelock_type != TimelockType::Committee {
+        return Err(TimelockError::InvalidTimelockType.into());
+    }
+
+    Ok(())
+}
+
+
+/// asserts the timelock set is a governance type
+pub fn assert_governance(timelock_set: &TimelockSet) -> ProgramResult {
+    if timelock_set.config.timelock_type != TimelockType::Governance {
+        return Err(TimelockError::InvalidTimelockType.into());
+    }
+
+    Ok(())
+}
+
+
 /// assert rent exempt
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
