@@ -622,6 +622,7 @@ fn process_withdraw_reserve_liquidity(
     Ok(())
 }
 
+// @FIXME
 #[inline(never)] // avoid stack frame limit
 fn process_borrow_obligation_liquidity(
     program_id: &Pubkey,
@@ -859,6 +860,7 @@ fn process_borrow_obligation_liquidity(
     Ok(())
 }
 
+// @FIXME
 #[inline(never)] // avoid stack frame limit
 fn process_repay_obligation_liquidity(
     program_id: &Pubkey,
@@ -1016,6 +1018,7 @@ fn process_repay_obligation_liquidity(
     Ok(())
 }
 
+// @FIXME
 #[inline(never)] // avoid stack frame limit
 fn process_liquidate_obligation(
     program_id: &Pubkey,
@@ -1212,6 +1215,7 @@ fn process_accrue_reserve_interest(program_id: &Pubkey, accounts: &[AccountInfo]
     Ok(())
 }
 
+// @FIXME
 #[inline(never)] // avoid stack frame limit
 fn process_deposit_obligation_collateral(
     program_id: &Pubkey,
@@ -1221,6 +1225,8 @@ fn process_deposit_obligation_collateral(
     if collateral_amount == 0 {
         return Err(LendingError::InvalidAmount.into());
     }
+
+    // @FIXME: resume here
 
     let account_info_iter = &mut accounts.iter();
     let source_collateral_info = next_account_info(account_info_iter)?;
@@ -1325,6 +1331,7 @@ fn process_deposit_obligation_collateral(
     Ok(())
 }
 
+// @FIXME
 #[inline(never)] // avoid stack frame limit
 fn process_withdraw_obligation_collateral(
     program_id: &Pubkey,

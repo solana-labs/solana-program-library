@@ -314,6 +314,7 @@ impl Reserve {
 
     /// Return slots elapsed since last update
     fn update_slot(&mut self, slot: Slot) -> u64 {
+        // @TODO: checked math?
         let slots_elapsed = slot - self.last_update_slot;
         self.last_update_slot = slot;
         slots_elapsed
