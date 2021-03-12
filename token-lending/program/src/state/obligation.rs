@@ -13,6 +13,9 @@ use solana_program::{
 };
 use std::convert::TryInto;
 
+// @TODO: true max is potentially ~16
+pub const MAX_OBLIGATION_ACCOUNTS: usize = 10;
+
 /// Borrow obligation state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Obligation {
@@ -30,32 +33,16 @@ pub struct Obligation {
     pub last_update_slot: Slot,
 }
 
-/// Obligation collateral state
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ObligationCollateral {
-    /// Reserve which collateral tokens were deposited into
-    pub deposit_reserve: Pubkey,
-    /// Amount of collateral tokens deposited for an obligation
-    pub deposited_tokens: u64,
-    /// Market value of collateral
-    pub market_value: u64,
-    /// Last slot when market value updated
-    pub last_update_slot: Slot,
-}
-
-/// Obligation liquidity state
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ObligationLiquidity {
-    /// Reserve which liquidity tokens were borrowed from
-    pub borrow_reserve: Pubkey,
-    /// Borrow rate used for calculating interest
-    pub cumulative_borrow_rate_wads: Decimal,
-    /// Amount of liquidity tokens borrowed for an obligation plus interest
-    pub borrowed_wads: Decimal,
-    /// Market value of liquidity
-    pub market_value: u64,
-    /// Last slot when market value and accrued interest updated
-    pub last_update_slot: Slot,
+/// Create new obligation
+pub struct NewObligationParams {
+    /// Collateral for the obligation
+    pub collateral: Vec<Pubkey>,
+    /// Liquidity for the obligation
+    pub liquidity: Vec<Pubkey>,
+    /// Obligation token mint address
+    pub token_mint: Pubkey,
+    /// Current slot
+    pub current_slot: Slot,
 }
 
 impl Obligation {
@@ -76,24 +63,6 @@ impl Obligation {
             loan_to_value: Decimal::zero(),
             last_update_slot: current_slot,
         }
-    }
-
-    /// Maximum amount of loan that can be closed out by a liquidator due
-    /// to the remaining balance being too small to be liquidated normally.
-    pub fn max_closeable_amount(&self) -> Result<u64, ProgramError> {
-        if self.borrowed_liquidity_wads < Decimal::from(CLOSEABLE_AMOUNT) {
-            self.borrowed_liquidity_wads.try_ceil_u64()
-        } else {
-            Ok(0)
-        }
-    }
-
-    /// Maximum amount of loan that can be repaid by liquidators
-    pub fn max_liquidation_amount(&self) -> Result<u64, ProgramError> {
-        Ok(self
-            .borrowed_liquidity_wads
-            .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
-            .try_floor_u64()?)
     }
 
     /// Ratio of loan balance to collateral value
@@ -119,25 +88,6 @@ impl Obligation {
             Decimal::from(collateral_amount).try_div(self.deposited_collateral_tokens)?;
         let token_amount: Decimal = withdraw_pct.try_mul(obligation_token_supply)?;
         token_amount.try_floor_u64()
-    }
-
-    /// Accrue interest
-    pub fn accrue_interest(&mut self, cumulative_borrow_rate_wads: Decimal) -> ProgramResult {
-        if cumulative_borrow_rate_wads < self.cumulative_borrow_rate_wads {
-            return Err(LendingError::NegativeInterestRate.into());
-        }
-
-        let compounded_interest_rate: Rate = cumulative_borrow_rate_wads
-            .try_div(self.cumulative_borrow_rate_wads)?
-            .try_into()?;
-
-        self.borrowed_liquidity_wads = self
-            .borrowed_liquidity_wads
-            .try_mul(compounded_interest_rate)?;
-
-        self.cumulative_borrow_rate_wads = cumulative_borrow_rate_wads;
-
-        Ok(())
     }
 
     /// Liquidate part of obligation
@@ -204,27 +154,12 @@ pub struct RepayResult {
     pub integer_repay_amount: u64,
 }
 
-/// Create new obligation
-pub struct NewObligationParams {
-    /// Collateral for the obligation
-    pub collateral: Vec<Pubkey>,
-    /// Liquidity for the obligation
-    pub liquidity: Vec<Pubkey>,
-    /// Obligation token mint address
-    pub token_mint: Pubkey,
-    /// Current slot
-    pub current_slot: Slot,
-}
-
 impl Sealed for Obligation {}
 impl IsInitialized for Obligation {
     fn is_initialized(&self) -> bool {
         self.version != UNINITIALIZED_VERSION
     }
 }
-
-const MAX_PUBKEYS: usize = 10;
-const PUBKEY_LEN: usize = 32;
 
 const OBLIGATION_LEN: usize = 379; // 1 + 8 + 16 + 32 + 1 + 1 + (32 * 10)
 impl Pack for Obligation {
@@ -306,100 +241,6 @@ impl Pack for Obligation {
             token_mint: Pubkey::new_from_array(*token_mint),
             collateral,
             liquidity,
-        })
-    }
-}
-
-impl Sealed for ObligationCollateral {}
-
-const OBLIGATION_COLLATERAL_LEN: usize = 184; // 32 + 8 + 8 + 8 + 128
-impl Pack for ObligationCollateral {
-    const LEN: usize = OBLIGATION_COLLATERAL_LEN;
-
-    fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, OBLIGATION_COLLATERAL_LEN];
-        let (deposit_reserve, deposited_tokens, market_value, last_update_slot, _padding) =
-            mut_array_refs![output, PUBKEY_LEN, 8, 8, 8, 128];
-
-        deposit_reserve.copy_from_slice(self.deposit_reserve.as_ref());
-        *deposited_tokens = self.deposited_tokens.to_le_bytes();
-        *market_value = self.market_value.to_le_bytes();
-        *last_update_slot = self.last_update_slot.to_le_bytes();
-    }
-
-    /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
-    fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, OBLIGATION_COLLATERAL_LEN];
-        #[allow(clippy::ptr_offset_with_cast)]
-        let (deposit_reserve, deposited_tokens, market_value, last_update_slot, _padding) =
-            array_refs![input, PUBKEY_LEN, 8, 8, 8, 128];
-
-        Ok(Self {
-            deposit_reserve: Pubkey::new_from_array(*deposit_reserve),
-            deposited_tokens: u64::from_le_bytes(*deposited_tokens),
-            market_value: u64::from_le_bytes(*market_value),
-            last_update_slot: u64::from_le_bytes(*last_update_slot),
-        })
-    }
-}
-
-impl Sealed for ObligationLiquidity {}
-
-// /// Reserve which liquidity tokens were borrowed from
-// pub borrow_reserve: Pubkey,
-// /// Borrow rate used for calculating interest
-// pub cumulative_borrow_rate_wads: Decimal,
-// /// Amount of liquidity tokens borrowed for an obligation plus interest
-// pub borrowed_wads: Decimal,
-// /// Market value of liquidity
-// pub market_value: u64,
-// /// Last slot when market value and accrued interest updated
-// pub last_update_slot: Slot,
-
-const OBLIGATION_LIQUIDITY_LEN: usize = 208; // 32 + 16 + 16 + 8 + 8 + 128
-impl Pack for ObligationLiquidity {
-    const LEN: usize = OBLIGATION_LIQUIDITY_LEN;
-
-    fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, OBLIGATION_LIQUIDITY_LEN];
-        let (
-            borrow_reserve,
-            cumulative_borrow_rate_wads,
-            borrowed_wads,
-            market_value,
-            last_update_slot,
-            _padding,
-        ) = mut_array_refs![output, PUBKEY_LEN, 16, 16, 8, 8, 128];
-
-        borrow_reserve.copy_from_slice(self.borrow_reserve.as_ref());
-        pack_decimal(
-            self.cumulative_borrow_rate_wads,
-            cumulative_borrow_rate_wads,
-        );
-        pack_decimal(self.borrowed_wads, borrowed_wads);
-        *market_value = self.market_value.to_le_bytes();
-        *last_update_slot = self.last_update_slot.to_le_bytes();
-    }
-
-    /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
-    fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, OBLIGATION_LIQUIDITY_LEN];
-        #[allow(clippy::ptr_offset_with_cast)]
-        let (
-            borrow_reserve,
-            cumulative_borrow_rate_wads,
-            borrowed_wads,
-            market_value,
-            last_update_slot,
-            _padding,
-        ) = array_refs![input, PUBKEY_LEN, 16, 16, 8, 8, 128];
-
-        Ok(Self {
-            borrow_reserve: Pubkey::new_from_array(*borrow_reserve),
-            cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
-            borrowed_wads: unpack_decimal(borrowed_wads),
-            market_value: u64::from_le_bytes(*market_value),
-            last_update_slot: u64::from_le_bytes(*last_update_slot),
         })
     }
 }

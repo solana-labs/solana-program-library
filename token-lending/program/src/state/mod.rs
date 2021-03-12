@@ -2,10 +2,14 @@
 
 mod lending_market;
 mod obligation;
+mod obligation_collateral;
+mod obligation_liquidity;
 mod reserve;
 
 pub use lending_market::*;
 pub use obligation::*;
+pub use obligation_collateral::*;
+pub use obligation_liquidity::*;
 pub use reserve::*;
 
 use crate::math::{Decimal, WAD};
@@ -31,6 +35,9 @@ pub const UNINITIALIZED_VERSION: u8 = 0;
 /// Number of slots per year
 pub const SLOTS_PER_YEAR: u64 =
     DEFAULT_TICKS_PER_SECOND / DEFAULT_TICKS_PER_SLOT * SECONDS_PER_DAY * 365;
+
+/// Pubkey byte length
+pub const PUBKEY_LEN: usize = 32;
 
 /// Token converter
 pub trait TokenConverter {
