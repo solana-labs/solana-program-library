@@ -71,7 +71,7 @@ impl Obligation {
         collateral_exchange_rate: CollateralExchangeRate,
         borrow_token_price: Decimal,
     ) -> Result<Decimal, ProgramError> {
-        let loan = self.borrowed_liquidity_wads;
+        let loan = self.borrowed_wads;
         let collateral_value = collateral_exchange_rate
             .decimal_collateral_to_liquidity(self.deposited_collateral_tokens.into())?
             .try_div(borrow_token_price)?;
@@ -92,7 +92,7 @@ impl Obligation {
 
     /// Liquidate part of obligation
     pub fn liquidate(&mut self, repay_amount: Decimal, withdraw_amount: u64) -> ProgramResult {
-        self.borrowed_liquidity_wads = self.borrowed_liquidity_wads.try_sub(repay_amount)?;
+        self.borrowed_wads = self.borrowed_wads.try_sub(repay_amount)?;
         self.deposited_collateral_tokens = self
             .deposited_collateral_tokens
             .checked_sub(withdraw_amount)
@@ -106,14 +106,13 @@ impl Obligation {
         liquidity_amount: u64,
         obligation_token_supply: u64,
     ) -> Result<RepayResult, ProgramError> {
-        let decimal_repay_amount =
-            Decimal::from(liquidity_amount).min(self.borrowed_liquidity_wads);
+        let decimal_repay_amount = Decimal::from(liquidity_amount).min(self.borrowed_wads);
         let integer_repay_amount = decimal_repay_amount.try_ceil_u64()?;
         if integer_repay_amount == 0 {
             return Err(LendingError::ObligationEmpty.into());
         }
 
-        let repay_pct: Decimal = decimal_repay_amount.try_div(self.borrowed_liquidity_wads)?;
+        let repay_pct: Decimal = decimal_repay_amount.try_div(self.borrowed_wads)?;
         let collateral_withdraw_amount = {
             let withdraw_amount: Decimal = repay_pct.try_mul(self.deposited_collateral_tokens)?;
             withdraw_amount.try_floor_u64()?
@@ -278,7 +277,7 @@ mod test {
         assert_eq!(
             Obligation {
                 cumulative_borrow_rate_wads: Decimal::one(),
-                borrowed_liquidity_wads: Decimal::from(u64::MAX),
+                borrowed_wads: Decimal::from(u64::MAX),
                 ..Obligation::default()
             }
             .accrue_interest(Decimal::from(10 * MAX_COMPOUNDED_INTEREST)),
@@ -334,9 +333,9 @@ mod test {
             (liquidity_amount, borrowed_liquidity) in repay_partial_amounts(),
             (deposited_collateral_tokens, obligation_tokens) in collateral_amounts(),
         ) {
-            let borrowed_liquidity_wads = Decimal::from_scaled_val(borrowed_liquidity);
+            let borrowed_wads = Decimal::from_scaled_val(borrowed_liquidity);
             let mut state = Obligation {
-                borrowed_liquidity_wads,
+                borrowed_wads,
                 deposited_collateral_tokens,
                 ..Obligation::default()
             };
@@ -345,8 +344,8 @@ mod test {
             assert!(repay_result.decimal_repay_amount <= Decimal::from(repay_result.integer_repay_amount));
             assert!(repay_result.collateral_withdraw_amount < deposited_collateral_tokens);
             assert!(repay_result.obligation_token_amount < obligation_tokens);
-            assert!(state.borrowed_liquidity_wads < borrowed_liquidity_wads);
-            assert!(state.borrowed_liquidity_wads > Decimal::zero());
+            assert!(state.borrowed_wads < borrowed_wads);
+            assert!(state.borrowed_wads > Decimal::zero());
             assert!(state.deposited_collateral_tokens > 0);
 
             let obligation_token_rate = Decimal::from(repay_result.obligation_token_amount).try_div(Decimal::from(obligation_tokens))?;
@@ -359,9 +358,9 @@ mod test {
             (liquidity_amount, borrowed_liquidity) in repay_full_amounts(),
             (deposited_collateral_tokens, obligation_tokens) in collateral_amounts(),
         ) {
-            let borrowed_liquidity_wads = Decimal::from_scaled_val(borrowed_liquidity);
+            let borrowed_wads = Decimal::from_scaled_val(borrowed_liquidity);
             let mut state = Obligation {
-                borrowed_liquidity_wads,
+                borrowed_wads,
                 deposited_collateral_tokens,
                 ..Obligation::default()
             };
@@ -370,8 +369,8 @@ mod test {
             assert!(repay_result.decimal_repay_amount <= Decimal::from(repay_result.integer_repay_amount));
             assert_eq!(repay_result.collateral_withdraw_amount, deposited_collateral_tokens);
             assert_eq!(repay_result.obligation_token_amount, obligation_tokens);
-            assert_eq!(repay_result.decimal_repay_amount, borrowed_liquidity_wads);
-            assert_eq!(state.borrowed_liquidity_wads, Decimal::zero());
+            assert_eq!(repay_result.decimal_repay_amount, borrowed_wads);
+            assert_eq!(state.borrowed_wads, Decimal::zero());
             assert_eq!(state.deposited_collateral_tokens, 0);
         }
 
@@ -380,10 +379,10 @@ mod test {
             borrowed_liquidity in 0..=u64::MAX,
             (current_borrow_rate, new_borrow_rate) in cumulative_rates(),
         ) {
-            let borrowed_liquidity_wads = Decimal::from(borrowed_liquidity);
+            let borrowed_wads = Decimal::from(borrowed_liquidity);
             let cumulative_borrow_rate_wads = Decimal::one().try_add(Decimal::from_scaled_val(current_borrow_rate))?;
             let mut state = Obligation {
-                borrowed_liquidity_wads,
+                borrowed_wads,
                 cumulative_borrow_rate_wads,
                 ..Obligation::default()
             };
@@ -392,9 +391,9 @@ mod test {
             state.accrue_interest(next_cumulative_borrow_rate_wads)?;
 
             if next_cumulative_borrow_rate_wads > cumulative_borrow_rate_wads {
-                assert!(state.borrowed_liquidity_wads > borrowed_liquidity_wads);
+                assert!(state.borrowed_wads > borrowed_wads);
             } else {
-                assert!(state.borrowed_liquidity_wads == borrowed_liquidity_wads);
+                assert!(state.borrowed_wads == borrowed_wads);
             }
         }
     }
