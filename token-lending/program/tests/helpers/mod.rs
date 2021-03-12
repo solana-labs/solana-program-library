@@ -345,10 +345,8 @@ pub fn add_reserve(
         liquidity_supply_pubkey,
         liquidity_fees_receiver_pubkey,
     );
-    let reserve_collateral = ReserveCollateral::new(
-        collateral_mint_pubkey,
-        collateral_supply_pubkey,
-    );
+    let reserve_collateral =
+        ReserveCollateral::new(collateral_mint_pubkey, collateral_supply_pubkey);
     let mut reserve = Reserve::new(NewReserveParams {
         // intentionally wrapped to simulate elapsed slots
         current_slot: 1u64.wrapping_sub(slots_elapsed),

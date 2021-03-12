@@ -212,8 +212,7 @@ impl Reserve {
             }
         };
 
-        let (origination_fee, host_fee) =
-            self.config.fees.calculate_borrow_fees(borrow_amount)?;
+        let (origination_fee, host_fee) = self.config.fees.calculate_borrow_fees(borrow_amount)?;
 
         // @FIXME: fees
         collateral_amount = collateral_amount
@@ -396,7 +395,12 @@ pub struct ReserveLiquidity {
 
 impl ReserveLiquidity {
     /// New reserve liquidity info
-    pub fn new(mint_pubkey: Pubkey, mint_decimals: u8, supply_pubkey: Pubkey, fees_receiver: Pubkey) -> Self {
+    pub fn new(
+        mint_pubkey: Pubkey,
+        mint_decimals: u8,
+        supply_pubkey: Pubkey,
+        fees_receiver: Pubkey,
+    ) -> Self {
         Self {
             mint_pubkey,
             mint_decimals,
@@ -564,10 +568,7 @@ pub struct ReserveFees {
 
 impl ReserveFees {
     /// Calculate the owner and host fees on borrow
-    pub fn calculate_borrow_fees(
-        &self,
-        borrow_amount: u64,
-    ) -> Result<(u64, u64), ProgramError> {
+    pub fn calculate_borrow_fees(&self, borrow_amount: u64) -> Result<(u64, u64), ProgramError> {
         let borrow_fee_rate = Rate::from_scaled_val(self.borrow_fee_wad);
         let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
         if borrow_fee_rate > Rate::zero() && borrow_amount > 0 {
@@ -712,7 +713,10 @@ impl Pack for Reserve {
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();
-        pack_decimal(self.cumulative_borrow_rate_wads, cumulative_borrow_rate_wads);
+        pack_decimal(
+            self.cumulative_borrow_rate_wads,
+            cumulative_borrow_rate_wads,
+        );
         lending_market.copy_from_slice(self.lending_market.as_ref());
         pack_coption_key(&self.dex_market, dex_market);
 

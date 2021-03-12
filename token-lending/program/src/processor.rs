@@ -708,9 +708,7 @@ fn process_borrow_obligation_liquidity(
         msg!("Cannot use borrow reserve liquidity supply as destination account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &borrow_reserve.liquidity.fees_receiver
-        != borrow_reserve_liquidity_fees_receiver_info.key
-    {
+    if &borrow_reserve.liquidity.fees_receiver != borrow_reserve_liquidity_fees_receiver_info.key {
         msg!("Invalid borrow reserve liquidity fees receiver account");
         return Err(LendingError::InvalidAccountInput.into());
     }
