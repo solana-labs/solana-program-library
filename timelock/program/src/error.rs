@@ -117,7 +117,15 @@ pub enum TimelockError {
 
     /// Provided wrong mint type for a token holding account on timelock set
     #[error("Provided wrong mint type for a token holding account on timelock set")]
-    MintsShouldMatch
+    MintsShouldMatch,
+
+    /// Invalid minimum waiting period
+    #[error("Invalid minimum waiting period")]
+    InvalidMinimumSlotWaitingPeriod,
+
+    /// Invalid Timelock config key given for a program-mint tuple
+    #[error("Invalid timelock config key given for a program-mint tuple")]
+    InvalidTimelockConfigKey
 }
 
 impl PrintProgramError for TimelockError {

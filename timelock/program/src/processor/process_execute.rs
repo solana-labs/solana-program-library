@@ -9,7 +9,7 @@ use crate::{
         timelock_set::TimelockSet,
     },
     utils::{
-        assert_executing, assert_initialized, assert_same_version_as_program, execute,
+        assert_executing, assert_initialized, execute,
         ExecuteParams,
     },
 };
@@ -19,7 +19,6 @@ use solana_program::{
     entrypoint::ProgramResult,
     instruction::Instruction,
     message::Message,
-    msg,
     program_pack::Pack,
     pubkey::Pubkey,
     sysvar::Sysvar,
@@ -58,7 +57,6 @@ pub fn process_execute(
     let mut transaction: CustomSingleSignerTimelockTransaction =
         assert_initialized(transaction_account_info)?;
 
-    assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_executing(&timelock_set)?;
 
     let (authority_key, bump_seed) =

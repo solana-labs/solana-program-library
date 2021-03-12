@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::{error::TimelockError, state::{enums::TimelockType, timelock_config::TimelockConfig, timelock_program::TimelockProgram, timelock_set::{TimelockSet, TIMELOCK_SET_VERSION}, timelock_state::{DESC_SIZE, NAME_SIZE}}, utils::{TokenMintToParams, assert_account_equiv, assert_initialized, assert_mint_matching, assert_rent_exempt, assert_same_version_as_program, assert_token_program_is_correct, assert_uninitialized, spl_token_mint_to}};
+use crate::{error::TimelockError, state::{enums::TimelockType, timelock_config::TimelockConfig, timelock_program::TimelockProgram, timelock_set::{TimelockSet, TIMELOCK_SET_VERSION}, timelock_state::{DESC_SIZE, NAME_SIZE}}, utils::{TokenMintToParams, assert_account_equiv, assert_initialized, assert_mint_matching, assert_rent_exempt, assert_token_program_is_correct, assert_uninitialized, spl_token_mint_to}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -53,7 +53,6 @@ pub fn process_init_timelock_set(
     new_timelock_set.state.total_signing_tokens_minted = 1;
     new_timelock_set.config = *timelock_config_account_info.key;
 
-    assert_same_version_as_program(&timelock_program, &new_timelock_set)?;
     assert_token_program_is_correct(&timelock_program, token_program_info)?;
     // now create the mints.
 

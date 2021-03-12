@@ -1,5 +1,5 @@
 //! Program state processor
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::{TimelockStateStatus, TimelockType}, timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenMintToParams, assert_account_equiv, assert_initialized, assert_is_permissioned, assert_same_version_as_program, assert_voting, spl_token_burn, spl_token_mint_to}};
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::{TimelockStateStatus, TimelockType}, timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenMintToParams, assert_account_equiv, assert_initialized, assert_token_program_is_correct, assert_voting, spl_token_burn, spl_token_mint_to}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -33,13 +33,13 @@ pub fn process_vote(
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
     assert_account_equiv(yes_voting_mint_account_info, &timelock_set.yes_voting_mint)?;
     assert_account_equiv(no_voting_mint_account_info, &timelock_set.no_voting_mint)?;
     assert_account_equiv(governance_mint_account_info, &timelock_config.governance_mint)?;
     assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
 
-    assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_voting(&timelock_set)?;
 
     let (authority_key, bump_seed) =

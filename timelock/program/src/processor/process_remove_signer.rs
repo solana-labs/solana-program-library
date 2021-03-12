@@ -1,5 +1,5 @@
 //! Program state processor
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::timelock_set::TimelockSet, utils::{TokenBurnParams, assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned, assert_same_version_as_program, assert_token_program_is_correct, spl_token_burn}};
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::timelock_set::TimelockSet, utils::{TokenBurnParams, assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned, assert_token_program_is_correct, spl_token_burn}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -26,7 +26,6 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
 
     assert_account_equiv(signatory_mint_info, &timelock_set.signatory_mint)?;
     assert_account_equiv(admin_validation_account_info, &timelock_set.admin_validation)?;
-    assert_same_version_as_program(&timelock_program, &timelock_set)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_draft(&timelock_set)?;
     assert_is_permissioned(
