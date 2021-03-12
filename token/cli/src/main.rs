@@ -826,7 +826,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
         for account in accounts_list {
             let maybe_aux = if !account.is_associated {
                 gc_alert = true;
-                let message = format!(" (Aux-{})", aux_counter);
+                let message = format!(" (Aux-{}*)", aux_counter);
                 aux_counter += 1;
                 message
             } else {

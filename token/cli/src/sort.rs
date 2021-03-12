@@ -64,7 +64,7 @@ pub fn sort_and_parse_token_accounts(
                     }
                     Ok(_) => unsupported_accounts.push(UnsupportedAccount {
                         address,
-                        err: "Unsupported token account".to_string(),
+                        err: "Not a token account".to_string(),
                     }),
                     Err(err) => unsupported_accounts.push(UnsupportedAccount {
                         address,
