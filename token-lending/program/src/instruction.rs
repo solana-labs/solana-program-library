@@ -286,7 +286,6 @@ pub enum LendingInstruction {
         new_owner: Pubkey,
     },
 
-
     // 12
     /// Start a flash loan. In the same transaction there must be a FlashLoanEnd.
     ///
@@ -315,7 +314,6 @@ pub enum LendingInstruction {
     ///   5. `[]` Token program id.
     ///   6. `[writable, optional]` Host fee receiver.
     FlashLoanEnd,
-
 }
 
 impl LendingInstruction {
@@ -402,7 +400,10 @@ impl LendingInstruction {
             12 => {
                 let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
                 let (flash_loan_end_idx, _rest) = Self::unpack_u8(rest)?;
-                Self::FlashLoanStart { liquidity_amount, flash_loan_end_idx }
+                Self::FlashLoanStart {
+                    liquidity_amount,
+                    flash_loan_end_idx,
+                }
             }
             13 => Self::FlashLoanEnd,
             _ => return Err(LendingError::InstructionUnpackError.into()),
@@ -529,7 +530,10 @@ impl LendingInstruction {
                 buf.push(11);
                 buf.extend_from_slice(new_owner.as_ref());
             }
-            Self::FlashLoanStart {liquidity_amount, flash_loan_end_idx} => {
+            Self::FlashLoanStart {
+                liquidity_amount,
+                flash_loan_end_idx,
+            } => {
                 buf.push(12);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
                 buf.extend_from_slice(&flash_loan_end_idx.to_le_bytes());
@@ -990,7 +994,6 @@ pub fn flash_loan_start(
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(token_pubkey, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-
     ];
     Instruction {
         program_id,
@@ -998,7 +1001,8 @@ pub fn flash_loan_start(
         data: LendingInstruction::FlashLoanStart {
             liquidity_amount,
             flash_loan_end_idx,
-        }.pack(),
+        }
+        .pack(),
     }
 }
 
@@ -1034,4 +1038,3 @@ pub fn flash_loan_end(
         data: LendingInstruction::FlashLoanEnd.pack(),
     }
 }
-

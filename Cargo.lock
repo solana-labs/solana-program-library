@@ -3051,7 +3051,6 @@ name = "solana-account-decoder"
 version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa1b83c9b4ca793a9b2907de4a466c44cadf62afacdc53b444d48db53d35f6aa"
-
 dependencies = [
  "Inflector",
  "base64 0.12.3",
@@ -3818,7 +3817,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "thiserror",
- "tokio 0.3.6",
+ "tokio 0.3.7",
 ]
 
 [[package]]

@@ -371,7 +371,7 @@ pub fn add_reserve(
         liquidity_mint_pubkey,
         liquidity_mint_decimals,
         liquidity_supply_pubkey,
-        flash_loan_fees_receiver_pubkey
+        flash_loan_fees_receiver_pubkey,
     );
     let reserve_collateral = ReserveCollateral::new(
         collateral_mint_pubkey,

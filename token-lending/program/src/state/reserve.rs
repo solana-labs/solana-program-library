@@ -396,7 +396,12 @@ pub struct ReserveLiquidity {
 
 impl ReserveLiquidity {
     /// New reserve liquidity info
-    pub fn new(mint_pubkey: Pubkey, mint_decimals: u8, supply_pubkey: Pubkey, flash_loan_fee_receiver: Pubkey) -> Self {
+    pub fn new(
+        mint_pubkey: Pubkey,
+        mint_decimals: u8,
+        supply_pubkey: Pubkey,
+        flash_loan_fee_receiver: Pubkey,
+    ) -> Self {
         Self {
             mint_pubkey,
             mint_decimals,
@@ -683,8 +688,8 @@ impl Pack for Reserve {
             flash_loan_fee_receiver,
             __padding,
         ) = array_refs![
-            input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 8, 8, 32,
-            252
+            input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 8,
+            8, 32, 252
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),
@@ -755,8 +760,8 @@ impl Pack for Reserve {
             flash_loan_fee_receiver,
             _padding,
         ) = mut_array_refs![
-            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 8, 8, 32,
-            252
+            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8,
+            8, 8, 32, 252
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();

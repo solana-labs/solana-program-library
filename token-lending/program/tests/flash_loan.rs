@@ -4,18 +4,15 @@ mod helpers;
 
 use helpers::*;
 use solana_program_test::*;
-use solana_sdk::{pubkey::Pubkey, signature::Keypair};
-use spl_token_lending::{
-    processor::process_instruction,
-};
-use solana_sdk::transaction::Transaction;
-use spl_token_lending::instruction::{flash_loan_start, flash_loan_end};
-use spl_token::instruction::transfer;
 use solana_sdk::signature::Signer;
+use solana_sdk::transaction::Transaction;
+use solana_sdk::{pubkey::Pubkey, signature::Keypair};
+use spl_token::instruction::transfer;
+use spl_token_lending::instruction::{flash_loan_end, flash_loan_start};
+use spl_token_lending::processor::process_instruction;
 
 #[tokio::test]
 async fn test_flash_loan() {
-
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
@@ -67,7 +64,7 @@ async fn test_flash_loan() {
                 usdc_reserve.pubkey,
                 usdc_reserve.liquidity_supply,
                 lending_market.pubkey,
-                spl_token::id()
+                spl_token::id(),
             ),
             transfer(
                 &spl_token::id(),
@@ -75,8 +72,9 @@ async fn test_flash_loan() {
                 &usdc_reserve.liquidity_supply,
                 &user_accounts_owner.pubkey(),
                 &[],
-                flash_loan_amount + flash_loan_fee
-            ).unwrap(),
+                flash_loan_amount + flash_loan_fee,
+            )
+            .unwrap(),
             flash_loan_end(
                 spl_token_lending::id(),
                 usdc_reserve.pubkey,
@@ -84,23 +82,18 @@ async fn test_flash_loan() {
                 lending_market.pubkey,
                 usdc_reserve.flash_loan_fees_receiver,
                 Some(usdc_reserve.liquidity_host),
-            )
+            ),
         ],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(
-        &[&payer, &user_accounts_owner],
-        recent_blockhash,
-    );
+    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
     let fee_balance =
         get_token_balance(&mut banks_client, usdc_reserve.flash_loan_fees_receiver).await;
     assert_eq!(fee_balance, flash_loan_fee - host_fee);
 
-    let host_fee_balance =
-        get_token_balance(&mut banks_client, usdc_reserve.liquidity_host).await;
+    let host_fee_balance = get_token_balance(&mut banks_client, usdc_reserve.liquidity_host).await;
     assert_eq!(host_fee_balance, host_fee);
-
 }

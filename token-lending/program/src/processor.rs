@@ -1,5 +1,6 @@
 //! Program state processor
 
+use crate::instruction::LendingInstruction::FlashLoanEnd;
 use crate::{
     dex_market::{DexMarket, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
@@ -24,9 +25,8 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
+use spl_token::solana_program::sysvar::instructions::{load_current_index, load_instruction_at};
 use spl_token::state::{Account as Token, Account};
-use spl_token::solana_program::sysvar::instructions::{load_instruction_at, load_current_index};
-use crate::instruction::LendingInstruction::FlashLoanEnd;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -90,7 +90,10 @@ pub fn process_instruction(
             msg!("Instruction: Set Lending Market Owner");
             process_set_lending_market_owner(program_id, new_owner, accounts)
         }
-        LendingInstruction::FlashLoanStart { liquidity_amount, flash_loan_end_idx } => {
+        LendingInstruction::FlashLoanStart {
+            liquidity_amount,
+            flash_loan_end_idx,
+        } => {
             msg!("Instruction: Flash Loan Start");
             process_flash_loan_start(program_id, liquidity_amount, flash_loan_end_idx, accounts)
         }
@@ -118,7 +121,8 @@ fn process_init_lending_market(
     }
 
     assert_rent_exempt(rent, lending_market_info)?;
-    let _bump_seed = Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
+    let _bump_seed =
+        Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
     let mut new_lending_market: LendingMarket = assert_uninitialized(lending_market_info)?;
     let bump_seed = Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
     new_lending_market.version = PROGRAM_VERSION;
@@ -1542,9 +1546,11 @@ fn process_set_lending_market_owner(
     Ok(())
 }
 
-
 fn process_flash_loan_start(
-    program_id: &Pubkey, liquidity_amount: u64, flash_loan_end_idx: u8, accounts: &[AccountInfo]
+    program_id: &Pubkey,
+    liquidity_amount: u64,
+    flash_loan_end_idx: u8,
+    accounts: &[AccountInfo],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let destination_token_account_info = next_account_info(account_info_iter)?;
@@ -1587,10 +1593,15 @@ fn process_flash_loan_start(
     let flash_loan_end_instruction = load_instruction_at(
         flash_loan_end_idx as usize,
         &instruction_account.try_borrow_data()?,
-    ).map_err(|_| LendingError::ErrorParsingInstruction)?;
+    )
+    .map_err(|_| LendingError::ErrorParsingInstruction)?;
 
     if &flash_loan_end_instruction.program_id != program_id {
-        msg!("program id not matching: {}, {}", &flash_loan_end_instruction.program_id, program_id);
+        msg!(
+            "program id not matching: {}, {}",
+            &flash_loan_end_instruction.program_id,
+            program_id
+        );
         return Err(LendingError::InvalidFlashLoanEnd.into());
     }
 
@@ -1641,9 +1652,7 @@ fn process_flash_loan_start(
     Ok(())
 }
 
-fn process_flash_loan_end(
-    program_id: &Pubkey, accounts: &[AccountInfo]
-) -> ProgramResult {
+fn process_flash_loan_end(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let reserve_account_info = next_account_info(account_info_iter)?;
     let reserve_liquidity_supply = next_account_info(account_info_iter)?;
@@ -1664,14 +1673,21 @@ fn process_flash_loan_end(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let liquidity_supply_token_account = Account::unpack_from_slice(&reserve_liquidity_supply.try_borrow_data()?)?;
-    let (origination_fee, host_fee) =
-        reserve.config.fees.calculate_flash_loan_fees(reserve.liquidity.flash_loaned_amount)?;
+    let liquidity_supply_token_account =
+        Account::unpack_from_slice(&reserve_liquidity_supply.try_borrow_data()?)?;
+    let (origination_fee, host_fee) = reserve
+        .config
+        .fees
+        .calculate_flash_loan_fees(reserve.liquidity.flash_loaned_amount)?;
 
-    if reserve.liquidity.available_amount + reserve.liquidity.flash_loaned_amount + origination_fee > liquidity_supply_token_account.amount {
+    if reserve.liquidity.available_amount + reserve.liquidity.flash_loaned_amount + origination_fee
+        > liquidity_supply_token_account.amount
+    {
         msg!(
             "Insufficient returned liquidity for reserve after flash loan: {}, it requires: {}",
-            liquidity_supply_token_account.amount, reserve.liquidity.available_amount + reserve.liquidity.flash_loaned_amount);
+            liquidity_supply_token_account.amount,
+            reserve.liquidity.available_amount + reserve.liquidity.flash_loaned_amount
+        );
         return Err(LendingError::InsufficientLiquidity.into());
     }
 
