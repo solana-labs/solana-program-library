@@ -60,7 +60,7 @@ pub fn main() {
         optimal_borrow_rate: 4,
         max_borrow_rate: 30,
         fees: ReserveFees {
-            borrow_fee_wad: 100_000_000_000_000, // 1 bp
+            borrow_fee_wad: 100_000_000_000_000,     // 1 bp
             flash_loan_fee_wad: 100_000_000_000_000, // 1 bp
             host_fee_percentage: 20,
         },
@@ -88,7 +88,7 @@ pub fn main() {
         optimal_borrow_rate: 2,
         max_borrow_rate: 15,
         fees: ReserveFees {
-            borrow_fee_wad: 1_000_000_000_000, // 0.01 bp
+            borrow_fee_wad: 1_000_000_000_000,       // 0.01 bp
             flash_loan_fee_wad: 100_000_000_000_000, // 1 bp
             host_fee_percentage: 20,
         },
@@ -116,7 +116,7 @@ pub fn main() {
         optimal_borrow_rate: 2,
         max_borrow_rate: 15,
         fees: ReserveFees {
-            borrow_fee_wad: 10_000_000_000_000, // 0.1 bp
+            borrow_fee_wad: 10_000_000_000_000,      // 0.1 bp
             flash_loan_fee_wad: 100_000_000_000_000, // 1 bp
             host_fee_percentage: 25,
         },
