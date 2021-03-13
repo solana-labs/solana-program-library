@@ -802,34 +802,35 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
         println!("None");
     }
 
-    let (mint_accounts, unsupported_accounts, max_len_balance) =
+    let (mint_accounts, unsupported_accounts, max_len_balance, includes_aux) =
         sort_and_parse_token_accounts(&config.owner, accounts);
+    let aux_len = if includes_aux { 10 } else { 0 };
     let mut gc_alert = false;
 
     if config.verbose {
         if token.is_some() {
-            println!("{:<44} {:<2$}", "Account", "Balance", max_len_balance);
-            println!("---------------------------------------------------------");
+            println!("{:<44}  {:<2$}", "Account", "Balance", max_len_balance);
+            println!("-------------------------------------------------------------");
         } else {
             println!(
-                "{:<44} {:<44} {:<3$}",
+                "{:<44}  {:<44}  {:<3$}",
                 "Token", "Account", "Balance", max_len_balance
             );
-            println!("------------------------------------------------------------------------------------------------------");
+            println!("----------------------------------------------------------------------------------------------------------");
         }
     } else if token.is_some() {
         println!("{:<1$}", "Balance", max_len_balance);
         println!("-------------");
     } else {
-        println!("{:<44} {:<2$}", "Token", "Balance", max_len_balance);
-        println!("----------------------------------------------------------");
+        println!("{:<44}  {:<2$}", "Token", "Balance", max_len_balance);
+        println!("---------------------------------------------------------------");
     }
     for (_mint, accounts_list) in mint_accounts.iter() {
         let mut aux_counter = 1;
         for account in accounts_list {
             let maybe_aux = if !account.is_associated {
                 gc_alert = true;
-                let message = format!(" (Aux-{}*)", aux_counter);
+                let message = format!("  (Aux-{}*)", aux_counter);
                 aux_counter += 1;
                 message
             } else {
@@ -843,7 +844,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
             if config.verbose {
                 if token.is_some() {
                     println!(
-                        "{:<44} {:<4$}{}{}",
+                        "{:<44}  {:<4$}{:<5$}{}",
                         account.address,
                         account
                             .ui_token_account
@@ -852,10 +853,11 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                         maybe_aux,
                         maybe_frozen,
                         max_len_balance,
+                        aux_len,
                     )
                 } else {
                     println!(
-                        "{:<44} {:<44} {:<5$}{}{}",
+                        "{:<44}  {:<44}  {:<5$}{:<6$}{}",
                         account.ui_token_account.mint,
                         account.address,
                         account
@@ -865,11 +867,12 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                         maybe_aux,
                         maybe_frozen,
                         max_len_balance,
+                        aux_len,
                     )
                 }
             } else if token.is_some() {
                 println!(
-                    "{:<3$}{}{}",
+                    "{:<3$}{:<4$}{}",
                     account
                         .ui_token_account
                         .token_amount
@@ -877,10 +880,11 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                     maybe_aux,
                     maybe_frozen,
                     max_len_balance,
+                    aux_len,
                 )
             } else {
                 println!(
-                    "{:<44} {:<4$}{}{}",
+                    "{:<44}  {:<4$}{:<5$}{}",
                     account.ui_token_account.mint,
                     account
                         .ui_token_account
@@ -889,13 +893,14 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
                     maybe_aux,
                     maybe_frozen,
                     max_len_balance,
+                    aux_len,
                 )
             }
         }
     }
     for unsupported_account in unsupported_accounts {
         println!(
-            "{:<44} {}",
+            "{:<44}  {}",
             unsupported_account.address, unsupported_account.err
         );
     }
