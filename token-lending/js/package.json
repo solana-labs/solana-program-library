@@ -32,10 +32,7 @@
     "cluster:devnet": "cp cluster-devnet.env .env",
     "cluster:testnet": "cp cluster-testnet.env .env",
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env",
-    "localnet:update": "solana-localnet update",
-    "localnet:up": "rm -f client/util/store/config.json; set -x; solana-localnet down; set -e; solana-localnet up",
-    "localnet:down": "solana-localnet down",
-    "localnet:logs": "solana-localnet logs -f"
+    "localnet": "solana-test-validator </dev/null &>/dev/null &"
   },
   "dependencies": {
     "@solana/spl-token": "0.0.13",
