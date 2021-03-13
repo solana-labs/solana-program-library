@@ -37,7 +37,8 @@ impl IsInitialized for TimelockConfig {
     }
 }
 
-const TIMELOCK_CONFIG_LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32;
+/// Len of timelock config
+pub const TIMELOCK_CONFIG_LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32;
 impl Pack for TimelockConfig {
     const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
