@@ -27,6 +27,13 @@ export const TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
   'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
 );
 
+export const ASSOCIATED_TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
+  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
+);
+
+const FAILED_TO_FIND_ACCOUNT = 'Failed to find account';
+const INVALID_ACCOUNT_OWNER = 'Invalid account owner';
+
 /**
  * Unfortunately, BufferLayout.encode uses an `instanceof` check for `Buffer`
  * which fails when using `publicKey.toBuffer()` directly because the bundled `Buffer`
@@ -139,6 +146,11 @@ export const MintLayout: typeof BufferLayout.Structure = BufferLayout.struct([
  * Information about an account
  */
 type AccountInfo = {|
+  /**
+   * The address of this account
+   */
+  address: PublicKey,
+
   /**
    * The mint associated with this account
    */
@@ -287,6 +299,11 @@ export class Token {
   programId: PublicKey;
 
   /**
+   * Program Identifier for the Associated Token program
+   */
+  associatedProgramId: PublicKey;
+
+  /**
    * Fee payer
    */
   payer: Account;
@@ -305,7 +322,14 @@ export class Token {
     programId: PublicKey,
     payer: Account,
   ) {
-    Object.assign(this, {connection, publicKey, programId, payer});
+    Object.assign(this, {
+      connection,
+      publicKey,
+      programId,
+      payer,
+      // Hard code is ok; Overriding is needed only for tests
+      associatedProgramId: ASSOCIATED_TOKEN_PROGRAM_ID,
+    });
   }
 
   /**
@@ -456,6 +480,101 @@ export class Token {
     );
 
     return newAccount.publicKey;
+  }
+
+  /**
+   * Create and initialize the associated account.
+   *
+   * This account may then be used as a `transfer()` or `approve()` destination
+   *
+   * @param owner User account that will own the new account
+   * @return Public key of the new associated account
+   */
+  async createAssociatedTokenAccount(owner: PublicKey): Promise<PublicKey> {
+    const associatedAddress = await Token.getAssociatedTokenAddress(
+      this.associatedProgramId,
+      this.programId,
+      this.publicKey,
+      owner,
+    );
+
+    return this.createAssociatedTokenAccountInternal(owner, associatedAddress);
+  }
+
+  async createAssociatedTokenAccountInternal(
+    owner: PublicKey,
+    associatedAddress: PublicKey,
+  ): Promise<PublicKey> {
+    await sendAndConfirmTransaction(
+      'CreateAssociatedTokenAccount',
+      this.connection,
+      new Transaction().add(
+        Token.createAssociatedTokenAccountInstruction(
+          this.associatedProgramId,
+          this.programId,
+          this.publicKey,
+          associatedAddress,
+          owner,
+          this.payer.publicKey,
+        ),
+      ),
+      this.payer,
+    );
+
+    return associatedAddress;
+  }
+
+  /**
+   * Retrieve the associated account or create one if not found.
+   *
+   * This account may then be used as a `transfer()` or `approve()` destination
+   *
+   * @param owner User account that will own the new account
+   * @return The new associated account
+   */
+  async getOrCreateAssociatedAccountInfo(
+    owner: PublicKey,
+  ): Promise<AccountInfo> {
+    const associatedAddress = await Token.getAssociatedTokenAddress(
+      this.associatedProgramId,
+      this.programId,
+      this.publicKey,
+      owner,
+    );
+
+    // This is the optimum logic, considering TX fee, client-side computation,
+    // RPC roundtrips and guaranteed idempotent.
+    // Sadly we can't do this atomically;
+    try {
+      return await this.getAccountInfo(associatedAddress);
+    } catch (err) {
+      // INVALID_ACCOUNT_OWNER can be possible if the associatedAddress has
+      // already been received some lamports (= became system accounts).
+      // Assuming program derived addressing is safe, this is the only case
+      // for the INVALID_ACCOUNT_OWNER in this code-path
+      if (
+        err.message === FAILED_TO_FIND_ACCOUNT ||
+        err.message === INVALID_ACCOUNT_OWNER
+      ) {
+        // as this isn't atomic, it's possible others can create associated
+        // accounts meanwhile
+        try {
+          await this.createAssociatedTokenAccountInternal(
+            owner,
+            associatedAddress,
+          );
+        } catch (err) {
+          // ignore all errors; for now there is no API compatible way to
+          // selectively ignore the expected instruction error if the
+          // associated account is existing already.
+        }
+
+        // Now this should always succeed
+        return await this.getAccountInfo(associatedAddress);
+      } else {
+        throw err;
+      }
+    }
   }
 
   /**
@@ -645,10 +764,10 @@ export class Token {
   ): Promise<AccountInfo> {
     const info = await this.connection.getAccountInfo(account, commitment);
     if (info === null) {
-      throw new Error('Failed to find account');
+      throw new Error(FAILED_TO_FIND_ACCOUNT);
     }
     if (!info.owner.equals(this.programId)) {
-      throw new Error(`Invalid account owner`);
+      throw new Error(INVALID_ACCOUNT_OWNER);
     }
     if (info.data.length != AccountLayout.span) {
       throw new Error(`Invalid account size`);
@@ -656,6 +775,7 @@ export class Token {
 
     const data = Buffer.from(info.data);
     const accountInfo = AccountLayout.decode(data);
+    accountInfo.address = account;
     accountInfo.mint = new PublicKey(accountInfo.mint);
     accountInfo.owner = new PublicKey(accountInfo.owner);
     accountInfo.amount = u64.fromBuffer(accountInfo.amount);
@@ -2100,6 +2220,67 @@ export class Token {
     return new TransactionInstruction({
       keys,
       programId: programId,
+      data,
+    });
+  }
+
+  /**
+   * Get the address for the associated token account
+   *
+   * @param associatedProgramId SPL Associated Token program account
+   * @param programId SPL Token program account
+   * @param mint Token mint account
+   * @param owner Owner of the new account
+   * @return Public key of the associated token account
+   */
+  static async getAssociatedTokenAddress(
+    associatedProgramId: PublicKey,
+    programId: PublicKey,
+    mint: PublicKey,
+    owner: PublicKey,
+  ): Promise<PublicKey> {
+    return (
+      await PublicKey.findProgramAddress(
+        [owner.toBuffer(), programId.toBuffer(), mint.toBuffer()],
+        associatedProgramId,
+      )
+    )[0];
+  }
+
+  /**
+   * Construct the AssociatedTokenProgram instruction to create the associated
+   * token account
+   *
+   * @param associatedProgramId SPL Associated Token program account
+   * @param programId SPL Token program account
+   * @param mint Token mint account
+   * @param associatedAccount New associated account
+   * @param owner Owner of the new account
+   * @param payer Payer of fees
+   */
+  static createAssociatedTokenAccountInstruction(
+    associatedProgramId: PublicKey,
+    programId: PublicKey,
+    mint: PublicKey,
+    associatedAccount: PublicKey,
+    owner: PublicKey,
+    payer: PublicKey,
+  ): TransactionInstruction {
+    const data = Buffer.alloc(0);
+
+    let keys = [
+      {pubkey: payer, isSigner: true, isWritable: true},
+      {pubkey: associatedAccount, isSigner: false, isWritable: true},
+      {pubkey: owner, isSigner: false, isWritable: false},
+      {pubkey: mint, isSigner: false, isWritable: false},
+      {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
+      {pubkey: programId, isSigner: false, isWritable: false},
+      {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+    ];
+
+    return new TransactionInstruction({
+      keys,
+      programId: associatedProgramId,
       data,
     });
   }

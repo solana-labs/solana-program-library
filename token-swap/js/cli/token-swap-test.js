@@ -1,20 +1,20 @@
 // @flow
 
-import fs from 'mz/fs';
 import {
   Account,
   Connection,
-  BpfLoader,
   PublicKey,
   SystemProgram,
   Transaction,
-  BPF_LOADER_PROGRAM_ID,
 } from '@solana/web3.js';
-import {AccountLayout, Token} from '@solana/spl-token';
+import {AccountLayout, Token, TOKEN_PROGRAM_ID} from '@solana/spl-token';
 
-import {TokenSwap, CurveType} from '../client/token-swap';
+import {
+  TokenSwap,
+  CurveType,
+  TOKEN_SWAP_PROGRAM_ID,
+} from '../client/token-swap';
 import {sendAndConfirmTransaction} from '../client/util/send-and-confirm-transaction';
-import {Store} from '../client/util/store';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {url} from '../url';
 import {sleep} from '../client/util/sleep';
@@ -94,80 +94,15 @@ async function getConnection(): Promise<Connection> {
   return connection;
 }
 
-async function loadProgram(
-  connection: Connection,
-  path: string,
-): Promise<PublicKey> {
-  const NUM_RETRIES = 500; /* allow some number of retries */
-  const data = await fs.readFile(path);
-  const {feeCalculator} = await connection.getRecentBlockhash();
-  const balanceNeeded =
-    feeCalculator.lamportsPerSignature *
-      (BpfLoader.getMinNumSignatures(data.length) + NUM_RETRIES) +
-    (await connection.getMinimumBalanceForRentExemption(data.length));
-
-  const from = await newAccountWithLamports(connection, balanceNeeded);
-  const program_account = new Account();
-  console.log('Loading program:', path);
-  await BpfLoader.load(
-    connection,
-    from,
-    program_account,
-    data,
-    BPF_LOADER_PROGRAM_ID,
-  );
-  return program_account.publicKey;
-}
-
-async function GetPrograms(
-  connection: Connection,
-): Promise<[PublicKey, PublicKey]> {
-  const store = new Store();
-  let tokenProgramId = null;
-  let tokenSwapProgramId = null;
-  try {
-    const config = await store.load('config.json');
-    console.log('Using pre-loaded Token and Token-swap programs');
-    console.log(
-      '  Note: To reload programs remove client/util/store/config.json',
-    );
-    tokenProgramId = new PublicKey(config.tokenProgramId);
-    tokenSwapProgramId = new PublicKey(config.tokenSwapProgramId);
-  } catch (err) {
-    tokenProgramId = await loadProgram(
-      connection,
-      '../../target/bpfel-unknown-unknown/release/spl_token.so',
-    );
-    tokenSwapProgramId = await loadProgram(
-      connection,
-      '../../target/bpfel-unknown-unknown/release/spl_token_swap.so',
-    );
-    await store.save('config.json', {
-      tokenProgramId: tokenProgramId.toString(),
-      tokenSwapProgramId: tokenSwapProgramId.toString(),
-    });
-  }
-  return [tokenProgramId, tokenSwapProgramId];
-}
-
-export async function loadPrograms(): Promise<void> {
-  const connection = await getConnection();
-  const [tokenProgramId, tokenSwapProgramId] = await GetPrograms(connection);
-
-  console.log('Token Program ID', tokenProgramId.toString());
-  console.log('Token-swap Program ID', tokenSwapProgramId.toString());
-}
-
 export async function createTokenSwap(): Promise<void> {
   const connection = await getConnection();
-  const [tokenProgramId, tokenSwapProgramId] = await GetPrograms(connection);
   const payer = await newAccountWithLamports(connection, 1000000000);
   owner = await newAccountWithLamports(connection, 1000000000);
   const tokenSwapAccount = new Account();
 
   [authority, nonce] = await PublicKey.findProgramAddress(
     [tokenSwapAccount.publicKey.toBuffer()],
-    tokenSwapProgramId,
+    TOKEN_SWAP_PROGRAM_ID,
   );
 
   console.log('creating pool mint');
@@ -177,7 +112,7 @@ export async function createTokenSwap(): Promise<void> {
     authority,
     null,
     2,
-    tokenProgramId,
+    TOKEN_PROGRAM_ID,
   );
 
   console.log('creating pool account');
@@ -192,7 +127,7 @@ export async function createTokenSwap(): Promise<void> {
     owner.publicKey,
     null,
     2,
-    tokenProgramId,
+    TOKEN_PROGRAM_ID,
   );
 
   console.log('creating token A account');
@@ -207,7 +142,7 @@ export async function createTokenSwap(): Promise<void> {
     owner.publicKey,
     null,
     2,
-    tokenProgramId,
+    TOKEN_PROGRAM_ID,
   );
 
   console.log('creating token B account');
@@ -229,8 +164,8 @@ export async function createTokenSwap(): Promise<void> {
     mintB.publicKey,
     feeAccount,
     tokenAccountPool,
-    tokenSwapProgramId,
-    tokenProgramId,
+    TOKEN_SWAP_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
     nonce,
     TRADING_FEE_NUMERATOR,
     TRADING_FEE_DENOMINATOR,
@@ -247,11 +182,11 @@ export async function createTokenSwap(): Promise<void> {
   const fetchedTokenSwap = await TokenSwap.loadTokenSwap(
     connection,
     tokenSwapAccount.publicKey,
-    tokenSwapProgramId,
+    TOKEN_SWAP_PROGRAM_ID,
     swapPayer,
   );
 
-  assert(fetchedTokenSwap.tokenProgramId.equals(tokenProgramId));
+  assert(fetchedTokenSwap.tokenProgramId.equals(TOKEN_PROGRAM_ID));
   assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
   assert(fetchedTokenSwap.tokenAccountB.equals(tokenAccountB));
   assert(fetchedTokenSwap.mintA.equals(mintA.publicKey));

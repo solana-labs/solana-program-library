@@ -26,6 +26,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2a4ec343196209d6594e19543ae87a39f96d5534d7174822a3ad825dd6ed7e"
 
 [[package]]
+name = "ahash"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -245,6 +251,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b42b13fa9bf62be34702e5ee4526aff22530ae22fe34a0c4290d30d5e4e782e6"
 dependencies = [
  "borsh-derive 0.7.2",
+]
+
+[[package]]
+name = "borsh"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5a26c53ddf60281f18e7a29b20db7ba3db82a9d81b9650bfaa02d646f50d364"
+dependencies = [
+ "borsh-derive 0.8.1",
+ "hashbrown",
 ]
 
 [[package]]
@@ -1301,6 +1317,9 @@ name = "hashbrown"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
+dependencies = [
+ "ahash",
+]
 
 [[package]]
 name = "heck"
@@ -2918,7 +2937,7 @@ dependencies = [
  "safe-transmute",
  "serde",
  "solana-program",
- "spl-token 3.0.1",
+ "spl-token 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "static_assertions",
  "thiserror",
  "without-alloc",
@@ -3029,9 +3048,10 @@ dependencies = [
 
 [[package]]
 name = "solana-account-decoder"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4519f8c10f3ee412140195504507916858fbe3313f64b86ec2ec2d8ca2ec9b0"
+checksum = "aa1b83c9b4ca793a9b2907de4a466c44cadf62afacdc53b444d48db53d35f6aa"
+
 dependencies = [
  "Inflector",
  "base64 0.12.3",
@@ -3046,21 +3066,24 @@ dependencies = [
  "solana-sdk",
  "solana-stake-program",
  "solana-vote-program",
- "spl-token 3.0.1",
+ "spl-token 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
  "zstd",
 ]
 
 [[package]]
 name = "solana-banks-client"
-version = "1.5.8"
+version = "1.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6333082c712f97c8a10bd9164d2cd5a678e47690bddbca9027fae230d94d605f"
+checksum = "3cecfcb538a11ff7673f0cb2a4d552339ae4a5474f167d75a9d4988653795890"
 dependencies = [
  "bincode",
+ "borsh 0.8.1",
+ "borsh-derive 0.8.1",
  "futures 0.3.12",
  "mio 0.7.8",
  "solana-banks-interface",
+ "solana-program",
  "solana-sdk",
  "tarpc",
  "tokio 0.3.7",
@@ -3069,9 +3092,9 @@ dependencies = [
 
 [[package]]
 name = "solana-banks-interface"
-version = "1.5.8"
+version = "1.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6beccc1c17c48ce7747ee0c9e2a51a4f157c135cf22624fd45fb2553c1381680"
+checksum = "eb3fee8b4dce68968038d367466e4e7da1b67de3353b18c9baefcfed98d43713"
 dependencies = [
  "mio 0.7.8",
  "serde",
@@ -3081,9 +3104,9 @@ dependencies = [
 
 [[package]]
 name = "solana-banks-server"
-version = "1.5.8"
+version = "1.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f45a1a84cf42403f1e6e265518fa3cdd48f953e538be8c107802b33f283ef40d"
+checksum = "d5eb7f7b5fe99dc3dce7655de8fe1a76bb5eaed4f0d90d81cfcb404e29a91219"
 dependencies = [
  "bincode",
  "futures 0.3.12",
@@ -3100,9 +3123,9 @@ dependencies = [
 
 [[package]]
 name = "solana-bpf-loader-program"
-version = "1.5.8"
+version = "1.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "135d17e97a721854acbfc060ac48f930c29774ddccdaf436731a77a33d13eb64"
+checksum = "9718cac7c73e4c3a9e8f29322efeb81c217886dc7f2303c00b0e2b1f94ef25b5"
 dependencies = [
  "bincode",
  "byteorder",
@@ -3118,9 +3141,9 @@ dependencies = [
 
 [[package]]
 name = "solana-clap-utils"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d926c849d5cf63d3d23ab767aaba4511eb49793b90366af5525c30a65f6e548"
+checksum = "b14109d404165d346e6eb30cc18ca3541d4a82e7d758d05530c50fd94a8c991a"
 dependencies = [
  "chrono",
  "clap",
@@ -3134,9 +3157,9 @@ dependencies = [
 
 [[package]]
 name = "solana-cli-config"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bad98059908fca4c635438ca45233baf42baff0f47c7286e7e4c48325bd9578b"
+checksum = "960bc039237e34d88afa93d3b50fafac853e46d101fe9fb10ebb38e6886429fb"
 dependencies = [
  "dirs-next",
  "lazy_static",
@@ -3148,9 +3171,9 @@ dependencies = [
 
 [[package]]
 name = "solana-cli-output"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a7f3fb887805403d84a57ff24e65f78df828385e8afc0515b65625e76fdf812"
+checksum = "0e5b6c68052380c4316b84343375a460490d6c749982da1008a331d2a0f85d5a"
 dependencies = [
  "Inflector",
  "chrono",
@@ -3171,9 +3194,9 @@ dependencies = [
 
 [[package]]
 name = "solana-client"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3a5dd8cdce0b7d08b563d09ddbab31d5b395cb9f7f3e455473011881ecfef88"
+checksum = "dfa47c29e4365058727efde3e7b636b0be4e5d990a6d2490dcdbab3403404399"
 dependencies = [
  "base64 0.13.0",
  "bincode",
@@ -3203,9 +3226,9 @@ dependencies = [
 
 [[package]]
 name = "solana-config-program"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c4853cb3edd625f834bfd07d2fd80dc472be6889f036ac77f6608ba7dbb5fbe"
+checksum = "ef839d805b06479abd9f12776cd88f61d2923f8d7e45187fd2533a018502a884"
 dependencies = [
  "bincode",
  "chrono",
@@ -3218,9 +3241,9 @@ dependencies = [
 
 [[package]]
 name = "solana-crate-features"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a5421cf3edae75d7e993cfc7ccce50cb7309e42a82572afcf9fa5b6a28de24c"
+checksum = "10b41ed05a64819d081dbfb9e95da071298762c769e3be8efc148e90eb3d78c8"
 dependencies = [
  "backtrace",
  "bytes 0.4.12",
@@ -3242,9 +3265,9 @@ dependencies = [
 
 [[package]]
 name = "solana-frozen-abi"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc44c8096d5847d8cf7f3af3cce565de554cb56371decf93b060633ca8588913"
+checksum = "3c3476d3735fcbd907c86095cf4de0272a11753354bfc8484556173d4a9b458e"
 dependencies = [
  "bs58 0.3.1",
  "bv",
@@ -3262,9 +3285,9 @@ dependencies = [
 
 [[package]]
 name = "solana-frozen-abi-macro"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f905159beff1b53e4ba8b018a9d13d96ba164c3973bf3b9d587e730bcc14fc18"
+checksum = "33137fde347f368f3a44992544a799e9cd64276d391b9e7339468512e919ffac"
 dependencies = [
  "lazy_static",
  "proc-macro2 1.0.24",
@@ -3275,9 +3298,9 @@ dependencies = [
 
 [[package]]
 name = "solana-logger"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d83a006d97da5514a4475141573383d3fcd71c729ff78494f96bb531cf734d21"
+checksum = "70991babdd9869469fbe29119958ce5a26bad54418ed3248ce172807e112f106"
 dependencies = [
  "env_logger",
  "lazy_static",
@@ -3286,9 +3309,9 @@ dependencies = [
 
 [[package]]
 name = "solana-measure"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8949badc9108a02e5ca14fc348e43a04b9d63d63a28c5f45a017fff53a0f3c25"
+checksum = "be88f9cc4e256ec2671e7cd8e3f3a5380df1c0073dc7cc4f1cf9d2d5784bac02"
 dependencies = [
  "jemalloc-ctl",
  "jemallocator",
@@ -3299,9 +3322,9 @@ dependencies = [
 
 [[package]]
 name = "solana-metrics"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e6e5e9169dacdf41a1b4920aaf38ecadd8476252b6df789aa97df4619b7e4b3"
+checksum = "4ec2349388a61f4dc64b392e08bcf130115f7d8fa8c0c93f2c4847a5d4adb62b"
 dependencies = [
  "env_logger",
  "gethostname",
@@ -3313,9 +3336,9 @@ dependencies = [
 
 [[package]]
 name = "solana-net-utils"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "208de5e51bd09b78ed0e9a8ce3b96c1e1c5efc75b8b3f4a906096680e931296b"
+checksum = "ec05d54e7fa54fb359e5ac201cbfd1d2c4d7305cba5c5fc01522d1c44a7237b6"
 dependencies = [
  "bincode",
  "clap",
@@ -3334,11 +3357,13 @@ dependencies = [
 
 [[package]]
 name = "solana-program"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2007bf285617f8a783e96b20ccd2f8d813549090a5b520f22e5f65b3cd9b157"
+checksum = "1368ffec2560042835baef071b9d0a0c18c996d7f72a476fe905760677f3b2cd"
 dependencies = [
  "bincode",
+ "borsh 0.8.1",
+ "borsh-derive 0.8.1",
  "bs58 0.3.1",
  "bv",
  "curve25519-dalek 2.1.2",
@@ -3364,9 +3389,9 @@ dependencies = [
 
 [[package]]
 name = "solana-program-test"
-version = "1.5.8"
+version = "1.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "366b392ea05923dc76fe9a02d56f5d498aa05c5eb0ff37f9d607c941d0639b84"
+checksum = "935b1ce1f4bad8b9eb7c9d748f42acf625044f75c46032133ddaff31c7de4d4d"
 dependencies = [
  "async-trait",
  "base64 0.12.3",
@@ -3388,9 +3413,9 @@ dependencies = [
 
 [[package]]
 name = "solana-rayon-threadlimit"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4228b73382c7ca770c22d163664ba68170f35f70e48c3a1c376e084d81b740cf"
+checksum = "9d885e4f25fd5f8e05de29fd67f0ac1450095a0d033dd8048a6abafde3e618d2"
 dependencies = [
  "lazy_static",
  "num_cpus",
@@ -3398,9 +3423,9 @@ dependencies = [
 
 [[package]]
 name = "solana-remote-wallet"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cbb1b6768ca27098222d1e681217d2231bea5244e00622f522cb542ab9e1db1"
+checksum = "83fb4826f39efeb52075b69b7e98dde546d22f51157ae7f1fa2c4733977c4ada"
 dependencies = [
  "base32",
  "console 0.11.3",
@@ -3418,9 +3443,9 @@ dependencies = [
 
 [[package]]
 name = "solana-runtime"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67959b8a86333a9114f5e7de97fffeedfa46d7fdb7078e74c16137a26a26e25c"
+checksum = "f4a9af77db90cdcac57a7b0d4f1bbc8085cc859820214d3166ba5c45e77a4c01"
 dependencies = [
  "bincode",
  "blake3",
@@ -3469,9 +3494,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7597fa4ab9c688b03db37cf4e903847546c0058e249e51f5421c05a851b8455a"
+checksum = "44555894439e1f66f011ed7972ae3bebf49f87bb97d7c4313fcfe822610dcbbf"
 dependencies = [
  "assert_matches",
  "bincode",
@@ -3513,9 +3538,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk-macro"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8a6635f1798c8ff1b88bb0fad1d4693c011f36a73c9ae03f198203144edcabb"
+checksum = "a41c78a955eb8c4b5cd72c2450520fc9434b1953f9398f91d13a89d5db841505"
 dependencies = [
  "bs58 0.3.1",
  "proc-macro2 1.0.24",
@@ -3526,9 +3551,9 @@ dependencies = [
 
 [[package]]
 name = "solana-secp256k1-program"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "332162ff6bf226621283e134cda9ce5aced28b52649f654c5bb278aadb8f4fa2"
+checksum = "2c072e0a5c1aca62d53affc638c036276eab8ee494c3c622baba8faa8a80cfb8"
 dependencies = [
  "bincode",
  "digest 0.9.0",
@@ -3541,9 +3566,9 @@ dependencies = [
 
 [[package]]
 name = "solana-stake-program"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7063bc3b9f3c09417b39035aa493f366ce69b744a75f15ad1806a99532fdf0c"
+checksum = "f18d6d0beb98340e9ace4d0e06055b98e68ef889762014495714db03d65880bd"
 dependencies = [
  "bincode",
  "log",
@@ -3563,9 +3588,9 @@ dependencies = [
 
 [[package]]
 name = "solana-transaction-status"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d2ffd0583015faac9914f5a7c137afa9bdc6dbabef755ca711341d059d1fde3"
+checksum = "7201a09e278cd9e5c3d2271ec4c57bb39f7d2e5f89bd36fe3dcbc6bc22b5c932"
 dependencies = [
  "Inflector",
  "base64 0.12.3",
@@ -3582,15 +3607,15 @@ dependencies = [
  "solana-vote-program",
  "spl-memo 2.0.1",
  "spl-memo 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-token 3.0.1",
+ "spl-token 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
 ]
 
 [[package]]
 name = "solana-version"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f4d98da65447d739406609968a9b87b1a631ff2238caa00a551fad9f7c58db0"
+checksum = "d9ad13111482ff03a42c92153b851a2b333706fa873b3b9f884616fbf336c17d"
 dependencies = [
  "log",
  "rustc_version 0.2.3",
@@ -3604,9 +3629,9 @@ dependencies = [
 
 [[package]]
 name = "solana-vote-program"
-version = "1.5.8"
+version = "1.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4cc3a011c7c0fd546a3591e3575262dafe30298ce053bc73abe155b17a8668d"
+checksum = "83268161226ff066237a6479e6496566d214f7560067b6378c547bc9e74fa4b7"
 dependencies = [
  "bincode",
  "log",
@@ -3712,7 +3737,7 @@ dependencies = [
 name = "spl-feature-proposal"
 version = "1.0.0"
 dependencies = [
- "borsh",
+ "borsh 0.7.2",
  "borsh-derive 0.8.1",
  "futures 0.3.12",
  "solana-program",
@@ -3740,7 +3765,7 @@ dependencies = [
 name = "spl-math"
 version = "0.1.0"
 dependencies = [
- "borsh",
+ "borsh 0.7.2",
  "borsh-derive 0.8.1",
  "num-derive",
  "num-traits",
@@ -3779,6 +3804,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e76b60c6f58279b5469beb1705744e9778ee94d643c8e3e2ff91874c59bb3c63"
 dependencies = [
  "solana-program",
+]
+
+[[package]]
+name = "spl-record"
+version = "0.1.0"
+dependencies = [
+ "borsh 0.8.1",
+ "borsh-derive 0.8.1",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "thiserror",
+ "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3834,20 +3874,6 @@ dependencies = [
 
 [[package]]
 name = "spl-token"
-version = "3.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9774eebb62ff1ff2f5eca112413e476143925a2f5a43cee98fc5d3a6c0eec5c"
-dependencies = [
- "arrayref",
- "num-derive",
- "num-traits",
- "num_enum",
- "solana-program",
- "thiserror",
-]
-
-[[package]]
-name = "spl-token"
 version = "3.1.0"
 dependencies = [
  "arrayref",
@@ -3860,8 +3886,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b795e50d15dfd35aa5460b80a16414503a322be115a417a43db987c5824c6798"
+dependencies = [
+ "arrayref",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-token-cli"
-version = "2.0.6"
+version = "2.0.7"
 dependencies = [
  "clap",
  "console 0.14.0",

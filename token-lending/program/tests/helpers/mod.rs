@@ -47,12 +47,12 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
 pub const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 pub const SRM_MINT: &str = "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt";
 
-pub const SOL_USDC_MARKET: &str = "7xMDbYTCqQEcK2aM9LbetGtNFJpzKdfXzLL5juaLh4GJ";
-pub const SOL_USDC_BIDS: &str = "4VndUfHkmh6RWTQbXSVjY3wbSfqGjoPbuPHMoatV272H";
-pub const SOL_USDC_ASKS: &str = "6LTxKpMyGnbHM5rRx7f3eZHF9q3gnUBV5ucXF9LvrB3M";
-pub const SRM_USDC_MARKET: &str = "CDdR97S8y96v3To93aKvi3nCnjUrbuVSuumw8FLvbVeg";
-pub const SRM_USDC_BIDS: &str = "DkxpXtF1EyjHomQcEhH54498gdhUN3t1sZCjReFNYZZn";
-pub const SRM_USDC_ASKS: &str = "DRqgRZqfdD6PLHKSU7ydyVXWMUpvkqhzLZ1JSKn1iB1K";
+pub const SOL_USDC_MARKET: &str = "9wFFyRfZBsuAha4YcuxcXLKwMxJR43S7fPfQLusDBzvT";
+pub const SOL_USDC_BIDS: &str = "14ivtgssEBoBjuZJtSAPKYgpUK7DmnSwuPMqJoVTSgKJ";
+pub const SOL_USDC_ASKS: &str = "CEQdAFKdycHugujQg9k2wbmxjcpdYZyVLfV9WerTnafJ";
+pub const SRM_USDC_MARKET: &str = "ByRys5tuUWDgL73G8JBAEfkdFf8JWBzPBDHsBVQ5vbQA";
+pub const SRM_USDC_BIDS: &str = "AuL9JzRJ55MdqzubK4EutJgAumtkuFcRVuPUvTX39pN8";
+pub const SRM_USDC_ASKS: &str = "8Lx9U9wdE3afdqih1mCAXy3unJDfzSaXFqAvoLMjhwoD";
 
 #[allow(non_camel_case_types)]
 pub enum TestDexMarketPair {

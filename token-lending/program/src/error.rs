@@ -147,6 +147,7 @@ pub enum LendingError {
     /// Flash loan end index is invalid.
     #[error("Flash loan end index is invalid.")]
     InvalidFlashLoanEndIndex,
+
 }
 
 impl From<LendingError> for ProgramError {

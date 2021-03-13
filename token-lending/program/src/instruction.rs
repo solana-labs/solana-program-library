@@ -125,7 +125,6 @@ pub enum LendingInstruction {
     ///   6. `[]` Derived lending market authority.
     ///   7. `[]` User transfer authority ($authority).
     ///   8. `[]` Token program id
-
     WithdrawReserveLiquidity {
         /// Amount of collateral to deposit in exchange for liquidity
         collateral_amount: u64,
@@ -287,6 +286,7 @@ pub enum LendingInstruction {
         new_owner: Pubkey,
     },
 
+
     // 12
     /// Start a flash loan. In the same transaction there must be a FlashLoanEnd.
     ///
@@ -388,7 +388,6 @@ impl LendingInstruction {
             }
             8 => Self::AccrueReserveInterest,
             9 => {
-
                 let (collateral_amount, _rest) = Self::unpack_u64(rest)?;
                 Self::DepositObligationCollateral { collateral_amount }
             }
@@ -1035,3 +1034,4 @@ pub fn flash_loan_end(
         data: LendingInstruction::FlashLoanEnd.pack(),
     }
 }
+

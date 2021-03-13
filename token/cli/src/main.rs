@@ -4,14 +4,15 @@ use clap::{
 };
 use console::Emoji;
 use solana_account_decoder::{
-    parse_token::{TokenAccountType, UiAccountState, UiTokenAmount},
+    parse_token::{TokenAccountType, UiAccountState},
     UiAccountData,
 };
 use solana_clap_utils::{
     fee_payer::fee_payer_arg,
     input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, signer_of, value_of},
     input_validators::{
-        is_amount, is_amount_or_all, is_parsable, is_url, is_valid_pubkey, is_valid_signer,
+        is_amount, is_amount_or_all, is_parsable, is_url_or_moniker, is_valid_pubkey,
+        is_valid_signer, normalize_to_url_if_moniker,
     },
     keypair::{pubkey_from_path, signer_from_path, DefaultSigner},
     nonce::*,
@@ -42,6 +43,9 @@ use spl_token::{
     state::{Account, Mint, Multisig},
 };
 use std::{collections::HashMap, process::exit, str::FromStr, sync::Arc};
+
+mod sort;
+use sort::sort_and_parse_token_accounts;
 
 static WARNING: Emoji = Emoji("⚠️", "!");
 
@@ -424,7 +428,8 @@ fn command_transfer(
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
 ) -> CommandResult {
-    let sender_balance = config
+    let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, mint_address, mint_decimals)?;
+    let sender_token_amount = config
         .rpc_client
         .get_token_account_balance(&sender)
         .map_err(|err| {
@@ -432,24 +437,32 @@ fn command_transfer(
                 "Error: Failed to get token balance of sender address {}: {}",
                 sender, err
             )
-        })?
-        .ui_amount;
-    let ui_amount = ui_amount.unwrap_or(sender_balance);
+        })?;
+    let sender_balance = sender_token_amount.amount.parse::<u64>().map_err(|err| {
+        format!(
+            "Token account {} balance could not be parsed: {}",
+            sender, err
+        )
+    })?;
+    let transfer_balance = ui_amount
+        .map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, decimals))
+        .unwrap_or(sender_balance);
 
     println!(
         "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
-        ui_amount, sender, recipient
+        spl_token::amount_to_ui_amount(transfer_balance, decimals),
+        sender,
+        recipient
     );
-    if ui_amount > sender_balance {
+
+    if transfer_balance > sender_balance {
         return Err(format!(
             "Error: Sender has insufficient funds, current balance is {}",
-            sender_balance
+            sender_token_amount.real_number_string_trimmed()
         )
         .into());
     }
 
-    let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, mint_address, mint_decimals)?;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
     let mut instructions = vec![];
 
     let mut recipient_token_account = recipient;
@@ -523,7 +536,7 @@ fn command_transfer(
         &recipient_token_account,
         &config.owner,
         &config.multisigner_pubkeys,
-        amount,
+        transfer_balance,
         decimals,
     )?);
     Ok(Some((
@@ -726,11 +739,22 @@ fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> Comma
             .rpc_client
             .get_token_account(&account)?
             .ok_or_else(|| format!("Could not find token account {}", account))?;
+        let source_amount = source_account
+            .token_amount
+            .amount
+            .parse::<u64>()
+            .map_err(|err| {
+                format!(
+                    "Token account {} balance could not be parsed: {}",
+                    account, err
+                )
+            })?;
 
-        if !source_account.is_native && source_account.token_amount.ui_amount > 0.0 {
+        if !source_account.is_native && source_amount > 0 {
             return Err(format!(
                 "Account {} still has {} tokens; empty the account in order to close it.",
-                account, source_account.token_amount.ui_amount
+                account,
+                source_account.token_amount.real_number_string_trimmed()
             )
             .into());
         }
@@ -750,11 +774,11 @@ fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
     let balance = config.rpc_client.get_token_account_balance(&address)?;
 
     if config.verbose {
-        println!("ui amount: {}", balance.ui_amount);
+        println!("ui amount: {}", balance.real_number_string_trimmed());
         println!("decimals: {}", balance.decimals);
         println!("amount: {}", balance.amount);
     } else {
-        println!("{}", balance.ui_amount);
+        println!("{}", balance.real_number_string_trimmed());
     }
     Ok(None)
 }
@@ -762,7 +786,7 @@ fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
 fn command_supply(config: &Config, address: Pubkey) -> CommandResult {
     let supply = config.rpc_client.get_token_supply(&address)?;
 
-    println!("{}", supply.ui_amount);
+    println!("{}", supply.real_number_string_trimmed());
     Ok(None)
 }
 
@@ -778,52 +802,111 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
         println!("None");
     }
 
-    if token.is_some() {
-        println!("Account                                      Balance");
-        println!("----------------------------------------------------");
-    } else {
-        println!("Account                                      Token                                        Balance");
-        println!("-------------------------------------------------------------------------------------------------");
-    }
-    for keyed_account in accounts {
-        let address = keyed_account.pubkey;
+    let (mint_accounts, unsupported_accounts, max_len_balance, includes_aux) =
+        sort_and_parse_token_accounts(&config.owner, accounts);
+    let aux_len = if includes_aux { 10 } else { 0 };
+    let mut gc_alert = false;
 
-        if let UiAccountData::Json(parsed_account) = keyed_account.account.data {
-            if parsed_account.program != "spl-token" {
-                println!(
-                    "{:<44} Unsupported account program: {}",
-                    address, parsed_account.program
-                );
-            } else {
-                match serde_json::from_value(parsed_account.parsed) {
-                    Ok(TokenAccountType::Account(ui_token_account)) => {
-                        let maybe_frozen = if let UiAccountState::Frozen = ui_token_account.state {
-                            format!(" {}  Frozen", WARNING)
-                        } else {
-                            "".to_string()
-                        };
-                        if token.is_some() {
-                            println!(
-                                "{:<44} {}{}",
-                                address, ui_token_account.token_amount.ui_amount, maybe_frozen
-                            )
-                        } else {
-                            println!(
-                                "{:<44} {:<44} {}{}",
-                                address,
-                                ui_token_account.mint,
-                                ui_token_account.token_amount.ui_amount,
-                                maybe_frozen
-                            )
-                        }
-                    }
-                    Ok(_) => println!("{:<44} Unsupported token account", address),
-                    Err(err) => println!("{:<44} Account parse failure: {}", address, err),
-                }
-            }
+    if config.verbose {
+        if token.is_some() {
+            println!("{:<44}  {:<2$}", "Account", "Balance", max_len_balance);
+            println!("-------------------------------------------------------------");
         } else {
-            println!("{:<44} Unsupported account data format", address);
+            println!(
+                "{:<44}  {:<44}  {:<3$}",
+                "Token", "Account", "Balance", max_len_balance
+            );
+            println!("----------------------------------------------------------------------------------------------------------");
         }
+    } else if token.is_some() {
+        println!("{:<1$}", "Balance", max_len_balance);
+        println!("-------------");
+    } else {
+        println!("{:<44}  {:<2$}", "Token", "Balance", max_len_balance);
+        println!("---------------------------------------------------------------");
+    }
+    for (_mint, accounts_list) in mint_accounts.iter() {
+        let mut aux_counter = 1;
+        for account in accounts_list {
+            let maybe_aux = if !account.is_associated {
+                gc_alert = true;
+                let message = format!("  (Aux-{}*)", aux_counter);
+                aux_counter += 1;
+                message
+            } else {
+                "".to_string()
+            };
+            let maybe_frozen = if let UiAccountState::Frozen = account.ui_token_account.state {
+                format!(" {}  Frozen", WARNING)
+            } else {
+                "".to_string()
+            };
+            if config.verbose {
+                if token.is_some() {
+                    println!(
+                        "{:<44}  {:<4$}{:<5$}{}",
+                        account.address,
+                        account
+                            .ui_token_account
+                            .token_amount
+                            .real_number_string_trimmed(),
+                        maybe_aux,
+                        maybe_frozen,
+                        max_len_balance,
+                        aux_len,
+                    )
+                } else {
+                    println!(
+                        "{:<44}  {:<44}  {:<5$}{:<6$}{}",
+                        account.ui_token_account.mint,
+                        account.address,
+                        account
+                            .ui_token_account
+                            .token_amount
+                            .real_number_string_trimmed(),
+                        maybe_aux,
+                        maybe_frozen,
+                        max_len_balance,
+                        aux_len,
+                    )
+                }
+            } else if token.is_some() {
+                println!(
+                    "{:<3$}{:<4$}{}",
+                    account
+                        .ui_token_account
+                        .token_amount
+                        .real_number_string_trimmed(),
+                    maybe_aux,
+                    maybe_frozen,
+                    max_len_balance,
+                    aux_len,
+                )
+            } else {
+                println!(
+                    "{:<44}  {:<4$}{:<5$}{}",
+                    account.ui_token_account.mint,
+                    account
+                        .ui_token_account
+                        .token_amount
+                        .real_number_string_trimmed(),
+                    maybe_aux,
+                    maybe_frozen,
+                    max_len_balance,
+                    aux_len,
+                )
+            }
+        }
+    }
+    for unsupported_account in unsupported_accounts {
+        println!(
+            "{:<44}  {}",
+            unsupported_account.address, unsupported_account.err
+        );
+    }
+    if gc_alert {
+        println!();
+        println!("* Please run `spl-token gc` to clean up Aux accounts");
     }
     Ok(None)
 }
@@ -865,6 +948,11 @@ fn command_gc(config: &Config) -> CommandResult {
                         .pubkey
                         .parse::<Pubkey>()
                         .unwrap_or_else(|err| panic!("Invalid token account: {}", err));
+                    let token_amount = ui_token_account
+                        .token_amount
+                        .amount
+                        .parse::<u64>()
+                        .unwrap_or_else(|err| panic!("Invalid token amount: {}", err));
 
                     let close_authority =
                         ui_token_account.close_authority.map_or(config.owner, |s| {
@@ -876,10 +964,7 @@ fn command_gc(config: &Config) -> CommandResult {
                     entry.insert(
                         token_account,
                         (
-                            spl_token::ui_amount_to_amount(
-                                ui_token_account.token_amount.ui_amount,
-                                ui_token_account.token_amount.decimals,
-                            ),
+                            token_amount,
                             ui_token_account.token_amount.decimals,
                             frozen,
                             close_authority,
@@ -954,36 +1039,13 @@ fn command_gc(config: &Config) -> CommandResult {
     Ok(Some((lamports_needed, instructions)))
 }
 
-fn stringify_ui_token_amount(amount: &UiTokenAmount) -> String {
-    let decimals = amount.decimals as usize;
-    if decimals > 0 {
-        let amount = u64::from_str(&amount.amount).unwrap();
-
-        // Left-pad zeros to decimals + 1, so we at least have an integer zero
-        let mut s = format!("{:01$}", amount, decimals + 1);
-
-        // Add the decimal point (Sorry, "," locales!)
-        s.insert(s.len() - decimals, '.');
-        s
-    } else {
-        amount.amount.clone()
-    }
-}
-
-fn stringify_ui_token_amount_trimmed(amount: &UiTokenAmount) -> String {
-    let s = stringify_ui_token_amount(amount);
-    let zeros_trimmed = s.trim_end_matches('0');
-    let decimal_trimmed = zeros_trimmed.trim_end_matches('.');
-    decimal_trimmed.to_string()
-}
-
 fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
     let account = config.rpc_client.get_token_account(&address)?.unwrap();
     println!();
     println_name_value("Address:", &address.to_string());
     println_name_value(
         "Balance:",
-        &stringify_ui_token_amount_trimmed(&account.token_amount),
+        &account.token_amount.real_number_string_trimmed(),
     );
     let mint = format!(
         "{}{}",
@@ -997,10 +1059,7 @@ fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
         println!("Delegation:");
         println_name_value("  Delegate:", delegate);
         let allowance = account.delegated_amount.as_ref().unwrap();
-        println_name_value(
-            "  Allowance:",
-            &stringify_ui_token_amount_trimmed(&allowance),
-        );
+        println_name_value("  Allowance:", &allowance.real_number_string_trimmed());
     } else {
         println_name_value("Delegation:", "");
     }
@@ -1083,20 +1142,25 @@ fn main() {
         })
         .arg(
             Arg::with_name("verbose")
-                .long("verbose")
                 .short("v")
+                .long("verbose")
                 .takes_value(false)
                 .global(true)
                 .help("Show additional information"),
         )
         .arg(
             Arg::with_name("json_rpc_url")
+                .short("u")
                 .long("url")
-                .value_name("URL")
+                .value_name("URL_OR_MONIKER")
                 .takes_value(true)
                 .global(true)
-                .validator(is_url)
-                .help("JSON RPC URL for the cluster.  Default from the configuration file."),
+                .validator(is_url_or_moniker)
+                .help(
+                    "URL for Solana's JSON RPC or moniker (or their first letter): \
+                       [mainnet-beta, testnet, devnet, localhost] \
+                    Default from the configuration file."
+                ),
         )
         .arg(
             Arg::with_name("owner")
@@ -1592,10 +1656,11 @@ fn main() {
         } else {
             solana_cli_config::Config::default()
         };
-        let json_rpc_url = matches
-            .value_of("json_rpc_url")
-            .unwrap_or(&cli_config.json_rpc_url)
-            .to_string();
+        let json_rpc_url = normalize_to_url_if_moniker(
+            matches
+                .value_of("json_rpc_url")
+                .unwrap_or(&cli_config.json_rpc_url),
+        );
 
         let default_signer_arg_name = "owner".to_string();
         let default_signer_path = matches
@@ -1606,8 +1671,8 @@ fn main() {
             path: default_signer_path,
             arg_name: default_signer_arg_name,
         };
-        // Owner doesn't sign when it's a multisig
-        let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name) {
+        // Owner doesn't sign when it's a multisig; and the `accounts` command is read-only
+        let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name) || sub_command == "accounts" {
             let owner_val = matches
                 .value_of("owner")
                 .unwrap_or(&cli_config.keypair_path);

@@ -5,6 +5,18 @@ title: Token Swap Program
 A Uniswap-like exchange for the Token program on the Solana blockchain,
 implementing multiple automated market maker (AMM) curves.
 
+Here is some important developer information regarding the program deployed on devnet,
+testnet, and mainnet-beta:
+
+| Information | Account Address |
+| --- | --- |
+| Token Swap Program | `SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8` |
+| Fee Owner | `HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN` |
+
+Check out
+[program repository](https://github.com/solana-labs/solana-program-library/tree/master/token-swap)
+for more developer information.
+
 ## Overview
 
 The Token Swap Program allows simple trading of token pairs without a
@@ -13,7 +25,7 @@ centralized limit order book. The program uses a mathematical formula called
 dynamics: for example, as traders buy a lot of one token type, the value of the
 other token type goes up.
 
-Depositors in the token swap pool provide liquidity for the token pair. That
+Depositors in the pool provide liquidity for the token pair. That
 liquidity enables trade execution at spot price. In exchange for their
 liquidity, depositors receive pool tokens, representing their fractional
 ownership in the pool. During each trade, a program withholds a portion of the
@@ -53,16 +65,16 @@ The following explains the instructions available in the Token Swap Program.
 Note that each instruction has a simple code example that can be found in the
 [end-to-end tests](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/cli/token-swap-test.js).
 
-### Creating a new token swap
+### Creating a new token swap pool
 
-The creation of a token swap showcases the account, instruction, and authorization
+The creation of a pool showcases the account, instruction, and authorization
 models on Solana, which can be very different compared to other blockchains.
 
-Initialization of a token swap between two token types, which we'll call "A" 
+Initialization of a pool between two token types, which we'll call "A" 
 and "B" for simplicity, requires the following accounts:
 
-* empty token swap state account
-* token swap authority
+* empty pool state account
+* pool authority
 * token A account
 * token B account
 * pool token mint
@@ -70,11 +82,11 @@ and "B" for simplicity, requires the following accounts:
 * pool token recipient account
 * token program
 
-The token swap state account simply needs to be created using
+The pool state account simply needs to be created using
 `system_instruction::create_account` with the correct size and enough lamports
 to be rent-free.
 
-The token swap authority is a
+The pool authority is a
 [program derived address](https://docs.solana.com/developing/programming-model/calling-between-programs#program-derived-addresses)
 that can "sign" instructions towards other programs. This is
 required for the Token Swap Program to mint pool tokens and transfer tokens from
@@ -89,19 +101,19 @@ must also be owned by the swap authority.
 
 Once all of these accounts are created, the Token Swap `initialize` instruction
 will properly set everything up and allow for immediate trading.  Note
-that the token swap state account is not required to be a signer on `initialize`,
+that the pool state account is not required to be a signer on `initialize`,
 so it's important to perform the `initialize` instruction in the same transaction
 as its `system_instruction::create_account`.
 
 ### Swapping
 
-Once a token swap is created, users can immediately begin trading on it using
+Once a pool is created, users can immediately begin trading on it using
 the `swap` instruction.  The swap instruction transfers tokens from a user's source
 account into the swap's source token account, and then transfers tokens from
 its destination token account into the user's destination token account.
 
 Since Solana programs require all accounts to be declared in the instruction,
-users need to gather all account information from the token swap state account:
+users need to gather all account information from the pool state account:
 the token A and B accounts, pool token mint, and fee account.
 
 Additionally, the user must allow for tokens to be transferred from their source
@@ -112,11 +124,11 @@ from the user's account by the program.
 
 ### Depositing liquidity
 
-To allow any trading, the token swap needs liquidity provided from the
+To allow any trading, the pool needs liquidity provided from the
 outside. Using the `deposit_all_token_types` or
 `deposit_single_token_type_exact_amount_in` instructions, anyone can provide
 liquidity for others to trade, and in exchange, depositors receive a pool token
-representing fractional ownership of all A and B tokens in the token swap.
+representing fractional ownership of all A and B tokens in the pool.
 
 Additionally, the user will need to approve a delegate to transfer tokens from
 their A and B token accounts.  This limits the amount of tokens that can be taken
@@ -225,7 +237,7 @@ and a more complete version can be found at the
 
 The [offset curve](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/src/curve/offset.rs)
 can be seen as a combination of the constant price and constant product curve.
-It follows the constant product curve dynamics, but allows for the token swap
+It follows the constant product curve dynamics, but allows for the pool
 creator to set an "offset" on one side. The invariant for the curve is:
 
 ```
@@ -241,7 +253,7 @@ bought.
 
 For example, a decentralized betting application creator wants to sell new "SOLBET"
 tokens on the market in exchange for USDC, and they believe each token is worth
-at least 4 USDC.  They create a token swap between SOLBET and USDC, funding
+at least 4 USDC.  They create a pool between SOLBET and USDC, funding
 one side with 1,000 SOLBET, and the other side with 0 USDC, but an offset
 of 4,000 USDC.
 

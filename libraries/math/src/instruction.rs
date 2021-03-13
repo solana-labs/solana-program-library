@@ -34,6 +34,37 @@ pub enum MathInstruction {
         /// calculated
         radicand: u128,
     },
+    /// Multiply two u64 values
+    ///
+    /// No accounts required for this instruction
+    U64Multiply {
+        /// The multiplicand
+        multiplicand: u64,
+        /// The multipier
+        multiplier: u64,
+    },
+    /// Multiply two float valies
+    ///
+    /// No accounts required for this instruction
+    F32Multiply {
+        /// The multiplicand
+        multiplicand: f32,
+        /// The multipier
+        multiplier: f32,
+    },
+    /// Divide two float valies
+    ///
+    /// No accounts required for this instruction
+    F32Divide {
+        /// The dividend
+        dividend: f32,
+        /// The divisor
+        divisor: f32,
+    },
+    /// Don't do anything for comparison
+    ///
+    /// No accounts required for this instruction
+    Noop,
 }
 
 /// Create PreciseSquareRoot instruction
@@ -66,5 +97,53 @@ pub fn sqrt_u128(radicand: u128) -> Instruction {
         data: MathInstruction::SquareRootU128 { radicand }
             .try_to_vec()
             .unwrap(),
+    }
+}
+
+/// Create PreciseSquareRoot instruction
+pub fn u64_multiply(multiplicand: u64, multiplier: u64) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::U64Multiply {
+            multiplicand,
+            multiplier,
+        }
+        .try_to_vec()
+        .unwrap(),
+    }
+}
+
+/// Create PreciseSquareRoot instruction
+pub fn f32_multiply(multiplicand: f32, multiplier: f32) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::F32Multiply {
+            multiplicand,
+            multiplier,
+        }
+        .try_to_vec()
+        .unwrap(),
+    }
+}
+
+/// Create PreciseSquareRoot instruction
+pub fn f32_divide(dividend: f32, divisor: f32) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::F32Divide { dividend, divisor }
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Create PreciseSquareRoot instruction
+pub fn noop() -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::Noop.try_to_vec().unwrap(),
     }
 }

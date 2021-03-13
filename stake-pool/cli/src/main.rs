@@ -21,7 +21,7 @@ use solana_program::{instruction::Instruction, program_pack::Pack, pubkey::Pubke
 use solana_sdk::{
     account::Account,
     commitment_config::CommitmentConfig,
-    native_token::*,
+    native_token::{self, Sol},
     signature::{Keypair, Signer},
     system_instruction,
     transaction::Transaction,
@@ -62,7 +62,7 @@ type CommandResult = Result<Option<Transaction>, Error>;
 const STAKE_STATE_LEN: usize = 200;
 const MAX_ACCOUNTS_TO_UPDATE: usize = 10;
 lazy_static! {
-    static ref MIN_STAKE_BALANCE: u64 = sol_to_lamports(1.0);
+    static ref MIN_STAKE_BALANCE: u64 = native_token::sol_to_lamports(1.0);
 }
 
 macro_rules! unique_signers {
@@ -78,8 +78,8 @@ fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(),
         Err(format!(
             "Fee payer, {}, has insufficient balance: {} required, {} available",
             config.fee_payer.pubkey(),
-            lamports_to_sol(required_balance),
-            lamports_to_sol(balance)
+            Sol(required_balance),
+            Sol(balance)
         )
         .into())
     } else {
@@ -107,21 +107,6 @@ fn get_authority_accounts(config: &Config, authority: &Pubkey) -> Vec<(Pubkey, A
             },
         )
         .unwrap()
-}
-
-fn _check_owner_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
-    let balance = config.rpc_client.get_balance(&config.owner.pubkey())?;
-    if balance < required_balance {
-        Err(format!(
-            "Owner, {}, has insufficient balance: {} required, {} available",
-            config.owner.pubkey(),
-            lamports_to_sol(required_balance),
-            lamports_to_sol(balance)
-        )
-        .into())
-    } else {
-        Ok(())
-    }
 }
 
 fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
@@ -375,7 +360,7 @@ fn command_vsa_remove(
     config: &Config,
     pool: &Pubkey,
     stake: &Pubkey,
-    burn_from: &Pubkey,
+    withdraw_from: &Pubkey,
     new_authority: &Option<Pubkey>,
 ) -> CommandResult {
     // Get stake pool state
@@ -393,12 +378,14 @@ fn command_vsa_remove(
     let owner_pubkey = config.owner.pubkey();
     let new_authority = new_authority.as_ref().unwrap_or(&owner_pubkey);
 
-    // Calculate amount of tokens to burn
+    // Calculate amount of tokens to withdraw
     let stake_account = config.rpc_client.get_account(&stake)?;
-    let tokens_to_burn = stake_amount_to_pool_tokens(&pool_data, stake_account.lamports);
+    let tokens_to_withdraw = pool_data
+        .calc_pool_withdraw_amount(stake_account.lamports)
+        .unwrap();
 
     // Check balance and mint
-    let account_data = config.rpc_client.get_account_data(&burn_from)?;
+    let account_data = config.rpc_client.get_account_data(&withdraw_from)?;
     let account_data: TokenAccount =
         TokenAccount::unpack_from_slice(account_data.as_slice()).unwrap();
 
@@ -406,10 +393,12 @@ fn command_vsa_remove(
         return Err("Wrong token account.".into());
     }
 
-    if account_data.amount < tokens_to_burn {
+    if account_data.amount < tokens_to_withdraw {
+        let pool_mint_data = config.rpc_client.get_account_data(&pool_data.pool_mint)?;
+        let pool_mint = TokenMint::unpack_from_slice(pool_mint_data.as_slice()).unwrap();
         return Err(format!(
             "Not enough balance to burn to remove validator stake account from the pool. {} pool tokens needed.",
-            lamports_to_sol(tokens_to_burn)
+            spl_token::amount_to_ui_amount(tokens_to_withdraw, pool_mint.decimals)
         ).into());
     }
 
@@ -418,11 +407,11 @@ fn command_vsa_remove(
             // Approve spending token
             approve_token(
                 &spl_token::id(),
-                &burn_from,
+                &withdraw_from,
                 &pool_withdraw_authority,
                 &config.owner.pubkey(),
                 &[],
-                tokens_to_burn,
+                tokens_to_withdraw,
             )?,
             // Create new validator stake account address
             remove_validator_stake_account(
@@ -433,7 +422,7 @@ fn command_vsa_remove(
                 &new_authority,
                 &pool_data.validator_stake_list,
                 &stake,
-                &burn_from,
+                &withdraw_from,
                 &pool_data.pool_mint,
                 &spl_token::id(),
                 &stake_program_id(),
@@ -666,13 +655,13 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
         let balance = account.lamports;
         total_balance += balance;
         println!(
-            "Pubkey: {}\tVote: {}\t{} SOL",
+            "Pubkey: {}\tVote: {}\t{}",
             pubkey,
             stake_data.delegation().unwrap().voter_pubkey,
-            lamports_to_sol(balance)
+            Sol(balance)
         );
     }
-    println!("Total: {} SOL", lamports_to_sol(total_balance));
+    println!("Total: {}", Sol(total_balance));
 
     Ok(None)
 }
@@ -736,33 +725,18 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
     }
 }
 
-fn stake_amount_to_pool_tokens(pool_data: &StakePool, amount: u64) -> u64 {
-    (amount as u128)
-        .checked_mul(pool_data.pool_total as u128)
-        .unwrap()
-        .checked_div(pool_data.stake_total as u128)
-        .unwrap() as u64
-}
-
-fn pool_tokens_to_stake_amount(pool_data: &StakePool, tokens: u64) -> u64 {
-    (tokens as u128)
-        .checked_mul(pool_data.stake_total as u128)
-        .unwrap()
-        .checked_div(pool_data.pool_total as u128)
-        .unwrap() as u64
-}
-
 #[derive(PartialEq, Debug)]
 struct WithdrawAccount {
     pubkey: Pubkey,
     account: Account,
-    amount: u64,
+    pool_amount: u64,
 }
 
 fn prepare_withdraw_accounts(
     config: &Config,
+    stake_pool: &StakePool,
     pool_withdraw_authority: &Pubkey,
-    amount: u64,
+    pool_amount: u64,
 ) -> Result<Vec<WithdrawAccount>, Error> {
     let mut accounts = get_authority_accounts(config, &pool_withdraw_authority);
     if accounts.is_empty() {
@@ -772,12 +746,22 @@ fn prepare_withdraw_accounts(
         .rpc_client
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
         + 1;
-    pick_withdraw_accounts(&mut accounts, amount, min_balance)
+    let pool_mint_data = config.rpc_client.get_account_data(&stake_pool.pool_mint)?;
+    let pool_mint = TokenMint::unpack_from_slice(pool_mint_data.as_slice()).unwrap();
+    pick_withdraw_accounts(
+        &mut accounts,
+        stake_pool,
+        &pool_mint,
+        pool_amount,
+        min_balance,
+    )
 }
 
 fn pick_withdraw_accounts(
     accounts: &mut Vec<(Pubkey, Account)>,
-    amount: u64,
+    stake_pool: &StakePool,
+    pool_mint: &TokenMint,
+    pool_amount: u64,
     min_balance: u64,
 ) -> Result<Vec<WithdrawAccount>, Error> {
     // Sort from highest to lowest balance
@@ -785,21 +769,23 @@ fn pick_withdraw_accounts(
 
     // Prepare the list of accounts to withdraw from
     let mut withdraw_from: Vec<WithdrawAccount> = vec![];
-    let mut remaining_amount = amount;
+    let mut remaining_amount = pool_amount;
 
     // Go through available accounts and withdraw from largest to smallest
     for (pubkey, account) in accounts {
         if account.lamports <= min_balance {
             continue;
         }
-        let available_for_withdrawal = account.lamports - *MIN_STAKE_BALANCE;
+        let available_for_withdrawal = stake_pool
+            .calc_lamports_amount(account.lamports - *MIN_STAKE_BALANCE)
+            .unwrap();
         let withdraw_amount = u64::min(available_for_withdrawal, remaining_amount);
 
         // Those accounts will be withdrawn completely with `claim` instruction
         withdraw_from.push(WithdrawAccount {
             pubkey: *pubkey,
             account: account.clone(),
-            amount: withdraw_amount,
+            pool_amount: withdraw_amount,
         });
         remaining_amount -= withdraw_amount;
 
@@ -811,8 +797,8 @@ fn pick_withdraw_accounts(
     // Not enough stake to withdraw the specified amount
     if remaining_amount > 0 {
         return Err(format!(
-            "No stake accounts found in this pool with enough balance to withdraw {} SOL.",
-            lamports_to_sol(amount)
+            "No stake accounts found in this pool with enough balance to withdraw {} pool tokens.",
+            spl_token::amount_to_ui_amount(pool_amount, pool_mint.decimals)
         )
         .into());
     }
@@ -823,13 +809,17 @@ fn pick_withdraw_accounts(
 fn command_withdraw(
     config: &Config,
     pool: &Pubkey,
-    amount: u64,
-    burn_from: &Pubkey,
+    pool_amount: f64,
+    withdraw_from: &Pubkey,
     stake_receiver_param: &Option<Pubkey>,
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
+
+    let pool_mint_data = config.rpc_client.get_account_data(&pool_data.pool_mint)?;
+    let pool_mint = TokenMint::unpack_from_slice(pool_mint_data.as_slice()).unwrap();
+    let pool_amount = spl_token::ui_amount_to_amount(pool_amount, pool_mint.decimals);
 
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
@@ -839,8 +829,8 @@ fn command_withdraw(
     )
     .unwrap();
 
-    // Check burn_from account type
-    let account_data = config.rpc_client.get_account_data(&burn_from)?;
+    // Check withdraw_from account type
+    let account_data = config.rpc_client.get_account_data(&withdraw_from)?;
     let account_data: TokenAccount =
         TokenAccount::unpack_from_slice(account_data.as_slice()).unwrap();
 
@@ -848,51 +838,54 @@ fn command_withdraw(
         return Err("Wrong token account.".into());
     }
 
-    // Check burn_from balance
-    if account_data.amount < amount {
+    // Check withdraw_from balance
+    if account_data.amount < pool_amount {
         return Err(format!(
             "Not enough token balance to withdraw {} pool tokens.\nMaximum withdraw amount is {} pool tokens.",
-            lamports_to_sol(amount),
-            lamports_to_sol(account_data.amount)
+            spl_token::amount_to_ui_amount(pool_amount, pool_mint.decimals),
+            spl_token::amount_to_ui_amount(account_data.amount, pool_mint.decimals)
         )
         .into());
     }
 
-    // Convert pool tokens amount to lamports
-    let sol_withdraw_amount = pool_tokens_to_stake_amount(&pool_data, amount);
-
     // Get the list of accounts to withdraw from
-    let withdraw_from: Vec<WithdrawAccount> =
-        prepare_withdraw_accounts(config, &pool_withdraw_authority, sol_withdraw_amount)?;
+    let withdraw_accounts: Vec<WithdrawAccount> =
+        prepare_withdraw_accounts(config, &pool_data, &pool_withdraw_authority, pool_amount)?;
 
-    // Construct transaction to withdraw from withdraw_from account list
+    // Construct transaction to withdraw from withdraw_accounts account list
     let mut instructions: Vec<Instruction> = vec![];
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
     let stake_receiver_account = Keypair::new(); // Will be added to signers if creating new account
-
-    let mut total_rent_free_balances: u64 = 0;
 
     instructions.push(
         // Approve spending token
         approve_token(
             &spl_token::id(),
-            &burn_from,
+            &withdraw_from,
             &pool_withdraw_authority,
             &config.owner.pubkey(),
             &[],
-            amount,
+            pool_amount,
         )?,
     );
 
     // Use separate mutable variable because withdraw might create a new account
     let mut stake_receiver: Option<Pubkey> = *stake_receiver_param;
 
+    let mut total_rent_free_balances = 0;
+
     // Go through prepared accounts and withdraw/claim them
-    for withdraw_stake in withdraw_from {
+    for withdraw_stake in withdraw_accounts {
+        // Convert pool tokens amount to lamports
+        let sol_withdraw_amount = pool_data
+            .calc_lamports_amount(withdraw_stake.pool_amount)
+            .unwrap();
+
         println!(
-            "Withdrawing from account {}, amount {} SOL",
+            "Withdrawing from account {}, amount {}, {} pool tokens",
             withdraw_stake.pubkey,
-            lamports_to_sol(withdraw_stake.amount)
+            Sol(sol_withdraw_amount),
+            spl_token::amount_to_ui_amount(withdraw_stake.pool_amount, pool_mint.decimals),
         );
 
         if stake_receiver.is_none() {
@@ -932,11 +925,11 @@ fn command_withdraw(
             &withdraw_stake.pubkey,
             &stake_receiver.unwrap(), // Cannot be none at this point
             &config.owner.pubkey(),
-            &burn_from,
+            &withdraw_from,
             &pool_data.pool_mint,
             &spl_token::id(),
             &stake_program_id(),
-            withdraw_stake.amount,
+            withdraw_stake.pool_amount,
         )?);
     }
 
@@ -1202,13 +1195,13 @@ fn main() {
                     .help("Stake account to remove from the pool"),
             )
             .arg(
-                Arg::with_name("burn_from")
-                    .long("burn-from")
+                Arg::with_name("withdraw_from")
+                    .long("withdraw-from")
                     .validator(is_pubkey)
                     .value_name("ADDRESS")
                     .takes_value(true)
                     .required(true)
-                    .help("Token account to burn pool token from. Must have enough tokens to burn for the full stake address balance."),
+                    .help("Token account to withdraw pool token from. Must have enough tokens for the full stake address balance."),
             )
             .arg(
                 Arg::with_name("new_authority")
@@ -1286,16 +1279,16 @@ fn main() {
                     .value_name("AMOUNT")
                     .takes_value(true)
                     .required(true)
-                    .help("Amount of pool tokens to burn and get rewards."),
+                    .help("Amount of pool tokens to withdraw for activated stake."),
             )
             .arg(
-                Arg::with_name("burn_from")
-                    .long("burn-from")
+                Arg::with_name("withdraw_from")
+                    .long("withdraw-from")
                     .validator(is_pubkey)
                     .value_name("ADDRESS")
                     .takes_value(true)
                     .required(true)
-                    .help("Account to burn tokens from. Must be owned by the client."),
+                    .help("Account to withdraw tokens from. Must be owned by the client."),
             )
             .arg(
                 Arg::with_name("stake_receiver")
@@ -1440,13 +1433,13 @@ fn main() {
         ("remove-validator-stake", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account: Pubkey = pubkey_of(arg_matches, "stake").unwrap();
-            let burn_from: Pubkey = pubkey_of(arg_matches, "burn_from").unwrap();
+            let withdraw_from: Pubkey = pubkey_of(arg_matches, "withdraw_from").unwrap();
             let new_authority: Option<Pubkey> = pubkey_of(arg_matches, "new_authority");
             command_vsa_remove(
                 &config,
                 &pool_account,
                 &stake_account,
-                &burn_from,
+                &withdraw_from,
                 &new_authority,
             )
         }
@@ -1466,11 +1459,16 @@ fn main() {
         }
         ("withdraw", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let burn_from: Pubkey = pubkey_of(arg_matches, "burn_from").unwrap();
-            // convert from float to int, using sol_to_lamports because they have the same precision as SOL
-            let amount: u64 = sol_to_lamports(value_t_or_exit!(arg_matches, "amount", f64));
+            let withdraw_from: Pubkey = pubkey_of(arg_matches, "withdraw_from").unwrap();
+            let pool_amount = value_t_or_exit!(arg_matches, "amount", f64);
             let stake_receiver: Option<Pubkey> = pubkey_of(arg_matches, "stake_receiver");
-            command_withdraw(&config, &pool_account, amount, &burn_from, &stake_receiver)
+            command_withdraw(
+                &config,
+                &pool_account,
+                pool_amount,
+                &withdraw_from,
+                &stake_receiver,
+            )
         }
         ("set-staking-auth", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();

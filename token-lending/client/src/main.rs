@@ -33,6 +33,7 @@ pub fn main() {
 
     let token_pubkey: Pubkey = Pubkey::from_str("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA").unwrap();
 
+
     let path = &format!("{}/id.json", KEYPAIR_PATH);
     println!("{}", path);
     let payer = read_keypair_file(path).unwrap();
@@ -100,6 +101,17 @@ pub fn main() {
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
     transaction.sign(&[&payer, &mint_account, &token_account], recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
+
+    let sol_usdc_dex_market = DexMarket {
+        name: "sol_usdc",
+        pubkey: Pubkey::from_str("9wFFyRfZBsuAha4YcuxcXLKwMxJR43S7fPfQLusDBzvT").unwrap(),
+    };
+
+    let srm_usdc_dex_market = DexMarket {
+        name: "srm_usdc",
+        pubkey: Pubkey::from_str("ByRys5tuUWDgL73G8JBAEfkdFf8JWBzPBDHsBVQ5vbQA").unwrap(),
+    };
+
 
     let quote_token_mint = mint_account.pubkey();
     let (lending_market_owner, lending_market_pubkey, _lending_market) =
