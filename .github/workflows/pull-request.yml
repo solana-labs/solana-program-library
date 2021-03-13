@@ -96,8 +96,6 @@ jobs:
           override: true
           profile: minimal
 
-
-
       - name: Install dependencies
         run: |
           ./ci/install-build-deps.sh
