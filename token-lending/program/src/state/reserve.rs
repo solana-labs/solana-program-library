@@ -1234,7 +1234,6 @@ mod test {
                 borrow_fee_wad,
                 flash_loan_fee_wad,
                 host_fee_percentage,
-
             };
             let (total_fee, host_fee) = fees.calculate_borrow_fees(borrow_amount)?;
 
