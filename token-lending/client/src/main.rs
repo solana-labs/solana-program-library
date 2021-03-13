@@ -61,6 +61,7 @@ pub fn main() {
         max_borrow_rate: 30,
         fees: ReserveFees {
             borrow_fee_wad: 100_000_000_000_000, // 1 bp
+            flash_loan_fee_wad: 100_000_000_000_000, // 1 bp
             host_fee_percentage: 20,
         },
     };
@@ -88,6 +89,7 @@ pub fn main() {
         max_borrow_rate: 15,
         fees: ReserveFees {
             borrow_fee_wad: 1_000_000_000_000, // 0.01 bp
+            flash_loan_fee_wad: 100_000_000_000_000, // 1 bp
             host_fee_percentage: 20,
         },
     };
@@ -115,6 +117,7 @@ pub fn main() {
         max_borrow_rate: 15,
         fees: ReserveFees {
             borrow_fee_wad: 10_000_000_000_000, // 0.1 bp
+            flash_loan_fee_wad: 100_000_000_000_000, // 1 bp
             host_fee_percentage: 25,
         },
     };
@@ -181,6 +184,7 @@ pub fn create_reserve(
     let collateral_mint_keypair = Keypair::new();
     let collateral_supply_keypair = Keypair::new();
     let collateral_fees_receiver_keypair = Keypair::new();
+    let flash_loan_fees_receiver_keypair = Keypair::new();
     let liquidity_supply_keypair = Keypair::new();
     let user_collateral_token_keypair = Keypair::new();
     let user_transfer_authority = Keypair::new();
@@ -215,6 +219,13 @@ pub fn create_reserve(
             create_account(
                 &payer.pubkey(),
                 &collateral_fees_receiver_keypair.pubkey(),
+                token_balance,
+                Token::LEN as u64,
+                &spl_token::id(),
+            ),
+            create_account(
+                &payer.pubkey(),
+                &flash_loan_fees_receiver_keypair.pubkey(),
                 token_balance,
                 Token::LEN as u64,
                 &spl_token::id(),
@@ -283,6 +294,7 @@ pub fn create_reserve(
                 collateral_mint_keypair.pubkey(),
                 collateral_supply_keypair.pubkey(),
                 collateral_fees_receiver_keypair.pubkey(),
+                flash_loan_fees_receiver_keypair.pubkey(),
                 lending_market_pubkey,
                 lending_market_owner.pubkey(),
                 user_transfer_authority.pubkey(),
