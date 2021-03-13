@@ -120,6 +120,7 @@ async fn test_already_initialized() {
             usdc_reserve.collateral_mint,
             usdc_reserve.collateral_supply,
             usdc_reserve.collateral_fees_receiver,
+            usdc_reserve.flash_loan_fees_receiver,
             lending_market.pubkey,
             lending_market.owner.pubkey(),
             user_transfer_authority.pubkey(),
@@ -175,6 +176,7 @@ async fn test_invalid_fees() {
         let mut config = TEST_RESERVE_CONFIG;
         config.fees = ReserveFees {
             borrow_fee_wad: 1_000_000_000_000_000_001,
+            flash_loan_fee_wad: 1_000_000_000_000_000_001,
             host_fee_percentage: 0,
         };
 
@@ -205,6 +207,7 @@ async fn test_invalid_fees() {
         let mut config = TEST_RESERVE_CONFIG;
         config.fees = ReserveFees {
             borrow_fee_wad: 10_000_000_000_000_000,
+            flash_loan_fee_wad: 10_000_000_000_000_000,
             host_fee_percentage: 101,
         };
 
