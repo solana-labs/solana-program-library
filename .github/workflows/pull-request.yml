@@ -202,7 +202,9 @@ jobs:
         with:
           name: programs
           path: target/bpfel-unknown-unknown/release
-      - run: ./ci/js-test-token-lending.sh
+      - run: |
+        sh -c "$(curl -sSfL https://release.solana.com/v1.5.14/install)"
+        ./ci/js-test-token-lending.sh
 
   fuzz:
     runs-on: ubuntu-latest
