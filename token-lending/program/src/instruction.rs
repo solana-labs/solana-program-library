@@ -973,6 +973,7 @@ pub fn set_lending_market_owner(
 }
 
 /// Creates a `FlashLoanStart` instruction
+#[allow(clippy::too_many_arguments)]
 pub fn flash_loan_start(
     program_id: Pubkey,
     liquidity_amount: u64,

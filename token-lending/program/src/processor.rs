@@ -1643,7 +1643,7 @@ fn process_flash_loan_start(
     spl_token_transfer(TokenTransferParams {
         source: reserve_liquidity_account_info.clone(),
         destination: destination_token_account_info.clone(),
-        amount: liquidity_amount.clone(),
+        amount: liquidity_amount,
         authority: derived_lending_market_account_info.clone(),
         authority_signer_seeds,
         token_program: token_account.clone(),
