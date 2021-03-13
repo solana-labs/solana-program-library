@@ -50,6 +50,8 @@ const DEPLOY_PATH: &str =
     "/Users/jprince/Documents/other/solana-program-library/target/deploy/spl_timelock.so";
 const TIMELOCK_PROGRAM_ID: &str = "6FyMHpXABKVSt4DmqUYLMgWChJV8HFXJuF6CsgucbZ3G";
 const TIMELOCK_PROGRAM_ACCOUNT_ID: &str = "FNsF5k1dGz8mrq7unFeeNx8LqFn9bhKg6n6N5DLgQmfb";
+const MINT_ID: &str = ""; 
+const PROGRAM_ID: &str = "";
 // -------- UPDATE END ---------
 
 pub fn main() {
@@ -61,14 +63,17 @@ pub fn main() {
 
     let timelock_program_account_key = Pubkey::from_str(TIMELOCK_PROGRAM_ACCOUNT_ID).unwrap();
     let timelock_program_id = Pubkey::from_str(TIMELOCK_PROGRAM_ID).unwrap();
+    let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+    let mint_id = Pubkey::from_str(MINT_ID).unwrap();
+
     let (authority_key, bump_seed) = Pubkey::find_program_address(
-        &[timelock_program_account_key.as_ref()],
+        &[timelock_program_account_key.as_ref(), mint_id.as_ref(), program_id.as_ref()],
         &timelock_program_id,
     );
     let final_message = do_process_program_partial_upgrade(
         &client,
         &bytes.as_slice(),
-        &timelock_program_id,
+        &program_id,
         &payer,
         &buffer_key,
         &authority_key,

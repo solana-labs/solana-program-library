@@ -61,7 +61,7 @@ pub fn process_init_timelock_config(
     
     if new_timelock_config.timelock_type == TimelockType::Governance {
         let (expected_key, _) =
-        Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref(), governance_mint_account_info.key.as_ref(),program_to_tie_account_info.key.as_ref() ], program_id);
+        Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref(), governance_mint_account_info.key.as_ref(), program_to_tie_account_info.key.as_ref() ], program_id);
         if timelock_config_account_info.key != &expected_key {
             return Err(TimelockError::InvalidTimelockConfigKey.into());
         }
