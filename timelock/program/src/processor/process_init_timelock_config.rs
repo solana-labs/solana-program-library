@@ -26,11 +26,7 @@ pub fn process_init_timelock_config(
     }
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_rent_exempt(rent, timelock_config_account_info)?;
-    let (expected_key, _) =
-    Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref(), token_program_account_info.key.as_ref(), governance_mint_account_info.key.as_ref(),program_to_tie_account_info.key.as_ref() ], program_id);
-    if timelock_config_account_info.key != &expected_key {
-        return Err(TimelockError::InvalidTimelockConfigKey.into());
-    }
+
 
     let mut new_timelock_config: TimelockConfig = assert_uninitialized(timelock_config_account_info)?;
     new_timelock_config.version = TIMELOCK_CONFIG_VERSION;
@@ -61,6 +57,15 @@ pub fn process_init_timelock_config(
         1 => VotingEntryRule::Anytime,
         _ => VotingEntryRule::DraftOnly
     };
+
+    
+    if new_timelock_config.timelock_type == TimelockType::Governance {
+        let (expected_key, _) =
+        Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref(), governance_mint_account_info.key.as_ref(),program_to_tie_account_info.key.as_ref() ], program_id);
+        if timelock_config_account_info.key != &expected_key {
+            return Err(TimelockError::InvalidTimelockConfigKey.into());
+        }
+    }
 
     TimelockConfig::pack(new_timelock_config, &mut timelock_config_account_info.data.borrow_mut())?;
 

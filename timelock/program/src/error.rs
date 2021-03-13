@@ -125,7 +125,11 @@ pub enum TimelockError {
 
     /// Invalid Timelock config key given for a program-mint tuple
     #[error("Invalid timelock config key given for a program-mint tuple")]
-    InvalidTimelockConfigKey
+    InvalidTimelockConfigKey,
+
+    /// Cannot use timelock authorities in this type of timelock
+    #[error("Cannot use timelock authorities in this type of timelock")]
+    CannotUseTimelockAuthoritiesInExecute
 }
 
 impl PrintProgramError for TimelockError {

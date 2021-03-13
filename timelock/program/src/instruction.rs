@@ -221,10 +221,10 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Transaction account you wish to execute.
     ///   1. `[]` Timelock set account.
     ///   2. `[]` Program being invoked account
-    ///   3. `[]` Timelock program authority
-    ///   4. `[]` Timelock program account pub key.
-    ///   5. `[]` Clock sysvar.
-    ///   6+ Any extra accounts that are part of the instruction, in order
+    ///   4. `[]` Timelock config
+    ///   5. `[]` Timelock program account pub key.
+    ///   6. `[]` Clock sysvar.
+    ///   7+ Any extra accounts that are part of the instruction, in order
     Execute {
         /// Number of extra accounts
         number_of_extra_accounts: u8,
@@ -272,8 +272,8 @@ pub enum TimelockInstruction {
         voting_token_amount: u64,
     },
 
-    ///   0. `[]` Uninitialized timelock config account with pubkey set to PDA with seeds of the 
-    ///           program account key, governance mint key, timelock program account key, token program account key and bpf upgradeable loader key.
+    ///   0. `[]` Uninitialized timelock config account. If using Governance subtype, needs to be set with pubkey set to PDA with seeds of the 
+    ///           program account key, governance mint key, timelock program account key.
     ///   1. `[]` Program account to tie this config to.
     ///   2. `[]` Governance mint to tie this config to (optional)
     ///   3. `[]` Timelock program account pub key.
