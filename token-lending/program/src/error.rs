@@ -125,12 +125,25 @@ pub enum LendingError {
     /// Token burn failed
     #[error("Token burn failed")]
     TokenBurnFailed,
+
+    // 35
+    /// Invalid obligation collateral amount
+    #[error("Invalid obligation collateral amount")]
+    InvalidObligationCollateral,
+    /// Obligation collateral is already below required amount
+    #[error("Obligation collateral is already below required amount")]
+    ObligationCollateralBelowRequired,
+    /// Obligation collateral cannot be withdrawn below required amount
+    #[error("Obligation collateral cannot be withdrawn below required amount")]
+    ObligationCollateralWithdrawBelowRequired,
     /// Invalid flash loan return instruction
     #[error("Invalid flash loan return instruction.")]
-    InvalidFlashLoanReturn,
+    InvalidFlashLoanEnd,
     /// Error parsing instruction
     #[error("Error parsing instruction.")]
     ErrorParsingInstruction,
+
+    // 40
     /// Flash loan end index is invalid.
     #[error("Flash loan end index is invalid.")]
     InvalidFlashLoanEndIndex,
