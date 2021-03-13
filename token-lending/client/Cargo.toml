@@ -8,8 +8,8 @@ license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
-solana-client = "1.5.6"
-solana-program = "1.5.8"
-solana-sdk = "1.5.6"
+solana-client = "1.5.11"
+solana-program = "1.5.11"
+solana-sdk = "1.5.11"
 spl-token-lending = { path = "../program", features = [ "no-entrypoint" ] }
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }

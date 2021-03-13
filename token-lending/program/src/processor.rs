@@ -1203,7 +1203,6 @@ fn process_accrue_interest(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     Ok(())
 }
 
-
 #[inline(never)] // avoid stack frame limit
 fn process_deposit_obligation_collateral(
     program_id: &Pubkey,
@@ -1542,6 +1541,7 @@ fn process_set_lending_market_owner(
 
     Ok(())
 }
+
 
 fn process_flash_loan_start(
     program_id: &Pubkey, liquidity_amount: u64, flash_loan_end_idx: u8, accounts: &[AccountInfo]

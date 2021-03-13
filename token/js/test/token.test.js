@@ -1,8 +1,8 @@
 // @flow
 import {expect} from 'chai';
-import {Account} from '@solana/web3.js';
+import {Account, PublicKey} from '@solana/web3.js';
 
-import {Token, TOKEN_PROGRAM_ID} from '../client/token';
+import {ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID} from '../client/token';
 
 describe('Token', () => {
   it('createTransfer', () => {
@@ -30,5 +30,30 @@ describe('Token', () => {
     );
     expect(ix.programId).to.eql(TOKEN_PROGRAM_ID);
     expect(ix.keys).to.have.length(2);
+  });
+
+  it('getAssociatedTokenAddress', async () => {
+    const associatedPublicKey = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      new PublicKey('7o36UsWR1JQLpZ9PE2gn9L4SQ69CNNiWAXd4Jt7rqz9Z'),
+      new PublicKey('B8UwBUUnKwCyKuGMbFKWaG7exYdDk2ozZrPg72NyVbfj'),
+    );
+    expect(associatedPublicKey.toString()).to.eql(
+      new PublicKey('DShWnroshVbeUp28oopA3Pu7oFPDBtC1DBmPECXXAQ9n').toString(),
+    );
+  });
+
+  it('createAssociatedTokenAccount', () => {
+    const ix = Token.createAssociatedTokenAccountInstruction(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      new Account().publicKey,
+      new Account().publicKey,
+      new Account().publicKey,
+      new Account().publicKey,
+    );
+    expect(ix.programId).to.eql(ASSOCIATED_TOKEN_PROGRAM_ID);
+    expect(ix.keys).to.have.length(7);
   });
 });
