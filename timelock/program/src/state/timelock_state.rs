@@ -3,7 +3,7 @@ use enums::TimelockStateStatus;
 use solana_program::pubkey::Pubkey;
 
 /// Transaction slots allowed
-pub const TRANSACTION_SLOTS: usize = 10;
+pub const TRANSACTION_SLOTS: usize = 5;
 /// How many characters are allowed in the description
 pub const DESC_SIZE: usize = 200;
 /// How many characters are allowed in the name

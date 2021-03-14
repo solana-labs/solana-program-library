@@ -50,8 +50,8 @@ pub enum TimelockInstruction {
     ///   10. `[writable]` Initialized Destination account for first signatory token
     ///   12. `[writable]` Initialized Yes voting dump account
     ///   13. `[writable]` Initialized No voting dump account
-    ///   14. `[writable]` Initialized Government holding account (Optional, will be ignored if Committee, but some real value is necessary for consistent layout)
-    ///   15. `[]` Government mint (Optional - will be ignored if Committee, but some real value is necessary for consistent layout)
+    ///   14. `[writable]` Initialized Government holding account 
+    ///   15. `[]` Government mint 
     ///   16. `[]` Timelock config account.
     ///   17. `[]` Timelock Program
     ///   18. '[]` Token program id
@@ -182,7 +182,7 @@ pub enum TimelockInstruction {
     ///   4. `[writable]` Voting mint account.
     ///   5. `[writable]` Yes Voting mint account.
     ///   6. `[writable]` No Voting mint account.
-    ///   7. `[]` Governance mint account (optional, only for governance proposals).
+    ///   7. `[]` Governance mint account
     ///   8. `[]` Timelock config account.
     ///   9. `[]` Transfer authority
     ///   10. `[]` Timelock program mint authority
@@ -193,24 +193,6 @@ pub enum TimelockInstruction {
         yes_voting_token_amount: u64,
         /// How many voting tokens to burn no
         no_voting_token_amount: u64
-    },
-
-    /// [Requires Signatory token]
-    /// Mints voting tokens for a destination account to be used during the voting process.
-    ///
-    ///   0. `[writable]` Timelock set account.
-    ///   1. `[writable]` Initialized Voting account.
-    ///   2. `[writable]` Voting mint account.
-    ///   3. `[writable]` Signatory account
-    ///   4. `[writable]` Signatory validation account.
-    ///   5. `[]` Timelock config account.
-    ///   6. `[]` Transfer authority
-    ///   7. `[]` Timelock program mint authority
-    ///   8. `[]` Timelock program account pub key.
-    ///   9. `[]` Token program account.
-    MintVotingTokens {
-        /// How many voting tokens to mint
-        voting_token_amount: u64,
     },
 
     /// Only used for testing. Requires no accounts of any kind.
@@ -230,7 +212,7 @@ pub enum TimelockInstruction {
         number_of_extra_accounts: u8,
     },
 
-    /// [Requires tokens of the Governance mint and a Governance timelock]
+    /// [Requires tokens of the Governance mint]
     /// Deposits voting tokens to be used during the voting process in a timelock.
     /// These tokens are removed from your account and can be returned by withdrawing
     /// them from the timelock (but then you will miss the vote.)
@@ -250,7 +232,7 @@ pub enum TimelockInstruction {
         voting_token_amount: u64,
     },
 
-    /// [Requires voting tokens and a Governance timelock]
+    /// [Requires voting tokens]
     /// Withdraws voting tokens.
     ///
     ///   0. `[writable]` Initialized Voting account from which to remove your voting tokens.
@@ -272,10 +254,10 @@ pub enum TimelockInstruction {
         voting_token_amount: u64,
     },
 
-    ///   0. `[]` Uninitialized timelock config account. If using Governance subtype, needs to be set with pubkey set to PDA with seeds of the 
+    ///   0. `[]` Uninitialized timelock config account. Needs to be set with pubkey set to PDA with seeds of the 
     ///           program account key, governance mint key, timelock program account key.
     ///   1. `[]` Program account to tie this config to.
-    ///   2. `[]` Governance mint to tie this config to (optional)
+    ///   2. `[]` Governance mint to tie this config to 
     ///   3. `[]` Timelock program account pub key.
     ///   4. `[]` Token program account.
     ///   5. `[]` Rent sysvar
@@ -346,12 +328,6 @@ impl TimelockInstruction {
                 Self::Vote {
                     yes_voting_token_amount,
                     no_voting_token_amount
-                }
-            }
-            10 => {
-                let (voting_token_amount, _) = Self::unpack_u64(rest)?;
-                Self::MintVotingTokens {
-                    voting_token_amount,
                 }
             }
             11 => Self::Ping,
@@ -495,12 +471,6 @@ impl TimelockInstruction {
                 buf.extend_from_slice(&yes_voting_token_amount.to_le_bytes());
                 buf.extend_from_slice(&no_voting_token_amount.to_le_bytes());
 
-            }
-            Self::MintVotingTokens {
-                voting_token_amount,
-            } => {
-                buf.push(10);
-                buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
             Self::Ping => buf.push(11),
             Self::Execute {

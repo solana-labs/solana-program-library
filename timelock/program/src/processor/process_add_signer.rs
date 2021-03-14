@@ -36,9 +36,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
         transfer_authority_info,
         timelock_program_authority_info,
     )?;
-    let _sig_account: Account = assert_initialized(new_signatory_account_info)?;
-    let _sig_mint: Mint = assert_initialized(signatory_mint_info)?;
-
+    
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
     if timelock_program_authority_info.key != &authority_key {

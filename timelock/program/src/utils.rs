@@ -1,10 +1,10 @@
-use crate::{error::TimelockError, state::{enums::{TimelockStateStatus, TimelockType}, timelock_config::TimelockConfig, timelock_program::{TimelockProgram, TIMELOCK_VERSION}, timelock_set::{TimelockSet, TIMELOCK_SET_VERSION}}};
+use crate::{error::TimelockError, state::{enums::{TimelockStateStatus}, timelock_program::{TimelockProgram}, timelock_set::{TimelockSet}}};
+use arrayref::array_ref;
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
     instruction::Instruction,
-    msg,
-    program::{invoke, invoke_signed},
+    program::{invoke_signed},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
@@ -129,25 +129,6 @@ pub fn assert_token_program_is_correct(
     Ok(())
 }
 
-/// asserts the timelock set is a committee type
-pub fn assert_committee(config: &TimelockConfig) -> ProgramResult {
-    if config.timelock_type != TimelockType::Committee {
-        return Err(TimelockError::InvalidTimelockType.into());
-    }
-
-    Ok(())
-}
-
-
-/// asserts the timelock set is a governance type
-pub fn assert_governance(config: &TimelockConfig) -> ProgramResult {
-    if config.timelock_type != TimelockType::Governance {
-        return Err(TimelockError::InvalidTimelockType.into());
-    }
-
-    Ok(())
-}
-
 /// asserts timelock txn is in timelock set
 pub fn assert_txn_in_set(timelock_set: &TimelockSet, timelock_txn_account_info: &AccountInfo) -> ProgramResult {
     let mut found: bool = false;
@@ -169,7 +150,7 @@ pub fn assert_txn_in_set(timelock_set: &TimelockSet, timelock_txn_account_info: 
 
 /// asserts that two accounts are equivalent
 pub fn assert_account_equiv(acct: &AccountInfo, key: &Pubkey) -> ProgramResult {
-    if acct.key != key {
+     if acct.key != key {
         return Err(TimelockError::AccountsShouldMatch.into());
     }
 
@@ -204,6 +185,28 @@ pub fn assert_uninitialized<T: Pack + IsInitialized>(
     } else {
         Ok(account)
     }
+}
+
+/// cheap assertion of mint serialization
+#[inline(always)]
+pub fn assert_cheap_mint_initialized(account_info: &AccountInfo) -> Result<(), ProgramError> {
+    // In token program, 36, 8, 1, 1 is the layout, where the last 1 is initialized bit.
+    // Not my favorite hack, but necessary to avoid stack size limitations caused by serializing entire Mint
+    // to get at initialization check
+    let index: usize = 36 +  8 +  1 +  1 - 1;
+    if account_info.try_borrow_data().unwrap()[index] == 0 {
+        return Err(TimelockError::Uninitialized.into())
+    } 
+    Ok(())
+}
+
+/// Cheap method to just grab mint Pubkey off token account, instead of deserializing entire thing
+#[inline(always)]
+pub fn get_mint_from_account(account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {
+    // Accounts have mint in first 32 bits.
+    let data = account_info.try_borrow_data().unwrap();
+    let key_data = array_ref![data, 0, 32];
+    Ok(Pubkey::new_from_array(*key_data))
 }
 
 /// assert initialized account

@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::VotingEntryRule, timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenMintToParams, TokenTransferParams, assert_account_equiv, assert_draft, assert_governance, assert_initialized, assert_token_program_is_correct, spl_token_mint_to, spl_token_transfer}};
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::VotingEntryRule, timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenMintToParams, TokenTransferParams, assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct, spl_token_mint_to, spl_token_transfer}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -39,15 +39,9 @@ pub fn process_deposit_voting_tokens(
         return Err(TimelockError::TokenAmountBelowZero.into());
     }
 
-    assert_governance(&timelock_config)?;
     if timelock_config.voting_entry_rule == VotingEntryRule::DraftOnly {
         assert_draft(&timelock_set)?;
     }
-
-    let _voting_account: Account = assert_initialized(voting_account_info)?;
-    let _voting_mint: Mint = assert_initialized(voting_mint_account_info)?;
-    let _source_governance_account: Account = assert_initialized(source_governance_account_info)?;
-    let _governance_account: Account = assert_initialized(governance_holding_account_info)?;
 
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);

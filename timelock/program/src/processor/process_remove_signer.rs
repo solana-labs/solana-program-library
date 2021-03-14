@@ -6,7 +6,6 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
 };
-use spl_token::state::{Account, Mint};
 
 /// Removes a signer
 pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
@@ -37,8 +36,6 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         transfer_authority_info,
         timelock_program_authority_info,
     )?;
-    let _account: Account = assert_initialized(remove_signatory_account_info)?;
-    let _mint: Mint = assert_initialized(signatory_mint_info)?;
 
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);

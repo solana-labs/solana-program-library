@@ -44,7 +44,7 @@ pub struct TimelockSet {
     /// Used to validate voting tokens in a round trip transfer
     pub voting_validation: Pubkey,
 
-    /// Governance holding account (Only used when in Governance mode)
+    /// Governance holding account
     pub governance_holding: Pubkey,
 
     /// Yes Voting dump account for exchanged vote tokens
@@ -68,9 +68,9 @@ impl IsInitialized for TimelockSet {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 714 + DESC_SIZE + NAME_SIZE;
+const TIMELOCK_SET_LEN: usize = 554 + DESC_SIZE + NAME_SIZE;
 impl Pack for TimelockSet {
-    const LEN: usize = 714 + DESC_SIZE + NAME_SIZE;
+    const LEN: usize = 554 + DESC_SIZE + NAME_SIZE;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_SET_LEN];
@@ -99,13 +99,8 @@ impl Pack for TimelockSet {
             timelock_txn_3,
             timelock_txn_4,
             timelock_txn_5,
-            timelock_txn_6,
-            timelock_txn_7,
-            timelock_txn_8,
-            timelock_txn_9,
-            timelock_txn_10,
         ) = array_refs![
-            input, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1,  8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32,
+            input, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1,  8, DESC_SIZE, NAME_SIZE,
             32, 32, 32, 32, 32
         ];
         let version = u8::from_le_bytes(*version);
@@ -142,11 +137,6 @@ impl Pack for TimelockSet {
                         Pubkey::new_from_array(*timelock_txn_3),
                         Pubkey::new_from_array(*timelock_txn_4),
                         Pubkey::new_from_array(*timelock_txn_5),
-                        Pubkey::new_from_array(*timelock_txn_6),
-                        Pubkey::new_from_array(*timelock_txn_7),
-                        Pubkey::new_from_array(*timelock_txn_8),
-                        Pubkey::new_from_array(*timelock_txn_9),
-                        Pubkey::new_from_array(*timelock_txn_10),
                     ],
                     desc_link: *desc_link,
                     name: *name,
@@ -183,14 +173,9 @@ impl Pack for TimelockSet {
             timelock_txn_3,
             timelock_txn_4,
             timelock_txn_5,
-            timelock_txn_6,
-            timelock_txn_7,
-            timelock_txn_8,
-            timelock_txn_9,
-            timelock_txn_10,
         ) = mut_array_refs![
-            output, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,32, 1,  8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32,
-            32, 32, 32, 32, 32
+            output, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,32, 1, 8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32
+            
         ];
         *version = self.version.to_le_bytes();
         signatory_mint.copy_from_slice(self.signatory_mint.as_ref());
@@ -221,11 +206,6 @@ impl Pack for TimelockSet {
         timelock_txn_3.copy_from_slice(self.state.timelock_transactions[2].as_ref());
         timelock_txn_4.copy_from_slice(self.state.timelock_transactions[3].as_ref());
         timelock_txn_5.copy_from_slice(self.state.timelock_transactions[4].as_ref());
-        timelock_txn_6.copy_from_slice(self.state.timelock_transactions[5].as_ref());
-        timelock_txn_7.copy_from_slice(self.state.timelock_transactions[6].as_ref());
-        timelock_txn_8.copy_from_slice(self.state.timelock_transactions[7].as_ref());
-        timelock_txn_9.copy_from_slice(self.state.timelock_transactions[8].as_ref());
-        timelock_txn_10.copy_from_slice(self.state.timelock_transactions[9].as_ref());
        
     }
 
