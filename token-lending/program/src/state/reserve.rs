@@ -269,13 +269,18 @@ impl Reserve {
 
     /// Record deposited liquidity and return amount of collateral tokens to mint
     pub fn deposit_liquidity(&mut self, liquidity_amount: u64) -> Result<u64, ProgramError> {
-        let collateral_exchange_rate = self.collateral_exchange_rate()?;
-        let collateral_amount =
-            collateral_exchange_rate.liquidity_to_collateral(liquidity_amount)?;
+        let collateral_amount = self
+            .collateral_exchange_rate()?
+            .liquidity_to_collateral(liquidity_amount)?;
 
-        // @FIXME: unchecked math
-        self.liquidity.available_amount += liquidity_amount;
-        self.collateral.mint_total_supply += collateral_amount;
+        self.liquidity
+            .available_amount
+            .checked_add(liquidity_amount)
+            .ok_or(LendingError::MathOverflow)?;
+        self.collateral
+            .mint_total_supply
+            .checked_add(collateral_amount)
+            .ok_or(LendingError::MathOverflow)?;
 
         Ok(collateral_amount)
     }
