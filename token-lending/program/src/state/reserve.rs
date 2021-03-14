@@ -120,6 +120,7 @@ impl Reserve {
     ) -> Result<LiquidateResult, ProgramError> {
         // Check obligation health
         let borrow_token_price = token_converter.best_price(liquidity_token_mint)?;
+        // @FIXME: moved to lending market
         let liquidation_threshold =
             Rate::from_percent(collateral_reserve_config.liquidation_threshold);
         let obligation_loan_to_value =
@@ -227,6 +228,7 @@ impl Reserve {
         })
     }
 
+    //  @FIXME: move/remove this
     /// Calculate allowed borrow for collateral
     pub fn allowed_borrow_for_collateral(
         &self,
@@ -246,6 +248,7 @@ impl Reserve {
         Ok(borrow_amount)
     }
 
+    //  @FIXME: move/remove this
     /// Calculate required collateral for borrow
     pub fn required_collateral_for_borrow(
         &self,
@@ -538,14 +541,8 @@ impl From<CollateralExchangeRate> for Rate {
 pub struct ReserveConfig {
     /// Optimal utilization rate as a percent
     pub optimal_utilization_rate: u8,
-    // @TODO: does this make sense at the reserve level anymore?
-    /// The ratio of the loan to the value of the collateral as a percent
-    pub loan_to_value_ratio: u8,
     /// The percent discount the liquidator gets when buying collateral for an unhealthy obligation
     pub liquidation_bonus: u8,
-    // @TODO: does this make sense at the reserve level anymore?
-    /// The percent at which an obligation is considered unhealthy
-    pub liquidation_threshold: u8,
     /// Min borrow APY
     pub min_borrow_rate: u8,
     /// Optimal (utilization) borrow APY
@@ -616,7 +613,7 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 602;
+const RESERVE_LEN: usize = 600;
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
@@ -636,9 +633,7 @@ impl Pack for Reserve {
             collateral_supply,
             dex_market,
             optimal_utilization_rate,
-            loan_to_value_ratio,
             liquidation_bonus,
-            liquidation_threshold,
             min_borrow_rate,
             optimal_borrow_rate,
             max_borrow_rate,
@@ -650,8 +645,7 @@ impl Pack for Reserve {
             collateral_mint_supply,
             __padding,
         ) = array_refs![
-            input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8,
-            300
+            input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),
@@ -674,9 +668,7 @@ impl Pack for Reserve {
             },
             config: ReserveConfig {
                 optimal_utilization_rate: u8::from_le_bytes(*optimal_utilization_rate),
-                loan_to_value_ratio: u8::from_le_bytes(*loan_to_value_ratio),
                 liquidation_bonus: u8::from_le_bytes(*liquidation_bonus),
-                liquidation_threshold: u8::from_le_bytes(*liquidation_threshold),
                 min_borrow_rate: u8::from_le_bytes(*min_borrow_rate),
                 optimal_borrow_rate: u8::from_le_bytes(*optimal_borrow_rate),
                 max_borrow_rate: u8::from_le_bytes(*max_borrow_rate),
@@ -702,9 +694,7 @@ impl Pack for Reserve {
             collateral_supply,
             dex_market,
             optimal_utilization_rate,
-            loan_to_value_ratio,
             liquidation_bonus,
-            liquidation_threshold,
             min_borrow_rate,
             optimal_borrow_rate,
             max_borrow_rate,
@@ -716,8 +706,7 @@ impl Pack for Reserve {
             collateral_mint_supply,
             _padding,
         ) = mut_array_refs![
-            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8,
-            300
+            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();
@@ -743,9 +732,7 @@ impl Pack for Reserve {
 
         // config
         *optimal_utilization_rate = self.config.optimal_utilization_rate.to_le_bytes();
-        *loan_to_value_ratio = self.config.loan_to_value_ratio.to_le_bytes();
         *liquidation_bonus = self.config.liquidation_bonus.to_le_bytes();
-        *liquidation_threshold = self.config.liquidation_threshold.to_le_bytes();
         *min_borrow_rate = self.config.min_borrow_rate.to_le_bytes();
         *optimal_borrow_rate = self.config.optimal_borrow_rate.to_le_bytes();
         *max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();

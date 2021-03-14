@@ -37,7 +37,11 @@ pub enum LendingInstruction {
     ///   3. `[]` Token program id
     InitLendingMarket {
         /// Owner authority which can add new reserves
-        market_owner: Pubkey,
+        owner: Pubkey,
+        /// The ratio of the loan to the value of the collateral as a percent
+        loan_to_value_ratio: u8,
+        /// The percent at which an obligation is considered unhealthy
+        liquidation_threshold: u8,
     },
 
     // 1
@@ -364,15 +368,19 @@ impl LendingInstruction {
             .ok_or(LendingError::InstructionUnpackError)?;
         Ok(match tag {
             0 => {
-                let (market_owner, _rest) = Self::unpack_pubkey(rest)?;
-                Self::InitLendingMarket { market_owner }
+                let (owner, _rest) = Self::unpack_pubkey(rest)?;
+                let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
+                let (liquidation_threshold, rest) = Self::unpack_u8(rest)?;
+                Self::InitLendingMarket {
+                    owner,
+                    loan_to_value_ratio,
+                    liquidation_threshold,
+                }
             }
             1 => {
                 let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
                 let (optimal_utilization_rate, rest) = Self::unpack_u8(rest)?;
-                let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
                 let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
-                let (liquidation_threshold, rest) = Self::unpack_u8(rest)?;
                 let (min_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
@@ -382,9 +390,7 @@ impl LendingInstruction {
                     liquidity_amount,
                     config: ReserveConfig {
                         optimal_utilization_rate,
-                        loan_to_value_ratio,
                         liquidation_bonus,
-                        liquidation_threshold,
                         min_borrow_rate,
                         optimal_borrow_rate,
                         max_borrow_rate,
@@ -486,18 +492,22 @@ impl LendingInstruction {
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match *self {
-            Self::InitLendingMarket { market_owner } => {
+            Self::InitLendingMarket {
+                owner,
+                loan_to_value_ratio,
+                liquidation_threshold,
+            } => {
                 buf.push(0);
-                buf.extend_from_slice(market_owner.as_ref());
+                buf.extend_from_slice(owner.as_ref());
+                buf.extend_from_slice(&loan_to_value_ratio.to_le_bytes());
+                buf.extend_from_slice(&liquidation_threshold.to_le_bytes());
             }
             Self::InitReserve {
                 liquidity_amount,
                 config:
                     ReserveConfig {
                         optimal_utilization_rate,
-                        loan_to_value_ratio,
                         liquidation_bonus,
-                        liquidation_threshold,
                         min_borrow_rate,
                         optimal_borrow_rate,
                         max_borrow_rate,
@@ -511,9 +521,7 @@ impl LendingInstruction {
                 buf.push(1);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
                 buf.extend_from_slice(&optimal_utilization_rate.to_le_bytes());
-                buf.extend_from_slice(&loan_to_value_ratio.to_le_bytes());
                 buf.extend_from_slice(&liquidation_bonus.to_le_bytes());
-                buf.extend_from_slice(&liquidation_threshold.to_le_bytes());
                 buf.extend_from_slice(&min_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&optimal_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&max_borrow_rate.to_le_bytes());
@@ -585,6 +593,8 @@ impl LendingInstruction {
 /// Creates an 'InitLendingMarket' instruction.
 pub fn init_lending_market(
     program_id: Pubkey,
+    loan_to_value_ratio: u8,
+    liquidation_threshold: u8,
     lending_market_pubkey: Pubkey,
     lending_market_owner: Pubkey,
     quote_token_mint: Pubkey,
@@ -598,7 +608,9 @@ pub fn init_lending_market(
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: LendingInstruction::InitLendingMarket {
-            market_owner: lending_market_owner,
+            owner: lending_market_owner,
+            loan_to_value_ratio,
+            liquidation_threshold,
         }
         .pack(),
     }

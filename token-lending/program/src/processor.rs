@@ -36,9 +36,19 @@ pub fn process_instruction(
 ) -> ProgramResult {
     let instruction = LendingInstruction::unpack(input)?;
     match instruction {
-        LendingInstruction::InitLendingMarket { market_owner } => {
+        LendingInstruction::InitLendingMarket {
+            owner,
+            loan_to_value_ratio,
+            liquidation_threshold,
+        } => {
             msg!("Instruction: Init Lending Market");
-            process_init_lending_market(program_id, market_owner, accounts)
+            process_init_lending_market(
+                program_id,
+                owner,
+                loan_to_value_ratio,
+                liquidation_threshold,
+                accounts,
+            )
         }
         LendingInstruction::InitReserve {
             liquidity_amount,
@@ -113,12 +123,24 @@ pub fn process_instruction(
     }
 }
 
-// @FIXME
 fn process_init_lending_market(
     program_id: &Pubkey,
-    market_owner: Pubkey,
+    lending_market_owner: Pubkey,
+    loan_to_value_ratio: u8,
+    liquidation_threshold: u8,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
+    if loan_to_value_ratio >= 100 {
+        msg!("Loan to value ratio must be in range [0, 100)");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if liquidation_threshold <= loan_to_value_ratio
+        || liquidation_threshold > 100
+    {
+        msg!("Liquidation threshold must be in range (LTV, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+
     let account_info_iter = &mut accounts.iter();
     let lending_market_info = next_account_info(account_info_iter)?;
     let quote_token_mint_info = next_account_info(account_info_iter)?;
@@ -131,17 +153,18 @@ fn process_init_lending_market(
     }
 
     assert_rent_exempt(rent, lending_market_info)?;
-    let mut new_lending_market: LendingMarket = assert_uninitialized(lending_market_info)?;
-    let bump_seed = Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
-    new_lending_market.version = PROGRAM_VERSION;
-    new_lending_market.bump_seed = bump_seed;
-    new_lending_market.owner = market_owner;
-    new_lending_market.quote_token_mint = *quote_token_mint_info.key;
-    new_lending_market.token_program_id = *token_program_id.key;
-    LendingMarket::pack(
-        new_lending_market,
-        &mut lending_market_info.data.borrow_mut(),
-    )?;
+    assert_uninitialized(lending_market_info)?;
+
+    let mut lending_market = LendingMarket {
+        version: PROGRAM_VERSION,
+        bump_seed: Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1,
+        owner: lending_market_owner,
+        quote_token_mint: *quote_token_mint_info.key,
+        token_program_id: *token_program_id.key,
+        loan_to_value_ratio,
+        liquidation_threshold,
+    };
+    LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
 
     Ok(())
 }
@@ -161,18 +184,8 @@ fn process_init_reserve(
         msg!("Optimal utilization rate must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.loan_to_value_ratio >= 100 {
-        msg!("Loan to value ratio must be in range [0, 100)");
-        return Err(LendingError::InvalidConfig.into());
-    }
     if config.liquidation_bonus > 100 {
         msg!("Liquidation bonus must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.liquidation_threshold <= config.loan_to_value_ratio
-        || config.liquidation_threshold > 100
-    {
-        msg!("Liquidation threshold must be in range (LTV, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.optimal_borrow_rate < config.min_borrow_rate {
@@ -622,6 +635,7 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::LendingMarketMismatch.into());
     }
 
+    // @FIXME: moved to lending market; does per-reserve collateral enable still make sense?
     if deposit_reserve.config.loan_to_value_ratio == 0 {
         return Err(LendingError::ReserveCollateralDisabled.into());
     }
@@ -1201,6 +1215,7 @@ fn process_deposit_obligation_collateral(
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    // @FIXME: moved to lending market; does per-reserve collateral enable still make sense?
     if deposit_reserve.config.loan_to_value_ratio == 0 {
         return Err(LendingError::ReserveCollateralDisabled.into());
     }
@@ -1546,6 +1561,7 @@ fn process_init_obligation_collateral(
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    // @FIXME: moved to lending market; does per-reserve collateral enable still make sense?
     if deposit_reserve.config.loan_to_value_ratio == 0 {
         return Err(LendingError::ReserveCollateralDisabled.into());
     }
@@ -1908,7 +1924,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             return Err(LendingError::InvalidAccountInput.into());
         }
         if obligation_liquidity.is_stale(clock.slot)? {
-            return Err(LendingError::ObligationLiquidityStale.into());z
+            return Err(LendingError::ObligationLiquidityStale.into());
         }
 
         liquidity_market_value =
