@@ -26,6 +26,7 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
+use spl_token::state::Account;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -688,7 +689,7 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::InvalidTokenMint.into());
     }
 
-    let obligation_token_output = Token::unpack(&obligation_token_output_info.data.borrow())?;
+    let obligation_token_output = Account::unpack(&obligation_token_output_info.data.borrow())?;
     if obligation_token_output_info.owner != token_program_id.key {
         return Err(LendingError::InvalidTokenOwner.into());
     }
