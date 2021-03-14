@@ -113,6 +113,7 @@ pub fn process_instruction(
     }
 }
 
+// @FIXME
 fn process_init_lending_market(
     program_id: &Pubkey,
     market_owner: Pubkey,
@@ -145,6 +146,7 @@ fn process_init_lending_market(
     Ok(())
 }
 
+// @FIXME
 fn process_init_reserve(
     program_id: &Pubkey,
     liquidity_amount: u64,
@@ -736,6 +738,7 @@ fn process_borrow_obligation_liquidity(
     obligation.borrowed_liquidity_wads = obligation
         .borrowed_liquidity_wads
         .try_add(Decimal::from(loan.borrow_amount))?;
+    // @FIXME: unchecked math
     obligation.deposited_collateral_tokens += loan.collateral_amount;
 
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
@@ -755,6 +758,7 @@ fn process_borrow_obligation_liquidity(
     let mut owner_fee = loan.origination_fee;
     if let Ok(host_fee_recipient) = next_account_info(account_info_iter) {
         if loan.host_fee > 0 {
+            // @FIXME: unchecked math
             owner_fee -= loan.host_fee;
             spl_token_transfer(TokenTransferParams {
                 source: source_collateral_info.clone(),
@@ -1160,7 +1164,6 @@ fn process_accrue_reserve_interest(program_id: &Pubkey, accounts: &[AccountInfo]
     Ok(())
 }
 
-// @FIXME
 #[inline(never)] // avoid stack frame limit
 fn process_deposit_obligation_collateral(
     program_id: &Pubkey,
@@ -1170,8 +1173,6 @@ fn process_deposit_obligation_collateral(
     if collateral_amount == 0 {
         return Err(LendingError::InvalidAmount.into());
     }
-
-    // @FIXME: resume here
 
     let account_info_iter = &mut accounts.iter();
     let source_collateral_info = next_account_info(account_info_iter)?;
@@ -1295,6 +1296,7 @@ fn process_deposit_obligation_collateral(
 #[inline(never)] // avoid stack frame limit
 fn process_withdraw_obligation_collateral(
     program_id: &Pubkey,
+    // @TODO: allow fixed or max withdraw
     collateral_amount: u64,
     accounts: &[AccountInfo],
 ) -> ProgramResult {

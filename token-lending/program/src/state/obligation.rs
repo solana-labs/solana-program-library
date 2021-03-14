@@ -202,11 +202,13 @@ impl Pack for Obligation {
         for pubkey in self.collateral.iter() {
             let account = array_mut_ref![accounts_flat, offset, PUBKEY_LEN];
             account.copy_from_slice(pubkey.as_ref());
+            // @FIXME: unchecked math
             offset += PUBKEY_LEN;
         }
         for pubkey in self.liquidity.iter() {
             let account = array_mut_ref![accounts_flat, offset, PUBKEY_LEN];
             account.copy_from_slice(pubkey.as_ref());
+            // @FIXME: unchecked math
             offset += PUBKEY_LEN;
         }
     }
@@ -250,6 +252,7 @@ impl Pack for Obligation {
             } else {
                 break;
             }
+            // @FIXME: unchecked math
             offset += 1;
         }
 

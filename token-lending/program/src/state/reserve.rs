@@ -270,6 +270,7 @@ impl Reserve {
         let collateral_amount =
             collateral_exchange_rate.liquidity_to_collateral(liquidity_amount)?;
 
+        // @FIXME: unchecked math
         self.liquidity.available_amount += liquidity_amount;
         self.collateral.mint_total_supply += collateral_amount;
 
@@ -285,6 +286,7 @@ impl Reserve {
             return Err(LendingError::InsufficientLiquidity.into());
         }
 
+        // @FIXME: unchecked math
         self.liquidity.available_amount -= liquidity_amount;
         self.collateral.mint_total_supply -= collateral_amount;
 
@@ -378,6 +380,7 @@ pub struct LiquidateResult {
 }
 
 /// Reserve liquidity
+// @TODO: track market value in quote currency
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ReserveLiquidity {
     /// Reserve liquidity mint address
@@ -423,6 +426,7 @@ impl ReserveLiquidity {
             return Err(LendingError::InsufficientLiquidity.into());
         }
 
+        // @FIXME: unchecked math
         self.available_amount -= borrow_amount;
         self.borrowed_amount_wads = self
             .borrowed_amount_wads
@@ -533,10 +537,12 @@ impl From<CollateralExchangeRate> for Rate {
 pub struct ReserveConfig {
     /// Optimal utilization rate as a percent
     pub optimal_utilization_rate: u8,
+    // @TODO: does this make sense at the reserve level anymore?
     /// The ratio of the loan to the value of the collateral as a percent
     pub loan_to_value_ratio: u8,
     /// The percent discount the liquidator gets when buying collateral for an unhealthy obligation
     pub liquidation_bonus: u8,
+    // @TODO: does this make sense at the reserve level anymore?
     /// The percent at which an obligation is considered unhealthy
     pub liquidation_threshold: u8,
     /// Min borrow APY
