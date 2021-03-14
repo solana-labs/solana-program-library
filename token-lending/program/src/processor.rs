@@ -1185,7 +1185,6 @@ fn process_deposit_obligation_collateral(
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
@@ -1220,34 +1219,46 @@ fn process_deposit_obligation_collateral(
     if obligation_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
-
-    if &obligation.token_mint != obligation_token_mint_info.key {
-        msg!("Obligation token mint input doesn't match existing obligation token mint");
-        return Err(LendingError::InvalidTokenMint.into());
-    }
-
-    let obligation_token_output = Token::unpack(&obligation_token_output_info.data.borrow())?;
-    if obligation_token_output_info.owner != token_program_id.key {
-        return Err(LendingError::InvalidTokenOwner.into());
-    }
-    if &obligation_token_output.mint != obligation_token_mint_info.key {
-        return Err(LendingError::InvalidTokenMint.into());
+    if &obligation.lending_market != lending_market_info.key {
+        msg!("Invalid obligation lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
     }
 
     let mut obligation_collateral =
         ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
-    if obligation_info.owner != program_id {
+    if obligation_collateral_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &obligation_collateral.obligation != obligation_info.key {
+        msg!("Invalid obligation account");
+        return Err(LendingError::InvalidAccountInput.into());
     }
     if &obligation_collateral.deposit_reserve != deposit_reserve_info.key {
         msg!("Invalid deposit reserve account");
         return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &obligation_collateral.token_mint != obligation_token_mint_info.key {
+        msg!("Obligation token mint input doesn't match existing obligation token mint");
+        return Err(LendingError::InvalidTokenMint.into());
     }
     if !obligation
         .collateral
         .contains(obligation_collateral_info.key)
     {
         return Err(LendingError::ObligationAccountNotFound.into());
+    }
+
+    unpack_mint(&obligation_token_mint_info.data.borrow())?;
+    if obligation_token_mint_info.owner != token_program_id.key {
+        return Err(LendingError::InvalidTokenOwner.into());
+    }
+
+    let obligation_token_output = Account::unpack(&obligation_token_output_info.data.borrow())?;
+    if obligation_token_output_info.owner != token_program_id.key {
+        return Err(LendingError::InvalidTokenOwner.into());
+    }
+    if &obligation_token_output.mint != obligation_token_mint_info.key {
+        return Err(LendingError::InvalidTokenMint.into());
     }
 
     let authority_signer_seeds = &[
@@ -1260,16 +1271,12 @@ fn process_deposit_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    obligation_collateral.deposited_tokens = obligation_collateral
-        .deposited_tokens
-        .checked_add(collateral_amount)
-        .ok_or(LendingError::MathOverflow)?;
+    obligation_collateral.deposit(collateral_amount)?;
     ObligationCollateral::pack(
         obligation_collateral,
         &mut obligation_collateral_info.data.borrow_mut(),
     )?;
 
-    // deposit collateral
     spl_token_transfer(TokenTransferParams {
         source: source_collateral_info.clone(),
         destination: destination_collateral_info.clone(),
@@ -1279,7 +1286,6 @@ fn process_deposit_obligation_collateral(
         token_program: token_program_id.clone(),
     })?;
 
-    // mint obligation tokens to output account
     spl_token_mint_to(TokenMintToParams {
         mint: obligation_token_mint_info.clone(),
         destination: obligation_token_output_info.clone(),
