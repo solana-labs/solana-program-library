@@ -85,6 +85,7 @@ pub enum LendingError {
     /// Input reserves cannot use the same liquidity mint
     #[error("Input reserves cannot use the same liquidity mint")]
     DuplicateReserveMint,
+    // @TODO: make this specific to collateral
     /// Obligation amount is empty
     #[error("Obligation amount is empty")]
     ObligationEmpty,
@@ -140,6 +141,16 @@ pub enum LendingError {
     /// ObligationAccountNotFound
     #[error("ObligationAccountNotFound")]
     ObligationAccountNotFound,
+    // @FIXME: change name + message
+    #[error("Obligation collateral state needs to be refreshed")]
+    ObligationCollateralStale,
+    // @FIXME: change name + message
+    #[error("Obligation liquidity state needs to be refreshed")]
+    ObligationLiquidityStale,
+    // @FIXME: change name + message
+    #[error("Obligation state needs to be refreshed")]
+    ObligationStale,
+    // @FIXME: change name + message
     /// Invalid obligation collateral amount
     #[error("Invalid obligation collateral amount")]
     InvalidObligationCollateral,
