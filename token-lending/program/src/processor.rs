@@ -1533,12 +1533,18 @@ fn process_init_obligation_collateral(
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_collateral_info = next_account_info(account_info_iter)?;
     let deposit_reserve_info = next_account_info(account_info_iter)?;
+    let obligation_token_mint_info = next_account_info(account_info_iter)?;
+    let obligation_token_output_info = next_account_info(account_info_iter)?;
+    let obligation_token_owner_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
     let token_program_id = next_account_info(account_info_iter)?;
+
+    assert_rent_exempt(rent, obligation_collateral_info)?;
+    assert_uninitialized::<ObligationCollateral>(obligation_collateral_info)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
@@ -1564,6 +1570,10 @@ fn process_init_obligation_collateral(
     if obligation_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
+    if &obligation.lending_market != lending_market_info.key {
+        msg!("Invalid obligation lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
     if obligation.collateral.len() + obligation.liquidity.len() + 1 > MAX_OBLIGATION_ACCOUNTS {
         return Err(LendingError::ObligationAccountLimit.into());
     }
@@ -1581,20 +1591,35 @@ fn process_init_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    assert_rent_exempt(rent, obligation_collateral_info)?;
-    assert_uninitialized::<ObligationCollateral>(obligation_collateral_info)?;
-
     let obligation_collateral = ObligationCollateral::new(NewObligationCollateralParams {
-        deposit_reserve: *deposit_reserve_info.key,
         current_slot: clock.slot,
+        obligation: *obligation_info.key,
+        deposit_reserve: *deposit_reserve_info.key,
+        token_mint: obligation_token_mint_info.key(),
     });
+    obligation.collateral.push(*obligation_collateral_info.key);
+
     ObligationCollateral::pack(
         obligation_collateral,
         &mut obligation_collateral_info.data.borrow_mut(),
     )?;
+    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
-    obligation.collateral.push(*obligation_collateral_info.key);
-    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut());
+    spl_token_init_mint(TokenInitializeMintParams {
+        mint: obligation_token_mint_info.clone(),
+        authority: lending_market_authority_info.key,
+        rent: rent_info.clone(),
+        decimals: deposit_reserve.liquidity.mint_decimals,
+        token_program: token_program_id.clone(),
+    })?;
+
+    spl_token_init_account(TokenInitializeAccountParams {
+        account: obligation_token_output_info.clone(),
+        mint: obligation_token_mint_info.clone(),
+        owner: obligation_token_owner_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_id.clone(),
+    })?;
 
     Ok(())
 }
