@@ -665,22 +665,13 @@ pub fn init_reserve(
 pub fn init_obligation(
     program_id: Pubkey,
     obligation_pubkey: Pubkey,
-    obligation_token_mint_pubkey: Pubkey,
-    obligation_token_output_pubkey: Pubkey,
-    obligation_token_owner_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
 ) -> Instruction {
-    let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(obligation_pubkey, false),
-            AccountMeta::new(obligation_token_mint_pubkey, false),
-            AccountMeta::new(obligation_token_output_pubkey, false),
-            AccountMeta::new_readonly(obligation_token_owner_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
-            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
@@ -941,7 +932,6 @@ pub fn deposit_obligation_collateral(
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
-            AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: LendingInstruction::DepositObligationCollateral { collateral_amount }.pack(),
@@ -1008,6 +998,9 @@ pub fn init_obligation_collateral(
     obligation_pubkey: Pubkey,
     obligation_collateral_pubkey: Pubkey,
     deposit_reserve_pubkey: Pubkey,
+    obligation_token_mint_pubkey: Pubkey,
+    obligation_token_output_pubkey: Pubkey,
+    obligation_token_owner_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
@@ -1018,6 +1011,9 @@ pub fn init_obligation_collateral(
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new(obligation_collateral_pubkey, false),
             AccountMeta::new_readonly(deposit_reserve_pubkey, false),
+            AccountMeta::new(obligation_token_mint_pubkey, false),
+            AccountMeta::new(obligation_token_output_pubkey, false),
+            AccountMeta::new_readonly(obligation_token_owner_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
@@ -1037,8 +1033,6 @@ pub fn init_obligation_liquidity(
     borrow_reserve_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
 ) -> Instruction {
-    let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -1046,7 +1040,6 @@ pub fn init_obligation_liquidity(
             AccountMeta::new(obligation_liquidity_pubkey, false),
             AccountMeta::new_readonly(borrow_reserve_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
-            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
@@ -1120,24 +1113,21 @@ pub fn refresh_obligation_liquidity(
 pub fn refresh_obligation(
     program_id: Pubkey,
     obligation_pubkey: Pubkey,
-    obligation_collateral_liquidity_pubkeys: Vec<Pubkey>,
     lending_market_pubkey: Pubkey,
+    obligation_collateral_liquidity_pubkeys: Vec<Pubkey>,
 ) -> Instruction {
-    let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
-    let mut accounts = Vec::with_capacity(5 + obligation_collateral_liquidity_pubkeys.len());
-    accounts.push(AccountMeta::new(obligation_pubkey, false));
+    let mut accounts = Vec::with_capacity(4 + obligation_collateral_liquidity_pubkeys.len());
+    accounts.extend(vec![
+        AccountMeta::new(obligation_pubkey, false)
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ]);
     accounts.extend(
         obligation_collateral_liquidity_pubkeys
             .into_iter()
             .map(|pubkey| AccountMeta::new_readonly(pubkey, false)),
     );
-    accounts.extend(vec![
-        AccountMeta::new_readonly(lending_market_pubkey, false),
-        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(spl_token::id(), false),
-    ]);
     Instruction {
         program_id,
         accounts,
