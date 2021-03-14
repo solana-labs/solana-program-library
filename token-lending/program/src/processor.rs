@@ -684,6 +684,10 @@ fn process_borrow_obligation_liquidity(
     }
 
     unpack_mint(&obligation_token_mint_info.data.borrow())?;
+    if obligation_token_mint_info.owner != token_program_id.key {
+        return Err(LendingError::InvalidTokenOwner.into());
+    }
+
     if &obligation.token_mint != obligation_token_mint_info.key {
         msg!("Obligation token mint input doesn't match existing obligation token mint");
         return Err(LendingError::InvalidTokenMint.into());
@@ -850,6 +854,9 @@ fn process_repay_obligation_liquidity(
     }
 
     let obligation_mint = unpack_mint(&obligation_token_mint_info.data.borrow())?;
+    if obligation_token_mint_info.owner != token_program_id.key {
+        return Err(LendingError::InvalidTokenOwner.into());
+    }
     if &obligation.token_mint != obligation_token_mint_info.key {
         msg!("Invalid obligation token mint account");
         return Err(LendingError::InvalidAccountInput.into());
