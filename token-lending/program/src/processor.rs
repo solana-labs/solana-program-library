@@ -356,7 +356,6 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     let account_info_iter = &mut accounts.iter();
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -372,7 +371,6 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     }
 
     let obligation = Obligation::new(NewObligationParams {
-        current_slot: clock.slot,
         lending_market: *lending_market_info.key,
         collateral: vec![],
         liquidity: vec![],
@@ -1272,10 +1270,14 @@ fn process_deposit_obligation_collateral(
     }
 
     obligation_collateral.deposit(collateral_amount)?;
+    obligation_collateral.mark_stale();
+    obligation.mark_stale();
+
     ObligationCollateral::pack(
         obligation_collateral,
         &mut obligation_collateral_info.data.borrow_mut(),
     )?;
+    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     spl_token_transfer(TokenTransferParams {
         source: source_collateral_info.clone(),
@@ -1351,7 +1353,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let obligation = Obligation::unpack(&obligation_info.data.borrow())?;
+    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
@@ -1359,8 +1361,7 @@ fn process_withdraw_obligation_collateral(
         msg!("Invalid obligation lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    // @FIXME: magic number
-    if obligation.slots_elapsed(clock.slot) > 10 {
+    if obligation.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
 
@@ -1387,6 +1388,12 @@ fn process_withdraw_obligation_collateral(
     {
         return Err(LendingError::ObligationAccountNotFound.into());
     }
+    if obligation_collateral.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationCollateralStale.into());
+    }
+    // @TODO: is this useful? other collateral/liquidity could have been updated that we don't
+    //          check here. we could mark the obligation stale on every refresh of
+    //          collateral/liquidity, but this means they can't be refreshed in parallel
     if obligation.last_update_slot < obligation_collateral.last_update_slot {
         return Err(LendingError::ObligationStale.into());
     }
@@ -1414,6 +1421,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
+    // @TODO: is this necessary?
     assert_last_update_slot(&withdraw_reserve, clock.slot)?;
 
     // @FIXME: resume here, needs new business logic for calculating change to LTV from withdraw
@@ -1443,10 +1451,15 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::ObligationCollateralWithdrawBelowRequired.into());
     }
 
+    obligation_collateral.withdraw(collateral_amount);
+    obligation_collateral.mark_stale();
+    obligation.mark_stale();
+
     ObligationCollateral::pack(
         obligation_collateral,
         &mut obligation_collateral_info.data.borrow_mut(),
     )?;
+    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     spl_token_burn(TokenBurnParams {
         mint: obligation_token_mint_info.clone(),
@@ -1510,7 +1523,6 @@ fn process_init_obligation_collateral(
     let obligation_token_owner_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
     let token_program_id = next_account_info(account_info_iter)?;
@@ -1564,12 +1576,12 @@ fn process_init_obligation_collateral(
     }
 
     let obligation_collateral = ObligationCollateral::new(NewObligationCollateralParams {
-        current_slot: clock.slot,
         obligation: *obligation_info.key,
         deposit_reserve: *deposit_reserve_info.key,
         token_mint: obligation_token_mint_info.key(),
     });
     obligation.collateral.push(*obligation_collateral_info.key);
+    obligation.mark_stale();
 
     ObligationCollateral::pack(
         obligation_collateral,
@@ -1606,7 +1618,6 @@ fn process_init_obligation_liquidity(
     let obligation_liquidity_info = next_account_info(account_info_iter)?;
     let borrow_reserve_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
     let token_program_id = next_account_info(account_info_iter)?;
@@ -1647,11 +1658,11 @@ fn process_init_obligation_liquidity(
     }
 
     let obligation_liquidity = ObligationLiquidity::new(NewObligationLiquidityParams {
-        current_slot: clock.slot,
         obligation: *obligation_info.key,
         borrow_reserve: *borrow_reserve_info.key,
     });
     obligation.liquidity.push(*obligation_liquidity_info.key);
+    obligation.mark_stale();
 
     ObligationLiquidity::pack(
         obligation_liquidity,
@@ -1719,7 +1730,7 @@ fn process_refresh_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    // @TODO: is this necessary?
+    // @TODO: is this necessary? collateral exchange rate can change, but interest doesn't accrue
     assert_last_update_slot(&deposit_reserve, clock.slot)?;
 
     let trade_simulator = TradeSimulator::new(
@@ -1742,6 +1753,7 @@ fn process_refresh_obligation_collateral(
         obligation_collateral,
         &mut obligation_collateral_info.data.borrow_mut(),
     )?;
+    // @TODO: should we mark the obligation stale here?
 
     Ok(())
 }
@@ -1803,7 +1815,7 @@ fn process_refresh_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    // @TODO: is this necessary?
+    // @TODO: is this necessary? what if we accrue interest here if it's not the current slot?
     assert_last_update_slot(&borrow_reserve, clock.slot)?;
 
     let trade_simulator = TradeSimulator::new(
@@ -1824,6 +1836,7 @@ fn process_refresh_obligation_liquidity(
         obligation_liquidity,
         &mut obligation_liquidity_info.data.borrow_mut(),
     )?;
+    // @TODO: should we mark the obligation stale here?
 
     Ok(())
 }
@@ -1869,8 +1882,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             msg!("Invalid obligation account");
             return Err(LendingError::InvalidAccountInput.into());
         }
-        // @FIXME: magic number
-        if obligation_collateral.slots_elapsed(clock.slot) > 10 {
+        if obligation_collateral.is_stale(clock.slot)? {
             return Err(LendingError::ObligationCollateralStale.into());
         }
 
@@ -1895,9 +1907,8 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             msg!("Invalid obligation account");
             return Err(LendingError::InvalidAccountInput.into());
         }
-        // @FIXME: magic number
-        if obligation_liquidity.slots_elapsed(clock.slot) > 10 {
-            return Err(LendingError::ObligationLiquidityStale.into());
+        if obligation_liquidity.is_stale(clock.slot)? {
+            return Err(LendingError::ObligationLiquidityStale.into());z
         }
 
         liquidity_market_value =

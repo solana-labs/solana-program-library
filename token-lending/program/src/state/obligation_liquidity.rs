@@ -19,7 +19,7 @@ use solana_program::{
 pub struct ObligationLiquidity {
     /// Version of the obligation liquidity
     pub version: u8,
-    /// Last slot when market value and accrued interest updated
+    /// Last slot when market value and accrued interest updated; set to 0 if borrowed wads changed
     pub last_update_slot: Slot,
     /// Obligation the liquidity is associated with
     pub obligation: Pubkey,
@@ -35,8 +35,6 @@ pub struct ObligationLiquidity {
 
 /// Create new obligation liquidity
 pub struct NewObligationLiquidityParams {
-    /// Current slot
-    pub current_slot: Slot,
     /// Obligation address
     pub obligation: Pubkey,
     /// Borrow reserve address
@@ -47,14 +45,13 @@ impl ObligationLiquidity {
     /// Create new obligation liquidity
     pub fn new(params: NewObligationLiquidityParams) -> Self {
         let NewObligationLiquidityParams {
-            current_slot,
             obligation,
             borrow_reserve,
         } = params;
 
         Self {
             version: PROGRAM_VERSION,
-            last_update_slot: current_slot,
+            last_update_slot: 0,
             obligation,
             borrow_reserve,
             cumulative_borrow_rate_wads: Decimal::one(),
@@ -101,9 +98,9 @@ impl ObligationLiquidity {
         &mut self,
         converter: impl TokenConverter,
         from_token_mint: &Pubkey,
-    ) -> Result<Decimal, ProgramError> {
+    ) -> ProgramResult {
         self.market_value = converter.convert(self.borrowed_wads, from_token_mint)?;
-        Ok(self.market_value)
+        Ok(())
     }
 
     /// Return slots elapsed
@@ -114,11 +111,19 @@ impl ObligationLiquidity {
         Ok(slots_elapsed)
     }
 
-    /// Return slots elapsed since last update
-    pub fn update_slot(&mut self, slot: Slot) -> Result<u64, ProgramError> {
-        let slots_elapsed = self.slots_elapsed(slot)?;
+    /// Set last update slot
+    pub fn update_slot(&mut self, slot: Slot) {
         self.last_update_slot = slot;
-        Ok(slots_elapsed)
+    }
+
+    /// Set last update slot to 0
+    pub fn mark_stale(&mut self) {
+        self.update_slot(0);
+    }
+
+    /// Check if last update slot is recent
+    pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
+        Ok(self.last_update_slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
     }
 }
 

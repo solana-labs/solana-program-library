@@ -19,7 +19,7 @@ use solana_program::{
 pub struct ObligationCollateral {
     /// Version of the obligation collateral
     pub version: u8,
-    /// Last slot when market value updated
+    /// Last slot when market value updated; set to 0 if deposited tokens changed
     pub last_update_slot: Slot,
     /// Obligation the collateral is associated with
     pub obligation: Pubkey,
@@ -35,8 +35,6 @@ pub struct ObligationCollateral {
 
 /// Create new obligation collateral
 pub struct NewObligationCollateralParams {
-    /// Current slot
-    pub current_slot: Slot,
     /// Obligation address
     pub obligation: Pubkey,
     /// Deposit reserve address
@@ -49,7 +47,6 @@ impl ObligationCollateral {
     /// Create new obligation collateral
     pub fn new(params: NewObligationCollateralParams) -> Self {
         let NewObligationCollateralParams {
-            current_slot,
             obligation,
             deposit_reserve,
             token_mint,
@@ -57,7 +54,7 @@ impl ObligationCollateral {
 
         Self {
             version: PROGRAM_VERSION,
-            last_update_slot: current_slot,
+            last_update_slot: 0,
             obligation,
             deposit_reserve,
             token_mint,
@@ -87,26 +84,11 @@ impl ObligationCollateral {
         collateral_exchange_rate: CollateralExchangeRate,
         converter: impl TokenConverter,
         liquidity_token_mint: &Pubkey,
-    ) -> Result<Decimal, ProgramError> {
+    ) -> ProgramResult {
         let liquidity_amount = collateral_exchange_rate
             .decimal_collateral_to_liquidity(self.deposited_tokens.into())?;
         self.market_value = converter.convert(liquidity_amount, liquidity_token_mint)?;
-        Ok(self.market_value)
-    }
-
-    /// Return slots elapsed
-    pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
-        let slots_elapsed = slot
-            .checked_sub(self.last_update_slot)
-            .ok_or(LendingError::MathOverflow)?;
-        Ok(slots_elapsed)
-    }
-
-    /// Return slots elapsed since last update
-    pub fn update_slot(&mut self, slot: Slot) -> Result<u64, ProgramError> {
-        let slots_elapsed = self.slots_elapsed(slot)?;
-        self.last_update_slot = slot;
-        Ok(slots_elapsed)
+        Ok(())
     }
 
     /// Amount of obligation tokens for given collateral
@@ -119,6 +101,29 @@ impl ObligationCollateral {
         withdraw_pct
             .try_mul(obligation_token_supply)?
             .try_floor_u64()
+    }
+
+    /// Return slots elapsed
+    pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
+        let slots_elapsed = slot
+            .checked_sub(self.last_update_slot)
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(slots_elapsed)
+    }
+
+    /// Set last update slot
+    pub fn update_slot(&mut self, slot: Slot) {
+        self.last_update_slot = slot;
+    }
+
+    /// Set last update slot to 0
+    pub fn mark_stale(&mut self) {
+        self.update_slot(0);
+    }
+
+    /// Check if last update slot is recent
+    pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
+        Ok(self.last_update_slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
     }
 }
 

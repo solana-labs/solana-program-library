@@ -78,9 +78,8 @@ pub enum LendingInstruction {
     ///
     ///   0. `[writable]` Obligation account - uninitialized
     ///   1. `[]` Lending market account
-    ///   2. `[]` Clock sysvar
-    ///   3. `[]` Rent sysvar
-    ///   4. `[]` Token program id
+    ///   2. `[]` Rent sysvar
+    ///   3. `[]` Token program id
     InitObligation,
 
     // 3
@@ -159,7 +158,6 @@ pub enum LendingInstruction {
     // 6
     // @TODO: update docs
     /// Repay loaned tokens to a reserve. The obligation balance will be recalculated for interest.
-    /// Requires a recently refreshed obligation.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -293,9 +291,8 @@ pub enum LendingInstruction {
     ///   5. `[]` Obligation token owner
     ///   6. `[]` Lending market account
     ///   7. `[]` Derived lending market authority
-    ///   8. `[]` Clock sysvar
-    ///   9. `[]` Rent sysvar
-    ///   10 `[]` Token program id
+    ///   8. `[]` Rent sysvar
+    ///   9. `[]` Token program id
     InitObligationCollateral,
 
     // 13
@@ -306,10 +303,9 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Obligation account
     ///   1. `[writable]` Obligation liquidity account - uninitialized
     ///   2. `[]` Borrow reserve account
-    ///   4. `[]` Lending market account
-    ///   5. `[]` Clock sysvar
-    ///   6. `[]` Rent sysvar
-    ///   7. `[]` Token program id
+    ///   3. `[]` Lending market account
+    ///   4. `[]` Rent sysvar
+    ///   5. `[]` Token program id
     InitObligationLiquidity,
 
     // 14
@@ -672,7 +668,6 @@ pub fn init_obligation(
         accounts: vec![
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
-            AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
@@ -1016,7 +1011,6 @@ pub fn init_obligation_collateral(
             AccountMeta::new_readonly(obligation_token_owner_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
-            AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
@@ -1040,7 +1034,6 @@ pub fn init_obligation_liquidity(
             AccountMeta::new(obligation_liquidity_pubkey, false),
             AccountMeta::new_readonly(borrow_reserve_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
-            AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],

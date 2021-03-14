@@ -11,17 +11,21 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
-use std::convert::{TryInto, TryFrom};
+use std::convert::{TryFrom, TryInto};
 
 // @TODO: rename / relocate; true max is potentially 28
+/// Max number of collateral and liquidity accounts combined for an obligation
 pub const MAX_OBLIGATION_ACCOUNTS: usize = 10;
+
+/// Number of slots market values are considered stale after
+pub const STALE_AFTER_SLOTS: u64 = 10;
 
 /// Borrow obligation state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Obligation {
     /// Version of the struct
     pub version: u8,
-    /// Last slot when collateral, liquidity, or loan to value updated
+    /// Last slot when loan to value updated; set to 0 if collateral or liquidity changed
     pub last_update_slot: Slot,
     /// Lending market address
     pub lending_market: Pubkey,
@@ -35,8 +39,6 @@ pub struct Obligation {
 
 /// Create new obligation
 pub struct NewObligationParams {
-    /// Current slot
-    pub current_slot: Slot,
     /// Lending market address
     pub lending_market: Pubkey,
     /// Collateral for the obligation
@@ -49,7 +51,6 @@ impl Obligation {
     /// Create new obligation
     pub fn new(params: NewObligationParams) -> Self {
         let NewObligationParams {
-            current_slot,
             lending_market,
             collateral,
             liquidity,
@@ -57,7 +58,7 @@ impl Obligation {
 
         Self {
             version: PROGRAM_VERSION,
-            last_update_slot: current_slot,
+            last_update_slot: 0,
             lending_market,
             loan_to_value: Decimal::zero(),
             collateral,
@@ -112,9 +113,9 @@ impl Obligation {
         &mut self,
         liquidity_market_value: Decimal,
         collateral_market_value: Decimal,
-    ) -> Result<Decimal, ProgramError> {
+    ) -> ProgramResult {
         self.loan_to_value = liquidity_market_value.try_div(collateral_market_value)?;
-        Ok(self.loan_to_value)
+        Ok(())
     }
 
     /// Return slots elapsed
@@ -125,11 +126,19 @@ impl Obligation {
         Ok(slots_elapsed)
     }
 
-    /// Return slots elapsed since last update
-    pub fn update_slot(&mut self, slot: Slot) -> Result<u64, ProgramError> {
-        let slots_elapsed = self.slots_elapsed(slot)?;
+    /// Set last update slot
+    pub fn update_slot(&mut self, slot: Slot) {
         self.last_update_slot = slot;
-        Ok(slots_elapsed)
+    }
+
+    /// Set last update slot to 0
+    pub fn mark_stale(&mut self) {
+        self.update_slot(0);
+    }
+
+    /// Check if last update slot is recent
+    pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
+        Ok(self.last_update_slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
     }
 }
 
