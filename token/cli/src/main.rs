@@ -366,6 +366,7 @@ fn command_authorize(
     account: Pubkey,
     authority_type: AuthorityType,
     new_owner: Option<Pubkey>,
+    force_authorize: bool,
 ) -> CommandResult {
     let auth_str = match authority_type {
         AuthorityType::MintTokens => "mint authority",
@@ -384,15 +385,37 @@ fn command_authorize(
             AuthorityType::FreezeAccount => Ok(mint.freeze_authority),
         }
     } else if let Ok(token_account) = Account::unpack(&target_account.data) {
+        let check_associated_token_account = || -> Result<(), Error> {
+            let maybe_associated_token_account =
+                get_associated_token_address(&config.owner, &token_account.mint);
+            if account == maybe_associated_token_account
+                && !force_authorize
+                && Some(config.owner) != new_owner
+            {
+                Err(
+                    format!("Error: attmepting to change the `{}` of an associated token account of `--owner`", auth_str)
+                        .into(),
+                )
+            } else {
+                Ok(())
+            }
+        };
+
         match authority_type {
             AuthorityType::MintTokens | AuthorityType::FreezeAccount => Err(format!(
                 "Authority type `{}` not supported for accounts",
                 auth_str
             )),
-            AuthorityType::AccountOwner => Ok(COption::Some(token_account.owner)),
-            AuthorityType::CloseAccount => Ok(COption::Some(
-                token_account.close_authority.unwrap_or(token_account.owner),
-            )),
+            AuthorityType::AccountOwner => {
+                check_associated_token_account()?;
+                Ok(COption::Some(token_account.owner))
+            }
+            AuthorityType::CloseAccount => {
+                check_associated_token_account()?;
+                Ok(COption::Some(
+                    token_account.close_authority.unwrap_or(token_account.owner),
+                ))
+            }
         }
     } else {
         Err("Unsupported account data format".to_string())
@@ -1346,6 +1369,12 @@ fn main() {
                         .conflicts_with("new_authority")
                         .help("Disable mint, freeze, or close functionality by setting authority to None.")
                 )
+                .arg(
+                    Arg::with_name("force")
+                        .long("force")
+                        .hidden(true)
+                        .help("Force re-authorize the wallet's associate token account. Don't use this flag"),
+                )
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
@@ -1881,7 +1910,14 @@ fn main() {
             };
             let new_authority =
                 pubkey_of_signer(arg_matches, "new_authority", &mut wallet_manager).unwrap();
-            command_authorize(&config, address, authority_type, new_authority)
+            let force_authorize = arg_matches.is_present("force");
+            command_authorize(
+                &config,
+                address,
+                authority_type,
+                new_authority,
+                force_authorize,
+            )
         }
         ("transfer", Some(arg_matches)) => {
             let sender = pubkey_of_signer(arg_matches, "sender", &mut wallet_manager)
