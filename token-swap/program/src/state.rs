@@ -40,7 +40,7 @@ pub trait SwapState {
 }
 
 /// All versions of SwapState
-#[enum_dispatch(SwapState)]
+#[enum_dispatch(SwapVersion)]
 pub enum SwapVersion {
     /// Latest version, used for all new swaps
     SwapV1,

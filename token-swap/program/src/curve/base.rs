@@ -6,7 +6,7 @@ use solana_program::{
 };
 
 use crate::curve::{
-    calculator::{CurveCalculator, RoundDirection, SwapWithoutFeesResult, TradeDirection},
+    calculator::{CurveCalculator, SwapWithoutFeesResult, TradeDirection, LiquidityProviderOperation},
     constant_price::ConstantPriceCurve,
     constant_product::ConstantProductCurve,
     fees::Fees,
@@ -109,7 +109,7 @@ impl SwapCurve {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
+        liquidity_provider_operation: LiquidityProviderOperation,
         fees: &Fees,
     ) -> Option<u128> {
         if source_amount == 0 {
@@ -127,7 +127,7 @@ impl SwapCurve {
             swap_token_b_amount,
             pool_supply,
             trade_direction,
-            round_direction,
+            liquidity_provider_operation
         )
     }
 }
