@@ -372,6 +372,26 @@ fn command_authorize(
         AuthorityType::AccountOwner => "owner",
         AuthorityType::CloseAccount => "close authority",
     };
+    let target_account = config.rpc_client.get_account(&account)?;
+    if let Ok(_mint) = Mint::unpack(&target_account.data) {
+        match authority_type {
+            AuthorityType::AccountOwner | AuthorityType::CloseAccount => Err(format!(
+                "Authority type `{}` not supported for mints",
+                auth_str
+            )),
+            _ => Ok(()),
+        }
+    } else if let Ok(_token_account) = Account::unpack(&target_account.data) {
+        match authority_type {
+            AuthorityType::MintTokens | AuthorityType::FreezeAccount => Err(format!(
+                "Authority type `{}` not supported for accounts",
+                auth_str
+            )),
+            _ => Ok(()),
+        }
+    } else {
+        Err("Unsupported account data format".to_string())
+    }?;
     println!(
         "Updating {}\n  Current {}: {}\n  New {}: {}",
         account,
