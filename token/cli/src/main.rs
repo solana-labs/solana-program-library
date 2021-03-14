@@ -29,6 +29,7 @@ use solana_sdk::{
     instruction::Instruction,
     message::Message,
     native_token::*,
+    program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
@@ -373,21 +374,25 @@ fn command_authorize(
         AuthorityType::CloseAccount => "close authority",
     };
     let target_account = config.rpc_client.get_account(&account)?;
-    if let Ok(_mint) = Mint::unpack(&target_account.data) {
+    let previous_authority = if let Ok(mint) = Mint::unpack(&target_account.data) {
         match authority_type {
             AuthorityType::AccountOwner | AuthorityType::CloseAccount => Err(format!(
                 "Authority type `{}` not supported for mints",
                 auth_str
             )),
-            _ => Ok(()),
+            AuthorityType::MintTokens => Ok(mint.mint_authority),
+            AuthorityType::FreezeAccount => Ok(mint.freeze_authority),
         }
-    } else if let Ok(_token_account) = Account::unpack(&target_account.data) {
+    } else if let Ok(token_account) = Account::unpack(&target_account.data) {
         match authority_type {
             AuthorityType::MintTokens | AuthorityType::FreezeAccount => Err(format!(
                 "Authority type `{}` not supported for accounts",
                 auth_str
             )),
-            _ => Ok(()),
+            AuthorityType::AccountOwner => Ok(COption::Some(token_account.owner)),
+            AuthorityType::CloseAccount => Ok(COption::Some(
+                token_account.close_authority.unwrap_or(token_account.owner),
+            )),
         }
     } else {
         Err("Unsupported account data format".to_string())
@@ -396,7 +401,9 @@ fn command_authorize(
         "Updating {}\n  Current {}: {}\n  New {}: {}",
         account,
         auth_str,
-        config.owner,
+        previous_authority
+            .map(|pubkey| pubkey.to_string())
+            .unwrap_or_else(|| "disabled".to_string()),
         auth_str,
         new_owner
             .map(|pubkey| pubkey.to_string())
