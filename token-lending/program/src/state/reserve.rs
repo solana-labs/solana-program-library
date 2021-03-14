@@ -315,11 +315,12 @@ impl Reserve {
     }
 
     /// Return slots elapsed since last update
-    fn update_slot(&mut self, slot: Slot) -> u64 {
-        // @TODO: checked math?
-        let slots_elapsed = slot - self.last_update_slot;
+    fn update_slot(&mut self, slot: Slot) -> Result<u64, ProgramError> {
+        let slots_elapsed = slot
+            .checked_sub(self.last_update_slot)
+            .ok_or(LendingError::MathOverflow)?;
         self.last_update_slot = slot;
-        slots_elapsed
+        Ok(slots_elapsed)
     }
 
     /// Compound current borrow rate over elapsed slots
