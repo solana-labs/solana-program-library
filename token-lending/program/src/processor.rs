@@ -348,22 +348,17 @@ fn process_init_reserve(
     Ok(())
 }
 
-// @FIXME: what/where should this be?
-pub const OBLIGATION_MINT_DECIMALS: u8 = 9;
-
 #[inline(never)] // avoid stack frame limit
 fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_token_mint_info = next_account_info(account_info_iter)?;
-    let obligation_token_output_info = next_account_info(account_info_iter)?;
-    let obligation_token_owner_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
-    let lending_market_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
-    let rent_info = next_account_info(account_info_iter)?;
-    let rent = &Rent::from_account_info(rent_info)?;
+    let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
+
+    assert_rent_exempt(rent, obligation_info)?;
+    assert_uninitialized::<Obligation>(obligation_info)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
@@ -373,44 +368,13 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
-    let authority_signer_seeds = &[
-        lending_market_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
-        return Err(LendingError::InvalidMarketAuthority.into());
-    }
-
-    assert_rent_exempt(rent, obligation_info)?;
-    assert_uninitialized::<Obligation>(obligation_info)?;
-
     let obligation = Obligation::new(NewObligationParams {
+        current_slot: clock.slot,
+        lending_market: *lending_market_info.key,
         collateral: vec![],
         liquidity: vec![],
-        token_mint: obligation_token_mint_info.key(),
-        current_slot: clock.slot,
     });
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
-
-    // init obligation token mint
-    spl_token_init_mint(TokenInitializeMintParams {
-        mint: obligation_token_mint_info.clone(),
-        authority: lending_market_authority_info.key,
-        rent: rent_info.clone(),
-        decimals: OBLIGATION_MINT_DECIMALS,
-        token_program: token_program_id.clone(),
-    })?;
-
-    // init obligation token output account
-    spl_token_init_account(TokenInitializeAccountParams {
-        account: obligation_token_output_info.clone(),
-        mint: obligation_token_mint_info.clone(),
-        owner: obligation_token_owner_info.clone(),
-        rent: rent_info.clone(),
-        token_program: token_program_id.clone(),
-    })?;
 
     Ok(())
 }
