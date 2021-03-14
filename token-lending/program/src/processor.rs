@@ -1314,23 +1314,15 @@ fn process_withdraw_obligation_collateral(
     let source_collateral_info = next_account_info(account_info_iter)?;
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
-    let borrow_reserve_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
+    let obligation_collateral_info = next_account_info(account_info_iter)?;
     let obligation_token_mint_info = next_account_info(account_info_iter)?;
     let obligation_token_input_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let dex_market_info = next_account_info(account_info_iter)?;
-    let dex_market_orders_info = next_account_info(account_info_iter)?;
-    let memory = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
-
-    // Ensure memory is owned by this program so that we don't have to zero it out
-    if memory.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
@@ -1348,28 +1340,10 @@ fn process_withdraw_obligation_collateral(
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-
-    let borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
-    if borrow_reserve_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if borrow_reserve.lending_market != withdraw_reserve.lending_market {
-        return Err(LendingError::LendingMarketMismatch.into());
-    }
-
-    if withdraw_reserve.config.loan_to_value_ratio == 0 {
-        return Err(LendingError::ReserveCollateralDisabled.into());
-    }
-
-    if withdraw_reserve_info.key == borrow_reserve_info.key {
-        return Err(LendingError::DuplicateReserve.into());
-    }
-
     if &withdraw_reserve.collateral.supply_pubkey != source_collateral_info.key {
         msg!("Invalid withdraw reserve collateral supply account input");
         return Err(LendingError::InvalidAccountInput.into());
     }
-
     if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
         msg!(
             "Cannot use withdraw reserve collateral supply as destination collateral account input"
@@ -1377,41 +1351,52 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    // TODO: handle case when neither reserve is the quote currency
-    if borrow_reserve.dex_market.is_none() && withdraw_reserve.dex_market.is_none() {
-        msg!("One reserve must have a dex market");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if let COption::Some(dex_market_pubkey) = borrow_reserve.dex_market {
-        if &dex_market_pubkey != dex_market_info.key {
-            msg!("Invalid dex market account input");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
-    }
-    if let COption::Some(dex_market_pubkey) = withdraw_reserve.dex_market {
-        if &dex_market_pubkey != dex_market_info.key {
-            msg!("Invalid dex market account input");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
-    }
-
-    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
+    let obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
+    if &obligation.lending_market != lending_market_info.key {
+        msg!("Invalid obligation lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    // @FIXME: magic number
+    if obligation.slots_elapsed(clock.slot) > 10 {
+        return Err(LendingError::ObligationStale.into());
+    }
 
-    if &obligation.collateral_reserve != withdraw_reserve_info.key {
+    let mut obligation_collateral =
+        ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
+    if obligation_collateral_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &obligation_collateral.obligation != obligation_info.key {
+        msg!("Invalid obligation account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &obligation_collateral.deposit_reserve != withdraw_reserve_info.key {
         msg!("Invalid withdraw reserve account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-
-    let obligation_token_mint = unpack_mint(&obligation_token_mint_info.data.borrow())?;
-    if &obligation.token_mint != obligation_token_mint_info.key {
+    if &obligation_collateral.token_mint != obligation_token_mint_info.key {
         msg!("Obligation token mint input doesn't match existing obligation token mint");
         return Err(LendingError::InvalidTokenMint.into());
     }
+    if !obligation
+        .collateral
+        .contains(obligation_collateral_info.key)
+    {
+        return Err(LendingError::ObligationAccountNotFound.into());
+    }
+    if obligation.last_update_slot < obligation_collateral.last_update_slot {
+        return Err(LendingError::ObligationStale.into());
+    }
 
-    let obligation_token_input = Token::unpack(&obligation_token_input_info.data.borrow())?;
+    let obligation_token_mint = unpack_mint(&obligation_token_mint_info.data.borrow())?;
+    if obligation_token_mint_info.owner != token_program_id.key {
+        return Err(LendingError::InvalidTokenOwner.into());
+    }
+
+    let obligation_token_input = Account::unpack(&obligation_token_input_info.data.borrow())?;
     if obligation_token_input_info.owner != token_program_id.key {
         return Err(LendingError::InvalidTokenOwner.into());
     }
@@ -1429,28 +1414,17 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    // accrue interest and update rates
-    assert_last_update_slot(&borrow_reserve, clock.slot)?;
     assert_last_update_slot(&withdraw_reserve, clock.slot)?;
 
-    obligation.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
+    // @FIXME: resume here, needs new business logic for calculating change to LTV from withdraw
 
-    let obligation_collateral_amount = obligation.deposited_collateral_tokens;
+    let obligation_collateral_amount = obligation_collateral.deposited_tokens;
     if obligation_collateral_amount == 0 {
         return Err(LendingError::ObligationEmpty.into());
     }
     if obligation_collateral_amount < collateral_amount {
         return Err(LendingError::InvalidObligationCollateral.into());
     }
-
-    let trade_simulator = TradeSimulator::new(
-        dex_market_info,
-        dex_market_orders_info,
-        memory,
-        &lending_market.quote_token_mint,
-        &borrow_reserve.liquidity.mint_pubkey,
-        &withdraw_reserve.liquidity.mint_pubkey,
-    )?;
 
     let required_collateral = withdraw_reserve.required_collateral_for_borrow(
         obligation.borrowed_liquidity_wads.try_ceil_u64()?,
@@ -1461,20 +1435,19 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::ObligationCollateralBelowRequired.into());
     }
 
-    let remaining_collateral = obligation_collateral_amount
-        .checked_sub(collateral_amount)
-        .ok_or(LendingError::MathOverflow)?;
+    let obligation_token_amount = obligation_collateral
+        .collateral_to_obligation_token_amount(collateral_amount, obligation_token_mint.supply)?;
+
+    let remaining_collateral = obligation_collateral.withdraw(collateral_amount)?;
     if remaining_collateral < required_collateral {
         return Err(LendingError::ObligationCollateralWithdrawBelowRequired.into());
     }
 
-    let obligation_token_amount = obligation
-        .collateral_to_obligation_token_amount(collateral_amount, obligation_token_mint.supply)?;
+    ObligationCollateral::pack(
+        obligation_collateral,
+        &mut obligation_collateral_info.data.borrow_mut(),
+    )?;
 
-    obligation.deposited_collateral_tokens = remaining_collateral;
-    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
-
-    // burn obligation tokens
     spl_token_burn(TokenBurnParams {
         mint: obligation_token_mint_info.clone(),
         source: obligation_token_input_info.clone(),
@@ -1484,7 +1457,6 @@ fn process_withdraw_obligation_collateral(
         token_program: token_program_id.clone(),
     })?;
 
-    // withdraw collateral
     spl_token_transfer(TokenTransferParams {
         source: source_collateral_info.clone(),
         destination: destination_collateral_info.clone(),
