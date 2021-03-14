@@ -11,83 +11,58 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
-use std::convert::TryInto;
+use std::convert::{TryInto, TryFrom};
 
-// @TODO: true max is potentially ~16
+// @TODO: rename / relocate; true max is potentially 28
 pub const MAX_OBLIGATION_ACCOUNTS: usize = 10;
 
 /// Borrow obligation state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Obligation {
-    /// Version of the obligation
+    /// Version of the struct
     pub version: u8,
+    /// Last slot when collateral, liquidity, or loan to value updated
+    pub last_update_slot: Slot,
+    /// Lending market address
+    pub lending_market: Pubkey,
+    /// Ratio of liquidity market value to collateral market value (weighted average)
+    pub loan_to_value: Decimal,
     /// Collateral accounts for the obligation
     pub collateral: Vec<Pubkey>,
     /// Liquidity accounts for the obligation
     pub liquidity: Vec<Pubkey>,
-    /// Mint address of the tokens for this obligation
-    pub token_mint: Pubkey,
-    /// Ratio of liquidity market value to collateral market value (weighted average)
-    pub loan_to_value: Decimal,
-    /// Last slot when collateral, liquidity, or loan to value updated
-    pub last_update_slot: Slot,
 }
 
 /// Create new obligation
 pub struct NewObligationParams {
+    /// Current slot
+    pub current_slot: Slot,
+    /// Lending market address
+    pub lending_market: Pubkey,
     /// Collateral for the obligation
     pub collateral: Vec<Pubkey>,
     /// Liquidity for the obligation
     pub liquidity: Vec<Pubkey>,
-    /// Obligation token mint address
-    pub token_mint: Pubkey,
-    /// Current slot
-    pub current_slot: Slot,
 }
 
 impl Obligation {
     /// Create new obligation
     pub fn new(params: NewObligationParams) -> Self {
         let NewObligationParams {
+            current_slot,
+            lending_market,
             collateral,
             liquidity,
-            token_mint,
-            current_slot,
         } = params;
 
         Self {
             version: PROGRAM_VERSION,
+            last_update_slot: current_slot,
+            lending_market,
+            loan_to_value: Decimal::zero(),
             collateral,
             liquidity,
-            token_mint,
-            loan_to_value: Decimal::zero(),
-            last_update_slot: current_slot,
         }
-    }
-
-    /// Ratio of loan balance to collateral value
-    pub fn loan_to_value(
-        &self,
-        collateral_exchange_rate: CollateralExchangeRate,
-        borrow_token_price: Decimal,
-    ) -> Result<Decimal, ProgramError> {
-        let loan = self.borrowed_wads;
-        let collateral_value = collateral_exchange_rate
-            .decimal_collateral_to_liquidity(self.deposited_collateral_tokens.into())?
-            .try_div(borrow_token_price)?;
-        loan.try_div(collateral_value)
-    }
-
-    /// Amount of obligation tokens for given collateral
-    pub fn collateral_to_obligation_token_amount(
-        &self,
-        collateral_amount: u64,
-        obligation_token_supply: u64,
-    ) -> Result<u64, ProgramError> {
-        let withdraw_pct =
-            Decimal::from(collateral_amount).try_div(self.deposited_collateral_tokens)?;
-        let token_amount: Decimal = withdraw_pct.try_mul(obligation_token_supply)?;
-        token_amount.try_floor_u64()
     }
 
     /// Liquidate part of obligation
@@ -133,12 +108,28 @@ impl Obligation {
         })
     }
 
+    pub fn update_loan_to_value(
+        &mut self,
+        liquidity_market_value: Decimal,
+        collateral_market_value: Decimal,
+    ) -> Result<Decimal, ProgramError> {
+        self.loan_to_value = liquidity_market_value.try_div(collateral_market_value)?;
+        Ok(self.loan_to_value)
+    }
+
+    /// Return slots elapsed
+    pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
+        let slots_elapsed = slot
+            .checked_sub(self.last_update_slot)
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(slots_elapsed)
+    }
+
     /// Return slots elapsed since last update
-    fn update_slot(&mut self, slot: Slot) -> u64 {
-        // @TODO: checked math?
-        let slots_elapsed = slot - self.last_update_slot;
+    pub fn update_slot(&mut self, slot: Slot) -> Result<u64, ProgramError> {
+        let slots_elapsed = self.slots_elapsed(slot)?;
         self.last_update_slot = slot;
-        slots_elapsed
+        Ok(slots_elapsed)
     }
 }
 
@@ -161,7 +152,7 @@ impl IsInitialized for Obligation {
     }
 }
 
-const OBLIGATION_LEN: usize = 379; // 1 + 8 + 16 + 32 + 1 + 1 + (32 * 10)
+const OBLIGATION_LEN: usize = 379; // 1 + 8 + 32 + 16 + 1 + 1 + (32 * 10)
 impl Pack for Obligation {
     const LEN: usize = OBLIGATION_LEN;
 
@@ -171,8 +162,8 @@ impl Pack for Obligation {
         let (
             version,
             last_update_slot,
+            lending_market,
             loan_to_value,
-            token_mint,
             num_collateral,
             num_liquidity,
             accounts_flat,
@@ -180,8 +171,8 @@ impl Pack for Obligation {
             output,
             1,
             8,
-            16,
             PUBKEY_LEN,
+            16,
             1,
             1,
             PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS
@@ -189,14 +180,12 @@ impl Pack for Obligation {
 
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();
+        lending_market.copy_from_slice(self.lending_market.as_ref());
         pack_decimal(self.loan_to_value, loan_to_value);
-        token_mint.copy_from_slice(self.token_mint.as_ref());
 
-        let collateral_len = self.collateral.len();
-        let liquidity_len = self.liquidity.len();
-
-        *num_collateral = collateral_len.to_le_bytes();
-        *num_liquidity = liquidity_len.to_le_bytes();
+        // @TODO: this seems clunky, is this correct?
+        *num_collateral = u8::try_from(self.collateral.len())?.to_le_bytes();
+        *num_liquidity = u8::try_from(self.liquidity.len())?.to_le_bytes();
 
         let mut offset = 0;
         for pubkey in self.collateral.iter() {
@@ -219,8 +208,8 @@ impl Pack for Obligation {
         let (
             version,
             last_update_slot,
+            lending_market,
             loan_to_value,
-            token_mint,
             num_collateral,
             num_liquidity,
             accounts_flat,
@@ -228,22 +217,24 @@ impl Pack for Obligation {
             input,
             1,
             8,
-            16,
             PUBKEY_LEN,
+            16,
             1,
             1,
             PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS
         ];
 
-        let collateral_len = usize::from_le_bytes(*num_collateral);
-        let liquidity_len = usize::from_le_bytes(*num_liquidity);
+        let collateral_len = u8::from_le_bytes(*num_collateral);
+        let liquidity_len = u8::from_le_bytes(*num_liquidity);
+        // @FIXME: unchecked math
         let total_len = collateral_len + liquidity_len;
 
-        let mut collateral = Vec::with_capacity(collateral_len);
-        let mut liquidity = Vec::with_capacity(liquidity_len);
+        // @TODO: this seems clunky, is this correct?
+        let mut collateral = Vec::with_capacity(collateral_len.try_into()?);
+        let mut liquidity = Vec::with_capacity(liquidity_len.try_into()?);
 
         let mut offset = 0;
-        // @TODO: is there a more idiomatic/performant way to iterate?
+        // @TODO: is there a more idiomatic/performant way to iterate this?
         for account in accounts_flat.chunks(PUBKEY_LEN) {
             if offset < collateral_len {
                 collateral.push(Pubkey::new(account));
@@ -259,8 +250,8 @@ impl Pack for Obligation {
         Ok(Self {
             version: u8::from_le_bytes(*version),
             last_update_slot: u64::from_le_bytes(*last_update_slot),
+            lending_market: Pubkey::new_from_array(*lending_market),
             loan_to_value: unpack_decimal(loan_to_value),
-            token_mint: Pubkey::new_from_array(*token_mint),
             collateral,
             liquidity,
         })

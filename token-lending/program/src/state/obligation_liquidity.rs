@@ -19,6 +19,10 @@ use solana_program::{
 pub struct ObligationLiquidity {
     /// Version of the obligation liquidity
     pub version: u8,
+    /// Last slot when market value and accrued interest updated
+    pub last_update_slot: Slot,
+    /// Obligation the liquidity is associated with
+    pub obligation: Pubkey,
     /// Reserve which liquidity tokens were borrowed from
     pub borrow_reserve: Pubkey,
     /// Borrow rate used for calculating interest
@@ -26,34 +30,36 @@ pub struct ObligationLiquidity {
     /// Amount of liquidity tokens borrowed for an obligation plus interest
     pub borrowed_wads: Decimal,
     /// Market value of liquidity
-    pub market_value: u64,
-    /// Last slot when market value and accrued interest updated
-    pub last_update_slot: Slot,
+    pub market_value: Decimal,
 }
 
 /// Create new obligation liquidity
 pub struct NewObligationLiquidityParams {
-    /// Borrow reserve address
-    pub borrow_reserve: Pubkey,
     /// Current slot
     pub current_slot: Slot,
+    /// Obligation address
+    pub obligation: Pubkey,
+    /// Borrow reserve address
+    pub borrow_reserve: Pubkey,
 }
 
 impl ObligationLiquidity {
     /// Create new obligation liquidity
     pub fn new(params: NewObligationLiquidityParams) -> Self {
         let NewObligationLiquidityParams {
-            borrow_reserve,
             current_slot,
+            obligation,
+            borrow_reserve,
         } = params;
 
         Self {
             version: PROGRAM_VERSION,
+            last_update_slot: current_slot,
+            obligation,
             borrow_reserve,
             cumulative_borrow_rate_wads: Decimal::one(),
             borrowed_wads: Decimal::zero(),
-            market_value: 0,
-            last_update_slot: current_slot,
+            market_value: Decimal::zero(),
         }
     }
 
@@ -69,10 +75,9 @@ impl ObligationLiquidity {
 
     /// Maximum amount of loan that can be repaid by liquidators
     pub fn max_liquidation_amount(&self) -> Result<u64, ProgramError> {
-        Ok(self
-            .borrowed_wads
+        self.borrowed_wads
             .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
-            .try_floor_u64()?)
+            .try_floor_u64()
     }
 
     /// Accrue interest
@@ -86,18 +91,34 @@ impl ObligationLiquidity {
             .try_into()?;
 
         self.borrowed_wads = self.borrowed_wads.try_mul(compounded_interest_rate)?;
-
         self.cumulative_borrow_rate_wads = cumulative_borrow_rate_wads;
 
         Ok(())
     }
 
+    /// Return updated market value
+    pub fn update_market_value(
+        &mut self,
+        converter: impl TokenConverter,
+        from_token_mint: &Pubkey,
+    ) -> Result<Decimal, ProgramError> {
+        self.market_value = converter.convert(self.borrowed_wads, from_token_mint)?;
+        Ok(self.market_value)
+    }
+
+    /// Return slots elapsed
+    pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
+        let slots_elapsed = slot
+            .checked_sub(self.last_update_slot)
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(slots_elapsed)
+    }
+
     /// Return slots elapsed since last update
-    fn update_slot(&mut self, slot: Slot) -> u64 {
-        // @TODO: checked math?
-        let slots_elapsed = slot - self.last_update_slot;
+    pub fn update_slot(&mut self, slot: Slot) -> Result<u64, ProgramError> {
+        let slots_elapsed = self.slots_elapsed(slot)?;
         self.last_update_slot = slot;
-        slots_elapsed
+        Ok(slots_elapsed)
     }
 }
 
@@ -108,7 +129,7 @@ impl IsInitialized for ObligationLiquidity {
     }
 }
 
-const OBLIGATION_LIQUIDITY_LEN: usize = 209; // 1 + 32 + 16 + 16 + 8 + 8 + 128
+const OBLIGATION_LIQUIDITY_LEN: usize = 249; // 1 + 8 + 32 + 32 + 16 + 16 + 16 + 128
 impl Pack for ObligationLiquidity {
     const LEN: usize = OBLIGATION_LIQUIDITY_LEN;
 
@@ -116,23 +137,25 @@ impl Pack for ObligationLiquidity {
         let output = array_mut_ref![output, 0, OBLIGATION_LIQUIDITY_LEN];
         let (
             version,
+            last_update_slot,
+            obligation,
             borrow_reserve,
             cumulative_borrow_rate_wads,
             borrowed_wads,
             market_value,
-            last_update_slot,
             _padding,
-        ) = mut_array_refs![output, 1, PUBKEY_LEN, 16, 16, 8, 8, 128];
+        ) = mut_array_refs![output, 1, 8, PUBKEY_LEN, PUBKEY_LEN, 16, 16, 16, 128];
 
         *version = self.version.to_le_bytes();
+        *last_update_slot = self.last_update_slot.to_le_bytes();
+        obligation.copy_from_slice(self.obligation.as_ref());
         borrow_reserve.copy_from_slice(self.borrow_reserve.as_ref());
         pack_decimal(
             self.cumulative_borrow_rate_wads,
             cumulative_borrow_rate_wads,
         );
         pack_decimal(self.borrowed_wads, borrowed_wads);
-        *market_value = self.market_value.to_le_bytes();
-        *last_update_slot = self.last_update_slot.to_le_bytes();
+        pack_decimal(self.market_value, market_value);
     }
 
     /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
@@ -141,21 +164,23 @@ impl Pack for ObligationLiquidity {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             version,
+            last_update_slot,
+            obligation,
             borrow_reserve,
             cumulative_borrow_rate_wads,
             borrowed_wads,
             market_value,
-            last_update_slot,
             _padding,
-        ) = array_refs![input, 1, PUBKEY_LEN, 16, 16, 8, 8, 128];
+        ) = array_refs![input, 1, 8, PUBKEY_LEN, PUBKEY_LEN, 16, 16, 16, 128];
 
         Ok(Self {
             version: u8::from_le_bytes(*version),
+            last_update_slot: u64::from_le_bytes(*last_update_slot),
+            obligation: Pubkey::new_from_array(*obligation),
             borrow_reserve: Pubkey::new_from_array(*borrow_reserve),
             cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
             borrowed_wads: unpack_decimal(borrowed_wads),
-            market_value: u64::from_le_bytes(*market_value),
-            last_update_slot: u64::from_le_bytes(*last_update_slot),
+            market_value: unpack_decimal(market_value),
         })
     }
 }
