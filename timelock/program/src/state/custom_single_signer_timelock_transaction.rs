@@ -9,7 +9,7 @@ use solana_program::{
 use super::UNINITIALIZED_VERSION;
 
 /// Max instruction limit for generics
-pub const INSTRUCTION_LIMIT: usize = 500;
+pub const INSTRUCTION_LIMIT: usize = 450;
 
 /// Max accounts allowed in instruction
 pub const MAX_ACCOUNTS_ALLOWED: usize = 12;

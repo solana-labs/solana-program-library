@@ -80,9 +80,8 @@ impl Pack for TimelockConfig {
                     _ => ExecutionType::AllOrNothing,
                 },
                 timelock_type: match timelock_type {
-                    0 => TimelockType::Committee,
-                    1 => TimelockType::Governance,
-                    _ => TimelockType::Committee,
+                    0 => TimelockType::Governance,
+                    _ => TimelockType::Governance,
                 },
                 voting_entry_rule: match voting_entry_rule {
                     0 => VotingEntryRule::DraftOnly,
@@ -127,8 +126,7 @@ impl Pack for TimelockConfig {
         }
         .to_le_bytes();
         *timelock_type = match self.timelock_type {
-            TimelockType::Committee => 0 as u8,
-            TimelockType::Governance => 1 as u8,
+            TimelockType::Governance => 0 as u8,
 
         }
         .to_le_bytes();

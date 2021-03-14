@@ -49,10 +49,6 @@ pub fn process_execute(
             let _nefarious_config: TimelockConfig = assert_initialized(&next_account)?;
             assert_account_equiv(&next_account, &timelock_set.config)?;
 
-            if timelock_config.timelock_type != TimelockType::Governance {
-                return Err(TimelockError::CannotUseTimelockAuthoritiesInExecute.into());
-            }
-
             added_authority = true;
 
             if next_account.key != &governance_authority {
@@ -63,7 +59,7 @@ pub fn process_execute(
     }
     account_infos.push(program_to_invoke_info.clone());
 
-    if timelock_config.timelock_type == TimelockType::Governance && !added_authority {
+    if !added_authority {
 
         if timelock_config_account_info.key != &governance_authority {
             return Err(TimelockError::InvalidTimelockConfigKey.into());
@@ -99,24 +95,12 @@ pub fn process_execute(
         };
     //msg!("Data is {:?}", instruction.data);
 
-    match timelock_config.timelock_type {
-        TimelockType::Governance => {
-            execute(ExecuteParams {
-                instruction,
-                authority_signer_seeds: &[timelock_config_account_info.key.as_ref(), &[bump_seed]],
-                account_infos,
-            })?;
-            
-        }
-        TimelockType::Committee => {
-            execute(ExecuteParams {
-                instruction,
-                authority_signer_seeds: &[],
-                account_infos,
-            })?;
-        }
-    }
-    
+    execute(ExecuteParams {
+        instruction,
+        authority_signer_seeds: &[timelock_config_account_info.key.as_ref(), &[bump_seed]],
+        account_infos,
+    })?;
+
     transaction.executed = 1;
 
     CustomSingleSignerTimelockTransaction::pack(

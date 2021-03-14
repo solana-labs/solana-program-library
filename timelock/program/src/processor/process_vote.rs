@@ -1,5 +1,5 @@
 //! Program state processor
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::{TimelockStateStatus, TimelockType}, timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenMintToParams, assert_account_equiv, assert_initialized, assert_token_program_is_correct, assert_voting, spl_token_burn, spl_token_mint_to}};
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::{TimelockStateStatus}, timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenMintToParams, assert_account_equiv, assert_initialized, assert_token_program_is_correct, assert_voting, spl_token_burn, spl_token_mint_to}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -31,15 +31,23 @@ pub fn process_vote(
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
-    let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
-    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
-    assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
-    assert_account_equiv(yes_voting_mint_account_info, &timelock_set.yes_voting_mint)?;
-    assert_account_equiv(no_voting_mint_account_info, &timelock_set.no_voting_mint)?;
-    assert_account_equiv(governance_mint_account_info, &timelock_config.governance_mint)?;
-    assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
-
+    // Using assert_account_equiv not workable here due to cost of stack size on this method.
+    if voting_mint_account_info.key != &timelock_set.voting_mint {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
+    if yes_voting_mint_account_info.key != &timelock_set.yes_voting_mint {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
+    if no_voting_mint_account_info.key != &timelock_set.no_voting_mint {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
+    if governance_mint_account_info.key != &timelock_config.governance_mint {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
+    if timelock_config_account_info.key != &timelock_set.config {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
     assert_voting(&timelock_set)?;
 
     let (authority_key, bump_seed) =
@@ -49,27 +57,12 @@ pub fn process_vote(
     }
     let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
 
-    let mint: Mint = assert_initialized(voting_mint_account_info)?;
-    let yes_mint: Mint = assert_initialized(yes_voting_mint_account_info)?;
-    let no_mint: Mint = assert_initialized(no_voting_mint_account_info)?;
-    let total_ever_existed = match timelock_config.timelock_type {
-        TimelockType::Governance => {
-            let governance_mint: Mint = assert_initialized(governance_mint_account_info)?;
-            governance_mint.supply
-        }
-        TimelockType::Committee => {
-            mint.supply + yes_mint.supply + no_mint.supply
-        }
-    };
-    let now_remaining_in_no_column = match timelock_config.timelock_type {
-        TimelockType::Governance => {
-            let governance_mint: Mint = assert_initialized(governance_mint_account_info)?;
-            governance_mint.supply - yes_voting_token_amount
-        }
-        TimelockType::Committee => {
-            mint.supply + no_voting_token_amount
-        }
-    };
+    let governance_mint: Mint = assert_initialized(governance_mint_account_info)?;
+
+    let total_ever_existed = governance_mint.supply;
+     
+    let now_remaining_in_no_column = governance_mint.supply - yes_voting_token_amount;
+      
     // The act of voting proves you are able to vote. No need to assert permission here.
     spl_token_burn(TokenBurnParams {
         mint: voting_mint_account_info.clone(),

@@ -58,14 +58,12 @@ impl Default for TimelockStateStatus {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TimelockType {
     /// Meaning voters deposit their tokens from outside mint and "govern" the proposal
-    Governance,
-    /// Meaning Signatories grant votes to others who then vote on the proposal
-    Committee
+    Governance
 }
 
 impl Default for TimelockType {
     fn default() -> Self {
-        TimelockType::Committee
+        TimelockType::Governance
     }
 }
 

@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenTransferParams, assert_account_equiv, assert_governance, assert_initialized, assert_token_program_is_correct, spl_token_burn, spl_token_transfer}};
+use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenTransferParams, assert_account_equiv, assert_initialized, assert_token_program_is_correct, spl_token_burn, spl_token_transfer}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -35,27 +35,32 @@ pub fn process_withdraw_voting_tokens(
 
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
-    let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    let _timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
-    assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
-    assert_account_equiv(yes_voting_dump_account_info, &timelock_set.yes_voting_dump)?;
-    assert_account_equiv(no_voting_dump_account_info, &timelock_set.no_voting_dump)?;
-    assert_account_equiv(governance_holding_account_info, &timelock_set.governance_holding)?;
-    assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
+    // Using assert_account_equiv not workable here due to cost of stack size on this method.
+    if voting_mint_account_info.key != &timelock_set.voting_mint {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
+    if yes_voting_dump_account_info.key != &timelock_set.yes_voting_dump {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
+    if no_voting_dump_account_info.key != &timelock_set.no_voting_dump {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
+    if governance_holding_account_info.key != &timelock_set.governance_holding {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
+    if timelock_config_account_info.key != &timelock_set.config {
+        return Err(TimelockError::AccountsShouldMatch.into());
+    }
 
     if voting_token_amount < 0 as u64  {
         return Err(TimelockError::TokenAmountBelowZero.into());
     }
 
-    assert_governance(&timelock_config)?;
-
     let voting_account: Account = assert_initialized(voting_account_info)?;
     let yes_voting_account: Account = assert_initialized(yes_voting_account_info)?;
     let no_voting_account: Account = assert_initialized(no_voting_account_info)?;
-    let _yes_voting_dump: Account = assert_initialized(yes_voting_dump_account_info)?;
-    let _no_voting_dump: Account = assert_initialized(no_voting_dump_account_info)?;
-    let destination_governance_account: Account = assert_initialized(destination_governance_account_info)?;
-    let _governance_account: Account = assert_initialized(governance_holding_account_info)?;
 
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
