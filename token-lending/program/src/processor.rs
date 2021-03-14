@@ -4,7 +4,7 @@ use crate::{
     dex_market::{DexMarket, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
     instruction::{BorrowAmountType, LendingInstruction},
-    math::{Decimal, TryAdd, WAD},
+    math::{Decimal, TryAdd, TryMul, WAD},
     state::{
         LendingMarket, LiquidateResult, NewObligationCollateralParams,
         NewObligationLiquidityParams, NewObligationParams, NewReserveParams, Obligation,
@@ -1690,24 +1690,258 @@ fn process_init_obligation_liquidity(
     Ok(())
 }
 
-// @FIXME
 fn process_refresh_obligation_collateral(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let obligation_collateral_info = next_account_info(account_info_iter)?;
+    let deposit_reserve_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let dex_market_info = next_account_info(account_info_iter)?;
+    let dex_market_orders_info = next_account_info(account_info_iter)?;
+    let memory = next_account_info(account_info_iter)?;
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+
+    // Ensure memory is owned by this program so that we don't have to zero it out
+    if memory.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.token_program_id != token_program_id.key {
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
+
+    let deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
+    if deposit_reserve_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &deposit_reserve.lending_market != lending_market_info.key {
+        msg!("Invalid reserve lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let mut obligation_collateral =
+        ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
+    if obligation_collateral_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &obligation_collateral.deposit_reserve != deposit_reserve_info.key {
+        msg!("Invalid deposit reserve account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    if lending_market_authority_info.key != &lending_market_authority_pubkey {
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    // @TODO: is this necessary?
+    assert_last_update_slot(&deposit_reserve, clock.slot)?;
+
+    let trade_simulator = TradeSimulator::new(
+        dex_market_info,
+        dex_market_orders_info,
+        memory,
+        &lending_market.quote_token_mint,
+        // @TODO: check these
+        &lending_market.quote_token_mint,
+        &deposit_reserve.liquidity.mint_pubkey,
+    )?;
+
+    obligation_collateral.update_market_value(
+        deposit_reserve.collateral_exchange_rate()?,
+        trade_simulator,
+        &deposit_reserve.liquidity.mint_pubkey,
+    )?;
+    obligation_collateral.update_slot(clock.slot)?;
+    ObligationCollateral::pack(
+        obligation_collateral,
+        &mut obligation_collateral_info.data.borrow_mut(),
+    )?;
+
     Ok(())
 }
 
-// @FIXME
 fn process_refresh_obligation_liquidity(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let obligation_liquidity_info = next_account_info(account_info_iter)?;
+    let borrow_reserve_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let dex_market_info = next_account_info(account_info_iter)?;
+    let dex_market_orders_info = next_account_info(account_info_iter)?;
+    let memory = next_account_info(account_info_iter)?;
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+
+    // Ensure memory is owned by this program so that we don't have to zero it out
+    if memory.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.token_program_id != token_program_id.key {
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
+
+    let borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
+    if borrow_reserve_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &borrow_reserve.lending_market != lending_market_info.key {
+        msg!("Invalid reserve lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let mut obligation_liquidity =
+        ObligationLiquidity::unpack(&obligation_liquidity_info.data.borrow())?;
+    if obligation_liquidity_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &obligation_liquidity.borrow_reserve != borrow_reserve_info.key {
+        msg!("Invalid borrow reserve account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    if lending_market_authority_info.key != &lending_market_authority_pubkey {
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    // @TODO: is this necessary?
+    assert_last_update_slot(&borrow_reserve, clock.slot)?;
+
+    let trade_simulator = TradeSimulator::new(
+        dex_market_info,
+        dex_market_orders_info,
+        memory,
+        &lending_market.quote_token_mint,
+        // @TODO: check these
+        &lending_market.quote_token_mint,
+        &borrow_reserve.liquidity.mint_pubkey,
+    )?;
+
+    obligation_liquidity.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
+    obligation_liquidity
+        .update_market_value(trade_simulator, &borrow_reserve.liquidity.mint_pubkey)?;
+    obligation_liquidity.update_slot(clock.slot)?;
+    ObligationLiquidity::pack(
+        obligation_liquidity,
+        &mut obligation_liquidity_info.data.borrow_mut(),
+    )?;
+
     Ok(())
 }
 
-// @FIXME
 fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let obligation_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.token_program_id != token_program_id.key {
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
+
+    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
+    if obligation_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &obligation.lending_market != lending_market_info.key {
+        msg!("Invalid obligation lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let mut collateral_market_value = Decimal::zero();
+    for pubkey in obligation.collateral {
+        let obligation_collateral_info = next_account_info(account_info_iter)?;
+        if obligation_collateral_info.owner != program_id {
+            return Err(LendingError::InvalidAccountOwner.into());
+        }
+        if pubkey != obligation_collateral_info.key {
+            msg!("Invalid obligation collateral account");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
+
+        let obligation_collateral =
+            ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
+        if obligation_collateral.obligation != obligation_info.key {
+            msg!("Invalid obligation account");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
+        // @FIXME: magic number
+        if obligation_collateral.slots_elapsed(clock.slot) > 10 {
+            return Err(LendingError::ObligationCollateralStale.into());
+        }
+
+        collateral_market_value =
+            collateral_market_value.try_add(obligation_collateral.market_value)?;
+    }
+
+    let mut liquidity_market_value = Decimal::zero();
+    for pubkey in obligation.liquidity {
+        let obligation_liquidity_info = next_account_info(account_info_iter)?;
+        if obligation_liquidity_info.owner != program_id {
+            return Err(LendingError::InvalidAccountOwner.into());
+        }
+        if pubkey != obligation_liquidity_info.key {
+            msg!("Invalid obligation liquidity account");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
+
+        let obligation_liquidity =
+            ObligationLiquidity::unpack(&obligation_liquidity_info.data.borrow())?;
+        if obligation_liquidity.obligation != obligation_info.key {
+            msg!("Invalid obligation account");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
+        // @FIXME: magic number
+        if obligation_liquidity.slots_elapsed(clock.slot) > 10 {
+            return Err(LendingError::ObligationLiquidityStale.into());
+        }
+
+        liquidity_market_value =
+            liquidity_market_value.try_add(obligation_liquidity.market_value)?;
+    }
+
+    // @TODO: check this
+    if account_info_iter.count() > 0 {
+        msg!("Too many obligation collateral or liquidity accounts");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    obligation.update_loan_to_value(liquidity_market_value, collateral_market_value)?;
+    obligation.update_slot(clock.slot)?;
+    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
+
     Ok(())
 }
 
