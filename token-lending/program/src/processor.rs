@@ -1634,11 +1634,13 @@ fn process_init_obligation_liquidity(
     let obligation_liquidity_info = next_account_info(account_info_iter)?;
     let borrow_reserve_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
-    let lending_market_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
     let token_program_id = next_account_info(account_info_iter)?;
+
+    assert_rent_exempt(rent, obligation_liquidity_info)?;
+    assert_uninitialized::<ObligationLiquidity>(obligation_liquidity_info)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
@@ -1661,6 +1663,10 @@ fn process_init_obligation_liquidity(
     if obligation_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
+    if &obligation.lending_market != lending_market_info.key {
+        msg!("Invalid obligation lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
     if obligation.collateral.len() + obligation.liquidity.len() + 1 > MAX_OBLIGATION_ACCOUNTS {
         return Err(LendingError::ObligationAccountLimit.into());
     }
@@ -1668,30 +1674,18 @@ fn process_init_obligation_liquidity(
         return Err(LendingError::ObligationAccountDuplicate.into());
     }
 
-    let authority_signer_seeds = &[
-        lending_market_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
-        return Err(LendingError::InvalidMarketAuthority.into());
-    }
-
-    assert_rent_exempt(rent, obligation_liquidity_info)?;
-    assert_uninitialized::<ObligationLiquidity>(obligation_liquidity_info)?;
-
     let obligation_liquidity = ObligationLiquidity::new(NewObligationLiquidityParams {
-        borrow_reserve: *borrow_reserve_info.key,
         current_slot: clock.slot,
+        obligation: *obligation_info.key,
+        borrow_reserve: *borrow_reserve_info.key,
     });
+    obligation.liquidity.push(*obligation_liquidity_info.key);
+
     ObligationLiquidity::pack(
         obligation_liquidity,
         &mut obligation_liquidity_info.data.borrow_mut(),
     )?;
-
-    obligation.liquidity.push(*obligation_liquidity_info.key);
-    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut());
+    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     Ok(())
 }
