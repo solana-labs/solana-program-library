@@ -184,6 +184,7 @@ jobs:
           path: target/bpfel-unknown-unknown/release
       - run: |
           sh -c "$(curl -sSfL https://release.solana.com/v1.5.14/install)"
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           ./ci/js-test-token-lending.sh
 
   fuzz:
