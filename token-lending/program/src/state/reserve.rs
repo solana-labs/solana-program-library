@@ -303,7 +303,7 @@ impl Reserve {
 
     /// Update borrow rate and accrue interest
     pub fn accrue_interest(&mut self, current_slot: Slot) -> ProgramResult {
-        let slots_elapsed = self.update_slot(current_slot);
+        let slots_elapsed = self.update_slot(current_slot)?;
         if slots_elapsed > 0 {
             let current_borrow_rate = self.current_borrow_rate()?;
             let compounded_interest_rate =
@@ -322,6 +322,7 @@ impl Reserve {
         self.collateral.exchange_rate(total_liquidity)
     }
 
+    // @TODO: method should probably match Obligation's
     /// Return slots elapsed since last update
     fn update_slot(&mut self, slot: Slot) -> Result<u64, ProgramError> {
         let slots_elapsed = slot
