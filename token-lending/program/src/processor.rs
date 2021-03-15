@@ -134,9 +134,7 @@ fn process_init_lending_market(
         msg!("Loan to value ratio must be in range [0, 100)");
         return Err(LendingError::InvalidConfig.into());
     }
-    if liquidation_threshold <= loan_to_value_ratio
-        || liquidation_threshold > 100
-    {
+    if liquidation_threshold <= loan_to_value_ratio || liquidation_threshold > 100 {
         msg!("Liquidation threshold must be in range (LTV, 100]");
         return Err(LendingError::InvalidConfig.into());
     }

@@ -42,10 +42,16 @@ impl Pack for LendingMarket {
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, LENDING_MARKET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, bump_seed, owner, quote_token_mint, token_program_id,
+        let (
+            version,
+            bump_seed,
+            owner,
+            quote_token_mint,
+            token_program_id,
             loan_to_value_ratio,
-            liquidation_threshold, _padding) =
-            array_refs![input, 1, 1, 32, 32, 32, 1, 1, 60];
+            liquidation_threshold,
+            _padding,
+        ) = array_refs![input, 1, 1, 32, 32, 32, 1, 1, 60];
         let version = u8::from_le_bytes(*version);
         if version > PROGRAM_VERSION {
             return Err(ProgramError::InvalidAccountData);
@@ -65,10 +71,16 @@ impl Pack for LendingMarket {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, LENDING_MARKET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, bump_seed, owner, quote_token_mint, token_program_id,
+        let (
+            version,
+            bump_seed,
+            owner,
+            quote_token_mint,
+            token_program_id,
             loan_to_value_ratio,
-            liquidation_threshold, _padding) =
-            mut_array_refs![output, 1, 1, 32, 32, 32, 62];
+            liquidation_threshold,
+            _padding,
+        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 62];
         *version = self.version.to_le_bytes();
         *bump_seed = self.bump_seed.to_le_bytes();
         owner.copy_from_slice(self.owner.as_ref());
