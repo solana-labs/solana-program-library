@@ -309,9 +309,9 @@ pub fn add_reserve(
         &spl_token::id(),
     );
 
-    let liquidity_fees_receiver_pubkey = Pubkey::new_unique();
+    let liquidity_fee_receiver_pubkey = Pubkey::new_unique();
     test.add_packable_account(
-        liquidity_fees_receiver_pubkey,
+        liquidity_fee_receiver_pubkey,
         u32::MAX as u64,
         &Token {
             mint: liquidity_mint_pubkey,
@@ -343,7 +343,7 @@ pub fn add_reserve(
         liquidity_mint_pubkey,
         liquidity_mint_decimals,
         liquidity_supply_pubkey,
-        liquidity_fees_receiver_pubkey,
+        liquidity_fee_receiver_pubkey,
     );
     let reserve_collateral =
         ReserveCollateral::new(collateral_mint_pubkey, collateral_supply_pubkey);
@@ -411,7 +411,7 @@ pub fn add_reserve(
         liquidity_mint: liquidity_mint_pubkey,
         liquidity_mint_decimals,
         liquidity_supply: liquidity_supply_pubkey,
-        liquidity_fees_receiver: liquidity_fees_receiver_pubkey,
+        liquidity_fee_receiver: liquidity_fee_receiver_pubkey,
         liquidity_host: liquidity_host_pubkey,
         collateral_mint: collateral_mint_pubkey,
         collateral_supply: collateral_supply_pubkey,
@@ -668,7 +668,7 @@ impl TestLendingMarket {
                     borrow_reserve.user_liquidity_account,
                     deposit_reserve.pubkey,
                     deposit_reserve.collateral_supply,
-                    deposit_reserve.liquidity_fees_receiver,
+                    deposit_reserve.liquidity_fee_receiver,
                     borrow_reserve.pubkey,
                     borrow_reserve.liquidity_supply,
                     self.pubkey,
@@ -732,7 +732,7 @@ pub struct TestReserve {
     pub liquidity_supply: Pubkey,
     pub collateral_mint: Pubkey,
     pub collateral_supply: Pubkey,
-    pub liquidity_fees_receiver: Pubkey,
+    pub liquidity_fee_receiver: Pubkey,
     pub liquidity_host: Pubkey,
     pub user_liquidity_account: Pubkey,
     pub user_collateral_account: Pubkey,
@@ -758,7 +758,7 @@ impl TestReserve {
         let collateral_mint_keypair = Keypair::new();
         let collateral_supply_keypair = Keypair::new();
         let liquidity_supply_keypair = Keypair::new();
-        let liquidity_fees_receiver_keypair = Keypair::new();
+        let liquidity_fee_receiver_keypair = Keypair::new();
         let liquidity_host_keypair = Keypair::new();
         let user_collateral_token_keypair = Keypair::new();
         let user_transfer_authority_keypair = Keypair::new();
@@ -811,7 +811,7 @@ impl TestReserve {
                 ),
                 create_account(
                     &payer.pubkey(),
-                    &liquidity_fees_receiver_keypair.pubkey(),
+                    &liquidity_fee_receiver_keypair.pubkey(),
                     rent.minimum_balance(Token::LEN),
                     Token::LEN as u64,
                     &spl_token::id(),
@@ -848,7 +848,7 @@ impl TestReserve {
                     liquidity_supply_keypair.pubkey(),
                     liquidity_mint_pubkey,
                     collateral_supply_keypair.pubkey(),
-                    liquidity_fees_receiver_keypair.pubkey(),
+                    liquidity_fee_receiver_keypair.pubkey(),
                     lending_market.pubkey,
                     lending_market.owner.pubkey(),
                     user_transfer_authority_keypair.pubkey(),
@@ -868,7 +868,7 @@ impl TestReserve {
                 &collateral_mint_keypair,
                 &collateral_supply_keypair,
                 &liquidity_supply_keypair,
-                &liquidity_fees_receiver_keypair,
+                &liquidity_fee_receiver_keypair,
                 &liquidity_host_keypair,
                 &user_collateral_token_keypair,
                 &user_transfer_authority_keypair,
@@ -887,7 +887,7 @@ impl TestReserve {
                 liquidity_mint: liquidity_mint_pubkey,
                 liquidity_mint_decimals: liquidity_mint.decimals,
                 liquidity_supply: liquidity_supply_keypair.pubkey(),
-                liquidity_fees_receiver: liquidity_fees_receiver_keypair.pubkey(),
+                liquidity_fee_receiver: liquidity_fee_receiver_keypair.pubkey(),
                 liquidity_host: liquidity_host_keypair.pubkey(),
                 collateral_mint: collateral_mint_keypair.pubkey(),
                 collateral_supply: collateral_supply_keypair.pubkey(),
@@ -916,11 +916,11 @@ impl TestReserve {
             self.name, self.collateral_supply
         );
         genesis_accounts
-            .fetch_and_insert(banks_client, self.liquidity_fees_receiver)
+            .fetch_and_insert(banks_client, self.liquidity_fee_receiver)
             .await;
         println!(
-            "{}_collateral_fees_receiver: {}",
-            self.name, self.liquidity_fees_receiver
+            "{}_liquidity_fee_receiver: {}",
+            self.name, self.liquidity_fee_receiver
         );
         genesis_accounts
             .fetch_and_insert(banks_client, self.collateral_supply)

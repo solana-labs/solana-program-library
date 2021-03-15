@@ -164,7 +164,7 @@ async fn test_borrow_quote_currency() {
     assert_eq!(collateral_supply, collateral_deposited - total_fee);
 
     let fee_balance =
-        get_token_balance(&mut banks_client, sol_reserve.liquidity_fees_receiver).await;
+        get_token_balance(&mut banks_client, sol_reserve.liquidity_fee_receiver).await;
     assert_eq!(fee_balance, total_fee - host_fee);
 
     let host_fee_balance = get_token_balance(&mut banks_client, sol_reserve.liquidity_host).await;
@@ -321,7 +321,7 @@ async fn test_borrow_base_currency() {
     assert_eq!(collateral_supply, 2 * collateral_deposit_amount - total_fee);
 
     let fee_balance =
-        get_token_balance(&mut banks_client, usdc_reserve.liquidity_fees_receiver).await;
+        get_token_balance(&mut banks_client, usdc_reserve.liquidity_fee_receiver).await;
     assert_eq!(fee_balance, total_fee - host_fee);
 
     let host_fee_balance = get_token_balance(&mut banks_client, usdc_reserve.liquidity_host).await;

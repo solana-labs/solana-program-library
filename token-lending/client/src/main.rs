@@ -181,7 +181,7 @@ pub fn create_reserve(
     let collateral_mint_keypair = Keypair::new();
     let collateral_supply_keypair = Keypair::new();
     let liquidity_supply_keypair = Keypair::new();
-    let liquidity_fees_receiver_keypair = Keypair::new();
+    let liquidity_fee_receiver_keypair = Keypair::new();
     let user_collateral_token_keypair = Keypair::new();
     let user_transfer_authority = Keypair::new();
 
@@ -221,7 +221,7 @@ pub fn create_reserve(
             ),
             create_account(
                 &payer.pubkey(),
-                &liquidity_fees_receiver_keypair.pubkey(),
+                &liquidity_fee_receiver_keypair.pubkey(),
                 token_balance,
                 Token::LEN as u64,
                 &spl_token::id(),
@@ -283,7 +283,7 @@ pub fn create_reserve(
                 liquidity_supply_keypair.pubkey(),
                 collateral_mint_keypair.pubkey(),
                 collateral_supply_keypair.pubkey(),
-                liquidity_fees_receiver_keypair.pubkey(),
+                liquidity_fee_receiver_keypair.pubkey(),
                 lending_market_pubkey,
                 lending_market_owner.pubkey(),
                 user_transfer_authority.pubkey(),

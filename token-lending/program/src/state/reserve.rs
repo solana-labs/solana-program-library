@@ -399,8 +399,8 @@ pub struct ReserveLiquidity {
     pub mint_decimals: u8,
     /// Reserve liquidity supply address
     pub supply_pubkey: Pubkey,
-    /// Reserve liquidity fees receiver address
-    pub fees_receiver: Pubkey,
+    /// Reserve liquidity fee receiver address
+    pub fee_receiver: Pubkey,
     /// Reserve liquidity available
     pub available_amount: u64,
     /// Reserve liquidity borrowed
@@ -413,13 +413,13 @@ impl ReserveLiquidity {
         mint_pubkey: Pubkey,
         mint_decimals: u8,
         supply_pubkey: Pubkey,
-        fees_receiver: Pubkey,
+        fee_receiver: Pubkey,
     ) -> Self {
         Self {
             mint_pubkey,
             mint_decimals,
             supply_pubkey,
-            fees_receiver,
+            fee_receiver,
             available_amount: 0,
             borrowed_amount_wads: Decimal::zero(),
         }
@@ -634,7 +634,7 @@ impl Pack for Reserve {
             liquidity_mint,
             liquidity_mint_decimals,
             liquidity_supply,
-            liquidity_fees_receiver,
+            liquidity_fee_receiver,
             collateral_mint,
             collateral_supply,
             dex_market,
@@ -663,7 +663,7 @@ impl Pack for Reserve {
                 mint_pubkey: Pubkey::new_from_array(*liquidity_mint),
                 mint_decimals: u8::from_le_bytes(*liquidity_mint_decimals),
                 supply_pubkey: Pubkey::new_from_array(*liquidity_supply),
-                fees_receiver: Pubkey::new_from_array(*liquidity_fees_receiver),
+                fee_receiver: Pubkey::new_from_array(*liquidity_fee_receiver),
                 available_amount: u64::from_le_bytes(*available_liquidity),
                 borrowed_amount_wads: unpack_decimal(total_borrows),
             },
@@ -695,7 +695,7 @@ impl Pack for Reserve {
             liquidity_mint,
             liquidity_mint_decimals,
             liquidity_supply,
-            liquidity_fees_receiver,
+            liquidity_fee_receiver,
             collateral_mint,
             collateral_supply,
             dex_market,
@@ -727,7 +727,7 @@ impl Pack for Reserve {
         liquidity_mint.copy_from_slice(self.liquidity.mint_pubkey.as_ref());
         *liquidity_mint_decimals = self.liquidity.mint_decimals.to_le_bytes();
         liquidity_supply.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
-        liquidity_fees_receiver.copy_from_slice(self.collateral.fees_receiver.as_ref());
+        liquidity_fee_receiver.copy_from_slice(self.collateral.fee_receiver.as_ref());
         *available_liquidity = self.liquidity.available_amount.to_le_bytes();
         pack_decimal(self.liquidity.borrowed_amount_wads, total_borrows);
 

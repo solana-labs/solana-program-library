@@ -55,9 +55,9 @@ pub enum LendingInstruction {
     ///   2. `[writable]` Reserve account
     ///   3. `[]` Reserve liquidity SPL Token mint
     ///   4. `[writable]` Reserve liquidity supply SPL Token account - uninitialized
+    ///   7. `[writable]` Reserve liquidity fee receiver - uninitialized
     ///   5. `[writable]` Reserve collateral SPL Token mint - uninitialized
     ///   6. `[writable]` Reserve collateral token supply - uninitialized
-    ///   7. `[writable]` Reserve collateral fees receiver - uninitialized
     ///   8. `[]` Lending market account
     ///   9. `[signer]` Lending market owner
     ///   10 `[]` Derived lending market authority
@@ -627,7 +627,7 @@ pub fn init_reserve(
     reserve_pubkey: Pubkey,
     reserve_liquidity_mint_pubkey: Pubkey,
     reserve_liquidity_supply_pubkey: Pubkey,
-    reserve_liquidity_fees_receiver_pubkey: Pubkey,
+    reserve_liquidity_fee_receiver_pubkey: Pubkey,
     reserve_collateral_mint_pubkey: Pubkey,
     reserve_collateral_supply_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
@@ -643,7 +643,7 @@ pub fn init_reserve(
         AccountMeta::new(reserve_pubkey, false),
         AccountMeta::new_readonly(reserve_liquidity_mint_pubkey, false),
         AccountMeta::new(reserve_liquidity_supply_pubkey, false),
-        AccountMeta::new(reserve_liquidity_fees_receiver_pubkey, false),
+        AccountMeta::new(reserve_liquidity_fee_receiver_pubkey, false),
         AccountMeta::new(reserve_collateral_mint_pubkey, false),
         AccountMeta::new(reserve_collateral_supply_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
@@ -763,7 +763,7 @@ pub fn borrow_obligation_liquidity(
     deposit_reserve_collateral_supply_pubkey: Pubkey,
     borrow_reserve_pubkey: Pubkey,
     borrow_reserve_liquidity_supply_pubkey: Pubkey,
-    borrow_reserve_liquidity_fees_receiver_pubkey: Pubkey,
+    borrow_reserve_liquidity_fee_receiver_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_authority_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
@@ -782,7 +782,7 @@ pub fn borrow_obligation_liquidity(
         AccountMeta::new(deposit_reserve_collateral_supply_pubkey, false),
         AccountMeta::new(borrow_reserve_pubkey, false),
         AccountMeta::new(borrow_reserve_liquidity_supply_pubkey, false),
-        AccountMeta::new(borrow_reserve_liquidity_fees_receiver_pubkey, false),
+        AccountMeta::new(borrow_reserve_liquidity_fee_receiver_pubkey, false),
         AccountMeta::new(obligation_pubkey, false),
         AccountMeta::new(obligation_token_mint_pubkey, false),
         AccountMeta::new(obligation_token_output_pubkey, false),
