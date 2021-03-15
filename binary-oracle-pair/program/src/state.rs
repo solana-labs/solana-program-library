@@ -40,7 +40,7 @@ pub struct Pool {
     /// decide end slot
     pub decide_end_slot: u64,
 
-    /// decision boolean
+    /// decision status
     pub decision: Decision,
 }
 

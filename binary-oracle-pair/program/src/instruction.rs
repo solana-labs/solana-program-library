@@ -37,7 +37,7 @@ pub enum PoolInstruction {
     ///   8. `[]` Token program id
     InitPool(InitArgs),
 
-    ///   Deposit in the pool.
+    ///   Deposit into the pool.
     ///
     ///   0. `[]` Pool
     ///   1. `[]` Authority
