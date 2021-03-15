@@ -1,9 +1,7 @@
-use std::convert::TryInto;
-
 use super::*;
 use crate::{
     error::LendingError,
-    math::{Decimal, Rate, TryDiv, TryMul, TrySub},
+    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
@@ -13,6 +11,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
+use std::convert::TryInto;
 
 /// Obligation liquidity state
 #[derive(Clone, Debug, Default, PartialEq)]

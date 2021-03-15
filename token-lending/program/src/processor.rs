@@ -3,8 +3,8 @@
 use crate::{
     dex_market::{DexMarket, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
-    instruction::{BorrowAmountType, LendingInstruction},
-    math::{Decimal, TryAdd, TryMul, WAD},
+    instruction::{init_lending_market, BorrowAmountType, LendingInstruction},
+    math::{Decimal, TryAdd, TryDiv, TryMul, TrySub, WAD},
     state::{
         LendingMarket, LiquidateResult, NewObligationCollateralParams,
         NewObligationLiquidityParams, NewObligationParams, NewReserveParams, Obligation,
