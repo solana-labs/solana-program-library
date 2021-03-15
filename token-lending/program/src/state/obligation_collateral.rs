@@ -62,22 +62,25 @@ impl ObligationCollateral {
         }
     }
 
-    pub fn deposit(&mut self, collateral_amount: u64) -> Result<u64, ProgramError> {
+    /// Increase deposited collateral
+    pub fn deposit(&mut self, collateral_amount: u64) -> ProgramResult {
         self.deposited_tokens = self
             .deposited_tokens
             .checked_add(collateral_amount)
             .ok_or(LendingError::MathOverflow)?;
-        Ok(self.deposited_tokens)
+        Ok(())
     }
 
-    pub fn withdraw(&mut self, collateral_amount: u64) -> Result<u64, ProgramError> {
+    /// Decrease deposited collateral
+    pub fn withdraw(&mut self, collateral_amount: u64) -> ProgramResult {
         self.deposited_tokens = self
             .deposited_tokens
             .checked_sub(collateral_amount)
             .ok_or(LendingError::MathOverflow)?;
-        Ok(self.deposited_tokens)
+        Ok(())
     }
 
+    /// Update market value of collateral
     pub fn update_market_value(
         &mut self,
         collateral_exchange_rate: CollateralExchangeRate,
@@ -86,6 +89,7 @@ impl ObligationCollateral {
     ) -> ProgramResult {
         let liquidity_amount = collateral_exchange_rate
             .decimal_collateral_to_liquidity(self.deposited_tokens.into())?;
+        // @TODO: this may be slow/inaccurate for large amounts depending on dex market
         self.market_value = converter.convert(liquidity_amount, liquidity_token_mint)?;
         Ok(())
     }
@@ -102,7 +106,7 @@ impl ObligationCollateral {
             .try_floor_u64()
     }
 
-    /// Return slots elapsed
+    /// Return slots elapsed since given slot
     pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
         let slots_elapsed = slot
             .checked_sub(self.last_update_slot)
@@ -120,7 +124,7 @@ impl ObligationCollateral {
         self.update_slot(0);
     }
 
-    /// Check if last update slot is recent
+    /// Check if last update slot is too long ago
     pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
         Ok(self.last_update_slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
     }

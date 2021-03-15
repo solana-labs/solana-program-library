@@ -59,6 +59,18 @@ impl ObligationLiquidity {
         }
     }
 
+    /// Decrease borrowed liquidity
+    pub fn repay(&mut self, liquidity_amount: u64) -> ProgramResult {
+        self.borrowed_wads = self.borrowed_wads.try_sub(liquidity_amount.into())?;
+        Ok(())
+    }
+
+    /// Increase borrowed liquidity
+    pub fn borrow(&mut self, liquidity_amount: u64) -> ProgramResult {
+        self.borrowed_wads = self.borrowed_wads.try_add(liquidity_amount.into())?;
+        Ok(())
+    }
+
     /// Maximum amount of loan that can be closed out by a liquidator due to the remaining balance
     /// being too small to be liquidated normally.
     pub fn max_closeable_amount(&self) -> Result<u64, ProgramError> {
@@ -92,17 +104,18 @@ impl ObligationLiquidity {
         Ok(())
     }
 
-    /// Return updated market value
+    /// Update market value of liquidity
     pub fn update_market_value(
         &mut self,
         converter: impl TokenConverter,
         from_token_mint: &Pubkey,
     ) -> ProgramResult {
+        // @TODO: this may be slow/inaccurate for large amounts depending on dex market
         self.market_value = converter.convert(self.borrowed_wads, from_token_mint)?;
         Ok(())
     }
 
-    /// Return slots elapsed
+    /// Return slots elapsed since given slot
     pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
         let slots_elapsed = slot
             .checked_sub(self.last_update_slot)
@@ -120,7 +133,7 @@ impl ObligationLiquidity {
         self.update_slot(0);
     }
 
-    /// Check if last update slot is recent
+    /// Check if last update slot is too long ago
     pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
         Ok(self.last_update_slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
     }

@@ -1404,7 +1404,7 @@ fn process_withdraw_obligation_collateral(
     if obligation_collateral.is_stale(clock.slot)? {
         return Err(LendingError::ObligationCollateralStale.into());
     }
-    // @TODO: is this useful? other collateral/liquidity could have been updated that we don't
+    // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
     //          check here. we could mark the obligation stale on every refresh of
     //          collateral/liquidity, but this means they can't be refreshed in parallel
     if obligation.last_update_slot < obligation_collateral.last_update_slot {
@@ -1767,7 +1767,8 @@ fn process_refresh_obligation_collateral(
         obligation_collateral,
         &mut obligation_collateral_info.data.borrow_mut(),
     )?;
-    // @TODO: should we mark the obligation stale here?
+    // @TODO: should we mark the obligation stale here? could also iteratively update
+    //          obligation.collateral_market_value
 
     Ok(())
 }
@@ -1850,7 +1851,8 @@ fn process_refresh_obligation_liquidity(
         obligation_liquidity,
         &mut obligation_liquidity_info.data.borrow_mut(),
     )?;
-    // @TODO: should we mark the obligation stale here?
+    // @TODO: should we mark the obligation stale here? could also iteratively update
+    //          obligation.liquidity_market_value
 
     Ok(())
 }

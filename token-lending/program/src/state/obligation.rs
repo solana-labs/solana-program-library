@@ -69,6 +69,7 @@ impl Obligation {
         }
     }
 
+    // @FIXME
     /// Liquidate part of obligation
     pub fn liquidate(&mut self, repay_amount: Decimal, withdraw_amount: u64) -> ProgramResult {
         self.borrowed_wads = self.borrowed_wads.try_sub(repay_amount)?;
@@ -79,6 +80,7 @@ impl Obligation {
         Ok(())
     }
 
+    // @FIXME
     /// Repay borrowed tokens
     pub fn repay(
         &mut self,
@@ -112,16 +114,13 @@ impl Obligation {
         })
     }
 
-    pub fn update_loan_to_value(
-        &mut self,
-        liquidity_market_value: Decimal,
-        collateral_market_value: Decimal,
-    ) -> ProgramResult {
-        self.loan_to_value = liquidity_market_value.try_div(collateral_market_value)?;
-        Ok(())
+    /// Calculate the ratio of liquidity market value to collateral market value
+    pub fn loan_to_value(&self) -> Result<Decimal, ProgramError> {
+        self.liquidity_market_value
+            .try_div(self.collateral_market_value)
     }
 
-    /// Return slots elapsed
+    /// Return slots elapsed since given slot
     pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
         let slots_elapsed = slot
             .checked_sub(self.last_update_slot)
@@ -139,7 +138,7 @@ impl Obligation {
         self.update_slot(0);
     }
 
-    /// Check if last update slot is recent
+    /// Check if last update slot is too long ago
     pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
         Ok(self.last_update_slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
     }
