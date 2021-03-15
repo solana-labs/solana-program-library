@@ -294,9 +294,16 @@ impl Reserve {
             return Err(LendingError::InsufficientLiquidity.into());
         }
 
-        // @FIXME: unchecked math
-        self.liquidity.available_amount -= liquidity_amount;
-        self.collateral.mint_total_supply -= collateral_amount;
+        self.liquidity.available_amount = self
+            .liquidity
+            .available_amount
+            .checked_sub(liquidity_amount)
+            .ok_or(LendingError::MathOverflow)?;
+        self.collateral.mint_total_supply = self
+            .collateral
+            .mint_total_supply
+            .checked_sub(collateral_amount)
+            .ok_or(LendingError::MathOverflow)?;
 
         Ok(liquidity_amount)
     }
@@ -436,8 +443,10 @@ impl ReserveLiquidity {
             return Err(LendingError::InsufficientLiquidity.into());
         }
 
-        // @FIXME: unchecked math
-        self.available_amount -= borrow_amount;
+        self.available_amount -= self
+            .available_amount
+            .checked_sub(borrow_amount)
+            .ok_or(LendingError::MathOverflow)?;
         self.borrowed_amount_wads = self
             .borrowed_amount_wads
             .try_add(Decimal::from(borrow_amount))?;
