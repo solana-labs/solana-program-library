@@ -1313,7 +1313,6 @@ fn process_deposit_obligation_collateral(
     Ok(())
 }
 
-// @FIXME
 #[inline(never)] // avoid stack frame limit
 fn process_withdraw_obligation_collateral(
     program_id: &Pubkey,
@@ -1377,6 +1376,11 @@ fn process_withdraw_obligation_collateral(
     if obligation.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
+    // @TODO: is this enough? other reserves could have been updated that we don't check here, and
+    //          they all affect the market value. need to think about when interest may be accrued
+    if obligation.last_update_slot < withdraw_reserve.last_update_slot {
+        return Err(LendingError::ObligationStale.into());
+    }
 
     let mut obligation_collateral =
         ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
@@ -1434,37 +1438,41 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    // @TODO: is this necessary?
-    assert_last_update_slot(&withdraw_reserve, clock.slot)?;
-
-    // @FIXME: resume here, needs new business logic for calculating change to LTV from withdraw
-
-    let obligation_collateral_amount = obligation_collateral.deposited_tokens;
-    if obligation_collateral_amount == 0 {
+    if obligation_collateral.deposited_tokens == 0 {
         return Err(LendingError::ObligationEmpty.into());
     }
-    if obligation_collateral_amount < collateral_amount {
+    if obligation_collateral.deposited_tokens < collateral_amount {
         return Err(LendingError::InvalidObligationCollateral.into());
     }
 
-    let required_collateral = withdraw_reserve.required_collateral_for_borrow(
-        obligation.borrowed_liquidity_wads.try_ceil_u64()?,
-        &borrow_reserve.liquidity.mint_pubkey,
-        trade_simulator,
-    )?;
-    if obligation_collateral_amount < required_collateral {
+    let lending_market_ltv = Decimal::from_percent(lending_market.loan_to_value_ratio);
+    let obligation_ltv = obligation.loan_to_value()?;
+    if obligation_ltv > lending_market_ltv {
         return Err(LendingError::ObligationCollateralBelowRequired.into());
+    }
+    if obligation_ltv == lending_market_ltv {
+        return Err(LendingError::ObligationCollateralWithdrawBelowRequired.into());
+    }
+
+    let required_collateral_market_value = obligation
+        .liquidity_market_value
+        .try_div(lending_market_ltv)?;
+    let collateral_market_value_difference = obligation
+        .collateral_market_value
+        .try_sub(required_collateral_market_value)?;
+    let collateral_amount_pct_of_obligation_collateral_total =
+        Decimal::from(collateral_amount).try_div(obligation_collateral.deposited_tokens)?;
+    let collateral_amount_market_value = obligation
+        .collateral_market_value
+        .try_mul(collateral_amount_pct_of_obligation_collateral_total)?;
+    if collateral_amount_market_value > collateral_market_value_difference {
+        return Err(LendingError::ObligationCollateralWithdrawBelowRequired.into());
     }
 
     let obligation_token_amount = obligation_collateral
         .collateral_to_obligation_token_amount(collateral_amount, obligation_token_mint.supply)?;
 
-    let remaining_collateral = obligation_collateral.withdraw(collateral_amount)?;
-    if remaining_collateral < required_collateral {
-        return Err(LendingError::ObligationCollateralWithdrawBelowRequired.into());
-    }
-
-    obligation_collateral.withdraw(collateral_amount);
+    obligation_collateral.withdraw(collateral_amount)?;
     obligation_collateral.mark_stale();
     obligation.mark_stale();
 
@@ -1937,7 +1945,8 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    obligation.update_loan_to_value(liquidity_market_value, collateral_market_value)?;
+    obligation.collateral_market_value = collateral_market_value;
+    obligation.liquidity_market_value = liquidity_market_value;
     obligation.update_slot(clock.slot)?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
