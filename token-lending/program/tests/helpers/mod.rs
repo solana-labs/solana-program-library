@@ -456,7 +456,7 @@ impl TestLendingMarket {
         payer: &Keypair,
     ) -> Self {
         let owner = read_keypair_file("tests/fixtures/lending_market_owner.json").unwrap();
-        let keypair = Keypair::new();
+        let keypair = read_keypair_file("tests/fixtures/lending_market.json").unwrap();
         let pubkey = keypair.pubkey();
         let (authority_pubkey, _bump_seed) =
             Pubkey::find_program_address(&[&pubkey.to_bytes()[..32]], &spl_token_lending::id());
