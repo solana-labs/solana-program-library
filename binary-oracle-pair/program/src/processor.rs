@@ -35,6 +35,7 @@ impl Processor {
     }
 
     /// Transfer tokens with authority
+    #[allow(clippy::too_many_arguments)]
     pub fn transfer<'a>(
         token_program_id: AccountInfo<'a>,
         source_account: AccountInfo<'a>,
@@ -50,7 +51,7 @@ impl Processor {
             let authority_signature_seeds = [&me_bytes[..32], &[bump_seed]];
             let signers = &[&authority_signature_seeds[..]];
 
-            return invoke_signed(
+            invoke_signed(
                 &spl_token::instruction::transfer(
                     token_program_id.key,
                     source_account.key,
@@ -67,9 +68,9 @@ impl Processor {
                     destination_account,
                 ],
                 signers,
-            );
+            )
         } else {
-            return invoke(
+            invoke(
                 &spl_token::instruction::transfer(
                     token_program_id.key,
                     source_account.key,
@@ -85,7 +86,7 @@ impl Processor {
                     source_account,
                     destination_account,
                 ],
-            );
+            )
         }
     }
 
@@ -124,6 +125,7 @@ impl Processor {
     }
 
     /// Burn tokens
+    #[allow(clippy::too_many_arguments)]
     pub fn burn<'a>(
         token_program_id: AccountInfo<'a>,
         source_account: AccountInfo<'a>,
@@ -139,7 +141,7 @@ impl Processor {
             let authority_signature_seeds = [&me_bytes[..32], &[bump_seed]];
             let signers = &[&authority_signature_seeds[..]];
 
-            return invoke_signed(
+            invoke_signed(
                 &spl_token::instruction::burn(
                     token_program_id.key,
                     source_account.key,
@@ -156,9 +158,9 @@ impl Processor {
                     mint_account,
                 ],
                 signers,
-            );
+            )
         } else {
-            return invoke(
+            invoke(
                 &spl_token::instruction::burn(
                     token_program_id.key,
                     source_account.key,
@@ -174,7 +176,7 @@ impl Processor {
                     source_account,
                     mint_account,
                 ],
-            );
+            )
         }
     }
 
