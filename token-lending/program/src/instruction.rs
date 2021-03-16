@@ -181,8 +181,10 @@ pub enum LendingInstruction {
     ///   8. `[]` Clock sysvar
     ///   9. `[]` Token program id
     RepayObligationLiquidity {
-        /// Amount of liquidity to repay
+        /// Amount of liquidity to repay - usage depends on `liquidity_amount_type`
         liquidity_amount: u64,
+        /// Describe how `liquidity_amount` should be treated
+        liquidity_amount_type: AmountType,
     },
 
     // 7
@@ -211,8 +213,10 @@ pub enum LendingInstruction {
     ///   13 `[]` Clock sysvar
     ///   14 `[]` Token program id
     LiquidateObligation {
-        /// Amount of loan to repay
+        /// Amount of liquidity to repay - usage depends on `liquidity_amount_type`
         liquidity_amount: u64,
+        /// Describe how `liquidity_amount` should be treated
+        liquidity_amount_type: AmountType,
     },
 
     // 8
@@ -269,8 +273,10 @@ pub enum LendingInstruction {
     ///   10 `[]` Clock sysvar
     ///   11 `[]` Token program id
     WithdrawObligationCollateral {
-        /// Amount of collateral to withdraw
+        /// Amount of collateral to withdraw - usage depends on `collateral_amount_type`
         collateral_amount: u64,
+        /// Describe how `collateral_amount` should be treated
+        collateral_amount_type: AmountType,
     },
 
     // 11
@@ -550,9 +556,13 @@ impl LendingInstruction {
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
                 buf.extend_from_slice(&liquidity_amount_type.to_u8().unwrap().to_le_bytes());
             }
-            Self::RepayObligationLiquidity { liquidity_amount } => {
+            Self::RepayObligationLiquidity {
+                liquidity_amount,
+                liquidity_amount_type,
+            } => {
                 buf.push(6);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+                buf.extend_from_slice(&liquidity_amount_type.to_u8().unwrap().to_le_bytes());
             }
             Self::LiquidateObligation { liquidity_amount } => {
                 buf.push(7);
@@ -565,9 +575,13 @@ impl LendingInstruction {
                 buf.push(9);
                 buf.extend_from_slice(&collateral_amount.to_le_bytes());
             }
-            Self::WithdrawObligationCollateral { collateral_amount } => {
+            Self::WithdrawObligationCollateral {
+                collateral_amount,
+                collateral_amount_type,
+            } => {
                 buf.push(10);
                 buf.extend_from_slice(&collateral_amount.to_le_bytes());
+                buf.extend_from_slice(&collateral_amount_type.to_u8().unwrap().to_le_bytes());
             }
             Self::SetLendingMarketOwner { new_owner } => {
                 buf.push(11);
@@ -811,6 +825,7 @@ pub fn borrow_obligation_liquidity(
 pub fn repay_obligation_liquidity(
     program_id: Pubkey,
     liquidity_amount: u64,
+    liquidity_amount_type: AmountType,
     source_liquidity_pubkey: Pubkey,
     destination_collateral_pubkey: Pubkey,
     repay_reserve_pubkey: Pubkey,
@@ -843,7 +858,11 @@ pub fn repay_obligation_liquidity(
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: LendingInstruction::RepayObligationLiquidity { liquidity_amount }.pack(),
+        data: LendingInstruction::RepayObligationLiquidity {
+            liquidity_amount,
+            liquidity_amount_type,
+        }
+        .pack(),
     }
 }
 
@@ -853,6 +872,7 @@ pub fn repay_obligation_liquidity(
 pub fn liquidate_obligation(
     program_id: Pubkey,
     liquidity_amount: u64,
+    liquidity_amount_type: AmountType,
     source_liquidity_pubkey: Pubkey,
     destination_collateral_pubkey: Pubkey,
     repay_reserve_pubkey: Pubkey,
@@ -887,7 +907,11 @@ pub fn liquidate_obligation(
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: LendingInstruction::LiquidateObligation { liquidity_amount }.pack(),
+        data: LendingInstruction::LiquidateObligation {
+            liquidity_amount,
+            liquidity_amount_type,
+        }
+        .pack(),
     }
 }
 
@@ -948,6 +972,7 @@ pub fn deposit_obligation_collateral(
 pub fn withdraw_obligation_collateral(
     program_id: Pubkey,
     collateral_amount: u64,
+    collateral_amount_type: AmountType,
     source_collateral_pubkey: Pubkey,
     destination_collateral_pubkey: Pubkey,
     withdraw_reserve_pubkey: Pubkey,
@@ -976,7 +1001,11 @@ pub fn withdraw_obligation_collateral(
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: LendingInstruction::WithdrawObligationCollateral { collateral_amount }.pack(),
+        data: LendingInstruction::WithdrawObligationCollateral {
+            collateral_amount,
+            collateral_amount_type,
+        }
+        .pack(),
     }
 }
 
