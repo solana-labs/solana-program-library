@@ -301,9 +301,7 @@ impl Processor {
         pool.decision = Decision::Undecided;
 
         pool.serialize(&mut *pool_account_info.data.borrow_mut())
-            .unwrap();
-
-        Ok(())
+            .map_err(|e| e.into())
     }
 
     /// Process Deposit instruction
@@ -552,9 +550,8 @@ impl Processor {
             Decision::Fail
         };
 
-        pool.serialize(&mut *pool_account_info.data.borrow_mut())?;
-
-        Ok(())
+        pool.serialize(&mut *pool_account_info.data.borrow_mut())
+            .map_err(|e| e.into())
     }
 
     /// Processes an instruction
