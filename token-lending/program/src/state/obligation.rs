@@ -64,10 +64,9 @@ impl Obligation {
 
     /// Maximum amount of loan that can be repaid by liquidators
     pub fn max_liquidation_amount(&self) -> Result<u64, ProgramError> {
-        Ok(self
-            .borrowed_liquidity_wads
+        self.borrowed_liquidity_wads
             .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
-            .try_floor_u64()?)
+            .try_floor_u64()
     }
 
     /// Ratio of loan balance to collateral value

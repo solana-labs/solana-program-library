@@ -620,9 +620,7 @@ mod tests {
             swap_curve,
         });
         let packed = check.pack();
-        let mut expect = vec![];
-        expect.push(0u8);
-        expect.push(nonce);
+        let mut expect = vec![0u8, nonce];
         expect.extend_from_slice(&trade_fee_numerator.to_le_bytes());
         expect.extend_from_slice(&trade_fee_denominator.to_le_bytes());
         expect.extend_from_slice(&owner_trade_fee_numerator.to_le_bytes());
