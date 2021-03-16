@@ -16,6 +16,7 @@ use solana_program::{
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
+    native_token::sol_to_lamports,
     program::{invoke, invoke_signed},
     program_error::PrintProgramError,
     program_error::ProgramError,
@@ -130,7 +131,6 @@ impl Processor {
     }
 
     /// Issue a stake_split instruction.
-    #[allow(clippy::too_many_arguments)]
     pub fn stake_split<'a>(
         stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
@@ -139,8 +139,6 @@ impl Processor {
         bump_seed: u8,
         amount: u64,
         split_stake: AccountInfo<'a>,
-        reserved: AccountInfo<'a>,
-        stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
         let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
@@ -148,17 +146,7 @@ impl Processor {
 
         let ix = stake::split_only(stake_account.key, authority.key, amount, split_stake.key);
 
-        invoke_signed(
-            &ix,
-            &[
-                stake_account,
-                reserved,
-                authority,
-                split_stake,
-                stake_program_info,
-            ],
-            signers,
-        )
+        invoke_signed(&ix, &[stake_account, split_stake, authority], signers)
     }
 
     /// Issue a stake_merge instruction.
@@ -442,8 +430,9 @@ impl Processor {
             &[bump_seed],
         ];
 
-        // Fund the associated token account with the minimum balance to be rent exempt
-        let required_lamports = 1 + rent.minimum_balance(std::mem::size_of::<stake::StakeState>());
+        // Fund the stake account with 1 SOL + rent-exempt balance
+        let required_lamports =
+            sol_to_lamports(1.0) + rent.minimum_balance(std::mem::size_of::<stake::StakeState>());
 
         // Create new stake account
         invoke_signed(
@@ -1112,8 +1101,6 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
             stake_amount,
             stake_split_to.clone(),
-            clock_info.clone(),
-            stake_program_info.clone(),
         )?;
 
         Self::stake_authorize(
@@ -1294,7 +1281,6 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::CalculationFailure => msg!("Error: The calculation failed"),
             StakePoolError::FeeTooHigh => msg!("Error: Stake pool fee > 1"),
             StakePoolError::WrongAccountMint => msg!("Error: Token account is associated with the wrong mint"),
-            StakePoolError::NonZeroBalance => msg!("Error: Account balance should be zero"),
             StakePoolError::WrongOwner => msg!("Error: Wrong pool owner account"),
             StakePoolError::SignatureMissing => msg!("Error: Required signature is missing"),
             StakePoolError::InvalidValidatorStakeList => msg!("Error: Invalid validator stake list account"),

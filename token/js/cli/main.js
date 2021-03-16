@@ -8,8 +8,10 @@ import {
   loadTokenProgram,
   createMint,
   createAccount,
+  createAssociatedAccount,
   transfer,
   transferChecked,
+  transferCheckedAssociated,
   approveRevoke,
   failOnApproveOverspend,
   setAuthority,
@@ -30,6 +32,8 @@ async function main() {
   await createMint();
   console.log('Run test: createAccount');
   await createAccount();
+  console.log('Run test: createAssociatedAccount');
+  await createAssociatedAccount();
   console.log('Run test: mintTo');
   await mintTo();
   console.log('Run test: mintToChecked');
@@ -38,6 +42,8 @@ async function main() {
   await transfer();
   console.log('Run test: transferChecked');
   await transferChecked();
+  console.log('Run test: transferCheckedAssociated');
+  await transferCheckedAssociated();
   console.log('Run test: approveRevoke');
   await approveRevoke();
   console.log('Run test: failOnApproveOverspend');

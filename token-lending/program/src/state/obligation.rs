@@ -83,6 +83,18 @@ impl Obligation {
         loan.try_div(collateral_value)
     }
 
+    /// Amount of obligation tokens for given collateral
+    pub fn collateral_to_obligation_token_amount(
+        &self,
+        collateral_amount: u64,
+        obligation_token_supply: u64,
+    ) -> Result<u64, ProgramError> {
+        let withdraw_pct =
+            Decimal::from(collateral_amount).try_div(self.deposited_collateral_tokens)?;
+        let token_amount: Decimal = withdraw_pct.try_mul(obligation_token_supply)?;
+        token_amount.try_floor_u64()
+    }
+
     /// Accrue interest
     pub fn accrue_interest(&mut self, cumulative_borrow_rate: Decimal) -> ProgramResult {
         if cumulative_borrow_rate < self.cumulative_borrow_rate_wads {
@@ -103,9 +115,10 @@ impl Obligation {
     }
 
     /// Liquidate part of obligation
-    pub fn liquidate(&mut self, settle_amount: Decimal, withdraw_amount: u64) -> ProgramResult {
-        self.borrowed_liquidity_wads = self.borrowed_liquidity_wads.try_sub(settle_amount)?;
-        self.deposited_collateral_tokens
+    pub fn liquidate(&mut self, repay_amount: Decimal, withdraw_amount: u64) -> ProgramResult {
+        self.borrowed_liquidity_wads = self.borrowed_liquidity_wads.try_sub(repay_amount)?;
+        self.deposited_collateral_tokens = self
+            .deposited_collateral_tokens
             .checked_sub(withdraw_amount)
             .ok_or(LendingError::MathOverflow)?;
         Ok(())
@@ -130,19 +143,12 @@ impl Obligation {
             withdraw_amount.try_floor_u64()?
         };
 
-        let obligation_token_amount = {
-            let withdraw_pct = Decimal::from(collateral_withdraw_amount)
-                .try_div(self.deposited_collateral_tokens)?;
-            let token_amount: Decimal = withdraw_pct.try_mul(obligation_token_supply)?;
-            token_amount.try_floor_u64()?
-        };
+        let obligation_token_amount = self.collateral_to_obligation_token_amount(
+            collateral_withdraw_amount,
+            obligation_token_supply,
+        )?;
 
-        self.borrowed_liquidity_wads =
-            self.borrowed_liquidity_wads.try_sub(decimal_repay_amount)?;
-        self.deposited_collateral_tokens = self
-            .deposited_collateral_tokens
-            .checked_sub(collateral_withdraw_amount)
-            .ok_or(LendingError::MathOverflow)?;
+        self.liquidate(decimal_repay_amount, collateral_withdraw_amount)?;
 
         Ok(RepayResult {
             decimal_repay_amount,
