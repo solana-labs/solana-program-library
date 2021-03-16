@@ -1464,15 +1464,6 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    // @FIXME: use collateral_amount_type
-
-    if obligation_collateral.deposited_tokens == 0 {
-        return Err(LendingError::ObligationEmpty.into());
-    }
-    if obligation_collateral.deposited_tokens < collateral_amount {
-        return Err(LendingError::InvalidObligationCollateral.into());
-    }
-
     let lending_market_ltv = Rate::from_percent(lending_market.loan_to_value_ratio);
     let obligation_ltv = obligation.loan_to_value()?;
     if obligation_ltv > lending_market_ltv {
@@ -1482,23 +1473,39 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::ObligationLTVCannotGoAboveReserveLTV.into());
     }
 
-    let required_collateral_value = obligation.liquidity_value.try_div(lending_market_ltv)?;
-    let collateral_value_difference = obligation
-        .collateral_value
-        .try_sub(required_collateral_value)?;
-    let collateral_amount_pct_of_obligation_collateral_amount =
-        Decimal::from(collateral_amount).try_div(obligation_collateral.deposited_tokens)?;
-    let collateral_amount_value = obligation
-        .collateral_value
-        .try_mul(collateral_amount_pct_of_obligation_collateral_amount)?;
-    if collateral_amount_value > collateral_value_difference {
-        return Err(LendingError::ObligationCollateralWithdrawBelowRequired.into());
-    }
+    let min_collateral_value = obligation.liquidity_value.try_div(lending_market_ltv)?;
+    let max_withdraw_value = obligation.collateral_value.try_sub(min_collateral_value)?;
+
+    let withdraw_amount = match collateral_amount_type {
+        AmountType::ExactAmount => {
+            let withdraw_amount = collateral_amount.min(obligation_collateral.deposited_tokens);
+            let withdraw_pct =
+                Decimal::from(withdraw_amount).try_div(obligation_collateral.deposited_tokens)?;
+            let withdraw_value = obligation.collateral_value.try_mul(withdraw_pct)?;
+            if withdraw_value > max_withdraw_value {
+                return Err(LendingError::ObligationCollateralWithdrawBelowRequired.into());
+            }
+
+            withdraw_amount
+        }
+        AmountType::PercentAmount => {
+            let withdraw_pct = Decimal::from_percent(u8::try_from(collateral_amount)?);
+            let withdraw_value = max_withdraw_value
+                .try_mul(withdraw_pct)?
+                .min(obligation_collateral.value);
+            let withdraw_amount = withdraw_value
+                .try_div(obligation_collateral.value)?
+                .try_mul(obligation_collateral.deposited_tokens)?
+                .try_floor_u64()?;
+
+            withdraw_amount
+        }
+    };
 
     let obligation_token_amount = obligation_collateral
-        .collateral_to_obligation_token_amount(collateral_amount, obligation_token_mint.supply)?;
+        .collateral_to_obligation_token_amount(withdraw_amount, obligation_token_mint.supply)?;
 
-    obligation_collateral.withdraw(collateral_amount)?;
+    obligation_collateral.withdraw(withdraw_amount)?;
     obligation_collateral.mark_stale();
     obligation.mark_stale();
 
@@ -1520,7 +1527,7 @@ fn process_withdraw_obligation_collateral(
     spl_token_transfer(TokenTransferParams {
         source: source_collateral_info.clone(),
         destination: destination_collateral_info.clone(),
-        amount: collateral_amount,
+        amount: withdraw_amount,
         authority: lending_market_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_id.clone(),
