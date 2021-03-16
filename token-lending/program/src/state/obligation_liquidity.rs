@@ -28,8 +28,8 @@ pub struct ObligationLiquidity {
     pub cumulative_borrow_rate_wads: Decimal,
     /// Amount of liquidity tokens borrowed for an obligation plus interest
     pub borrowed_wads: Decimal,
-    /// Market value of liquidity
-    pub market_value: Decimal,
+    /// Market value of liquidity in quote currency
+    pub value: Decimal,
 }
 
 /// Create new obligation liquidity
@@ -55,7 +55,7 @@ impl ObligationLiquidity {
             borrow_reserve,
             cumulative_borrow_rate_wads: Decimal::one(),
             borrowed_wads: Decimal::zero(),
-            market_value: Decimal::zero(),
+            value: Decimal::zero(),
         }
     }
 
@@ -105,13 +105,13 @@ impl ObligationLiquidity {
     }
 
     /// Update market value of liquidity
-    pub fn update_market_value(
+    pub fn update_value(
         &mut self,
         converter: impl TokenConverter,
         from_token_mint: &Pubkey,
     ) -> ProgramResult {
         // @TODO: this may be slow/inaccurate for large amounts depending on dex market
-        self.market_value = converter.convert(self.borrowed_wads, from_token_mint)?;
+        self.value = converter.convert(self.borrowed_wads, from_token_mint)?;
         Ok(())
     }
 
@@ -159,7 +159,7 @@ impl Pack for ObligationLiquidity {
             borrow_reserve,
             cumulative_borrow_rate_wads,
             borrowed_wads,
-            market_value,
+            value,
             _padding,
         ) = mut_array_refs![output, 1, 8, PUBKEY_LEN, PUBKEY_LEN, 16, 16, 16, 128];
 
@@ -172,7 +172,7 @@ impl Pack for ObligationLiquidity {
             cumulative_borrow_rate_wads,
         );
         pack_decimal(self.borrowed_wads, borrowed_wads);
-        pack_decimal(self.market_value, market_value);
+        pack_decimal(self.value, value);
     }
 
     /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
@@ -186,7 +186,7 @@ impl Pack for ObligationLiquidity {
             borrow_reserve,
             cumulative_borrow_rate_wads,
             borrowed_wads,
-            market_value,
+            value,
             _padding,
         ) = array_refs![input, 1, 8, PUBKEY_LEN, PUBKEY_LEN, 16, 16, 16, 128];
 
@@ -197,7 +197,7 @@ impl Pack for ObligationLiquidity {
             borrow_reserve: Pubkey::new_from_array(*borrow_reserve),
             cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
             borrowed_wads: unpack_decimal(borrowed_wads),
-            market_value: unpack_decimal(market_value),
+            value: unpack_decimal(value),
         })
     }
 }

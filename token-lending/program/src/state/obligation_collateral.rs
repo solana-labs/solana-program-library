@@ -28,8 +28,8 @@ pub struct ObligationCollateral {
     pub token_mint: Pubkey,
     /// Amount of collateral tokens deposited for an obligation
     pub deposited_tokens: u64,
-    /// Market value of collateral
-    pub market_value: Decimal,
+    /// Market value of collateral in quote currency
+    pub value: Decimal,
 }
 
 /// Create new obligation collateral
@@ -58,7 +58,7 @@ impl ObligationCollateral {
             deposit_reserve,
             token_mint,
             deposited_tokens: 0,
-            market_value: Decimal::zero(),
+            value: Decimal::zero(),
         }
     }
 
@@ -81,7 +81,7 @@ impl ObligationCollateral {
     }
 
     /// Update market value of collateral
-    pub fn update_market_value(
+    pub fn update_value(
         &mut self,
         collateral_exchange_rate: CollateralExchangeRate,
         converter: impl TokenConverter,
@@ -90,7 +90,7 @@ impl ObligationCollateral {
         let liquidity_amount = collateral_exchange_rate
             .decimal_collateral_to_liquidity(self.deposited_tokens.into())?;
         // @TODO: this may be slow/inaccurate for large amounts depending on dex market
-        self.market_value = converter.convert(liquidity_amount, liquidity_token_mint)?;
+        self.value = converter.convert(liquidity_amount, liquidity_token_mint)?;
         Ok(())
     }
 
@@ -150,7 +150,7 @@ impl Pack for ObligationCollateral {
             deposit_reserve,
             token_mint,
             deposited_tokens,
-            market_value,
+            value,
             _padding,
         ) = mut_array_refs![output, 1, 8, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
 
@@ -160,7 +160,7 @@ impl Pack for ObligationCollateral {
         deposit_reserve.copy_from_slice(self.deposit_reserve.as_ref());
         token_mint.copy_from_slice(self.token_mint.as_ref());
         *deposited_tokens = self.deposited_tokens.to_le_bytes();
-        pack_decimal(self.market_value, market_value);
+        pack_decimal(self.value, value);
     }
 
     /// Unpacks a byte buffer into a [ObligationInfo](struct.ObligationInfo.html).
@@ -174,7 +174,7 @@ impl Pack for ObligationCollateral {
             deposit_reserve,
             token_mint,
             deposited_tokens,
-            market_value,
+            value,
             _padding,
         ) = array_refs![input, 1, 8, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
 
@@ -185,7 +185,7 @@ impl Pack for ObligationCollateral {
             deposit_reserve: Pubkey::new_from_array(*deposit_reserve),
             token_mint: Pubkey::new_from_array(*token_mint),
             deposited_tokens: u64::from_le_bytes(*deposited_tokens),
-            market_value: unpack_decimal(market_value),
+            value: unpack_decimal(value),
         })
     }
 }

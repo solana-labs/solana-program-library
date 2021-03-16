@@ -29,10 +29,10 @@ pub struct Obligation {
     pub last_update_slot: Slot,
     /// Lending market address
     pub lending_market: Pubkey,
-    /// Collateral market value
-    pub collateral_market_value: Decimal,
-    /// Liquidity market value
-    pub liquidity_market_value: Decimal,
+    /// Collateral market value in quote currency
+    pub collateral_value: Decimal,
+    /// Liquidity market value in quote currency
+    pub liquidity_value: Decimal,
     /// Collateral accounts for the obligation
     pub collateral: Vec<Pubkey>,
     /// Liquidity accounts for the obligation
@@ -62,8 +62,8 @@ impl Obligation {
             version: PROGRAM_VERSION,
             last_update_slot: 0,
             lending_market,
-            collateral_market_value: Decimal::zero(),
-            liquidity_market_value: Decimal::zero(),
+            collateral_value: Decimal::zero(),
+            liquidity_value: Decimal::zero(),
             collateral,
             liquidity,
         }
@@ -116,8 +116,7 @@ impl Obligation {
 
     /// Calculate the ratio of liquidity market value to collateral market value
     pub fn loan_to_value(&self) -> Result<Decimal, ProgramError> {
-        self.liquidity_market_value
-            .try_div(self.collateral_market_value)
+        self.liquidity_value.try_div(self.collateral_value)
     }
 
     /// Return slots elapsed since given slot
@@ -174,8 +173,8 @@ impl Pack for Obligation {
             version,
             last_update_slot,
             lending_market,
-            collateral_market_value,
-            liquidity_market_value,
+            collateral_value,
+            liquidity_value,
             num_collateral,
             num_liquidity,
             accounts_flat,
@@ -194,8 +193,8 @@ impl Pack for Obligation {
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();
         lending_market.copy_from_slice(self.lending_market.as_ref());
-        pack_decimal(self.collateral_market_value, collateral_market_value);
-        pack_decimal(self.liquidity_market_value, liquidity_market_value);
+        pack_decimal(self.collateral_value, collateral_value);
+        pack_decimal(self.liquidity_value, liquidity_value);
 
         // @TODO: this seems clunky, is this correct?
         *num_collateral = u8::try_from(self.collateral.len())?.to_le_bytes();
@@ -223,8 +222,8 @@ impl Pack for Obligation {
             version,
             last_update_slot,
             lending_market,
-            collateral_market_value,
-            liquidity_market_value,
+            collateral_value,
+            liquidity_value,
             num_collateral,
             num_liquidity,
             accounts_flat,
@@ -267,8 +266,8 @@ impl Pack for Obligation {
             version: u8::from_le_bytes(*version),
             last_update_slot: u64::from_le_bytes(*last_update_slot),
             lending_market: Pubkey::new_from_array(*lending_market),
-            collateral_market_value: unpack_decimal(collateral_market_value),
-            liquidity_market_value: unpack_decimal(liquidity_market_value),
+            collateral_value: unpack_decimal(collateral_value),
+            liquidity_value: unpack_decimal(liquidity_value),
             collateral,
             liquidity,
         })

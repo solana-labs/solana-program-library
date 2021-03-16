@@ -1454,18 +1454,18 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::ObligationLTVCannotGoAboveReserveLTV.into());
     }
 
-    let required_collateral_market_value = obligation
-        .liquidity_market_value
+    let required_collateral_value = obligation
+        .liquidity_value
         .try_div(lending_market_ltv)?;
-    let collateral_market_value_difference = obligation
-        .collateral_market_value
-        .try_sub(required_collateral_market_value)?;
-    let collateral_amount_pct_of_obligation_collateral_total =
+    let collateral_value_difference = obligation
+        .collateral_value
+        .try_sub(required_collateral_value)?;
+    let collateral_amount_pct_of_obligation_collateral_amount =
         Decimal::from(collateral_amount).try_div(obligation_collateral.deposited_tokens)?;
-    let collateral_amount_market_value = obligation
-        .collateral_market_value
-        .try_mul(collateral_amount_pct_of_obligation_collateral_total)?;
-    if collateral_amount_market_value > collateral_market_value_difference {
+    let collateral_amount_value = obligation
+        .collateral_value
+        .try_mul(collateral_amount_pct_of_obligation_collateral_amount)?;
+    if collateral_amount_value > collateral_value_difference {
         return Err(LendingError::ObligationCollateralWithdrawBelowRequired.into());
     }
 
@@ -1765,7 +1765,7 @@ fn process_refresh_obligation_collateral(
         &deposit_reserve.liquidity.mint_pubkey,
     )?;
 
-    obligation_collateral.update_market_value(
+    obligation_collateral.update_value(
         deposit_reserve.collateral_exchange_rate()?,
         trade_simulator,
         &deposit_reserve.liquidity.mint_pubkey,
@@ -1776,7 +1776,7 @@ fn process_refresh_obligation_collateral(
         &mut obligation_collateral_info.data.borrow_mut(),
     )?;
     // @TODO: should we mark the obligation stale here? could also iteratively update
-    //          obligation.collateral_market_value
+    //          obligation.collateral_value
 
     Ok(())
 }
@@ -1853,14 +1853,14 @@ fn process_refresh_obligation_liquidity(
 
     obligation_liquidity.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
     obligation_liquidity
-        .update_market_value(trade_simulator, &borrow_reserve.liquidity.mint_pubkey)?;
+        .update_value(trade_simulator, &borrow_reserve.liquidity.mint_pubkey)?;
     obligation_liquidity.update_slot(clock.slot)?;
     ObligationLiquidity::pack(
         obligation_liquidity,
         &mut obligation_liquidity_info.data.borrow_mut(),
     )?;
     // @TODO: should we mark the obligation stale here? could also iteratively update
-    //          obligation.liquidity_market_value
+    //          obligation.liquidity_value
 
     Ok(())
 }
@@ -1889,7 +1889,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let mut collateral_market_value = Decimal::zero();
+    let mut collateral_value = Decimal::zero();
     for pubkey in obligation.collateral {
         let obligation_collateral_info = next_account_info(account_info_iter)?;
         if obligation_collateral_info.owner != program_id {
@@ -1910,11 +1910,11 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             return Err(LendingError::ObligationCollateralStale.into());
         }
 
-        collateral_market_value =
-            collateral_market_value.try_add(obligation_collateral.market_value)?;
+        collateral_value =
+            collateral_value.try_add(obligation_collateral.value)?;
     }
 
-    let mut liquidity_market_value = Decimal::zero();
+    let mut liquidity_value = Decimal::zero();
     for pubkey in obligation.liquidity {
         let obligation_liquidity_info = next_account_info(account_info_iter)?;
         if obligation_liquidity_info.owner != program_id {
@@ -1935,8 +1935,8 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             return Err(LendingError::ObligationLiquidityStale.into());
         }
 
-        liquidity_market_value =
-            liquidity_market_value.try_add(obligation_liquidity.market_value)?;
+        liquidity_value =
+            liquidity_value.try_add(obligation_liquidity.value)?;
     }
 
     // @TODO: check this
@@ -1945,8 +1945,8 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    obligation.collateral_market_value = collateral_market_value;
-    obligation.liquidity_market_value = liquidity_market_value;
+    obligation.collateral_value = collateral_value;
+    obligation.liquidity_value = liquidity_value;
     obligation.update_slot(clock.slot)?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
