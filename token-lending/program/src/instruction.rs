@@ -699,9 +699,10 @@ pub fn deposit_reserve_liquidity(
     reserve_liquidity_supply_pubkey: Pubkey,
     reserve_collateral_mint_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
-    lending_market_authority_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -731,9 +732,10 @@ pub fn withdraw_reserve_liquidity(
     reserve_collateral_mint_pubkey: Pubkey,
     reserve_liquidity_supply_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
-    lending_market_authority_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -829,9 +831,10 @@ pub fn repay_obligation_liquidity(
     obligation_mint_pubkey: Pubkey,
     obligation_output_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
-    lending_market_authority_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -868,12 +871,13 @@ pub fn liquidate_obligation(
     withdraw_reserve_collateral_supply_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
-    lending_market_authority_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
     dex_market_pubkey: Pubkey,
     dex_market_order_book_side_pubkey: Pubkey,
     memory_pubkey: Pubkey,
 ) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -926,9 +930,10 @@ pub fn deposit_obligation_collateral(
     obligation_mint_pubkey: Pubkey,
     obligation_output_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
-    lending_market_authority_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -961,9 +966,10 @@ pub fn withdraw_obligation_collateral(
     obligation_mint_pubkey: Pubkey,
     obligation_input_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
-    lending_market_authority_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
