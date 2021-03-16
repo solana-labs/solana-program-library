@@ -578,7 +578,7 @@ fn process_withdraw_reserve_liquidity(
 
     assert_last_update_slot(&reserve, clock.slot)?;
 
-    let liquidity_withdraw_amount = reserve.redeem_collateral(collateral_amount)?;
+    let liquidity_amount = reserve.redeem_collateral(collateral_amount)?;
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
     spl_token_burn(TokenBurnParams {
@@ -593,7 +593,7 @@ fn process_withdraw_reserve_liquidity(
     spl_token_transfer(TokenTransferParams {
         source: reserve_liquidity_supply_info.clone(),
         destination: destination_liquidity_info.clone(),
-        amount: liquidity_withdraw_amount,
+        amount: liquidity_amount,
         authority: lending_market_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_id.clone(),

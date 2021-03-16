@@ -109,7 +109,7 @@ pub enum LendingInstruction {
     },
 
     // 4
-    // @TODO: consider renaming to SwapReserveCollateralForLiquidity
+    // @TODO: consider renaming to SwapReserveCollateralForLiquidity or RedeemReserveCollateral
     /// Withdraw tokens from a reserve. The input is a collateral token representing ownership
     /// of the reserve liquidity pool.
     ///
