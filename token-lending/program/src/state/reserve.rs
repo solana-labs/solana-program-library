@@ -264,6 +264,8 @@ impl Reserve {
         let collateral_exchange_rate = self.collateral_exchange_rate()?;
         let liquidity_amount =
             collateral_exchange_rate.collateral_to_liquidity(collateral_amount)?;
+        // @FIXME: collateral represents a share of available liquidity,
+        //         it should never be more than what's available
         if liquidity_amount > self.liquidity.available_amount {
             return Err(LendingError::InsufficientLiquidity.into());
         }

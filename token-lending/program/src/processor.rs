@@ -704,11 +704,21 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &obligation_liquidity.borrow_reserve != borrow_reserve_info.key {
-        msg!("Invalid withdraw reserve account");
+        msg!("Invalid borrow reserve account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if !obligation.liquidity.contains(obligation_liquidity_info.key) {
         return Err(LendingError::ObligationAccountNotFound.into());
+    }
+    // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
+    //          check here. we could mark the obligation stale on every refresh of
+    //          collateral/liquidity, but this means they can't be refreshed in parallel
+    if obligation.last_update_slot < obligation_liquidity.last_update_slot {
+        return Err(LendingError::ObligationStale.into());
+    }
+    // @TODO: is this necessary if checking obligation.last_update_slot < obligation_liquidity.last_update_slot above?
+    if obligation_liquidity.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationLiquidityStale.into());
     }
 
     let authority_signer_seeds = &[
@@ -720,6 +730,12 @@ fn process_borrow_obligation_liquidity(
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
+
+    // @TODO: is this necessary?
+    assert_last_update_slot(&borrow_reserve, clock.slot)?;
+
+    // @TODO: is this necessary?
+    obligation_liquidity.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
 
     let lending_market_ltv = Rate::from_percent(lending_market.loan_to_value_ratio);
     let obligation_ltv = obligation.loan_to_value()?;
@@ -758,11 +774,11 @@ fn process_borrow_obligation_liquidity(
         &lending_market.quote_token_mint,
     )?;
 
-    // @TODO: will this need adjustment for fees?
+    // @TODO: will this need further adjustment for fees?
     borrow_reserve
         .liquidity
         .borrow(total_amount, borrow_amount)?;
-    // @TODO: will this need adjustment for fees?
+    // @TODO: will this need further adjustment for fees?
     obligation_liquidity.borrow(borrow_amount);
     obligation_liquidity.mark_stale();
     obligation.mark_stale();
@@ -1428,6 +1444,9 @@ fn process_withdraw_obligation_collateral(
     {
         return Err(LendingError::ObligationAccountNotFound.into());
     }
+    if obligation.last_update_slot < obligation_collateral.last_update_slot {
+        return Err(LendingError::ObligationCollateralStale.into());
+    }
     if obligation_collateral.is_stale(clock.slot)? {
         return Err(LendingError::ObligationCollateralStale.into());
     }
@@ -1436,6 +1455,13 @@ fn process_withdraw_obligation_collateral(
     //          collateral/liquidity, but this means they can't be refreshed in parallel
     if obligation.last_update_slot < obligation_collateral.last_update_slot {
         return Err(LendingError::ObligationStale.into());
+    }
+    // @TODO: is this necessary if checking obligation.last_update_slot < obligation_liquidity.last_update_slot above?
+    if obligation_collateral.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationCollateralStale.into());
+    }
+    if obligation_collateral.deposited_tokens == 0 {
+        return Err(LendingError::ObligationEmpty.into());
     }
 
     let obligation_token_mint = unpack_mint(&obligation_token_mint_info.data.borrow())?;
