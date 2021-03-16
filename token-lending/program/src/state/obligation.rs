@@ -150,10 +150,10 @@ impl Obligation {
         self.liquidate(decimal_repay_amount, collateral_withdraw_amount)?;
 
         Ok(RepayResult {
-            decimal_repay_amount,
-            integer_repay_amount,
             collateral_withdraw_amount,
             obligation_token_amount,
+            decimal_repay_amount,
+            integer_repay_amount,
         })
     }
 }
@@ -329,11 +329,7 @@ mod test {
             (deposited_collateral_tokens, obligation_tokens) in collateral_amounts(),
         ) {
             let borrowed_liquidity_wads = Decimal::from_scaled_val(borrowed_liquidity);
-            let mut state = Obligation {
-                borrowed_liquidity_wads,
-                deposited_collateral_tokens,
-                ..Obligation::default()
-            };
+            let mut state = Obligation { deposited_collateral_tokens, borrowed_liquidity_wads, ..Obligation::default() };
 
             let repay_result = state.repay(liquidity_amount, obligation_tokens)?;
             assert!(repay_result.decimal_repay_amount <= Decimal::from(repay_result.integer_repay_amount));
@@ -354,11 +350,7 @@ mod test {
             (deposited_collateral_tokens, obligation_tokens) in collateral_amounts(),
         ) {
             let borrowed_liquidity_wads = Decimal::from_scaled_val(borrowed_liquidity);
-            let mut state = Obligation {
-                borrowed_liquidity_wads,
-                deposited_collateral_tokens,
-                ..Obligation::default()
-            };
+            let mut state = Obligation { deposited_collateral_tokens, borrowed_liquidity_wads, ..Obligation::default() } ;
 
             let repay_result = state.repay(liquidity_amount, obligation_tokens)?;
             assert!(repay_result.decimal_repay_amount <= Decimal::from(repay_result.integer_repay_amount));
@@ -376,11 +368,7 @@ mod test {
         ) {
             let borrowed_liquidity_wads = Decimal::from(borrowed_liquidity);
             let cumulative_borrow_rate_wads = Decimal::one().try_add(Decimal::from_scaled_val(current_borrow_rate))?;
-            let mut state = Obligation {
-                borrowed_liquidity_wads,
-                cumulative_borrow_rate_wads,
-                ..Obligation::default()
-            };
+            let mut state = Obligation { cumulative_borrow_rate_wads, borrowed_liquidity_wads, ..Obligation::default() };
 
             let next_cumulative_borrow_rate = Decimal::one().try_add(Decimal::from_scaled_val(new_borrow_rate))?;
             state.accrue_interest(next_cumulative_borrow_rate)?;

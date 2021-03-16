@@ -66,8 +66,7 @@ pub mod tests {
 
     #[test]
     fn serialize_data() {
-        let mut expected = vec![];
-        expected.push(TEST_VERSION);
+        let mut expected = vec![TEST_VERSION];
         expected.extend_from_slice(&TEST_PUBKEY.to_bytes());
         expected.extend_from_slice(&TEST_DATA.bytes);
         assert_eq!(TEST_RECORD_DATA.try_to_vec().unwrap(), expected);
@@ -80,8 +79,7 @@ pub mod tests {
     #[test]
     fn deserialize_invalid_slice() {
         let data = [200; Data::DATA_SIZE - 1];
-        let mut expected = vec![];
-        expected.push(TEST_VERSION);
+        let mut expected = vec![TEST_VERSION];
         expected.extend_from_slice(&TEST_PUBKEY.to_bytes());
         expected.extend_from_slice(&data);
         let err: ProgramError = RecordData::try_from_slice(&expected).unwrap_err().into();
