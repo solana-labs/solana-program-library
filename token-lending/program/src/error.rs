@@ -154,12 +154,21 @@ pub enum LendingError {
     /// Invalid obligation collateral amount
     #[error("Invalid obligation collateral amount")]
     InvalidObligationCollateral,
-    /// Obligation collateral is already below required amount
-    #[error("Obligation collateral is already below required amount")]
-    ObligationCollateralBelowRequired,
+    // @FIXME: change name + message
+    /// Obligation LTV is above the reserve LTV
+    #[error("Obligation LTV is above the reserve LTV")]
+    ObligationLTVAboveReserveLTV,
+    // @FIXME: change name + message
+    /// Obligation LTV cannot go above the reserve LTV
+    #[error("Obligation LTV cannot go above the reserve LTV")]
+    ObligationLTVCannotGoAboveReserveLTV,
+    // @FIXME: change name + message
     /// Obligation collateral cannot be withdrawn below required amount
     #[error("Obligation collateral cannot be withdrawn below required amount")]
     ObligationCollateralWithdrawBelowRequired,
+    /// Borrow amount too small
+    #[error("Borrow amount too large")]
+    BorrowTooLarge,
 }
 
 impl From<LendingError> for ProgramError {

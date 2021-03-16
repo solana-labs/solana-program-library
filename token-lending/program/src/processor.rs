@@ -1448,10 +1448,10 @@ fn process_withdraw_obligation_collateral(
     let lending_market_ltv = Decimal::from_percent(lending_market.loan_to_value_ratio);
     let obligation_ltv = obligation.loan_to_value()?;
     if obligation_ltv > lending_market_ltv {
-        return Err(LendingError::ObligationCollateralBelowRequired.into());
+        return Err(LendingError::ObligationLTVAboveReserveLTV.into());
     }
     if obligation_ltv == lending_market_ltv {
-        return Err(LendingError::ObligationCollateralWithdrawBelowRequired.into());
+        return Err(LendingError::ObligationLTVCannotGoAboveReserveLTV.into());
     }
 
     let required_collateral_market_value = obligation

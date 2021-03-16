@@ -329,7 +329,7 @@ async fn test_withdraw_below_required() {
         TransactionError::InstructionError(
             3,
             InstructionError::Custom(
-                LendingError::ObligationCollateralWithdrawBelowRequired as u32
+                LendingError::ObligationLTVCannotGoAboveReserveLTV as u32
             )
         )
     );
