@@ -1414,8 +1414,8 @@ fn main() {
             command_create_pool(
                 &config,
                 PoolFee {
-                    numerator,
                     denominator,
+                    numerator,
                 },
             )
         }

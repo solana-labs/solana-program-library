@@ -159,6 +159,7 @@ impl Processor {
 
         let source_account_info = next_account_info(account_info_iter)?;
 
+        #[allow(clippy::manual_map)]
         let expected_mint_info = if let Some(expected_decimals) = expected_decimals {
             Some((next_account_info(account_info_iter)?, expected_decimals))
         } else {
@@ -266,6 +267,8 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
 
         let source_account_info = next_account_info(account_info_iter)?;
+
+        #[allow(clippy::manual_map)]
         let expected_mint_info = if let Some(expected_decimals) = expected_decimals {
             Some((next_account_info(account_info_iter)?, expected_decimals))
         } else {

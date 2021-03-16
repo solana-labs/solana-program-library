@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use assert_matches::*;
+use assert_matches::assert_matches;
 use solana_program::{program_option::COption, program_pack::Pack, pubkey::Pubkey};
 use solana_program_test::*;
 use solana_sdk::{
@@ -55,6 +55,7 @@ pub const SRM_USDC_BIDS: &str = "AuL9JzRJ55MdqzubK4EutJgAumtkuFcRVuPUvTX39pN8";
 pub const SRM_USDC_ASKS: &str = "8Lx9U9wdE3afdqih1mCAXy3unJDfzSaXFqAvoLMjhwoD";
 
 #[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum TestDexMarketPair {
     SRM_USDC,
     SOL_USDC,
