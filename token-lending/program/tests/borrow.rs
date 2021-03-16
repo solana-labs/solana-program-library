@@ -6,7 +6,7 @@ use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::{
-    instruction::BorrowAmountType, math::Decimal, processor::process_instruction,
+    instruction::AmountType, math::Decimal, processor::process_instruction,
     state::INITIAL_COLLATERAL_RATIO,
 };
 
@@ -102,7 +102,7 @@ async fn test_borrow_quote_currency() {
                 deposit_reserve: &sol_reserve,
                 borrow_reserve: &usdc_reserve,
                 dex_market: &sol_usdc_dex_market,
-                borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
+                borrow_amount_type: AmountType::PercentAmount,
                 amount: collateral_deposit_amount,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: &usdc_obligation,
@@ -133,7 +133,7 @@ async fn test_borrow_quote_currency() {
                 deposit_reserve: &sol_reserve,
                 borrow_reserve: &usdc_reserve,
                 dex_market: &sol_usdc_dex_market,
-                borrow_amount_type: BorrowAmountType::LiquidityBorrowAmount,
+                borrow_amount_type: AmountType::ExactAmount,
                 amount: borrow_amount,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: &usdc_obligation,
@@ -260,7 +260,7 @@ async fn test_borrow_base_currency() {
                 deposit_reserve: &usdc_reserve,
                 borrow_reserve: &sol_reserve,
                 dex_market: &sol_usdc_dex_market,
-                borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
+                borrow_amount_type: AmountType::PercentAmount,
                 amount: collateral_deposit_amount,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: &sol_obligation,
@@ -291,7 +291,7 @@ async fn test_borrow_base_currency() {
                 deposit_reserve: &usdc_reserve,
                 borrow_reserve: &sol_reserve,
                 dex_market: &sol_usdc_dex_market,
-                borrow_amount_type: BorrowAmountType::LiquidityBorrowAmount,
+                borrow_amount_type: AmountType::ExactAmount,
                 amount: borrow_amount,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: &sol_obligation,

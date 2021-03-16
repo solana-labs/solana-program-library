@@ -15,11 +15,11 @@ use std::{convert::TryInto, mem::size_of};
 
 /// Describe how the borrow input amount should be treated
 #[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
-pub enum BorrowAmountType {
-    /// Treat amount as amount of liquidity to borrow
-    LiquidityBorrowAmount,
-    /// Treat amount as amount of collateral tokens to deposit
-    CollateralDepositAmount,
+pub enum AmountType {
+    /// Treat amount as an exact amount of tokens
+    ExactAmount,
+    /// Treat amount as a percentage of available tokens
+    PercentAmount,
 }
 
 /// Instructions supported by the lending program.
@@ -131,7 +131,7 @@ pub enum LendingInstruction {
     },
 
     // 5
-    // @TODO: update docs
+    // @FIXME: update description
     /// Borrow tokens from a reserve by depositing collateral tokens. The number of borrowed tokens
     /// is calculated by market price. Requires a recently refreshed obligation. Obligation
     /// liquidity must be initialized.
@@ -148,16 +148,18 @@ pub enum LendingInstruction {
     ///   5. `[writable]` Obligation liquidity account
     ///   6. `[]` Lending market account
     ///   7. `[]` Derived lending market authority
-    ///   8. `[signer]` User transfer authority ($authority)
-    ///   9. `[]` Clock sysvar
-    ///   10 `[]` Token program id
-    ///   11 `[optional, writable]` Borrow reserve liquidity host fee receiver account
+    ///   8. `[]` Dex market
+    ///   9. `[]` Dex market order book side
+    ///   10 `[]` Temporary memory
+    ///   11 `[]` Clock sysvar
+    ///   12 `[]` Token program id
+    ///   13 `[optional, writable]` Host fee receiver account
     BorrowObligationLiquidity {
         // TODO: slippage constraint
-        /// Amount whose usage depends on `amount_type`
-        amount: u64,
-        /// Describe how the amount should be treated
-        amount_type: BorrowAmountType,
+        /// Amount of liquidity to borrow - usage depends on `liquidity_amount_type`
+        liquidity_amount: u64,
+        /// Describe how `liquidity_amount` should be treated
+        liquidity_amount_type: AmountType,
     },
 
     // 6
@@ -414,11 +416,11 @@ impl LendingInstruction {
             5 => {
                 let (amount, rest) = Self::unpack_u64(rest)?;
                 let (amount_type, _rest) = Self::unpack_u8(rest)?;
-                let amount_type = BorrowAmountType::from_u8(amount_type)
-                    .ok_or(LendingError::InstructionUnpackError)?;
+                let amount_type =
+                    AmountType::from_u8(amount_type).ok_or(LendingError::InstructionUnpackError)?;
                 Self::BorrowObligationLiquidity {
-                    amount,
-                    amount_type,
+                    liquidity_amount: amount,
+                    liquidity_amount_type: amount_type,
                 }
             }
             6 => {
@@ -541,12 +543,12 @@ impl LendingInstruction {
                 buf.extend_from_slice(&collateral_amount.to_le_bytes());
             }
             Self::BorrowObligationLiquidity {
-                amount,
-                amount_type,
+                liquidity_amount,
+                liquidity_amount_type,
             } => {
                 buf.push(5);
-                buf.extend_from_slice(&amount.to_le_bytes());
-                buf.extend_from_slice(&amount_type.to_u8().unwrap().to_le_bytes());
+                buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+                buf.extend_from_slice(&liquidity_amount_type.to_u8().unwrap().to_le_bytes());
             }
             Self::RepayObligationLiquidity { liquidity_amount } => {
                 buf.push(6);
@@ -758,58 +760,46 @@ pub fn withdraw_reserve_liquidity(
 #[allow(clippy::too_many_arguments)]
 pub fn borrow_obligation_liquidity(
     program_id: Pubkey,
-    amount: u64,
-    amount_type: BorrowAmountType,
-    source_collateral_pubkey: Pubkey,
+    liquidity_amount: u64,
+    liquidity_amount_type: AmountType,
+    source_liquidity_pubkey: Pubkey,
     destination_liquidity_pubkey: Pubkey,
-    deposit_reserve_pubkey: Pubkey,
-    deposit_reserve_collateral_supply_pubkey: Pubkey,
     borrow_reserve_pubkey: Pubkey,
-    borrow_reserve_liquidity_supply_pubkey: Pubkey,
     borrow_reserve_liquidity_fee_receiver_pubkey: Pubkey,
-    lending_market_pubkey: Pubkey,
-    lending_market_authority_pubkey: Pubkey,
-    user_transfer_authority_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
-    obligation_token_mint_pubkey: Pubkey,
-    obligation_token_output_pubkey: Pubkey,
+    obligation_liquidity_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
     dex_market_pubkey: Pubkey,
     dex_market_order_book_side_pubkey: Pubkey,
     memory_pubkey: Pubkey,
-    deposit_reserve_collateral_host_pubkey: Option<Pubkey>,
+    host_fee_receiver_pubkey: Option<Pubkey>,
 ) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) =
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
     let mut accounts = vec![
-        AccountMeta::new(source_collateral_pubkey, false),
+        AccountMeta::new(source_liquidity_pubkey, false),
         AccountMeta::new(destination_liquidity_pubkey, false),
-        AccountMeta::new_readonly(deposit_reserve_pubkey, false),
-        AccountMeta::new(deposit_reserve_collateral_supply_pubkey, false),
         AccountMeta::new(borrow_reserve_pubkey, false),
-        AccountMeta::new(borrow_reserve_liquidity_supply_pubkey, false),
         AccountMeta::new(borrow_reserve_liquidity_fee_receiver_pubkey, false),
         AccountMeta::new(obligation_pubkey, false),
-        AccountMeta::new(obligation_token_mint_pubkey, false),
-        AccountMeta::new(obligation_token_output_pubkey, false),
+        AccountMeta::new(obligation_liquidity_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
-        AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
         AccountMeta::new_readonly(dex_market_pubkey, false),
         AccountMeta::new_readonly(dex_market_order_book_side_pubkey, false),
         AccountMeta::new_readonly(memory_pubkey, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
-    if let Some(deposit_reserve_collateral_host_pubkey) = deposit_reserve_collateral_host_pubkey {
-        accounts.push(AccountMeta::new(
-            deposit_reserve_collateral_host_pubkey,
-            false,
-        ));
+    if let Some(host_fee_receiver_pubkey) = host_fee_receiver_pubkey {
+        accounts.push(AccountMeta::new(host_fee_receiver_pubkey, false));
     }
     Instruction {
         program_id,
         accounts,
         data: LendingInstruction::BorrowObligationLiquidity {
-            amount,
-            amount_type,
+            liquidity_amount,
+            liquidity_amount_type,
         }
         .pack(),
     }

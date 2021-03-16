@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     error::LendingError,
-    instruction::BorrowAmountType,
+    instruction::AmountType,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
@@ -183,90 +183,59 @@ impl Reserve {
         }
     }
 
-    /// Create new loan
-    pub fn create_loan(
+    /// Borrow liquidity up to a maximum market value
+    pub fn borrow(
         &self,
-        token_amount: u64,
-        token_amount_type: BorrowAmountType,
+        liquidity_amount: u64,
+        liquidity_amount_type: AmountType,
+        max_borrow_value: Decimal,
         token_converter: impl TokenConverter,
-        borrow_amount_token_mint: &Pubkey,
-    ) -> Result<LoanResult, ProgramError> {
-        let (borrow_amount, mut collateral_amount) = match token_amount_type {
-            BorrowAmountType::CollateralDepositAmount => {
-                let collateral_amount = token_amount;
-                let borrow_amount =
-                    self.allowed_borrow_for_collateral(collateral_amount, token_converter)?;
-                if borrow_amount == 0 {
-                    return Err(LendingError::InvalidAmount.into());
+        quote_token_mint: &Pubkey,
+    ) -> Result<BorrowResult, ProgramError> {
+        match liquidity_amount_type {
+            AmountType::ExactAmount => {
+                let borrow_amount = liquidity_amount;
+                let (origination_fee, host_fee) = self
+                    .config
+                    .fees
+                    .calculate_borrow_fees(borrow_amount, false)?;
+                let total_amount = borrow_amount
+                    .checked_add(origination_fee)
+                    .ok_or(LendingError::MathOverflow)?;
+                let total_value =
+                    token_converter.convert(total_amount.into(), &self.liquidity.mint_pubkey)?;
+                if total_value > max_borrow_value {
+                    return Err(LendingError::BorrowTooLarge.into());
                 }
-                (borrow_amount, collateral_amount)
-            }
-            BorrowAmountType::LiquidityBorrowAmount => {
-                let borrow_amount = token_amount;
-                let collateral_amount = self.required_collateral_for_borrow(
+
+                Ok(BorrowResult {
+                    total_amount,
                     borrow_amount,
-                    borrow_amount_token_mint,
-                    token_converter,
-                )?;
-                if collateral_amount == 0 {
-                    return Err(LendingError::InvalidAmount.into());
-                }
-                (borrow_amount, collateral_amount)
+                    origination_fee,
+                    host_fee,
+                })
             }
-        };
+            AmountType::PercentAmount => {
+                let total_value = max_borrow_value
+                    .try_mul(Decimal::from_percent(u8::try_from(liquidity_amount)?))?;
+                let total_amount = token_converter
+                    .convert(total_value, &quote_token_mint)?
+                    .try_floor_u64()?
+                    .min(self.liquidity.available_amount);
+                let (origination_fee, host_fee) =
+                    self.config.fees.calculate_borrow_fees(total_amount, true)?;
+                let borrow_amount = total_amount
+                    .checked_sub(origination_fee)
+                    .ok_or(LendingError::MathOverflow)?;
 
-        let (origination_fee, host_fee) = self.config.fees.calculate_borrow_fees(borrow_amount)?;
-
-        // @FIXME: fees
-        collateral_amount = collateral_amount
-            .checked_sub(origination_fee)
-            .ok_or(LendingError::MathOverflow)?;
-
-        Ok(LoanResult {
-            borrow_amount,
-            collateral_amount,
-            origination_fee,
-            host_fee,
-        })
-    }
-
-    //  @FIXME: move/remove this
-    /// Calculate allowed borrow for collateral
-    pub fn allowed_borrow_for_collateral(
-        &self,
-        collateral_amount: u64,
-        converter: impl TokenConverter,
-    ) -> Result<u64, ProgramError> {
-        let collateral_exchange_rate = self.collateral_exchange_rate()?;
-        let collateral_amount = Decimal::from(collateral_amount)
-            .try_mul(Rate::from_percent(self.config.loan_to_value_ratio))?;
-        let liquidity_amount =
-            collateral_exchange_rate.decimal_collateral_to_liquidity(collateral_amount)?;
-
-        let borrow_amount = converter
-            .convert(liquidity_amount, &self.liquidity.mint_pubkey)?
-            .try_floor_u64()?;
-
-        Ok(borrow_amount)
-    }
-
-    //  @FIXME: move/remove this
-    /// Calculate required collateral for borrow
-    pub fn required_collateral_for_borrow(
-        &self,
-        borrow_amount: u64,
-        borrow_amount_token_mint: &Pubkey,
-        converter: impl TokenConverter,
-    ) -> Result<u64, ProgramError> {
-        let collateral_exchange_rate = self.collateral_exchange_rate()?;
-        let liquidity_amount =
-            converter.convert(Decimal::from(borrow_amount), borrow_amount_token_mint)?;
-        let collateral_amount = collateral_exchange_rate
-            .decimal_liquidity_to_collateral(liquidity_amount)?
-            .try_div(Rate::from_percent(self.config.loan_to_value_ratio))?
-            .try_ceil_u64()?;
-
-        Ok(collateral_amount)
+                Ok(BorrowResult {
+                    total_amount,
+                    borrow_amount,
+                    origination_fee,
+                    host_fee,
+                })
+            }
+        }
     }
 
     /// Record deposited liquidity and return amount of collateral tokens to mint
@@ -374,12 +343,12 @@ pub struct NewReserveParams {
     pub config: ReserveConfig,
 }
 
-/// Create loan result
-pub struct LoanResult {
-    /// Approved borrow amount
+/// Create borrow result
+pub struct BorrowResult {
+    /// Total amount of borrow plus origination fee
+    pub total_amount: u64,
+    /// Borrow amount portion of total amount
     pub borrow_amount: u64,
-    /// Required collateral amount
-    pub collateral_amount: u64,
     /// Loan origination fee
     pub origination_fee: u64,
     /// Host fee portion of origination fee
@@ -439,15 +408,15 @@ impl ReserveLiquidity {
         Decimal::from(self.available_amount).try_add(self.borrowed_amount_wads)
     }
 
-    /// Add new borrow amount to total borrows
-    pub fn borrow(&mut self, borrow_amount: u64) -> ProgramResult {
-        if borrow_amount > self.available_amount {
+    /// Subtract total amount from available liquidity and add borrow amount to total borrows
+    pub fn borrow(&mut self, total_amount: u64, borrow_amount: u64) -> ProgramResult {
+        if total_amount > self.available_amount {
             return Err(LendingError::InsufficientLiquidity.into());
         }
 
-        self.available_amount -= self
+        self.available_amount = self
             .available_amount
-            .checked_sub(borrow_amount)
+            .checked_sub(total_amount)
             .ok_or(LendingError::MathOverflow)?;
         self.borrowed_amount_wads = self
             .borrowed_amount_wads
@@ -455,7 +424,7 @@ impl ReserveLiquidity {
         Ok(())
     }
 
-    /// Subtract repay amount from total borrows and add to available liquidity
+    /// Add repay amount to available liquidity and subtract settle amount from total borrows
     pub fn repay(&mut self, repay_amount: u64, settle_amount: Decimal) -> ProgramResult {
         self.available_amount = self
             .available_amount
@@ -590,7 +559,11 @@ pub struct ReserveFees {
 
 impl ReserveFees {
     /// Calculate the owner and host fees on borrow
-    pub fn calculate_borrow_fees(&self, borrow_amount: u64) -> Result<(u64, u64), ProgramError> {
+    pub fn calculate_borrow_fees(
+        &self,
+        borrow_amount: u64,
+        inclusive: bool,
+    ) -> Result<(u64, u64), ProgramError> {
         let borrow_fee_rate = Rate::from_scaled_val(self.borrow_fee_wad);
         let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
         if borrow_fee_rate > Rate::zero() && borrow_amount > 0 {
@@ -601,10 +574,16 @@ impl ReserveFees {
                 1 // 1 token to owner, nothing else
             };
 
-            let borrow_fee = borrow_fee_rate
-                .try_mul(borrow_amount)?
-                .try_round_u64()?
-                .max(minimum_fee);
+            let borrow_fee_amount = if inclusive {
+                // inclusive fee = (rate / (1 + rate)) * amount
+                borrow_fee_rate
+                    .try_div(borrow_fee_rate.try_add(Rate::one())?)?
+                    .try_mul(borrow_amount)?
+            } else {
+                borrow_fee_rate.try_mul(borrow_amount)?
+            };
+
+            let borrow_fee = borrow_fee_amount.try_round_u64()?.max(minimum_fee);
 
             let host_fee = if need_to_assess_host_fee {
                 host_fee_rate.try_mul(borrow_fee)?.try_round_u64()?.max(1)

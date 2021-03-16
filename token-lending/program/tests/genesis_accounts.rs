@@ -5,7 +5,7 @@ mod helpers;
 use helpers::*;
 use solana_sdk::signature::Keypair;
 use spl_token_lending::{
-    instruction::BorrowAmountType,
+    instruction::AmountType,
     math::Decimal,
     state::{INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION},
 };
@@ -201,7 +201,7 @@ async fn test_success() {
                 deposit_reserve: &sol_reserve,
                 borrow_reserve: &usdc_reserve,
                 dex_market: &sol_usdc_dex_market,
-                borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
+                borrow_amount_type: AmountType::PercentAmount,
                 amount: INITIAL_COLLATERAL_RATIO * USER_SOL_COLLATERAL_LAMPORTS,
                 user_accounts_owner: &user_accounts_owner,
                 obligation: &usdc_obligation,
@@ -218,7 +218,7 @@ async fn test_success() {
                 deposit_reserve: &sol_reserve,
                 borrow_reserve: &usdc_reserve,
                 dex_market: &sol_usdc_dex_market,
-                borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
+                borrow_amount_type: AmountType::PercentAmount,
                 amount: lamports_to_usdc_fractional(
                     usdc_reserve.config.loan_to_value_ratio as u64 * USER_SOL_COLLATERAL_LAMPORTS
                         / 100,
@@ -253,7 +253,7 @@ async fn test_success() {
                 deposit_reserve: &usdc_reserve,
                 borrow_reserve: &sol_reserve,
                 dex_market: &sol_usdc_dex_market,
-                borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
+                borrow_amount_type: AmountType::PercentAmount,
                 amount: INITIAL_COLLATERAL_RATIO
                     * lamports_to_usdc_fractional(
                         usdc_reserve.config.loan_to_value_ratio as u64
@@ -275,7 +275,7 @@ async fn test_success() {
                 deposit_reserve: &usdc_reserve,
                 borrow_reserve: &srm_reserve,
                 dex_market: &srm_usdc_dex_market,
-                borrow_amount_type: BorrowAmountType::CollateralDepositAmount,
+                borrow_amount_type: AmountType::PercentAmount,
                 amount: INITIAL_COLLATERAL_RATIO
                     * lamports_to_usdc_fractional(
                         usdc_reserve.config.loan_to_value_ratio as u64

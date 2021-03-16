@@ -16,7 +16,7 @@ use spl_token::{
 use spl_token_lending::{
     instruction::{
         borrow_obligation_liquidity, deposit_reserve_liquidity, init_lending_market,
-        init_obligation, init_reserve, liquidate_obligation, BorrowAmountType,
+        init_obligation, init_reserve, liquidate_obligation, AmountType,
     },
     math::{Decimal, Rate, TryAdd, TryMul},
     processor::process_instruction,
@@ -431,7 +431,7 @@ pub struct TestLendingMarket {
 pub struct BorrowArgs<'a> {
     pub deposit_reserve: &'a TestReserve,
     pub borrow_reserve: &'a TestReserve,
-    pub borrow_amount_type: BorrowAmountType,
+    pub borrow_amount_type: AmountType,
     pub amount: u64,
     pub dex_market: &'a TestDexMarket,
     pub user_accounts_owner: &'a Keypair,
@@ -636,7 +636,7 @@ impl TestLendingMarket {
             dex_market.bids_pubkey
         };
 
-        let approve_amount = if borrow_amount_type == BorrowAmountType::CollateralDepositAmount {
+        let approve_amount = if borrow_amount_type == AmountType::PercentAmount {
             amount
         } else {
             get_token_balance(banks_client, deposit_reserve.user_collateral_account).await
