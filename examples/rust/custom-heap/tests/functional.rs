@@ -1,8 +1,10 @@
-use solana_program::{instruction::Instruction, pubkey::Pubkey};
-use solana_program_test::{processor, ProgramTest};
-use solana_sdk::{signature::Signer, transaction::Transaction};
-use spl_example_custom_heap::processor::process_instruction;
-use std::str::FromStr;
+use {
+    solana_program::{instruction::Instruction, pubkey::Pubkey},
+    solana_program_test::*,
+    solana_sdk::{signature::Signer, transaction::Transaction},
+    spl_example_custom_heap::processor::process_instruction,
+    std::str::FromStr,
+};
 
 #[tokio::test]
 async fn test_custom_heap() {

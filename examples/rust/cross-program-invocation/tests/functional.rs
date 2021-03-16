@@ -1,16 +1,18 @@
 // Mark this test as BPF-only due to current `ProgramTest` limitations when CPIing into the system program
 #![cfg(feature = "test-bpf")]
 
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    rent::Rent,
-    system_program,
+use {
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+        rent::Rent,
+        system_program,
+    },
+    solana_program_test::*,
+    solana_sdk::{account::Account, signature::Signer, transaction::Transaction},
+    spl_example_cross_program_invocation::processor::{process_instruction, SIZE},
+    std::str::FromStr,
 };
-use solana_program_test::{processor, ProgramTest};
-use solana_sdk::{account::Account, signature::Signer, transaction::Transaction};
-use spl_example_cross_program_invocation::processor::{process_instruction, SIZE};
-use std::str::FromStr;
 
 #[tokio::test]
 async fn test_cross_program_invocation() {

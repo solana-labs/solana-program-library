@@ -18,7 +18,6 @@ solana-program = "1.5.11"
 [dev-dependencies]
 solana-program-test = "1.5.11"
 solana-sdk = "1.5.11"
-tokio = { version = "0.3", features = ["macros"]}
 
 [lib]
 crate-type = ["cdylib", "lib"]

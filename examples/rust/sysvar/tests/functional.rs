@@ -1,12 +1,14 @@
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    sysvar::{self},
+use {
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+        sysvar::{self},
+    },
+    solana_program_test::*,
+    solana_sdk::{signature::Signer, transaction::Transaction},
+    spl_example_sysvar::processor::process_instruction,
+    std::str::FromStr,
 };
-use solana_program_test::{processor, ProgramTest};
-use solana_sdk::{signature::Signer, transaction::Transaction};
-use spl_example_sysvar::processor::process_instruction;
-use std::str::FromStr;
 
 #[tokio::test]
 async fn test_sysvar() {

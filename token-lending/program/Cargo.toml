@@ -31,7 +31,6 @@ solana-program-test = "1.5.11"
 solana-sdk = "1.5.11"
 serde = "1.0"
 serde_yaml = "0.8"
-tokio = { version = "0.3", features = ["macros"]}
 
 [lib]
 crate-type = ["cdylib", "lib"]

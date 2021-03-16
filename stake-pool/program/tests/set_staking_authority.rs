@@ -8,7 +8,7 @@ use solana_program::hash::Hash;
 use solana_program::instruction::AccountMeta;
 use solana_program::instruction::Instruction;
 use solana_program::sysvar;
-use solana_program_test::BanksClient;
+use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError, signature::Keypair, signature::Signer, transaction::Transaction,
     transaction::TransactionError, transport::TransportError,
