@@ -12,12 +12,12 @@ no-entrypoint = []
 test-bpf = []
 
 [dependencies]
-solana-program = "1.5.11"
+solana-program = "1.5.15"
 spl-token = { version = "3.1", path = "../../token/program", features = ["no-entrypoint"] }
 
 [dev-dependencies]
-solana-program-test = "1.5.11"
-solana-sdk = "1.5.11"
+solana-program-test = "1.5.15"
+solana-sdk = "1.5.15"
 
 [lib]
 crate-type = ["cdylib", "lib"]
