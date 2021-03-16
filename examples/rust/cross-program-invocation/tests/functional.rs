@@ -33,7 +33,7 @@ async fn test_cross_program_invocation() {
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[Instruction::new(
+        &[Instruction::new_with_bincode(
             program_id,
             &[bump_seed],
             vec![
