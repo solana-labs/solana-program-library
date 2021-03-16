@@ -3063,9 +3063,9 @@ dependencies = [
 
 [[package]]
 name = "solana-banks-client"
-version = "1.5.11"
+version = "1.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cecfcb538a11ff7673f0cb2a4d552339ae4a5474f167d75a9d4988653795890"
+checksum = "b344eb235ff9ff29a8bb8785b7eb30ce0458e98b69785171ce941111313829e7"
 dependencies = [
  "bincode",
  "borsh 0.8.1",
@@ -3082,9 +3082,9 @@ dependencies = [
 
 [[package]]
 name = "solana-banks-interface"
-version = "1.5.11"
+version = "1.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb3fee8b4dce68968038d367466e4e7da1b67de3353b18c9baefcfed98d43713"
+checksum = "106c196d9911294b0be46ed49b089ddab342d33d26e4ce13219df9dd582f6122"
 dependencies = [
  "mio 0.7.7",
  "serde",
@@ -3094,9 +3094,9 @@ dependencies = [
 
 [[package]]
 name = "solana-banks-server"
-version = "1.5.11"
+version = "1.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5eb7f7b5fe99dc3dce7655de8fe1a76bb5eaed4f0d90d81cfcb404e29a91219"
+checksum = "5270cb80e5156830ee05a4bcf423f75035f2aa636fb664176b03e3a0aacad006"
 dependencies = [
  "bincode",
  "futures 0.3.12",
@@ -3113,13 +3113,14 @@ dependencies = [
 
 [[package]]
 name = "solana-bpf-loader-program"
-version = "1.5.11"
+version = "1.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9718cac7c73e4c3a9e8f29322efeb81c217886dc7f2303c00b0e2b1f94ef25b5"
+checksum = "f6e22a2688bdca354dadd26f0e016941a4c6470465f4e21a0141fd0e79f8aa4d"
 dependencies = [
  "bincode",
  "byteorder",
  "curve25519-dalek 3.0.2",
+ "log",
  "num-derive",
  "num-traits",
  "rand_core 0.6.2",
@@ -3379,9 +3380,9 @@ dependencies = [
 
 [[package]]
 name = "solana-program-test"
-version = "1.5.11"
+version = "1.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "935b1ce1f4bad8b9eb7c9d748f42acf625044f75c46032133ddaff31c7de4d4d"
+checksum = "07e523bcad07ca3c3b495d2f73c9b8ca8edbdd0e3ad96a9232e6131e3cdf0e7d"
 dependencies = [
  "async-trait",
  "base64 0.12.3",
@@ -3670,7 +3671,6 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 3.1.0",
- "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3680,7 +3680,6 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3690,7 +3689,6 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3700,7 +3698,6 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3710,7 +3707,6 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3720,7 +3716,6 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3734,7 +3729,6 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 3.1.0",
- "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3764,7 +3758,6 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "thiserror",
- "tokio 0.3.6",
  "uint",
 ]
 
@@ -3784,7 +3777,6 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3808,7 +3800,6 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "thiserror",
- "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3839,7 +3830,6 @@ dependencies = [
  "solana-vote-program",
  "spl-token 3.1.0",
  "thiserror",
- "tokio 0.3.6",
 ]
 
 [[package]]
@@ -3927,7 +3917,6 @@ dependencies = [
  "solana-sdk",
  "spl-token 3.1.0",
  "thiserror",
- "tokio 0.3.6",
  "uint",
 ]
 
