@@ -84,13 +84,13 @@ impl ObligationCollateral {
     pub fn update_value(
         &mut self,
         collateral_exchange_rate: CollateralExchangeRate,
-        converter: impl TokenConverter,
+        token_converter: impl TokenConverter,
         liquidity_token_mint: &Pubkey,
     ) -> ProgramResult {
         let liquidity_amount = collateral_exchange_rate
             .decimal_collateral_to_liquidity(self.deposited_tokens.into())?;
         // @TODO: this may be slow/inaccurate for large amounts depending on dex market
-        self.value = converter.convert(liquidity_amount, liquidity_token_mint)?;
+        self.value = token_converter.convert(liquidity_amount, liquidity_token_mint)?;
         Ok(())
     }
 

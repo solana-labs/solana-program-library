@@ -107,11 +107,11 @@ impl ObligationLiquidity {
     /// Update market value of liquidity
     pub fn update_value(
         &mut self,
-        converter: impl TokenConverter,
+        token_converter: impl TokenConverter,
         from_token_mint: &Pubkey,
     ) -> ProgramResult {
         // @TODO: this may be slow/inaccurate for large amounts depending on dex market
-        self.value = converter.convert(self.borrowed_wads, from_token_mint)?;
+        self.value = token_converter.convert(self.borrowed_wads, from_token_mint)?;
         Ok(())
     }
 
