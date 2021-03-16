@@ -29,6 +29,7 @@ use solana_sdk::{
     instruction::Instruction,
     message::Message,
     native_token::*,
+    program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
@@ -365,6 +366,7 @@ fn command_authorize(
     account: Pubkey,
     authority_type: AuthorityType,
     new_owner: Option<Pubkey>,
+    force_authorize: bool,
 ) -> CommandResult {
     let auth_str = match authority_type {
         AuthorityType::MintTokens => "mint authority",
@@ -372,11 +374,59 @@ fn command_authorize(
         AuthorityType::AccountOwner => "owner",
         AuthorityType::CloseAccount => "close authority",
     };
+    let target_account = config.rpc_client.get_account(&account)?;
+    let previous_authority = if let Ok(mint) = Mint::unpack(&target_account.data) {
+        match authority_type {
+            AuthorityType::AccountOwner | AuthorityType::CloseAccount => Err(format!(
+                "Authority type `{}` not supported for SPL Token mints",
+                auth_str
+            )),
+            AuthorityType::MintTokens => Ok(mint.mint_authority),
+            AuthorityType::FreezeAccount => Ok(mint.freeze_authority),
+        }
+    } else if let Ok(token_account) = Account::unpack(&target_account.data) {
+        let check_associated_token_account = || -> Result<(), Error> {
+            let maybe_associated_token_account =
+                get_associated_token_address(&config.owner, &token_account.mint);
+            if account == maybe_associated_token_account
+                && !force_authorize
+                && Some(config.owner) != new_owner
+            {
+                Err(
+                    format!("Error: attempting to change the `{}` of an associated token account of `--owner`", auth_str)
+                        .into(),
+                )
+            } else {
+                Ok(())
+            }
+        };
+
+        match authority_type {
+            AuthorityType::MintTokens | AuthorityType::FreezeAccount => Err(format!(
+                "Authority type `{}` not supported for SPL Token accounts",
+                auth_str
+            )),
+            AuthorityType::AccountOwner => {
+                check_associated_token_account()?;
+                Ok(COption::Some(token_account.owner))
+            }
+            AuthorityType::CloseAccount => {
+                check_associated_token_account()?;
+                Ok(COption::Some(
+                    token_account.close_authority.unwrap_or(token_account.owner),
+                ))
+            }
+        }
+    } else {
+        Err("Unsupported account data format".to_string())
+    }?;
     println!(
         "Updating {}\n  Current {}: {}\n  New {}: {}",
         account,
         auth_str,
-        config.owner,
+        previous_authority
+            .map(|pubkey| pubkey.to_string())
+            .unwrap_or_else(|| "disabled".to_string()),
         auth_str,
         new_owner
             .map(|pubkey| pubkey.to_string())
@@ -1319,6 +1369,12 @@ fn main() {
                         .conflicts_with("new_authority")
                         .help("Disable mint, freeze, or close functionality by setting authority to None.")
                 )
+                .arg(
+                    Arg::with_name("force")
+                        .long("force")
+                        .hidden(true)
+                        .help("Force re-authorize the wallet's associate token account. Don't use this flag"),
+                )
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
@@ -1862,7 +1918,14 @@ fn main() {
             };
             let new_authority =
                 pubkey_of_signer(arg_matches, "new_authority", &mut wallet_manager).unwrap();
-            command_authorize(&config, address, authority_type, new_authority)
+            let force_authorize = arg_matches.is_present("force");
+            command_authorize(
+                &config,
+                address,
+                authority_type,
+                new_authority,
+                force_authorize,
+            )
         }
         ("transfer", Some(arg_matches)) => {
             let sender = pubkey_of_signer(arg_matches, "sender", &mut wallet_manager)
