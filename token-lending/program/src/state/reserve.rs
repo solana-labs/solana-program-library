@@ -92,6 +92,7 @@ impl Reserve {
         }
     }
 
+    // @FIXME
     /// Liquidate part of an unhealthy obligation
     pub fn liquidate_obligation(
         &self,
@@ -110,6 +111,7 @@ impl Reserve {
         )
     }
 
+    // @FIXME
     fn _liquidate_obligation(
         obligation: &Obligation,
         liquidity_amount: u64,
@@ -329,7 +331,7 @@ impl Reserve {
         self.collateral.exchange_rate(total_liquidity)
     }
 
-    // @TODO: method should probably match Obligation's
+    // @FIXME: method should match Obligation::update_slot
     /// Return slots elapsed since last update
     fn update_slot(&mut self, slot: Slot) -> Result<u64, ProgramError> {
         let slots_elapsed = slot

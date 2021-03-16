@@ -86,6 +86,7 @@ pub enum LendingInstruction {
     InitObligation,
 
     // 3
+    // @TODO: consider renaming to SwapReserveLiquidityForCollateral
     /// Deposit liquidity into a reserve. The output is a collateral token representing ownership
     /// of the reserve liquidity pool.
     ///
@@ -103,11 +104,12 @@ pub enum LendingInstruction {
     ///   8. `[]` Clock sysvar
     ///   9. `[]` Token program id
     DepositReserveLiquidity {
-        /// Amount to deposit into the reserve
+        /// Amount of liquidity to deposit in exchange for collateral
         liquidity_amount: u64,
     },
 
     // 4
+    // @TODO: consider renaming to SwapReserveCollateralForLiquidity
     /// Withdraw tokens from a reserve. The input is a collateral token representing ownership
     /// of the reserve liquidity pool.
     ///
@@ -124,7 +126,7 @@ pub enum LendingInstruction {
     ///   7. `[signer]` User transfer authority ($authority)
     ///   8. `[]` Token program id
     WithdrawReserveLiquidity {
-        /// Amount of collateral to deposit in exchange for liquidity
+        /// Amount of collateral to return in exchange for liquidity
         collateral_amount: u64,
     },
 
@@ -182,7 +184,7 @@ pub enum LendingInstruction {
     },
 
     // 7
-    // @TODO: update docs
+    // @FIXME
     /// Purchase collateral tokens at a discount rate from an unhealthy obligation. Requires a
     /// recently refreshed obligation.
     ///
@@ -811,6 +813,7 @@ pub fn borrow_obligation_liquidity(
     }
 }
 
+// @FIXME
 /// Creates a `RepayObligationLiquidity` instruction
 #[allow(clippy::too_many_arguments)]
 pub fn repay_obligation_liquidity(
@@ -851,6 +854,7 @@ pub fn repay_obligation_liquidity(
     }
 }
 
+// @FIXME
 /// Creates a `LiquidateObligation` instruction
 #[allow(clippy::too_many_arguments)]
 pub fn liquidate_obligation(
