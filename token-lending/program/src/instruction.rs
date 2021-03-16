@@ -5,7 +5,6 @@ use crate::{
     state::{ReserveConfig, ReserveFees},
 };
 use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
