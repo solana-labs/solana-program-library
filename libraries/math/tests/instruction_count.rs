@@ -93,7 +93,7 @@ async fn test_sqrt_u128_max() {
 async fn test_u64_multiply() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(1200);
+    pc.set_bpf_compute_max_units(1350);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -107,7 +107,7 @@ async fn test_u64_multiply() {
 async fn test_f32_multiply() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(1500);
+    pc.set_bpf_compute_max_units(1600);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -123,7 +123,7 @@ async fn test_f32_multiply() {
 async fn test_f32_divide() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(1600);
+    pc.set_bpf_compute_max_units(1650);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
