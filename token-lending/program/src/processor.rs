@@ -1479,9 +1479,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::ObligationLTVCannotGoAboveReserveLTV.into());
     }
 
-    let required_collateral_value = obligation
-        .liquidity_value
-        .try_div(lending_market_ltv)?;
+    let required_collateral_value = obligation.liquidity_value.try_div(lending_market_ltv)?;
     let collateral_value_difference = obligation
         .collateral_value
         .try_sub(required_collateral_value)?;
@@ -1897,8 +1895,7 @@ fn process_refresh_obligation_liquidity(
     )?;
 
     obligation_liquidity.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
-    obligation_liquidity
-        .update_value(trade_simulator, &borrow_reserve.liquidity.mint_pubkey)?;
+    obligation_liquidity.update_value(trade_simulator, &borrow_reserve.liquidity.mint_pubkey)?;
     obligation_liquidity.update_slot(clock.slot)?;
     ObligationLiquidity::pack(
         obligation_liquidity,
@@ -1955,8 +1952,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             return Err(LendingError::ObligationCollateralStale.into());
         }
 
-        collateral_value =
-            collateral_value.try_add(obligation_collateral.value)?;
+        collateral_value = collateral_value.try_add(obligation_collateral.value)?;
     }
 
     let mut liquidity_value = Decimal::zero();
@@ -1980,8 +1976,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             return Err(LendingError::ObligationLiquidityStale.into());
         }
 
-        liquidity_value =
-            liquidity_value.try_add(obligation_liquidity.value)?;
+        liquidity_value = liquidity_value.try_add(obligation_liquidity.value)?;
     }
 
     // @TODO: check this

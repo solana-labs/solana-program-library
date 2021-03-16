@@ -328,9 +328,7 @@ async fn test_withdraw_below_required() {
             .unwrap(),
         TransactionError::InstructionError(
             3,
-            InstructionError::Custom(
-                LendingError::ObligationLTVCannotGoAboveReserveLTV as u32
-            )
+            InstructionError::Custom(LendingError::ObligationLTVCannotGoAboveReserveLTV as u32)
         )
     );
 }
