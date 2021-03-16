@@ -3,7 +3,7 @@
 
 use {
     solana_program::pubkey::Pubkey,
-    solana_program_test::{processor, ProgramTest},
+    solana_program_test::*,
     solana_sdk::{signature::Signer, transaction::Transaction},
     spl_math::{id, instruction, processor::process_instruction},
 };

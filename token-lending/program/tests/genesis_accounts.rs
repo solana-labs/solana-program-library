@@ -3,6 +3,7 @@
 mod helpers;
 
 use helpers::*;
+use solana_program_test::*;
 use solana_sdk::signature::Keypair;
 use spl_token_lending::{
     instruction::BorrowAmountType,

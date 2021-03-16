@@ -10,7 +10,7 @@ use {
         rent::Rent,
         system_instruction,
     },
-    solana_program_test::{processor, ProgramTest, ProgramTestContext},
+    solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},

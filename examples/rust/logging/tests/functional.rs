@@ -1,11 +1,13 @@
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
+use {
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+    },
+    solana_program_test::*,
+    solana_sdk::{signature::Signer, transaction::Transaction},
+    spl_example_logging::processor::process_instruction,
+    std::str::FromStr,
 };
-use solana_program_test::{processor, ProgramTest};
-use solana_sdk::{signature::Signer, transaction::Transaction};
-use spl_example_logging::processor::process_instruction;
-use std::str::FromStr;
 
 #[tokio::test]
 async fn test_logging() {

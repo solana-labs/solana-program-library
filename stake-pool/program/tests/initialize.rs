@@ -9,7 +9,7 @@ use solana_program::{
     program_pack::Pack,
     system_instruction, sysvar,
 };
-use solana_program_test::BanksClient;
+use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError, signature::Keypair, signature::Signer, transaction::Transaction,
     transaction::TransactionError, transport::TransportError,

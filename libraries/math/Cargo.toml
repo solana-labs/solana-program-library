@@ -24,7 +24,6 @@ uint = "0.8"
 proptest = "0.10"
 solana-program-test = "1.5.11"
 solana-sdk = "1.5.11"
-tokio = { version = "0.3", features = ["macros"]}
 
 [lib]
 crate-type = ["cdylib", "lib"]

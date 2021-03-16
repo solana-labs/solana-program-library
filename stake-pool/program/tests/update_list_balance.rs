@@ -6,7 +6,7 @@ use {
     crate::helpers::TEST_STAKE_AMOUNT,
     helpers::*,
     solana_program::{native_token, pubkey::Pubkey},
-    solana_program_test::BanksClient,
+    solana_program_test::*,
     solana_sdk::signature::Signer,
     spl_stake_pool::*,
 };
