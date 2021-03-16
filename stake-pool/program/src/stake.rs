@@ -86,7 +86,7 @@ pub enum StakeInstruction {
     /// # Account references
     ///   0. [WRITE] Initialized stake account
     ///   1. [SIGNER] Lockup authority
-    SetLockupNOTUSED,
+    SetLockup,
 
     /// Merge two stake accounts. Both accounts must be deactivated and have identical lockup and
     /// authority keys.
@@ -104,7 +104,7 @@ pub enum StakeInstruction {
     /// # Account references
     ///   0. [WRITE] Stake account to be updated
     ///   1. [SIGNER] Base key of stake or withdraw authority
-    AuthorizeWithSeedNOTUSED,
+    AuthorizeWithSeed,
 }
 
 /// FIXME copied from the stake program
