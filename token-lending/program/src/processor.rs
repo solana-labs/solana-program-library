@@ -1731,6 +1731,16 @@ fn process_refresh_obligation_collateral(
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if deposit_reserve.dex_market.is_none() {
+        msg!("Deposit reserve must have a dex market");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if let COption::Some(dex_market_pubkey) = deposit_reserve.dex_market {
+        if &dex_market_pubkey != dex_market_info.key {
+            msg!("Invalid dex market account input");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
+    }
 
     let mut obligation_collateral =
         ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
@@ -1816,6 +1826,16 @@ fn process_refresh_obligation_liquidity(
     if &borrow_reserve.lending_market != lending_market_info.key {
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
+    }
+    if borrow_reserve.dex_market.is_none() {
+        msg!("Borrow reserve must have a dex market");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if let COption::Some(dex_market_pubkey) = borrow_reserve.dex_market {
+        if &dex_market_pubkey != dex_market_info.key {
+            msg!("Invalid dex market account input");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
     }
 
     let mut obligation_liquidity =
