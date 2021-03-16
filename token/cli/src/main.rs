@@ -1671,8 +1671,13 @@ fn main() {
             path: default_signer_path,
             arg_name: default_signer_arg_name,
         };
-        // Owner doesn't sign when it's a multisig; and the `accounts` command is read-only
-        let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name) || sub_command == "accounts" {
+
+        // Owner doesn't sign when using a mulitisig...
+        let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name)
+          || sub_command == "accounts" // when calling the `accounts` command...
+          || (sub_command == "create-account" // or when creating an associated token account.
+              && !matches.is_present("account_keypair"))
+        {
             let owner_val = matches
                 .value_of("owner")
                 .unwrap_or(&cli_config.keypair_path);
@@ -1794,17 +1799,20 @@ fn main() {
                 .unwrap()
                 .unwrap();
 
-            let (signer, account) = if arg_matches.is_present("account_keypair") {
-                signer_of(&arg_matches, "account_keypair", &mut wallet_manager).unwrap_or_else(
-                    |e| {
-                        eprintln!("error: {}", e);
-                        exit(1);
-                    },
-                )
+            let account = if arg_matches.is_present("account_keypair") {
+                let (signer, account) =
+                    signer_of(&arg_matches, "account_keypair", &mut wallet_manager).unwrap_or_else(
+                        |e| {
+                            eprintln!("error: {}", e);
+                            exit(1);
+                        },
+                    );
+                bulk_signers.push(signer);
+                account
             } else {
-                (None, None)
+                // No need to add a signer when creating an associated token account
+                None
             };
-            bulk_signers.push(signer);
 
             command_create_account(&config, token, account)
         }
