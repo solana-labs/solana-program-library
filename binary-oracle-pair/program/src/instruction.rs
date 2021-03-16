@@ -62,14 +62,15 @@ pub enum PoolInstruction {
     ///
     ///   0. `[]` Pool
     ///   1. `[]` Authority
-    ///   2. `[w]` Pool deposit token account
-    ///   3. `[w]` token_P PASS SOURCE Account
-    ///   4. `[w]` token_F FAIL SOURCE Account
-    ///   5. `[w]` token_P PASS mint
-    ///   6. `[w]` token_F FAIL mint
-    ///   7. `[w]` Deposit DESTINATION Account
-    ///   8. `[]` Sysvar Clock
-    ///   9. `[]` Token program id
+    ///   2. `[s]` User transfer authority
+    ///   3. `[w]` Pool deposit token account
+    ///   4. `[w]` token_P PASS SOURCE Account
+    ///   5. `[w]` token_F FAIL SOURCE Account
+    ///   6. `[w]` token_P PASS mint
+    ///   7. `[w]` token_F FAIL mint
+    ///   8. `[w]` Deposit DESTINATION Account
+    ///   9. `[]` Sysvar Clock
+    ///   10. `[]` Token program id
     Withdraw(u64),
 
     ///  Trigger the decision.
@@ -121,7 +122,6 @@ pub fn deposit(
     pool: &Pubkey,
     authority: &Pubkey,
     user_transfer_authority: &Pubkey,
-    is_user_authority_signer: bool,
     user_token_account: &Pubkey,
     pool_deposit_token_account: &Pubkey,
     token_pass_mint: &Pubkey,
@@ -133,10 +133,14 @@ pub fn deposit(
 ) -> Result<Instruction, ProgramError> {
     let init_data = PoolInstruction::Deposit(amount);
     let data = init_data.try_to_vec()?;
+
     let accounts = vec![
         AccountMeta::new_readonly(*pool, false),
         AccountMeta::new_readonly(*authority, false),
-        AccountMeta::new_readonly(*user_transfer_authority, is_user_authority_signer),
+        AccountMeta::new_readonly(
+            *user_transfer_authority,
+            authority != user_transfer_authority,
+        ),
         AccountMeta::new(*user_token_account, false),
         AccountMeta::new(*pool_deposit_token_account, false),
         AccountMeta::new(*token_pass_mint, false),
@@ -159,6 +163,7 @@ pub fn withdraw(
     program_id: &Pubkey,
     pool: &Pubkey,
     authority: &Pubkey,
+    user_transfer_authority: &Pubkey,
     pool_deposit_token_account: &Pubkey,
     token_pass_user_account: &Pubkey,
     token_fail_user_account: &Pubkey,
@@ -173,6 +178,10 @@ pub fn withdraw(
     let accounts = vec![
         AccountMeta::new_readonly(*pool, false),
         AccountMeta::new_readonly(*authority, false),
+        AccountMeta::new_readonly(
+            *user_transfer_authority,
+            authority != user_transfer_authority,
+        ),
         AccountMeta::new(*pool_deposit_token_account, false),
         AccountMeta::new(*token_pass_user_account, false),
         AccountMeta::new(*token_fail_user_account, false),

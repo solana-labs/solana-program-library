@@ -34,76 +34,70 @@ impl Processor {
             .map_err(|_| PoolError::InvalidAuthorityData.into())
     }
 
-    /// Transfer tokens with program authority
-    pub fn transfer_with_program_authority<'a>(
+    /// Transfer tokens with authority
+    pub fn transfer<'a>(
         token_program_id: AccountInfo<'a>,
         source_account: AccountInfo<'a>,
         destination_account: AccountInfo<'a>,
-        authority_account: AccountInfo<'a>,
+        program_authority_account: AccountInfo<'a>,
+        user_authority_account: AccountInfo<'a>,
         amount: u64,
         pool_pub_key: &Pubkey,
         bump_seed: u8,
     ) -> ProgramResult {
-        let me_bytes = pool_pub_key.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], &[bump_seed]];
-        let signers = &[&authority_signature_seeds[..]];
+        if program_authority_account.key == user_authority_account.key {
+            let me_bytes = pool_pub_key.to_bytes();
+            let authority_signature_seeds = [&me_bytes[..32], &[bump_seed]];
+            let signers = &[&authority_signature_seeds[..]];
 
-        invoke_signed(
-            &spl_token::instruction::transfer(
-                token_program_id.key,
-                source_account.key,
-                destination_account.key,
-                authority_account.key,
-                &[authority_account.key],
-                amount,
-            )
-            .unwrap(),
-            &[
-                token_program_id,
-                authority_account,
-                source_account,
-                destination_account,
-            ],
-            signers,
-        )
-    }
-
-    /// Transfer tokens with user transfer authority
-    pub fn transfer_with_user_authority<'a>(
-        token_program_id: AccountInfo<'a>,
-        source_account: AccountInfo<'a>,
-        destination_account: AccountInfo<'a>,
-        authority_account: AccountInfo<'a>,
-        amount: u64,
-    ) -> ProgramResult {
-        invoke(
-            &spl_token::instruction::transfer(
-                token_program_id.key,
-                source_account.key,
-                destination_account.key,
-                authority_account.key,
-                &[authority_account.key],
-                amount,
-            )
-            .unwrap(),
-            &[
-                token_program_id,
-                authority_account,
-                source_account,
-                destination_account,
-            ],
-        )
+            return invoke_signed(
+                &spl_token::instruction::transfer(
+                    token_program_id.key,
+                    source_account.key,
+                    destination_account.key,
+                    program_authority_account.key,
+                    &[program_authority_account.key],
+                    amount,
+                )
+                .unwrap(),
+                &[
+                    token_program_id,
+                    program_authority_account,
+                    source_account,
+                    destination_account,
+                ],
+                signers,
+            );
+        } else {
+            return invoke(
+                &spl_token::instruction::transfer(
+                    token_program_id.key,
+                    source_account.key,
+                    destination_account.key,
+                    user_authority_account.key,
+                    &[user_authority_account.key],
+                    amount,
+                )
+                .unwrap(),
+                &[
+                    token_program_id,
+                    user_authority_account,
+                    source_account,
+                    destination_account,
+                ],
+            );
+        }
     }
 
     /// Mint tokens
     pub fn mint<'a>(
-        pool_pub_key: &Pubkey,
-        bump_seed: u8,
         token_program_id: AccountInfo<'a>,
         mint_account: AccountInfo<'a>,
         destination_account: AccountInfo<'a>,
         authority_account: AccountInfo<'a>,
         amount: u64,
+        pool_pub_key: &Pubkey,
+        bump_seed: u8,
     ) -> ProgramResult {
         let me_bytes = pool_pub_key.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], &[bump_seed]];
@@ -131,36 +125,57 @@ impl Processor {
 
     /// Burn tokens
     pub fn burn<'a>(
+        token_program_id: AccountInfo<'a>,
+        source_account: AccountInfo<'a>,
+        mint_account: AccountInfo<'a>,
+        program_authority_account: AccountInfo<'a>,
+        user_authority_account: AccountInfo<'a>,
+        amount: u64,
         pool_pub_key: &Pubkey,
         bump_seed: u8,
-        token_program_id: AccountInfo<'a>,
-        mint_account: AccountInfo<'a>,
-        source_account: AccountInfo<'a>,
-        authority_account: AccountInfo<'a>,
-        amount: u64,
     ) -> ProgramResult {
-        let me_bytes = pool_pub_key.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], &[bump_seed]];
-        let signers = &[&authority_signature_seeds[..]];
+        if program_authority_account.key == user_authority_account.key {
+            let me_bytes = pool_pub_key.to_bytes();
+            let authority_signature_seeds = [&me_bytes[..32], &[bump_seed]];
+            let signers = &[&authority_signature_seeds[..]];
 
-        invoke_signed(
-            &spl_token::instruction::burn(
-                token_program_id.key,
-                source_account.key,
-                mint_account.key,
-                authority_account.key,
-                &[authority_account.key],
-                amount,
-            )
-            .unwrap(),
-            &[
-                token_program_id,
-                authority_account,
-                source_account,
-                mint_account,
-            ],
-            signers,
-        )
+            return invoke_signed(
+                &spl_token::instruction::burn(
+                    token_program_id.key,
+                    source_account.key,
+                    mint_account.key,
+                    program_authority_account.key,
+                    &[program_authority_account.key],
+                    amount,
+                )
+                .unwrap(),
+                &[
+                    token_program_id,
+                    program_authority_account,
+                    source_account,
+                    mint_account,
+                ],
+                signers,
+            );
+        } else {
+            return invoke(
+                &spl_token::instruction::burn(
+                    token_program_id.key,
+                    source_account.key,
+                    mint_account.key,
+                    user_authority_account.key,
+                    &[user_authority_account.key],
+                    amount,
+                )
+                .unwrap(),
+                &[
+                    token_program_id,
+                    user_authority_account,
+                    source_account,
+                    mint_account,
+                ],
+            );
+        }
     }
 
     /// Initialize the pool
@@ -326,45 +341,36 @@ impl Processor {
         }
 
         // Transfer deposit tokens from user's account to our deposit account
-        if authority_account_info.key == user_transfer_authority_info.key {
-            Self::transfer_with_program_authority(
-                token_program_id_info.clone(),
-                user_token_account_info.clone(),
-                pool_deposit_token_account_info.clone(),
-                authority_account_info.clone(),
-                amount,
-                pool_account_info.key,
-                pool.bump_seed,
-            )?;
-        } else {
-            Self::transfer_with_user_authority(
-                token_program_id_info.clone(),
-                user_token_account_info.clone(),
-                pool_deposit_token_account_info.clone(),
-                user_transfer_authority_info.clone(),
-                amount,
-            )?;
-        }
+        Self::transfer(
+            token_program_id_info.clone(),
+            user_token_account_info.clone(),
+            pool_deposit_token_account_info.clone(),
+            authority_account_info.clone(),
+            user_transfer_authority_info.clone(),
+            amount,
+            pool_account_info.key,
+            pool.bump_seed,
+        )?;
 
         // Mint PASS tokens to user account
         Self::mint(
-            pool_account_info.key,
-            pool.bump_seed,
             token_program_id_info.clone(),
             token_pass_mint_info.clone(),
             token_pass_destination_account_info.clone(),
             authority_account_info.clone(),
             amount,
+            pool_account_info.key,
+            pool.bump_seed,
         )?;
         // Mint FAIL tokens to user account
         Self::mint(
-            pool_account_info.key,
-            pool.bump_seed,
             token_program_id_info.clone(),
             token_fail_mint_info.clone(),
             token_fail_destination_account_info.clone(),
             authority_account_info.clone(),
             amount,
+            pool_account_info.key,
+            pool.bump_seed,
         )?;
 
         Ok(())
@@ -379,6 +385,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let pool_account_info = next_account_info(account_info_iter)?;
         let authority_account_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let pool_deposit_token_account_info = next_account_info(account_info_iter)?;
         let token_pass_user_account_info = next_account_info(account_info_iter)?;
         let token_fail_user_account_info = next_account_info(account_info_iter)?;
@@ -404,91 +411,102 @@ impl Processor {
             return Err(PoolError::InvalidAuthorityAccount.into());
         }
 
-        if pool.decision == Decision::Pass {
-            // Burn PASS tokens
-            Self::burn(
-                &pool_account_info.key,
-                pool.bump_seed,
-                token_program_id_info.clone(),
-                token_pass_mint_info.clone(),
-                token_pass_user_account_info.clone(),
-                authority_account_info.clone(),
-                amount,
-            )?;
-
-            // Transfer deposit tokens from pool deposit account to user destination account
-            Self::transfer_with_program_authority(
-                token_program_id_info.clone(),
-                pool_deposit_token_account_info.clone(),
-                user_token_destination_account_info.clone(),
-                authority_account_info.clone(),
-                amount,
-                &pool_account_info.key,
-                pool.bump_seed,
-            )?;
-        } else if pool.decision == Decision::Fail {
-            // Burn FAIL tokens
-            Self::burn(
-                &pool_account_info.key,
-                pool.bump_seed,
-                token_program_id_info.clone(),
-                token_fail_mint_info.clone(),
-                token_fail_user_account_info.clone(),
-                authority_account_info.clone(),
-                amount,
-            )?;
-
-            // Transfer deposit tokens from pool deposit account to user destination account
-            Self::transfer_with_program_authority(
-                token_program_id_info.clone(),
-                pool_deposit_token_account_info.clone(),
-                user_token_destination_account_info.clone(),
-                authority_account_info.clone(),
-                amount,
-                &pool_account_info.key,
-                pool.bump_seed,
-            )?;
-        } else {
-            let current_slot = clock.slot;
-            if current_slot < pool.mint_end_slot || current_slot > pool.decide_end_slot {
-                let possible_withdraw_amount = amount
-                    .min(user_pass_token_account.amount)
-                    .min(user_fail_token_account.amount);
-
+        match pool.decision {
+            Decision::Pass => {
                 // Burn PASS tokens
                 Self::burn(
-                    &pool_account_info.key,
-                    pool.bump_seed,
                     token_program_id_info.clone(),
-                    token_pass_mint_info.clone(),
                     token_pass_user_account_info.clone(),
+                    token_pass_mint_info.clone(),
                     authority_account_info.clone(),
-                    possible_withdraw_amount,
-                )?;
-
-                // Burn FAIL tokens
-                Self::burn(
+                    user_transfer_authority_info.clone(),
+                    amount,
                     &pool_account_info.key,
                     pool.bump_seed,
-                    token_program_id_info.clone(),
-                    token_fail_mint_info.clone(),
-                    token_fail_user_account_info.clone(),
-                    authority_account_info.clone(),
-                    possible_withdraw_amount,
                 )?;
 
                 // Transfer deposit tokens from pool deposit account to user destination account
-                Self::transfer_with_program_authority(
+                Self::transfer(
                     token_program_id_info.clone(),
                     pool_deposit_token_account_info.clone(),
                     user_token_destination_account_info.clone(),
                     authority_account_info.clone(),
-                    possible_withdraw_amount,
+                    authority_account_info.clone(),
+                    amount,
+                    pool_account_info.key,
+                    pool.bump_seed,
+                )?;
+            }
+            Decision::Fail => {
+                // Burn FAIL tokens
+                Self::burn(
+                    token_program_id_info.clone(),
+                    token_fail_user_account_info.clone(),
+                    token_fail_mint_info.clone(),
+                    authority_account_info.clone(),
+                    user_transfer_authority_info.clone(),
+                    amount,
                     &pool_account_info.key,
                     pool.bump_seed,
                 )?;
-            } else {
-                return Err(PoolError::NoDecisionMadeYet.into());
+
+                // Transfer deposit tokens from pool deposit account to user destination account
+                Self::transfer(
+                    token_program_id_info.clone(),
+                    pool_deposit_token_account_info.clone(),
+                    user_token_destination_account_info.clone(),
+                    authority_account_info.clone(),
+                    authority_account_info.clone(),
+                    amount,
+                    pool_account_info.key,
+                    pool.bump_seed,
+                )?;
+            }
+            Decision::Undecided => {
+                let current_slot = clock.slot;
+                if current_slot < pool.mint_end_slot || current_slot > pool.decide_end_slot {
+                    let possible_withdraw_amount = amount
+                        .min(user_pass_token_account.amount)
+                        .min(user_fail_token_account.amount);
+
+                    // Burn PASS tokens
+                    Self::burn(
+                        token_program_id_info.clone(),
+                        token_pass_user_account_info.clone(),
+                        token_pass_mint_info.clone(),
+                        authority_account_info.clone(),
+                        user_transfer_authority_info.clone(),
+                        possible_withdraw_amount,
+                        &pool_account_info.key,
+                        pool.bump_seed,
+                    )?;
+
+                    // Burn FAIL tokens
+                    Self::burn(
+                        token_program_id_info.clone(),
+                        token_fail_user_account_info.clone(),
+                        token_fail_mint_info.clone(),
+                        authority_account_info.clone(),
+                        user_transfer_authority_info.clone(),
+                        amount,
+                        &pool_account_info.key,
+                        pool.bump_seed,
+                    )?;
+
+                    // Transfer deposit tokens from pool deposit account to user destination account
+                    Self::transfer(
+                        token_program_id_info.clone(),
+                        pool_deposit_token_account_info.clone(),
+                        user_token_destination_account_info.clone(),
+                        authority_account_info.clone(),
+                        authority_account_info.clone(),
+                        amount,
+                        pool_account_info.key,
+                        pool.bump_seed,
+                    )?;
+                } else {
+                    return Err(PoolError::NoDecisionMadeYet.into());
+                }
             }
         }
 

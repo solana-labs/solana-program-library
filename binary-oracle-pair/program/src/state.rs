@@ -2,7 +2,6 @@
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::pubkey::Pubkey;
-use std::mem::size_of;
 
 /// Uninitialized version value, all instances are at least version 1
 pub const UNINITIALIZED_VERSION: u8 = 0;
@@ -57,7 +56,7 @@ pub enum Decision {
 
 impl Pool {
     /// Length serialized data
-    pub const LEN: usize = size_of::<Pool>() - 13;
+    pub const LEN: usize = 179;
 
     /// Check if Pool already initialized
     pub fn is_initialized(&self) -> bool {
