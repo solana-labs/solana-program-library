@@ -35,7 +35,7 @@ async fn test_lamport_transfer() {
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[Instruction::new(
+        &[Instruction::new_with_bincode(
             program_id,
             &(),
             vec![

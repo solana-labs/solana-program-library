@@ -20,7 +20,7 @@ async fn test_sysvar() {
     .await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[Instruction::new(
+        &[Instruction::new_with_bincode(
             program_id,
             &(),
             vec![

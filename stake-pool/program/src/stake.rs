@@ -406,7 +406,7 @@ pub fn split_only(
         AccountMeta::new_readonly(*authorized_pubkey, true),
     ];
 
-    Instruction::new(id(), &StakeInstruction::Split(lamports), account_metas)
+    Instruction::new_with_bincode(id(), &StakeInstruction::Split(lamports), account_metas)
 }
 
 /// FIXME copied from the stake program
@@ -422,7 +422,7 @@ pub fn authorize(
         AccountMeta::new_readonly(*authorized_pubkey, true),
     ];
 
-    Instruction::new(
+    Instruction::new_with_bincode(
         id(),
         &StakeInstruction::Authorize(*new_authorized_pubkey, stake_authorize),
         account_metas,
@@ -443,7 +443,7 @@ pub fn merge(
         AccountMeta::new_readonly(*authorized_pubkey, true),
     ];
 
-    Instruction::new(id(), &StakeInstruction::Merge, account_metas)
+    Instruction::new_with_bincode(id(), &StakeInstruction::Merge, account_metas)
 }
 
 /// FIXME copied from the stake program
@@ -468,7 +468,7 @@ pub fn create_account(
 
 /// FIXME copied from the stake program
 pub fn initialize(stake_pubkey: &Pubkey, authorized: &Authorized, lockup: &Lockup) -> Instruction {
-    Instruction::new(
+    Instruction::new_with_bincode(
         id(),
         &StakeInstruction::Initialize(*authorized, *lockup),
         vec![
@@ -492,5 +492,5 @@ pub fn delegate_stake(
         AccountMeta::new_readonly(Pubkey::from_str(STAKE_CONFIG).unwrap(), false),
         AccountMeta::new_readonly(*authorized_pubkey, true),
     ];
-    Instruction::new(id(), &StakeInstruction::DelegateStake, account_metas)
+    Instruction::new_with_bincode(id(), &StakeInstruction::DelegateStake, account_metas)
 }
