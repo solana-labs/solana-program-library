@@ -80,40 +80,6 @@ impl Obligation {
         Ok(())
     }
 
-    // @FIXME
-    /// Repay borrowed tokens
-    pub fn repay(
-        &mut self,
-        liquidity_amount: u64,
-        obligation_token_supply: u64,
-    ) -> Result<RepayResult, ProgramError> {
-        let decimal_repay_amount = Decimal::from(liquidity_amount).min(self.borrowed_wads);
-        let integer_repay_amount = decimal_repay_amount.try_ceil_u64()?;
-        if integer_repay_amount == 0 {
-            return Err(LendingError::ObligationEmpty.into());
-        }
-
-        let repay_pct: Decimal = decimal_repay_amount.try_div(self.borrowed_wads)?;
-        let collateral_withdraw_amount = {
-            let withdraw_amount: Decimal = repay_pct.try_mul(self.deposited_collateral_tokens)?;
-            withdraw_amount.try_floor_u64()?
-        };
-
-        let obligation_token_amount = self.collateral_to_obligation_token_amount(
-            collateral_withdraw_amount,
-            obligation_token_supply,
-        )?;
-
-        self.liquidate(decimal_repay_amount, collateral_withdraw_amount)?;
-
-        Ok(RepayResult {
-            decimal_repay_amount,
-            integer_repay_amount,
-            collateral_withdraw_amount,
-            obligation_token_amount,
-        })
-    }
-
     /// Calculate the ratio of liquidity market value to collateral market value
     pub fn loan_to_value(&self) -> Result<Decimal, ProgramError> {
         self.liquidity_value.try_div(self.collateral_value)
@@ -141,18 +107,6 @@ impl Obligation {
     pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
         Ok(self.last_update_slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
     }
-}
-
-/// Obligation repay result
-pub struct RepayResult {
-    /// Amount of collateral to withdraw
-    pub collateral_withdraw_amount: u64,
-    /// Amount of obligation tokens to burn
-    pub obligation_token_amount: u64,
-    /// Amount that will be repaid as precise decimal
-    pub decimal_repay_amount: Decimal,
-    /// Amount that will be repaid as u64
-    pub integer_repay_amount: u64,
 }
 
 impl Sealed for Obligation {}

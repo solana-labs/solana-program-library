@@ -830,12 +830,10 @@ fn process_borrow_obligation_liquidity(
     Ok(())
 }
 
-// @FIXME
 #[inline(never)] // avoid stack frame limit
 fn process_repay_obligation_liquidity(
     program_id: &Pubkey,
     liquidity_amount: u64,
-    // @FIXME
     liquidity_amount_type: AmountType,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
@@ -851,14 +849,11 @@ fn process_repay_obligation_liquidity(
 
     let account_info_iter = &mut accounts.iter();
     let source_liquidity_info = next_account_info(account_info_iter)?;
-    let destination_collateral_info = next_account_info(account_info_iter)?;
+    let destination_liquidity_info = next_account_info(account_info_iter)?;
     let repay_reserve_info = next_account_info(account_info_iter)?;
     let repay_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
-    let withdraw_reserve_info = next_account_info(account_info_iter)?;
-    let withdraw_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_token_mint_info = next_account_info(account_info_iter)?;
-    let obligation_token_input_info = next_account_info(account_info_iter)?;
+    let obligation_liquidity_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
@@ -873,31 +868,6 @@ fn process_repay_obligation_liquidity(
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
-    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
-    if obligation_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation.borrow_reserve != repay_reserve_info.key {
-        msg!("Invalid repay reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation.collateral_reserve != withdraw_reserve_info.key {
-        msg!("Invalid withdraw reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if obligation.deposited_collateral_tokens == 0 {
-        return Err(LendingError::ObligationEmpty.into());
-    }
-
-    let obligation_mint = unpack_mint(&obligation_token_mint_info.data.borrow())?;
-    if obligation_token_mint_info.owner != token_program_id.key {
-        return Err(LendingError::InvalidTokenOwner.into());
-    }
-    if &obligation.token_mint != obligation_token_mint_info.key {
-        msg!("Invalid obligation token mint account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-
     let mut repay_reserve = Reserve::unpack(&repay_reserve_info.data.borrow())?;
     if repay_reserve_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
@@ -906,36 +876,57 @@ fn process_repay_obligation_liquidity(
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if &repay_reserve.liquidity.supply_pubkey != source_liquidity_info.key {
+        msg!("Invalid repay reserve liquidity supply account input");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &repay_reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
+        msg!("Cannot use repay reserve liquidity supply as destination account input");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
 
-    let withdraw_reserve = Reserve::unpack(&withdraw_reserve_info.data.borrow())?;
-    if withdraw_reserve_info.owner != program_id {
+    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
+    if obligation_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
-    if withdraw_reserve.lending_market != repay_reserve.lending_market {
-        return Err(LendingError::LendingMarketMismatch.into());
+    if &obligation.lending_market != lending_market_info.key {
+        msg!("Invalid obligation lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if obligation.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationStale.into());
+    }
+    // @TODO: is this enough? other reserves could have been updated that we don't check here, and
+    //          they all affect the market value. need to think about when interest may be accrued
+    if obligation.last_update_slot < repay_reserve.last_update_slot {
+        return Err(LendingError::ObligationStale.into());
     }
 
-    if repay_reserve_info.key == withdraw_reserve_info.key {
-        return Err(LendingError::DuplicateReserve.into());
+    let mut obligation_liquidity =
+        ObligationLiquidity::unpack(&obligation_liquidity_info.data.borrow())?;
+    if obligation_liquidity_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
     }
-    if repay_reserve.liquidity.mint_pubkey == withdraw_reserve.liquidity.mint_pubkey {
-        return Err(LendingError::DuplicateReserveMint.into());
-    }
-    if &repay_reserve.liquidity.supply_pubkey != repay_reserve_liquidity_supply_info.key {
-        msg!("Invalid repay reserve liquidity supply account");
+    if &obligation_liquidity.obligation != obligation_info.key {
+        msg!("Invalid obligation account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &withdraw_reserve.collateral.supply_pubkey != withdraw_reserve_collateral_supply_info.key {
-        msg!("Invalid withdraw reserve collateral supply account");
+    if &obligation_liquidity.borrow_reserve != repay_reserve_info.key {
+        msg!("Invalid repay reserve account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &repay_reserve.liquidity.supply_pubkey == source_liquidity_info.key {
-        msg!("Cannot use repay reserve liquidity supply as source account input");
-        return Err(LendingError::InvalidAccountInput.into());
+    if !obligation.liquidity.contains(obligation_liquidity_info.key) {
+        return Err(LendingError::ObligationAccountNotFound.into());
     }
-    if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
-        msg!("Cannot use withdraw reserve collateral supply as destination account input");
-        return Err(LendingError::InvalidAccountInput.into());
+    // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
+    //          check here. we could mark the obligation stale on every refresh of
+    //          collateral/liquidity, but this means they can't be refreshed in parallel
+    if obligation.last_update_slot < obligation_liquidity.last_update_slot {
+        return Err(LendingError::ObligationStale.into());
+    }
+    // @TODO: is this necessary if checking obligation.last_update_slot < obligation_liquidity.last_update_slot above?
+    if obligation_liquidity.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationLiquidityStale.into());
     }
 
     let authority_signer_seeds = &[
@@ -948,53 +939,39 @@ fn process_repay_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    // accrue interest and update rates
+    // @TODO: is this necessary?
     assert_last_update_slot(&repay_reserve, clock.slot)?;
 
-    obligation.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
+    // @TODO: is this necessary?
+    obligation_liquidity.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
-    // @FIXME: use liquidity_amount_type
+    let settle_amount = match liquidity_amount_type {
+        AmountType::ExactAmount => {
+            Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_wads)
+        }
+        AmountType::PercentAmount => Decimal::from_percent(u8::try_from(liquidity_amount)?)
+            .try_mul(obligation_liquidity.borrowed_wads)?,
+    };
+    let repay_amount = settle_amount.try_floor_u64()?;
 
-    let RepayResult {
-        integer_repay_amount,
-        decimal_repay_amount,
-        collateral_withdraw_amount,
-        obligation_token_amount,
-    } = obligation.repay(liquidity_amount, obligation_mint.supply)?;
-    repay_reserve
-        .liquidity
-        .repay(integer_repay_amount, decimal_repay_amount)?;
+    repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
+    obligation_liquidity.repay(settle_amount);
+    obligation_liquidity.mark_stale();
+    obligation.mark_stale();
 
-    Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
+    ObligationLiquidity::pack(
+        obligation_liquidity,
+        &mut obligation_liquidity_info.data.borrow_mut(),
+    )?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
+    Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    // burn obligation tokens
-    spl_token_burn(TokenBurnParams {
-        mint: obligation_token_mint_info.clone(),
-        source: obligation_token_input_info.clone(),
-        amount: obligation_token_amount,
-        authority: user_transfer_authority_info.clone(),
-        authority_signer_seeds: &[],
-        token_program: token_program_id.clone(),
-    })?;
-
-    // deposit repaid liquidity
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: repay_reserve_liquidity_supply_info.clone(),
-        amount: integer_repay_amount,
+        amount: repay_amount,
         authority: user_transfer_authority_info.clone(),
         authority_signer_seeds: &[],
-        token_program: token_program_id.clone(),
-    })?;
-
-    // withdraw collateral
-    spl_token_transfer(TokenTransferParams {
-        source: withdraw_reserve_collateral_supply_info.clone(),
-        destination: destination_collateral_info.clone(),
-        amount: collateral_withdraw_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
 

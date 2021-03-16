@@ -60,14 +60,14 @@ impl ObligationLiquidity {
     }
 
     /// Decrease borrowed liquidity
-    pub fn repay(&mut self, liquidity_amount: u64) -> ProgramResult {
-        self.borrowed_wads = self.borrowed_wads.try_sub(liquidity_amount.into())?;
+    pub fn repay(&mut self, settle_amount: Decimal) -> ProgramResult {
+        self.borrowed_wads = self.borrowed_wads.try_sub(settle_amount)?;
         Ok(())
     }
 
     /// Increase borrowed liquidity
-    pub fn borrow(&mut self, liquidity_amount: u64) -> ProgramResult {
-        self.borrowed_wads = self.borrowed_wads.try_add(liquidity_amount.into())?;
+    pub fn borrow(&mut self, borrow_amount: u64) -> ProgramResult {
+        self.borrowed_wads = self.borrowed_wads.try_add(borrow_amount.into())?;
         Ok(())
     }
 
