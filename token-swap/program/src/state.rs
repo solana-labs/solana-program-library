@@ -344,9 +344,7 @@ mod tests {
         let unpacked = SwapV1::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
 
-        let mut packed = vec![];
-        packed.push(1u8);
-        packed.push(TEST_NONCE);
+        let mut packed = vec![1u8, TEST_NONCE];
         packed.extend_from_slice(&TEST_TOKEN_PROGRAM_ID.to_bytes());
         packed.extend_from_slice(&TEST_TOKEN_A.to_bytes());
         packed.extend_from_slice(&TEST_TOKEN_B.to_bytes());
