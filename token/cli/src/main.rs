@@ -378,7 +378,7 @@ fn command_authorize(
     let previous_authority = if let Ok(mint) = Mint::unpack(&target_account.data) {
         match authority_type {
             AuthorityType::AccountOwner | AuthorityType::CloseAccount => Err(format!(
-                "Authority type `{}` not supported for mints",
+                "Authority type `{}` not supported for SPL Token mints",
                 auth_str
             )),
             AuthorityType::MintTokens => Ok(mint.mint_authority),
@@ -393,7 +393,7 @@ fn command_authorize(
                 && Some(config.owner) != new_owner
             {
                 Err(
-                    format!("Error: attmepting to change the `{}` of an associated token account of `--owner`", auth_str)
+                    format!("Error: attempting to change the `{}` of an associated token account of `--owner`", auth_str)
                         .into(),
                 )
             } else {
@@ -403,7 +403,7 @@ fn command_authorize(
 
         match authority_type {
             AuthorityType::MintTokens | AuthorityType::FreezeAccount => Err(format!(
-                "Authority type `{}` not supported for accounts",
+                "Authority type `{}` not supported for SPL Token accounts",
                 auth_str
             )),
             AuthorityType::AccountOwner => {
