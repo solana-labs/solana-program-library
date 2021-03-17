@@ -757,7 +757,6 @@ fn command_revoke(config: &Config, account: Pubkey, delegate: Option<Pubkey>) ->
             .get_token_account(&account)?
             .ok_or_else(|| format!("Could not find token account {}", account))?;
 
-        #[allow(clippy::manual_map)]
         if let Some(string) = source_account.delegate {
             Some(Pubkey::from_str(&string)?)
         } else {
