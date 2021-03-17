@@ -276,9 +276,7 @@ fn process_init_reserve(
     let dex_market = if reserve_liquidity_mint_info.key != &lending_market.quote_token_mint {
         let dex_market_info = next_account_info(account_info_iter)?;
         // TODO: check that market state is owned by real serum dex program
-        if !rent.is_exempt(dex_market_info.lamports(), dex_market_info.data_len()) {
-            return Err(LendingError::NotRentExempt.into());
-        }
+        assert_rent_exempt(rent, dex_market_info)?;
 
         let dex_market_data = &dex_market_info.data.borrow();
         let market_quote_mint = DexMarket::pubkey_at_offset(&dex_market_data, QUOTE_MINT_OFFSET);
