@@ -467,8 +467,8 @@ impl ReserveCollateral {
     pub fn new(mint_pubkey: Pubkey, supply_pubkey: Pubkey) -> Self {
         Self {
             mint_pubkey,
+            mint_total_supply: 0,
             supply_pubkey,
-            ..Self::default()
         }
     }
 
