@@ -631,7 +631,6 @@ fn process_borrow_obligation_liquidity(
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
-    // Ensure memory is owned by this program so that we don't have to zero it out
     if memory.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
@@ -1011,7 +1010,6 @@ fn process_liquidate_obligation(
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
-    // Ensure memory is owned by this program so that we don't have to zero it out
     if memory.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
@@ -1846,7 +1844,6 @@ fn process_refresh_obligation_collateral(
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
-    // Ensure memory is owned by this program so that we don't have to zero it out
     if memory.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
@@ -1942,7 +1939,6 @@ fn process_refresh_obligation_liquidity(
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
-    // Ensure memory is owned by this program so that we don't have to zero it out
     if memory.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
