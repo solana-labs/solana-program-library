@@ -568,6 +568,7 @@ impl ReserveFees {
     pub fn calculate_borrow_fees(
         &self,
         borrow_amount: u64,
+        // @FIXME: use enum
         inclusive: bool,
     ) -> Result<(u64, u64), ProgramError> {
         let borrow_fee_rate = Rate::from_scaled_val(self.borrow_fee_wad);
