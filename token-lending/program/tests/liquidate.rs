@@ -24,7 +24,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(97_000);
+    test.set_bpf_compute_max_units(200_000);
 
     // set loan values to about 90% of collateral value so that it gets liquidated
     // assumes SOL is ~$14
