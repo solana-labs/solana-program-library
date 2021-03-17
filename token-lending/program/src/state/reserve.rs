@@ -95,6 +95,61 @@ impl Reserve {
         }
     }
 
+    /// Borrow liquidity up to a maximum market value
+    pub fn borrow(
+        &self,
+        liquidity_amount: u64,
+        liquidity_amount_type: AmountType,
+        max_borrow_value: Decimal,
+        token_converter: impl TokenConverter,
+        quote_token_mint: &Pubkey,
+    ) -> Result<BorrowResult, ProgramError> {
+        match liquidity_amount_type {
+            AmountType::ExactAmount => {
+                let borrow_amount = liquidity_amount;
+                let (origination_fee, host_fee) = self
+                    .config
+                    .fees
+                    .calculate_borrow_fees(borrow_amount, false)?;
+                let total_amount = borrow_amount
+                    .checked_add(origination_fee)
+                    .ok_or(LendingError::MathOverflow)?;
+                let total_value =
+                    token_converter.convert(total_amount.into(), &self.liquidity.mint_pubkey)?;
+                if total_value > max_borrow_value {
+                    return Err(LendingError::BorrowTooLarge.into());
+                }
+
+                Ok(BorrowResult {
+                    total_amount,
+                    borrow_amount,
+                    origination_fee,
+                    host_fee,
+                })
+            }
+            AmountType::PercentAmount => {
+                let total_value = max_borrow_value
+                    .try_mul(Decimal::from_percent(u8::try_from(liquidity_amount)?))?;
+                let total_amount = token_converter
+                    .convert(total_value, &quote_token_mint)?
+                    .try_floor_u64()?
+                    .min(self.liquidity.available_amount);
+                let (origination_fee, host_fee) =
+                    self.config.fees.calculate_borrow_fees(total_amount, true)?;
+                let borrow_amount = total_amount
+                    .checked_sub(origination_fee)
+                    .ok_or(LendingError::MathOverflow)?;
+
+                Ok(BorrowResult {
+                    total_amount,
+                    borrow_amount,
+                    origination_fee,
+                    host_fee,
+                })
+            }
+        }
+    }
+
     // @FIXME
     /// Liquidate part of an unhealthy obligation
     pub fn liquidate_obligation(
@@ -183,61 +238,6 @@ impl Reserve {
             })
         } else {
             Err(LendingError::LiquidationTooSmall.into())
-        }
-    }
-
-    /// Borrow liquidity up to a maximum market value
-    pub fn borrow(
-        &self,
-        liquidity_amount: u64,
-        liquidity_amount_type: AmountType,
-        max_borrow_value: Decimal,
-        token_converter: impl TokenConverter,
-        quote_token_mint: &Pubkey,
-    ) -> Result<BorrowResult, ProgramError> {
-        match liquidity_amount_type {
-            AmountType::ExactAmount => {
-                let borrow_amount = liquidity_amount;
-                let (origination_fee, host_fee) = self
-                    .config
-                    .fees
-                    .calculate_borrow_fees(borrow_amount, false)?;
-                let total_amount = borrow_amount
-                    .checked_add(origination_fee)
-                    .ok_or(LendingError::MathOverflow)?;
-                let total_value =
-                    token_converter.convert(total_amount.into(), &self.liquidity.mint_pubkey)?;
-                if total_value > max_borrow_value {
-                    return Err(LendingError::BorrowTooLarge.into());
-                }
-
-                Ok(BorrowResult {
-                    total_amount,
-                    borrow_amount,
-                    origination_fee,
-                    host_fee,
-                })
-            }
-            AmountType::PercentAmount => {
-                let total_value = max_borrow_value
-                    .try_mul(Decimal::from_percent(u8::try_from(liquidity_amount)?))?;
-                let total_amount = token_converter
-                    .convert(total_value, &quote_token_mint)?
-                    .try_floor_u64()?
-                    .min(self.liquidity.available_amount);
-                let (origination_fee, host_fee) =
-                    self.config.fees.calculate_borrow_fees(total_amount, true)?;
-                let borrow_amount = total_amount
-                    .checked_sub(origination_fee)
-                    .ok_or(LendingError::MathOverflow)?;
-
-                Ok(BorrowResult {
-                    total_amount,
-                    borrow_amount,
-                    origination_fee,
-                    host_fee,
-                })
-            }
         }
     }
 

@@ -978,7 +978,6 @@ fn process_repay_obligation_liquidity(
     Ok(())
 }
 
-// @FIXME
 #[inline(never)] // avoid stack frame limit
 fn process_liquidate_obligation(
     program_id: &Pubkey,
@@ -1004,12 +1003,11 @@ fn process_liquidate_obligation(
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
+    let obligation_collateral_info = next_account_info(account_info_iter)?;
+    let obligation_liquidity_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let dex_market_info = next_account_info(account_info_iter)?;
-    let dex_market_orders_info = next_account_info(account_info_iter)?;
-    let memory = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -1026,28 +1024,20 @@ fn process_liquidate_obligation(
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
-    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
-    if obligation_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation.borrow_reserve != repay_reserve_info.key {
-        msg!("Invalid repay reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation.collateral_reserve != withdraw_reserve_info.key {
-        msg!("Invalid withdraw reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if obligation.deposited_collateral_tokens == 0 {
-        return Err(LendingError::ObligationEmpty.into());
-    }
-
     let mut repay_reserve = Reserve::unpack(&repay_reserve_info.data.borrow())?;
     if repay_reserve_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &repay_reserve.lending_market != lending_market_info.key {
         msg!("Invalid reserve lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &repay_reserve.liquidity.supply_pubkey != repay_reserve_liquidity_supply_info.key {
+        msg!("Invalid repay reserve liquidity supply account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &repay_reserve.liquidity.supply_pubkey == source_liquidity_info.key {
+        msg!("Invalid source liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -1058,46 +1048,112 @@ fn process_liquidate_obligation(
     if withdraw_reserve.lending_market != repay_reserve.lending_market {
         return Err(LendingError::LendingMarketMismatch.into());
     }
+    if &withdraw_reserve.collateral.supply_pubkey != withdraw_reserve_collateral_supply_info.key {
+        msg!("Invalid withdraw reserve collateral supply account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
+        msg!("Invalid destination collateral account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
 
+    // @TODO: are these two checks necessary?
+    //        what's the problem with repaying and receiving the same currency?
     if repay_reserve_info.key == withdraw_reserve_info.key {
         return Err(LendingError::DuplicateReserve.into());
     }
     if repay_reserve.liquidity.mint_pubkey == withdraw_reserve.liquidity.mint_pubkey {
         return Err(LendingError::DuplicateReserveMint.into());
     }
-    if &repay_reserve.liquidity.supply_pubkey != repay_reserve_liquidity_supply_info.key {
-        msg!("Invalid repay reserve liquidity supply account");
+
+    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
+    if obligation_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &obligation.lending_market != lending_market_info.key {
+        msg!("Invalid obligation lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &withdraw_reserve.collateral.supply_pubkey != withdraw_reserve_collateral_supply_info.key {
-        msg!("Invalid withdraw reserve collateral supply account");
-        return Err(LendingError::InvalidAccountInput.into());
+    if obligation.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationStale.into());
     }
-    if &repay_reserve.liquidity.supply_pubkey == source_liquidity_info.key {
-        msg!("Cannot use repay reserve liquidity supply as source account input");
-        return Err(LendingError::InvalidAccountInput.into());
+    // @TODO: is this enough? other reserves could have been updated that we don't check here, and
+    //          they all affect the market value. need to think about when interest may be accrued
+    if obligation.last_update_slot < repay_reserve.last_update_slot {
+        return Err(LendingError::ObligationStale.into());
     }
-    if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
-        msg!("Cannot use withdraw reserve collateral supply as destination account input");
-        return Err(LendingError::InvalidAccountInput.into());
+    if obligation.last_update_slot < withdraw_reserve.last_update_slot {
+        return Err(LendingError::ObligationStale.into());
     }
 
-    // TODO: handle case when neither reserve is the quote currency
-    if repay_reserve.dex_market.is_none() && withdraw_reserve.dex_market.is_none() {
-        msg!("One reserve must have a dex market");
+    let mut obligation_collateral =
+        ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
+    if obligation_collateral_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &obligation_collateral.obligation != obligation_info.key {
+        msg!("Invalid obligation account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if let COption::Some(dex_market_pubkey) = repay_reserve.dex_market {
-        if &dex_market_pubkey != dex_market_info.key {
-            msg!("Invalid dex market account");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
+    if &obligation_collateral.deposit_reserve != withdraw_reserve_info.key {
+        msg!("Invalid withdraw reserve account");
+        return Err(LendingError::InvalidAccountInput.into());
     }
-    if let COption::Some(dex_market_pubkey) = withdraw_reserve.dex_market {
-        if &dex_market_pubkey != dex_market_info.key {
-            msg!("Invalid dex market account");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
+    if &obligation_collateral.token_mint != obligation_token_mint_info.key {
+        msg!("Invalid obligation token mint");
+        return Err(LendingError::InvalidTokenMint.into());
+    }
+    if !obligation
+        .collateral
+        .contains(obligation_collateral_info.key)
+    {
+        return Err(LendingError::ObligationAccountNotFound.into());
+    }
+    if obligation.last_update_slot < obligation_collateral.last_update_slot {
+        return Err(LendingError::ObligationCollateralStale.into());
+    }
+    if obligation_collateral.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationCollateralStale.into());
+    }
+    // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
+    //          check here. we could mark the obligation stale on every refresh of
+    //          collateral/liquidity, but this means they can't be refreshed in parallel
+    if obligation.last_update_slot < obligation_collateral.last_update_slot {
+        return Err(LendingError::ObligationStale.into());
+    }
+    // @TODO: is this necessary if checking obligation.last_update_slot < obligation_liquidity.last_update_slot above?
+    if obligation_collateral.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationCollateralStale.into());
+    }
+    if obligation_collateral.deposited_tokens == 0 {
+        return Err(LendingError::ObligationEmpty.into());
+    }
+
+    let mut obligation_liquidity =
+        ObligationLiquidity::unpack(&obligation_liquidity_info.data.borrow())?;
+    if obligation_liquidity_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &obligation_liquidity.obligation != obligation_info.key {
+        msg!("Invalid obligation account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &obligation_liquidity.borrow_reserve != repay_reserve_info.key {
+        msg!("Invalid repay reserve account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if !obligation.liquidity.contains(obligation_liquidity_info.key) {
+        return Err(LendingError::ObligationAccountNotFound.into());
+    }
+    // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
+    //          check here. we could mark the obligation stale on every refresh of
+    //          collateral/liquidity, but this means they can't be refreshed in parallel
+    if obligation.last_update_slot < obligation_liquidity.last_update_slot {
+        return Err(LendingError::ObligationStale.into());
+    }
+    // @TODO: is this necessary if checking obligation.last_update_slot < obligation_liquidity.last_update_slot above?
+    if obligation_liquidity.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationLiquidityStale.into());
     }
 
     let authority_signer_seeds = &[
@@ -1110,41 +1166,96 @@ fn process_liquidate_obligation(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    // accrue interest and update rates
+    // @TODO: is this necessary?
     assert_last_update_slot(&repay_reserve, clock.slot)?;
     assert_last_update_slot(&withdraw_reserve, clock.slot)?;
 
-    obligation.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
+    // @TODO: is this necessary?
+    obligation_liquidity.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
-    let trade_simulator = TradeSimulator::new(
-        dex_market_info,
-        dex_market_orders_info,
-        memory,
-        &lending_market.quote_token_mint,
-        &withdraw_reserve.liquidity.mint_pubkey,
-        &repay_reserve.liquidity.mint_pubkey,
-    )?;
+    let liquidation_threshold =
+        Rate::from_percent(lending_market.liquidation_threshold);
+    let obligation_ltv = obligation.loan_to_value()?;
+    if obligation_ltv < liquidation_threshold {
+        return Err(LendingError::HealthyObligation.into());
+    }
 
-    // @FIXME: use liquidity_amount_type
+    // @FIXME: resume here
 
-    let LiquidateResult {
-        withdraw_amount,
-        repay_amount,
-        settle_amount,
-    } = withdraw_reserve.liquidate_obligation(
-        &obligation,
-        liquidity_amount,
-        &repay_reserve.liquidity.mint_pubkey,
-        trade_simulator,
-    )?;
+    let lending_market_ltv = Rate::from_percent(lending_market.loan_to_value_ratio);
+
+    let mut settle_amount = match liquidity_amount_type {
+        AmountType::ExactAmount => {
+            Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_wads)
+        }
+        AmountType::PercentAmount => {
+            let settle_pct = Decimal::from_percent(u8::try_from(liquidity_amount)?);
+            settle_pct.try_mul(obligation_liquidity.borrowed_wads)?
+        },
+    };
+    let mut repay_amount = settle_amount.try_floor_u64()?;
+    let mut withdraw_amount;
+
+    let max_closeable_amount = obligation_liquidity.max_closeable_amount()?;
+    let close_amount = settle_amount.min(max_closeable_amount);
+    if close_amount > 0 {
+        settle_amount = obligation_liquidity.borrowed_wads;
+        repay_amount = close_amount.try_floor_u64()?;
+        withdraw_amount = obligation_collateral.deposited_tokens;
+    }
+    else {
+        // Calculate the amount of liquidity that will be repaid
+        let max_liquidation_amount = obligation_liquidity.max_liquidation_amount()?;
+
+        settle_amount = settle_amount.min(max_liquidation_amount);
+        repay_amount = settle_amount.try_floor_u64()?;
+
+        withdraw_amount = {
+            let receive_liquidity_amount =
+                token_converter.convert(settle_amount, liquidity_token_mint)?;
+
+            let collateral_amount = withdraw_reserve.collateral_exchange_rate()?
+                .decimal_liquidity_to_collateral(receive_liquidity_amount)?;
+
+            let bonus_rate = Rate::from_percent(withdraw_reserve.config.liquidation_bonus);
+
+            let bonus_amount = collateral_amount.try_mul(bonus_rate)?;
+
+            let withdraw_amount = collateral_amount.try_add(bonus_amount)?
+                .min(obligation_collateral.deposited_tokens.into());
+
+            if repay_amount == max_liquidation_amount {
+                withdraw_amount.try_ceil_u64()?
+            } else {
+                withdraw_amount.try_floor_u64()?
+            }
+        };
+
+        // TODO: charge less liquidity if withdraw value exceeds loan collateral
+        if withdraw_amount == obligation_collateral.deposited_tokens {
+            settle_amount = obligation_liquidity.borrowed_wads;
+        }
+    }
+
+    //
+
+    if withdraw_amount == 0 {
+        return Err(LendingError::LiquidationTooSmall.into());
+    }
 
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
-    Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
+    obligation_liquidity.repay(settle_amount);
+    // @FIXME: shouldn't withdraw_reserve.collateral.mint_total_supply change?
+    obligation_collateral.withdraw(withdraw_amount);
+    obligation_liquidity.mark_stale();
+    obligation_collateral.mark_stale();
+    obligation.mark_stale();
 
-    obligation.liquidate(settle_amount, withdraw_amount)?;
+    Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
+    ObligationCollateral::pack(obligation_collateral, &mut obligation_collateral_info.data.borrow_mut())?;
+    ObligationLiquidity::pack(obligation_liquidity, &mut obligation_liquidity_info.data.borrow_mut())?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
-    // deposit repaid liquidity
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: repay_reserve_liquidity_supply_info.clone(),
@@ -1154,7 +1265,6 @@ fn process_liquidate_obligation(
         token_program: token_program_id.clone(),
     })?;
 
-    // withdraw collateral
     spl_token_transfer(TokenTransferParams {
         source: withdraw_reserve_collateral_supply_info.clone(),
         destination: destination_collateral_info.clone(),

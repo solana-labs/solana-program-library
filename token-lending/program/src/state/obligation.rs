@@ -69,17 +69,6 @@ impl Obligation {
         }
     }
 
-    // @FIXME
-    /// Liquidate part of obligation
-    pub fn liquidate(&mut self, repay_amount: Decimal, withdraw_amount: u64) -> ProgramResult {
-        self.borrowed_wads = self.borrowed_wads.try_sub(repay_amount)?;
-        self.deposited_collateral_tokens = self
-            .deposited_collateral_tokens
-            .checked_sub(withdraw_amount)
-            .ok_or(LendingError::MathOverflow)?;
-        Ok(())
-    }
-
     /// Calculate the ratio of liquidity market value to collateral market value
     pub fn loan_to_value(&self) -> Result<Decimal, ProgramError> {
         self.liquidity_value.try_div(self.collateral_value)
