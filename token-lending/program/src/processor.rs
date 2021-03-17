@@ -198,7 +198,6 @@ fn process_init_lending_market(
     Ok(())
 }
 
-// @FIXME
 fn process_init_reserve(
     program_id: &Pubkey,
     liquidity_amount: u64,
@@ -253,7 +252,7 @@ fn process_init_reserve(
     let token_program_id = next_account_info(account_info_iter)?;
 
     if reserve_liquidity_supply_info.key == source_liquidity_info.key {
-        msg!("Cannot use reserve liquidity supply as source account input");
+        msg!("Invalid source liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -468,11 +467,11 @@ fn process_deposit_reserve_liquidity(
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &reserve.liquidity.supply_pubkey == source_liquidity_info.key {
-        msg!("Cannot use reserve liquidity supply as source account input");
+        msg!("Invalid source liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &reserve.collateral.supply_pubkey == destination_collateral_info.key {
-        msg!("Cannot use reserve collateral supply as destination account input");
+        msg!("Invalid destination collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -558,11 +557,11 @@ fn process_withdraw_reserve_liquidity(
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
-        msg!("Cannot use reserve liquidity supply as destination account input");
+        msg!("Invalid destination liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &reserve.collateral.supply_pubkey == source_collateral_info.key {
-        msg!("Cannot use reserve collateral supply as source account input");
+        msg!("Invalid source collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -655,11 +654,11 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::LendingMarketMismatch.into());
     }
     if &borrow_reserve.liquidity.supply_pubkey != source_liquidity_info.key {
-        msg!("Invalid borrow reserve liquidity supply account input");
+        msg!("Invalid source liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &borrow_reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
-        msg!("Cannot use borrow reserve liquidity supply as destination account input");
+        msg!("Invalid destination liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &borrow_reserve.liquidity.fee_receiver != borrow_reserve_liquidity_fee_receiver_info.key {
@@ -672,7 +671,7 @@ fn process_borrow_obligation_liquidity(
     }
     if let COption::Some(dex_market_pubkey) = borrow_reserve.dex_market {
         if &dex_market_pubkey != dex_market_info.key {
-            msg!("Invalid dex market account input");
+            msg!("Invalid dex market account");
             return Err(LendingError::InvalidAccountInput.into());
         }
     }
@@ -876,12 +875,13 @@ fn process_repay_obligation_liquidity(
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &repay_reserve.liquidity.supply_pubkey != source_liquidity_info.key {
-        msg!("Invalid repay reserve liquidity supply account input");
+    // @TODO: how is the currency/mint of the liquidity known?
+    if &repay_reserve.liquidity.supply_pubkey == source_liquidity_info.key {
+        msg!("Invalid source liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &repay_reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
-        msg!("Cannot use repay reserve liquidity supply as destination account input");
+    if &repay_reserve.liquidity.supply_pubkey != destination_liquidity_info.key {
+        msg!("Invalid destination liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -1228,11 +1228,11 @@ fn process_deposit_obligation_collateral(
         return Err(LendingError::ReserveCollateralDisabled.into());
     }
     if &deposit_reserve.collateral.supply_pubkey != destination_collateral_info.key {
-        msg!("Invalid deposit reserve collateral supply account input");
+        msg!("Invalid destination collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &deposit_reserve.collateral.supply_pubkey == source_collateral_info.key {
-        msg!("Cannot use deposit reserve collateral supply as source collateral account input");
+        msg!("Invalid source collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -1259,7 +1259,7 @@ fn process_deposit_obligation_collateral(
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &obligation_collateral.token_mint != obligation_token_mint_info.key {
-        msg!("Obligation token mint input doesn't match existing obligation token mint");
+        msg!("Invalid obligation token mint");
         return Err(LendingError::InvalidTokenMint.into());
     }
     if !obligation
@@ -1371,13 +1371,11 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &withdraw_reserve.collateral.supply_pubkey != source_collateral_info.key {
-        msg!("Invalid withdraw reserve collateral supply account input");
+        msg!("Invalid source collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
-        msg!(
-            "Cannot use withdraw reserve collateral supply as destination collateral account input"
-        );
+        msg!("Invalid destination collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -1412,7 +1410,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &obligation_collateral.token_mint != obligation_token_mint_info.key {
-        msg!("Obligation token mint input doesn't match existing obligation token mint");
+        msg!("Invalid obligation token mint");
         return Err(LendingError::InvalidTokenMint.into());
     }
     if !obligation
@@ -1421,17 +1419,11 @@ fn process_withdraw_obligation_collateral(
     {
         return Err(LendingError::ObligationAccountNotFound.into());
     }
-    if obligation.last_update_slot < obligation_collateral.last_update_slot {
-        return Err(LendingError::ObligationCollateralStale.into());
-    }
-    if obligation_collateral.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationCollateralStale.into());
-    }
     // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
     //          check here. we could mark the obligation stale on every refresh of
     //          collateral/liquidity, but this means they can't be refreshed in parallel
     if obligation.last_update_slot < obligation_collateral.last_update_slot {
-        return Err(LendingError::ObligationStale.into());
+        return Err(LendingError::ObligationCollateralStale.into());
     }
     // @TODO: is this necessary if checking obligation.last_update_slot < obligation_liquidity.last_update_slot above?
     if obligation_collateral.is_stale(clock.slot)? {
@@ -1770,7 +1762,7 @@ fn process_refresh_obligation_collateral(
     }
     if let COption::Some(dex_market_pubkey) = deposit_reserve.dex_market {
         if &dex_market_pubkey != dex_market_info.key {
-            msg!("Invalid dex market account input");
+            msg!("Invalid dex market account");
             return Err(LendingError::InvalidAccountInput.into());
         }
     }
@@ -1866,7 +1858,7 @@ fn process_refresh_obligation_liquidity(
     }
     if let COption::Some(dex_market_pubkey) = borrow_reserve.dex_market {
         if &dex_market_pubkey != dex_market_info.key {
-            msg!("Invalid dex market account input");
+            msg!("Invalid dex market account");
             return Err(LendingError::InvalidAccountInput.into());
         }
     }
