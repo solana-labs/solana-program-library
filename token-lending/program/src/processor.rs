@@ -1495,6 +1495,7 @@ fn process_withdraw_obligation_collateral(
     let obligation_token_amount = obligation_collateral
         .collateral_to_obligation_token_amount(withdraw_amount, obligation_token_mint.supply)?;
 
+    // @FIXME: shouldn't withdraw_reserve.collateral.mint_total_supply change?
     obligation_collateral.withdraw(withdraw_amount)?;
     obligation_collateral.mark_stale();
     obligation.mark_stale();
