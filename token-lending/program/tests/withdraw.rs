@@ -27,7 +27,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(33_000);
+    test.set_bpf_compute_max_units(35_000);
 
     let user_accounts_owner = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);

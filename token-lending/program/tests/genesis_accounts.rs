@@ -12,8 +12,11 @@ use spl_token_lending::{
 };
 
 #[tokio::test]
-async fn test_success() {
+async fn test_genesis_accounts() {
     let (mut test, lending) = setup_test();
+
+    // TODO: Remove this next line to restore 200,000 limit
+    test.set_bpf_compute_max_units(240_000);
 
     let LendingTest {
         sol_usdc_dex_market,
