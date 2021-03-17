@@ -321,8 +321,8 @@ fn process_init_reserve(
     let mut reserve = Reserve::new(NewReserveParams {
         current_slot: clock.slot,
         lending_market: *lending_market_info.key,
-        collateral: reserve_collateral_info,
         liquidity: reserve_liquidity_info,
+        collateral: reserve_collateral_info,
         dex_market,
         config,
     });
