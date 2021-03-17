@@ -819,7 +819,6 @@ pub fn borrow_obligation_liquidity(
     }
 }
 
-// @FIXME
 /// Creates a `RepayObligationLiquidity` instruction
 #[allow(clippy::too_many_arguments)]
 pub fn repay_obligation_liquidity(
@@ -827,14 +826,10 @@ pub fn repay_obligation_liquidity(
     liquidity_amount: u64,
     liquidity_amount_type: AmountType,
     source_liquidity_pubkey: Pubkey,
-    destination_collateral_pubkey: Pubkey,
+    destination_liquidity_pubkey: Pubkey,
     repay_reserve_pubkey: Pubkey,
-    repay_reserve_liquidity_supply_pubkey: Pubkey,
-    withdraw_reserve_pubkey: Pubkey,
-    withdraw_reserve_collateral_supply_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
-    obligation_mint_pubkey: Pubkey,
-    obligation_output_pubkey: Pubkey,
+    obligation_liquidity_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
@@ -844,14 +839,10 @@ pub fn repay_obligation_liquidity(
         program_id,
         accounts: vec![
             AccountMeta::new(source_liquidity_pubkey, false),
-            AccountMeta::new(destination_collateral_pubkey, false),
+            AccountMeta::new(destination_liquidity_pubkey, false),
             AccountMeta::new(repay_reserve_pubkey, false),
-            AccountMeta::new(repay_reserve_liquidity_supply_pubkey, false),
-            AccountMeta::new_readonly(withdraw_reserve_pubkey, false),
-            AccountMeta::new(withdraw_reserve_collateral_supply_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
-            AccountMeta::new(obligation_mint_pubkey, false),
-            AccountMeta::new(obligation_output_pubkey, false),
+            AccountMeta::new(obligation_liquidity_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new_readonly(user_transfer_authority_pubkey, true),

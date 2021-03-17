@@ -947,8 +947,10 @@ fn process_repay_obligation_liquidity(
         AmountType::ExactAmount => {
             Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_wads)
         }
-        AmountType::PercentAmount => Decimal::from_percent(u8::try_from(liquidity_amount)?)
-            .try_mul(obligation_liquidity.borrowed_wads)?,
+        AmountType::PercentAmount => {
+            let settle_pct = Decimal::from_percent(u8::try_from(liquidity_amount)?);
+            settle_pct.try_mul(obligation_liquidity.borrowed_wads)?
+        },
     };
     let repay_amount = settle_amount.try_floor_u64()?;
 
