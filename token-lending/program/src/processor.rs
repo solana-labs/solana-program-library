@@ -1550,9 +1550,6 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    // @TODO: is this necessary?
-    obligation_liquidity.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
-
     let loan_to_value_ratio = Rate::from_percent(lending_market.loan_to_value_ratio);
     let loan_to_value = obligation.loan_to_value()?;
     if loan_to_value > loan_to_value_ratio {
