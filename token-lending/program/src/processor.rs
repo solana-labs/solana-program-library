@@ -766,7 +766,8 @@ fn process_borrow_obligation_liquidity(
         &lending_market.quote_token_mint,
     )?;
 
-    // @TODO: will this need further adjustment for fees?
+    // @FIXME: fees come out of liquidity pool, but they don't get paid by borrower
+    // @FIXME: don't we need to adjust total supply?
     borrow_reserve
         .liquidity
         .borrow(total_amount, borrow_amount)?;

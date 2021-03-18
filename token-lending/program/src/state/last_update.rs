@@ -41,6 +41,7 @@ impl LastUpdate {
         self.slot = slot;
     }
 
+    // @FIXME: this will screw up interest rate tracking
     /// Set last update slot to 0
     pub fn mark_stale(&mut self) {
         self.update_slot(0);

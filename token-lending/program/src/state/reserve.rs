@@ -47,8 +47,8 @@ impl Reserve {
     pub fn new(params: NewReserveParams) -> Self {
         let NewReserveParams {
             lending_market,
-            collateral: collateral_info,
-            liquidity: liquidity_info,
+            collateral,
+            liquidity,
             dex_market,
             config,
         } = params;
@@ -58,8 +58,8 @@ impl Reserve {
             last_update: LastUpdate::new(),
             cumulative_borrow_rate_wads: Decimal::one(),
             lending_market,
-            collateral: collateral_info,
-            liquidity: liquidity_info,
+            collateral,
+            liquidity,
             dex_market,
             config,
         }
