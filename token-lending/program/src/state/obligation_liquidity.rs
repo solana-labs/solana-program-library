@@ -71,22 +71,6 @@ impl ObligationLiquidity {
         Ok(())
     }
 
-    /// Maximum amount of loan that can be closed out by a liquidator due to the remaining balance
-    /// being too small to be liquidated normally.
-    pub fn max_closeable_amount(&self) -> Result<Decimal, ProgramError> {
-        if self.borrowed_wads < Decimal::from(CLOSEABLE_AMOUNT) {
-            Ok(self.borrowed_wads)
-        } else {
-            Ok(Decimal::zero())
-        }
-    }
-
-    /// Maximum amount of loan that can be repaid by liquidators
-    pub fn max_liquidation_amount(&self) -> Result<Decimal, ProgramError> {
-        self.borrowed_wads
-            .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))
-    }
-
     /// Accrue interest
     pub fn accrue_interest(&mut self, cumulative_borrow_rate_wads: Decimal) -> ProgramResult {
         if cumulative_borrow_rate_wads < self.cumulative_borrow_rate_wads {
