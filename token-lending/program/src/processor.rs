@@ -938,7 +938,11 @@ fn process_repay_obligation_liquidity(
     let RepayResult {
         settle_amount,
         repay_amount,
-    } = repay_reserve.repay_liquidity(liquidity_amount, liquidity_amount_type);
+    } = repay_reserve.repay_liquidity(
+        liquidity_amount,
+        liquidity_amount_type,
+        &obligation_liquidity,
+    );
 
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     obligation_liquidity.repay(settle_amount);

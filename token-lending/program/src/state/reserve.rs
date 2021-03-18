@@ -166,6 +166,7 @@ impl Reserve {
         &self,
         liquidity_amount: u64,
         liquidity_amount_type: AmountType,
+        obligation_liquidity: &ObligationLiquidity,
     ) -> Result<RepayResult, ProgramError> {
         let settle_amount = match liquidity_amount_type {
             AmountType::ExactAmount => {
@@ -176,7 +177,11 @@ impl Reserve {
                 obligation_liquidity.borrowed_wads.try_mul(settle_pct)?
             }
         };
-        let repay_amount = settle_amount.try_floor_u64()?;
+        let repay_amount = if settle_amount == obligation_liquidity.borrowed_wads {
+            settle_amount.try_ceil_u64()?
+        } else {
+            settle_amount.try_floor_u64()?
+        };
 
         Ok(RepayResult {
             settle_amount,
