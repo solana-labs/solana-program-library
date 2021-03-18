@@ -19,7 +19,7 @@ pub struct ObligationLiquidity {
     /// Version of the obligation liquidity
     pub version: u8,
     /// Last slot when market value and accrued interest updated; set to 0 if borrowed wads changed
-    pub last_update_slot: Slot,
+    pub last_update: LastUpdate,
     /// Obligation the liquidity is associated with
     pub obligation: Pubkey,
     /// Reserve which liquidity tokens were borrowed from
@@ -50,7 +50,7 @@ impl ObligationLiquidity {
 
         Self {
             version: PROGRAM_VERSION,
-            last_update_slot: 0,
+            last_update: LastUpdate::new(),
             obligation,
             borrow_reserve,
             cumulative_borrow_rate_wads: Decimal::one(),
@@ -97,29 +97,6 @@ impl ObligationLiquidity {
         self.value = token_converter.convert(self.borrowed_wads, from_token_mint)?;
         Ok(())
     }
-
-    /// Return slots elapsed since given slot
-    pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
-        let slots_elapsed = slot
-            .checked_sub(self.last_update_slot)
-            .ok_or(LendingError::MathOverflow)?;
-        Ok(slots_elapsed)
-    }
-
-    /// Set last update slot
-    pub fn update_slot(&mut self, slot: Slot) {
-        self.last_update_slot = slot;
-    }
-
-    /// Set last update slot to 0
-    pub fn mark_stale(&mut self) {
-        self.update_slot(0);
-    }
-
-    /// Check if last update slot is too long ago
-    pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
-        Ok(self.last_update_slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
-    }
 }
 
 impl Sealed for ObligationLiquidity {}
@@ -147,7 +124,7 @@ impl Pack for ObligationLiquidity {
         ) = mut_array_refs![output, 1, 8, PUBKEY_LEN, PUBKEY_LEN, 16, 16, 16, 128];
 
         *version = self.version.to_le_bytes();
-        *last_update_slot = self.last_update_slot.to_le_bytes();
+        *last_update_slot = self.last_update.slot.to_le_bytes();
         obligation.copy_from_slice(self.obligation.as_ref());
         borrow_reserve.copy_from_slice(self.borrow_reserve.as_ref());
         pack_decimal(
@@ -175,7 +152,9 @@ impl Pack for ObligationLiquidity {
 
         Ok(Self {
             version: u8::from_le_bytes(*version),
-            last_update_slot: u64::from_le_bytes(*last_update_slot),
+            last_update: LastUpdate {
+                slot: u64::from_le_bytes(*last_update_slot),
+            },
             obligation: Pubkey::new_from_array(*obligation),
             borrow_reserve: Pubkey::new_from_array(*borrow_reserve),
             cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),

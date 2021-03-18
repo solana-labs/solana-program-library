@@ -472,6 +472,9 @@ fn process_deposit_reserve_liquidity(
         msg!("Invalid destination collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if reserve.last_update.is_stale(clock.slot) {
+        return Err(LendingError::ReserveStale.into());
+    }
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -482,8 +485,6 @@ fn process_deposit_reserve_liquidity(
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-
-    assert_last_update_slot(&reserve, clock.slot)?;
 
     let collateral_amount = reserve.deposit_liquidity(liquidity_amount)?;
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
@@ -562,6 +563,9 @@ fn process_withdraw_reserve_liquidity(
         msg!("Invalid source collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if reserve.last_update.is_stale(clock.slot) {
+        return Err(LendingError::ReserveStale.into());
+    }
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -572,8 +576,6 @@ fn process_withdraw_reserve_liquidity(
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-
-    assert_last_update_slot(&reserve, clock.slot)?;
 
     let liquidity_amount = reserve.redeem_collateral(collateral_amount)?;
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
@@ -672,6 +674,9 @@ fn process_borrow_obligation_liquidity(
             return Err(LendingError::InvalidAccountInput.into());
         }
     }
+    if borrow_reserve.last_update.is_stale(clock.slot) {
+        return Err(LendingError::ReserveStale.into());
+    }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
@@ -681,12 +686,12 @@ fn process_borrow_obligation_liquidity(
         msg!("Invalid obligation lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if obligation.is_stale(clock.slot)? {
+    if obligation.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
     // @TODO: is this enough? other reserves could have been updated that we don't check here, and
     //          they all affect the market value. need to think about when interest may be accrued
-    if obligation.last_update_slot < borrow_reserve.last_update_slot {
+    if obligation.last_update < borrow_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
 
@@ -706,15 +711,14 @@ fn process_borrow_obligation_liquidity(
     if !obligation.liquidity.contains(obligation_liquidity_info.key) {
         return Err(LendingError::ObligationAccountNotFound.into());
     }
+    if obligation_liquidity.last_update.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationLiquidityStale.into());
+    }
     // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
     //          check here. we could mark the obligation stale on every refresh of
     //          collateral/liquidity, but this means they can't be refreshed in parallel
-    if obligation.last_update_slot < obligation_liquidity.last_update_slot {
+    if obligation.last_update < obligation_liquidity.last_update {
         return Err(LendingError::ObligationStale.into());
-    }
-    // @TODO: is this necessary if checking obligation.last_update_slot < obligation_liquidity.last_update_slot above?
-    if obligation_liquidity.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationLiquidityStale.into());
     }
 
     let authority_signer_seeds = &[
@@ -728,9 +732,6 @@ fn process_borrow_obligation_liquidity(
     }
 
     // @TODO: is this necessary?
-    assert_last_update_slot(&borrow_reserve, clock.slot)?;
-
-    // @TODO: is this necessary?
     obligation_liquidity.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
 
     let lending_market_ltv = Rate::from_percent(lending_market.loan_to_value_ratio);
@@ -742,6 +743,11 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::ObligationLTVCannotGoAboveReserveLTV.into());
     }
 
+    let max_borrow_value = obligation
+        .collateral_value
+        .try_mul(lending_market_ltv)?
+        .try_sub(obligation.liquidity_value)?;
+
     let trade_simulator = TradeSimulator::new(
         dex_market_info,
         dex_market_orders_info,
@@ -751,11 +757,6 @@ fn process_borrow_obligation_liquidity(
         &borrow_reserve.liquidity.mint_pubkey,
         &lending_market.quote_token_mint,
     )?;
-
-    let max_borrow_value = obligation
-        .collateral_value
-        .try_mul(lending_market_ltv)?
-        .try_sub(obligation.liquidity_value)?;
 
     let BorrowResult {
         total_amount,
@@ -881,6 +882,9 @@ fn process_repay_obligation_liquidity(
         msg!("Invalid destination liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if repay_reserve.last_update.is_stale(clock.slot) {
+        return Err(LendingError::ReserveStale.into());
+    }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
@@ -890,12 +894,12 @@ fn process_repay_obligation_liquidity(
         msg!("Invalid obligation lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if obligation.is_stale(clock.slot)? {
+    if obligation.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
     // @TODO: is this enough? other reserves could have been updated that we don't check here, and
     //          they all affect the market value. need to think about when interest may be accrued
-    if obligation.last_update_slot < repay_reserve.last_update_slot {
+    if obligation.last_update < repay_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
 
@@ -915,15 +919,14 @@ fn process_repay_obligation_liquidity(
     if !obligation.liquidity.contains(obligation_liquidity_info.key) {
         return Err(LendingError::ObligationAccountNotFound.into());
     }
+    if obligation_liquidity.last_update.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationLiquidityStale.into());
+    }
     // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
     //          check here. we could mark the obligation stale on every refresh of
     //          collateral/liquidity, but this means they can't be refreshed in parallel
-    if obligation.last_update_slot < obligation_liquidity.last_update_slot {
+    if obligation.last_update < obligation_liquidity.last_update {
         return Err(LendingError::ObligationStale.into());
-    }
-    // @TODO: is this necessary if checking obligation.last_update_slot < obligation_liquidity.last_update_slot above?
-    if obligation_liquidity.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationLiquidityStale.into());
     }
 
     let authority_signer_seeds = &[
@@ -935,12 +938,6 @@ fn process_repay_obligation_liquidity(
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-
-    // @TODO: is this necessary?
-    assert_last_update_slot(&repay_reserve, clock.slot)?;
-
-    // @TODO: is this necessary?
-    obligation_liquidity.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
     let settle_amount = match liquidity_amount_type {
         AmountType::ExactAmount => {
@@ -1038,6 +1035,9 @@ fn process_liquidate_obligation(
         msg!("Invalid source liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if repay_reserve.last_update.is_stale(clock.slot) {
+        return Err(LendingError::ReserveStale.into());
+    }
 
     let withdraw_reserve = Reserve::unpack(&withdraw_reserve_info.data.borrow())?;
     if withdraw_reserve_info.owner != program_id {
@@ -1053,6 +1053,9 @@ fn process_liquidate_obligation(
     if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
         msg!("Invalid destination collateral account");
         return Err(LendingError::InvalidAccountInput.into());
+    }
+    if withdraw_reserve.last_update.is_stale(clock.slot) {
+        return Err(LendingError::ReserveStale.into());
     }
 
     // @TODO: are these two checks necessary?
@@ -1077,10 +1080,10 @@ fn process_liquidate_obligation(
     }
     // @TODO: is this enough? other reserves could have been updated that we don't check here, and
     //          they all affect the market value. need to think about when interest may be accrued
-    if obligation.last_update.slot < repay_reserve.last_update.slot {
+    if obligation.last_update < repay_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
-    if obligation.last_update.slot < withdraw_reserve.last_update.slot {
+    if obligation.last_update < withdraw_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
 
@@ -1100,15 +1103,14 @@ fn process_liquidate_obligation(
     if !obligation.liquidity.contains(obligation_liquidity_info.key) {
         return Err(LendingError::ObligationAccountNotFound.into());
     }
+    if obligation_liquidity.last_update.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationLiquidityStale.into());
+    }
     // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
     //          check here. we could mark the obligation stale on every refresh of
     //          collateral/liquidity, but this means they can't be refreshed in parallel
-    if obligation.last_update.slot < obligation_liquidity.last_update.slot {
+    if obligation.last_update < obligation_liquidity.last_update {
         return Err(LendingError::ObligationStale.into());
-    }
-    // @TODO: is this necessary if checking obligation.last_update.slot < obligation_liquidity.last_update.slot above?
-    if obligation_liquidity.last_update.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationLiquidityStale.into());
     }
     if obligation_liquidity.borrowed_wads == 0 {
         // @TODO: make specific to liquidity
@@ -1138,15 +1140,14 @@ fn process_liquidate_obligation(
     {
         return Err(LendingError::ObligationAccountNotFound.into());
     }
+    if obligation_collateral.last_update.is_stale(clock.slot)? {
+        return Err(LendingError::ObligationCollateralStale.into());
+    }
     // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
     //          check here. we could mark the obligation stale on every refresh of
     //          collateral/liquidity, but this means they can't be refreshed in parallel
-    if obligation.last_update.slot < obligation_collateral.last_update.slot {
+    if obligation.last_update < obligation_collateral.last_update {
         return Err(LendingError::ObligationStale.into());
-    }
-    // @TODO: is this necessary if checking obligation.last_update.slot < obligation_liquidity.last_update.slot above?
-    if obligation_collateral.last_update.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationCollateralStale.into());
     }
     if obligation_collateral.deposited_tokens == 0 {
         // @TODO: make specific to collateral
@@ -1162,13 +1163,6 @@ fn process_liquidate_obligation(
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-
-    // @TODO: is this necessary?
-    assert_last_update_slot(&repay_reserve, clock.slot)?;
-    assert_last_update_slot(&withdraw_reserve, clock.slot)?;
-
-    // @TODO: is this necessary?
-    obligation_liquidity.accrue_interest(repay_reserve.cumulative_borrow_rate_wads)?;
 
     let liquidation_threshold =
         Rate::from_percent(lending_market.liquidation_threshold);
@@ -1447,12 +1441,12 @@ fn process_withdraw_obligation_collateral(
         msg!("Invalid obligation lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if obligation.is_stale(clock.slot)? {
+    if obligation.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
     // @TODO: is this enough? other reserves could have been updated that we don't check here, and
     //          they all affect the market value. need to think about when interest may be accrued
-    if obligation.last_update_slot < withdraw_reserve.last_update_slot {
+    if obligation.last_update < withdraw_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
 
@@ -1482,11 +1476,11 @@ fn process_withdraw_obligation_collateral(
     // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
     //          check here. we could mark the obligation stale on every refresh of
     //          collateral/liquidity, but this means they can't be refreshed in parallel
-    if obligation.last_update_slot < obligation_collateral.last_update_slot {
+    if obligation.last_update < obligation_collateral.last_update {
         return Err(LendingError::ObligationCollateralStale.into());
     }
-    // @TODO: is this necessary if checking obligation.last_update_slot < obligation_liquidity.last_update_slot above?
-    if obligation_collateral.is_stale(clock.slot)? {
+    // @TODO: is this necessary if checking obligation.last_update < obligation_liquidity.last_update above?
+    if obligation_collateral.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationCollateralStale.into());
     }
     if obligation_collateral.deposited_tokens == 0 {
@@ -1826,6 +1820,9 @@ fn process_refresh_obligation_collateral(
             return Err(LendingError::InvalidAccountInput.into());
         }
     }
+    if deposit_reserve.last_update.is_stale(clock.slot) {
+        return Err(LendingError::ReserveStale.into());
+    }
 
     let mut obligation_collateral =
         ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
@@ -1846,9 +1843,6 @@ fn process_refresh_obligation_collateral(
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-
-    // @TODO: is this necessary? collateral exchange rate can change, but interest doesn't accrue
-    assert_last_update_slot(&deposit_reserve, clock.slot)?;
 
     let trade_simulator = TradeSimulator::new(
         dex_market_info,
@@ -1921,6 +1915,9 @@ fn process_refresh_obligation_liquidity(
             return Err(LendingError::InvalidAccountInput.into());
         }
     }
+    if borrow_reserve.last_update.is_stale(clock.slot) {
+        return Err(LendingError::ReserveStale.into());
+    }
 
     let mut obligation_liquidity =
         ObligationLiquidity::unpack(&obligation_liquidity_info.data.borrow())?;
@@ -1941,9 +1938,6 @@ fn process_refresh_obligation_liquidity(
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-
-    // @TODO: is this necessary? what if we accrue interest here if it's not the current slot?
-    assert_last_update_slot(&borrow_reserve, clock.slot)?;
 
     let trade_simulator = TradeSimulator::new(
         dex_market_info,
@@ -2009,7 +2003,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             msg!("Invalid obligation account");
             return Err(LendingError::InvalidAccountInput.into());
         }
-        if obligation_collateral.is_stale(clock.slot)? {
+        if obligation_collateral.last_update.is_stale(clock.slot)? {
             return Err(LendingError::ObligationCollateralStale.into());
         }
 
@@ -2033,7 +2027,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             msg!("Invalid obligation account");
             return Err(LendingError::InvalidAccountInput.into());
         }
-        if obligation_liquidity.is_stale(clock.slot)? {
+        if obligation_liquidity.last_update.is_stale(clock.slot)? {
             return Err(LendingError::ObligationLiquidityStale.into());
         }
 
@@ -2058,14 +2052,6 @@ fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult 
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
         msg!(&rent.minimum_balance(account_info.data_len()).to_string());
         Err(LendingError::NotRentExempt.into())
-    } else {
-        Ok(())
-    }
-}
-
-fn assert_last_update_slot(reserve: &Reserve, slot: Slot) -> ProgramResult {
-    if !reserve.last_update_slot == slot {
-        Err(LendingError::ReserveStale.into())
     } else {
         Ok(())
     }

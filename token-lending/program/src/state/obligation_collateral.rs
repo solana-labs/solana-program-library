@@ -19,7 +19,7 @@ pub struct ObligationCollateral {
     /// Version of the obligation collateral
     pub version: u8,
     /// Last slot when market value updated; set to 0 if deposited tokens changed
-    pub last_update_slot: Slot,
+    pub last_update: LastUpdate,
     /// Obligation the collateral is associated with
     pub obligation: Pubkey,
     /// Reserve which collateral tokens were deposited into
@@ -53,7 +53,7 @@ impl ObligationCollateral {
 
         Self {
             version: PROGRAM_VERSION,
-            last_update_slot: 0,
+            last_update: LastUpdate::new(),
             obligation,
             deposit_reserve,
             token_mint,
@@ -105,29 +105,6 @@ impl ObligationCollateral {
             .try_mul(obligation_token_supply)?
             .try_floor_u64()
     }
-
-    /// Return slots elapsed since given slot
-    pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
-        let slots_elapsed = slot
-            .checked_sub(self.last_update_slot)
-            .ok_or(LendingError::MathOverflow)?;
-        Ok(slots_elapsed)
-    }
-
-    /// Set last update slot
-    pub fn update_slot(&mut self, slot: Slot) {
-        self.last_update_slot = slot;
-    }
-
-    /// Set last update slot to 0
-    pub fn mark_stale(&mut self) {
-        self.update_slot(0);
-    }
-
-    /// Check if last update slot is too long ago
-    pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
-        Ok(self.last_update_slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
-    }
 }
 
 impl Sealed for ObligationCollateral {}
@@ -155,7 +132,7 @@ impl Pack for ObligationCollateral {
         ) = mut_array_refs![output, 1, 8, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
 
         *version = self.version.to_le_bytes();
-        *last_update_slot = self.last_update_slot.to_le_bytes();
+        *last_update_slot = self.last_update.slot.to_le_bytes();
         obligation.copy_from_slice(self.obligation.as_ref());
         deposit_reserve.copy_from_slice(self.deposit_reserve.as_ref());
         token_mint.copy_from_slice(self.token_mint.as_ref());
@@ -180,7 +157,9 @@ impl Pack for ObligationCollateral {
 
         Ok(Self {
             version: u8::from_le_bytes(*version),
-            last_update_slot: u64::from_le_bytes(*last_update_slot),
+            last_update: LastUpdate {
+                slot: u64::from_le_bytes(*last_update_slot),
+            },
             obligation: Pubkey::new_from_array(*obligation),
             deposit_reserve: Pubkey::new_from_array(*deposit_reserve),
             token_mint: Pubkey::new_from_array(*token_mint),

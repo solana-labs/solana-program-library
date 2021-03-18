@@ -27,7 +27,7 @@ pub struct Reserve {
     /// Version of the struct
     pub version: u8,
     /// Last slot when supply and rates updated
-    pub last_update_slot: Slot,
+    pub last_update: LastUpdate,
     /// Cumulative borrow rate
     pub cumulative_borrow_rate_wads: Decimal,
     /// Lending market address
@@ -46,7 +46,6 @@ impl Reserve {
     /// Initialize new reserve state
     pub fn new(params: NewReserveParams) -> Self {
         let NewReserveParams {
-            current_slot,
             lending_market,
             collateral: collateral_info,
             liquidity: liquidity_info,
@@ -56,7 +55,7 @@ impl Reserve {
 
         Self {
             version: PROGRAM_VERSION,
-            last_update_slot: current_slot,
+            last_update: LastUpdate::new(),
             cumulative_borrow_rate_wads: Decimal::one(),
             lending_market,
             collateral: collateral_info,
@@ -281,7 +280,7 @@ impl Reserve {
 
     /// Update borrow rate and accrue interest
     pub fn accrue_interest(&mut self, current_slot: Slot) -> ProgramResult {
-        let slots_elapsed = self.update_slot(current_slot)?;
+        let slots_elapsed = self.last_update.slots_elapsed(current_slot)?;
         if slots_elapsed > 0 {
             let current_borrow_rate = self.current_borrow_rate()?;
             let compounded_interest_rate =
@@ -290,6 +289,7 @@ impl Reserve {
                 .liquidity
                 .borrowed_amount_wads
                 .try_mul(compounded_interest_rate)?;
+            self.last_update.update_slot(current_slot);
         }
         Ok(())
     }
@@ -298,16 +298,6 @@ impl Reserve {
     pub fn collateral_exchange_rate(&self) -> Result<CollateralExchangeRate, ProgramError> {
         let total_liquidity = self.liquidity.total_supply()?;
         self.collateral.exchange_rate(total_liquidity)
-    }
-
-    // @FIXME: method should match Obligation::update_slot
-    /// Return slots elapsed since last update
-    fn update_slot(&mut self, slot: Slot) -> Result<u64, ProgramError> {
-        let slots_elapsed = slot
-            .checked_sub(self.last_update_slot)
-            .ok_or(LendingError::MathOverflow)?;
-        self.last_update_slot = slot;
-        Ok(slots_elapsed)
     }
 
     /// Compound current borrow rate over elapsed slots
@@ -329,8 +319,6 @@ impl Reserve {
 
 /// Create new reserve
 pub struct NewReserveParams {
-    /// Current slot
-    pub current_slot: Slot,
     /// Lending market address
     pub lending_market: Pubkey,
     /// Reserve collateral info
@@ -615,6 +603,66 @@ const RESERVE_LEN: usize = 600;
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
+    fn pack_into_slice(&self, output: &mut [u8]) {
+        let output = array_mut_ref![output, 0, RESERVE_LEN];
+        let (
+            version,
+            last_update_slot,
+            lending_market,
+            liquidity_mint,
+            liquidity_mint_decimals,
+            liquidity_supply,
+            liquidity_fee_receiver,
+            collateral_mint,
+            collateral_supply,
+            dex_market,
+            optimal_utilization_rate,
+            liquidation_bonus,
+            min_borrow_rate,
+            optimal_borrow_rate,
+            max_borrow_rate,
+            borrow_fee_wad,
+            host_fee_percentage,
+            cumulative_borrow_rate_wads,
+            total_borrows,
+            available_liquidity,
+            collateral_mint_supply,
+            _padding,
+        ) = mut_array_refs![
+            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
+        ];
+        *version = self.version.to_le_bytes();
+        *last_update_slot = self.last_update.slot.to_le_bytes();
+        pack_decimal(
+            self.cumulative_borrow_rate_wads,
+            cumulative_borrow_rate_wads,
+        );
+        lending_market.copy_from_slice(self.lending_market.as_ref());
+        pack_coption_key(&self.dex_market, dex_market);
+
+        // liquidity info
+        liquidity_mint.copy_from_slice(self.liquidity.mint_pubkey.as_ref());
+        *liquidity_mint_decimals = self.liquidity.mint_decimals.to_le_bytes();
+        liquidity_supply.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
+        liquidity_fee_receiver.copy_from_slice(self.collateral.fee_receiver.as_ref());
+        *available_liquidity = self.liquidity.available_amount.to_le_bytes();
+        pack_decimal(self.liquidity.borrowed_amount_wads, total_borrows);
+
+        // collateral info
+        collateral_mint.copy_from_slice(self.collateral.mint_pubkey.as_ref());
+        collateral_supply.copy_from_slice(self.collateral.supply_pubkey.as_ref());
+        *collateral_mint_supply = self.collateral.mint_total_supply.to_le_bytes();
+
+        // config
+        *optimal_utilization_rate = self.config.optimal_utilization_rate.to_le_bytes();
+        *liquidation_bonus = self.config.liquidation_bonus.to_le_bytes();
+        *min_borrow_rate = self.config.min_borrow_rate.to_le_bytes();
+        *optimal_borrow_rate = self.config.optimal_borrow_rate.to_le_bytes();
+        *max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();
+        *borrow_fee_wad = self.config.fees.borrow_fee_wad.to_le_bytes();
+        *host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
+    }
+
     /// Unpacks a byte buffer into a [ReserveInfo](struct.ReserveInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, RESERVE_LEN];
@@ -647,7 +695,9 @@ impl Pack for Reserve {
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),
-            last_update_slot: u64::from_le_bytes(*last_update_slot),
+            last_update: LastUpdate {
+                slot: u64::from_le_bytes(*last_update_slot),
+            },
             cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
             lending_market: Pubkey::new_from_array(*lending_market),
             dex_market: unpack_coption_key(dex_market)?,
@@ -676,66 +726,6 @@ impl Pack for Reserve {
                 },
             },
         })
-    }
-
-    fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, RESERVE_LEN];
-        let (
-            version,
-            last_update_slot,
-            lending_market,
-            liquidity_mint,
-            liquidity_mint_decimals,
-            liquidity_supply,
-            liquidity_fee_receiver,
-            collateral_mint,
-            collateral_supply,
-            dex_market,
-            optimal_utilization_rate,
-            liquidation_bonus,
-            min_borrow_rate,
-            optimal_borrow_rate,
-            max_borrow_rate,
-            borrow_fee_wad,
-            host_fee_percentage,
-            cumulative_borrow_rate_wads,
-            total_borrows,
-            available_liquidity,
-            collateral_mint_supply,
-            _padding,
-        ) = mut_array_refs![
-            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
-        ];
-        *version = self.version.to_le_bytes();
-        *last_update_slot = self.last_update_slot.to_le_bytes();
-        pack_decimal(
-            self.cumulative_borrow_rate_wads,
-            cumulative_borrow_rate_wads,
-        );
-        lending_market.copy_from_slice(self.lending_market.as_ref());
-        pack_coption_key(&self.dex_market, dex_market);
-
-        // liquidity info
-        liquidity_mint.copy_from_slice(self.liquidity.mint_pubkey.as_ref());
-        *liquidity_mint_decimals = self.liquidity.mint_decimals.to_le_bytes();
-        liquidity_supply.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
-        liquidity_fee_receiver.copy_from_slice(self.collateral.fee_receiver.as_ref());
-        *available_liquidity = self.liquidity.available_amount.to_le_bytes();
-        pack_decimal(self.liquidity.borrowed_amount_wads, total_borrows);
-
-        // collateral info
-        collateral_mint.copy_from_slice(self.collateral.mint_pubkey.as_ref());
-        collateral_supply.copy_from_slice(self.collateral.supply_pubkey.as_ref());
-        *collateral_mint_supply = self.collateral.mint_total_supply.to_le_bytes();
-
-        // config
-        *optimal_utilization_rate = self.config.optimal_utilization_rate.to_le_bytes();
-        *liquidation_bonus = self.config.liquidation_bonus.to_le_bytes();
-        *min_borrow_rate = self.config.min_borrow_rate.to_le_bytes();
-        *optimal_borrow_rate = self.config.optimal_borrow_rate.to_le_bytes();
-        *max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();
-        *borrow_fee_wad = self.config.fees.borrow_fee_wad.to_le_bytes();
-        *host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
     }
 }
 

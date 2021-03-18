@@ -17,16 +17,13 @@ use std::convert::{TryFrom, TryInto};
 /// Max number of collateral and liquidity accounts combined for an obligation
 pub const MAX_OBLIGATION_ACCOUNTS: usize = 10;
 
-/// Number of slots market values are considered stale after
-pub const STALE_AFTER_SLOTS: u64 = 10;
-
 /// Borrow obligation state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Obligation {
     /// Version of the struct
     pub version: u8,
     /// Last slot when loan to value updated; set to 0 if collateral or liquidity changed
-    pub last_update_slot: Slot,
+    pub last_update: LastUpdate,
     /// Lending market address
     pub lending_market: Pubkey,
     /// Collateral market value in quote currency
@@ -60,7 +57,7 @@ impl Obligation {
 
         Self {
             version: PROGRAM_VERSION,
-            last_update_slot: 0,
+            last_update: LastUpdate::new(),
             lending_market,
             collateral_value: Decimal::zero(),
             liquidity_value: Decimal::zero(),
@@ -72,29 +69,6 @@ impl Obligation {
     /// Calculate the ratio of liquidity market value to collateral market value
     pub fn loan_to_value(&self) -> Result<Decimal, ProgramError> {
         self.liquidity_value.try_div(self.collateral_value)
-    }
-
-    /// Return slots elapsed since given slot
-    pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
-        let slots_elapsed = slot
-            .checked_sub(self.last_update_slot)
-            .ok_or(LendingError::MathOverflow)?;
-        Ok(slots_elapsed)
-    }
-
-    /// Set last update slot
-    pub fn update_slot(&mut self, slot: Slot) {
-        self.last_update_slot = slot;
-    }
-
-    /// Set last update slot to 0
-    pub fn mark_stale(&mut self) {
-        self.update_slot(0);
-    }
-
-    /// Check if last update slot is too long ago
-    pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
-        Ok(self.last_update_slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
     }
 }
 
@@ -134,7 +108,7 @@ impl Pack for Obligation {
         ];
 
         *version = self.version.to_le_bytes();
-        *last_update_slot = self.last_update_slot.to_le_bytes();
+        *last_update_slot = self.last_update.slot.to_le_bytes();
         lending_market.copy_from_slice(self.lending_market.as_ref());
         pack_decimal(self.collateral_value, collateral_value);
         pack_decimal(self.liquidity_value, liquidity_value);
@@ -207,7 +181,9 @@ impl Pack for Obligation {
 
         Ok(Self {
             version: u8::from_le_bytes(*version),
-            last_update_slot: u64::from_le_bytes(*last_update_slot),
+            last_update: LastUpdate {
+                slot: u64::from_le_bytes(*last_update_slot),
+            },
             lending_market: Pubkey::new_from_array(*lending_market),
             collateral_value: unpack_decimal(collateral_value),
             liquidity_value: unpack_decimal(liquidity_value),
