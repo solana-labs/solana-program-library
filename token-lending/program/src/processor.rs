@@ -1,6 +1,5 @@
 //! Program state processor
 
-use crate::state::TokenConverter;
 use crate::{
     dex_market::{DexMarket, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
@@ -748,7 +747,7 @@ fn process_borrow_obligation_liquidity(
         .try_mul(lending_market_ltv)?
         .try_sub(obligation.liquidity_value)?;
 
-    let trade_simulator = TradeSimulator::new(
+    let token_converter = TradeSimulator::new(
         dex_market_info,
         dex_market_orders_info,
         memory,
@@ -763,11 +762,11 @@ fn process_borrow_obligation_liquidity(
         borrow_amount,
         origination_fee,
         host_fee,
-    } = borrow_reserve.borrow(
+    } = borrow_reserve.borrow_liquidity(
         liquidity_amount,
         liquidity_amount_type,
         max_borrow_value,
-        trade_simulator,
+        token_converter,
         &lending_market.quote_token_mint,
     )?;
 
@@ -1844,7 +1843,7 @@ fn process_refresh_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let trade_simulator = TradeSimulator::new(
+    let token_converter = TradeSimulator::new(
         dex_market_info,
         dex_market_orders_info,
         memory,
@@ -1856,7 +1855,7 @@ fn process_refresh_obligation_collateral(
 
     obligation_collateral.update_value(
         deposit_reserve.collateral_exchange_rate()?,
-        trade_simulator,
+        token_converter,
         &deposit_reserve.liquidity.mint_pubkey,
     )?;
     obligation_collateral.update_slot(clock.slot)?;
@@ -1939,7 +1938,7 @@ fn process_refresh_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let trade_simulator = TradeSimulator::new(
+    let token_converter = TradeSimulator::new(
         dex_market_info,
         dex_market_orders_info,
         memory,
@@ -1950,7 +1949,7 @@ fn process_refresh_obligation_liquidity(
     )?;
 
     obligation_liquidity.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
-    obligation_liquidity.update_value(trade_simulator, &borrow_reserve.liquidity.mint_pubkey)?;
+    obligation_liquidity.update_value(token_converter, &borrow_reserve.liquidity.mint_pubkey)?;
     obligation_liquidity.update_slot(clock.slot)?;
     ObligationLiquidity::pack(
         obligation_liquidity,

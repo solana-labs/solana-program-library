@@ -95,7 +95,7 @@ impl Reserve {
     }
 
     /// Borrow liquidity up to a maximum market value
-    pub fn borrow(
+    pub fn borrow_liquidity(
         &self,
         liquidity_amount: u64,
         liquidity_amount_type: AmountType,
