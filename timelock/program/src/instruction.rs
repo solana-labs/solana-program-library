@@ -8,7 +8,17 @@ use solana_program::{
     sysvar,
 };
 
-use crate::{error::TimelockError, state::{custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT, enums::ConsensusAlgorithm, enums::ExecutionType, enums::{TimelockType, VotingEntryRule}, timelock_config::TimelockConfig, timelock_state::{DESC_SIZE, NAME_SIZE}}};
+use crate::{
+    error::TimelockError,
+    state::{
+        custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT,
+        enums::ConsensusAlgorithm,
+        enums::ExecutionType,
+        enums::{TimelockType, VotingEntryRule},
+        timelock_config::{TimelockConfig, CONFIG_NAME_LENGTH},
+        timelock_state::{DESC_SIZE, NAME_SIZE},
+    },
+};
 
 /// Used for telling caller what type of format you want back
 #[derive(Clone, PartialEq)]
@@ -48,10 +58,11 @@ pub enum TimelockInstruction {
     ///   8. `[writable]` Initialized Voting Validation account
     ///   9. `[writable]` Initialized Destination account for first admin token
     ///   10. `[writable]` Initialized Destination account for first signatory token
-    ///   12. `[writable]` Initialized Yes voting dump account
-    ///   13. `[writable]` Initialized No voting dump account
-    ///   14. `[writable]` Initialized Government holding account 
-    ///   15. `[]` Government mint 
+    ///   11. `[writable]` Initialized Yes voting dump account
+    ///   12. `[writable]` Initialized No voting dump account
+    ///   13. `[writable]` Initialized Governance holding account
+    ///   14. `[]` Governance mint
+    ///   15. `[]` Timelock minting authority
     ///   16. `[]` Timelock config account.
     ///   17. `[]` Timelock Program
     ///   18. '[]` Token program id
@@ -192,7 +203,7 @@ pub enum TimelockInstruction {
         /// How many voting tokens to burn yes
         yes_voting_token_amount: u64,
         /// How many voting tokens to burn no
-        no_voting_token_amount: u64
+        no_voting_token_amount: u64,
     },
 
     /// Only used for testing. Requires no accounts of any kind.
@@ -227,7 +238,7 @@ pub enum TimelockInstruction {
     ///   7. `[]` Timelock program mint authority
     ///   8. `[]` Timelock program account pub key.
     ///   9. `[]` Token program account.
-    DepositVotingTokens {
+    DepositGovernanceTokens {
         /// How many voting tokens to deposit
         voting_token_amount: u64,
     },
@@ -246,21 +257,22 @@ pub enum TimelockInstruction {
     ///   9. `[]` Timelock set account.
     ///   10. `[]` Timelock config account.
     ///   11. `[]` Transfer authority
-    ///   12. `[]` Timelock program mint authority
-    ///   13. `[]` Timelock program account pub key.
-    ///   14. `[]` Token program account.
+    ///   12. `[]` Yes Transfer authority
+    ///   13. `[]` No Transfer authority
+    ///   14. `[]` Timelock program mint authority
+    ///   15. `[]` Timelock program account pub key.
+    ///   16. `[]` Token program account.
     WithdrawVotingTokens {
         /// How many voting tokens to withdrawal
         voting_token_amount: u64,
     },
 
-    ///   0. `[]` Uninitialized timelock config account. Needs to be set with pubkey set to PDA with seeds of the 
+    ///   0. `[writable]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
     ///           program account key, governance mint key, timelock program account key.
-    ///   1. `[]` Program account to tie this config to.
-    ///   2. `[]` Governance mint to tie this config to 
+    ///   1. `[]` Program account that this config uses
+    ///   2. `[]` Governance mint that this config uses
     ///   3. `[]` Timelock program account pub key.
     ///   4. `[]` Token program account.
-    ///   5. `[]` Rent sysvar
     InitTimelockConfig {
         /// Consensus Algorithm
         consensus_algorithm: u8,
@@ -272,8 +284,20 @@ pub enum TimelockInstruction {
         voting_entry_rule: u8,
         /// Minimum slot time-distance from creation of proposal for an instruction to be placed
         minimum_slot_waiting_period: u64,
-    }
+        /// Optional name
+        name: [u8; CONFIG_NAME_LENGTH],
+    },
 
+    ///   0. `[writable]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
+    ///           program account key, governance mint key, timelock program account key.
+    ///   1. `[]` Program account to tie this config to.
+    ///   2. `[]` Governance mint to tie this config to
+    ///   3. `[]` Payer
+    ///   4. `[]` Timelock program account pub key.
+    ///   5. `[]` Timelock program pub key. Different from program account - is the actual id of the executable.
+    ///   6. `[]` Token program account.
+    ///   7. `[]` System account.
+    CreateEmptyTimelockConfig,
 }
 
 impl TimelockInstruction {
@@ -295,10 +319,7 @@ impl TimelockInstruction {
                 for n in 0..(NAME_SIZE - 1) {
                     name[n] = input_name[n];
                 }
-                Self::InitTimelockSet {
-                    desc_link,
-                    name,
-                }
+                Self::InitTimelockSet { desc_link, name }
             }
             2 => Self::AddSigner,
             3 => Self::RemoveSigner,
@@ -327,7 +348,27 @@ impl TimelockInstruction {
 
                 Self::Vote {
                     yes_voting_token_amount,
-                    no_voting_token_amount
+                    no_voting_token_amount,
+                }
+            }
+
+            10 => {
+                let (consensus_algorithm, rest) = Self::unpack_u8(rest)?;
+                let (execution_type, rest) = Self::unpack_u8(rest)?;
+                let (timelock_type, rest) = Self::unpack_u8(rest)?;
+                let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
+                let (minimum_slot_waiting_period, rest) = Self::unpack_u64(rest)?;
+                let mut name: [u8; CONFIG_NAME_LENGTH] = [0; CONFIG_NAME_LENGTH];
+                for n in 0..(CONFIG_NAME_LENGTH - 1) {
+                    name[n] = rest[n];
+                }
+                Self::InitTimelockConfig {
+                    consensus_algorithm,
+                    execution_type,
+                    timelock_type,
+                    voting_entry_rule,
+                    minimum_slot_waiting_period,
+                    name,
                 }
             }
             11 => Self::Ping,
@@ -339,7 +380,7 @@ impl TimelockInstruction {
             }
             13 => {
                 let (voting_token_amount, _) = Self::unpack_u64(rest)?;
-                Self::DepositVotingTokens {
+                Self::DepositGovernanceTokens {
                     voting_token_amount,
                 }
             }
@@ -349,20 +390,7 @@ impl TimelockInstruction {
                     voting_token_amount,
                 }
             }
-            15 =>  {
-                let (consensus_algorithm, rest) = Self::unpack_u8(rest)?;
-                let (execution_type, rest) = Self::unpack_u8(rest)?;
-                let (timelock_type, rest) = Self::unpack_u8(rest)?;
-                let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
-                let (minimum_slot_waiting_period, _) = Self::unpack_u64(rest)?;
-                Self::InitTimelockConfig {
-                    consensus_algorithm,
-                    execution_type,
-                    timelock_type,
-                    voting_entry_rule,
-                    minimum_slot_waiting_period
-                }
-            }
+            15 => Self::CreateEmptyTimelockConfig,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -434,10 +462,7 @@ impl TimelockInstruction {
             Self::InitTimelockProgram => {
                 buf.push(0);
             }
-            Self::InitTimelockSet {
-                desc_link,
-                name,
-            } => {
+            Self::InitTimelockSet { desc_link, name } => {
                 buf.push(1);
                 buf.extend_from_slice(desc_link);
                 buf.extend_from_slice(name);
@@ -465,12 +490,27 @@ impl TimelockInstruction {
             Self::Sign => buf.push(8),
             Self::Vote {
                 yes_voting_token_amount,
-                no_voting_token_amount
+                no_voting_token_amount,
             } => {
                 buf.push(9);
                 buf.extend_from_slice(&yes_voting_token_amount.to_le_bytes());
                 buf.extend_from_slice(&no_voting_token_amount.to_le_bytes());
-
+            }
+            Self::InitTimelockConfig {
+                consensus_algorithm,
+                execution_type,
+                timelock_type,
+                voting_entry_rule,
+                minimum_slot_waiting_period,
+                name,
+            } => {
+                buf.push(10);
+                buf.extend_from_slice(&consensus_algorithm.to_le_bytes());
+                buf.extend_from_slice(&execution_type.to_le_bytes());
+                buf.extend_from_slice(&timelock_type.to_le_bytes());
+                buf.extend_from_slice(&voting_entry_rule.to_le_bytes());
+                buf.extend_from_slice(&minimum_slot_waiting_period.to_le_bytes());
+                buf.extend_from_slice(name);
             }
             Self::Ping => buf.push(11),
             Self::Execute {
@@ -479,7 +519,7 @@ impl TimelockInstruction {
                 buf.push(12);
                 buf.extend_from_slice(&number_of_extra_accounts.to_le_bytes());
             }
-            Self::DepositVotingTokens {
+            Self::DepositGovernanceTokens {
                 voting_token_amount,
             } => {
                 buf.push(13);
@@ -491,20 +531,7 @@ impl TimelockInstruction {
                 buf.push(14);
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
-            Self::InitTimelockConfig {
-                consensus_algorithm,
-                execution_type,
-                timelock_type,
-                voting_entry_rule,
-                minimum_slot_waiting_period,
-            } => {
-                buf.push(15);
-                buf.extend_from_slice(&consensus_algorithm.to_le_bytes());
-                buf.extend_from_slice(&execution_type.to_le_bytes());
-                buf.extend_from_slice(&timelock_type.to_le_bytes());
-                buf.extend_from_slice(&voting_entry_rule.to_le_bytes());
-                buf.extend_from_slice(&minimum_slot_waiting_period.to_le_bytes());
-            }
+            Self::CreateEmptyTimelockConfig => buf.push(15),
         }
         buf
     }

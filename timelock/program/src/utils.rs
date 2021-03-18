@@ -1,13 +1,22 @@
-use crate::{error::TimelockError, state::{enums::{TimelockStateStatus}, timelock_program::{TimelockProgram}, timelock_set::{TimelockSet}}};
+use std::mem::size_of;
+
+use crate::{
+    error::TimelockError,
+    state::{
+        enums::TimelockStateStatus, timelock_program::TimelockProgram, timelock_set::TimelockSet,
+    },
+};
 use arrayref::array_ref;
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
     instruction::Instruction,
-    program::{invoke_signed},
+    msg,
+    program::invoke_signed,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
+    system_instruction::create_account,
     sysvar::rent::Rent,
 };
 use spl_token::state::Account;
@@ -130,7 +139,10 @@ pub fn assert_token_program_is_correct(
 }
 
 /// asserts timelock txn is in timelock set
-pub fn assert_txn_in_set(timelock_set: &TimelockSet, timelock_txn_account_info: &AccountInfo) -> ProgramResult {
+pub fn assert_txn_in_set(
+    timelock_set: &TimelockSet,
+    timelock_txn_account_info: &AccountInfo,
+) -> ProgramResult {
     let mut found: bool = false;
     for n in 0..timelock_set.state.timelock_transactions.len() {
         if timelock_set.state.timelock_transactions[n].to_bytes()
@@ -150,7 +162,7 @@ pub fn assert_txn_in_set(timelock_set: &TimelockSet, timelock_txn_account_info: 
 
 /// asserts that two accounts are equivalent
 pub fn assert_account_equiv(acct: &AccountInfo, key: &Pubkey) -> ProgramResult {
-     if acct.key != key {
+    if acct.key != key {
         return Err(TimelockError::AccountsShouldMatch.into());
     }
 
@@ -165,7 +177,6 @@ pub fn assert_mint_matching(acct: &Account, mint_info: &AccountInfo) -> ProgramR
 
     Ok(())
 }
-
 
 /// assert rent exempt
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
@@ -193,10 +204,10 @@ pub fn assert_cheap_mint_initialized(account_info: &AccountInfo) -> Result<(), P
     // In token program, 36, 8, 1, 1 is the layout, where the last 1 is initialized bit.
     // Not my favorite hack, but necessary to avoid stack size limitations caused by serializing entire Mint
     // to get at initialization check
-    let index: usize = 36 +  8 +  1 +  1 - 1;
+    let index: usize = 36 + 8 + 1 + 1 - 1;
     if account_info.try_borrow_data().unwrap()[index] == 0 {
-        return Err(TimelockError::Uninitialized.into())
-    } 
+        return Err(TimelockError::Uninitialized.into());
+    }
     Ok(())
 }
 
@@ -315,6 +326,26 @@ pub fn execute(params: ExecuteParams<'_, '_>) -> ProgramResult {
     result.map_err(|_| TimelockError::ExecutionFailed.into())
 }
 
+/// Create account from scratch, stolen from Wormhole, slightly altered for my purposes
+/// https://github.com/bartosz-lipinski/wormhole/blob/8478735ea7525043635524a62db2751e59d2bc38/solana/bridge/src/processor.rs#L1335
+#[inline(always)]
+pub fn create_account_raw<T: Pack>(
+    accounts: &[AccountInfo],
+    new_account: &Pubkey,
+    payer: &Pubkey,
+    owner: &Pubkey,
+    seeds: &[&[u8]],
+) -> Result<(), ProgramError> {
+    let size = T::LEN;
+    let ix = create_account(
+        payer,
+        new_account,
+        Rent::default().minimum_balance(size as usize),
+        size as u64,
+        owner,
+    );
+    invoke_signed(&ix, accounts, &[seeds])
+}
 
 ///TokenTransferParams
 pub struct TokenTransferParams<'a: 'b, 'b> {
