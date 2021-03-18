@@ -458,9 +458,7 @@ impl ReserveLiquidity {
             .available_amount
             .checked_sub(total_amount)
             .ok_or(LendingError::MathOverflow)?;
-        self.borrowed_amount_wads = self
-            .borrowed_amount_wads
-            .try_add(borrow_amount.into())?;
+        self.borrowed_amount_wads = self.borrowed_amount_wads.try_add(borrow_amount.into())?;
 
         Ok(())
     }
@@ -568,7 +566,7 @@ impl From<CollateralExchangeRate> for Rate {
 pub struct ReserveConfig {
     /// Optimal utilization rate as a percent
     pub optimal_utilization_rate: u8,
-    /// The percent discount the liquidator gets when buying collateral for an unhealthy obligation
+    /// The percent bonus the liquidator gets when repaying liquidity to an unhealthy obligation
     pub liquidation_bonus: u8,
     /// Min borrow APY
     pub min_borrow_rate: u8,
