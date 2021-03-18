@@ -20,7 +20,7 @@ getrandom = { version = "0.1.15", features = ["dummy"] }
 num-derive = "0.3"
 num-traits = "0.2"
 rand = "0.8.0"
-solana-program = "1.5.15"
+solana-program = "1.6.1"
 subtle = "=2.2.3"
 thiserror = "1.0"
 

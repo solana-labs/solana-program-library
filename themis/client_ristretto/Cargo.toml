@@ -15,9 +15,9 @@ borsh = "0.7.1"
 curve25519-dalek = {package = "curve25519-dalek-ng", git = "https://github.com/garious/curve25519-dalek", rev = "fcef1fa11b3d3e89a1abf8986386ba9ae375392c", default-features = false, features = ["borsh"]}
 elgamal_ristretto = { git = "https://github.com/garious/elgamal", rev = "892dbe115104bcb8cc26d79f9676c836ff6c018e", default-features = false }
 futures = "0.3"
-solana-banks-client = "1.5.15"
-solana-cli-config = "1.5.15"
-solana-sdk = "1.5.15"
+solana-banks-client = "1.6.1"
+solana-cli-config = "1.6.1"
+solana-sdk = "1.6.1"
 spl-themis-ristretto = { version = "0.1.0", path = "../program_ristretto", features = ["no-entrypoint"] }
 tarpc = { version = "0.22.0", features = ["full"] }
 tokio = "0.3"
@@ -25,11 +25,11 @@ url = "2.1"
 
 [dev-dependencies]
 separator = "0.4.1"
-solana-banks-server = "1.5.15"
-solana-bpf-loader-program = "1.5.15"
-solana-core = "1.5.15"
+solana-banks-server = "1.6.1"
+solana-bpf-loader-program = "1.6.1"
+solana-core = "1.6.1"
 solana_rbpf = "0.1"
-solana-runtime = "1.5.15"
+solana-runtime = "1.6.1"
 
 [lib]
 crate-type = ["cdylib", "lib"]
