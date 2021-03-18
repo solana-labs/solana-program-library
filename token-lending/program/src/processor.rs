@@ -938,16 +938,10 @@ fn process_repay_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let settle_amount = match liquidity_amount_type {
-        AmountType::ExactAmount => {
-            Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_wads)
-        }
-        AmountType::PercentAmount => {
-            let settle_pct = Decimal::from_percent(u8::try_from(liquidity_amount)?);
-            settle_pct.try_mul(obligation_liquidity.borrowed_wads)?
-        },
-    };
-    let repay_amount = settle_amount.try_floor_u64()?;
+    let RepayResult {
+        settle_amount,
+        repay_amount,
+    } = repay_reserve.repay_liquidity(liquidity_amount, liquidity_amount_type);
 
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     obligation_liquidity.repay(settle_amount);

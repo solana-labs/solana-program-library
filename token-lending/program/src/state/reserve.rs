@@ -149,6 +149,28 @@ impl Reserve {
         }
     }
 
+    pub fn repay_liquidity(
+        &self,
+        liquidity_amount: u64,
+        liquidity_amount_type: AmountType,
+    ) -> Result<RepayResult, ProgramError> {
+        let settle_amount = match liquidity_amount_type {
+            AmountType::ExactAmount => {
+                Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_wads)
+            }
+            AmountType::PercentAmount => {
+                let settle_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
+                obligation_liquidity.borrowed_wads.try_mul(settle_pct)?
+            }
+        };
+        let repay_amount = settle_amount.try_floor_u64()?;
+
+        Ok(RepayResult {
+            settle_amount,
+            repay_amount,
+        })
+    }
+
     /// Liquidate some or all of an unhealthy obligation
     pub fn liquidate_obligation(
         &self,
@@ -332,6 +354,7 @@ pub struct NewReserveParams {
 }
 
 /// Create borrow result
+#[derive(Debug)]
 pub struct BorrowResult {
     /// Total amount of borrow plus origination fee
     pub total_amount: u64,
@@ -341,6 +364,15 @@ pub struct BorrowResult {
     pub origination_fee: u64,
     /// Host fee portion of origination fee
     pub host_fee: u64,
+}
+
+/// Repay liquidity result
+#[derive(Debug)]
+pub struct RepayResult {
+    /// Amount of liquidity that is settled from the obligation.
+    pub settle_amount: Decimal,
+    /// Amount that will be repaid as u64
+    pub repay_amount: u64,
 }
 
 /// Liquidate obligation result
