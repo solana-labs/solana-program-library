@@ -18,7 +18,7 @@ use std::convert::TryInto;
 pub struct ObligationCollateral {
     /// Version of the obligation collateral
     pub version: u8,
-    /// Last slot when market value updated; set to 0 if deposited tokens changed
+    /// Last update to deposited tokens or their market value
     pub last_update: LastUpdate,
     /// Obligation the collateral is associated with
     pub obligation: Pubkey,
@@ -34,6 +34,8 @@ pub struct ObligationCollateral {
 
 /// Create new obligation collateral
 pub struct NewObligationCollateralParams {
+    /// Current slot
+    pub current_slot: Slot,
     /// Obligation address
     pub obligation: Pubkey,
     /// Deposit reserve address
@@ -46,6 +48,7 @@ impl ObligationCollateral {
     /// Create new obligation collateral
     pub fn new(params: NewObligationCollateralParams) -> Self {
         let NewObligationCollateralParams {
+            current_slot,
             obligation,
             deposit_reserve,
             token_mint,
@@ -53,7 +56,7 @@ impl ObligationCollateral {
 
         Self {
             version: PROGRAM_VERSION,
-            last_update: LastUpdate::new(),
+            last_update: LastUpdate::new(current_slot),
             obligation,
             deposit_reserve,
             token_mint,
@@ -114,7 +117,7 @@ impl IsInitialized for ObligationCollateral {
     }
 }
 
-const OBLIGATION_COLLATERAL_LEN: usize = 257; // 1 + 32 + 32 + 32 + 8 + 8 + 16 + 128
+const OBLIGATION_COLLATERAL_LEN: usize = 258; // 1 + 8 + 1 + 32 + 32 + 32 + 8 + 16 + 128
 impl Pack for ObligationCollateral {
     const LEN: usize = OBLIGATION_COLLATERAL_LEN;
 
@@ -123,16 +126,18 @@ impl Pack for ObligationCollateral {
         let (
             version,
             last_update_slot,
+            last_update_stale,
             obligation,
             deposit_reserve,
             token_mint,
             deposited_tokens,
             value,
             _padding,
-        ) = mut_array_refs![output, 1, 8, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
+        ) = mut_array_refs![output, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
 
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update.slot.to_le_bytes();
+        *last_update_stale = u8::from(self.last_update.stale).to_le_bytes();
         obligation.copy_from_slice(self.obligation.as_ref());
         deposit_reserve.copy_from_slice(self.deposit_reserve.as_ref());
         token_mint.copy_from_slice(self.token_mint.as_ref());
@@ -147,18 +152,20 @@ impl Pack for ObligationCollateral {
         let (
             version,
             last_update_slot,
+            last_update_stale,
             obligation,
             deposit_reserve,
             token_mint,
             deposited_tokens,
             value,
             _padding,
-        ) = array_refs![input, 1, 8, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
+        ) = array_refs![input, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
 
         Ok(Self {
             version: u8::from_le_bytes(*version),
             last_update: LastUpdate {
                 slot: u64::from_le_bytes(*last_update_slot),
+                stale: bool::from(u8::from_le_bytes(*last_update_stale)),
             },
             obligation: Pubkey::new_from_array(*obligation),
             deposit_reserve: Pubkey::new_from_array(*deposit_reserve),

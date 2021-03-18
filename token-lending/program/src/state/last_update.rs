@@ -19,17 +19,18 @@ pub const STALE_AFTER_SLOTS: u64 = 10;
 pub struct LastUpdate {
     /// Last slot when updated
     pub slot: Slot,
+    /// True when marked stale, false when slot updated
+    pub stale: bool,
 }
 
 impl LastUpdate {
     /// Create new last update
-    pub fn new() -> Self {
-        Self { slot: 0 }
+    pub fn new(slot: Slot) -> Self {
+        Self { slot, stale: true }
     }
 
     /// Return slots elapsed since given slot
     pub fn slots_elapsed(&self, slot: Slot) -> Result<u64, ProgramError> {
-        // @FIXME: what should happen if self.slot == 0?
         let slots_elapsed = slot
             .checked_sub(self.slot)
             .ok_or(LendingError::MathOverflow)?;
@@ -39,17 +40,17 @@ impl LastUpdate {
     /// Set last update slot
     pub fn update_slot(&mut self, slot: Slot) {
         self.slot = slot;
+        self.stale = false;
     }
 
-    // @FIXME: this will screw up interest rate tracking
-    /// Set last update slot to 0
+    /// Set stale to true
     pub fn mark_stale(&mut self) {
-        self.update_slot(0);
+        self.stale = true;
     }
 
     /// Check if last update slot is too long ago
     pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
-        Ok(self.slot == 0 || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
+        Ok(self.stale || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
     }
 }
 

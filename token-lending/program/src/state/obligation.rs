@@ -1,6 +1,7 @@
 use super::*;
 use crate::{
     error::LendingError,
+    instruction::AmountType,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
@@ -22,7 +23,7 @@ pub const MAX_OBLIGATION_ACCOUNTS: usize = 10;
 pub struct Obligation {
     /// Version of the struct
     pub version: u8,
-    /// Last slot when loan to value updated; set to 0 if collateral or liquidity changed
+    /// Last update to collateral, liquidity, or their market values
     pub last_update: LastUpdate,
     /// Lending market address
     pub lending_market: Pubkey,
@@ -38,38 +39,91 @@ pub struct Obligation {
 
 /// Create new obligation
 pub struct NewObligationParams {
+    /// Current slot
+    pub current_slot: Slot,
     /// Lending market address
     pub lending_market: Pubkey,
-    /// Collateral for the obligation
-    pub collateral: Vec<Pubkey>,
-    /// Liquidity for the obligation
-    pub liquidity: Vec<Pubkey>,
 }
 
 impl Obligation {
     /// Create new obligation
     pub fn new(params: NewObligationParams) -> Self {
         let NewObligationParams {
+            current_slot,
             lending_market,
-            collateral,
-            liquidity,
         } = params;
 
         Self {
             version: PROGRAM_VERSION,
-            last_update: LastUpdate::new(),
+            last_update: LastUpdate::new(current_slot),
             lending_market,
             collateral_value: Decimal::zero(),
             liquidity_value: Decimal::zero(),
-            collateral,
-            liquidity,
+            collateral: vec![],
+            liquidity: vec![],
         }
     }
 
+    // @FIXME: error if collateral value is zero
     /// Calculate the ratio of liquidity market value to collateral market value
     pub fn loan_to_value(&self) -> Result<Decimal, ProgramError> {
         self.liquidity_value.try_div(self.collateral_value)
     }
+
+    pub fn withdraw_collateral(
+        &self,
+        collateral_amount: u64,
+        collateral_amount_type: AmountType,
+        obligation_collateral: &ObligationCollateral,
+        loan_to_value_ratio: Rate,
+        obligation_token_supply: u64,
+    ) -> Result<WithdrawCollateralResult, ProgramError> {
+        let min_collateral_value = self.liquidity_value.try_div(loan_to_value_ratio)?;
+        let max_withdraw_value = self.collateral_value.try_sub(min_collateral_value)?;
+
+        let withdraw_amount = match collateral_amount_type {
+            AmountType::ExactAmount => {
+                let withdraw_amount = collateral_amount.min(obligation_collateral.deposited_tokens);
+                let withdraw_pct = Decimal::from(withdraw_amount)
+                    .try_div(obligation_collateral.deposited_tokens)?;
+                let withdraw_value = self.collateral_value.try_mul(withdraw_pct)?;
+                if withdraw_value > max_withdraw_value {
+                    return Err(LendingError::ObligationCollateralWithdrawTooLarge.into());
+                }
+
+                withdraw_amount
+            }
+            AmountType::PercentAmount => {
+                let withdraw_pct = Decimal::from_percent(u8::try_from(collateral_amount)?);
+                let withdraw_value = max_withdraw_value
+                    .try_mul(withdraw_pct)?
+                    .min(obligation_collateral.value);
+                let withdraw_amount = withdraw_value
+                    .try_div(obligation_collateral.value)?
+                    .try_mul(obligation_collateral.deposited_tokens)?
+                    .try_floor_u64()?;
+
+                withdraw_amount
+            }
+        };
+
+        let obligation_token_amount = obligation_collateral
+            .collateral_to_obligation_token_amount(withdraw_amount, obligation_token_supply)?;
+
+        Ok(WithdrawCollateralResult {
+            withdraw_amount,
+            obligation_token_amount,
+        })
+    }
+}
+
+/// Withdraw collateral result
+#[derive(Debug)]
+pub struct WithdrawCollateralResult {
+    /// Collateral tokens to withdraw
+    withdraw_amount: u64,
+    /// Obligation tokens to burn
+    obligation_token_amount: u64,
 }
 
 impl Sealed for Obligation {}
@@ -79,7 +133,7 @@ impl IsInitialized for Obligation {
     }
 }
 
-const OBLIGATION_LEN: usize = 395; // 1 + 8 + 32 + 16 + 16 + 1 + 1 + (32 * 10)
+const OBLIGATION_LEN: usize = 716; // 1 + 8 + 1 + 32 + 16 + 16 + 1 + 1 + (32 * 10) + (32 * 10)
 impl Pack for Obligation {
     const LEN: usize = OBLIGATION_LEN;
 
@@ -89,26 +143,31 @@ impl Pack for Obligation {
         let (
             version,
             last_update_slot,
+            last_update_stale,
             lending_market,
             collateral_value,
             liquidity_value,
             num_collateral,
             num_liquidity,
             accounts_flat,
+            _padding,
         ) = mut_array_refs![
             output,
             1,
             8,
+            1,
             PUBKEY_LEN,
             16,
             16,
             1,
             1,
+            PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS,
             PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS
         ];
 
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update.slot.to_le_bytes();
+        *last_update_stale = u8::from(self.last_update.stale).to_le_bytes();
         lending_market.copy_from_slice(self.lending_market.as_ref());
         pack_decimal(self.collateral_value, collateral_value);
         pack_decimal(self.liquidity_value, liquidity_value);
@@ -138,21 +197,25 @@ impl Pack for Obligation {
         let (
             version,
             last_update_slot,
+            last_update_stale,
             lending_market,
             collateral_value,
             liquidity_value,
             num_collateral,
             num_liquidity,
             accounts_flat,
+            _padding,
         ) = array_refs![
             input,
             1,
             8,
+            1,
             PUBKEY_LEN,
             16,
             16,
             1,
             1,
+            PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS,
             PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS
         ];
 
@@ -183,6 +246,7 @@ impl Pack for Obligation {
             version: u8::from_le_bytes(*version),
             last_update: LastUpdate {
                 slot: u64::from_le_bytes(*last_update_slot),
+                stale: bool::from(u8::from_le_bytes(*last_update_stale)),
             },
             lending_market: Pubkey::new_from_array(*lending_market),
             collateral_value: unpack_decimal(collateral_value),

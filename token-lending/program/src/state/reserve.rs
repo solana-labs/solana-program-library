@@ -34,9 +34,9 @@ pub struct Reserve {
     pub lending_market: Pubkey,
     /// Dex market state account
     pub dex_market: COption<Pubkey>,
-    /// Reserve liquidity info
+    /// Reserve liquidity
     pub liquidity: ReserveLiquidity,
-    /// Reserve collateral info
+    /// Reserve collateral
     pub collateral: ReserveCollateral,
     /// Reserve configuration values
     pub config: ReserveConfig,
@@ -46,6 +46,7 @@ impl Reserve {
     /// Initialize new reserve state
     pub fn new(params: NewReserveParams) -> Self {
         let NewReserveParams {
+            current_slot,
             lending_market,
             collateral,
             liquidity,
@@ -55,7 +56,7 @@ impl Reserve {
 
         Self {
             version: PROGRAM_VERSION,
-            last_update: LastUpdate::new(),
+            last_update: LastUpdate::new(current_slot),
             cumulative_borrow_rate_wads: Decimal::one(),
             lending_market,
             collateral,
@@ -63,218 +64,6 @@ impl Reserve {
             dex_market,
             config,
         }
-    }
-
-    /// Calculate the current borrow rate
-    pub fn current_borrow_rate(&self) -> Result<Rate, ProgramError> {
-        let utilization_rate = self.liquidity.utilization_rate()?;
-        let optimal_utilization_rate = Rate::from_percent(self.config.optimal_utilization_rate);
-        let low_utilization = utilization_rate < optimal_utilization_rate;
-        if low_utilization || self.config.optimal_utilization_rate == 100 {
-            let normalized_rate = utilization_rate.try_div(optimal_utilization_rate)?;
-            let min_rate = Rate::from_percent(self.config.min_borrow_rate);
-            let rate_range = Rate::from_percent(
-                self.config
-                    .optimal_borrow_rate
-                    .checked_sub(self.config.min_borrow_rate)
-                    .ok_or(LendingError::MathOverflow)?,
-            );
-
-            Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
-        } else {
-            let normalized_rate = utilization_rate
-                .try_sub(optimal_utilization_rate)?
-                .try_div(Rate::from_percent(
-                    100u8
-                        .checked_sub(self.config.optimal_utilization_rate)
-                        .ok_or(LendingError::MathOverflow)?,
-                ))?;
-            let min_rate = Rate::from_percent(self.config.optimal_borrow_rate);
-            let rate_range = Rate::from_percent(
-                self.config
-                    .max_borrow_rate
-                    .checked_sub(self.config.optimal_borrow_rate)
-                    .ok_or(LendingError::MathOverflow)?,
-            );
-
-            Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
-        }
-    }
-
-    /// Borrow liquidity up to a maximum market value
-    pub fn borrow_liquidity(
-        &self,
-        liquidity_amount: u64,
-        liquidity_amount_type: AmountType,
-        obligation: &Obligation,
-        loan_to_value_ratio: Rate,
-        token_converter: impl TokenConverter,
-        quote_token_mint: &Pubkey,
-    ) -> Result<BorrowResult, ProgramError> {
-        let max_borrow_value = obligation
-            .collateral_value
-            .try_mul(loan_to_value_ratio)?
-            .try_sub(obligation.liquidity_value)?;
-
-        match liquidity_amount_type {
-            AmountType::ExactAmount => {
-                let borrow_amount = liquidity_amount;
-                let (origination_fee, host_fee) = self
-                    .config
-                    .fees
-                    .calculate_borrow_fees(borrow_amount, FeeCalculation::Exclusive)?;
-                let total_amount = borrow_amount
-                    .checked_add(origination_fee)
-                    .ok_or(LendingError::MathOverflow)?;
-                let total_value =
-                    token_converter.convert(total_amount.into(), &self.liquidity.mint_pubkey)?;
-                if total_value > max_borrow_value {
-                    return Err(LendingError::BorrowTooLarge.into());
-                }
-
-                Ok(BorrowResult {
-                    total_amount,
-                    borrow_amount,
-                    origination_fee,
-                    host_fee,
-                })
-            }
-            AmountType::PercentAmount => {
-                let total_value = max_borrow_value
-                    .try_mul(Decimal::from_percent(u8::try_from(liquidity_amount)?))?;
-                let total_amount = token_converter
-                    .convert(total_value, &quote_token_mint)?
-                    .try_floor_u64()?
-                    .min(self.liquidity.available_amount);
-                let (origination_fee, host_fee) = self
-                    .config
-                    .fees
-                    .calculate_borrow_fees(total_amount, FeeCalculation::Inclusive)?;
-                let borrow_amount = total_amount
-                    .checked_sub(origination_fee)
-                    .ok_or(LendingError::MathOverflow)?;
-
-                Ok(BorrowResult {
-                    total_amount,
-                    borrow_amount,
-                    origination_fee,
-                    host_fee,
-                })
-            }
-        }
-    }
-
-    pub fn repay_liquidity(
-        &self,
-        liquidity_amount: u64,
-        liquidity_amount_type: AmountType,
-        obligation_liquidity: &ObligationLiquidity,
-    ) -> Result<RepayResult, ProgramError> {
-        let settle_amount = match liquidity_amount_type {
-            AmountType::ExactAmount => {
-                Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_wads)
-            }
-            AmountType::PercentAmount => {
-                let settle_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
-                obligation_liquidity.borrowed_wads.try_mul(settle_pct)?
-            }
-        };
-        let repay_amount = if settle_amount == obligation_liquidity.borrowed_wads {
-            settle_amount.try_ceil_u64()?
-        } else {
-            settle_amount.try_floor_u64()?
-        };
-
-        Ok(RepayResult {
-            settle_amount,
-            repay_amount,
-        })
-    }
-
-    /// Liquidate some or all of an unhealthy obligation
-    pub fn liquidate_obligation(
-        &self,
-        liquidity_amount: u64,
-        liquidity_amount_type: AmountType,
-        obligation: &Obligation,
-        obligation_liquidity: &ObligationLiquidity,
-        obligation_collateral: &ObligationCollateral,
-    ) -> Result<LiquidateResult, ProgramError> {
-        let max_withdraw_amount = Decimal::from(obligation_collateral.deposited_tokens);
-        let bonus_rate = Rate::from_percent(self.config.liquidation_bonus).try_add(Rate::one())?;
-
-        let liquidate_amount = match liquidity_amount_type {
-            AmountType::ExactAmount => {
-                Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_wads)
-            }
-            AmountType::PercentAmount => {
-                let liquidate_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
-                obligation_liquidity.borrowed_wads.try_mul(liquidate_pct)?
-            }
-        };
-
-        // Close out obligations that are too small to liquidate normally
-        if obligation_liquidity.borrowed_wads < LIQUIDATION_CLOSE_AMOUNT.into() {
-            let settle_amount = obligation_liquidity.borrowed_wads;
-            let settle_value = obligation_liquidity
-                .value
-                .try_mul(bonus_rate)?
-                .min(obligation_collateral.value);
-            let settle_pct = settle_value.try_div(obligation_collateral.value)?;
-            let repay_amount = liquidate_amount.min(settle_amount).try_ceil_u64()?;
-
-            let collateral_amount = max_withdraw_amount.try_mul(settle_pct)?;
-            let withdraw_amount = if collateral_amount == max_withdraw_amount {
-                collateral_amount.try_ceil_u64()?
-            } else {
-                collateral_amount.try_floor_u64()?
-            };
-
-            return Ok(LiquidateResult {
-                settle_amount,
-                repay_amount,
-                withdraw_amount,
-            });
-        }
-
-        let max_liquidation_value = obligation
-            .liquidity_value
-            .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
-            .min(obligation_liquidity.value);
-        let max_liquidation_pct = max_liquidation_value.try_div(obligation_liquidity.value)?;
-        let max_liquidation_amount = obligation_liquidity
-            .borrowed_wads
-            .try_mul(max_liquidation_pct)?;
-
-        let liquidation_amount = liquidate_amount.min(max_liquidation_amount);
-        let liquidation_pct = liquidation_amount.try_div(obligation_liquidity.borrowed_wads)?;
-
-        let settle_value = obligation_liquidity
-            .value
-            .try_mul(liquidation_pct)?
-            .try_mul(bonus_rate)?
-            .min(obligation_collateral.value);
-        let settle_pct = settle_value.try_div(obligation_collateral.value)?;
-        let settle_amount = liquidation_amount.try_mul(settle_pct)?;
-
-        let repay_amount = if settle_amount == max_liquidation_amount {
-            settle_amount.try_ceil_u64()?
-        } else {
-            settle_amount.try_floor_u64()?
-        };
-
-        let collateral_amount = max_withdraw_amount.try_mul(settle_pct)?;
-        let withdraw_amount = if collateral_amount == max_withdraw_amount {
-            collateral_amount.try_ceil_u64()?
-        } else {
-            collateral_amount.try_floor_u64()?
-        };
-
-        Ok(LiquidateResult {
-            settle_amount,
-            repay_amount,
-            withdraw_amount,
-        })
     }
 
     /// Record deposited liquidity and return amount of collateral tokens to mint
@@ -320,6 +109,48 @@ impl Reserve {
         Ok(liquidity_amount)
     }
 
+    /// Calculate the current borrow rate
+    pub fn current_borrow_rate(&self) -> Result<Rate, ProgramError> {
+        let utilization_rate = self.liquidity.utilization_rate()?;
+        let optimal_utilization_rate = Rate::from_percent(self.config.optimal_utilization_rate);
+        let low_utilization = utilization_rate < optimal_utilization_rate;
+        if low_utilization || self.config.optimal_utilization_rate == 100 {
+            let normalized_rate = utilization_rate.try_div(optimal_utilization_rate)?;
+            let min_rate = Rate::from_percent(self.config.min_borrow_rate);
+            let rate_range = Rate::from_percent(
+                self.config
+                    .optimal_borrow_rate
+                    .checked_sub(self.config.min_borrow_rate)
+                    .ok_or(LendingError::MathOverflow)?,
+            );
+
+            Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
+        } else {
+            let normalized_rate = utilization_rate
+                .try_sub(optimal_utilization_rate)?
+                .try_div(Rate::from_percent(
+                    100u8
+                        .checked_sub(self.config.optimal_utilization_rate)
+                        .ok_or(LendingError::MathOverflow)?,
+                ))?;
+            let min_rate = Rate::from_percent(self.config.optimal_borrow_rate);
+            let rate_range = Rate::from_percent(
+                self.config
+                    .max_borrow_rate
+                    .checked_sub(self.config.optimal_borrow_rate)
+                    .ok_or(LendingError::MathOverflow)?,
+            );
+
+            Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
+        }
+    }
+
+    /// Collateral exchange rate
+    pub fn collateral_exchange_rate(&self) -> Result<CollateralExchangeRate, ProgramError> {
+        let total_liquidity = self.liquidity.total_supply()?;
+        self.collateral.exchange_rate(total_liquidity)
+    }
+
     /// Update borrow rate and accrue interest
     pub fn accrue_interest(&mut self, current_slot: Slot) -> ProgramResult {
         let slots_elapsed = self.last_update.slots_elapsed(current_slot)?;
@@ -334,12 +165,6 @@ impl Reserve {
             self.last_update.update_slot(current_slot);
         }
         Ok(())
-    }
-
-    /// Collateral exchange rate
-    pub fn collateral_exchange_rate(&self) -> Result<CollateralExchangeRate, ProgramError> {
-        let total_liquidity = self.liquidity.total_supply()?;
-        self.collateral.exchange_rate(total_liquidity)
     }
 
     /// Compound current borrow rate over elapsed slots
@@ -357,15 +182,193 @@ impl Reserve {
             .try_mul(compounded_interest_rate)?;
         Ok(compounded_interest_rate)
     }
+
+    /// Borrow liquidity up to a maximum market value
+    pub fn borrow_liquidity(
+        &self,
+        liquidity_amount: u64,
+        liquidity_amount_type: AmountType,
+        obligation: &Obligation,
+        loan_to_value_ratio: Rate,
+        token_converter: impl TokenConverter,
+        quote_token_mint: &Pubkey,
+    ) -> Result<BorrowLiquidityResult, ProgramError> {
+        let max_borrow_value = obligation
+            .collateral_value
+            .try_mul(loan_to_value_ratio)?
+            .try_sub(obligation.liquidity_value)?;
+
+        match liquidity_amount_type {
+            AmountType::ExactAmount => {
+                let borrow_amount = liquidity_amount;
+                let (origination_fee, host_fee) = self
+                    .config
+                    .fees
+                    .calculate_borrow_fees(borrow_amount, FeeCalculation::Exclusive)?;
+                let total_amount = borrow_amount
+                    .checked_add(origination_fee)
+                    .ok_or(LendingError::MathOverflow)?;
+                let total_value =
+                    token_converter.convert(total_amount.into(), &self.liquidity.mint_pubkey)?;
+                if total_value > max_borrow_value {
+                    return Err(LendingError::BorrowTooLarge.into());
+                }
+
+                Ok(BorrowLiquidityResult {
+                    total_amount,
+                    borrow_amount,
+                    origination_fee,
+                    host_fee,
+                })
+            }
+            AmountType::PercentAmount => {
+                let total_value = max_borrow_value
+                    .try_mul(Decimal::from_percent(u8::try_from(liquidity_amount)?))?;
+                let total_amount = token_converter
+                    .convert(total_value, &quote_token_mint)?
+                    .try_floor_u64()?
+                    .min(self.liquidity.available_amount);
+                let (origination_fee, host_fee) = self
+                    .config
+                    .fees
+                    .calculate_borrow_fees(total_amount, FeeCalculation::Inclusive)?;
+                let borrow_amount = total_amount
+                    .checked_sub(origination_fee)
+                    .ok_or(LendingError::MathOverflow)?;
+
+                Ok(BorrowLiquidityResult {
+                    total_amount,
+                    borrow_amount,
+                    origination_fee,
+                    host_fee,
+                })
+            }
+        }
+    }
+
+    pub fn repay_liquidity(
+        &self,
+        liquidity_amount: u64,
+        liquidity_amount_type: AmountType,
+        obligation_liquidity: &ObligationLiquidity,
+    ) -> Result<RepayLiquidityResult, ProgramError> {
+        let settle_amount = match liquidity_amount_type {
+            AmountType::ExactAmount => {
+                Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_wads)
+            }
+            AmountType::PercentAmount => {
+                let settle_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
+                obligation_liquidity.borrowed_wads.try_mul(settle_pct)?
+            }
+        };
+        let repay_amount = if settle_amount == obligation_liquidity.borrowed_wads {
+            settle_amount.try_ceil_u64()?
+        } else {
+            settle_amount.try_floor_u64()?
+        };
+
+        Ok(RepayLiquidityResult {
+            settle_amount,
+            repay_amount,
+        })
+    }
+
+    /// Liquidate some or all of an unhealthy obligation
+    pub fn liquidate_obligation(
+        &self,
+        liquidity_amount: u64,
+        liquidity_amount_type: AmountType,
+        obligation: &Obligation,
+        obligation_liquidity: &ObligationLiquidity,
+        obligation_collateral: &ObligationCollateral,
+    ) -> Result<LiquidateObligationResult, ProgramError> {
+        let max_withdraw_amount = Decimal::from(obligation_collateral.deposited_tokens);
+        let bonus_rate = Rate::from_percent(self.config.liquidation_bonus).try_add(Rate::one())?;
+
+        let liquidate_amount = match liquidity_amount_type {
+            AmountType::ExactAmount => {
+                Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_wads)
+            }
+            AmountType::PercentAmount => {
+                let liquidate_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
+                obligation_liquidity.borrowed_wads.try_mul(liquidate_pct)?
+            }
+        };
+
+        // Close out obligations that are too small to liquidate normally
+        if obligation_liquidity.borrowed_wads < LIQUIDATION_CLOSE_AMOUNT.into() {
+            let settle_amount = obligation_liquidity.borrowed_wads;
+            let settle_value = obligation_liquidity
+                .value
+                .try_mul(bonus_rate)?
+                .min(obligation_collateral.value);
+            let settle_pct = settle_value.try_div(obligation_collateral.value)?;
+            let repay_amount = liquidate_amount.min(settle_amount).try_ceil_u64()?;
+
+            let collateral_amount = max_withdraw_amount.try_mul(settle_pct)?;
+            let withdraw_amount = if collateral_amount == max_withdraw_amount {
+                collateral_amount.try_ceil_u64()?
+            } else {
+                collateral_amount.try_floor_u64()?
+            };
+
+            return Ok(LiquidateObligationResult {
+                settle_amount,
+                repay_amount,
+                withdraw_amount,
+            });
+        }
+
+        let max_liquidation_value = obligation
+            .liquidity_value
+            .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
+            .min(obligation_liquidity.value);
+        let max_liquidation_pct = max_liquidation_value.try_div(obligation_liquidity.value)?;
+        let max_liquidation_amount = obligation_liquidity
+            .borrowed_wads
+            .try_mul(max_liquidation_pct)?;
+
+        let liquidation_amount = liquidate_amount.min(max_liquidation_amount);
+        let liquidation_pct = liquidation_amount.try_div(obligation_liquidity.borrowed_wads)?;
+
+        let settle_value = obligation_liquidity
+            .value
+            .try_mul(liquidation_pct)?
+            .try_mul(bonus_rate)?
+            .min(obligation_collateral.value);
+        let settle_pct = settle_value.try_div(obligation_collateral.value)?;
+        let settle_amount = liquidation_amount.try_mul(settle_pct)?;
+
+        let repay_amount = if settle_amount == max_liquidation_amount {
+            settle_amount.try_ceil_u64()?
+        } else {
+            settle_amount.try_floor_u64()?
+        };
+
+        let collateral_amount = max_withdraw_amount.try_mul(settle_pct)?;
+        let withdraw_amount = if collateral_amount == max_withdraw_amount {
+            collateral_amount.try_ceil_u64()?
+        } else {
+            collateral_amount.try_floor_u64()?
+        };
+
+        Ok(LiquidateObligationResult {
+            settle_amount,
+            repay_amount,
+            withdraw_amount,
+        })
+    }
 }
 
 /// Create new reserve
 pub struct NewReserveParams {
+    /// Current slot
+    pub current_slot: Slot,
     /// Lending market address
     pub lending_market: Pubkey,
-    /// Reserve collateral info
+    /// Reserve collateral
     pub collateral: ReserveCollateral,
-    /// Reserve liquidity info
+    /// Reserve liquidity
     pub liquidity: ReserveLiquidity,
     /// Optional dex market address
     pub dex_market: COption<Pubkey>,
@@ -373,9 +376,9 @@ pub struct NewReserveParams {
     pub config: ReserveConfig,
 }
 
-/// Create borrow result
+/// Borrow liquidity result
 #[derive(Debug)]
-pub struct BorrowResult {
+pub struct BorrowLiquidityResult {
     /// Total amount of borrow plus origination fee
     pub total_amount: u64,
     /// Borrow amount portion of total amount
@@ -388,7 +391,7 @@ pub struct BorrowResult {
 
 /// Repay liquidity result
 #[derive(Debug)]
-pub struct RepayResult {
+pub struct RepayLiquidityResult {
     /// Amount of liquidity that is settled from the obligation.
     pub settle_amount: Decimal,
     /// Amount that will be repaid as u64
@@ -397,7 +400,7 @@ pub struct RepayResult {
 
 /// Liquidate obligation result
 #[derive(Debug)]
-pub struct LiquidateResult {
+pub struct LiquidateObligationResult {
     /// Amount of liquidity that is settled from the obligation. It includes
     /// the amount of loan that was defaulted if collateral is depleted.
     pub settle_amount: Decimal,
@@ -426,7 +429,7 @@ pub struct ReserveLiquidity {
 }
 
 impl ReserveLiquidity {
-    /// New reserve liquidity info
+    /// New reserve liquidity
     pub fn new(
         mint_pubkey: Pubkey,
         mint_decimals: u8,
@@ -654,15 +657,17 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 600;
+const RESERVE_LEN: usize = 601; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 32 + 36 + 1 + 1 + 1 + 1 + 1 + 8 + 1 + 16 + 16 + 8 + 8 + 300
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, RESERVE_LEN];
+        // @FIXME: reorder
         let (
             version,
             last_update_slot,
+            last_update_stale,
             lending_market,
             liquidity_mint,
             liquidity_mint_decimals,
@@ -684,10 +689,12 @@ impl Pack for Reserve {
             collateral_mint_supply,
             _padding,
         ) = mut_array_refs![
-            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
+            output, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN,
+            PUBKEY_LEN, 36, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update.slot.to_le_bytes();
+        *last_update_stale = u8::from(self.last_update.stale).to_le_bytes();
         pack_decimal(
             self.cumulative_borrow_rate_wads,
             cumulative_borrow_rate_wads,
@@ -695,7 +702,7 @@ impl Pack for Reserve {
         lending_market.copy_from_slice(self.lending_market.as_ref());
         pack_coption_key(&self.dex_market, dex_market);
 
-        // liquidity info
+        // liquidity
         liquidity_mint.copy_from_slice(self.liquidity.mint_pubkey.as_ref());
         *liquidity_mint_decimals = self.liquidity.mint_decimals.to_le_bytes();
         liquidity_supply.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
@@ -703,7 +710,7 @@ impl Pack for Reserve {
         *available_liquidity = self.liquidity.available_amount.to_le_bytes();
         pack_decimal(self.liquidity.borrowed_amount_wads, total_borrows);
 
-        // collateral info
+        // collateral
         collateral_mint.copy_from_slice(self.collateral.mint_pubkey.as_ref());
         collateral_supply.copy_from_slice(self.collateral.supply_pubkey.as_ref());
         *collateral_mint_supply = self.collateral.mint_total_supply.to_le_bytes();
@@ -725,6 +732,7 @@ impl Pack for Reserve {
         let (
             version,
             last_update_slot,
+            last_update_stale,
             lending_market,
             liquidity_mint,
             liquidity_mint_decimals,
@@ -746,12 +754,14 @@ impl Pack for Reserve {
             collateral_mint_supply,
             __padding,
         ) = array_refs![
-            input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
+            input, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 32, 36,
+            1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),
             last_update: LastUpdate {
                 slot: u64::from_le_bytes(*last_update_slot),
+                stale: bool::from(u8::from_le_bytes(*last_update_stale)),
             },
             cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
             lending_market: Pubkey::new_from_array(*lending_market),

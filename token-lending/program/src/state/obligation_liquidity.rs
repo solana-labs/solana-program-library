@@ -18,7 +18,7 @@ use std::convert::TryInto;
 pub struct ObligationLiquidity {
     /// Version of the obligation liquidity
     pub version: u8,
-    /// Last slot when market value and accrued interest updated; set to 0 if borrowed wads changed
+    /// Last update to accrued interest, borrowed wads, or their market value
     pub last_update: LastUpdate,
     /// Obligation the liquidity is associated with
     pub obligation: Pubkey,
@@ -34,6 +34,8 @@ pub struct ObligationLiquidity {
 
 /// Create new obligation liquidity
 pub struct NewObligationLiquidityParams {
+    /// Current slot
+    pub current_slot: Slot,
     /// Obligation address
     pub obligation: Pubkey,
     /// Borrow reserve address
@@ -44,13 +46,14 @@ impl ObligationLiquidity {
     /// Create new obligation liquidity
     pub fn new(params: NewObligationLiquidityParams) -> Self {
         let NewObligationLiquidityParams {
+            current_slot,
             obligation,
             borrow_reserve,
         } = params;
 
         Self {
             version: PROGRAM_VERSION,
-            last_update: LastUpdate::new(),
+            last_update: LastUpdate::new(current_slot),
             obligation,
             borrow_reserve,
             cumulative_borrow_rate_wads: Decimal::one(),
@@ -106,7 +109,7 @@ impl IsInitialized for ObligationLiquidity {
     }
 }
 
-const OBLIGATION_LIQUIDITY_LEN: usize = 249; // 1 + 8 + 32 + 32 + 16 + 16 + 16 + 128
+const OBLIGATION_LIQUIDITY_LEN: usize = 250; // 1 + 8 + 1 + 32 + 32 + 16 + 16 + 16 + 128
 impl Pack for ObligationLiquidity {
     const LEN: usize = OBLIGATION_LIQUIDITY_LEN;
 
@@ -115,16 +118,18 @@ impl Pack for ObligationLiquidity {
         let (
             version,
             last_update_slot,
+            last_update_stale,
             obligation,
             borrow_reserve,
             cumulative_borrow_rate_wads,
             borrowed_wads,
             value,
             _padding,
-        ) = mut_array_refs![output, 1, 8, PUBKEY_LEN, PUBKEY_LEN, 16, 16, 16, 128];
+        ) = mut_array_refs![output, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, 16, 16, 16, 128];
 
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update.slot.to_le_bytes();
+        *last_update_stale = u8::from(self.last_update.stale).to_le_bytes();
         obligation.copy_from_slice(self.obligation.as_ref());
         borrow_reserve.copy_from_slice(self.borrow_reserve.as_ref());
         pack_decimal(
@@ -142,18 +147,20 @@ impl Pack for ObligationLiquidity {
         let (
             version,
             last_update_slot,
+            last_update_stale,
             obligation,
             borrow_reserve,
             cumulative_borrow_rate_wads,
             borrowed_wads,
             value,
             _padding,
-        ) = array_refs![input, 1, 8, PUBKEY_LEN, PUBKEY_LEN, 16, 16, 16, 128];
+        ) = array_refs![input, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, 16, 16, 16, 128];
 
         Ok(Self {
             version: u8::from_le_bytes(*version),
             last_update: LastUpdate {
                 slot: u64::from_le_bytes(*last_update_slot),
+                stale: bool::from(u8::from_le_bytes(*last_update_stale)),
             },
             obligation: Pubkey::new_from_array(*obligation),
             borrow_reserve: Pubkey::new_from_array(*borrow_reserve),
