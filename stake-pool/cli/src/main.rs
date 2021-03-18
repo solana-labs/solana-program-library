@@ -30,7 +30,7 @@ use spl_stake_pool::{
     instruction::{
         add_validator_stake_account, create_validator_stake_account, deposit,
         initialize as initialize_pool, remove_validator_stake_account, set_owner,
-        set_staking_authority, update_list_balance, update_pool_balance, withdraw, Fee as PoolFee,
+        update_list_balance, update_pool_balance, withdraw, Fee as PoolFee,
         InitArgs as PoolInitArgs,
     },
     processor::Processor as PoolProcessor,
@@ -947,44 +947,6 @@ fn command_withdraw(
     Ok(Some(transaction))
 }
 
-fn command_set_staking_auth(
-    config: &Config,
-    pool: &Pubkey,
-    stake_account: &Pubkey,
-    new_staker: &Pubkey,
-) -> CommandResult {
-    let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
-
-    let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
-        &spl_stake_pool::id(),
-        pool,
-        PoolProcessor::AUTHORITY_WITHDRAW,
-        pool_data.withdraw_bump_seed,
-    )
-    .unwrap();
-
-    let mut transaction = Transaction::new_with_payer(
-        &[set_staking_authority(
-            &spl_stake_pool::id(),
-            &pool,
-            &config.owner.pubkey(),
-            &pool_withdraw_authority,
-            &stake_account,
-            &new_staker,
-            &stake_program_id(),
-        )?],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
-}
-
 fn command_set_owner(
     config: &Config,
     pool: &Pubkey,
@@ -1299,35 +1261,6 @@ fn main() {
                     .help("Stake account to receive SOL from the stake pool. Defaults to a new stake account."),
             )
         )
-        .subcommand(SubCommand::with_name("set-staking-auth").about("Changes staking authority of one of the accounts from the stake pool.")
-            .arg(
-                Arg::with_name("pool")
-                    .long("pool")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
-                    .takes_value(true)
-                    .required(true)
-                    .help("Stake pool address."),
-            )
-            .arg(
-                Arg::with_name("stake_account")
-                    .long("stake-account")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
-                    .takes_value(true)
-                    .required(true)
-                    .help("Stake account address to change staking authority."),
-            )
-            .arg(
-                Arg::with_name("new_staker")
-                    .long("new-staker")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
-                    .takes_value(true)
-                    .required(true)
-                    .help("Public key of the new staker account."),
-            )
-        )
         .subcommand(SubCommand::with_name("set-owner").about("Changes owner or fee receiver account for the stake pool.")
             .arg(
                 Arg::with_name("pool")
@@ -1469,12 +1402,6 @@ fn main() {
                 &withdraw_from,
                 &stake_receiver,
             )
-        }
-        ("set-staking-auth", Some(arg_matches)) => {
-            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let stake_account: Pubkey = pubkey_of(arg_matches, "stake_account").unwrap();
-            let new_staker: Pubkey = pubkey_of(arg_matches, "new_staker").unwrap();
-            command_set_staking_auth(&config, &pool_account, &stake_account, &new_staker)
         }
         ("set-owner", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();

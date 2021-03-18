@@ -140,17 +140,6 @@ pub enum StakePoolInstruction {
     ///   userdata: amount to withdraw
     Withdraw(u64),
 
-    ///   Update the staking pubkey for a stake
-    ///
-    ///   0. `[w]` StakePool
-    ///   1. `[s]` Owner
-    ///   2. `[]` withdraw authority
-    ///   3. `[w]` Stake to update the staking pubkey
-    ///   4. '[]` Staking pubkey.
-    ///   5. '[]' Sysvar clock account (reserved for future use)
-    ///   6. `[]` Stake program id,
-    SetStakingAuthority,
-
     ///   Update owner
     ///
     ///   0. `[w]` StakePool
@@ -182,8 +171,7 @@ impl StakePoolInstruction {
                 let val: &u64 = unpack(input)?;
                 Self::Withdraw(*val)
             }
-            8 => Self::SetStakingAuthority,
-            9 => Self::SetOwner,
+            8 => Self::SetOwner,
             _ => return Err(ProgramError::InvalidAccountData),
         })
     }
@@ -223,11 +211,8 @@ impl StakePoolInstruction {
                 let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
                 *value = *val;
             }
-            Self::SetStakingAuthority => {
-                output[0] = 8;
-            }
             Self::SetOwner => {
-                output[0] = 9;
+                output[0] = 8;
             }
         }
         Ok(output)
@@ -477,34 +462,6 @@ pub fn withdraw(
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*stake_program_id, false),
-    ];
-    Ok(Instruction {
-        program_id: *program_id,
-        accounts,
-        data,
-    })
-}
-
-/// Creates a 'set staking authority' instruction.
-pub fn set_staking_authority(
-    program_id: &Pubkey,
-    stake_pool: &Pubkey,
-    stake_pool_owner: &Pubkey,
-    stake_pool_withdraw: &Pubkey,
-    stake_account_to_update: &Pubkey,
-    stake_account_new_authority: &Pubkey,
-    stake_program_id: &Pubkey,
-) -> Result<Instruction, ProgramError> {
-    let args = StakePoolInstruction::SetStakingAuthority;
-    let data = args.serialize()?;
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*stake_pool_owner, true),
-        AccountMeta::new_readonly(*stake_pool_withdraw, false),
-        AccountMeta::new(*stake_account_to_update, false),
-        AccountMeta::new_readonly(*stake_account_new_authority, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*stake_program_id, false),
     ];
     Ok(Instruction {
