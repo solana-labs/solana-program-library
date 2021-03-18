@@ -773,8 +773,8 @@ fn process_borrow_obligation_liquidity(
         .borrow(total_amount, borrow_amount)?;
     // @TODO: will this need further adjustment for fees?
     obligation_liquidity.borrow(borrow_amount);
-    obligation_liquidity.mark_stale();
-    obligation.mark_stale();
+    obligation_liquidity.last_update.mark_stale();
+    obligation.last_update.mark_stale();
 
     ObligationLiquidity::pack(
         obligation_liquidity,
@@ -946,8 +946,8 @@ fn process_repay_obligation_liquidity(
 
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     obligation_liquidity.repay(settle_amount);
-    obligation_liquidity.mark_stale();
-    obligation.mark_stale();
+    obligation_liquidity.last_update.mark_stale();
+    obligation.last_update.mark_stale();
 
     ObligationLiquidity::pack(
         obligation_liquidity,
@@ -1184,9 +1184,9 @@ fn process_liquidate_obligation(
     obligation_liquidity.repay(settle_amount);
     // @FIXME: shouldn't withdraw_reserve.collateral.mint_total_supply change?
     obligation_collateral.withdraw(withdraw_amount);
-    obligation_liquidity.mark_stale();
-    obligation_collateral.mark_stale();
-    obligation.mark_stale();
+    obligation_liquidity.last_update.mark_stale();
+    obligation_collateral.last_update.mark_stale();
+    obligation.last_update.mark_stale();
 
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
     ObligationCollateral::pack(
@@ -1346,8 +1346,8 @@ fn process_deposit_obligation_collateral(
     }
 
     obligation_collateral.deposit(collateral_amount)?;
-    obligation_collateral.mark_stale();
-    obligation.mark_stale();
+    obligation_collateral.last_update.mark_stale();
+    obligation.last_update.mark_stale();
 
     ObligationCollateral::pack(
         obligation_collateral,
@@ -1552,8 +1552,8 @@ fn process_withdraw_obligation_collateral(
 
     // @FIXME: shouldn't withdraw_reserve.collateral.mint_total_supply change?
     obligation_collateral.withdraw(withdraw_amount)?;
-    obligation_collateral.mark_stale();
-    obligation.mark_stale();
+    obligation_collateral.last_update.mark_stale();
+    obligation.last_update.mark_stale();
 
     ObligationCollateral::pack(
         obligation_collateral,
@@ -1682,7 +1682,7 @@ fn process_init_obligation_collateral(
         token_mint: obligation_token_mint_info.key(),
     });
     obligation.collateral.push(*obligation_collateral_info.key);
-    obligation.mark_stale();
+    obligation.last_update.mark_stale();
 
     ObligationCollateral::pack(
         obligation_collateral,
@@ -1763,7 +1763,7 @@ fn process_init_obligation_liquidity(
         borrow_reserve: *borrow_reserve_info.key,
     });
     obligation.liquidity.push(*obligation_liquidity_info.key);
-    obligation.mark_stale();
+    obligation.last_update.mark_stale();
 
     ObligationLiquidity::pack(
         obligation_liquidity,
