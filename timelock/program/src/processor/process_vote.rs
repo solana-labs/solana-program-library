@@ -1,8 +1,19 @@
 //! Program state processor
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::{TimelockStateStatus}, timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenBurnParams, TokenMintToParams, assert_account_equiv, assert_initialized, assert_token_program_is_correct, assert_voting, spl_token_burn, spl_token_mint_to}};
+use crate::{
+    error::TimelockError,
+    state::timelock_program::TimelockProgram,
+    state::{
+        enums::TimelockStateStatus, timelock_config::TimelockConfig, timelock_set::TimelockSet,
+    },
+    utils::{
+        assert_account_equiv, assert_initialized, assert_token_program_is_correct, assert_voting,
+        spl_token_burn, spl_token_mint_to, TokenBurnParams, TokenMintToParams,
+    },
+};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    msg,
     program_pack::Pack,
     pubkey::Pubkey,
 };
@@ -13,7 +24,7 @@ pub fn process_vote(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     yes_voting_token_amount: u64,
-    no_voting_token_amount: u64
+    no_voting_token_amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let timelock_set_account_info = next_account_info(account_info_iter)?;
@@ -58,11 +69,13 @@ pub fn process_vote(
     let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
 
     let governance_mint: Mint = assert_initialized(governance_mint_account_info)?;
+    let yes_mint: Mint = assert_initialized(yes_voting_mint_account_info)?;
 
     let total_ever_existed = governance_mint.supply;
-     
-    let now_remaining_in_no_column = governance_mint.supply - yes_voting_token_amount;
-      
+
+    let now_remaining_in_no_column =
+        governance_mint.supply - yes_voting_token_amount - yes_mint.supply;
+
     // The act of voting proves you are able to vote. No need to assert permission here.
     spl_token_burn(TokenBurnParams {
         mint: voting_mint_account_info.clone(),
@@ -90,7 +103,6 @@ pub fn process_vote(
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;
-
 
     let tipped: bool = match timelock_config.consensus_algorithm {
         crate::state::enums::ConsensusAlgorithm::Majority => {
