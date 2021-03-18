@@ -757,6 +757,7 @@ fn process_borrow_obligation_liquidity(
         &lending_market.quote_token_mint,
     )?;
 
+    // @FIXME: resume here, refactor args for consistency
     let BorrowResult {
         total_amount,
         borrow_amount,
