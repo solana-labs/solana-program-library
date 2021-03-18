@@ -1,13 +1,16 @@
-
-use super::{UNINITIALIZED_VERSION};
-use super::{
-    enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule},
-};
+use super::enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule};
+use super::UNINITIALIZED_VERSION;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use solana_program::{program_error::ProgramError, program_pack::{IsInitialized, Pack, Sealed}, pubkey::Pubkey};
+use solana_program::{
+    program_error::ProgramError,
+    program_pack::{IsInitialized, Pack, Sealed},
+    pubkey::Pubkey,
+};
 
 /// STRUCT VERSION
 pub const TIMELOCK_CONFIG_VERSION: u8 = 1;
+/// max name length
+pub const CONFIG_NAME_LENGTH: usize = 32;
 /// Timelock Config
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockConfig {
@@ -26,9 +29,10 @@ pub struct TimelockConfig {
     /// Governance mint (optional)
     pub governance_mint: Pubkey,
     /// Program ID that is tied to this config (optional)
-    pub program: Pubkey
+    pub program: Pubkey,
+    /// Optional name
+    pub name: [u8; CONFIG_NAME_LENGTH],
 }
-
 
 impl Sealed for TimelockConfig {}
 impl IsInitialized for TimelockConfig {
@@ -38,9 +42,9 @@ impl IsInitialized for TimelockConfig {
 }
 
 /// Len of timelock config
-pub const TIMELOCK_CONFIG_LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32;
+pub const TIMELOCK_CONFIG_LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + CONFIG_NAME_LENGTH;
 impl Pack for TimelockConfig {
-    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32;
+    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + CONFIG_NAME_LENGTH;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_CONFIG_LEN];
@@ -54,10 +58,9 @@ impl Pack for TimelockConfig {
             voting_entry_rule,
             minimum_slot_waiting_period,
             governance_mint,
-            program
-        ) = array_refs![
-            input, 1,1,1,1,1,8,32,32
-        ];
+            program,
+            name,
+        ) = array_refs![input, 1, 1, 1, 1, 1, 8, 32, 32, CONFIG_NAME_LENGTH];
         let version = u8::from_le_bytes(*version);
         let consensus_algorithm = u8::from_le_bytes(*consensus_algorithm);
         let execution_type = u8::from_le_bytes(*execution_type);
@@ -90,9 +93,8 @@ impl Pack for TimelockConfig {
                 },
                 minimum_slot_waiting_period,
                 governance_mint: Pubkey::new_from_array(*governance_mint),
-                program: Pubkey::new_from_array(*program)
-
-                
+                program: Pubkey::new_from_array(*program),
+                name: *name,
             }),
             _ => Err(ProgramError::InvalidAccountData),
         }
@@ -109,10 +111,9 @@ impl Pack for TimelockConfig {
             voting_entry_rule,
             minimum_slot_waiting_period,
             governance_mint,
-            program
-        ) = mut_array_refs![
-            output, 1, 1, 1, 1, 1, 8, 32,32
-        ];
+            program,
+            name,
+        ) = mut_array_refs![output, 1, 1, 1, 1, 1, 8, 32, 32, CONFIG_NAME_LENGTH];
         *version = self.version.to_le_bytes();
         *consensus_algorithm = match self.consensus_algorithm {
             ConsensusAlgorithm::Majority => 0 as u8,
@@ -127,19 +128,17 @@ impl Pack for TimelockConfig {
         .to_le_bytes();
         *timelock_type = match self.timelock_type {
             TimelockType::Governance => 0 as u8,
-
         }
         .to_le_bytes();
         *voting_entry_rule = match self.voting_entry_rule {
             VotingEntryRule::DraftOnly => 0 as u8,
             VotingEntryRule::Anytime => 1 as u8,
-
         }
         .to_le_bytes();
         *minimum_slot_waiting_period = self.minimum_slot_waiting_period.to_le_bytes();
         governance_mint.copy_from_slice(self.governance_mint.as_ref());
         program.copy_from_slice(self.program.as_ref());
-
+        name.copy_from_slice(self.name.as_ref());
     }
 
     fn get_packed_len() -> usize {

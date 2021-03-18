@@ -1,6 +1,14 @@
 //! Program state processor
 
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::VotingEntryRule, timelock_config::TimelockConfig, timelock_set::TimelockSet}, utils::{TokenMintToParams, TokenTransferParams, assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct, spl_token_mint_to, spl_token_transfer}};
+use crate::{
+    error::TimelockError,
+    state::timelock_program::TimelockProgram,
+    state::{enums::VotingEntryRule, timelock_config::TimelockConfig, timelock_set::TimelockSet},
+    utils::{
+        assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
+        spl_token_mint_to, spl_token_transfer, TokenMintToParams, TokenTransferParams,
+    },
+};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -8,8 +16,8 @@ use solana_program::{
 };
 use spl_token::state::{Account, Mint};
 
-/// Deposit voting tokens
-pub fn process_deposit_voting_tokens(
+/// Deposit governance tokens
+pub fn process_deposit_governance_tokens(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     voting_token_amount: u64,
@@ -31,11 +39,14 @@ pub fn process_deposit_voting_tokens(
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
 
-    assert_account_equiv(governance_holding_account_info, &timelock_set.governance_holding)?;
+    assert_account_equiv(
+        governance_holding_account_info,
+        &timelock_set.governance_holding,
+    )?;
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
     assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
-    
-    if voting_token_amount < 0 as u64  {
+
+    if voting_token_amount < 0 as u64 {
         return Err(TimelockError::TokenAmountBelowZero.into());
     }
 
