@@ -48,16 +48,24 @@ pub fn assert_is_permissioned<'a>(
     transfer_authority_info: &AccountInfo<'a>,
     timelock_authority_info: &AccountInfo<'a>,
 ) -> ProgramResult {
+    msg!(
+        "Args {:?} {:?} {:?} {:?} {:?} {:?} {:?}",
+        program_id,
+        perm_account_info.key,
+        perm_validation_account_info.key,
+        timelock_program_info.key,
+        token_program_info.key,
+        transfer_authority_info.key,
+        timelock_authority_info.key
+    );
     let _perm_account: Account = assert_initialized(perm_account_info)?;
     let _perm_validation: Account = assert_initialized(perm_validation_account_info)?;
-
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_info.key.as_ref()], program_id);
     if timelock_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
     let authority_signer_seeds = &[timelock_program_info.key.as_ref(), &[bump_seed]];
-
     // If both accounts arent correct mint type, it explodes
     // If token amount is <1, it explodes. Perfect check.
     // If authority isnt right, it explodes.
@@ -69,7 +77,6 @@ pub fn assert_is_permissioned<'a>(
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
-
     // Now give it back
     spl_token_transfer(TokenTransferParams {
         source: perm_validation_account_info.clone(),
@@ -135,6 +142,7 @@ pub fn assert_token_program_is_correct(
     if &timelock_program.token_program_id != token_program_info.key {
         return Err(TimelockError::InvalidTokenProgram.into());
     };
+
     Ok(())
 }
 

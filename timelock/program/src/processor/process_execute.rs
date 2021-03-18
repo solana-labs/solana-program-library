@@ -1,13 +1,25 @@
 //! Program state processor
-use crate::{error::TimelockError, state::timelock_config::TimelockConfig, state::timelock_program::TimelockProgram, state::{custom_single_signer_timelock_transaction::{
+use crate::{
+    error::TimelockError,
+    state::timelock_config::TimelockConfig,
+    state::timelock_program::TimelockProgram,
+    state::{
+        custom_single_signer_timelock_transaction::{
             CustomSingleSignerTimelockTransaction, MAX_ACCOUNTS_ALLOWED,
-        }, enums::TimelockType, timelock_config::TIMELOCK_CONFIG_LEN, timelock_set::TimelockSet}, utils::{ExecuteParams, assert_account_equiv, assert_executing, assert_initialized, execute}};
+        },
+        enums::TimelockType,
+        timelock_config::TIMELOCK_CONFIG_LEN,
+        timelock_set::TimelockSet,
+    },
+    utils::{assert_account_equiv, assert_executing, assert_initialized, execute, ExecuteParams},
+};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     clock::Clock,
     entrypoint::ProgramResult,
     instruction::Instruction,
     message::Message,
+    msg,
     program_pack::Pack,
     pubkey::Pubkey,
     sysvar::Sysvar,
@@ -26,20 +38,22 @@ pub fn process_execute(
     let timelock_config_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let clock_info = next_account_info(account_info_iter)?;
+
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
     let clock = &Clock::from_account_info(clock_info)?;
+
     assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
-
-    let seeds = &[timelock_program_account_info.key.as_ref(), timelock_config.governance_mint.as_ref(), timelock_config.program.as_ref() ];
-    let (governance_authority, bump_seed) =
-        Pubkey::find_program_address(seeds, program_id);
-
+    let seeds = &[
+        timelock_program_account_info.key.as_ref(),
+        timelock_config.governance_mint.as_ref(),
+        timelock_config.program.as_ref(),
+    ];
+    let (governance_authority, bump_seed) = Pubkey::find_program_address(seeds, program_id);
     let mut account_infos: Vec<AccountInfo> = vec![];
     if number_of_extra_accounts > (MAX_ACCOUNTS_ALLOWED - 2) as u8 {
         return Err(TimelockError::TooManyAccountsInInstruction.into());
     }
-
     let mut added_authority = false;
 
     for _ in 0..number_of_extra_accounts {
@@ -48,7 +62,6 @@ pub fn process_execute(
             // You better be initialized, and if you are, you better at least be mine...
             let _nefarious_config: TimelockConfig = assert_initialized(&next_account)?;
             assert_account_equiv(&next_account, &timelock_set.config)?;
-
             added_authority = true;
 
             if next_account.key != &governance_authority {
@@ -57,22 +70,20 @@ pub fn process_execute(
         }
         account_infos.push(next_account);
     }
+
     account_infos.push(program_to_invoke_info.clone());
 
     if !added_authority {
-
         if timelock_config_account_info.key != &governance_authority {
             return Err(TimelockError::InvalidTimelockConfigKey.into());
         }
         account_infos.push(timelock_config_account_info.clone());
     }
 
-
     // For now we assume all transactions are CustomSingleSignerTransactions even though
     // this will not always be the case...we need to solve that inheritance issue later.
     let mut transaction: CustomSingleSignerTimelockTransaction =
         assert_initialized(transaction_account_info)?;
-
     assert_executing(&timelock_set)?;
 
     if transaction.executed == 1 {
@@ -83,7 +94,9 @@ pub fn process_execute(
         return Err(TimelockError::TooEarlyToExecute.into());
     }
 
-    let message: Message = match bincode::deserialize::<Message>(&transaction.instruction[0..transaction.instruction_end_index as usize + 1]) {
+    let message: Message = match bincode::deserialize::<Message>(
+        &transaction.instruction[0..transaction.instruction_end_index as usize + 1],
+    ) {
         Ok(val) => val,
         Err(_) => return Err(TimelockError::InstructionUnpackError.into()),
     };
@@ -93,11 +106,15 @@ pub fn process_execute(
             Ok(val) => val,
             Err(_) => return Err(TimelockError::InstructionUnpackError.into()),
         };
-    //msg!("Data is {:?}", instruction.data);
 
     execute(ExecuteParams {
         instruction,
-        authority_signer_seeds: &[timelock_config_account_info.key.as_ref(), &[bump_seed]],
+        authority_signer_seeds: &[
+            timelock_program_account_info.key.as_ref(),
+            timelock_config.governance_mint.as_ref(),
+            timelock_config.program.as_ref(),
+            &[bump_seed],
+        ],
         account_infos,
     })?;
 

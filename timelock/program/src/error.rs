@@ -126,6 +126,10 @@ pub enum TimelockError {
     /// Invalid Timelock config key given for a program-mint tuple
     #[error("Invalid timelock config key given for a program-mint tuple")]
     InvalidTimelockConfigKey,
+
+    /// Cannot reimburse more tokens than you put in
+    #[error("Cannot reimburse more tokens than you put in")]
+    TokenAmountAboveGivenAmount,
 }
 
 impl PrintProgramError for TimelockError {
