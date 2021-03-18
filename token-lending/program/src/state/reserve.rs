@@ -73,22 +73,29 @@ impl Reserve {
         if low_utilization || self.config.optimal_utilization_rate == 100 {
             let normalized_rate = utilization_rate.try_div(optimal_utilization_rate)?;
             let min_rate = Rate::from_percent(self.config.min_borrow_rate);
-            // @FIXME: unchecked math
-            let rate_range =
-                Rate::from_percent(self.config.optimal_borrow_rate - self.config.min_borrow_rate);
+            let rate_range = Rate::from_percent(
+                self.config
+                    .optimal_borrow_rate
+                    .checked_sub(self.config.min_borrow_rate)
+                    .ok_or(LendingError::MathOverflow)?,
+            );
 
             Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
         } else {
             let normalized_rate = utilization_rate
                 .try_sub(optimal_utilization_rate)?
-                // @FIXME: unchecked math
                 .try_div(Rate::from_percent(
-                    100 - self.config.optimal_utilization_rate,
+                    100u8
+                        .checked_sub(self.config.optimal_utilization_rate)
+                        .ok_or(LendingError::MathOverflow)?,
                 ))?;
             let min_rate = Rate::from_percent(self.config.optimal_borrow_rate);
-            // @FIXME: unchecked math
-            let rate_range =
-                Rate::from_percent(self.config.max_borrow_rate - self.config.optimal_borrow_rate);
+            let rate_range = Rate::from_percent(
+                self.config
+                    .max_borrow_rate
+                    .checked_sub(self.config.optimal_borrow_rate)
+                    .ok_or(LendingError::MathOverflow)?,
+            );
 
             Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
         }
