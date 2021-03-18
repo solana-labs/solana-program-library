@@ -1157,8 +1157,7 @@ fn process_liquidate_obligation(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let liquidation_threshold =
-        Rate::from_percent(lending_market.liquidation_threshold);
+    let liquidation_threshold = Rate::from_percent(lending_market.liquidation_threshold);
     let obligation_ltv = obligation.loan_to_value()?;
     if obligation_ltv < liquidation_threshold {
         return Err(LendingError::HealthyObligation.into());
@@ -1167,7 +1166,7 @@ fn process_liquidate_obligation(
     let LiquidateResult {
         settle_amount,
         repay_amount,
-        withdraw_amount
+        withdraw_amount,
     } = withdraw_reserve.liquidate_obligation(
         liquidity_amount,
         liquidity_amount_type,
@@ -1189,8 +1188,14 @@ fn process_liquidate_obligation(
     obligation.mark_stale();
 
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
-    ObligationCollateral::pack(obligation_collateral, &mut obligation_collateral_info.data.borrow_mut())?;
-    ObligationLiquidity::pack(obligation_liquidity, &mut obligation_liquidity_info.data.borrow_mut())?;
+    ObligationCollateral::pack(
+        obligation_collateral,
+        &mut obligation_collateral_info.data.borrow_mut(),
+    )?;
+    ObligationLiquidity::pack(
+        obligation_liquidity,
+        &mut obligation_liquidity_info.data.borrow_mut(),
+    )?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     spl_token_transfer(TokenTransferParams {
