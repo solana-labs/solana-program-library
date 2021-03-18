@@ -1147,7 +1147,7 @@ impl Processor {
 
         Ok(())
     }
-    
+
     /// Processes [SetOwner](enum.Instruction.html).
     pub fn process_set_owner(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
