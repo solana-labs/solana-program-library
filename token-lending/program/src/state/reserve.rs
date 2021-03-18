@@ -122,7 +122,7 @@ impl Reserve {
                 let (origination_fee, host_fee) = self
                     .config
                     .fees
-                    .calculate_borrow_fees(borrow_amount, false)?;
+                    .calculate_borrow_fees(borrow_amount, FeeCalculation::Exclusive)?;
                 let total_amount = borrow_amount
                     .checked_add(origination_fee)
                     .ok_or(LendingError::MathOverflow)?;
@@ -146,8 +146,10 @@ impl Reserve {
                     .convert(total_value, &quote_token_mint)?
                     .try_floor_u64()?
                     .min(self.liquidity.available_amount);
-                let (origination_fee, host_fee) =
-                    self.config.fees.calculate_borrow_fees(total_amount, true)?;
+                let (origination_fee, host_fee) = self
+                    .config
+                    .fees
+                    .calculate_borrow_fees(total_amount, FeeCalculation::Inclusive)?;
                 let borrow_amount = total_amount
                     .checked_sub(origination_fee)
                     .ok_or(LendingError::MathOverflow)?;
@@ -596,13 +598,20 @@ pub struct ReserveFees {
     pub host_fee_percentage: u8,
 }
 
+/// Calculate fees exlusive or inclusive of an amount
+pub enum FeeCalculation {
+    /// Fee added to amount: fee = rate * amount
+    Exclusive,
+    /// Fee included in amount: fee = (rate / (1 + rate)) * amount
+    Inclusive,
+}
+
 impl ReserveFees {
     /// Calculate the owner and host fees on borrow
     pub fn calculate_borrow_fees(
         &self,
         borrow_amount: u64,
-        // @FIXME: use enum
-        inclusive: bool,
+        fee_calculation: FeeCalculation,
     ) -> Result<(u64, u64), ProgramError> {
         let borrow_fee_rate = Rate::from_scaled_val(self.borrow_fee_wad);
         let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
@@ -614,13 +623,11 @@ impl ReserveFees {
                 1 // 1 token to owner, nothing else
             };
 
-            let borrow_fee_amount = if inclusive {
-                // inclusive fee = (rate / (1 + rate)) * amount
-                borrow_fee_rate
+            let borrow_fee_amount = match fee_calculation {
+                FeeCalculation::Exclusive => borrow_fee_rate.try_mul(borrow_amount)?,
+                FeeCalculation::Inclusive => borrow_fee_rate
                     .try_div(borrow_fee_rate.try_add(Rate::one())?)?
-                    .try_mul(borrow_amount)?
-            } else {
-                borrow_fee_rate.try_mul(borrow_amount)?
+                    .try_mul(borrow_amount)?,
             };
 
             let borrow_fee = borrow_fee_amount.try_round_u64()?.max(minimum_fee);
