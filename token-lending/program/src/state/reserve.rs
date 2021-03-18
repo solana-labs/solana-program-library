@@ -101,16 +101,21 @@ impl Reserve {
         }
     }
 
-    // @FIXME: refactor args
     /// Borrow liquidity up to a maximum market value
     pub fn borrow_liquidity(
         &self,
         liquidity_amount: u64,
         liquidity_amount_type: AmountType,
-        max_borrow_value: Decimal,
+        obligation: &Obligation,
+        loan_to_value_ratio: Rate,
         token_converter: impl TokenConverter,
         quote_token_mint: &Pubkey,
     ) -> Result<BorrowResult, ProgramError> {
+        let max_borrow_value = obligation
+            .collateral_value
+            .try_mul(loan_to_value_ratio)?
+            .try_sub(obligation.liquidity_value)?;
+
         match liquidity_amount_type {
             AmountType::ExactAmount => {
                 let borrow_amount = liquidity_amount;
@@ -448,7 +453,7 @@ impl ReserveLiquidity {
             .ok_or(LendingError::MathOverflow)?;
         self.borrowed_amount_wads = self
             .borrowed_amount_wads
-            .try_add(Decimal::from(borrow_amount))?;
+            .try_add(borrow_amount.into())?;
 
         Ok(())
     }

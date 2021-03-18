@@ -733,19 +733,14 @@ fn process_borrow_obligation_liquidity(
     // @TODO: is this necessary?
     obligation_liquidity.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
 
-    let lending_market_ltv = Rate::from_percent(lending_market.loan_to_value_ratio);
-    let obligation_ltv = obligation.loan_to_value()?;
-    if obligation_ltv > lending_market_ltv {
+    let loan_to_value_ratio = Rate::from_percent(lending_market.loan_to_value_ratio);
+    let loan_to_value = obligation.loan_to_value()?;
+    if loan_to_value > loan_to_value_ratio {
         return Err(LendingError::ObligationLTVAboveReserveLTV.into());
     }
-    if obligation_ltv == lending_market_ltv {
+    if loan_to_value == loan_to_value_ratio {
         return Err(LendingError::ObligationLTVCannotGoAboveReserveLTV.into());
     }
-
-    let max_borrow_value = obligation
-        .collateral_value
-        .try_mul(lending_market_ltv)?
-        .try_sub(obligation.liquidity_value)?;
 
     let token_converter = TradeSimulator::new(
         dex_market_info,
@@ -757,7 +752,6 @@ fn process_borrow_obligation_liquidity(
         &lending_market.quote_token_mint,
     )?;
 
-    // @FIXME: resume here, refactor args for consistency
     let BorrowResult {
         total_amount,
         borrow_amount,
@@ -766,7 +760,8 @@ fn process_borrow_obligation_liquidity(
     } = borrow_reserve.borrow_liquidity(
         liquidity_amount,
         liquidity_amount_type,
-        max_borrow_value,
+        &obligation,
+        loan_to_value_ratio,
         token_converter,
         &lending_market.quote_token_mint,
     )?;
