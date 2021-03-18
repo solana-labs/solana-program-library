@@ -3695,6 +3695,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-binary-oracle-pair"
+version = "0.1.0"
+dependencies = [
+ "arbitrary",
+ "arrayref",
+ "num-derive",
+ "num-traits",
+ "proptest",
+ "solana-program",
+ "solana-sdk",
+ "spl-token 3.0.1",
+ "thiserror",
+ "uint",
+]
+
+[[package]]
 name = "spl-example-cross-program-invocation"
 version = "1.0.0"
 dependencies = [

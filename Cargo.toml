@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "associated-token-account/program",
+  "binary-oracle-pair/program",
   "examples/rust/cross-program-invocation",
   "examples/rust/custom-heap",
   "examples/rust/logging",
