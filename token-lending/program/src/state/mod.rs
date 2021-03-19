@@ -56,7 +56,7 @@ pub trait TokenConverter {
 
 // Helpers
 fn pack_coption_key(src: &COption<Pubkey>, dst: &mut [u8; 36]) {
-    let (tag, body) = mut_array_refs![dst, 4, 32];
+    let (tag, body) = mut_array_refs![dst, 4, PUBKEY_LEN];
     match src {
         COption::Some(key) => {
             *tag = [1, 0, 0, 0];
@@ -69,7 +69,7 @@ fn pack_coption_key(src: &COption<Pubkey>, dst: &mut [u8; 36]) {
 }
 
 fn unpack_coption_key(src: &[u8; 36]) -> Result<COption<Pubkey>, ProgramError> {
-    let (tag, body) = array_refs![src, 4, 32];
+    let (tag, body) = array_refs![src, 4, PUBKEY_LEN];
     match *tag {
         [0, 0, 0, 0] => Ok(COption::None),
         [1, 0, 0, 0] => Ok(COption::Some(Pubkey::new_from_array(*body))),

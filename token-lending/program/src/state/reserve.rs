@@ -759,8 +759,8 @@ impl Pack for Reserve {
             collateral_mint_supply,
             __padding,
         ) = array_refs![
-            input, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 32, 36,
-            1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
+            input, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN,
+            PUBKEY_LEN, 36, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),
