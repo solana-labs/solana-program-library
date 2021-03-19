@@ -26,8 +26,8 @@ pub struct ObligationLiquidity {
     pub borrow_reserve: Pubkey,
     /// Borrow rate used for calculating interest
     pub cumulative_borrow_rate_wads: Decimal,
-    /// Amount of liquidity tokens borrowed for an obligation plus interest
-    pub borrowed_wads: Decimal,
+    /// Amount of liquidity borrowed plus interest
+    pub borrowed_amount_wads: Decimal,
     /// Market value of liquidity in quote currency
     pub value: Decimal,
 }
@@ -57,20 +57,20 @@ impl ObligationLiquidity {
             obligation,
             borrow_reserve,
             cumulative_borrow_rate_wads: Decimal::one(),
-            borrowed_wads: Decimal::zero(),
+            borrowed_amount_wads: Decimal::zero(),
             value: Decimal::zero(),
         }
     }
 
     /// Decrease borrowed liquidity
     pub fn repay(&mut self, settle_amount: Decimal) -> ProgramResult {
-        self.borrowed_wads = self.borrowed_wads.try_sub(settle_amount)?;
+        self.borrowed_amount_wads = self.borrowed_amount_wads.try_sub(settle_amount)?;
         Ok(())
     }
 
     /// Increase borrowed liquidity
     pub fn borrow(&mut self, borrow_amount: u64) -> ProgramResult {
-        self.borrowed_wads = self.borrowed_wads.try_add(borrow_amount.into())?;
+        self.borrowed_amount_wads = self.borrowed_amount_wads.try_add(borrow_amount.into())?;
         Ok(())
     }
 
@@ -84,7 +84,9 @@ impl ObligationLiquidity {
             .try_div(self.cumulative_borrow_rate_wads)?
             .try_into()?;
 
-        self.borrowed_wads = self.borrowed_wads.try_mul(compounded_interest_rate)?;
+        self.borrowed_amount_wads = self
+            .borrowed_amount_wads
+            .try_mul(compounded_interest_rate)?;
         self.cumulative_borrow_rate_wads = cumulative_borrow_rate_wads;
 
         Ok(())
@@ -97,7 +99,7 @@ impl ObligationLiquidity {
         from_token_mint: &Pubkey,
     ) -> ProgramResult {
         // @TODO: this may be slow/inaccurate for large amounts depending on dex market
-        self.value = token_converter.convert(self.borrowed_wads, from_token_mint)?;
+        self.value = token_converter.convert(self.borrowed_amount_wads, from_token_mint)?;
         Ok(())
     }
 }
@@ -136,7 +138,7 @@ impl Pack for ObligationLiquidity {
             self.cumulative_borrow_rate_wads,
             cumulative_borrow_rate_wads,
         );
-        pack_decimal(self.borrowed_wads, borrowed_wads);
+        pack_decimal(self.borrowed_amount_wads, borrowed_wads);
         pack_decimal(self.value, value);
     }
 
@@ -165,7 +167,7 @@ impl Pack for ObligationLiquidity {
             obligation: Pubkey::new_from_array(*obligation),
             borrow_reserve: Pubkey::new_from_array(*borrow_reserve),
             cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
-            borrowed_wads: unpack_decimal(borrowed_wads),
+            borrowed_amount_wads: unpack_decimal(borrowed_wads),
             value: unpack_decimal(value),
         })
     }

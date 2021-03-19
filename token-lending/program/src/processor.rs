@@ -1177,7 +1177,7 @@ fn process_withdraw_obligation_collateral(
     if obligation.last_update < obligation_collateral.last_update {
         return Err(LendingError::ObligationStale.into());
     }
-    if obligation_collateral.deposited_tokens == 0 {
+    if obligation_collateral.deposited_amount == 0 {
         return Err(LendingError::ObligationCollateralEmpty.into());
     }
 
@@ -1369,8 +1369,8 @@ fn process_refresh_obligation_liquidity(
             return Err(LendingError::InvalidAccountInput.into());
         }
     }
-    // @TODO: is this enough? borrow_reserve.cumulative_borrow_rate_wads is used below
-    //        might need to restrict to current slot
+    // @FIXME: borrow_reserve.cumulative_borrow_rate_wads is used below
+    //         need to refresh reserve or restrict to current slot
     if borrow_reserve.last_update.is_stale(clock.slot) {
         return Err(LendingError::ReserveStale.into());
     }
@@ -1570,9 +1570,9 @@ fn process_borrow_obligation_liquidity(
     )?;
 
     let BorrowLiquidityResult {
-        total_amount,
         borrow_amount,
-        origination_fee,
+        receive_amount,
+        borrow_fee,
         host_fee,
     } = borrow_reserve.borrow_liquidity(
         liquidity_amount,
@@ -1583,13 +1583,8 @@ fn process_borrow_obligation_liquidity(
         &lending_market.quote_token_mint,
     )?;
 
-    // @FIXME: fees come out of liquidity pool, but they don't get paid by borrower
-    // @FIXME: don't we need to adjust total supply?
-    borrow_reserve
-        .liquidity
-        .borrow(total_amount, borrow_amount)?;
-    // @TODO: will this need further adjustment for fees?
-    obligation_liquidity.borrow(borrow_amount);
+    borrow_reserve.liquidity.borrow(borrow_amount)?;
+    obligation_liquidity.borrow(borrow_amount)?;
     obligation_liquidity.last_update.mark_stale();
     obligation.last_update.mark_stale();
 
@@ -1600,7 +1595,7 @@ fn process_borrow_obligation_liquidity(
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
-    let mut owner_fee = origination_fee;
+    let mut owner_fee = borrow_fee;
     if let Ok(host_fee_receiver_info) = next_account_info(account_info_iter) {
         if host_fee > 0 {
             owner_fee = owner_fee
@@ -1631,7 +1626,7 @@ fn process_borrow_obligation_liquidity(
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: destination_liquidity_info.clone(),
-        amount: borrow_amount,
+        amount: receive_amount,
         authority: lending_market_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_id.clone(),
@@ -1926,7 +1921,7 @@ fn process_liquidate_obligation(
     if obligation.last_update < obligation_liquidity.last_update {
         return Err(LendingError::ObligationStale.into());
     }
-    if obligation_liquidity.borrowed_wads == Decimal::zero() {
+    if obligation_liquidity.borrowed_amount_wads == Decimal::zero() {
         return Err(LendingError::ObligationLiquidityEmpty.into());
     }
 
@@ -1963,7 +1958,7 @@ fn process_liquidate_obligation(
     if obligation.last_update < obligation_collateral.last_update {
         return Err(LendingError::ObligationStale.into());
     }
-    if obligation_collateral.deposited_tokens == 0 {
+    if obligation_collateral.deposited_amount == 0 {
         return Err(LendingError::ObligationCollateralEmpty.into());
     }
 

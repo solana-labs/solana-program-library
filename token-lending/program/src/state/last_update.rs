@@ -56,7 +56,7 @@ impl LastUpdate {
 
 impl PartialEq for LastUpdate {
     fn eq(&self, other: &Self) -> bool {
-        return &self.slot == &other.slot;
+        &self.slot == &other.slot
     }
 }
 

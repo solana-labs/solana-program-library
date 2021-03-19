@@ -83,9 +83,9 @@ impl Obligation {
 
         let withdraw_amount = match collateral_amount_type {
             AmountType::ExactAmount => {
-                let withdraw_amount = collateral_amount.min(obligation_collateral.deposited_tokens);
+                let withdraw_amount = collateral_amount.min(obligation_collateral.deposited_amount);
                 let withdraw_pct = Decimal::from(withdraw_amount)
-                    .try_div(obligation_collateral.deposited_tokens)?;
+                    .try_div(obligation_collateral.deposited_amount)?;
                 let withdraw_value = self.collateral_value.try_mul(withdraw_pct)?;
                 if withdraw_value > max_withdraw_value {
                     return Err(LendingError::ObligationCollateralWithdrawTooLarge.into());
@@ -100,7 +100,7 @@ impl Obligation {
                     .min(obligation_collateral.value);
                 let withdraw_amount = withdraw_value
                     .try_div(obligation_collateral.value)?
-                    .try_mul(obligation_collateral.deposited_tokens)?
+                    .try_mul(obligation_collateral.deposited_amount)?
                     .try_floor_u64()?;
 
                 withdraw_amount

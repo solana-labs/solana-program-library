@@ -26,8 +26,8 @@ pub struct ObligationCollateral {
     pub deposit_reserve: Pubkey,
     /// Mint address of the tokens for this obligation collateral
     pub token_mint: Pubkey,
-    /// Amount of collateral tokens deposited for an obligation
-    pub deposited_tokens: u64,
+    /// Amount of collateral deposited
+    pub deposited_amount: u64,
     /// Market value of collateral in quote currency
     pub value: Decimal,
 }
@@ -60,15 +60,15 @@ impl ObligationCollateral {
             obligation,
             deposit_reserve,
             token_mint,
-            deposited_tokens: 0,
+            deposited_amount: 0,
             value: Decimal::zero(),
         }
     }
 
     /// Increase deposited collateral
     pub fn deposit(&mut self, collateral_amount: u64) -> ProgramResult {
-        self.deposited_tokens = self
-            .deposited_tokens
+        self.deposited_amount = self
+            .deposited_amount
             .checked_add(collateral_amount)
             .ok_or(LendingError::MathOverflow)?;
         Ok(())
@@ -76,8 +76,8 @@ impl ObligationCollateral {
 
     /// Decrease deposited collateral
     pub fn withdraw(&mut self, collateral_amount: u64) -> ProgramResult {
-        self.deposited_tokens = self
-            .deposited_tokens
+        self.deposited_amount = self
+            .deposited_amount
             .checked_sub(collateral_amount)
             .ok_or(LendingError::MathOverflow)?;
         Ok(())
@@ -91,7 +91,7 @@ impl ObligationCollateral {
         liquidity_token_mint: &Pubkey,
     ) -> ProgramResult {
         let liquidity_amount = collateral_exchange_rate
-            .decimal_collateral_to_liquidity(self.deposited_tokens.into())?;
+            .decimal_collateral_to_liquidity(self.deposited_amount.into())?;
         // @TODO: this may be slow/inaccurate for large amounts depending on dex market
         self.value = token_converter.convert(liquidity_amount, liquidity_token_mint)?;
         Ok(())
@@ -103,7 +103,7 @@ impl ObligationCollateral {
         collateral_amount: u64,
         obligation_token_supply: u64,
     ) -> Result<u64, ProgramError> {
-        let withdraw_pct = Decimal::from(collateral_amount).try_div(self.deposited_tokens)?;
+        let withdraw_pct = Decimal::from(collateral_amount).try_div(self.deposited_amount)?;
         withdraw_pct
             .try_mul(obligation_token_supply)?
             .try_floor_u64()
@@ -130,7 +130,7 @@ impl Pack for ObligationCollateral {
             obligation,
             deposit_reserve,
             token_mint,
-            deposited_tokens,
+            deposited_amount,
             value,
             _padding,
         ) = mut_array_refs![output, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
@@ -141,7 +141,7 @@ impl Pack for ObligationCollateral {
         obligation.copy_from_slice(self.obligation.as_ref());
         deposit_reserve.copy_from_slice(self.deposit_reserve.as_ref());
         token_mint.copy_from_slice(self.token_mint.as_ref());
-        *deposited_tokens = self.deposited_tokens.to_le_bytes();
+        *deposited_amount = self.deposited_amount.to_le_bytes();
         pack_decimal(self.value, value);
     }
 
@@ -156,7 +156,7 @@ impl Pack for ObligationCollateral {
             obligation,
             deposit_reserve,
             token_mint,
-            deposited_tokens,
+            deposited_amount,
             value,
             _padding,
         ) = array_refs![input, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
@@ -170,7 +170,7 @@ impl Pack for ObligationCollateral {
             obligation: Pubkey::new_from_array(*obligation),
             deposit_reserve: Pubkey::new_from_array(*deposit_reserve),
             token_mint: Pubkey::new_from_array(*token_mint),
-            deposited_tokens: u64::from_le_bytes(*deposited_tokens),
+            deposited_amount: u64::from_le_bytes(*deposited_amount),
             value: unpack_decimal(value),
         })
     }
