@@ -23,7 +23,7 @@ pub struct CustomSingleSignerTimelockTransaction {
     /// version
     pub version: u8,
 
-    /// Slot at which this will execute
+    /// Slot waiting time between vote period ending and this being eligible for execution
     pub slot: u64,
 
     /// Instruction set

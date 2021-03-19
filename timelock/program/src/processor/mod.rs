@@ -103,6 +103,7 @@ pub fn process_instruction(
             timelock_type,
             voting_entry_rule,
             minimum_slot_waiting_period,
+            time_limit,
             name,
         } => {
             msg!("Instruction: Initialize Timelock Config");
@@ -114,6 +115,7 @@ pub fn process_instruction(
                 timelock_type,
                 voting_entry_rule,
                 minimum_slot_waiting_period,
+                time_limit,
                 name,
             )
         }

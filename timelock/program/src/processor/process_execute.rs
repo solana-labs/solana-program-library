@@ -2,12 +2,11 @@
 use crate::{
     error::TimelockError,
     state::timelock_config::TimelockConfig,
-    state::timelock_program::TimelockProgram,
     state::{
         custom_single_signer_timelock_transaction::{
             CustomSingleSignerTimelockTransaction, MAX_ACCOUNTS_ALLOWED,
         },
-        enums::TimelockType,
+        enums::TimelockStateStatus,
         timelock_config::TIMELOCK_CONFIG_LEN,
         timelock_set::TimelockSet,
     },
@@ -19,7 +18,6 @@ use solana_program::{
     entrypoint::ProgramResult,
     instruction::Instruction,
     message::Message,
-    msg,
     program_pack::Pack,
     pubkey::Pubkey,
     sysvar::Sysvar,
@@ -39,9 +37,17 @@ pub fn process_execute(
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let clock_info = next_account_info(account_info_iter)?;
 
-    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
     let clock = &Clock::from_account_info(clock_info)?;
+    // For now we assume all transactions are CustomSingleSignerTransactions even though
+    // this will not always be the case...we need to solve that inheritance issue later.
+    let mut transaction: CustomSingleSignerTimelockTransaction =
+        assert_initialized(transaction_account_info)?;
+    let time_elapsed = clock.slot - timelock_set.state.voting_ended_at;
+    if time_elapsed < transaction.slot {
+        return Err(TimelockError::TooEarlyToExecute.into());
+    }
 
     assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
     let seeds = &[
@@ -80,18 +86,10 @@ pub fn process_execute(
         account_infos.push(timelock_config_account_info.clone());
     }
 
-    // For now we assume all transactions are CustomSingleSignerTransactions even though
-    // this will not always be the case...we need to solve that inheritance issue later.
-    let mut transaction: CustomSingleSignerTimelockTransaction =
-        assert_initialized(transaction_account_info)?;
     assert_executing(&timelock_set)?;
 
     if transaction.executed == 1 {
         return Err(TimelockError::TimelockTransactionAlreadyExecuted.into());
-    }
-
-    if clock.slot < transaction.slot {
-        return Err(TimelockError::TooEarlyToExecute.into());
     }
 
     let message: Message = match bincode::deserialize::<Message>(
@@ -123,6 +121,17 @@ pub fn process_execute(
     CustomSingleSignerTimelockTransaction::pack(
         transaction.clone(),
         &mut transaction_account_info.data.borrow_mut(),
+    )?;
+
+    timelock_set.state.executions += 1;
+
+    if timelock_set.state.executions == timelock_set.state.used_txn_slots {
+        timelock_set.state.status = TimelockStateStatus::Completed
+    }
+
+    TimelockSet::pack(
+        timelock_set,
+        &mut timelock_set_account_info.data.borrow_mut(),
     )?;
     Ok(())
 }

@@ -14,7 +14,6 @@ use solana_program::{
     entrypoint::ProgramResult,
     pubkey::Pubkey,
 };
-use spl_token::state::{Account, Mint};
 
 /// Deposit governance tokens
 pub fn process_deposit_governance_tokens(

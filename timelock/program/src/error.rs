@@ -123,6 +123,14 @@ pub enum TimelockError {
     #[error("Invalid minimum waiting period")]
     InvalidMinimumSlotWaitingPeriod,
 
+    /// Invalid Time limit
+    #[error("Invalid time limit")]
+    InvalidTimeLimit,
+
+    /// Waiting period must be greater than or equal to minimum waiting period
+    #[error("Waiting period must be greater than or equal to minimum waiting period")]
+    MustBeAboveMinimumWaitingPeriod,
+
     /// Invalid Timelock config key given for a program-mint tuple
     #[error("Invalid timelock config key given for a program-mint tuple")]
     InvalidTimelockConfigKey,

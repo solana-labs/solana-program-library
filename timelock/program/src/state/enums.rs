@@ -46,6 +46,9 @@ pub enum TimelockStateStatus {
 
     /// Deleted
     Deleted,
+
+    /// Defeated
+    Defeated,
 }
 
 impl Default for TimelockStateStatus {
@@ -58,7 +61,7 @@ impl Default for TimelockStateStatus {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TimelockType {
     /// Meaning voters deposit their tokens from outside mint and "govern" the proposal
-    Governance
+    Governance,
 }
 
 impl Default for TimelockType {
@@ -67,14 +70,13 @@ impl Default for TimelockType {
     }
 }
 
-
 /// Rules for voters entering the timelock
 #[derive(Clone, Debug, PartialEq)]
 pub enum VotingEntryRule {
     /// Meaning voters can only enter during draft period
     DraftOnly,
     /// Meaning voters can enter at any point in time
-    Anytime
+    Anytime,
 }
 
 impl Default for VotingEntryRule {

@@ -11,11 +11,8 @@ use crate::{
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    msg,
     program_pack::Pack,
     pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
 };
 
 /// Init timelock config
@@ -27,6 +24,7 @@ pub fn process_init_timelock_config(
     timelock_type: u8,
     voting_entry_rule: u8,
     minimum_slot_waiting_period: u64,
+    time_limit: u64,
     name: [u8; CONFIG_NAME_LENGTH],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -40,6 +38,10 @@ pub fn process_init_timelock_config(
     if minimum_slot_waiting_period < 0 as u64 {
         return Err(TimelockError::InvalidMinimumSlotWaitingPeriod.into());
     }
+    if time_limit < 0 as u64 {
+        return Err(TimelockError::InvalidTimeLimit.into());
+    }
+
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     let seeds = &[
         timelock_program_account_info.key.as_ref(),
@@ -55,6 +57,7 @@ pub fn process_init_timelock_config(
     new_timelock_config.version = TIMELOCK_CONFIG_VERSION;
     new_timelock_config.name = name;
     new_timelock_config.minimum_slot_waiting_period = minimum_slot_waiting_period;
+    new_timelock_config.time_limit = time_limit;
     new_timelock_config.program = *program_to_tie_account_info.key;
     new_timelock_config.governance_mint = *governance_mint_account_info.key;
     new_timelock_config.consensus_algorithm = match consensus_algorithm {

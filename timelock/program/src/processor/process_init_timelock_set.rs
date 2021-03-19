@@ -3,27 +3,24 @@
 use crate::{
     error::TimelockError,
     state::{
-        enums::TimelockType,
         timelock_config::TimelockConfig,
         timelock_program::TimelockProgram,
         timelock_set::{TimelockSet, TIMELOCK_SET_VERSION},
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
-        assert_account_equiv, assert_cheap_mint_initialized, assert_initialized,
-        assert_rent_exempt, assert_token_program_is_correct, assert_uninitialized,
-        get_mint_from_account, spl_token_mint_to, TokenMintToParams,
+        assert_cheap_mint_initialized, assert_initialized, assert_token_program_is_correct,
+        assert_uninitialized, get_mint_from_account, spl_token_mint_to, TokenMintToParams,
     },
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    msg,
     program_pack::Pack,
     pubkey::Pubkey,
     sysvar::{rent::Rent, Sysvar},
 };
-use spl_token::state::{Account, Mint};
+use spl_token::state::Mint;
 
 /// Create a new timelock set
 pub fn process_init_timelock_set(
@@ -60,13 +57,14 @@ pub fn process_init_timelock_set(
     if governance_mint_account_info.key != &timelock_config.governance_mint {
         return Err(TimelockError::AccountsShouldMatch.into());
     }
-    msg!("TESTING - screw bartosz");
 
     let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
     new_timelock_set.version = TIMELOCK_SET_VERSION;
     new_timelock_set.state.desc_link = desc_link;
     new_timelock_set.state.name = name;
     new_timelock_set.state.total_signing_tokens_minted = 1;
+    new_timelock_set.state.executions = 0;
+    new_timelock_set.state.used_txn_slots = 0;
     new_timelock_set.config = *timelock_config_account_info.key;
 
     assert_token_program_is_correct(&timelock_program, token_program_info)?;
