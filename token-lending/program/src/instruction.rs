@@ -77,7 +77,7 @@ pub enum LendingInstruction {
     ///   12 `[]` Clock sysvar
     ///   13 `[]` Rent sysvar
     ///   14 `[]` Token program id
-    ///   15 `[optional]` Serum DEX market account
+    ///   15 `[optional]` Flux Aggregator oracle account
     ///                     Not required for quote currency reserves.
     ///                     Must match quote and base currency.
     InitReserve {
@@ -685,7 +685,7 @@ pub fn init_reserve(
     lending_market_pubkey: Pubkey,
     lending_market_owner_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
-    dex_market_pubkey: Option<Pubkey>,
+    reserve_liquidity_aggregator_pubkey: Option<Pubkey>,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
         Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
@@ -706,8 +706,8 @@ pub fn init_reserve(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
-    if let Some(dex_market_pubkey) = dex_market_pubkey {
-        accounts.push(AccountMeta::new_readonly(dex_market_pubkey, false));
+    if let Some(reserve_liquidity_aggregator_pubkey) = reserve_liquidity_aggregator_pubkey {
+        accounts.push(AccountMeta::new_readonly(reserve_liquidity_aggregator_pubkey, false));
     }
     Instruction {
         program_id,

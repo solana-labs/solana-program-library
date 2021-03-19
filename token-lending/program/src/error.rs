@@ -76,17 +76,6 @@ pub enum LendingError {
     #[error("Token burn failed")]
     TokenBurnFailed,
 
-    // 15
-    /// The reserve lending market must be the same
-    #[error("Reserve mints do not match dex market mints")]
-    DexMarketMintMismatch,
-    /// Trade simulation error
-    #[error("Trade simulation error")]
-    TradeSimulationError,
-    /// Invalid dex order book side
-    #[error("Invalid dex order book side")]
-    DexInvalidOrderBookSide,
-
     // @TODO: these are only used in one place that might be removed
     /// Input reserves cannot be the same
     #[error("Input reserves cannot be the same")]

@@ -6,6 +6,7 @@ use solana_program::{
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
 
+// @FIXME: reorder
 /// Lending market state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LendingMarket {

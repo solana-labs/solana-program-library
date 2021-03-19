@@ -1,7 +1,6 @@
 //! Program state processor
 
 use crate::{
-    dex_market::{DexMarket, TradeSimulator, BASE_MINT_OFFSET, QUOTE_MINT_OFFSET},
     error::LendingError,
     instruction::{init_lending_market, AmountType, LendingInstruction},
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, WAD},
@@ -13,6 +12,7 @@ use crate::{
         WithdrawCollateralResult, MAX_OBLIGATION_ACCOUNTS, PROGRAM_VERSION,
     },
 };
+use flux_aggregator;
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -29,6 +29,7 @@ use solana_program::{
 };
 use spl_token::state::Account;
 use std::convert::TryFrom;
+use crate::state::NewReserveLiquidityParams;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -300,24 +301,17 @@ fn process_init_reserve(
         return Err(LendingError::InvalidSigner.into());
     }
 
-    let dex_market = if reserve_liquidity_mint_info.key != &lending_market.quote_token_mint {
-        let dex_market_info = next_account_info(account_info_iter)?;
-        // TODO: check that market state is owned by real serum dex program - https://git.io/JmwJ1
-        assert_rent_exempt(rent, dex_market_info)?;
+    let (reserve_liquidity_aggregator, reserve_liquidity_median_price) = if reserve_liquidity_mint_info.key != &lending_market.quote_token_mint {
+        let aggregator_info = next_account_info(account_info_iter)?;
 
-        let dex_market_data = &dex_market_info.data.borrow();
-        let market_quote_mint = DexMarket::pubkey_at_offset(&dex_market_data, QUOTE_MINT_OFFSET);
-        if lending_market.quote_token_mint != market_quote_mint {
-            return Err(LendingError::DexMarketMintMismatch.into());
-        }
-        let market_base_mint = DexMarket::pubkey_at_offset(&dex_market_data, BASE_MINT_OFFSET);
-        if reserve_liquidity_mint_info.key != &market_base_mint {
-            return Err(LendingError::DexMarketMintMismatch.into());
-        }
+        assert_rent_exempt(rent, aggregator_info)?;
 
-        COption::Some(*dex_market_info.key)
+        // @TODO: is there a way to verify that aggregator_info uses the base and quote currency?
+        let answer = flux_aggregator::read_median(aggregator_info)?;
+
+        (COption::Some(*aggregator_info.key), answer.median)
     } else {
-        COption::None
+        (COption::None, 1)
     };
 
     let authority_signer_seeds = &[
@@ -335,12 +329,14 @@ fn process_init_reserve(
         return Err(LendingError::InvalidTokenOwner.into());
     }
 
-    let reserve_liquidity = ReserveLiquidity::new(
-        *reserve_liquidity_mint_info.key,
-        reserve_liquidity_mint.decimals,
-        *reserve_liquidity_supply_info.key,
-        *reserve_liquidity_fee_receiver_info.key,
-    );
+    let reserve_liquidity = ReserveLiquidity::new(NewReserveLiquidityParams {
+        mint_pubkey: *reserve_liquidity_mint_info.key,
+        mint_decimals: reserve_liquidity_mint.decimals,
+        supply_pubkey: *reserve_liquidity_supply_info.key,
+        fee_receiver: *reserve_liquidity_fee_receiver_info.key,
+        aggregator: reserve_liquidity_aggregator,
+        median_price: reserve_liquidity_median_price
+    });
     let reserve_collateral = ReserveCollateral::new(
         *reserve_collateral_mint_info.key,
         *reserve_collateral_supply_info.key,
@@ -350,7 +346,6 @@ fn process_init_reserve(
         lending_market: *lending_market_info.key,
         liquidity: reserve_liquidity,
         collateral: reserve_collateral,
-        dex_market,
         config,
     });
     let collateral_amount = reserve.deposit_liquidity(liquidity_amount)?;
@@ -413,6 +408,31 @@ fn process_init_reserve(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
+
+    Ok(())
+}
+
+// @TODO: support multiple reserves
+fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let reserve_info = next_account_info(accounts_iter)?;
+    let reserve_liquidity_aggregator_info = next_account_info(accounts_iter)?;
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+
+    let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    if reserve_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &reserve.liquidity.aggregator != reserve_liquidity_aggregator_info.key {
+        msg!("Invalid reserve liquidity aggregator account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let answer = flux_aggregator::read_median(reserve_liquidity_aggregator_info)?;
+
+    reserve.liquidity.median_price = answer.median;
+    reserve.accrue_interest(clock.slot)?;
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
     Ok(())
 }
@@ -599,6 +619,7 @@ fn process_redeem_reserve_collateral(
     Ok(())
 }
 
+// @FIMXE: remove, duplicated by refresh_reserve
 #[inline(never)] // avoid stack frame limit
 fn process_accrue_reserve_interest(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -905,16 +926,6 @@ fn process_refresh_obligation_collateral(
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
     }
-
-    let token_converter = TradeSimulator::new(
-        dex_market_info,
-        dex_market_orders_info,
-        memory,
-        &lending_market.quote_token_mint,
-        // @TODO: check these
-        &lending_market.quote_token_mint,
-        &deposit_reserve.liquidity.mint_pubkey,
-    )?;
 
     obligation_collateral.update_value(
         deposit_reserve.collateral_exchange_rate()?,
@@ -1397,17 +1408,7 @@ fn process_refresh_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let token_converter = TradeSimulator::new(
-        dex_market_info,
-        dex_market_orders_info,
-        memory,
-        &lending_market.quote_token_mint,
-        // @TODO: check these
-        &lending_market.quote_token_mint,
-        &borrow_reserve.liquidity.mint_pubkey,
-    )?;
-
-    obligation_liquidity.accrue_interest(borrow_reserve.cumulative_borrow_rate_wads)?;
+    obligation_liquidity.accrue_interest(borrow_reserve.liquidity.cumulative_borrow_rate_wads)?;
     obligation_liquidity.update_value(token_converter, &borrow_reserve.liquidity.mint_pubkey)?;
     obligation_liquidity.last_update.update_slot(clock.slot);
     ObligationLiquidity::pack(
@@ -1560,16 +1561,6 @@ fn process_borrow_obligation_liquidity(
     if loan_to_value == loan_to_value_ratio {
         return Err(LendingError::ObligationLTVCannotGoAboveLendingMarketLTV.into());
     }
-
-    let token_converter = TradeSimulator::new(
-        dex_market_info,
-        dex_market_orders_info,
-        memory,
-        &lending_market.quote_token_mint,
-        // @TODO: check these
-        &borrow_reserve.liquidity.mint_pubkey,
-        &lending_market.quote_token_mint,
-    )?;
 
     let BorrowLiquidityResult {
         borrow_amount,

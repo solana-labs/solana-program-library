@@ -38,19 +38,6 @@ pub const UNINITIALIZED_VERSION: u8 = 0;
 pub const SLOTS_PER_YEAR: u64 =
     DEFAULT_TICKS_PER_SECOND / DEFAULT_TICKS_PER_SLOT * SECONDS_PER_DAY * 365;
 
-/// Token converter
-pub trait TokenConverter {
-    /// Return best price for specified token
-    fn best_price(&mut self, token_mint: &Pubkey) -> Result<Decimal, ProgramError>;
-
-    /// Convert between two different tokens
-    fn convert(
-        self,
-        from_amount: Decimal,
-        from_token_mint: &Pubkey,
-    ) -> Result<Decimal, ProgramError>;
-}
-
 // Helpers
 fn pack_coption_key(src: &COption<Pubkey>, dst: &mut [u8; 4 + PUBKEY_BYTES]) {
     let (tag, body) = mut_array_refs![dst, 4, PUBKEY_BYTES];
