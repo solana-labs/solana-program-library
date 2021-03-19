@@ -176,13 +176,13 @@ fn process_init_lending_market(
     let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
+    assert_rent_exempt(rent, lending_market_info)?;
+    assert_uninitialized::<LendingMarket>(lending_market_info)?;
+
     unpack_mint(&quote_token_mint_info.data.borrow())?;
     if quote_token_mint_info.owner != token_program_id.key {
         return Err(LendingError::InvalidTokenOwner.into());
     }
-
-    assert_rent_exempt(rent, lending_market_info)?;
-    assert_uninitialized(lending_market_info)?;
 
     let mut lending_market = LendingMarket {
         version: PROGRAM_VERSION,
@@ -278,13 +278,13 @@ fn process_init_reserve(
     let rent = &Rent::from_account_info(rent_info)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
+    assert_rent_exempt(rent, reserve_info)?;
+    assert_uninitialized::<Reserve>(reserve_info)?;
+
     if reserve_liquidity_supply_info.key == source_liquidity_info.key {
         msg!("Invalid source liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-
-    assert_rent_exempt(rent, reserve_info)?;
-    assert_uninitialized::<Reserve>(reserve_info)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
