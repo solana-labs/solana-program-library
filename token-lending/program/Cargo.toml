@@ -14,6 +14,7 @@ test-dump-genesis-accounts = []
 
 [dependencies]
 arrayref = "0.3.6"
+flux-aggregator = { git = "https://github.com/octopus-network/solana-flux-aggregator", rev = "9cfaec5", features = ["no-entrypoint"] }
 num-derive = "0.3"
 num-traits = "0.2"
 serum_dex = { git = "https://github.com/project-serum/serum-dex", rev = "991a86e", features = ["no-entrypoint"] }

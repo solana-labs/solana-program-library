@@ -1044,6 +1044,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "flux-aggregator"
+version = "0.1.0"
+source = "git+https://github.com/octopus-network/solana-flux-aggregator?rev=9cfaec5#9cfaec5a2977751c6cb8ceac8ee6cffe3a1b64c0"
+dependencies = [
+ "borsh 0.7.2",
+ "borsh-derive 0.7.2",
+ "byteorder",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program",
+ "spl-token 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3915,6 +3931,7 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "base64 0.13.0",
+ "flux-aggregator",
  "log",
  "num-derive",
  "num-traits",
