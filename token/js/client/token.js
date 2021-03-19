@@ -34,6 +34,10 @@ export const ASSOCIATED_TOKEN_PROGRAM_ID: PublicKey = new PublicKey(
 const FAILED_TO_FIND_ACCOUNT = 'Failed to find account';
 const INVALID_ACCOUNT_OWNER = 'Invalid account owner';
 
+function formatDynamicErrorMessage(prefix, context) {
+  return `${prefix}: ${context}`;
+}
+
 /**
  * Unfortunately, BufferLayout.encode uses an `instanceof` check for `Buffer`
  * which fails when using `publicKey.toBuffer()` directly because the bundled `Buffer`
@@ -553,7 +557,7 @@ export class Token {
       // Assuming program derived addressing is safe, this is the only case
       // for the INVALID_ACCOUNT_OWNER in this code-path
       if (
-        err.message === FAILED_TO_FIND_ACCOUNT ||
+        err.message === FAILED_TO_FIND_ACCOUNT || // change this to regexp
         err.message === INVALID_ACCOUNT_OWNER
       ) {
         // as this isn't atomic, it's possible others can create associated
@@ -764,13 +768,13 @@ export class Token {
   ): Promise<AccountInfo> {
     const info = await this.connection.getAccountInfo(account, commitment);
     if (info === null) {
-      throw new Error(FAILED_TO_FIND_ACCOUNT);
+      throw new Error(formatDynamicErrorMessage(FAILED_TO_FIND_ACCOUNT, account.toString());
     }
     if (!info.owner.equals(this.programId)) {
-      throw new Error(INVALID_ACCOUNT_OWNER);
+      throw new Error(formatDynamicErrorMessage(INVALID_ACCOUNT_OWNER, account.toString());
     }
     if (info.data.length != AccountLayout.span) {
-      throw new Error(`Invalid account size`);
+      throw new Error(formatDynamicErrorMessage(`Invalid account size`, account.toString());
     }
 
     const data = Buffer.from(info.data);
@@ -806,10 +810,9 @@ export class Token {
     }
 
     if (!accountInfo.mint.equals(this.publicKey)) {
-      throw new Error(
-        `Invalid account mint: ${JSON.stringify(
-          accountInfo.mint,
-        )} !== ${JSON.stringify(this.publicKey)}`,
+      throw new Error(formatDynamicErrorMessage(
+        `Invalid account mint:`,
+        `${JSON.stringify(accountInfo.mint)} !== ${JSON.stringify(this.publicKey)}`,
       );
     }
     return accountInfo;
