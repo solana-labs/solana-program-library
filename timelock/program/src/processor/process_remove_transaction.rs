@@ -1,5 +1,13 @@
 //! Program state processor
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::timelock_set::TimelockSet, utils::{assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned, assert_token_program_is_correct}};
+use crate::{
+    error::TimelockError,
+    state::timelock_program::TimelockProgram,
+    state::timelock_set::TimelockSet,
+    utils::{
+        assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,
+        assert_token_program_is_correct,
+    },
+};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -22,7 +30,10 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
-    assert_account_equiv(signatory_validation_account_info, &timelock_set.signatory_validation)?;
+    assert_account_equiv(
+        signatory_validation_account_info,
+        &timelock_set.signatory_validation,
+    )?;
     assert_draft(&timelock_set)?;
     assert_is_permissioned(
         program_id,
@@ -49,6 +60,8 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
     if !found {
         return Err(TimelockError::TimelockTransactionNotFoundError.into());
     }
+
+    timelock_set.state.used_txn_slots -= 1;
 
     TimelockSet::pack(
         timelock_set.clone(),

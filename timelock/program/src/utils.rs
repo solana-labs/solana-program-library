@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     error::TimelockError,
     state::{
@@ -217,6 +215,17 @@ pub fn assert_cheap_mint_initialized(account_info: &AccountInfo) -> Result<(), P
         return Err(TimelockError::Uninitialized.into());
     }
     Ok(())
+}
+
+/// cheap method to just pull supply off a mint
+#[inline(always)]
+pub fn pull_mint_supply(account_info: &AccountInfo) -> Result<u64, ProgramError> {
+    // In token program, 36, 8, 1, 1 is the layout, where the first 8 is supply u64.
+    // so we start at 36.
+    let data = account_info.try_borrow_data().unwrap();
+    let bytes = array_ref![data, 36, 8];
+
+    Ok(u64::from_le_bytes(*bytes))
 }
 
 /// Cheap method to just grab mint Pubkey off token account, instead of deserializing entire thing

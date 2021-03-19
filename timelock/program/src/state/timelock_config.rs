@@ -30,6 +30,8 @@ pub struct TimelockConfig {
     pub governance_mint: Pubkey,
     /// Program ID that is tied to this config (optional)
     pub program: Pubkey,
+    /// Time limit in slots for proposal to be open to voting
+    pub time_limit: u64,
     /// Optional name
     pub name: [u8; CONFIG_NAME_LENGTH],
 }
@@ -42,9 +44,9 @@ impl IsInitialized for TimelockConfig {
 }
 
 /// Len of timelock config
-pub const TIMELOCK_CONFIG_LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + CONFIG_NAME_LENGTH;
+pub const TIMELOCK_CONFIG_LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH;
 impl Pack for TimelockConfig {
-    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + CONFIG_NAME_LENGTH;
+    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_CONFIG_LEN];
@@ -59,14 +61,16 @@ impl Pack for TimelockConfig {
             minimum_slot_waiting_period,
             governance_mint,
             program,
+            time_limit,
             name,
-        ) = array_refs![input, 1, 1, 1, 1, 1, 8, 32, 32, CONFIG_NAME_LENGTH];
+        ) = array_refs![input, 1, 1, 1, 1, 1, 8, 32, 32, 8, CONFIG_NAME_LENGTH];
         let version = u8::from_le_bytes(*version);
         let consensus_algorithm = u8::from_le_bytes(*consensus_algorithm);
         let execution_type = u8::from_le_bytes(*execution_type);
         let timelock_type = u8::from_le_bytes(*timelock_type);
         let voting_entry_rule = u8::from_le_bytes(*voting_entry_rule);
         let minimum_slot_waiting_period = u64::from_le_bytes(*minimum_slot_waiting_period);
+        let time_limit = u64::from_le_bytes(*time_limit);
 
         match version {
             TIMELOCK_CONFIG_VERSION | UNINITIALIZED_VERSION => Ok(Self {
@@ -94,6 +98,7 @@ impl Pack for TimelockConfig {
                 minimum_slot_waiting_period,
                 governance_mint: Pubkey::new_from_array(*governance_mint),
                 program: Pubkey::new_from_array(*program),
+                time_limit,
                 name: *name,
             }),
             _ => Err(ProgramError::InvalidAccountData),
@@ -112,8 +117,9 @@ impl Pack for TimelockConfig {
             minimum_slot_waiting_period,
             governance_mint,
             program,
+            time_limit,
             name,
-        ) = mut_array_refs![output, 1, 1, 1, 1, 1, 8, 32, 32, CONFIG_NAME_LENGTH];
+        ) = mut_array_refs![output, 1, 1, 1, 1, 1, 8, 32, 32, 8, CONFIG_NAME_LENGTH];
         *version = self.version.to_le_bytes();
         *consensus_algorithm = match self.consensus_algorithm {
             ConsensusAlgorithm::Majority => 0 as u8,
@@ -138,6 +144,7 @@ impl Pack for TimelockConfig {
         *minimum_slot_waiting_period = self.minimum_slot_waiting_period.to_le_bytes();
         governance_mint.copy_from_slice(self.governance_mint.as_ref());
         program.copy_from_slice(self.program.as_ref());
+        *time_limit = self.time_limit.to_le_bytes();
         name.copy_from_slice(self.name.as_ref());
     }
 

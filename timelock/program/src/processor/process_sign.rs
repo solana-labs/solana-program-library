@@ -1,10 +1,20 @@
 //! Program state processor
-use crate::{error::TimelockError, state::timelock_program::TimelockProgram, state::{enums::TimelockStateStatus, timelock_set::TimelockSet}, utils::{TokenBurnParams, assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct, spl_token_burn}};
+use crate::{
+    error::TimelockError,
+    state::timelock_program::TimelockProgram,
+    state::{enums::TimelockStateStatus, timelock_set::TimelockSet},
+    utils::{
+        assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
+        spl_token_burn, TokenBurnParams,
+    },
+};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::Clock,
     entrypoint::ProgramResult,
     program_pack::Pack,
     pubkey::Pubkey,
+    sysvar::Sysvar,
 };
 use spl_token::state::Mint;
 
@@ -18,6 +28,9 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
+    let clock_info = next_account_info(account_info_iter)?;
+
+    let clock = Clock::from_account_info(clock_info)?;
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     let sig_mint: Mint = assert_initialized(signatory_mint_info)?;
@@ -46,6 +59,7 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     // assuming sig_mint object is now out of date, sub 1
     if sig_mint.supply - 1 == 0 {
         timelock_set.state.status = TimelockStateStatus::Voting;
+        timelock_set.state.voting_began_at = clock.slot;
 
         TimelockSet::pack(
             timelock_set.clone(),

@@ -2,7 +2,6 @@ use std::{convert::TryInto, mem::size_of};
 
 use solana_program::{
     instruction::{AccountMeta, Instruction},
-    msg,
     program_error::ProgramError,
     pubkey::Pubkey,
     sysvar,
@@ -12,10 +11,7 @@ use crate::{
     error::TimelockError,
     state::{
         custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT,
-        enums::ConsensusAlgorithm,
-        enums::ExecutionType,
-        enums::{TimelockType, VotingEntryRule},
-        timelock_config::{TimelockConfig, CONFIG_NAME_LENGTH},
+        timelock_config::CONFIG_NAME_LENGTH,
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
 };
@@ -113,10 +109,11 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Timelock set account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Transfer authority
-    ///   5. `[]` Timelock mint authority
-    ///   6. `[]` Timelock program account.
-    ///   7. `[]` Token program account.
+    ///   4. `[]` Timelock Config account.
+    ///   5. `[]` Transfer authority
+    ///   6. `[]` Timelock mint authority
+    ///   7. `[]` Timelock program account.
+    ///   8. `[]` Token program account.
     AddCustomSingleSignerTransaction {
         /// Slot during which this will run
         slot: u64,
@@ -180,6 +177,7 @@ pub enum TimelockInstruction {
     ///   4. `[]` Timelock mint authority
     ///   5. `[]` Timelock program account pub key.
     ///   6. `[]` Token program account.
+    ///   7. `[]` Clock sysvar.
     Sign,
 
     /// [Requires Voting tokens]
@@ -199,6 +197,7 @@ pub enum TimelockInstruction {
     ///   10. `[]` Timelock program mint authority
     ///   11. `[]` Timelock program account pub key.
     ///   12. `[]` Token program account.
+    ///   13. `[]` Clock sysvar.
     Vote {
         /// How many voting tokens to burn yes
         yes_voting_token_amount: u64,
@@ -283,6 +282,8 @@ pub enum TimelockInstruction {
         voting_entry_rule: u8,
         /// Minimum slot time-distance from creation of proposal for an instruction to be placed
         minimum_slot_waiting_period: u64,
+        /// Time limit in slots for proposal to be open to voting
+        time_limit: u64,
         /// Optional name
         name: [u8; CONFIG_NAME_LENGTH],
     },
@@ -357,6 +358,7 @@ impl TimelockInstruction {
                 let (timelock_type, rest) = Self::unpack_u8(rest)?;
                 let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
                 let (minimum_slot_waiting_period, rest) = Self::unpack_u64(rest)?;
+                let (time_limit, rest) = Self::unpack_u64(rest)?;
                 let mut name: [u8; CONFIG_NAME_LENGTH] = [0; CONFIG_NAME_LENGTH];
                 for n in 0..(CONFIG_NAME_LENGTH - 1) {
                     name[n] = rest[n];
@@ -368,6 +370,7 @@ impl TimelockInstruction {
                     voting_entry_rule,
                     minimum_slot_waiting_period,
                     name,
+                    time_limit,
                 }
             }
             11 => Self::Ping,
@@ -501,6 +504,7 @@ impl TimelockInstruction {
                 timelock_type,
                 voting_entry_rule,
                 minimum_slot_waiting_period,
+                time_limit,
                 name,
             } => {
                 buf.push(10);
@@ -509,6 +513,7 @@ impl TimelockInstruction {
                 buf.extend_from_slice(&timelock_type.to_le_bytes());
                 buf.extend_from_slice(&voting_entry_rule.to_le_bytes());
                 buf.extend_from_slice(&minimum_slot_waiting_period.to_le_bytes());
+                buf.extend_from_slice(&time_limit.to_le_bytes());
                 buf.extend_from_slice(name);
             }
             Self::Ping => buf.push(11),

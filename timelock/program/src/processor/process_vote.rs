@@ -1,23 +1,22 @@
 //! Program state processor
 use crate::{
     error::TimelockError,
-    state::timelock_program::TimelockProgram,
     state::{
         enums::TimelockStateStatus, timelock_config::TimelockConfig, timelock_set::TimelockSet,
     },
     utils::{
-        assert_account_equiv, assert_initialized, assert_token_program_is_correct, assert_voting,
-        spl_token_burn, spl_token_mint_to, TokenBurnParams, TokenMintToParams,
+        assert_initialized, assert_voting, pull_mint_supply, spl_token_burn, spl_token_mint_to,
+        TokenBurnParams, TokenMintToParams,
     },
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::Clock,
     entrypoint::ProgramResult,
-    msg,
     program_pack::Pack,
     pubkey::Pubkey,
+    sysvar::Sysvar,
 };
-use spl_token::state::Mint;
 
 /// Vote on the timelock
 pub fn process_vote(
@@ -40,7 +39,9 @@ pub fn process_vote(
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
+    let clock_info = next_account_info(account_info_iter)?;
 
+    let clock = Clock::from_account_info(clock_info)?;
     let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
     // Using assert_account_equiv not workable here due to cost of stack size on this method.
@@ -68,13 +69,14 @@ pub fn process_vote(
     }
     let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
 
-    let governance_mint: Mint = assert_initialized(governance_mint_account_info)?;
-    let yes_mint: Mint = assert_initialized(yes_voting_mint_account_info)?;
+    // We dont initialize the mints because it's too expensive on the stack size.
+    let governance_mint_supply: u64 = pull_mint_supply(governance_mint_account_info)?;
+    let yes_mint_supply: u64 = pull_mint_supply(yes_voting_mint_account_info)?;
 
-    let total_ever_existed = governance_mint.supply;
+    let total_ever_existed = governance_mint_supply;
 
     let now_remaining_in_no_column =
-        governance_mint.supply - yes_voting_token_amount - yes_mint.supply;
+        governance_mint_supply - yes_voting_token_amount - yes_mint_supply;
 
     // The act of voting proves you are able to vote. No need to assert permission here.
     spl_token_burn(TokenBurnParams {
@@ -116,8 +118,15 @@ pub fn process_vote(
         crate::state::enums::ConsensusAlgorithm::FullConsensus => now_remaining_in_no_column == 0,
     };
 
-    if tipped {
-        timelock_set.state.status = TimelockStateStatus::Executing;
+    let too_long = clock.slot - timelock_set.state.voting_began_at > timelock_config.time_limit;
+
+    if tipped || too_long {
+        if tipped {
+            timelock_set.state.status = TimelockStateStatus::Executing;
+        } else {
+            timelock_set.state.status = TimelockStateStatus::Defeated;
+        }
+        timelock_set.state.voting_ended_at = clock.slot;
 
         TimelockSet::pack(
             timelock_set.clone(),

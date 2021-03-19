@@ -1,8 +1,6 @@
-use super::{UNINITIALIZED_VERSION};
-use super::{enums::TimelockStateStatus};
-use super::{
-    timelock_state::{TimelockState, DESC_SIZE, NAME_SIZE},
-};
+use super::enums::TimelockStateStatus;
+use super::timelock_state::{TimelockState, DESC_SIZE, NAME_SIZE};
+use super::UNINITIALIZED_VERSION;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     program_error::ProgramError,
@@ -58,7 +56,6 @@ pub struct TimelockSet {
 
     /// Timelock state
     pub state: TimelockState,
-
 }
 
 impl Sealed for TimelockSet {}
@@ -68,9 +65,9 @@ impl IsInitialized for TimelockSet {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 554 + DESC_SIZE + NAME_SIZE;
+const TIMELOCK_SET_LEN: usize = 540 + DESC_SIZE + NAME_SIZE;
 impl Pack for TimelockSet {
-    const LEN: usize = 554 + DESC_SIZE + NAME_SIZE;
+    const LEN: usize = 540 + DESC_SIZE + NAME_SIZE;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_SET_LEN];
@@ -94,18 +91,25 @@ impl Pack for TimelockSet {
             total_signing_tokens_minted,
             desc_link,
             name,
+            voting_ended_at,
+            voting_began_at,
+            executions,
+            used_txn_slots,
             timelock_txn_1,
             timelock_txn_2,
             timelock_txn_3,
             timelock_txn_4,
-            timelock_txn_5,
         ) = array_refs![
-            input, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1,  8, DESC_SIZE, NAME_SIZE,
-            32, 32, 32, 32, 32
+            input, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1, 8, DESC_SIZE, NAME_SIZE,
+            8, 8, 1, 1, 32, 32, 32, 32
         ];
         let version = u8::from_le_bytes(*version);
         let total_signing_tokens_minted = u64::from_le_bytes(*total_signing_tokens_minted);
         let timelock_state_status = u8::from_le_bytes(*timelock_state_status);
+        let voting_ended_at = u64::from_le_bytes(*voting_ended_at);
+        let voting_began_at = u64::from_le_bytes(*voting_began_at);
+        let executions = u8::from_le_bytes(*executions);
+        let used_txn_slots = u8::from_le_bytes(*used_txn_slots);
         match version {
             TIMELOCK_SET_VERSION | UNINITIALIZED_VERSION => Ok(Self {
                 version,
@@ -136,12 +140,14 @@ impl Pack for TimelockSet {
                         Pubkey::new_from_array(*timelock_txn_2),
                         Pubkey::new_from_array(*timelock_txn_3),
                         Pubkey::new_from_array(*timelock_txn_4),
-                        Pubkey::new_from_array(*timelock_txn_5),
                     ],
                     desc_link: *desc_link,
                     name: *name,
+                    voting_ended_at,
+                    voting_began_at,
+                    executions,
+                    used_txn_slots,
                 },
-                
             }),
             _ => Err(ProgramError::InvalidAccountData),
         }
@@ -168,14 +174,17 @@ impl Pack for TimelockSet {
             total_signing_tokens_minted,
             desc_link,
             name,
+            voting_ended_at,
+            voting_began_at,
+            executions,
+            used_txn_slots,
             timelock_txn_1,
             timelock_txn_2,
             timelock_txn_3,
             timelock_txn_4,
-            timelock_txn_5,
         ) = mut_array_refs![
-            output, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,32, 1, 8, DESC_SIZE, NAME_SIZE, 32, 32, 32, 32, 32
-            
+            output, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1, 8, DESC_SIZE, NAME_SIZE,
+            8, 8, 1, 1, 32, 32, 32, 32
         ];
         *version = self.version.to_le_bytes();
         signatory_mint.copy_from_slice(self.signatory_mint.as_ref());
@@ -196,17 +205,20 @@ impl Pack for TimelockSet {
             TimelockStateStatus::Executing => 2 as u8,
             TimelockStateStatus::Completed => 3 as u8,
             TimelockStateStatus::Deleted => 4 as u8,
+            TimelockStateStatus::Defeated => 5 as u8,
         }
         .to_le_bytes();
         *total_signing_tokens_minted = self.state.total_signing_tokens_minted.to_le_bytes();
         desc_link.copy_from_slice(self.state.desc_link.as_ref());
         name.copy_from_slice(self.state.name.as_ref());
+        *voting_ended_at = self.state.voting_ended_at.to_le_bytes();
+        *voting_began_at = self.state.voting_began_at.to_le_bytes();
+        *executions = self.state.executions.to_le_bytes();
+        *used_txn_slots = self.state.used_txn_slots.to_le_bytes();
         timelock_txn_1.copy_from_slice(self.state.timelock_transactions[0].as_ref());
         timelock_txn_2.copy_from_slice(self.state.timelock_transactions[1].as_ref());
         timelock_txn_3.copy_from_slice(self.state.timelock_transactions[2].as_ref());
         timelock_txn_4.copy_from_slice(self.state.timelock_transactions[3].as_ref());
-        timelock_txn_5.copy_from_slice(self.state.timelock_transactions[4].as_ref());
-       
     }
 
     fn get_packed_len() -> usize {

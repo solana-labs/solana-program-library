@@ -3,12 +3,10 @@
 use crate::{
     error::TimelockError,
     state::timelock_program::TimelockProgram,
-    state::{
-        enums::TimelockStateStatus, timelock_config::TimelockConfig, timelock_set::TimelockSet,
-    },
+    state::{enums::TimelockStateStatus, timelock_set::TimelockSet},
     utils::{
-        assert_account_equiv, assert_initialized, assert_token_program_is_correct, spl_token_burn,
-        spl_token_transfer, TokenBurnParams, TokenTransferParams,
+        assert_initialized, assert_token_program_is_correct, spl_token_burn, spl_token_transfer,
+        TokenBurnParams, TokenTransferParams,
     },
 };
 use solana_program::{
@@ -92,7 +90,6 @@ pub fn process_withdraw_voting_tokens(
     };
 
     let mut voting_fuel_tank = voting_token_amount;
-
     if voting_token_amount > total_possible {
         return Err(TimelockError::TokenAmountAboveGivenAmount.into());
     }
@@ -109,7 +106,7 @@ pub fn process_withdraw_voting_tokens(
         if amount_to_burn > 0 {
             spl_token_burn(TokenBurnParams {
                 mint: voting_mint_account_info.clone(),
-                amount: voting_fuel_tank,
+                amount: amount_to_burn,
                 authority: transfer_authority_info.clone(),
                 authority_signer_seeds: authority_signer_seeds,
                 token_program: token_program_account_info.clone(),
@@ -128,6 +125,7 @@ pub fn process_withdraw_voting_tokens(
                 amount_to_transfer = voting_fuel_tank;
                 voting_fuel_tank = 0;
             }
+
             if amount_to_transfer > 0 {
                 spl_token_transfer(TokenTransferParams {
                     source: yes_voting_account_info.clone(),
