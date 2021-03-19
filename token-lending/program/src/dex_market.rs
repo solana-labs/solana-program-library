@@ -93,7 +93,7 @@ impl<'a> TokenConverter for TradeSimulator<'a> {
         } else {
             input_token.try_div(best_order_price)
         }?;
-        Ok(output_token_price.try_mul(self.dex_market.get_lots(currency.opposite()))?)
+        output_token_price.try_mul(self.dex_market.get_lots(currency.opposite()))
     }
 
     fn convert(
@@ -165,7 +165,7 @@ impl<'a> TradeSimulator<'a> {
 
         let input_quantity: Decimal = quantity.try_div(self.dex_market.get_lots(currency))?;
         let output_quantity = self.exchange_with_order_book(input_quantity, currency)?;
-        Ok(output_quantity.try_mul(self.dex_market.get_lots(currency.opposite()))?)
+        output_quantity.try_mul(self.dex_market.get_lots(currency.opposite()))
     }
 
     /// Exchange tokens by filling orders

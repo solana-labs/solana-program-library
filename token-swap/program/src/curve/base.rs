@@ -247,8 +247,7 @@ mod tests {
         let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
         assert_eq!(swap_curve, unpacked);
 
-        let mut packed = vec![];
-        packed.push(curve_type as u8);
+        let mut packed = vec![curve_type as u8];
         packed.extend_from_slice(&[0u8; 32]); // 32 bytes reserved for curve
         let unpacked = SwapCurve::unpack_from_slice(&packed).unwrap();
         assert_eq!(swap_curve, unpacked);

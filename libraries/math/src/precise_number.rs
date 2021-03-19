@@ -75,14 +75,10 @@ impl PreciseNumber {
 
     /// Convert a precise number back to u128
     pub fn to_imprecise(&self) -> Option<u128> {
-        match self
-            .value
+        self.value
             .checked_add(Self::rounding_correction())?
             .checked_div(one())
-        {
-            Some(v) => Some(v.as_u128()),
-            None => None,
-        }
+            .map(|v| v.as_u128())
     }
 
     /// Checks that two PreciseNumbers are equal within some tolerance

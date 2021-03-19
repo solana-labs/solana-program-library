@@ -1147,51 +1147,6 @@ impl Processor {
 
         Ok(())
     }
-    /// Processes [SetStakeAuthority](enum.Instruction.html).
-    pub fn process_set_staking_auth(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let owner_info = next_account_info(account_info_iter)?;
-        let withdraw_info = next_account_info(account_info_iter)?;
-        let stake_info = next_account_info(account_info_iter)?;
-        let staker_info = next_account_info(account_info_iter)?;
-        // (Reserved)
-        let reserved = next_account_info(account_info_iter)?;
-        // Stake program id
-        let stake_program_info = next_account_info(account_info_iter)?;
-
-        // Check program ids
-        if *stake_program_info.key != stake::id() {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
-        let stake_pool = StakePool::deserialize(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_initialized() {
-            return Err(StakePoolError::InvalidState.into());
-        }
-
-        // Check authority account
-        stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
-
-        // Check owner validity and signature
-        stake_pool.check_owner(owner_info)?;
-
-        Self::stake_authorize(
-            stake_pool_info.key,
-            stake_info.clone(),
-            withdraw_info.clone(),
-            Self::AUTHORITY_WITHDRAW,
-            stake_pool.withdraw_bump_seed,
-            staker_info.key,
-            stake::StakeAuthorize::Staker,
-            reserved.clone(),
-            stake_program_info.clone(),
-        )?;
-        Ok(())
-    }
 
     /// Processes [SetOwner](enum.Instruction.html).
     pub fn process_set_owner(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
@@ -1256,10 +1211,6 @@ impl Processor {
             StakePoolInstruction::Withdraw(amount) => {
                 msg!("Instruction: Withdraw");
                 Self::process_withdraw(program_id, amount, accounts)
-            }
-            StakePoolInstruction::SetStakingAuthority => {
-                msg!("Instruction: SetStakingAuthority");
-                Self::process_set_staking_auth(program_id, accounts)
             }
             StakePoolInstruction::SetOwner => {
                 msg!("Instruction: SetOwner");

@@ -6,7 +6,7 @@ use helpers::*;
 use solana_program::pubkey::Pubkey;
 
 use solana_program::hash::Hash;
-use solana_program_test::BanksClient;
+use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError,
     signature::{Keypair, Signer},

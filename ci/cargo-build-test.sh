@@ -16,6 +16,7 @@ make -C examples/c
 
 # Build/test all BPF programs
 cargo +"$rust_stable" test-bpf -- --nocapture
+rm -rf target/debug # Prevents running out of space on github action runners
 
 # Build/test all host crates
 cargo +"$rust_stable" build
