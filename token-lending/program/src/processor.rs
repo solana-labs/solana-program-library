@@ -782,6 +782,7 @@ fn process_init_obligation_collateral(
         msg!("Invalid obligation lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    // @FIXME: unchecked math
     if obligation.collateral.len() + obligation.liquidity.len() + 1 > MAX_OBLIGATION_ACCOUNTS {
         return Err(LendingError::ObligationAccountLimit.into());
     }
@@ -1300,6 +1301,7 @@ fn process_init_obligation_liquidity(
         msg!("Invalid obligation lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    // @FIXME: unchecked math
     if obligation.collateral.len() + obligation.liquidity.len() + 1 > MAX_OBLIGATION_ACCOUNTS {
         return Err(LendingError::ObligationAccountLimit.into());
     }
