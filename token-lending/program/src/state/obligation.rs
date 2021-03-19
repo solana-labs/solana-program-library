@@ -10,7 +10,7 @@ use solana_program::{
     entrypoint::ProgramResult,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
+    pubkey::{Pubkey, PUBKEY_BYTES},
 };
 use std::convert::{TryFrom, TryInto};
 
@@ -156,13 +156,13 @@ impl Pack for Obligation {
             1,
             8,
             1,
-            PUBKEY_LEN,
+            PUBKEY_BYTES,
             16,
             16,
             1,
             1,
-            PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS,
-            PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS
+            PUBKEY_BYTES * MAX_OBLIGATION_ACCOUNTS,
+            PUBKEY_BYTES * MAX_OBLIGATION_ACCOUNTS
         ];
 
         *version = self.version.to_le_bytes();
@@ -178,16 +178,16 @@ impl Pack for Obligation {
 
         let mut offset = 0;
         for pubkey in self.collateral.iter() {
-            let account = array_mut_ref![accounts_flat, offset, PUBKEY_LEN];
+            let account = array_mut_ref![accounts_flat, offset, PUBKEY_BYTES];
             account.copy_from_slice(pubkey.as_ref());
             // @FIXME: unchecked math
-            offset += PUBKEY_LEN;
+            offset += PUBKEY_BYTES;
         }
         for pubkey in self.liquidity.iter() {
-            let account = array_mut_ref![accounts_flat, offset, PUBKEY_LEN];
+            let account = array_mut_ref![accounts_flat, offset, PUBKEY_BYTES];
             account.copy_from_slice(pubkey.as_ref());
             // @FIXME: unchecked math
-            offset += PUBKEY_LEN;
+            offset += PUBKEY_BYTES;
         }
     }
 
@@ -210,13 +210,13 @@ impl Pack for Obligation {
             1,
             8,
             1,
-            PUBKEY_LEN,
+            PUBKEY_BYTES,
             16,
             16,
             1,
             1,
-            PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS,
-            PUBKEY_LEN * MAX_OBLIGATION_ACCOUNTS
+            PUBKEY_BYTES * MAX_OBLIGATION_ACCOUNTS,
+            PUBKEY_BYTES * MAX_OBLIGATION_ACCOUNTS
         ];
 
         let collateral_len = u8::from_le_bytes(*num_collateral);
@@ -230,7 +230,7 @@ impl Pack for Obligation {
 
         let mut offset = 0;
         // @TODO: is there a more idiomatic/performant way to iterate this?
-        for account in accounts_flat.chunks(PUBKEY_LEN) {
+        for account in accounts_flat.chunks(PUBKEY_BYTES) {
             if offset < collateral_len {
                 collateral.push(Pubkey::new(account));
             } else if offset < total_len {

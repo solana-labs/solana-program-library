@@ -9,7 +9,7 @@ use num_traits::{FromPrimitive, ToPrimitive};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
-    pubkey::Pubkey,
+    pubkey::{Pubkey, PUBKEY_BYTES},
     sysvar,
 };
 use std::{convert::TryInto, mem::size_of};
@@ -502,8 +502,8 @@ impl LendingInstruction {
     }
 
     fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
-        if input.len() >= 32 {
-            let (key, rest) = input.split_at(32);
+        if input.len() >= PUBKEY_BYTES {
+            let (key, rest) = input.split_at(PUBKEY_BYTES);
             let pk = Pubkey::new(key);
             Ok((pk, rest))
         } else {
@@ -688,7 +688,7 @@ pub fn init_reserve(
     dex_market_pubkey: Option<Pubkey>,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     let mut accounts = vec![
         AccountMeta::new(source_liquidity_pubkey, false),
         AccountMeta::new(destination_collateral_pubkey, false),
@@ -734,7 +734,7 @@ pub fn deposit_reserve_liquidity(
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -767,7 +767,7 @@ pub fn redeem_reserve_collateral(
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -862,7 +862,7 @@ pub fn init_obligation_collateral(
     lending_market_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -894,7 +894,7 @@ pub fn refresh_obligation_collateral(
     memory_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -928,7 +928,7 @@ pub fn deposit_obligation_collateral(
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -965,7 +965,7 @@ pub fn withdraw_obligation_collateral(
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -1026,7 +1026,7 @@ pub fn refresh_obligation_liquidity(
     memory_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -1063,7 +1063,7 @@ pub fn borrow_obligation_liquidity(
     host_fee_receiver_pubkey: Option<Pubkey>,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     let mut accounts = vec![
         AccountMeta::new(source_liquidity_pubkey, false),
         AccountMeta::new(destination_liquidity_pubkey, false),
@@ -1108,7 +1108,7 @@ pub fn repay_obligation_liquidity(
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     Instruction {
         program_id,
         accounts: vec![
@@ -1150,7 +1150,7 @@ pub fn liquidate_obligation(
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
+        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]], &program_id);
     Instruction {
         program_id,
         accounts: vec![

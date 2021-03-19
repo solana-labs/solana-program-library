@@ -20,7 +20,7 @@ use solana_program::{
     clock::{DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT, SECONDS_PER_DAY},
     program_error::ProgramError,
     program_option::COption,
-    pubkey::Pubkey,
+    pubkey::{Pubkey, PUBKEY_BYTES},
 };
 
 /// Collateral tokens are initially valued at a ratio of 5:1 (collateral:liquidity)
@@ -38,9 +38,6 @@ pub const UNINITIALIZED_VERSION: u8 = 0;
 pub const SLOTS_PER_YEAR: u64 =
     DEFAULT_TICKS_PER_SECOND / DEFAULT_TICKS_PER_SLOT * SECONDS_PER_DAY * 365;
 
-/// Pubkey byte length
-pub const PUBKEY_LEN: usize = 32;
-
 /// Token converter
 pub trait TokenConverter {
     /// Return best price for specified token
@@ -55,8 +52,8 @@ pub trait TokenConverter {
 }
 
 // Helpers
-fn pack_coption_key(src: &COption<Pubkey>, dst: &mut [u8; 36]) {
-    let (tag, body) = mut_array_refs![dst, 4, PUBKEY_LEN];
+fn pack_coption_key(src: &COption<Pubkey>, dst: &mut [u8; 4 + PUBKEY_BYTES]) {
+    let (tag, body) = mut_array_refs![dst, 4, PUBKEY_BYTES];
     match src {
         COption::Some(key) => {
             *tag = [1, 0, 0, 0];
@@ -68,8 +65,8 @@ fn pack_coption_key(src: &COption<Pubkey>, dst: &mut [u8; 36]) {
     }
 }
 
-fn unpack_coption_key(src: &[u8; 36]) -> Result<COption<Pubkey>, ProgramError> {
-    let (tag, body) = array_refs![src, 4, PUBKEY_LEN];
+fn unpack_coption_key(src: &[u8; 4 + PUBKEY_BYTES]) -> Result<COption<Pubkey>, ProgramError> {
+    let (tag, body) = array_refs![src, 4, PUBKEY_BYTES];
     match *tag {
         [0, 0, 0, 0] => Ok(COption::None),
         [1, 0, 0, 0] => Ok(COption::Some(Pubkey::new_from_array(*body))),

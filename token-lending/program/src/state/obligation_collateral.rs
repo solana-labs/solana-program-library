@@ -9,7 +9,7 @@ use solana_program::{
     entrypoint::ProgramResult,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
+    pubkey::{Pubkey, PUBKEY_BYTES},
 };
 use std::convert::TryInto;
 
@@ -133,7 +133,7 @@ impl Pack for ObligationCollateral {
             deposited_amount,
             value,
             _padding,
-        ) = mut_array_refs![output, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
+        ) = mut_array_refs![output, 1, 8, 1, PUBKEY_BYTES, PUBKEY_BYTES, PUBKEY_BYTES, 8, 16, 128];
 
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update.slot.to_le_bytes();
@@ -159,7 +159,7 @@ impl Pack for ObligationCollateral {
             deposited_amount,
             value,
             _padding,
-        ) = array_refs![input, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 8, 16, 128];
+        ) = array_refs![input, 1, 8, 1, PUBKEY_BYTES, PUBKEY_BYTES, PUBKEY_BYTES, 8, 16, 128];
 
         Ok(Self {
             version: u8::from_le_bytes(*version),

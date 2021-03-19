@@ -7,7 +7,11 @@ use crate::{
 };
 use arrayref::{array_refs, mut_array_refs};
 use serum_dex::critbit::{Slab, SlabView};
-use solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey};
+use solana_program::{
+    account_info::AccountInfo,
+    program_error::ProgramError,
+    pubkey::{Pubkey, PUBKEY_BYTES},
+};
 use std::{cell::RefMut, convert::TryFrom};
 
 /// Side of the dex market order book
@@ -322,7 +326,7 @@ impl DexMarket {
     /// Get pubkey located at offset
     pub fn pubkey_at_offset(data: &[u8], offset: usize) -> Pubkey {
         let count_start = 5 + offset * 8;
-        let count_end = count_start + 32;
+        let count_end = count_start + PUBKEY_BYTES;
         Pubkey::new(&data[count_start..count_end])
     }
 }

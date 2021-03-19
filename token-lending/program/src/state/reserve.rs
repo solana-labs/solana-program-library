@@ -11,7 +11,7 @@ use solana_program::{
     program_error::ProgramError,
     program_option::COption,
     program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
+    pubkey::{Pubkey, PUBKEY_BYTES},
 };
 use std::convert::{TryFrom, TryInto};
 
@@ -694,8 +694,8 @@ impl Pack for Reserve {
             collateral_mint_supply,
             _padding,
         ) = mut_array_refs![
-            output, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN,
-            PUBKEY_LEN, 36, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
+            output, 1, 8, 1, PUBKEY_BYTES, PUBKEY_BYTES, 1, PUBKEY_BYTES, PUBKEY_BYTES, PUBKEY_BYTES,
+            PUBKEY_BYTES, 4 + PUBKEY_BYTES, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update.slot.to_le_bytes();
@@ -759,8 +759,8 @@ impl Pack for Reserve {
             collateral_mint_supply,
             __padding,
         ) = array_refs![
-            input, 1, 8, 1, PUBKEY_LEN, PUBKEY_LEN, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN,
-            PUBKEY_LEN, 36, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
+            input, 1, 8, 1, PUBKEY_BYTES, PUBKEY_BYTES, 1, PUBKEY_BYTES, PUBKEY_BYTES, PUBKEY_BYTES,
+            PUBKEY_BYTES, 4 + PUBKEY_BYTES, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 300
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),

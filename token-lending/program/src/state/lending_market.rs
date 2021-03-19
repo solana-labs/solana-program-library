@@ -3,7 +3,7 @@ use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
+    pubkey::{Pubkey, PUBKEY_BYTES},
 };
 
 /// Lending market state
@@ -51,7 +51,7 @@ impl Pack for LendingMarket {
             loan_to_value_ratio,
             liquidation_threshold,
             _padding,
-        ) = array_refs![input, 1, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 1, 1, 60];
+        ) = array_refs![input, 1, 1, PUBKEY_BYTES, PUBKEY_BYTES, PUBKEY_BYTES, 1, 1, 60];
         let version = u8::from_le_bytes(*version);
         if version > PROGRAM_VERSION {
             return Err(ProgramError::InvalidAccountData);
@@ -80,7 +80,7 @@ impl Pack for LendingMarket {
             loan_to_value_ratio,
             liquidation_threshold,
             _padding,
-        ) = mut_array_refs![output, 1, 1, PUBKEY_LEN, PUBKEY_LEN, PUBKEY_LEN, 1, 1, 60];
+        ) = mut_array_refs![output, 1, 1, PUBKEY_BYTES, PUBKEY_BYTES, PUBKEY_BYTES, 1, 1, 60];
         *version = self.version.to_le_bytes();
         *bump_seed = self.bump_seed.to_le_bytes();
         owner.copy_from_slice(self.owner.as_ref());
