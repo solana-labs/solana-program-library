@@ -1011,6 +1011,7 @@ pub fn flash_loan_start(
 }
 
 /// Creates a `FlashLoanEnd` instruction
+#[allow(clippy::too_many_arguments)]
 pub fn flash_loan_end(
     program_id: Pubkey,
     reserve_pubkey: Pubkey,
