@@ -9,7 +9,6 @@ use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
     instruction::Instruction,
-    msg,
     program::invoke_signed,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
@@ -47,16 +46,6 @@ pub fn assert_is_permissioned<'a>(
     transfer_authority_info: &AccountInfo<'a>,
     timelock_authority_info: &AccountInfo<'a>,
 ) -> ProgramResult {
-    msg!(
-        "Args {:?} {:?} {:?} {:?} {:?} {:?} {:?}",
-        program_id,
-        perm_account_info.key,
-        perm_validation_account_info.key,
-        timelock_program_info.key,
-        token_program_info.key,
-        transfer_authority_info.key,
-        timelock_authority_info.key
-    );
     let _perm_account: Account = assert_initialized(perm_account_info)?;
     let _perm_validation: Account = assert_initialized(perm_validation_account_info)?;
     let (authority_key, bump_seed) =

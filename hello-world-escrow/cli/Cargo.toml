@@ -1,0 +1,17 @@
+[package]
+name = "spl-hello-world-client"
+version = "0.1.0"
+description = "Solana Program Library Timelock Client"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[dependencies]
+solana-client = "1.5.6"
+solana-program = "1.5.6"
+solana-sdk = "1.5.6"
+bincode = "1.3.2"
+base64 = "0.13"
+spl-hello-world-escrow = { path = "../program", features = [ "no-entrypoint" ] }
+spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }

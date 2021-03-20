@@ -47,11 +47,11 @@ const KEYPAIR_PATH: &str = "/Users/jprince/.config/solana/id.json";
 solana_program::declare_id!("BPFLoaderUpgradeab1e11111111111111111111111");
 const BUFFER_PATH: &str = "/Users/jprince/.config/solana/bpf_place.json";
 const DEPLOY_PATH: &str =
-    "/Users/jprince/Documents/other/solana-program-library/target/deploy/spl_timelock.so";
-const TIMELOCK_PROGRAM_ID: &str = "6FyMHpXABKVSt4DmqUYLMgWChJV8HFXJuF6CsgucbZ3G";
-const TIMELOCK_PROGRAM_ACCOUNT_ID: &str = "FNsF5k1dGz8mrq7unFeeNx8LqFn9bhKg6n6N5DLgQmfb";
-const MINT_ID: &str = ""; 
-const PROGRAM_ID: &str = "";
+    "/Users/jprince/Documents/other/solana-program-library/target/deploy/spl_hello_world_escrow.so";
+const TIMELOCK_PROGRAM_ID: &str = "7SH5hE7uBecnfMpGjdPyJupgBhFHaXcNMCEgJbmoVV7t";
+const TIMELOCK_PROGRAM_ACCOUNT_ID: &str = "8KkpkoDAQaQqjnkCtNXAyk2A8GLmsmWPjBLK7jmahhxZ";
+const MINT_ID: &str = "GiGdHFswGhwMsgiHJzARNNiTFXgzLgZYMWYukpSnAUKZ";
+const PROGRAM_ID: &str = "Fi21py7sZRjjj6TC2MyRTdB3a4apyFe89nQBQLGKcBBs";
 // -------- UPDATE END ---------
 
 pub fn main() {
@@ -67,7 +67,11 @@ pub fn main() {
     let mint_id = Pubkey::from_str(MINT_ID).unwrap();
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(
-        &[timelock_program_account_key.as_ref(), mint_id.as_ref(), program_id.as_ref()],
+        &[
+            timelock_program_account_key.as_ref(),
+            mint_id.as_ref(),
+            program_id.as_ref(),
+        ],
         &timelock_program_id,
     );
     let final_message = do_process_program_partial_upgrade(
