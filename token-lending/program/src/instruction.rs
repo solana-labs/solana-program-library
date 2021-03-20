@@ -311,8 +311,11 @@ pub enum LendingInstruction {
     ///   2. `[]` Lending market account.
     ///   3. `[]` Derived lending market authority.
     ///   4. `[writable]` Flash loan fees receiver, must match init reserve.
-    ///   5. `[]` Token program id.
-    ///   6. `[writable, optional]` Host fee receiver.
+    ///   5. `[writable]` Source liquidity token account,
+    ///                   the $authority can transfer the amount that is need to repay the flash loan.
+    ///   6  `[signer]` User transfer authority ($authority).
+    ///   7. `[]` Token program id.
+    ///   8. `[writable, optional]` Host fee receiver.
     FlashLoanEnd,
 }
 
@@ -1014,6 +1017,8 @@ pub fn flash_loan_end(
     reserve_liquidity_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     flash_loan_fees_receiver: Pubkey,
+    user_liquidity_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
     deposit_reserve_collateral_host_pubkey: Option<Pubkey>,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) =
@@ -1025,6 +1030,8 @@ pub fn flash_loan_end(
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
         AccountMeta::new(flash_loan_fees_receiver, false),
+        AccountMeta::new(user_liquidity_pubkey, false),
+        AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
     if let Some(deposit_reserve_collateral_host_pubkey) = deposit_reserve_collateral_host_pubkey {

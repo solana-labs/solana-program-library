@@ -7,7 +7,7 @@ use solana_program_test::*;
 use solana_sdk::signature::Signer;
 use solana_sdk::transaction::Transaction;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
-use spl_token::instruction::transfer;
+use spl_token::instruction::approve;
 use spl_token_lending::instruction::{flash_loan_end, flash_loan_start};
 use spl_token_lending::processor::process_instruction;
 
@@ -23,6 +23,7 @@ async fn test_flash_loan() {
     test.set_bpf_compute_max_units(118_000);
 
     let user_accounts_owner = Keypair::new();
+    let user_transfer_authority = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
@@ -66,10 +67,10 @@ async fn test_flash_loan() {
                 lending_market.pubkey,
                 spl_token::id(),
             ),
-            transfer(
+            approve(
                 &spl_token::id(),
                 &usdc_reserve.user_liquidity_account,
-                &usdc_reserve.liquidity_supply,
+                &user_transfer_authority.pubkey(),
                 &user_accounts_owner.pubkey(),
                 &[],
                 flash_loan_amount + flash_loan_fee,
@@ -81,13 +82,18 @@ async fn test_flash_loan() {
                 usdc_reserve.liquidity_supply,
                 lending_market.pubkey,
                 usdc_reserve.flash_loan_fees_receiver,
+                usdc_reserve.user_liquidity_account,
+                user_transfer_authority.pubkey(),
                 Some(usdc_reserve.liquidity_host),
             ),
         ],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    transaction.sign(
+        &[&payer, &user_accounts_owner, &user_transfer_authority],
+        recent_blockhash,
+    );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
     let fee_balance =

@@ -477,7 +477,6 @@ impl ReserveLiquidity {
         }
         self.borrowed_amount_wads.try_div(total_supply)?.try_into()
     }
-
 }
 
 /// Reserve collateral
@@ -617,11 +616,7 @@ impl ReserveFees {
         self.calculate_fees(collateral_amount, self.flash_loan_fee_wad)
     }
 
-    fn calculate_fees(
-        &self,
-        token_amount: u64,
-        fee_wad: u64,
-    ) -> Result<(u64, u64), ProgramError> {
+    fn calculate_fees(&self, token_amount: u64, fee_wad: u64) -> Result<(u64, u64), ProgramError> {
         let total_fee_rate = Rate::from_scaled_val(fee_wad);
         let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
         if total_fee_rate > Rate::zero() && token_amount > 0 {
