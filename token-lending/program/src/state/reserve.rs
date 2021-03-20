@@ -333,6 +333,33 @@ impl Reserve {
             .try_mul(compounded_interest_rate)?;
         Ok(compounded_interest_rate)
     }
+
+    /// Record the amount that is in the flash loan.
+    pub fn start_flash_loan(&mut self, borrowed_liquidity_amount: u64) -> ProgramResult {
+        if borrowed_liquidity_amount > self.liquidity.available_amount {
+            return Err(LendingError::InsufficientLiquidity.into());
+        }
+        let collateral_exchange_rate = self.collateral_exchange_rate()?;
+        let borrowed_collateral_amount =
+            collateral_exchange_rate.liquidity_to_collateral(borrowed_liquidity_amount)?;
+
+        self.liquidity.available_amount -= borrowed_liquidity_amount;
+        self.collateral.mint_total_supply -= borrowed_collateral_amount;
+        self.liquidity.flash_loaned_amount += borrowed_liquidity_amount;
+        Ok(())
+    }
+
+    /// Return the amount that is in the flash loan.
+    pub fn end_flash_loan(&mut self) -> ProgramResult {
+        let collateral_exchange_rate = self.collateral_exchange_rate()?;
+        let collateral_amount =
+            collateral_exchange_rate.liquidity_to_collateral(self.liquidity.flash_loaned_amount)?;
+
+        self.liquidity.available_amount += self.liquidity.flash_loaned_amount;
+        self.collateral.mint_total_supply += collateral_amount;
+        self.liquidity.flash_loaned_amount = 0;
+        Ok(())
+    }
 }
 
 /// Create new reserve
@@ -451,23 +478,6 @@ impl ReserveLiquidity {
         self.borrowed_amount_wads.try_div(total_supply)?.try_into()
     }
 
-    /// Record the amount that is in the flash loan.
-    pub fn flash_loan_start(&mut self, borrow_amount: u64) -> ProgramResult {
-        if borrow_amount > self.available_amount {
-            return Err(LendingError::InsufficientLiquidity.into());
-        }
-
-        self.available_amount -= borrow_amount;
-        self.flash_loaned_amount += borrow_amount;
-        Ok(())
-    }
-
-    /// Return the amount that is in the flash loan.
-    pub fn flash_loan_end(&mut self) -> ProgramResult {
-        self.available_amount += self.flash_loaned_amount;
-        self.flash_loaned_amount = 0;
-        Ok(())
-    }
 }
 
 /// Reserve collateral
@@ -609,12 +619,12 @@ impl ReserveFees {
 
     fn calculate_fees(
         &self,
-        collateral_amount: u64,
+        token_amount: u64,
         fee_wad: u64,
     ) -> Result<(u64, u64), ProgramError> {
-        let borrow_fee_rate = Rate::from_scaled_val(fee_wad);
+        let total_fee_rate = Rate::from_scaled_val(fee_wad);
         let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
-        if borrow_fee_rate > Rate::zero() && collateral_amount > 0 {
+        if total_fee_rate > Rate::zero() && token_amount > 0 {
             let need_to_assess_host_fee = host_fee_rate > Rate::zero();
             let minimum_fee = if need_to_assess_host_fee {
                 2 // 1 token to owner, 1 to host
@@ -622,21 +632,21 @@ impl ReserveFees {
                 1 // 1 token to owner, nothing else
             };
 
-            let borrow_fee = borrow_fee_rate
-                .try_mul(collateral_amount)?
+            let total_fee = total_fee_rate
+                .try_mul(token_amount)?
                 .try_round_u64()?
                 .max(minimum_fee);
 
             let host_fee = if need_to_assess_host_fee {
-                host_fee_rate.try_mul(borrow_fee)?.try_round_u64()?.max(1)
+                host_fee_rate.try_mul(total_fee)?.try_round_u64()?.max(1)
             } else {
                 0
             };
 
-            if borrow_fee >= collateral_amount {
+            if total_fee >= token_amount {
                 Err(LendingError::BorrowTooSmall.into())
             } else {
-                Ok((borrow_fee, host_fee))
+                Ok((total_fee, host_fee))
             }
         } else {
             Ok((0, 0))

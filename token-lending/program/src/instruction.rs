@@ -123,7 +123,7 @@ pub enum LendingInstruction {
     ///   4. `[writable]` Reserve liquidity supply SPL Token account.
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
-    ///   7. `[]` User transfer authority ($authority).
+    ///   7. `[signer]` User transfer authority ($authority).
     ///   8. `[]` Token program id
     WithdrawReserveLiquidity {
         /// Amount of collateral to deposit in exchange for liquidity

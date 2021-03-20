@@ -121,8 +121,6 @@ fn process_init_lending_market(
     }
 
     assert_rent_exempt(rent, lending_market_info)?;
-    let _bump_seed =
-        Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
     let mut new_lending_market: LendingMarket = assert_uninitialized(lending_market_info)?;
     let bump_seed = Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
     new_lending_market.version = PROGRAM_VERSION;
@@ -302,7 +300,7 @@ fn process_init_reserve(
     spl_token_init_account(TokenInitializeAccountParams {
         account: reserve_collateral_supply_info.clone(),
         mint: reserve_collateral_mint_info.clone(),
-        owner: user_transfer_authority_info.clone(),
+        owner: lending_market_authority_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_id.clone(),
     })?;
@@ -1616,16 +1614,6 @@ fn process_flash_loan_start(
         return Err(LendingError::InvalidFlashLoanEnd.into());
     }
 
-    if flash_loan_end_instruction.accounts[1].pubkey != *reserve_liquidity_account_info.key {
-        msg!("Different reserve liquidity supply between flash loan start and flash loan end");
-        return Err(LendingError::InvalidFlashLoanEnd.into());
-    }
-
-    if flash_loan_end_instruction.accounts[2].pubkey != *lending_market_account_info.key {
-        msg!("Different lending market between flash loan start and flash loan end");
-        return Err(LendingError::InvalidFlashLoanEnd.into());
-    }
-
     let authority_signer_seeds = &[
         lending_market_account_info.key.as_ref(),
         &[lending_market.bump_seed],
@@ -1637,7 +1625,7 @@ fn process_flash_loan_start(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    reserve.liquidity.flash_loan_start(liquidity_amount)?;
+    reserve.start_flash_loan(liquidity_amount)?;
     Reserve::pack(reserve, &mut reserve_account_info.data.borrow_mut())?;
 
     spl_token_transfer(TokenTransferParams {
@@ -1673,6 +1661,16 @@ fn process_flash_loan_end(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
         return Err(LendingError::InvalidAccountInput.into());
     }
 
+    if &reserve.liquidity.supply_pubkey != reserve_liquidity_supply.key {
+        msg!("Invalid reserve liquidity supply account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    if &reserve.liquidity.flash_loan_fee_receiver != flash_loan_fees_account_info.key {
+        msg!("Invalid flash loan fees receiver account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
     let liquidity_supply_token_account =
         Account::unpack_from_slice(&reserve_liquidity_supply.try_borrow_data()?)?;
     let (origination_fee, host_fee) = reserve
@@ -1680,13 +1678,12 @@ fn process_flash_loan_end(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
         .fees
         .calculate_flash_loan_fees(reserve.liquidity.flash_loaned_amount)?;
 
-    if reserve.liquidity.available_amount + reserve.liquidity.flash_loaned_amount + origination_fee
-        > liquidity_supply_token_account.amount
-    {
+    let total_liquidity_expected : u64 = reserve.liquidity.available_amount + reserve.liquidity.flash_loaned_amount + origination_fee;
+    if total_liquidity_expected > liquidity_supply_token_account.amount {
         msg!(
             "Insufficient returned liquidity for reserve after flash loan: {}, it requires: {}",
             liquidity_supply_token_account.amount,
-            reserve.liquidity.available_amount + reserve.liquidity.flash_loaned_amount
+            total_liquidity_expected
         );
         return Err(LendingError::InsufficientLiquidity.into());
     }
@@ -1705,7 +1702,7 @@ fn process_flash_loan_end(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
     let mut owner_fee = origination_fee;
     if let Ok(host_fee_recipient) = next_account_info(account_info_iter) {
         if host_fee > 0 {
-            owner_fee -= host_fee;
+            owner_fee = owner_fee.checked_sub(host_fee).ok_or(LendingError::MathOverflow)?;
             spl_token_transfer(TokenTransferParams {
                 source: reserve_liquidity_supply.clone(),
                 destination: host_fee_recipient.clone(),
@@ -1729,7 +1726,7 @@ fn process_flash_loan_end(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
         })?;
     }
 
-    reserve.liquidity.flash_loan_end()?;
+    reserve.end_flash_loan()?;
     Reserve::pack(reserve, &mut reserve_account_info.data.borrow_mut())?;
 
     Ok(())
