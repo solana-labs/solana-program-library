@@ -26,7 +26,6 @@ cd "$(dirname "$0")"
 
 source "$solana_dir"/scripts/read-cargo-variable.sh
 solana_ver=$(readCargoVariable version "$solana_dir"/sdk/Cargo.toml)
-tokio_ver=$(sed -n "s#^tokio.*version *= *\"\([^\"]*\).*#\1#p" "$solana_dir"/program-test/Cargo.toml)
 
 echo "Patching in $solana_ver from $solana_dir"
 echo
@@ -57,4 +56,4 @@ PATCH
   fi
 done
 
-./update-solana-dependencies.sh "$solana_ver" "$tokio_ver"
+./update-solana-dependencies.sh "$solana_ver"
