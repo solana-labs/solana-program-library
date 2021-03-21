@@ -1574,11 +1574,6 @@ fn process_flash_loan_start(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    if reserve.liquidity.available_amount < liquidity_amount {
-        msg!("Not enough liquidity for flash loan");
-        return Err(LendingError::InsufficientLiquidity.into());
-    }
-
     let lending_market = LendingMarket::unpack(&lending_market_account_info.data.borrow())?;
     if token_program_id.key != &lending_market.token_program_id {
         return Err(LendingError::InvalidTokenProgram.into());
