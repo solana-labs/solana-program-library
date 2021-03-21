@@ -12,7 +12,7 @@ use spl_token_lending::instruction::{flash_loan_end, flash_loan_start};
 use spl_token_lending::processor::process_instruction;
 
 #[tokio::test]
-async fn test_flash_loan() {
+async fn test_flash_loan_success() {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
@@ -51,9 +51,10 @@ async fn test_flash_loan() {
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
 
-    let borrow_amount =
+    let current_token_amount =
         get_token_balance(&mut banks_client, usdc_reserve.user_liquidity_account).await;
-    assert_eq!(borrow_amount, flash_loan_fee);
+    // There should be enough token at the beginning to pay back the flash loan fee.
+    assert_eq!(current_token_amount, flash_loan_fee);
 
     let mut transaction = Transaction::new_with_payer(
         &[
