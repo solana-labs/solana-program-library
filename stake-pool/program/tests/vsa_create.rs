@@ -6,6 +6,7 @@ use crate::solana_program::pubkey::Pubkey;
 use helpers::*;
 
 use bincode::deserialize;
+use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError,
     signature::{Keypair, Signer},

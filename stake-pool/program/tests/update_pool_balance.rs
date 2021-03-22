@@ -3,6 +3,7 @@
 mod helpers;
 
 use helpers::*;
+use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError, signature::Keypair, signature::Signer, transaction::Transaction,
     transaction::TransactionError, transport::TransportError,

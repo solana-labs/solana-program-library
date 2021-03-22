@@ -84,6 +84,10 @@ pub fn process_instruction(
             msg!("Instruction: Withdraw Obligation Collateral");
             process_withdraw_obligation_collateral(program_id, collateral_amount, accounts)
         }
+        LendingInstruction::SetLendingMarketOwner { new_owner } => {
+            msg!("Instruction: Set Lending Market Owner");
+            process_set_lending_market_owner(program_id, new_owner, accounts)
+        }
     }
 }
 
@@ -1493,6 +1497,33 @@ fn process_withdraw_obligation_collateral(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
+
+    Ok(())
+}
+
+#[inline(never)] // avoid stack frame limit
+fn process_set_lending_market_owner(
+    program_id: &Pubkey,
+    new_owner: Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_owner_info = next_account_info(account_info_iter)?;
+
+    let mut lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.owner != lending_market_owner_info.key {
+        return Err(LendingError::InvalidMarketOwner.into());
+    }
+    if !lending_market_owner_info.is_signer {
+        return Err(LendingError::InvalidSigner.into());
+    }
+
+    lending_market.owner = new_owner;
+    LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
 
     Ok(())
 }

@@ -2,7 +2,7 @@ use solana_bpf_loader_program::serialization::serialize_parameters;
 use solana_program::{
     bpf_loader, entrypoint::SUCCESS, program_error::ProgramError, pubkey::Pubkey,
 };
-use solana_sdk::{account::Account, keyed_account::KeyedAccount};
+use solana_sdk::{account::AccountSharedData, keyed_account::KeyedAccount};
 use spl_shared_memory::entrypoint;
 
 // TODO: Rework `assert_instruction_count` test to use solana-program-test, avoiding the need to
@@ -89,7 +89,7 @@ fn test_share_data() {
     const NUM_TO_SHARE: usize = 500;
     let program_id = Pubkey::new(&[0; 32]);
     let shared_key = Pubkey::new_unique();
-    let shared_account = Account::new_ref(u64::MAX, NUM_TO_SHARE * 2, &program_id);
+    let shared_account = AccountSharedData::new_ref(u64::MAX, NUM_TO_SHARE * 2, &program_id);
 
     // success
     let content = vec![42; NUM_TO_SHARE];

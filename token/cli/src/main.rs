@@ -11,7 +11,8 @@ use solana_clap_utils::{
     fee_payer::fee_payer_arg,
     input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, signer_of, value_of},
     input_validators::{
-        is_amount, is_amount_or_all, is_parsable, is_url, is_valid_pubkey, is_valid_signer,
+        is_amount, is_amount_or_all, is_parsable, is_url_or_moniker, is_valid_pubkey,
+        is_valid_signer, normalize_to_url_if_moniker,
     },
     keypair::{pubkey_from_path, signer_from_path, DefaultSigner},
     nonce::*,
@@ -28,6 +29,7 @@ use solana_sdk::{
     instruction::Instruction,
     message::Message,
     native_token::*,
+    program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
@@ -42,6 +44,9 @@ use spl_token::{
     state::{Account, Mint, Multisig},
 };
 use std::{collections::HashMap, process::exit, str::FromStr, sync::Arc};
+
+mod sort;
+use sort::sort_and_parse_token_accounts;
 
 static WARNING: Emoji = Emoji("⚠️", "!");
 
@@ -361,6 +366,7 @@ fn command_authorize(
     account: Pubkey,
     authority_type: AuthorityType,
     new_owner: Option<Pubkey>,
+    force_authorize: bool,
 ) -> CommandResult {
     let auth_str = match authority_type {
         AuthorityType::MintTokens => "mint authority",
@@ -368,11 +374,59 @@ fn command_authorize(
         AuthorityType::AccountOwner => "owner",
         AuthorityType::CloseAccount => "close authority",
     };
+    let target_account = config.rpc_client.get_account(&account)?;
+    let previous_authority = if let Ok(mint) = Mint::unpack(&target_account.data) {
+        match authority_type {
+            AuthorityType::AccountOwner | AuthorityType::CloseAccount => Err(format!(
+                "Authority type `{}` not supported for SPL Token mints",
+                auth_str
+            )),
+            AuthorityType::MintTokens => Ok(mint.mint_authority),
+            AuthorityType::FreezeAccount => Ok(mint.freeze_authority),
+        }
+    } else if let Ok(token_account) = Account::unpack(&target_account.data) {
+        let check_associated_token_account = || -> Result<(), Error> {
+            let maybe_associated_token_account =
+                get_associated_token_address(&config.owner, &token_account.mint);
+            if account == maybe_associated_token_account
+                && !force_authorize
+                && Some(config.owner) != new_owner
+            {
+                Err(
+                    format!("Error: attempting to change the `{}` of an associated token account of `--owner`", auth_str)
+                        .into(),
+                )
+            } else {
+                Ok(())
+            }
+        };
+
+        match authority_type {
+            AuthorityType::MintTokens | AuthorityType::FreezeAccount => Err(format!(
+                "Authority type `{}` not supported for SPL Token accounts",
+                auth_str
+            )),
+            AuthorityType::AccountOwner => {
+                check_associated_token_account()?;
+                Ok(COption::Some(token_account.owner))
+            }
+            AuthorityType::CloseAccount => {
+                check_associated_token_account()?;
+                Ok(COption::Some(
+                    token_account.close_authority.unwrap_or(token_account.owner),
+                ))
+            }
+        }
+    } else {
+        Err("Unsupported account data format".to_string())
+    }?;
     println!(
         "Updating {}\n  Current {}: {}\n  New {}: {}",
         account,
         auth_str,
-        config.owner,
+        previous_authority
+            .map(|pubkey| pubkey.to_string())
+            .unwrap_or_else(|| "disabled".to_string()),
         auth_str,
         new_owner
             .map(|pubkey| pubkey.to_string())
@@ -702,6 +756,7 @@ fn command_revoke(config: &Config, account: Pubkey, delegate: Option<Pubkey>) ->
             .rpc_client
             .get_token_account(&account)?
             .ok_or_else(|| format!("Could not find token account {}", account))?;
+
         if let Some(string) = source_account.delegate {
             Some(Pubkey::from_str(&string)?)
         } else {
@@ -798,54 +853,111 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
         println!("None");
     }
 
-    if token.is_some() {
-        println!("Account                                      Balance");
-        println!("----------------------------------------------------");
-    } else {
-        println!("Account                                      Token                                        Balance");
-        println!("-------------------------------------------------------------------------------------------------");
-    }
-    for keyed_account in accounts {
-        let address = keyed_account.pubkey;
+    let (mint_accounts, unsupported_accounts, max_len_balance, includes_aux) =
+        sort_and_parse_token_accounts(&config.owner, accounts);
+    let aux_len = if includes_aux { 10 } else { 0 };
+    let mut gc_alert = false;
 
-        if let UiAccountData::Json(parsed_account) = keyed_account.account.data {
-            if parsed_account.program != "spl-token" {
-                println!(
-                    "{:<44} Unsupported account program: {}",
-                    address, parsed_account.program
-                );
-            } else {
-                match serde_json::from_value(parsed_account.parsed) {
-                    Ok(TokenAccountType::Account(ui_token_account)) => {
-                        let maybe_frozen = if let UiAccountState::Frozen = ui_token_account.state {
-                            format!(" {}  Frozen", WARNING)
-                        } else {
-                            "".to_string()
-                        };
-                        if token.is_some() {
-                            println!(
-                                "{:<44} {}{}",
-                                address,
-                                ui_token_account.token_amount.real_number_string_trimmed(),
-                                maybe_frozen
-                            )
-                        } else {
-                            println!(
-                                "{:<44} {:<44} {}{}",
-                                address,
-                                ui_token_account.mint,
-                                ui_token_account.token_amount.real_number_string_trimmed(),
-                                maybe_frozen
-                            )
-                        }
-                    }
-                    Ok(_) => println!("{:<44} Unsupported token account", address),
-                    Err(err) => println!("{:<44} Account parse failure: {}", address, err),
-                }
-            }
+    if config.verbose {
+        if token.is_some() {
+            println!("{:<44}  {:<2$}", "Account", "Balance", max_len_balance);
+            println!("-------------------------------------------------------------");
         } else {
-            println!("{:<44} Unsupported account data format", address);
+            println!(
+                "{:<44}  {:<44}  {:<3$}",
+                "Token", "Account", "Balance", max_len_balance
+            );
+            println!("----------------------------------------------------------------------------------------------------------");
         }
+    } else if token.is_some() {
+        println!("{:<1$}", "Balance", max_len_balance);
+        println!("-------------");
+    } else {
+        println!("{:<44}  {:<2$}", "Token", "Balance", max_len_balance);
+        println!("---------------------------------------------------------------");
+    }
+    for (_mint, accounts_list) in mint_accounts.iter() {
+        let mut aux_counter = 1;
+        for account in accounts_list {
+            let maybe_aux = if !account.is_associated {
+                gc_alert = true;
+                let message = format!("  (Aux-{}*)", aux_counter);
+                aux_counter += 1;
+                message
+            } else {
+                "".to_string()
+            };
+            let maybe_frozen = if let UiAccountState::Frozen = account.ui_token_account.state {
+                format!(" {}  Frozen", WARNING)
+            } else {
+                "".to_string()
+            };
+            if config.verbose {
+                if token.is_some() {
+                    println!(
+                        "{:<44}  {:<4$}{:<5$}{}",
+                        account.address,
+                        account
+                            .ui_token_account
+                            .token_amount
+                            .real_number_string_trimmed(),
+                        maybe_aux,
+                        maybe_frozen,
+                        max_len_balance,
+                        aux_len,
+                    )
+                } else {
+                    println!(
+                        "{:<44}  {:<44}  {:<5$}{:<6$}{}",
+                        account.ui_token_account.mint,
+                        account.address,
+                        account
+                            .ui_token_account
+                            .token_amount
+                            .real_number_string_trimmed(),
+                        maybe_aux,
+                        maybe_frozen,
+                        max_len_balance,
+                        aux_len,
+                    )
+                }
+            } else if token.is_some() {
+                println!(
+                    "{:<3$}{:<4$}{}",
+                    account
+                        .ui_token_account
+                        .token_amount
+                        .real_number_string_trimmed(),
+                    maybe_aux,
+                    maybe_frozen,
+                    max_len_balance,
+                    aux_len,
+                )
+            } else {
+                println!(
+                    "{:<44}  {:<4$}{:<5$}{}",
+                    account.ui_token_account.mint,
+                    account
+                        .ui_token_account
+                        .token_amount
+                        .real_number_string_trimmed(),
+                    maybe_aux,
+                    maybe_frozen,
+                    max_len_balance,
+                    aux_len,
+                )
+            }
+        }
+    }
+    for unsupported_account in unsupported_accounts {
+        println!(
+            "{:<44}  {}",
+            unsupported_account.address, unsupported_account.err
+        );
+    }
+    if gc_alert {
+        println!();
+        println!("* Please run `spl-token gc` to clean up Aux accounts");
     }
     Ok(None)
 }
@@ -1081,20 +1193,25 @@ fn main() {
         })
         .arg(
             Arg::with_name("verbose")
-                .long("verbose")
                 .short("v")
+                .long("verbose")
                 .takes_value(false)
                 .global(true)
                 .help("Show additional information"),
         )
         .arg(
             Arg::with_name("json_rpc_url")
+                .short("u")
                 .long("url")
-                .value_name("URL")
+                .value_name("URL_OR_MONIKER")
                 .takes_value(true)
                 .global(true)
-                .validator(is_url)
-                .help("JSON RPC URL for the cluster.  Default from the configuration file."),
+                .validator(is_url_or_moniker)
+                .help(
+                    "URL for Solana's JSON RPC or moniker (or their first letter): \
+                       [mainnet-beta, testnet, devnet, localhost] \
+                    Default from the configuration file."
+                ),
         )
         .arg(
             Arg::with_name("owner")
@@ -1252,6 +1369,12 @@ fn main() {
                         .takes_value(false)
                         .conflicts_with("new_authority")
                         .help("Disable mint, freeze, or close functionality by setting authority to None.")
+                )
+                .arg(
+                    Arg::with_name("force")
+                        .long("force")
+                        .hidden(true)
+                        .help("Force re-authorize the wallet's associate token account. Don't use this flag"),
                 )
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
@@ -1590,10 +1713,11 @@ fn main() {
         } else {
             solana_cli_config::Config::default()
         };
-        let json_rpc_url = matches
-            .value_of("json_rpc_url")
-            .unwrap_or(&cli_config.json_rpc_url)
-            .to_string();
+        let json_rpc_url = normalize_to_url_if_moniker(
+            matches
+                .value_of("json_rpc_url")
+                .unwrap_or(&cli_config.json_rpc_url),
+        );
 
         let default_signer_arg_name = "owner".to_string();
         let default_signer_path = matches
@@ -1604,8 +1728,13 @@ fn main() {
             path: default_signer_path,
             arg_name: default_signer_arg_name,
         };
-        // Owner doesn't sign when it's a multisig
-        let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name) {
+
+        // Owner doesn't sign when using a mulitisig...
+        let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name)
+          || sub_command == "accounts" // when calling the `accounts` command...
+          || (sub_command == "create-account" // or when creating an associated token account.
+              && !matches.is_present("account_keypair"))
+        {
             let owner_val = matches
                 .value_of("owner")
                 .unwrap_or(&cli_config.keypair_path);
@@ -1727,17 +1856,20 @@ fn main() {
                 .unwrap()
                 .unwrap();
 
-            let (signer, account) = if arg_matches.is_present("account_keypair") {
-                signer_of(&arg_matches, "account_keypair", &mut wallet_manager).unwrap_or_else(
-                    |e| {
-                        eprintln!("error: {}", e);
-                        exit(1);
-                    },
-                )
+            let account = if arg_matches.is_present("account_keypair") {
+                let (signer, account) =
+                    signer_of(&arg_matches, "account_keypair", &mut wallet_manager).unwrap_or_else(
+                        |e| {
+                            eprintln!("error: {}", e);
+                            exit(1);
+                        },
+                    );
+                bulk_signers.push(signer);
+                account
             } else {
-                (None, None)
+                // No need to add a signer when creating an associated token account
+                None
             };
-            bulk_signers.push(signer);
 
             command_create_account(&config, token, account)
         }
@@ -1787,7 +1919,14 @@ fn main() {
             };
             let new_authority =
                 pubkey_of_signer(arg_matches, "new_authority", &mut wallet_manager).unwrap();
-            command_authorize(&config, address, authority_type, new_authority)
+            let force_authorize = arg_matches.is_present("force");
+            command_authorize(
+                &config,
+                address,
+                authority_type,
+                new_authority,
+                force_authorize,
+            )
         }
         ("transfer", Some(arg_matches)) => {
             let sender = pubkey_of_signer(arg_matches, "sender", &mut wallet_manager)

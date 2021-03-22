@@ -1,11 +1,13 @@
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
+use {
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+    },
+    solana_program_test::*,
+    solana_sdk::{account::Account, signature::Signer, transaction::Transaction},
+    spl_example_transfer_lamports::processor::process_instruction,
+    std::str::FromStr,
 };
-use solana_program_test::{processor, ProgramTest};
-use solana_sdk::{account::Account, signature::Signer, transaction::Transaction};
-use spl_example_transfer_lamports::processor::process_instruction;
-use std::str::FromStr;
 
 #[tokio::test]
 async fn test_lamport_transfer() {
@@ -35,7 +37,7 @@ async fn test_lamport_transfer() {
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[Instruction::new(
+        &[Instruction::new_with_bincode(
             program_id,
             &(),
             vec![

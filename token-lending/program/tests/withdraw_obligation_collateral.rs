@@ -33,7 +33,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(84_000);
+    test.set_bpf_compute_max_units(190_000);
 
     const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL;
     const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 100 * FRACTIONAL_TO_USDC;
@@ -42,7 +42,7 @@ async fn test_success() {
     const OBLIGATION_COLLATERAL: u64 = 10 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
 
     // from Reserve::required_collateral_for_borrow
-    const REQUIRED_COLLATERAL: u64 = 45_929_968_168;
+    const REQUIRED_COLLATERAL: u64 = 7_220_474_693;
     const WITHDRAW_COLLATERAL: u64 = OBLIGATION_COLLATERAL - REQUIRED_COLLATERAL;
 
     let user_accounts_owner = Keypair::new();
@@ -196,7 +196,7 @@ async fn test_withdraw_below_required() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(84_000);
+    test.set_bpf_compute_max_units(180_000);
 
     const INITIAL_SOL_RESERVE_SUPPLY_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL;
     const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 100 * FRACTIONAL_TO_USDC;
@@ -205,7 +205,7 @@ async fn test_withdraw_below_required() {
     const OBLIGATION_COLLATERAL: u64 = 10 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
 
     // from Reserve::required_collateral_for_borrow
-    const REQUIRED_COLLATERAL: u64 = 45_929_968_168;
+    const REQUIRED_COLLATERAL: u64 = 7_220_474_693;
     const WITHDRAW_COLLATERAL: u64 = OBLIGATION_COLLATERAL - REQUIRED_COLLATERAL + 1;
 
     let user_accounts_owner = Keypair::new();

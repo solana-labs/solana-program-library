@@ -172,8 +172,8 @@ impl Reserve {
 
             Ok(LiquidateResult {
                 withdraw_amount,
-                repay_amount,
                 settle_amount,
+                repay_amount,
             })
         } else {
             Err(LendingError::LiquidationTooSmall.into())
@@ -918,13 +918,7 @@ mod test {
                     available_amount: total_liquidity - borrowed_amount_wads.try_round_u64()?,
                     ..ReserveLiquidity::default()
                 },
-                config: ReserveConfig {
-                    min_borrow_rate,
-                    optimal_borrow_rate,
-                    max_borrow_rate,
-                    optimal_utilization_rate,
-                    ..ReserveConfig::default()
-                },
+                config: ReserveConfig { optimal_utilization_rate, min_borrow_rate, optimal_borrow_rate, max_borrow_rate, ..ReserveConfig::default() },
                 ..Reserve::default()
             };
 
