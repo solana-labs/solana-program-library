@@ -1,15 +1,15 @@
 //! Program state processor
 
+use crate::state::NewReserveLiquidityParams;
 use crate::{
     error::LendingError,
     instruction::{init_lending_market, AmountType, LendingInstruction},
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, WAD},
     state::{
-        BorrowLiquidityResult, LendingMarket, LiquidateObligationResult,
-        NewObligationCollateralParams, NewObligationLiquidityParams, NewObligationParams,
+        BorrowLiquidityResult, LendingMarket, LiquidateObligationResult, NewObligationParams,
         NewReserveParams, Obligation, ObligationCollateral, ObligationLiquidity,
         RepayLiquidityResult, Reserve, ReserveCollateral, ReserveConfig, ReserveLiquidity,
-        WithdrawCollateralResult, MAX_OBLIGATION_ACCOUNTS, PROGRAM_VERSION,
+        WithdrawCollateralResult, MAX_OBLIGATION_DATA, PROGRAM_VERSION,
     },
 };
 use flux_aggregator;
@@ -27,9 +27,8 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
+use solana_sdk::account_info::next_account_infos;
 use spl_token::state::Account;
-use std::convert::TryFrom;
-use crate::state::NewReserveLiquidityParams;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -64,6 +63,10 @@ pub fn process_instruction(
             msg!("Instruction: Init Reserve");
             process_init_reserve(program_id, liquidity_amount, config, accounts)
         }
+        LendingInstruction::RefreshReserve => {
+            msg!("Instruction: Refresh Reserve");
+            process_refresh_reserve(program_id, accounts)
+        }
         LendingInstruction::DepositReserveLiquidity { liquidity_amount } => {
             msg!("Instruction: Deposit Reserve Liquidity");
             process_deposit_reserve_liquidity(program_id, liquidity_amount, accounts)
@@ -72,10 +75,6 @@ pub fn process_instruction(
             msg!("Instruction: Redeem Reserve Collateral");
             process_redeem_reserve_collateral(program_id, collateral_amount, accounts)
         }
-        LendingInstruction::AccrueReserveInterest => {
-            msg!("Instruction: Accrue Reserve Interest");
-            process_accrue_reserve_interest(program_id, accounts)
-        }
         LendingInstruction::InitObligation => {
             msg!("Instruction: Init Obligation");
             process_init_obligation(program_id, accounts)
@@ -83,14 +82,6 @@ pub fn process_instruction(
         LendingInstruction::RefreshObligation => {
             msg!("Instruction: Refresh Obligation");
             process_refresh_obligation(program_id, accounts)
-        }
-        LendingInstruction::InitObligationCollateral => {
-            msg!("Instruction: Init Obligation Collateral");
-            process_init_obligation_collateral(program_id, accounts)
-        }
-        LendingInstruction::RefreshObligationCollateral => {
-            msg!("Instruction: Refresh Obligation Collateral");
-            process_refresh_obligation_collateral(program_id, accounts)
         }
         LendingInstruction::DepositObligationCollateral { collateral_amount } => {
             msg!("Instruction: Deposit Obligation Collateral");
@@ -107,14 +98,6 @@ pub fn process_instruction(
                 collateral_amount_type,
                 accounts,
             )
-        }
-        LendingInstruction::InitObligationLiquidity => {
-            msg!("Instruction: Init Obligation Liquidity");
-            process_init_obligation_liquidity(program_id, accounts)
-        }
-        LendingInstruction::RefreshObligationLiquidity => {
-            msg!("Instruction: Refresh Obligation Liquidity");
-            process_refresh_obligation_liquidity(program_id, accounts)
         }
         LendingInstruction::BorrowObligationLiquidity {
             liquidity_amount,
@@ -282,6 +265,13 @@ fn process_init_reserve(
     assert_rent_exempt(rent, reserve_info)?;
     assert_uninitialized::<Reserve>(reserve_info)?;
 
+    // @TODO: check if valid
+    assert_uninitialized(reserve_liquidity_supply_info)?;
+    assert_uninitialized(reserve_collateral_mint_info)?;
+    assert_uninitialized(reserve_liquidity_fee_receiver_info)?;
+    assert_uninitialized(reserve_collateral_supply_info)?;
+    assert_uninitialized(destination_collateral_info)?;
+
     if reserve_liquidity_supply_info.key == source_liquidity_info.key {
         msg!("Invalid source liquidity account");
         return Err(LendingError::InvalidAccountInput.into());
@@ -301,18 +291,19 @@ fn process_init_reserve(
         return Err(LendingError::InvalidSigner.into());
     }
 
-    let (reserve_liquidity_aggregator, reserve_liquidity_median_price) = if reserve_liquidity_mint_info.key != &lending_market.quote_token_mint {
-        let aggregator_info = next_account_info(account_info_iter)?;
+    let (reserve_liquidity_aggregator, reserve_liquidity_median_price) =
+        if reserve_liquidity_mint_info.key != &lending_market.quote_token_mint {
+            let aggregator_info = next_account_info(account_info_iter)?;
 
-        assert_rent_exempt(rent, aggregator_info)?;
+            assert_rent_exempt(rent, aggregator_info)?;
 
-        // @TODO: is there a way to verify that aggregator_info uses the base and quote currency?
-        let answer = flux_aggregator::read_median(aggregator_info)?;
+            // @TODO: is there a way to verify that aggregator_info uses the base and quote currency?
+            let answer = flux_aggregator::read_median(aggregator_info)?;
 
-        (COption::Some(*aggregator_info.key), answer.median)
-    } else {
-        (COption::None, 1)
-    };
+            (COption::Some(*aggregator_info.key), answer.median)
+        } else {
+            (COption::None, 1)
+        };
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -335,7 +326,7 @@ fn process_init_reserve(
         supply_pubkey: *reserve_liquidity_supply_info.key,
         fee_receiver: *reserve_liquidity_fee_receiver_info.key,
         aggregator: reserve_liquidity_aggregator,
-        median_price: reserve_liquidity_median_price
+        median_price: reserve_liquidity_median_price,
     });
     let reserve_collateral = ReserveCollateral::new(
         *reserve_collateral_mint_info.key,
@@ -412,27 +403,30 @@ fn process_init_reserve(
     Ok(())
 }
 
-// @TODO: support multiple reserves
 fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-    let reserve_info = next_account_info(accounts_iter)?;
-    let reserve_liquidity_aggregator_info = next_account_info(accounts_iter)?;
+    let account_info_iter = &mut accounts.iter().peekable();
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
 
-    let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
-    if reserve_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &reserve.liquidity.aggregator != reserve_liquidity_aggregator_info.key {
-        msg!("Invalid reserve liquidity aggregator account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
+    while let Some(_) = account_info_iter.peek() {
+        let reserve_info = next_account_info(account_info_iter)?;
+        // @FIXME: handle optional aggregator
+        let reserve_liquidity_aggregator_info = next_account_info(account_info_iter)?;
 
-    let answer = flux_aggregator::read_median(reserve_liquidity_aggregator_info)?;
+        let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+        if reserve_info.owner != program_id {
+            return Err(LendingError::InvalidAccountOwner.into());
+        }
+        if &reserve.liquidity.aggregator != reserve_liquidity_aggregator_info.key {
+            msg!("Invalid reserve liquidity aggregator account");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
 
-    reserve.liquidity.median_price = answer.median;
-    reserve.accrue_interest(clock.slot)?;
-    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+        let answer = flux_aggregator::read_median(reserve_liquidity_aggregator_info)?;
+
+        reserve.liquidity.median_price = answer.median;
+        reserve.accrue_interest(clock.slot)?;
+        Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+    }
 
     Ok(())
 }
@@ -619,24 +613,6 @@ fn process_redeem_reserve_collateral(
     Ok(())
 }
 
-// @FIMXE: remove, duplicated by refresh_reserve
-#[inline(never)] // avoid stack frame limit
-fn process_accrue_reserve_interest(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
-    for reserve_info in account_info_iter {
-        let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
-        if reserve_info.owner != program_id {
-            return Err(LendingError::InvalidAccountOwner.into());
-        }
-
-        reserve.accrue_interest(clock.slot)?;
-        Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
-    }
-
-    Ok(())
-}
-
 #[inline(never)] // avoid stack frame limit
 fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -667,7 +643,7 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
 }
 
 fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter().peekable();
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
@@ -690,255 +666,65 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let mut collateral_value = Decimal::zero();
-    for pubkey in obligation.collateral {
-        let obligation_collateral_info = next_account_info(account_info_iter)?;
-        if obligation_collateral_info.owner != program_id {
+    // @FIXME: hashmap iteration order not guaranteed, iterate accounts instead
+    for (deposit_reserve_pubkey, collateral) in obligation.collateral.iter_mut() {
+        let deposit_reserve_info = next_account_info(account_info_iter)?;
+        if deposit_reserve_info.owner != program_id {
             return Err(LendingError::InvalidAccountOwner.into());
         }
-        if pubkey != obligation_collateral_info.key {
-            msg!("Invalid obligation collateral account");
+        if deposit_reserve_pubkey != deposit_reserve_info.key {
+            msg!("Invalid deposit reserve");
             return Err(LendingError::InvalidAccountInput.into());
         }
 
-        let obligation_collateral =
-            ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
-        if obligation_collateral.obligation != obligation_info.key {
-            msg!("Invalid obligation account");
+        let deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
+        if &deposit_reserve.lending_market != lending_market_info.key {
+            msg!("Invalid deposit reserve lending market account");
             return Err(LendingError::InvalidAccountInput.into());
         }
-        if obligation_collateral.last_update.is_stale(clock.slot)? {
-            return Err(LendingError::ObligationCollateralStale.into());
+        if deposit_reserve.last_update.is_stale(clock.slot)? {
+            return Err(LendingError::ReserveStale.into());
         }
 
-        collateral_value = collateral_value.try_add(obligation_collateral.value)?;
+        collateral.market_value = deposit_reserve
+            .collateral_exchange_rate()?
+            .decimal_collateral_to_liquidity(collateral.deposited_amount.into())?
+            .try_mul(deposit_reserve.liquidity.median_price)?;
     }
 
-    let mut liquidity_value = Decimal::zero();
-    for pubkey in obligation.liquidity {
-        let obligation_liquidity_info = next_account_info(account_info_iter)?;
-        if obligation_liquidity_info.owner != program_id {
+    // @FIXME: hashmap iteration order not guaranteed, iterate accounts instead
+    for (borrow_reserve_pubkey, liquidity) in obligation.liquidity.iter_mut() {
+        let borrow_reserve_info = next_account_info(account_info_iter)?;
+        if borrow_reserve_info.owner != program_id {
             return Err(LendingError::InvalidAccountOwner.into());
         }
-        if pubkey != obligation_liquidity_info.key {
-            msg!("Invalid obligation liquidity account");
+        if borrow_reserve_pubkey != borrow_reserve_info.key {
+            msg!("Invalid borrow reserve");
             return Err(LendingError::InvalidAccountInput.into());
         }
 
-        let obligation_liquidity =
-            ObligationLiquidity::unpack(&obligation_liquidity_info.data.borrow())?;
-        if obligation_liquidity.obligation != obligation_info.key {
-            msg!("Invalid obligation account");
+        let borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
+        if &borrow_reserve.lending_market != lending_market_info.key {
+            msg!("Invalid borrow reserve lending market account");
             return Err(LendingError::InvalidAccountInput.into());
         }
-        if obligation_liquidity.last_update.is_stale(clock.slot)? {
-            return Err(LendingError::ObligationLiquidityStale.into());
+        if borrow_reserve.last_update.is_stale(clock.slot)? {
+            return Err(LendingError::ReserveStale.into());
         }
 
-        liquidity_value = liquidity_value.try_add(obligation_liquidity.value)?;
+        liquidity.accrue_interest(borrow_reserve.liquidity.cumulative_borrow_rate_wads)?;
+        liquidity.market_value = liquidity
+            .borrowed_amount_wads
+            .try_mul(borrow_reserve.liquidity.median_price)?;
     }
 
-    // @TODO: check this
-    if account_info_iter.count() > 0 {
+    if let Some(_) = account_info_iter.peek() {
         msg!("Too many obligation collateral or liquidity accounts");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    obligation.collateral_value = collateral_value;
-    obligation.liquidity_value = liquidity_value;
     obligation.last_update.update_slot(clock.slot);
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
-
-    Ok(())
-}
-
-#[inline(never)] // avoid stack frame limit
-fn process_init_obligation_collateral(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-    let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_collateral_info = next_account_info(account_info_iter)?;
-    let deposit_reserve_info = next_account_info(account_info_iter)?;
-    let obligation_token_mint_info = next_account_info(account_info_iter)?;
-    let obligation_token_output_info = next_account_info(account_info_iter)?;
-    let obligation_token_owner_info = next_account_info(account_info_iter)?;
-    let lending_market_info = next_account_info(account_info_iter)?;
-    let lending_market_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
-    let rent_info = next_account_info(account_info_iter)?;
-    let rent = &Rent::from_account_info(rent_info)?;
-    let token_program_id = next_account_info(account_info_iter)?;
-
-    assert_rent_exempt(rent, obligation_collateral_info)?;
-    assert_uninitialized::<ObligationCollateral>(obligation_collateral_info)?;
-
-    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
-    if lending_market_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &lending_market.token_program_id != token_program_id.key {
-        return Err(LendingError::InvalidTokenProgram.into());
-    }
-
-    let deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
-    if deposit_reserve_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &deposit_reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    // @FIXME: moved to lending market; does per-reserve collateral enable still make sense?
-    if deposit_reserve.config.loan_to_value_ratio == 0 {
-        return Err(LendingError::ReserveCollateralDisabled.into());
-    }
-
-    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
-    if obligation_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation.lending_market != lending_market_info.key {
-        msg!("Invalid obligation lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    // @FIXME: unchecked math
-    if obligation.collateral.len() + obligation.liquidity.len() + 1 > MAX_OBLIGATION_ACCOUNTS {
-        return Err(LendingError::ObligationAccountLimit.into());
-    }
-    if obligation
-        .collateral
-        .contains(obligation_collateral_info.key)
-    {
-        return Err(LendingError::ObligationCollateralDuplicate.into());
-    }
-
-    let authority_signer_seeds = &[
-        lending_market_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
-        return Err(LendingError::InvalidMarketAuthority.into());
-    }
-
-    let obligation_collateral = ObligationCollateral::new(NewObligationCollateralParams {
-        current_slot: clock.slot,
-        obligation: *obligation_info.key,
-        deposit_reserve: *deposit_reserve_info.key,
-        token_mint: obligation_token_mint_info.key(),
-    });
-    obligation.collateral.push(*obligation_collateral_info.key);
-    obligation.last_update.mark_stale();
-
-    ObligationCollateral::pack(
-        obligation_collateral,
-        &mut obligation_collateral_info.data.borrow_mut(),
-    )?;
-    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
-
-    spl_token_init_mint(TokenInitializeMintParams {
-        mint: obligation_token_mint_info.clone(),
-        authority: lending_market_authority_info.key,
-        rent: rent_info.clone(),
-        decimals: deposit_reserve.liquidity.mint_decimals,
-        token_program: token_program_id.clone(),
-    })?;
-
-    spl_token_init_account(TokenInitializeAccountParams {
-        account: obligation_token_output_info.clone(),
-        mint: obligation_token_mint_info.clone(),
-        owner: obligation_token_owner_info.clone(),
-        rent: rent_info.clone(),
-        token_program: token_program_id.clone(),
-    })?;
-
-    Ok(())
-}
-
-fn process_refresh_obligation_collateral(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-    let obligation_collateral_info = next_account_info(account_info_iter)?;
-    let deposit_reserve_info = next_account_info(account_info_iter)?;
-    let lending_market_info = next_account_info(account_info_iter)?;
-    let lending_market_authority_info = next_account_info(account_info_iter)?;
-    let dex_market_info = next_account_info(account_info_iter)?;
-    let dex_market_orders_info = next_account_info(account_info_iter)?;
-    let memory = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
-    let token_program_id = next_account_info(account_info_iter)?;
-
-    if memory.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-
-    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
-    if lending_market_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &lending_market.token_program_id != token_program_id.key {
-        return Err(LendingError::InvalidTokenProgram.into());
-    }
-
-    let deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
-    if deposit_reserve_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &deposit_reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if deposit_reserve.dex_market.is_none() {
-        msg!("Deposit reserve must have a dex market");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if let COption::Some(dex_market_pubkey) = deposit_reserve.dex_market {
-        if &dex_market_pubkey != dex_market_info.key {
-            msg!("Invalid dex market account");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
-    }
-    if deposit_reserve.last_update.is_stale(clock.slot) {
-        return Err(LendingError::ReserveStale.into());
-    }
-
-    let mut obligation_collateral =
-        ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
-    if obligation_collateral_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation_collateral.deposit_reserve != deposit_reserve_info.key {
-        msg!("Invalid deposit reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-
-    let authority_signer_seeds = &[
-        lending_market_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
-        return Err(LendingError::InvalidMarketAuthority.into());
-    }
-
-    obligation_collateral.update_value(
-        deposit_reserve.collateral_exchange_rate()?,
-        token_converter,
-        &deposit_reserve.liquidity.mint_pubkey,
-    )?;
-    obligation_collateral.last_update.update_slot(clock.slot);
-    ObligationCollateral::pack(
-        obligation_collateral,
-        &mut obligation_collateral_info.data.borrow_mut(),
-    )?;
-    // @TODO: should we mark the obligation stale here?
-    //        could also iteratively update obligation.collateral_value
 
     Ok(())
 }
@@ -958,12 +744,12 @@ fn process_deposit_obligation_collateral(
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let deposit_reserve_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_collateral_info = next_account_info(account_info_iter)?;
     let obligation_token_mint_info = next_account_info(account_info_iter)?;
     let obligation_token_output_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
@@ -990,6 +776,10 @@ fn process_deposit_obligation_collateral(
         msg!("Invalid source collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    // @TODO: is this necessary? we can set collateral.market_value if we have it though
+    if deposit_reserve.last_update.is_stale(clock.slot) {
+        return Err(LendingError::ReserveStale.into());
+    }
     // @FIXME: moved to lending market; does per-reserve collateral enable still make sense?
     if deposit_reserve.config.loan_to_value_ratio == 0 {
         return Err(LendingError::ReserveCollateralDisabled.into());
@@ -1001,31 +791,6 @@ fn process_deposit_obligation_collateral(
     }
     if &obligation.lending_market != lending_market_info.key {
         msg!("Invalid obligation lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-
-    let mut obligation_collateral =
-        ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
-    if obligation_collateral_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation_collateral.obligation != obligation_info.key {
-        msg!("Invalid obligation account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation_collateral.deposit_reserve != deposit_reserve_info.key {
-        msg!("Invalid deposit reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation_collateral.token_mint != obligation_token_mint_info.key {
-        msg!("Invalid obligation token mint");
-        return Err(LendingError::InvalidTokenMint.into());
-    }
-    if !obligation
-        .collateral
-        .contains(obligation_collateral_info.key)
-    {
-        msg!("Invalid obligation collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -1052,14 +817,16 @@ fn process_deposit_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    obligation_collateral.deposit(collateral_amount)?;
-    obligation_collateral.last_update.mark_stale();
-    obligation.last_update.mark_stale();
+    let collateral = obligation
+        .collateral
+        .entry(*deposit_reserve_info.key)
+        .or_insert(ObligationCollateral::new());
+    if obligation.collateral.len() + obligation.liquidity.len() > MAX_OBLIGATION_DATA {
+        return Err(LendingError::ObligationAccountLimit.into());
+    }
 
-    ObligationCollateral::pack(
-        obligation_collateral,
-        &mut obligation_collateral_info.data.borrow_mut(),
-    )?;
+    collateral.deposit(collateral_amount)?;
+    obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     spl_token_transfer(TokenTransferParams {
@@ -1105,7 +872,6 @@ fn process_withdraw_obligation_collateral(
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_collateral_info = next_account_info(account_info_iter)?;
     let obligation_token_mint_info = next_account_info(account_info_iter)?;
     let obligation_token_input_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
@@ -1138,6 +904,9 @@ fn process_withdraw_obligation_collateral(
         msg!("Invalid destination collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if withdraw_reserve.last_update.is_stale(clock.slot) {
+        return Err(LendingError::ReserveStale.into());
+    }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
@@ -1150,46 +919,18 @@ fn process_withdraw_obligation_collateral(
     if obligation.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
-    // @TODO: is this enough? other reserves could have been updated that we don't check here, and
-    //          they all affect the market value. need to think about when interest may be accrued
     if obligation.last_update < withdraw_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
+    if obligation.collateral.len() == 0 {
+        return Err(LendingError::ObligationCollateralEmpty.into());
+    }
 
-    let mut obligation_collateral =
-        ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
-    if obligation_collateral_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation_collateral.obligation != obligation_info.key {
-        msg!("Invalid obligation account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation_collateral.deposit_reserve != withdraw_reserve_info.key {
-        msg!("Invalid withdraw reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation_collateral.token_mint != obligation_token_mint_info.key {
-        msg!("Invalid obligation token mint");
-        return Err(LendingError::InvalidTokenMint.into());
-    }
-    if !obligation
+    let mut collateral = obligation
         .collateral
-        .contains(obligation_collateral_info.key)
-    {
-        msg!("Invalid obligation collateral account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if obligation_collateral.last_update.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationCollateralStale.into());
-    }
-    // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
-    //          check here. we could mark the obligation stale on every refresh of
-    //          collateral/liquidity, but this means they can't be refreshed in parallel
-    if obligation.last_update < obligation_collateral.last_update {
-        return Err(LendingError::ObligationStale.into());
-    }
-    if obligation_collateral.deposited_amount == 0 {
+        .get(withdraw_reserve_info.key)
+        .ok_or(LendingError::InvalidObligationCollateral)?;
+    if collateral.deposited_amount == 0 {
         return Err(LendingError::ObligationCollateralEmpty.into());
     }
 
@@ -1232,20 +973,14 @@ fn process_withdraw_obligation_collateral(
     } = obligation.withdraw_collateral(
         collateral_amount,
         collateral_amount_type,
-        &obligation_collateral,
+        &collateral,
         loan_to_value_ratio,
         obligation_token_mint.supply,
     )?;
 
-    // @FIXME: shouldn't withdraw_reserve.collateral.mint_total_supply change?
-    obligation_collateral.withdraw(withdraw_amount)?;
-    obligation_collateral.last_update.mark_stale();
+    // @FIXME: should withdraw_reserve.collateral.mint_total_supply change?
+    collateral.withdraw(withdraw_amount)?;
     obligation.last_update.mark_stale();
-
-    ObligationCollateral::pack(
-        obligation_collateral,
-        &mut obligation_collateral_info.data.borrow_mut(),
-    )?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     spl_token_burn(TokenBurnParams {
@@ -1265,158 +1000,6 @@ fn process_withdraw_obligation_collateral(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
-
-    Ok(())
-}
-
-#[inline(never)] // avoid stack frame limit
-fn process_init_obligation_liquidity(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-    let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_liquidity_info = next_account_info(account_info_iter)?;
-    let borrow_reserve_info = next_account_info(account_info_iter)?;
-    let lending_market_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
-    let rent_info = next_account_info(account_info_iter)?;
-    let rent = &Rent::from_account_info(rent_info)?;
-    let token_program_id = next_account_info(account_info_iter)?;
-
-    assert_rent_exempt(rent, obligation_liquidity_info)?;
-    assert_uninitialized::<ObligationLiquidity>(obligation_liquidity_info)?;
-
-    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
-    if lending_market_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &lending_market.token_program_id != token_program_id.key {
-        return Err(LendingError::InvalidTokenProgram.into());
-    }
-
-    let borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
-    if borrow_reserve_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &borrow_reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-
-    let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
-    if obligation_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation.lending_market != lending_market_info.key {
-        msg!("Invalid obligation lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    // @FIXME: unchecked math
-    if obligation.collateral.len() + obligation.liquidity.len() + 1 > MAX_OBLIGATION_ACCOUNTS {
-        return Err(LendingError::ObligationAccountLimit.into());
-    }
-    if obligation.liquidity.contains(obligation_liquidity_info.key) {
-        return Err(LendingError::ObligationLiquidityDuplicate.into());
-    }
-
-    let obligation_liquidity = ObligationLiquidity::new(NewObligationLiquidityParams {
-        current_slot: clock.slot,
-        obligation: *obligation_info.key,
-        borrow_reserve: *borrow_reserve_info.key,
-    });
-    obligation.liquidity.push(*obligation_liquidity_info.key);
-    obligation.last_update.mark_stale();
-
-    ObligationLiquidity::pack(
-        obligation_liquidity,
-        &mut obligation_liquidity_info.data.borrow_mut(),
-    )?;
-    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
-
-    Ok(())
-}
-
-fn process_refresh_obligation_liquidity(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-    let obligation_liquidity_info = next_account_info(account_info_iter)?;
-    let borrow_reserve_info = next_account_info(account_info_iter)?;
-    let lending_market_info = next_account_info(account_info_iter)?;
-    let lending_market_authority_info = next_account_info(account_info_iter)?;
-    let dex_market_info = next_account_info(account_info_iter)?;
-    let dex_market_orders_info = next_account_info(account_info_iter)?;
-    let memory = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
-    let token_program_id = next_account_info(account_info_iter)?;
-
-    if memory.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-
-    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
-    if lending_market_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &lending_market.token_program_id != token_program_id.key {
-        return Err(LendingError::InvalidTokenProgram.into());
-    }
-
-    let borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
-    if borrow_reserve_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &borrow_reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if borrow_reserve.dex_market.is_none() {
-        msg!("Borrow reserve must have a dex market");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if let COption::Some(dex_market_pubkey) = borrow_reserve.dex_market {
-        if &dex_market_pubkey != dex_market_info.key {
-            msg!("Invalid dex market account");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
-    }
-    // @FIXME: borrow_reserve.cumulative_borrow_rate_wads is used below
-    //         need to refresh reserve or restrict to current slot
-    if borrow_reserve.last_update.is_stale(clock.slot) {
-        return Err(LendingError::ReserveStale.into());
-    }
-
-    let mut obligation_liquidity =
-        ObligationLiquidity::unpack(&obligation_liquidity_info.data.borrow())?;
-    if obligation_liquidity_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation_liquidity.borrow_reserve != borrow_reserve_info.key {
-        msg!("Invalid borrow reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-
-    let authority_signer_seeds = &[
-        lending_market_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
-        return Err(LendingError::InvalidMarketAuthority.into());
-    }
-
-    obligation_liquidity.accrue_interest(borrow_reserve.liquidity.cumulative_borrow_rate_wads)?;
-    obligation_liquidity.update_value(token_converter, &borrow_reserve.liquidity.mint_pubkey)?;
-    obligation_liquidity.last_update.update_slot(clock.slot);
-    ObligationLiquidity::pack(
-        obligation_liquidity,
-        &mut obligation_liquidity_info.data.borrow_mut(),
-    )?;
-    // @TODO: should we mark the obligation stale here?
-    //        could also iteratively update obligation.liquidity_value
 
     Ok(())
 }
@@ -1444,11 +1027,8 @@ fn process_borrow_obligation_liquidity(
     let borrow_reserve_info = next_account_info(account_info_iter)?;
     let borrow_reserve_liquidity_fee_receiver_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_liquidity_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
-    let dex_market_info = next_account_info(account_info_iter)?;
-    let dex_market_orders_info = next_account_info(account_info_iter)?;
     let memory = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
@@ -1485,15 +1065,11 @@ fn process_borrow_obligation_liquidity(
         msg!("Invalid borrow reserve liquidity fee receiver account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if borrow_reserve.dex_market.is_none() {
+    // @FIXME: not an issue if reserve currency is quote
+    if borrow_reserve.liquidity.aggregator.is_none() {
+        // @FIXME: error message
         msg!("Borrow reserve must have a dex market");
         return Err(LendingError::InvalidAccountInput.into());
-    }
-    if let COption::Some(dex_market_pubkey) = borrow_reserve.dex_market {
-        if &dex_market_pubkey != dex_market_info.key {
-            msg!("Invalid dex market account");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
     }
     if borrow_reserve.last_update.is_stale(clock.slot) {
         return Err(LendingError::ReserveStale.into());
@@ -1510,37 +1086,19 @@ fn process_borrow_obligation_liquidity(
     if obligation.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
-    // @TODO: is this enough? other reserves could have been updated that we don't check here, and
-    //          they all affect the market value. need to think about when interest may be accrued
     if obligation.last_update < borrow_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
+    if obligation.collateral.len() == 0 {
+        return Err(LendingError::ObligationCollateralEmpty.into());
+    }
 
-    let mut obligation_liquidity =
-        ObligationLiquidity::unpack(&obligation_liquidity_info.data.borrow())?;
-    if obligation_liquidity_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation_liquidity.obligation != obligation_info.key {
-        msg!("Invalid obligation account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation_liquidity.borrow_reserve != borrow_reserve_info.key {
-        msg!("Invalid borrow reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if !obligation.liquidity.contains(obligation_liquidity_info.key) {
-        msg!("Invalid obligation liquidity account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if obligation_liquidity.last_update.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationLiquidityStale.into());
-    }
-    // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
-    //          check here. we could mark the obligation stale on every refresh of
-    //          collateral/liquidity, but this means they can't be refreshed in parallel
-    if obligation.last_update < obligation_liquidity.last_update {
-        return Err(LendingError::ObligationStale.into());
+    let liquidity = obligation
+        .liquidity
+        .entry(*borrow_reserve_info.key)
+        .or_insert(ObligationLiquidity::new());
+    if obligation.collateral.len() + obligation.liquidity.len() > MAX_OBLIGATION_DATA {
+        return Err(LendingError::ObligationAccountLimit.into());
     }
 
     let authority_signer_seeds = &[
@@ -1553,6 +1111,7 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
+    // @TODO: consider moving
     let loan_to_value_ratio = Rate::from_percent(lending_market.loan_to_value_ratio);
     let loan_to_value = obligation.loan_to_value()?;
     if loan_to_value > loan_to_value_ratio {
@@ -1577,14 +1136,9 @@ fn process_borrow_obligation_liquidity(
     )?;
 
     borrow_reserve.liquidity.borrow(borrow_amount)?;
-    obligation_liquidity.borrow(borrow_amount)?;
-    obligation_liquidity.last_update.mark_stale();
+    liquidity.borrow(borrow_amount)?;
     obligation.last_update.mark_stale();
 
-    ObligationLiquidity::pack(
-        obligation_liquidity,
-        &mut obligation_liquidity_info.data.borrow_mut(),
-    )?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
@@ -1651,7 +1205,6 @@ fn process_repay_obligation_liquidity(
     let repay_reserve_info = next_account_info(account_info_iter)?;
     let repay_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_liquidity_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
@@ -1698,37 +1251,16 @@ fn process_repay_obligation_liquidity(
     if obligation.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
-    // @TODO: is this enough? other reserves could have been updated that we don't check here, and
-    //          they all affect the market value. need to think about when interest may be accrued
     if obligation.last_update < repay_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
 
-    let mut obligation_liquidity =
-        ObligationLiquidity::unpack(&obligation_liquidity_info.data.borrow())?;
-    if obligation_liquidity_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation_liquidity.obligation != obligation_info.key {
-        msg!("Invalid obligation account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation_liquidity.borrow_reserve != repay_reserve_info.key {
-        msg!("Invalid repay reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if !obligation.liquidity.contains(obligation_liquidity_info.key) {
-        msg!("Invalid obligation liquidity account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if obligation_liquidity.last_update.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationLiquidityStale.into());
-    }
-    // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
-    //          check here. we could mark the obligation stale on every refresh of
-    //          collateral/liquidity, but this means they can't be refreshed in parallel
-    if obligation.last_update < obligation_liquidity.last_update {
-        return Err(LendingError::ObligationStale.into());
+    let mut liquidity = obligation
+        .liquidity
+        .get(repay_reserve_info.key)
+        .ok_or(LendingError::InvalidObligationLiquidity)?;
+    if liquidity.borrowed_amount_wads == Decimal::zero() {
+        return Err(LendingError::ObligationLiquidityEmpty.into());
     }
 
     let authority_signer_seeds = &[
@@ -1744,21 +1276,12 @@ fn process_repay_obligation_liquidity(
     let RepayLiquidityResult {
         settle_amount,
         repay_amount,
-    } = repay_reserve.repay_liquidity(
-        liquidity_amount,
-        liquidity_amount_type,
-        &obligation_liquidity,
-    );
+    } = repay_reserve.repay_liquidity(liquidity_amount, liquidity_amount_type, &liquidity);
 
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
-    obligation_liquidity.repay(settle_amount);
-    obligation_liquidity.last_update.mark_stale();
+    liquidity.repay(settle_amount);
     obligation.last_update.mark_stale();
 
-    ObligationLiquidity::pack(
-        obligation_liquidity,
-        &mut obligation_liquidity_info.data.borrow_mut(),
-    )?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
@@ -1799,8 +1322,6 @@ fn process_liquidate_obligation(
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_liquidity_info = next_account_info(account_info_iter)?;
-    let obligation_collateral_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
@@ -1859,8 +1380,8 @@ fn process_liquidate_obligation(
         return Err(LendingError::ReserveStale.into());
     }
 
-    // @TODO: are these two checks necessary?
-    //        is there a problem with repaying and receiving the same currency?
+    // @FIXME: what if a user borrows using the same reserve/mint for collateral?
+    //         maybe liquidation should be allowed, but reduce the bonus
     if repay_reserve_info.key == withdraw_reserve_info.key {
         return Err(LendingError::DuplicateReserve.into());
     }
@@ -1879,8 +1400,6 @@ fn process_liquidate_obligation(
     if obligation.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
-    // @TODO: is this enough? other reserves could have been updated that we don't check here, and
-    //          they all affect the market value. need to think about when interest may be accrued
     if obligation.last_update < repay_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
@@ -1888,70 +1407,19 @@ fn process_liquidate_obligation(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let mut obligation_liquidity =
-        ObligationLiquidity::unpack(&obligation_liquidity_info.data.borrow())?;
-    if obligation_liquidity_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation_liquidity.obligation != obligation_info.key {
-        msg!("Invalid obligation account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation_liquidity.borrow_reserve != repay_reserve_info.key {
-        msg!("Invalid repay reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if !obligation.liquidity.contains(obligation_liquidity_info.key) {
-        msg!("Invalid obligation liquidity account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if obligation_liquidity.last_update.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationLiquidityStale.into());
-    }
-    // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
-    //          check here. we could mark the obligation stale on every refresh of
-    //          collateral/liquidity, but this means they can't be refreshed in parallel
-    if obligation.last_update < obligation_liquidity.last_update {
-        return Err(LendingError::ObligationStale.into());
-    }
-    if obligation_liquidity.borrowed_amount_wads == Decimal::zero() {
+    let mut liquidity = obligation
+        .liquidity
+        .get_mut(repay_reserve.key)
+        .ok_or(LendingError::InvalidObligationLiquidity)?;
+    if liquidity.borrowed_amount_wads == Decimal::zero() {
         return Err(LendingError::ObligationLiquidityEmpty.into());
     }
 
-    let mut obligation_collateral =
-        ObligationCollateral::unpack(&obligation_collateral_info.data.borrow())?;
-    if obligation_collateral_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation_collateral.obligation != obligation_info.key {
-        msg!("Invalid obligation account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation_collateral.deposit_reserve != withdraw_reserve_info.key {
-        msg!("Invalid withdraw reserve account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &obligation_collateral.token_mint != obligation_token_mint_info.key {
-        msg!("Invalid obligation token mint");
-        return Err(LendingError::InvalidTokenMint.into());
-    }
-    if !obligation
+    let mut collateral = obligation
         .collateral
-        .contains(obligation_collateral_info.key)
-    {
-        msg!("Invalid obligation collateral account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if obligation_collateral.last_update.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationCollateralStale.into());
-    }
-    // @TODO: is this enough? other collateral/liquidity could have been updated that we don't
-    //          check here. we could mark the obligation stale on every refresh of
-    //          collateral/liquidity, but this means they can't be refreshed in parallel
-    if obligation.last_update < obligation_collateral.last_update {
-        return Err(LendingError::ObligationStale.into());
-    }
-    if obligation_collateral.deposited_amount == 0 {
+        .get_mut(withdraw_reserve_info.key)
+        .ok_or(LendingError::InvalidObligationCollateral)?;
+    if collateral.deposited_amount == 0 {
         return Err(LendingError::ObligationCollateralEmpty.into());
     }
 
@@ -1965,6 +1433,7 @@ fn process_liquidate_obligation(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
+    // @TODO: consider moving
     let liquidation_threshold = Rate::from_percent(lending_market.liquidation_threshold);
     let obligation_ltv = obligation.loan_to_value()?;
     if obligation_ltv < liquidation_threshold {
@@ -1979,8 +1448,8 @@ fn process_liquidate_obligation(
         liquidity_amount,
         liquidity_amount_type,
         &obligation,
-        &obligation_liquidity,
-        &obligation_collateral,
+        &liquidity,
+        &collateral,
     )?;
 
     // @TODO: check if this can actually happen now
@@ -1989,22 +1458,17 @@ fn process_liquidate_obligation(
     }
 
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
-    obligation_liquidity.repay(settle_amount);
-    // @FIXME: shouldn't withdraw_reserve.collateral.mint_total_supply change?
-    obligation_collateral.withdraw(withdraw_amount);
-    obligation_liquidity.last_update.mark_stale();
-    obligation_collateral.last_update.mark_stale();
+    liquidity.repay(settle_amount);
+    // @FIXME: should withdraw_reserve.collateral.mint_total_supply change?
+    collateral.withdraw(withdraw_amount);
     obligation.last_update.mark_stale();
 
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
     ObligationCollateral::pack(
-        obligation_collateral,
+        collateral,
         &mut obligation_collateral_info.data.borrow_mut(),
     )?;
-    ObligationLiquidity::pack(
-        obligation_liquidity,
-        &mut obligation_liquidity_info.data.borrow_mut(),
-    )?;
+    ObligationLiquidity::pack(liquidity, &mut obligation_liquidity_info.data.borrow_mut())?;
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     spl_token_transfer(TokenTransferParams {

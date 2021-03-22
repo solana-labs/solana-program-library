@@ -3,15 +3,11 @@
 mod last_update;
 mod lending_market;
 mod obligation;
-mod obligation_collateral;
-mod obligation_liquidity;
 mod reserve;
 
 pub use last_update::*;
 pub use lending_market::*;
 pub use obligation::*;
-pub use obligation_collateral::*;
-pub use obligation_liquidity::*;
 pub use reserve::*;
 
 use crate::math::{Decimal, WAD};

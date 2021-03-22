@@ -103,9 +103,12 @@ pub enum LendingError {
     /// Borrow amount too large
     #[error("Borrow amount too large for deposited collateral")]
     BorrowTooLarge,
+
+    // @FIXME: name + message
     /// Liquidation amount too small
     #[error("Liquidation amount too small to receive collateral")]
     LiquidationTooSmall,
+    // @FIXME: name + message
     /// Cannot liquidate healthy obligations
     #[error("Cannot liquidate healthy obligations")]
     ObligationHealthy,
@@ -117,10 +120,7 @@ pub enum LendingError {
     /// Obligation state stale
     #[error("Obligation state needs to be refreshed")]
     ObligationStale,
-    // @FIXME: not used anywhere, maybe should be?
-    /// The obligation token owner must be the same if reusing an obligation
-    #[error("Obligation token owner mismatch")]
-    ObligationTokenOwnerMismatch,
+
     // @FIXME: change name + message
     /// Obligation LTV is above the lending market LTV
     #[error("Obligation LTV is above the lending market LTV")]
@@ -130,30 +130,25 @@ pub enum LendingError {
     #[error("Obligation LTV cannot go above the lending market LTV")]
     ObligationLTVCannotGoAboveLendingMarketLTV,
 
+    /// Invalid obligation collateral
+    #[error("Invalid obligation collateral")]
+    InvalidObligationCollateral,
     /// Obligation collateral is empty
     #[error("Obligation collateral is empty")]
     ObligationCollateralEmpty,
-    /// Obligation collateral stale
-    #[error("Obligation collateral state needs to be refreshed")]
-    ObligationCollateralStale,
     /// Obligation collateral withdraw too large
     #[error("Obligation collateral withdraw too large for borrowed liquidity")]
     ObligationCollateralWithdrawTooLarge,
-    // @FIXME: change name + message
-    /// ObligationCollateralDuplicate
-    #[error("ObligationCollateralDuplicate")]
-    ObligationCollateralDuplicate,
 
+    /// Invalid obligation liquidity
+    #[error("Invalid obligation liquidity")]
+    InvalidObligationLiquidity,
     /// Obligation liquidity is empty
     #[error("Obligation liquidity is empty")]
     ObligationLiquidityEmpty,
     /// Obligation liquidity stale
     #[error("Obligation liquidity state needs to be refreshed")]
     ObligationLiquidityStale,
-    // @FIXME: change name + message
-    /// ObligationLiquidityDuplicate
-    #[error("ObligationLiquidityDuplicate")]
-    ObligationLiquidityDuplicate,
 
     /// Negative interest rate
     #[error("Interest rate is negative")]

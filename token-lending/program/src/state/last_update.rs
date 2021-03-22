@@ -12,7 +12,7 @@ use solana_program::{
 use std::cmp::Ordering;
 
 /// Number of slots to consider stale after
-pub const STALE_AFTER_SLOTS: u64 = 10;
+pub const STALE_AFTER_SLOTS: u64 = 0;
 
 /// Last update state
 #[derive(Clone, Debug, Default)]
