@@ -13,11 +13,7 @@ use {
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack, Sealed},
     },
-    spl_math::{
-        precise_number::PreciseNumber,
-        checked_ceil_div::CheckedCeilDiv,
-        uint::U256,
-    },
+    spl_math::{checked_ceil_div::CheckedCeilDiv, precise_number::PreciseNumber, uint::U256},
 };
 
 /// ConstantPriceCurve struct implementing CurveCalculator

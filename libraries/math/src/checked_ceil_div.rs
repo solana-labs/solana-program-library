@@ -78,4 +78,3 @@ impl CheckedCeilDiv for U256 {
         Some((quotient, rhs))
     }
 }
-

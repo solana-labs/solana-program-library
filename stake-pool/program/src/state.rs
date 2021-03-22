@@ -60,10 +60,9 @@ impl StakePool {
     }
     /// calculate the pool tokens that should be withdrawn
     pub fn calc_pool_withdraw_amount(&self, stake_lamports: u64) -> Option<u64> {
-        let (quotient, _) =
-            (stake_lamports as u128)
-                .checked_mul(self.pool_total as u128)?
-                .checked_ceil_div(self.stake_total as u128)?;
+        let (quotient, _) = (stake_lamports as u128)
+            .checked_mul(self.pool_total as u128)?
+            .checked_ceil_div(self.stake_total as u128)?;
         u64::try_from(quotient).ok()
     }
     /// calculate lamports amount on withdrawal
