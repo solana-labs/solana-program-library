@@ -962,6 +962,59 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
     Ok(None)
 }
 
+fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
+    let account = config.rpc_client.get_token_account(&address)?.unwrap();
+    println!();
+    println_name_value("Address:", &address.to_string());
+    println_name_value(
+        "Balance:",
+        &account.token_amount.real_number_string_trimmed(),
+    );
+    let mint = format!(
+        "{}{}",
+        account.mint,
+        if account.is_native { " (native)" } else { "" }
+    );
+    println_name_value("Mint:", &mint);
+    println_name_value("Owner:", &account.owner);
+    println_name_value("State:", &format!("{:?}", account.state));
+    if let Some(delegate) = &account.delegate {
+        println!("Delegation:");
+        println_name_value("  Delegate:", delegate);
+        let allowance = account.delegated_amount.as_ref().unwrap();
+        println_name_value("  Allowance:", &allowance.real_number_string_trimmed());
+    } else {
+        println_name_value("Delegation:", "");
+    }
+    println_name_value(
+        "Close authority:",
+        &account.close_authority.as_ref().unwrap_or(&String::new()),
+    );
+    Ok(None)
+}
+
+fn get_multisig(config: &Config, address: &Pubkey) -> Result<Multisig, Error> {
+    let account = config.rpc_client.get_account(&address)?;
+    Multisig::unpack(&account.data).map_err(|e| e.into())
+}
+
+fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
+    let multisig = get_multisig(config, &address)?;
+    let n = multisig.n as usize;
+    assert!(n <= multisig.signers.len());
+    println!();
+    println_name_value("Address:", &address.to_string());
+    println_name_value("M/N:", &format!("{}/{}", multisig.m, n));
+    println_name_value("Signers:", " ");
+    let width = if n >= 9 { 4 } else { 3 };
+    for i in 0..n {
+        let title = format!("{1:>0$}:", width, i + 1);
+        let pubkey = &multisig.signers[i];
+        println_name_value(&title, &pubkey.to_string())
+    }
+    Ok(None)
+}
+
 fn command_gc(config: &Config) -> CommandResult {
     println!("Fetching token accounts");
     let accounts = config.rpc_client.get_token_accounts_by_owner(
@@ -1088,59 +1141,6 @@ fn command_gc(config: &Config) -> CommandResult {
     }
 
     Ok(Some((lamports_needed, instructions)))
-}
-
-fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
-    let account = config.rpc_client.get_token_account(&address)?.unwrap();
-    println!();
-    println_name_value("Address:", &address.to_string());
-    println_name_value(
-        "Balance:",
-        &account.token_amount.real_number_string_trimmed(),
-    );
-    let mint = format!(
-        "{}{}",
-        account.mint,
-        if account.is_native { " (native)" } else { "" }
-    );
-    println_name_value("Mint:", &mint);
-    println_name_value("Owner:", &account.owner);
-    println_name_value("State:", &format!("{:?}", account.state));
-    if let Some(delegate) = &account.delegate {
-        println!("Delegation:");
-        println_name_value("  Delegate:", delegate);
-        let allowance = account.delegated_amount.as_ref().unwrap();
-        println_name_value("  Allowance:", &allowance.real_number_string_trimmed());
-    } else {
-        println_name_value("Delegation:", "");
-    }
-    println_name_value(
-        "Close authority:",
-        &account.close_authority.as_ref().unwrap_or(&String::new()),
-    );
-    Ok(None)
-}
-
-fn get_multisig(config: &Config, address: &Pubkey) -> Result<Multisig, Error> {
-    let account = config.rpc_client.get_account(&address)?;
-    Multisig::unpack(&account.data).map_err(|e| e.into())
-}
-
-fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
-    let multisig = get_multisig(config, &address)?;
-    let n = multisig.n as usize;
-    assert!(n <= multisig.signers.len());
-    println!();
-    println_name_value("Address:", &address.to_string());
-    println_name_value("M/N:", &format!("{}/{}", multisig.m, n));
-    println_name_value("Signers:", " ");
-    let width = if n >= 9 { 4 } else { 3 };
-    for i in 0..n {
-        let title = format!("{1:>0$}:", width, i + 1);
-        let pubkey = &multisig.signers[i];
-        println_name_value(&title, &pubkey.to_string())
-    }
-    Ok(None)
 }
 
 struct SignOnlyNeedsFullMintSpec {}
@@ -1530,44 +1530,6 @@ fn main() {
                 .offline_args_config(&SignOnlyNeedsMintAddress{}),
         )
         .subcommand(
-            SubCommand::with_name("balance")
-                .about("Get token account balance")
-                .arg(
-                    Arg::with_name("address")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ACCOUNT_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .required(true)
-                        .help("The token account address"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("supply")
-                .about("Get token supply")
-                .arg(
-                    Arg::with_name("address")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .required(true)
-                        .help("The token address"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("accounts")
-                .about("List all token accounts by owner")
-                .arg(
-                    Arg::with_name("token")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .help("Limit results to the given token. [Default: list accounts for all tokens]"),
-                ),
-        )
-        .subcommand(
             SubCommand::with_name("wrap")
                 .about("Wrap native SOL in a SOL token account")
                 .arg(
@@ -1597,32 +1559,6 @@ fn main() {
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
-        )
-        .subcommand(
-            SubCommand::with_name("account-info")
-                .about("Query details of an SPL Token account by address")
-                .arg(
-                    Arg::with_name("address")
-                    .validator(is_valid_pubkey)
-                    .value_name("TOKEN_ACCOUNT_ADDRESS")
-                    .takes_value(true)
-                    .index(1)
-                    .required(true)
-                    .help("The address of the SPL Token account to query"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("multisig-info")
-                .about("Query details about and SPL Token multisig account by address")
-                .arg(
-                    Arg::with_name("address")
-                    .validator(is_valid_pubkey)
-                    .value_name("MULTISIG_ACCOUNT_ADDRESS")
-                    .takes_value(true)
-                    .index(1)
-                    .required(true)
-                    .help("The address of the SPL Token multisig account to query"),
-                ),
         )
         .subcommand(
             SubCommand::with_name("approve")
@@ -1699,6 +1635,70 @@ fn main() {
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
+        )
+        .subcommand(
+            SubCommand::with_name("balance")
+                .about("Get token account balance")
+                .arg(
+                    Arg::with_name("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token account address"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("supply")
+                .about("Get token supply")
+                .arg(
+                    Arg::with_name("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("accounts")
+                .about("List all token accounts by owner")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .help("Limit results to the given token. [Default: list accounts for all tokens]"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("account-info")
+                .about("Query details of an SPL Token account by address")
+                .arg(
+                    Arg::with_name("address")
+                    .validator(is_valid_pubkey)
+                    .value_name("TOKEN_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .index(1)
+                    .required(true)
+                    .help("The address of the SPL Token account to query"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("multisig-info")
+                .about("Query details about and SPL Token multisig account by address")
+                .arg(
+                    Arg::with_name("address")
+                    .validator(is_valid_pubkey)
+                    .value_name("MULTISIG_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .index(1)
+                    .required(true)
+                    .help("The address of the SPL Token multisig account to query"),
+                ),
         )
         .subcommand(
             SubCommand::with_name("gc")
