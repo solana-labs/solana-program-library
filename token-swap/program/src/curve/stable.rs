@@ -216,19 +216,19 @@ impl CurveCalculator for StableCurve {
         };
         let leverage = self.amp.checked_mul(N_COINS as u64)?;
         let d0 = compute_d(leverage, swap_source_amount, swap_destination_amount)?;
-        let (new_swap_source_amount, new_swap_destination_amount) = match liquidity_provider_operation {
-            LiquidityProviderOperation::Deposit => (swap_token_a_amount + source_amount, swap_token_b_amount),
-            LiquidityProviderOperation::Withdrawal => (swap_token_b_amount - source_amount, swap_token_a_amount)
+        let new_swap_source_amount = match liquidity_provider_operation {
+            LiquidityProviderOperation::Deposit => swap_source_amount + source_amount,
+            LiquidityProviderOperation::Withdrawal => swap_source_amount - source_amount,
         };
-        let d1 = compute_d(leverage, new_swap_source_amount, new_swap_destination_amount)?;
+        let d1 = compute_d(leverage, new_swap_source_amount, swap_destination_amount)?;
         let diff = match liquidity_provider_operation {
             LiquidityProviderOperation::Deposit => d1.checked_sub(d0)?,
             LiquidityProviderOperation::Withdrawal => d0.checked_sub(d1)?
         };
         let final_amount = (diff.checked_mul(pool_supply))?.checked_div(d0)?;
         match liquidity_provider_operation {
-            LiquidityProviderOperation::Deposit => Some(PreciseNumber::new(final_amount)?.ceiling()?.to_imprecise()?),
-            LiquidityProviderOperation::Withdrawal => Some(PreciseNumber::new(final_amount)?.floor()?.to_imprecise()?)
+            LiquidityProviderOperation::Deposit => Some(PreciseNumber::new(final_amount)?.floor()?.to_imprecise()?),
+            LiquidityProviderOperation::Withdrawal => Some(PreciseNumber::new(final_amount)?.ceiling()?.to_imprecise()?)
         }
     }
 

@@ -126,13 +126,13 @@ impl CurveCalculator for ConstantPriceCurve {
             .checked_add(U256::from(swap_token_a_amount))?;
         let pool_supply = U256::from(pool_supply);
         match liquidity_provider_operation {
-            LiquidityProviderOperation::Withdrawal => Some(
+            LiquidityProviderOperation::Deposit => Some(
                 pool_supply
                     .checked_mul(given_value)?
                     .checked_div(total_value)?
                     .as_u128(),
             ),
-            LiquidityProviderOperation::Deposit => Some(
+            LiquidityProviderOperation::Withdrawal => Some(
                 pool_supply
                     .checked_mul(given_value)?
                     .checked_ceil_div(total_value)?

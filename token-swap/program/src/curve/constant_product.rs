@@ -119,8 +119,8 @@ pub fn trading_tokens_to_pool_tokens(
     let pool_supply = PreciseNumber::new(pool_supply)?;
     let pool_tokens = pool_supply.checked_mul(&root)?;
     match liquidity_provider_operation {
-        LiquidityProviderOperation::Withdrawal => pool_tokens.floor()?.to_imprecise(),
-        LiquidityProviderOperation::Deposit => pool_tokens.ceiling()?.to_imprecise(),
+        LiquidityProviderOperation::Deposit => pool_tokens.floor()?.to_imprecise(),
+        LiquidityProviderOperation::Withdrawal => pool_tokens.ceiling()?.to_imprecise(),
     }
 }
 

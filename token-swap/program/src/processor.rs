@@ -433,7 +433,7 @@ impl Processor {
                 swap_token_b_amount,
                 to_u128(pool_mint.supply)?,
                 trade_direction,
-                LiquidityProviderOperation::Deposit,
+                LiquidityProviderOperation::Withdrawal,
                 token_swap.fees(),
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
@@ -784,7 +784,7 @@ impl Processor {
                 to_u128(swap_token_b.amount)?,
                 pool_mint_supply,
                 trade_direction,
-                LiquidityProviderOperation::Withdrawal,
+                LiquidityProviderOperation::Deposit,
                 token_swap.fees(),
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
@@ -918,7 +918,7 @@ impl Processor {
                 swap_token_b_amount,
                 pool_mint_supply,
                 trade_direction,
-                LiquidityProviderOperation::Deposit,
+                LiquidityProviderOperation::Withdrawal,
                 token_swap.fees(),
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
@@ -5333,7 +5333,7 @@ mod tests {
                     swap_token_b.amount.try_into().unwrap(),
                     pool_mint.supply.try_into().unwrap(),
                     TradeDirection::AtoB,
-                    LiquidityProviderOperation::Deposit,
+                    LiquidityProviderOperation::Withdrawal,
                     &accounts.fees,
                 )
                 .unwrap();
@@ -5506,7 +5506,7 @@ mod tests {
                 token_b_amount.try_into().unwrap(),
                 initial_supply.try_into().unwrap(),
                 TradeDirection::AtoB,
-                LiquidityProviderOperation::Deposit,
+                LiquidityProviderOperation::Withdrawal,
                 &fees,
             )
             .unwrap();
@@ -5583,7 +5583,7 @@ mod tests {
                 token_b_amount.try_into().unwrap(),
                 initial_supply.try_into().unwrap(),
                 TradeDirection::BtoA,
-                LiquidityProviderOperation::Deposit,
+                LiquidityProviderOperation::Withdrawal,
                 &fees,
             )
             .unwrap();
