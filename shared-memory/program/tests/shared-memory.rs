@@ -2,7 +2,7 @@ use solana_bpf_loader_program::serialization::serialize_parameters;
 use solana_program::{
     bpf_loader, entrypoint::SUCCESS, program_error::ProgramError, pubkey::Pubkey,
 };
-use solana_sdk::{account::AccountSharedData, keyed_account::KeyedAccount};
+use solana_sdk::{account_shared_data::AccountSharedData, keyed_account::KeyedAccount};
 use spl_shared_memory::entrypoint;
 
 // TODO: Rework `assert_instruction_count` test to use solana-program-test, avoiding the need to
