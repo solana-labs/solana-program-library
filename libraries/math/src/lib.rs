@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 
 pub mod approximations;
+pub mod checked_ceil_div;
 mod entrypoint;
 pub mod error;
 pub mod instruction;

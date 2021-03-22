@@ -6,6 +6,7 @@ use {
         account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
         pubkey::Pubkey,
     },
+    spl_math::checked_ceil_div::CheckedCeilDiv,
     std::convert::{TryFrom, TryInto},
     std::mem::size_of,
 };
@@ -50,10 +51,6 @@ impl StakePool {
         if self.stake_total == 0 {
             return Some(stake_lamports);
         }
-        self.calc_pool_withdraw_amount(stake_lamports)
-    }
-    /// calculate the pool tokens that should be withdrawn
-    pub fn calc_pool_withdraw_amount(&self, stake_lamports: u64) -> Option<u64> {
         u64::try_from(
             (stake_lamports as u128)
                 .checked_mul(self.pool_total as u128)?
@@ -61,8 +58,15 @@ impl StakePool {
         )
         .ok()
     }
-    /// calculate lamports amount
-    pub fn calc_lamports_amount(&self, pool_tokens: u64) -> Option<u64> {
+    /// calculate the pool tokens that should be withdrawn
+    pub fn calc_pool_withdraw_amount(&self, stake_lamports: u64) -> Option<u64> {
+        let (quotient, _) = (stake_lamports as u128)
+            .checked_mul(self.pool_total as u128)?
+            .checked_ceil_div(self.stake_total as u128)?;
+        u64::try_from(quotient).ok()
+    }
+    /// calculate lamports amount on withdrawal
+    pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
         u64::try_from(
             (pool_tokens as u128)
                 .checked_mul(self.stake_total as u128)?
