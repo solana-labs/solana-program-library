@@ -962,6 +962,21 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
     Ok(None)
 }
 
+fn command_address(config: &Config, token: Option<Pubkey>) -> CommandResult {
+    if let Some(token) = token {
+        let mint = config.rpc_client.get_account(&token);
+        if mint.is_err() || Mint::unpack(&mint.unwrap().data).is_err() {
+            return Err(format!("Invalid mint account {:?}", token).into());
+        }
+        let associated_token_address = get_associated_token_address(&config.owner, &token);
+        println!("Wallet address: {:?}", config.owner);
+        println!("Associated token address: {:?}", associated_token_address);
+    } else {
+        println!("Wallet address: {:?}", config.owner);
+    }
+    Ok(None)
+}
+
 fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
     let account = config.rpc_client.get_token_account(&address)?.unwrap();
     println!();
@@ -1675,6 +1690,19 @@ fn main() {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("address")
+                .about("Get wallet address")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .long("token")
+                        .requires("verbose")
+                        .help("Return the associated token address for the given token. [Default: --owner address]"),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("account-info")
                 .about("Query details of an SPL Token account by address")
                 .arg(
@@ -1738,6 +1766,7 @@ fn main() {
         // Owner doesn't sign when using a mulitisig...
         let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name)
           || sub_command == "accounts" // when calling the `accounts` command...
+          || sub_command == "address" // when calling the `address` command...
           || (sub_command == "create-account" // or when creating an associated token account.
               && !matches.is_present("account_keypair"))
         {
@@ -2066,6 +2095,10 @@ fn main() {
         ("accounts", Some(arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
             command_accounts(&config, token)
+        }
+        ("address", Some(arg_matches)) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+            command_address(&config, token)
         }
         ("account-info", Some(arg_matches)) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
