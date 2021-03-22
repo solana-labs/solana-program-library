@@ -473,7 +473,7 @@ fn command_transfer(
     sender: Pubkey,
     ui_amount: Option<f64>,
     recipient: Pubkey,
-    allow_empty_recipient: bool,
+    allow_unfunded_recipient: bool,
     fund_recipient: bool,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
@@ -524,9 +524,9 @@ fn command_transfer(
         .value
         .map(|account_data| account_data.owner);
 
-    if recipient_account_owner.is_none() && !allow_empty_recipient {
-        return Err("Error: The recipient has no balance. \
-                            Add `--allow-empty-recipient` to complete the transfer \
+    if recipient_account_owner.is_none() && !allow_unfunded_recipient {
+        return Err("Error: The recipient address is not funded. \
+                            Add `--allow-unfunded-recipient` to complete the transfer \
                            "
         .into());
     }
@@ -1413,10 +1413,16 @@ fn main() {
                                the associated token account")
                 )
                 .arg(
+                    Arg::with_name("allow_unfunded_recipient")
+                        .long("allow-unfunded-recipient")
+                        .takes_value(false)
+                        .help("Complete the transfer even if the recipient address is not funded")
+                )
+                .arg(
                     Arg::with_name("allow_empty_recipient")
                         .long("allow-empty-recipient")
                         .takes_value(false)
-                        .help("Complete the transfer even if the recipient account does not exist")
+                        .hidden(true) // Deprecated, use --allow-unfunded-recipient instead
                 )
                 .arg(
                     Arg::with_name("fund_recipient")
@@ -1944,13 +1950,14 @@ fn main() {
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(&arg_matches, MINT_DECIMALS_ARG.name);
             let fund_recipient = matches.is_present("fund_recipient");
-            let allow_empty_recipient = matches.is_present("allow_empty_recipient");
+            let allow_unfunded_recipient = matches.is_present("allow_empty_recipient")
+                || matches.is_present("allow_unfunded_recipient");
             command_transfer(
                 &config,
                 sender,
                 amount,
                 recipient,
-                allow_empty_recipient,
+                allow_unfunded_recipient,
                 fund_recipient,
                 mint_address,
                 mint_decimals,
