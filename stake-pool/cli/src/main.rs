@@ -777,7 +777,7 @@ fn pick_withdraw_accounts(
             continue;
         }
         let available_for_withdrawal = stake_pool
-            .calc_lamports_amount(account.lamports - *MIN_STAKE_BALANCE)
+            .calc_lamports_withdraw_amount(account.lamports - *MIN_STAKE_BALANCE)
             .unwrap();
         let withdraw_amount = u64::min(available_for_withdrawal, remaining_amount);
 
@@ -878,7 +878,7 @@ fn command_withdraw(
     for withdraw_stake in withdraw_accounts {
         // Convert pool tokens amount to lamports
         let sol_withdraw_amount = pool_data
-            .calc_lamports_amount(withdraw_stake.pool_amount)
+            .calc_lamports_withdraw_amount(withdraw_stake.pool_amount)
             .unwrap();
 
         println!(
