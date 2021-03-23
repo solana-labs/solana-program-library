@@ -185,7 +185,7 @@ impl Reserve {
             }
             AmountType::PercentAmount => {
                 // @FIXME: convert error to ProgramError
-                let borrow_pct = Decimal::from_percent(u8::try_from(liquidity_amount)?);
+                let borrow_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
                 let borrow_value = max_borrow_value.try_mul(borrow_pct)?;
                 let borrow_amount = borrow_value
                     .try_div(self.liquidity.median_price)?

@@ -973,7 +973,7 @@ fn process_withdraw_obligation_collateral(
         }
         AmountType::PercentAmount => {
             // @FIXME: convert error to ProgramError
-            let withdraw_pct = Decimal::from_percent(u8::try_from(collateral_amount)?);
+            let withdraw_pct = Rate::from_percent(u8::try_from(collateral_amount)?);
             let withdraw_value = max_withdraw_value
                 .try_mul(withdraw_pct)?
                 .min(collateral.market_value);
