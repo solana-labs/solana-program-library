@@ -455,10 +455,17 @@ fn resolve_mint_info(
             .rpc_client
             .get_token_account(&token_account)?
             .ok_or_else(|| format!("Could not find token account {}", token_account))?;
-        Ok((
-            Pubkey::from_str(&source_account.mint)?,
-            source_account.token_amount.decimals,
-        ))
+        let source_mint = Pubkey::from_str(&source_account.mint)?;
+        if let Some(mint) = mint_address {
+            if source_mint != mint {
+                return Err(format!(
+                    "Source {:?} does not contain {:?} tokens",
+                    token_account, mint
+                )
+                .into());
+            }
+        }
+        Ok((source_mint, source_account.token_amount.decimals))
     } else {
         Ok((
             mint_address.unwrap_or_default(),
@@ -470,15 +477,20 @@ fn resolve_mint_info(
 #[allow(clippy::too_many_arguments)]
 fn command_transfer(
     config: &Config,
-    sender: Pubkey,
+    token: Pubkey,
     ui_amount: Option<f64>,
     recipient: Pubkey,
+    sender: Option<Pubkey>,
     allow_unfunded_recipient: bool,
     fund_recipient: bool,
-    mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
 ) -> CommandResult {
-    let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, mint_address, mint_decimals)?;
+    let sender = if let Some(sender) = sender {
+        sender
+    } else {
+        get_associated_token_address(&config.owner, &token)
+    };
+    let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, Some(token), mint_decimals)?;
     let sender_token_amount = config
         .rpc_client
         .get_token_account_balance(&sender)
@@ -1399,13 +1411,13 @@ fn main() {
             SubCommand::with_name("transfer")
                 .about("Transfer tokens between accounts")
                 .arg(
-                    Arg::with_name("sender")
+                    Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("SENDER_TOKEN_ACCOUNT_ADDRESS")
+                        .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required(true)
-                        .help("The token account address of the sender"),
+                        .help("Token to transfer"),
                 )
                 .arg(
                     Arg::with_name("amount")
@@ -1428,6 +1440,15 @@ fn main() {
                                the associated token account")
                 )
                 .arg(
+                    Arg::with_name("from")
+                        .validator(is_valid_pubkey)
+                        .value_name("SENDER_TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .long("from")
+                        .help("Specify the sending token account \
+                            [default: owner's associated token account]")
+                )
+                .arg(
                     Arg::with_name("allow_unfunded_recipient")
                         .long("allow-unfunded-recipient")
                         .takes_value(false)
@@ -1446,9 +1467,9 @@ fn main() {
                         .help("Create the associated token account for the recipient if doesn't already exist")
                 )
                 .arg(multisig_signer_arg())
-                .mint_args()
+                .arg(mint_decimals_arg())
                 .nonce_args(true)
-                .offline_args_config(&SignOnlyNeedsFullMintSpec{}),
+                .offline_args_config(&SignOnlyNeedsMintDecimals{}),
         )
         .subcommand(
             SubCommand::with_name("burn")
@@ -1964,10 +1985,9 @@ fn main() {
             )
         }
         ("transfer", Some(arg_matches)) => {
-            let sender = pubkey_of_signer(arg_matches, "sender", &mut wallet_manager)
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-
             let amount = match matches.value_of("amount").unwrap() {
                 "ALL" => None,
                 amount => Some(amount.parse::<f64>().unwrap()),
@@ -1975,20 +1995,19 @@ fn main() {
             let recipient = pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let mint_address =
-                pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
+            let sender = pubkey_of_signer(arg_matches, "from", &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(&arg_matches, MINT_DECIMALS_ARG.name);
             let fund_recipient = matches.is_present("fund_recipient");
             let allow_unfunded_recipient = matches.is_present("allow_empty_recipient")
                 || matches.is_present("allow_unfunded_recipient");
             command_transfer(
                 &config,
-                sender,
+                token,
                 amount,
                 recipient,
+                sender,
                 allow_unfunded_recipient,
                 fund_recipient,
-                mint_address,
                 mint_decimals,
             )
         }
