@@ -88,15 +88,13 @@ pub enum LendingInstruction {
     },
 
     // 3
-    /// Accrue interest and update median quote token price on reserves.
+    /// Accrue interest and update median quote token price on a reserve.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[]` Clock sysvar
-    ///   1. `[writable]` Reserve account
-    ///   2. `[]` Reserve liquidity aggregator account
-    ///   .. `[writable]` Additional reserve account
-    ///   .. `[]` Additional reserve liquidity aggregator account
+    ///   0. `[writable]` Reserve account
+    ///   1. `[]` Clock sysvar
+    ///   2. `[optional]` Reserve liquidity aggregator account
     RefreshReserve,
 
     // 4
@@ -154,7 +152,9 @@ pub enum LendingInstruction {
     InitObligation,
 
     // 7
-    /// Refresh an obligation's loan to value ratio. Requires refreshed reserves.
+    /// Refresh an obligation's accrued interest and collateral and liquidity prices. Requires
+    /// refreshed reserves, as all obligation collateral deposit reserves in order, followed by all
+    /// liquidity borrow reserves in order.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -162,8 +162,8 @@ pub enum LendingInstruction {
     ///   1. `[]` Lending market account
     ///   2. `[]` Clock sysvar
     ///   3. `[]` Token program id
-    ///   .. `[]` Collateral deposit reserve accounts - refreshed
-    ///   .. `[]` Liquidity borrow reserve accounts - refreshed
+    ///   .. `[]` Collateral deposit reserve accounts - refreshed, all, in order
+    ///   .. `[]` Liquidity borrow reserve accounts - refreshed, all, in order
     RefreshObligation,
 
     // 8
@@ -190,8 +190,7 @@ pub enum LendingInstruction {
     },
 
     // 9
-    /// Withdraw collateral from an obligation. The loan must remain healthy. Requires a
-    /// recently refreshed obligation.
+    /// Withdraw collateral from an obligation. Requires a refreshed obligation and reserve.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -199,8 +198,8 @@ pub enum LendingInstruction {
     ///   1. `[writable]` Destination collateral token account
     ///                     Minted by withdraw reserve collateral mint.
     ///                     $authority can transfer $collateral_amount.
-    ///   2. `[]` Withdraw reserve account
-    ///   3. `[writable]` Obligation account
+    ///   2. `[]` Withdraw reserve account - refreshed
+    ///   3. `[writable]` Obligation account - refreshed
     ///   4. `[writable]` Obligation token mint
     ///   5. `[writable]` Obligation token input account
     ///   6. `[]` Lending market account
@@ -216,18 +215,18 @@ pub enum LendingInstruction {
     },
 
     // 10
-    /// Borrow liquidity from a reserve by depositing collateral tokens. The amount of liquidity is
-    /// determined by market price. Requires a recently refreshed obligation.
+    /// Borrow liquidity from a reserve by depositing collateral tokens. Requires a refreshed
+    /// obligation and reserve.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source borrow reserve liquidity supply SPL Token account
     ///   1. `[writable]` Destination liquidity token account
     ///                     Minted by borrow reserve liquidity mint.
-    ///   2. `[writable]` Borrow reserve account
+    ///   2. `[writable]` Borrow reserve account - refreshed
     ///   3. `[writable]` Borrow reserve liquidity fee receiver account
     ///                     Must be the fee account specified at InitReserve.
-    ///   4. `[writable]` Obligation account
+    ///   4. `[writable]` Obligation account - refreshed
     ///   5. `[]` Lending market account
     ///   6. `[]` Derived lending market authority
     ///   7. `[]` Clock sysvar
@@ -238,11 +237,11 @@ pub enum LendingInstruction {
         liquidity_amount: u64,
         /// Describe how `liquidity_amount` should be treated
         liquidity_amount_type: AmountType,
-        // TODO: slippage constraint - https://git.io/JmV67
+        // @TODO: slippage constraint - https://git.io/JmV67
     },
 
     // 11
-    /// Repay borrowed liquidity to a reserve. Requires a recently refreshed obligation.
+    /// Repay borrowed liquidity to a reserve. Requires a refreshed obligation and reserve.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -250,8 +249,8 @@ pub enum LendingInstruction {
     ///                     Minted by repay reserve liquidity mint.
     ///                     $authority can transfer $liquidity_amount.
     ///   1. `[writable]` Destination repay reserve liquidity supply SPL Token account
-    ///   2. `[writable]` Repay reserve account
-    ///   3. `[writable]` Obligation account
+    ///   2. `[writable]` Repay reserve account - refreshed
+    ///   3. `[writable]` Obligation account - refreshed
     ///   4. `[]` Lending market account
     ///   5. `[]` Derived lending market authority
     ///   6. `[signer]` User transfer authority ($authority)
@@ -266,7 +265,7 @@ pub enum LendingInstruction {
 
     // 12
     /// Repay borrowed liquidity to a reserve to receive collateral at a discount from an unhealthy
-    /// obligation. Requires a recently refreshed obligation.
+    /// obligation. Requires a refreshed obligation and reserves.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -275,11 +274,11 @@ pub enum LendingInstruction {
     ///                     $authority can transfer $liquidity_amount.
     ///   1. `[writable]` Destination collateral token account
     ///                     Minted by withdraw reserve collateral mint
-    ///   2. `[writable]` Repay reserve account
+    ///   2. `[writable]` Repay reserve account - refreshed
     ///   3. `[writable]` Repay reserve liquidity supply SPL Token account
-    ///   4. `[writable]` Withdraw reserve account
+    ///   4. `[writable]` Withdraw reserve account - refreshed
     ///   5. `[writable]` Withdraw reserve collateral supply SPL Token account
-    ///   6. `[writable]` Obligation account
+    ///   6. `[writable]` Obligation account - refreshed
     ///   7. `[]` Lending market account
     ///   8. `[]` Derived lending market authority
     ///   9. `[signer]` User transfer authority ($authority)
