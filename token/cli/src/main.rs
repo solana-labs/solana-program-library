@@ -473,7 +473,7 @@ fn command_transfer(
     sender: Pubkey,
     ui_amount: Option<f64>,
     recipient: Pubkey,
-    allow_empty_recipient: bool,
+    allow_unfunded_recipient: bool,
     fund_recipient: bool,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
@@ -524,9 +524,9 @@ fn command_transfer(
         .value
         .map(|account_data| account_data.owner);
 
-    if recipient_account_owner.is_none() && !allow_empty_recipient {
-        return Err("Error: The recipient has no balance. \
-                            Add `--allow-empty-recipient` to complete the transfer \
+    if recipient_account_owner.is_none() && !allow_unfunded_recipient {
+        return Err("Error: The recipient address is not funded. \
+                            Add `--allow-unfunded-recipient` to complete the transfer \
                            "
         .into());
     }
@@ -962,6 +962,74 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
     Ok(None)
 }
 
+fn command_address(config: &Config, token: Option<Pubkey>) -> CommandResult {
+    if let Some(token) = token {
+        let mint = config.rpc_client.get_account(&token);
+        if mint.is_err() || Mint::unpack(&mint.unwrap().data).is_err() {
+            return Err(format!("Invalid mint account {:?}", token).into());
+        }
+        let associated_token_address = get_associated_token_address(&config.owner, &token);
+        println!("Wallet address: {:?}", config.owner);
+        println!("Associated token address: {:?}", associated_token_address);
+    } else {
+        println!("Wallet address: {:?}", config.owner);
+    }
+    Ok(None)
+}
+
+fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
+    let account = config.rpc_client.get_token_account(&address)?.unwrap();
+    println!();
+    println_name_value("Address:", &address.to_string());
+    println_name_value(
+        "Balance:",
+        &account.token_amount.real_number_string_trimmed(),
+    );
+    let mint = format!(
+        "{}{}",
+        account.mint,
+        if account.is_native { " (native)" } else { "" }
+    );
+    println_name_value("Mint:", &mint);
+    println_name_value("Owner:", &account.owner);
+    println_name_value("State:", &format!("{:?}", account.state));
+    if let Some(delegate) = &account.delegate {
+        println!("Delegation:");
+        println_name_value("  Delegate:", delegate);
+        let allowance = account.delegated_amount.as_ref().unwrap();
+        println_name_value("  Allowance:", &allowance.real_number_string_trimmed());
+    } else {
+        println_name_value("Delegation:", "");
+    }
+    println_name_value(
+        "Close authority:",
+        &account.close_authority.as_ref().unwrap_or(&String::new()),
+    );
+    Ok(None)
+}
+
+fn get_multisig(config: &Config, address: &Pubkey) -> Result<Multisig, Error> {
+    let account = config.rpc_client.get_account(&address)?;
+    Multisig::unpack(&account.data).map_err(|e| e.into())
+}
+
+fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
+    let multisig = get_multisig(config, &address)?;
+    let n = multisig.n as usize;
+    assert!(n <= multisig.signers.len());
+    println!();
+    println_name_value("Address:", &address.to_string());
+    println_name_value("M/N:", &format!("{}/{}", multisig.m, n));
+    println_name_value("Signers:", " ");
+    let width = if n >= 9 { 4 } else { 3 };
+    for i in 0..n {
+        let title = format!("{1:>0$}:", width, i + 1);
+        let pubkey = &multisig.signers[i];
+        println_name_value(&title, &pubkey.to_string())
+    }
+    Ok(None)
+}
+
 fn command_gc(config: &Config) -> CommandResult {
     println!("Fetching token accounts");
     let accounts = config.rpc_client.get_token_accounts_by_owner(
@@ -1088,59 +1156,6 @@ fn command_gc(config: &Config) -> CommandResult {
     }
 
     Ok(Some((lamports_needed, instructions)))
-}
-
-fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
-    let account = config.rpc_client.get_token_account(&address)?.unwrap();
-    println!();
-    println_name_value("Address:", &address.to_string());
-    println_name_value(
-        "Balance:",
-        &account.token_amount.real_number_string_trimmed(),
-    );
-    let mint = format!(
-        "{}{}",
-        account.mint,
-        if account.is_native { " (native)" } else { "" }
-    );
-    println_name_value("Mint:", &mint);
-    println_name_value("Owner:", &account.owner);
-    println_name_value("State:", &format!("{:?}", account.state));
-    if let Some(delegate) = &account.delegate {
-        println!("Delegation:");
-        println_name_value("  Delegate:", delegate);
-        let allowance = account.delegated_amount.as_ref().unwrap();
-        println_name_value("  Allowance:", &allowance.real_number_string_trimmed());
-    } else {
-        println_name_value("Delegation:", "");
-    }
-    println_name_value(
-        "Close authority:",
-        &account.close_authority.as_ref().unwrap_or(&String::new()),
-    );
-    Ok(None)
-}
-
-fn get_multisig(config: &Config, address: &Pubkey) -> Result<Multisig, Error> {
-    let account = config.rpc_client.get_account(&address)?;
-    Multisig::unpack(&account.data).map_err(|e| e.into())
-}
-
-fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
-    let multisig = get_multisig(config, &address)?;
-    let n = multisig.n as usize;
-    assert!(n <= multisig.signers.len());
-    println!();
-    println_name_value("Address:", &address.to_string());
-    println_name_value("M/N:", &format!("{}/{}", multisig.m, n));
-    println_name_value("Signers:", " ");
-    let width = if n >= 9 { 4 } else { 3 };
-    for i in 0..n {
-        let title = format!("{1:>0$}:", width, i + 1);
-        let pubkey = &multisig.signers[i];
-        println_name_value(&title, &pubkey.to_string())
-    }
-    Ok(None)
 }
 
 struct SignOnlyNeedsFullMintSpec {}
@@ -1413,10 +1428,16 @@ fn main() {
                                the associated token account")
                 )
                 .arg(
+                    Arg::with_name("allow_unfunded_recipient")
+                        .long("allow-unfunded-recipient")
+                        .takes_value(false)
+                        .help("Complete the transfer even if the recipient address is not funded")
+                )
+                .arg(
                     Arg::with_name("allow_empty_recipient")
                         .long("allow-empty-recipient")
                         .takes_value(false)
-                        .help("Complete the transfer even if the recipient account does not exist")
+                        .hidden(true) // Deprecated, use --allow-unfunded-recipient instead
                 )
                 .arg(
                     Arg::with_name("fund_recipient")
@@ -1524,44 +1545,6 @@ fn main() {
                 .offline_args_config(&SignOnlyNeedsMintAddress{}),
         )
         .subcommand(
-            SubCommand::with_name("balance")
-                .about("Get token account balance")
-                .arg(
-                    Arg::with_name("address")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ACCOUNT_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .required(true)
-                        .help("The token account address"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("supply")
-                .about("Get token supply")
-                .arg(
-                    Arg::with_name("address")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .required(true)
-                        .help("The token address"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("accounts")
-                .about("List all token accounts by owner")
-                .arg(
-                    Arg::with_name("token")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .help("Limit results to the given token. [Default: list accounts for all tokens]"),
-                ),
-        )
-        .subcommand(
             SubCommand::with_name("wrap")
                 .about("Wrap native SOL in a SOL token account")
                 .arg(
@@ -1591,32 +1574,6 @@ fn main() {
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
-        )
-        .subcommand(
-            SubCommand::with_name("account-info")
-                .about("Query details of an SPL Token account by address")
-                .arg(
-                    Arg::with_name("address")
-                    .validator(is_valid_pubkey)
-                    .value_name("TOKEN_ACCOUNT_ADDRESS")
-                    .takes_value(true)
-                    .index(1)
-                    .required(true)
-                    .help("The address of the SPL Token account to query"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("multisig-info")
-                .about("Query details about and SPL Token multisig account by address")
-                .arg(
-                    Arg::with_name("address")
-                    .validator(is_valid_pubkey)
-                    .value_name("MULTISIG_ACCOUNT_ADDRESS")
-                    .takes_value(true)
-                    .index(1)
-                    .required(true)
-                    .help("The address of the SPL Token multisig account to query"),
-                ),
         )
         .subcommand(
             SubCommand::with_name("approve")
@@ -1695,6 +1652,83 @@ fn main() {
                 .offline_args(),
         )
         .subcommand(
+            SubCommand::with_name("balance")
+                .about("Get token account balance")
+                .arg(
+                    Arg::with_name("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token account address"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("supply")
+                .about("Get token supply")
+                .arg(
+                    Arg::with_name("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("accounts")
+                .about("List all token accounts by owner")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .help("Limit results to the given token. [Default: list accounts for all tokens]"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("address")
+                .about("Get wallet address")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .long("token")
+                        .requires("verbose")
+                        .help("Return the associated token address for the given token. [Default: --owner address]"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("account-info")
+                .about("Query details of an SPL Token account by address")
+                .arg(
+                    Arg::with_name("address")
+                    .validator(is_valid_pubkey)
+                    .value_name("TOKEN_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .index(1)
+                    .required(true)
+                    .help("The address of the SPL Token account to query"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("multisig-info")
+                .about("Query details about and SPL Token multisig account by address")
+                .arg(
+                    Arg::with_name("address")
+                    .validator(is_valid_pubkey)
+                    .value_name("MULTISIG_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .index(1)
+                    .required(true)
+                    .help("The address of the SPL Token multisig account to query"),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("gc")
                 .about("Cleanup unnecessary token accounts")
         )
@@ -1732,6 +1766,7 @@ fn main() {
         // Owner doesn't sign when using a mulitisig...
         let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name)
           || sub_command == "accounts" // when calling the `accounts` command...
+          || sub_command == "address" // when calling the `address` command...
           || (sub_command == "create-account" // or when creating an associated token account.
               && !matches.is_present("account_keypair"))
         {
@@ -1944,13 +1979,14 @@ fn main() {
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(&arg_matches, MINT_DECIMALS_ARG.name);
             let fund_recipient = matches.is_present("fund_recipient");
-            let allow_empty_recipient = matches.is_present("allow_empty_recipient");
+            let allow_unfunded_recipient = matches.is_present("allow_empty_recipient")
+                || matches.is_present("allow_unfunded_recipient");
             command_transfer(
                 &config,
                 sender,
                 amount,
                 recipient,
-                allow_empty_recipient,
+                allow_unfunded_recipient,
                 fund_recipient,
                 mint_address,
                 mint_decimals,
@@ -2059,6 +2095,10 @@ fn main() {
         ("accounts", Some(arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
             command_accounts(&config, token)
+        }
+        ("address", Some(arg_matches)) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+            command_address(&config, token)
         }
         ("account-info", Some(arg_matches)) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
