@@ -165,7 +165,7 @@ fn process_init_lending_market(
         return Err(LendingError::InvalidTokenOwner.into());
     }
 
-    let mut lending_market = LendingMarket {
+    let lending_market = LendingMarket {
         version: PROGRAM_VERSION,
         bump_seed: Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1,
         owner: lending_market_owner,
@@ -816,9 +816,9 @@ fn process_deposit_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let collateral = obligation.find_or_add_collateral(*deposit_reserve_info.key)?;
-
-    collateral.deposit(collateral_amount)?;
+    obligation
+        .find_or_add_collateral(*deposit_reserve_info.key)?
+        .deposit(collateral_amount)?;
     // @TODO: instead of always marking stale, we could look for an optional
     //        reserve_liquidity_aggregator_info and update the market value.
     //        then the depositor could borrow in the same transaction.
@@ -919,7 +919,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let collateral = &mut obligation.find_collateral(*withdraw_reserve_info.key)?;
+    let collateral = obligation.find_collateral(*withdraw_reserve_info.key)?;
     if collateral.deposited_amount == 0 {
         return Err(LendingError::ObligationCollateralEmpty.into());
     }
@@ -980,17 +980,19 @@ fn process_withdraw_obligation_collateral(
             withdraw_amount
         }
     };
-
-    let obligation_token_amount = collateral
-        .collateral_to_obligation_token_amount(withdraw_amount, obligation_token_mint.supply)?;
-
-    if withdraw_amount == 0 || obligation_token_amount == 0 {
+    if withdraw_amount == 0 {
         return Err(LendingError::WithdrawTooSmall.into());
     }
 
-    // @TODO: should withdraw_reserve.collateral.mint_total_supply change?
-    //        if so, withdraw reserve needs to be writable.
-    collateral.withdraw(withdraw_amount)?;
+    let obligation_token_amount = collateral
+        .collateral_to_obligation_token_amount(withdraw_amount, obligation_token_mint.supply)?;
+    if obligation_token_amount == 0 {
+        return Err(LendingError::WithdrawTooSmall.into());
+    }
+
+    obligation
+        .find_collateral_mut(*withdraw_reserve_info.key)?
+        .withdraw(withdraw_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
@@ -1095,8 +1097,6 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let liquidity = obligation.find_or_add_liquidity(*borrow_reserve_info.key)?;
-
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
         &[lending_market.bump_seed],
@@ -1131,11 +1131,13 @@ fn process_borrow_obligation_liquidity(
     }
 
     borrow_reserve.liquidity.borrow(borrow_amount)?;
-    liquidity.borrow(borrow_amount)?;
-    obligation.last_update.mark_stale();
-
-    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
+
+    obligation
+        .find_or_add_liquidity(*borrow_reserve_info.key)?
+        .borrow(borrow_amount)?;
+    obligation.last_update.mark_stale();
+    Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     let mut owner_fee = borrow_fee;
     if let Ok(host_fee_receiver_info) = next_account_info(account_info_iter) {
@@ -1249,7 +1251,7 @@ fn process_repay_obligation_liquidity(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let liquidity = &mut obligation.find_liquidity(*repay_reserve_info.key)?;
+    let liquidity = obligation.find_liquidity(*repay_reserve_info.key)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -1275,10 +1277,13 @@ fn process_repay_obligation_liquidity(
     }
 
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
-    liquidity.repay(settle_amount);
+    Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
+
+    obligation
+        .find_liquidity_mut(*repay_reserve_info.key)?
+        .repay(settle_amount);
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
-    Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
@@ -1399,8 +1404,8 @@ fn process_liquidate_obligation(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let liquidity = &mut obligation.find_liquidity(*repay_reserve_info.key)?;
-    let collateral = &mut obligation.find_collateral(*withdraw_reserve_info.key)?;
+    let liquidity = obligation.find_liquidity(*repay_reserve_info.key)?;
+    let collateral = obligation.find_collateral(*withdraw_reserve_info.key)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -1435,13 +1440,15 @@ fn process_liquidate_obligation(
     }
 
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
-    liquidity.repay(settle_amount);
-    // @TODO: should withdraw_reserve.collateral.mint_total_supply change?
-    //        if so, withdraw reserve needs to be writable.
-    collateral.withdraw(withdraw_amount);
-    obligation.last_update.mark_stale();
-
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
+
+    obligation
+        .find_liquidity_mut(*repay_reserve_info.key)?
+        .repay(settle_amount);
+    obligation
+        .find_collateral_mut(*withdraw_reserve_info.key)?
+        .withdraw(withdraw_amount);
+    obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     spl_token_transfer(TokenTransferParams {
