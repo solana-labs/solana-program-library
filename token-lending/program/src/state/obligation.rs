@@ -121,15 +121,20 @@ impl Obligation {
         if self.collateral.len() == 0 {
             return Err(LendingError::ObligationCollateralEmpty.into());
         }
-        if let Some(collateral) = self
-            .collateral
-            .iter()
-            .find(|collateral| collateral.deposit_reserve == deposit_reserve)
-        {
+        if let Some(collateral) = self._find_collateral(deposit_reserve) {
             Ok(collateral)
         } else {
             Err(LendingError::InvalidObligationCollateral.into())
         }
+    }
+
+    fn _find_collateral(&self, deposit_reserve: Pubkey) -> Option<&ObligationCollateral> {
+        for collateral in &self.collateral {
+            if collateral.deposit_reserve == deposit_reserve {
+                return Some(collateral);
+            }
+        }
+        None
     }
 
     /// Find collateral by deposit reserve and borrow a mutable reference to it
@@ -140,15 +145,23 @@ impl Obligation {
         if self.collateral.len() == 0 {
             return Err(LendingError::ObligationCollateralEmpty.into());
         }
-        if let Some(collateral) = self
-            .collateral
-            .iter_mut()
-            .find(|collateral| collateral.deposit_reserve == deposit_reserve)
-        {
+        if let Some(collateral) = self._find_collateral_mut(deposit_reserve) {
             Ok(collateral)
         } else {
             Err(LendingError::InvalidObligationCollateral.into())
         }
+    }
+
+    fn _find_collateral_mut(
+        &mut self,
+        deposit_reserve: Pubkey,
+    ) -> Option<&mut ObligationCollateral> {
+        for collateral in &mut self.collateral {
+            if collateral.deposit_reserve == deposit_reserve {
+                return Some(collateral);
+            }
+        }
+        None
     }
 
     /// Find or add collateral by deposit reserve
@@ -156,17 +169,13 @@ impl Obligation {
         &mut self,
         deposit_reserve: Pubkey,
     ) -> Result<&mut ObligationCollateral, ProgramError> {
-        if let Some(collateral) = self
-            .collateral
-            .iter_mut()
-            .find(|collateral| collateral.deposit_reserve == deposit_reserve)
-        {
+        if let Some(collateral) = self._find_collateral_mut(deposit_reserve) {
             Ok(collateral)
         } else if self.collateral.len() + self.liquidity.len() >= MAX_OBLIGATION_RESERVES {
             Err(LendingError::ObligationReserveLimit.into())
         } else {
-            self.collateral
-                .push(ObligationCollateral::new(deposit_reserve));
+            let collateral = ObligationCollateral::new(deposit_reserve);
+            self.collateral.push(collateral);
             Ok(self.collateral.last_mut().unwrap())
         }
     }
@@ -179,15 +188,20 @@ impl Obligation {
         if self.liquidity.len() == 0 {
             return Err(LendingError::ObligationLiquidityEmpty.into());
         }
-        if let Some(liquidity) = self
-            .liquidity
-            .iter()
-            .find(|liquidity| liquidity.borrow_reserve == borrow_reserve)
-        {
+        if let Some(liquidity) = self._find_liquidity(borrow_reserve) {
             Ok(liquidity)
         } else {
             Err(LendingError::InvalidObligationLiquidity.into())
         }
+    }
+
+    fn _find_liquidity(&self, borrow_reserve: Pubkey) -> Option<&ObligationLiquidity> {
+        for liquidity in &self.liquidity {
+            if liquidity.borrow_reserve == borrow_reserve {
+                return Some(liquidity);
+            }
+        }
+        None
     }
 
     /// Find liquidity by borrow reserve and borrow a mutable reference to it
@@ -198,15 +212,20 @@ impl Obligation {
         if self.liquidity.len() == 0 {
             return Err(LendingError::ObligationLiquidityEmpty.into());
         }
-        if let Some(liquidity) = self
-            .liquidity
-            .iter_mut()
-            .find(|liquidity| liquidity.borrow_reserve == borrow_reserve)
-        {
+        if let Some(liquidity) = self._find_liquidity_mut(borrow_reserve) {
             Ok(liquidity)
         } else {
             Err(LendingError::InvalidObligationLiquidity.into())
         }
+    }
+
+    fn _find_liquidity_mut(&mut self, borrow_reserve: Pubkey) -> Option<&mut ObligationLiquidity> {
+        for liquidity in &mut self.liquidity {
+            if liquidity.borrow_reserve == borrow_reserve {
+                return Some(liquidity);
+            }
+        }
+        None
     }
 
     /// Find or add liquidity by borrow reserve
@@ -214,17 +233,13 @@ impl Obligation {
         &mut self,
         borrow_reserve: Pubkey,
     ) -> Result<&mut ObligationLiquidity, ProgramError> {
-        if let Some(liquidity) = self
-            .liquidity
-            .iter_mut()
-            .find(|liquidity| liquidity.borrow_reserve == borrow_reserve)
-        {
+        if let Some(liquidity) = self._find_liquidity_mut(borrow_reserve) {
             Ok(liquidity)
         } else if self.collateral.len() + self.liquidity.len() >= MAX_OBLIGATION_RESERVES {
             Err(LendingError::ObligationReserveLimit.into())
         } else {
-            self.liquidity
-                .push(ObligationLiquidity::new(borrow_reserve));
+            let liquidity = ObligationLiquidity::new(borrow_reserve);
+            self.liquidity.push(liquidity);
             Ok(self.liquidity.last_mut().unwrap())
         }
     }

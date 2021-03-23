@@ -667,7 +667,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    for collateral in obligation.collateral.iter_mut() {
+    for collateral in &mut obligation.collateral {
         let deposit_reserve_info = next_account_info(account_info_iter)?;
         if deposit_reserve_info.owner != program_id {
             return Err(LendingError::InvalidAccountOwner.into());
@@ -692,7 +692,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             .try_mul(deposit_reserve.liquidity.median_price)?;
     }
 
-    for liquidity in obligation.liquidity.iter_mut() {
+    for liquidity in &mut obligation.liquidity {
         let borrow_reserve_info = next_account_info(account_info_iter)?;
         if borrow_reserve_info.owner != program_id {
             return Err(LendingError::InvalidAccountOwner.into());
