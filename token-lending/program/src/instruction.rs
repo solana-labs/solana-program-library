@@ -12,7 +12,10 @@ use solana_program::{
     pubkey::{Pubkey, PUBKEY_BYTES},
     sysvar,
 };
-use std::{convert::TryInto, mem::size_of};
+use std::{
+    convert::{TryFrom, TryInto},
+    mem::size_of,
+};
 
 /// Describe how an input amount should be treated
 #[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
@@ -302,7 +305,7 @@ impl LendingInstruction {
             0 => {
                 let (owner, _rest) = Self::unpack_pubkey(rest)?;
                 let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
-                let (liquidation_threshold, rest) = Self::unpack_u8(rest)?;
+                let (liquidation_threshold, _rest) = Self::unpack_u8(rest)?;
                 Self::InitLendingMarket {
                     owner,
                     loan_to_value_ratio,
@@ -319,6 +322,9 @@ impl LendingInstruction {
                 let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
                 let (min_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
+                let (collateral_enabled, rest) = Self::unpack_u8(rest)?;
+                // @FIXME: convert error to ProgramError
+                let collateral_enabled = bool::try_from(collateral_enabled)?;
                 let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
                 let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
@@ -330,6 +336,7 @@ impl LendingInstruction {
                         min_borrow_rate,
                         optimal_borrow_rate,
                         max_borrow_rate,
+                        collateral_enabled,
                         fees: ReserveFees {
                             borrow_fee_wad,
                             host_fee_percentage,
@@ -353,7 +360,7 @@ impl LendingInstruction {
                 Self::DepositObligationCollateral { collateral_amount }
             }
             9 => {
-                let (collateral_amount, _rest) = Self::unpack_u64(rest)?;
+                let (collateral_amount, rest) = Self::unpack_u64(rest)?;
                 let (collateral_amount_type, _rest) = Self::unpack_u8(rest)?;
                 let collateral_amount_type = AmountType::from_u8(collateral_amount_type)
                     .ok_or(LendingError::InstructionUnpackError)?;
@@ -373,7 +380,7 @@ impl LendingInstruction {
                 }
             }
             11 => {
-                let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
+                let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
                 let (liquidity_amount_type, _rest) = Self::unpack_u8(rest)?;
                 let liquidity_amount_type = AmountType::from_u8(liquidity_amount_type)
                     .ok_or(LendingError::InstructionUnpackError)?;
@@ -383,7 +390,7 @@ impl LendingInstruction {
                 }
             }
             12 => {
-                let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
+                let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
                 let (liquidity_amount_type, _rest) = Self::unpack_u8(rest)?;
                 let liquidity_amount_type = AmountType::from_u8(liquidity_amount_type)
                     .ok_or(LendingError::InstructionUnpackError)?;
@@ -461,6 +468,7 @@ impl LendingInstruction {
                         min_borrow_rate,
                         optimal_borrow_rate,
                         max_borrow_rate,
+                        collateral_enabled,
                         fees:
                             ReserveFees {
                                 borrow_fee_wad,
@@ -475,6 +483,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&min_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&optimal_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&max_borrow_rate.to_le_bytes());
+                buf.extend_from_slice(&u8::from(collateral_enabled).to_le_bytes());
                 buf.extend_from_slice(&borrow_fee_wad.to_le_bytes());
                 buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
             }
@@ -706,16 +715,19 @@ pub fn redeem_reserve_collateral(
     }
 }
 
-// @FIXME: needs optional reserve liquidity aggregator pubkeys
 /// Creates a `RefreshReserve` instruction
-pub fn refresh_reserve(program_id: Pubkey, reserve_pubkeys: Vec<Pubkey>) -> Instruction {
-    let mut accounts = Vec::with_capacity(1 + reserve_pubkeys.len());
-    accounts.push(AccountMeta::new_readonly(sysvar::clock::id(), false));
-    accounts.extend(
-        reserve_pubkeys
-            .into_iter()
-            .map(|reserve_pubkey| AccountMeta::new(reserve_pubkey, false)),
-    );
+pub fn refresh_reserve(
+    program_id: Pubkey,
+    reserve_pubkey: Pubkey,
+    reserve_liquidity_aggregator_pubkey: Option<Pubkey>,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(reserve_pubkey, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+    if let Some(reserve_liquidity_aggregator_pubkey) = reserve_liquidity_aggregator_pubkey {
+        accounts.push(AccountMeta::new(reserve_liquidity_aggregator_pubkey, false));
+    }
     Instruction {
         program_id,
         accounts,
@@ -751,13 +763,12 @@ pub fn refresh_obligation(
     lending_market_pubkey: Pubkey,
     reserve_pubkeys: Vec<Pubkey>,
 ) -> Instruction {
-    let mut accounts = Vec::with_capacity(4 + reserve_pubkeys.len());
-    accounts.extend(vec![
-        AccountMeta::new(obligation_pubkey, false)
+    let mut accounts = vec![
+        AccountMeta::new(obligation_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
-    ]);
+    ];
     accounts.extend(
         reserve_pubkeys
             .into_iter()
@@ -766,7 +777,7 @@ pub fn refresh_obligation(
     Instruction {
         program_id,
         accounts,
-        data: LendingInstruction::RefreshObligationLiquidity.pack(),
+        data: LendingInstruction::RefreshObligation.pack(),
     }
 }
 

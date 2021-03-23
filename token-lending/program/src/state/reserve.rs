@@ -159,28 +159,19 @@ impl Reserve {
         &self,
         liquidity_amount: u64,
         liquidity_amount_type: AmountType,
-        obligation: &Obligation,
-        loan_to_value_ratio: Rate,
-        token_converter: impl TokenConverter,
-        quote_token_mint: &Pubkey,
+        max_borrow_value: Decimal,
     ) -> Result<BorrowLiquidityResult, ProgramError> {
-        let max_borrow_value = obligation
-            .collateral_value
-            .try_mul(loan_to_value_ratio)?
-            .try_sub(obligation.liquidity_value)?;
-
         match liquidity_amount_type {
             AmountType::ExactAmount => {
                 let receive_amount = liquidity_amount;
+                let borrow_amount = Decimal::from(receive_amount);
                 let (borrow_fee, host_fee) = self
                     .config
                     .fees
-                    .calculate_borrow_fees(receive_amount, FeeCalculation::Exclusive)?;
-                let borrow_amount = receive_amount
-                    .checked_add(borrow_fee)
-                    .ok_or(LendingError::MathOverflow)?;
-                let borrow_value =
-                    token_converter.convert(borrow_amount.into(), &self.liquidity.mint_pubkey)?;
+                    .calculate_borrow_fees(borrow_amount, FeeCalculation::Exclusive)?;
+
+                let borrow_amount = borrow_amount.try_add(borrow_fee.into())?;
+                let borrow_value = borrow_amount.try_mul(self.liquidity.median_price)?;
                 if borrow_value > max_borrow_value {
                     return Err(LendingError::BorrowTooLarge.into());
                 }
@@ -193,17 +184,18 @@ impl Reserve {
                 })
             }
             AmountType::PercentAmount => {
+                // @FIXME: convert error to ProgramError
                 let borrow_pct = Decimal::from_percent(u8::try_from(liquidity_amount)?);
                 let borrow_value = max_borrow_value.try_mul(borrow_pct)?;
-                let borrow_amount = token_converter
-                    .convert(borrow_value, &quote_token_mint)?
-                    .try_floor_u64()?
-                    .min(self.liquidity.available_amount);
+                let borrow_amount = borrow_value
+                    .try_div(self.liquidity.median_price)?
+                    .min(self.liquidity.available_amount.into());
                 let (origination_fee, host_fee) = self
                     .config
                     .fees
                     .calculate_borrow_fees(borrow_amount, FeeCalculation::Inclusive)?;
                 let receive_amount = borrow_amount
+                    .try_floor_u64()?
                     .checked_sub(origination_fee)
                     .ok_or(LendingError::MathOverflow)?;
 
@@ -221,20 +213,17 @@ impl Reserve {
         &self,
         liquidity_amount: u64,
         liquidity_amount_type: AmountType,
-        obligation_liquidity: &ObligationLiquidity,
+        borrow_amount: Decimal,
     ) -> Result<RepayLiquidityResult, ProgramError> {
         let settle_amount = match liquidity_amount_type {
-            AmountType::ExactAmount => {
-                Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_amount_wads)
-            }
+            AmountType::ExactAmount => Decimal::from(liquidity_amount).min(borrow_amount),
             AmountType::PercentAmount => {
+                // @FIXME: convert error to ProgramError
                 let settle_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
-                obligation_liquidity
-                    .borrowed_amount_wads
-                    .try_mul(settle_pct)?
+                borrow_amount.try_mul(settle_pct)?
             }
         };
-        let repay_amount = if settle_amount == obligation_liquidity.borrowed_amount_wads {
+        let repay_amount = if settle_amount == borrow_amount {
             settle_amount.try_ceil_u64()?
         } else {
             settle_amount.try_floor_u64()?
@@ -252,75 +241,57 @@ impl Reserve {
         liquidity_amount: u64,
         liquidity_amount_type: AmountType,
         obligation: &Obligation,
-        obligation_liquidity: &ObligationLiquidity,
-        obligation_collateral: &ObligationCollateral,
+        liquidity: &ObligationLiquidity,
+        collateral: &ObligationCollateral,
     ) -> Result<LiquidateObligationResult, ProgramError> {
-        let max_withdraw_amount = Decimal::from(obligation_collateral.deposited_amount);
         let bonus_rate = Rate::from_percent(self.config.liquidation_bonus).try_add(Rate::one())?;
 
         let liquidate_amount = match liquidity_amount_type {
             AmountType::ExactAmount => {
-                Decimal::from(liquidity_amount).min(obligation_liquidity.borrowed_amount_wads)
+                Decimal::from(liquidity_amount).min(liquidity.borrowed_amount_wads)
             }
             AmountType::PercentAmount => {
+                // @FIXME: convert error to ProgramError
                 let liquidate_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
-                obligation_liquidity
-                    .borrowed_amount_wads
-                    .try_mul(liquidate_pct)?
+                liquidity.borrowed_amount_wads.try_mul(liquidate_pct)?
             }
         };
 
-        // Close out obligations that are too small to liquidate normally
-        if obligation_liquidity.borrowed_amount_wads < LIQUIDATION_CLOSE_AMOUNT.into() {
-            let settle_amount = obligation_liquidity.borrowed_amount_wads;
-            let settle_value = obligation_liquidity
-                .value
-                .try_mul(bonus_rate)?
-                .min(obligation_collateral.value);
-            let settle_pct = settle_value.try_div(obligation_collateral.value)?;
-            let repay_amount = liquidate_amount.min(settle_amount).try_ceil_u64()?;
+        let (settle_amount, settle_pct, repay_amount) =
+            if liquidity.borrowed_amount_wads < LIQUIDATION_CLOSE_AMOUNT.into() {
+                // Close out obligations that are too small to liquidate normally
+                let settle_amount = liquidity.borrowed_amount_wads;
+                let settle_value = liquidity
+                    .market_value
+                    .try_mul(bonus_rate)?
+                    .min(collateral.market_value);
+                let settle_pct = settle_value.try_div(collateral.market_value)?;
+                let repay_amount = liquidate_amount.min(settle_amount).try_ceil_u64()?;
 
-            let collateral_amount = max_withdraw_amount.try_mul(settle_pct)?;
-            let withdraw_amount = if collateral_amount == max_withdraw_amount {
-                collateral_amount.try_ceil_u64()?
+                (settle_amount, settle_pct, repay_amount)
             } else {
-                collateral_amount.try_floor_u64()?
+                let max_liquidation_amount = obligation.max_liquidation_amount(liquidity)?;
+                let liquidation_amount = liquidate_amount.min(max_liquidation_amount);
+                let liquidation_pct = liquidation_amount.try_div(liquidity.borrowed_amount_wads)?;
+
+                let settle_value = liquidity
+                    .market_value
+                    .try_mul(liquidation_pct)?
+                    .try_mul(bonus_rate)?
+                    .min(collateral.market_value);
+                let settle_pct = settle_value.try_div(collateral.market_value)?;
+                let settle_amount = liquidation_amount.try_mul(settle_pct)?;
+
+                let repay_amount = if settle_amount == max_liquidation_amount {
+                    settle_amount.try_ceil_u64()?
+                } else {
+                    settle_amount.try_floor_u64()?
+                };
+
+                (settle_amount, settle_pct, repay_amount)
             };
 
-            return Ok(LiquidateObligationResult {
-                settle_amount,
-                repay_amount,
-                withdraw_amount,
-            });
-        }
-
-        let max_liquidation_value = obligation
-            .liquidity_value
-            .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
-            .min(obligation_liquidity.value);
-        let max_liquidation_pct = max_liquidation_value.try_div(obligation_liquidity.value)?;
-        let max_liquidation_amount = obligation_liquidity
-            .borrowed_amount_wads
-            .try_mul(max_liquidation_pct)?;
-
-        let liquidation_amount = liquidate_amount.min(max_liquidation_amount);
-        let liquidation_pct =
-            liquidation_amount.try_div(obligation_liquidity.borrowed_amount_wads)?;
-
-        let settle_value = obligation_liquidity
-            .value
-            .try_mul(liquidation_pct)?
-            .try_mul(bonus_rate)?
-            .min(obligation_collateral.value);
-        let settle_pct = settle_value.try_div(obligation_collateral.value)?;
-        let settle_amount = liquidation_amount.try_mul(settle_pct)?;
-
-        let repay_amount = if settle_amount == max_liquidation_amount {
-            settle_amount.try_ceil_u64()?
-        } else {
-            settle_amount.try_floor_u64()?
-        };
-
+        let max_withdraw_amount = Decimal::from(collateral.deposited_amount);
         let collateral_amount = max_withdraw_amount.try_mul(settle_pct)?;
         let withdraw_amount = if collateral_amount == max_withdraw_amount {
             collateral_amount.try_ceil_u64()?
@@ -354,7 +325,7 @@ pub struct NewReserveParams {
 #[derive(Debug)]
 pub struct BorrowLiquidityResult {
     /// Total amount of borrow including fees
-    pub borrow_amount: u64,
+    pub borrow_amount: Decimal,
     /// Borrow amount portion of total amount
     pub receive_amount: u64,
     /// Loan origination fee
@@ -437,16 +408,18 @@ impl ReserveLiquidity {
     }
 
     /// Subtract borrow amount from available liquidity and add to borrows
-    pub fn borrow(&mut self, borrow_amount: u64) -> ProgramResult {
-        if borrow_amount > self.available_amount {
+    pub fn borrow(&mut self, borrow_amount: Decimal) -> ProgramResult {
+        // @TODO: should this be rounded differently?
+        let borrow_rounded = borrow_amount.try_ceil_u64()?;
+        if borrow_rounded > self.available_amount {
             return Err(LendingError::InsufficientLiquidity.into());
         }
 
         self.available_amount = self
             .available_amount
-            .checked_sub(borrow_amount)
+            .checked_sub(borrow_rounded)
             .ok_or(LendingError::MathOverflow)?;
-        self.borrowed_amount_wads = self.borrowed_amount_wads.try_add(borrow_amount.into())?;
+        self.borrowed_amount_wads = self.borrowed_amount_wads.try_add(borrow_amount)?;
 
         Ok(())
     }
@@ -490,8 +463,6 @@ impl ReserveLiquidity {
         Ok(())
     }
 }
-
-
 
 /// Reserve liquidity
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -600,6 +571,8 @@ pub struct ReserveConfig {
     pub optimal_borrow_rate: u8,
     /// Max borrow APY
     pub max_borrow_rate: u8,
+    /// Collateral is enabled for borrows
+    pub collateral_enabled: bool,
     /// Program owner fees assessed, separate from gains due to interest accrual
     pub fees: ReserveFees,
 }
@@ -634,12 +607,12 @@ impl ReserveFees {
     /// Calculate the owner and host fees on borrow
     pub fn calculate_borrow_fees(
         &self,
-        borrow_amount: u64,
+        borrow_amount: Decimal,
         fee_calculation: FeeCalculation,
     ) -> Result<(u64, u64), ProgramError> {
         let borrow_fee_rate = Rate::from_scaled_val(self.borrow_fee_wad);
         let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
-        if borrow_fee_rate > Rate::zero() && borrow_amount > 0 {
+        if borrow_fee_rate > Rate::zero() && borrow_amount > Decimal::zero() {
             let need_to_assess_host_fee = host_fee_rate > Rate::zero();
             let minimum_fee = if need_to_assess_host_fee {
                 2 // 1 token to owner, 1 to host
@@ -648,10 +621,12 @@ impl ReserveFees {
             };
 
             let borrow_fee_amount = match fee_calculation {
-                FeeCalculation::Exclusive => borrow_fee_rate.try_mul(borrow_amount)?,
-                FeeCalculation::Inclusive => borrow_fee_rate
-                    .try_div(borrow_fee_rate.try_add(Rate::one())?)?
-                    .try_mul(borrow_amount)?,
+                FeeCalculation::Exclusive => borrow_amount.try_mul(borrow_fee_rate)?,
+                FeeCalculation::Inclusive => {
+                    let borrow_fee_rate =
+                        borrow_fee_rate.try_div(borrow_fee_rate.try_add(Rate::one())?)?;
+                    borrow_amount.try_mul(borrow_fee_rate)?
+                }
             };
 
             let borrow_fee = borrow_fee_amount.try_round_u64()?.max(minimum_fee);
@@ -662,7 +637,7 @@ impl ReserveFees {
                 0
             };
 
-            if borrow_fee >= borrow_amount {
+            if Decimal::from(borrow_fee) >= borrow_amount {
                 Err(LendingError::BorrowTooSmall.into())
             } else {
                 Ok((borrow_fee, host_fee))
@@ -680,7 +655,8 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 609; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + (4 + 32) + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 8 + 1 + 300
+// @TODO: adjust padding. what's a reasonable number?
+const RESERVE_LEN: usize = 610; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + (4 + 32) + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 1 + 300
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
@@ -708,6 +684,7 @@ impl Pack for Reserve {
             min_borrow_rate,
             optimal_borrow_rate,
             max_borrow_rate,
+            collateral_enabled,
             borrow_fee_wad,
             host_fee_percentage,
             _padding,
@@ -729,6 +706,7 @@ impl Pack for Reserve {
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             8,
+            1,
             1,
             1,
             1,
@@ -771,6 +749,7 @@ impl Pack for Reserve {
         *min_borrow_rate = self.config.min_borrow_rate.to_le_bytes();
         *optimal_borrow_rate = self.config.optimal_borrow_rate.to_le_bytes();
         *max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();
+        *collateral_enabled = u8::from(self.config.collateral_enabled).to_le_bytes();
         *borrow_fee_wad = self.config.fees.borrow_fee_wad.to_le_bytes();
         *host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
     }
@@ -801,6 +780,7 @@ impl Pack for Reserve {
             min_borrow_rate,
             optimal_borrow_rate,
             max_borrow_rate,
+            collateral_enabled,
             borrow_fee_wad,
             host_fee_percentage,
             __padding,
@@ -827,6 +807,7 @@ impl Pack for Reserve {
             1,
             1,
             1,
+            1,
             8,
             1,
             300
@@ -835,7 +816,8 @@ impl Pack for Reserve {
             version: u8::from_le_bytes(*version),
             last_update: LastUpdate {
                 slot: u64::from_le_bytes(*last_update_slot),
-                stale: bool::from(u8::from_le_bytes(*last_update_stale)),
+                // @FIXME: convert error to ProgramError
+                stale: bool::try_from(u8::from_le_bytes(*last_update_stale))?,
             },
             lending_market: Pubkey::new_from_array(*lending_market),
             liquidity: ReserveLiquidity {
@@ -860,6 +842,8 @@ impl Pack for Reserve {
                 min_borrow_rate: u8::from_le_bytes(*min_borrow_rate),
                 optimal_borrow_rate: u8::from_le_bytes(*optimal_borrow_rate),
                 max_borrow_rate: u8::from_le_bytes(*max_borrow_rate),
+                // @FIXME: convert error to ProgramError
+                collateral_enabled: bool::try_from(u8::from_le_bytes(*collateral_enabled))?,
                 fees: ReserveFees {
                     borrow_fee_wad: u64::from_le_bytes(*borrow_fee_wad),
                     host_fee_percentage: u8::from_le_bytes(*host_fee_percentage),

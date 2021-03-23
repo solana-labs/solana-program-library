@@ -1,14 +1,5 @@
-use crate::{
-    error::LendingError,
-    math::{Decimal, WAD},
-};
-use arrayref::{array_refs, mut_array_refs};
-use solana_program::{
-    clock::{Slot, DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT, SECONDS_PER_DAY},
-    program_error::ProgramError,
-    program_option::COption,
-    pubkey::Pubkey,
-};
+use crate::error::LendingError;
+use solana_program::{clock::Slot, program_error::ProgramError};
 use std::cmp::Ordering;
 
 /// Number of slots to consider stale after
