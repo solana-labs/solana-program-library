@@ -1402,7 +1402,7 @@ fn main() {
                         .takes_value(true)
                         .index(1)
                         .required(true)
-                        .help("Type of token to transfer"),
+                        .help("Token to transfer"),
                 )
                 .arg(
                     Arg::with_name("amount")
