@@ -733,13 +733,21 @@ fn command_wrap(config: &Config, sol: f64, account: Option<Pubkey>) -> CommandRe
     Ok(Some((0, vec![instructions])))
 }
 
-fn command_unwrap(config: &Config, address: Pubkey) -> CommandResult {
+fn command_unwrap(config: &Config, address: Option<Pubkey>) -> CommandResult {
+    let use_associated_account = address.is_none();
+    let address =
+        address.unwrap_or_else(|| get_associated_token_address(&config.owner, &native_mint::id()));
     println!("Unwrapping {}", address);
     if !config.sign_only {
-        println!(
-            "  Amount: {} SOL",
-            lamports_to_sol(config.rpc_client.get_balance(&address)?),
-        );
+        let lamports = config.rpc_client.get_balance(&address)?;
+        if lamports == 0 {
+            if use_associated_account {
+                return Err("No wrapped SOL in associated account; did you mean to specify an auxiliary address?".to_string().into());
+            } else {
+                return Err(format!("No wrapped SOL in {}", address).into());
+            }
+        }
+        println!("  Amount: {} SOL", lamports_to_sol(lamports),);
     }
     println!("  Recipient: {}", &config.owner);
 
@@ -1615,8 +1623,8 @@ fn main() {
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
-                        .required(true)
-                        .help("The address of the token account to unwrap"),
+                        .help("The address of the auxiliary token account to unwrap \
+                            [default: associated token account for --owner]"),
                 )
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
@@ -2087,9 +2095,7 @@ fn main() {
             command_wrap(&config, amount, account)
         }
         ("unwrap", Some(arg_matches)) => {
-            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
             command_unwrap(&config, address)
         }
         ("approve", Some(arg_matches)) => {
