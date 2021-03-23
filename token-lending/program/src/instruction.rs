@@ -303,7 +303,7 @@ impl LendingInstruction {
             .ok_or(LendingError::InstructionUnpackError)?;
         Ok(match tag {
             0 => {
-                let (owner, _rest) = Self::unpack_pubkey(rest)?;
+                let (owner, rest) = Self::unpack_pubkey(rest)?;
                 let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
                 let (liquidation_threshold, _rest) = Self::unpack_u8(rest)?;
                 Self::InitLendingMarket {
