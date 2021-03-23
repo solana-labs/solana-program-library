@@ -688,38 +688,68 @@ fn command_thaw(config: &Config, account: Pubkey, mint_address: Option<Pubkey>) 
     Ok(Some((0, vec![instructions])))
 }
 
-fn command_wrap(config: &Config, sol: f64, account: Pubkey) -> CommandResult {
+fn command_wrap(config: &Config, sol: f64, account: Option<Pubkey>) -> CommandResult {
     let lamports = sol_to_lamports(sol);
-    println!("Wrapping {} SOL into {}", sol, account);
 
-    let instructions = vec![
-        system_instruction::create_account(
-            &config.owner,
-            &account,
-            lamports,
-            Account::LEN as u64,
-            &spl_token::id(),
-        ),
-        initialize_account(
-            &spl_token::id(),
-            &account,
-            &native_mint::id(),
-            &config.owner,
-        )?,
-    ];
+    let instructions = if let Some(account) = account {
+        println!("Wrapping {} SOL into {}", sol, account);
+        vec![
+            system_instruction::create_account(
+                &config.owner,
+                &account,
+                lamports,
+                Account::LEN as u64,
+                &spl_token::id(),
+            ),
+            initialize_account(
+                &spl_token::id(),
+                &account,
+                &native_mint::id(),
+                &config.owner,
+            )?,
+        ]
+    } else {
+        let account = get_associated_token_address(&config.owner, &native_mint::id());
+
+        if !config.sign_only {
+            if let Some(account_data) = config
+                .rpc_client
+                .get_account_with_commitment(&account, config.rpc_client.commitment())?
+                .value
+            {
+                if account_data.owner != system_program::id() {
+                    return Err(format!("Error: Account already exists: {}", account).into());
+                }
+            }
+        }
+
+        println!("Wrapping {} SOL into {}", sol, account);
+        vec![
+            system_instruction::transfer(&config.owner, &account, lamports),
+            create_associated_token_account(&config.fee_payer, &config.owner, &native_mint::id()),
+        ]
+    };
     if !config.sign_only {
         check_owner_balance(config, lamports)?;
     }
     Ok(Some((0, vec![instructions])))
 }
 
-fn command_unwrap(config: &Config, address: Pubkey) -> CommandResult {
+fn command_unwrap(config: &Config, address: Option<Pubkey>) -> CommandResult {
+    let use_associated_account = address.is_none();
+    let address =
+        address.unwrap_or_else(|| get_associated_token_address(&config.owner, &native_mint::id()));
     println!("Unwrapping {}", address);
     if !config.sign_only {
-        println!(
-            "  Amount: {} SOL",
-            lamports_to_sol(config.rpc_client.get_balance(&address)?),
-        );
+        let lamports = config.rpc_client.get_balance(&address)?;
+        if lamports == 0 {
+            if use_associated_account {
+                return Err("No wrapped SOL in associated account; did you mean to specify an auxiliary address?".to_string().into());
+            } else {
+                return Err(format!("No wrapped SOL in {}", address).into());
+            }
+        }
+        println!("  Amount: {} SOL", lamports_to_sol(lamports),);
     }
     println!("  Recipient: {}", &config.owner);
 
@@ -1577,6 +1607,12 @@ fn main() {
                         .required(true)
                         .help("Amount of SOL to wrap"),
                 )
+                .arg(
+                    Arg::with_name("create_aux_account")
+                        .takes_value(false)
+                        .long("create-aux-account")
+                        .help("Wrap SOL in an auxillary account instead of associated token account"),
+                )
                 .nonce_args(true)
                 .offline_args(),
         )
@@ -1589,8 +1625,8 @@ fn main() {
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
-                        .required(true)
-                        .help("The address of the token account to unwrap"),
+                        .help("The address of the auxiliary token account to unwrap \
+                            [default: associated token account for --owner]"),
                 )
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
@@ -2050,15 +2086,18 @@ fn main() {
         }
         ("wrap", Some(arg_matches)) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            let (signer, account) = new_throwaway_signer();
-            let account = account.unwrap();
-            bulk_signers.push(signer);
+            let account = if arg_matches.is_present("create_aux_account") {
+                let (signer, account) = new_throwaway_signer();
+                bulk_signers.push(signer);
+                account
+            } else {
+                // No need to add a signer when creating an associated token account
+                None
+            };
             command_wrap(&config, amount, account)
         }
         ("unwrap", Some(arg_matches)) => {
-            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
             command_unwrap(&config, address)
         }
         ("approve", Some(arg_matches)) => {
