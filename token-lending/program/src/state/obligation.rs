@@ -25,9 +25,9 @@ pub struct Obligation {
     pub last_update: LastUpdate,
     /// Lending market address
     pub lending_market: Pubkey,
-    /// Collateral state for the obligation, keyed by deposit reserve address
+    /// Collateral state for the obligation, unique by deposit reserve address
     pub collateral: Vec<ObligationCollateral>,
-    /// Liquidity state for the obligation, keyed by borrow reserve address
+    /// Liquidity state for the obligation, unique by borrow reserve address
     pub liquidity: Vec<ObligationLiquidity>,
 }
 
