@@ -84,8 +84,7 @@ impl Obligation {
         if collateral_value == Decimal::zero() {
             return Err(LendingError::ObligationCollateralEmpty.into());
         }
-        // @FIXME: convert Decimal to Rate
-        self.liquidity_value()?.try_div(collateral_value)
+        Rate::try_from(self.liquidity_value()?.try_div(collateral_value)?)
     }
 
     /// Calculate the maximum collateral value that can be withdrawn for a given loan to value ratio
@@ -340,12 +339,10 @@ impl Pack for Obligation {
 
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update.slot.to_le_bytes();
-        *last_update_stale = u8::from(self.last_update.stale).to_le_bytes();
+        pack_bool(self.last_update.stale, last_update_stale);
         lending_market.copy_from_slice(self.lending_market.as_ref());
-        // @FIXME: can't return error here
-        *collateral_len = u8::try_from(self.collateral.len())?.to_le_bytes();
-        // @FIXME: can't return error here
-        *liquidity_len = u8::try_from(self.liquidity.len())?.to_le_bytes();
+        *collateral_len = u8::try_from(self.collateral.len()).unwrap().to_le_bytes();
+        *liquidity_len = u8::try_from(self.liquidity.len()).unwrap().to_le_bytes();
 
         let mut offset = 0;
         for collateral in self.collateral {
@@ -398,8 +395,8 @@ impl Pack for Obligation {
 
         let collateral_len = u8::from_le_bytes(*collateral_len);
         let liquidity_len = u8::from_le_bytes(*liquidity_len);
-        let mut collateral = Vec::with_capacity(usize::from(collateral_len));
-        let mut liquidity = Vec::with_capacity(usize::from(liquidity_len));
+        let mut collateral = Vec::with_capacity(collateral_len as usize);
+        let mut liquidity = Vec::with_capacity(liquidity_len as usize);
 
         let mut offset = 0;
         for _ in 0..collateral_len {
@@ -430,8 +427,7 @@ impl Pack for Obligation {
             version: u8::from_le_bytes(*version),
             last_update: LastUpdate {
                 slot: u64::from_le_bytes(*last_update_slot),
-                // @FIXME: convert error to ProgramError
-                stale: bool::try_from(u8::from_le_bytes(*last_update_stale))?,
+                stale: unpack_bool(last_update_stale)?,
             },
             lending_market: Pubkey::new_from_array(*lending_market),
             collateral,

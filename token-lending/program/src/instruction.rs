@@ -13,7 +13,7 @@ use solana_program::{
     sysvar,
 };
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::{TryInto},
     mem::size_of,
 };
 
@@ -322,9 +322,7 @@ impl LendingInstruction {
                 let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
                 let (min_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
-                let (collateral_enabled, rest) = Self::unpack_u8(rest)?;
-                // @FIXME: convert error to ProgramError
-                let collateral_enabled = bool::try_from(collateral_enabled)?;
+                let (collateral_enabled, rest) = Self::unpack_bool(rest)?;
                 let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
                 let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
@@ -426,6 +424,27 @@ impl LendingInstruction {
                 .map(u8::from_le_bytes)
                 .ok_or(LendingError::InstructionUnpackError)?;
             Ok((amount, rest))
+        } else {
+            Err(LendingError::InstructionUnpackError.into())
+        }
+    }
+
+    fn unpack_bool(input: &[u8]) -> Result<(bool, &[u8]), ProgramError> {
+        if !input.is_empty() {
+            let (bool, rest) = input.split_at(1);
+            let bool = bool
+                .get(..1)
+                .and_then(|slice| slice.try_into().ok())
+                .map(u8::from_le_bytes)
+                .and_then(|bool| match bool {
+                    // @TODO bool::try_from(u8).ok() fails with
+                    //       ^^^^^^^^^^^^^^ the trait `std::convert::From<u8>` is not implemented for `bool`
+                    0 => Some(false),
+                    1 => Some(true),
+                    _ => None,
+                })
+                .ok_or(LendingError::InstructionUnpackError)?;
+            Ok((bool, rest))
         } else {
             Err(LendingError::InstructionUnpackError.into())
         }

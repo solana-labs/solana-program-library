@@ -68,6 +68,20 @@ fn unpack_decimal(src: &[u8; 16]) -> Decimal {
     Decimal::from_scaled_val(u128::from_le_bytes(*src))
 }
 
+fn pack_bool(bool: bool, dst: &mut [u8; 1]) {
+    *dst = (bool as u8).to_le_bytes()
+}
+
+fn unpack_bool(src: &[u8; 1]) -> Result<bool, ProgramError> {
+    // @TODO bool::try_from(u8).ok() fails with
+    //       ^^^^^^^^^^^^^^ the trait `std::convert::From<u8>` is not implemented for `bool`
+    match u8::from_le_bytes(*src) {
+        0 => Ok(false),
+        1 => Ok(true),
+        _ => Err(ProgramError::InvalidAccountData),
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

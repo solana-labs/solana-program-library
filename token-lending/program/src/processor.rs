@@ -25,11 +25,7 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
-// @FIXME: 29 | use solana_sdk::account_info::next_account_infos;
-//            |     ^^^^^^^^^^ use of undeclared crate or module `solana_sdk`
-use solana_sdk::account_info::next_account_infos;
 use spl_token::state::{Account, Mint};
-use std::convert::TryFrom;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -972,8 +968,7 @@ fn process_withdraw_obligation_collateral(
             withdraw_amount
         }
         AmountType::PercentAmount => {
-            // @FIXME: convert error to ProgramError
-            let withdraw_pct = Rate::from_percent(u8::try_from(collateral_amount)?);
+            let withdraw_pct = Rate::from_percent(collateral_amount as u8);
             let withdraw_value = max_withdraw_value
                 .try_mul(withdraw_pct)?
                 .min(collateral.market_value);

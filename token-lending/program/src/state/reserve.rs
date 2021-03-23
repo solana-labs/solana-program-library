@@ -184,8 +184,7 @@ impl Reserve {
                 })
             }
             AmountType::PercentAmount => {
-                // @FIXME: convert error to ProgramError
-                let borrow_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
+                let borrow_pct = Rate::from_percent(liquidity_amount as u8);
                 let borrow_value = max_borrow_value.try_mul(borrow_pct)?;
                 let borrow_amount = borrow_value
                     .try_div(self.liquidity.median_price)?
@@ -218,8 +217,7 @@ impl Reserve {
         let settle_amount = match liquidity_amount_type {
             AmountType::ExactAmount => Decimal::from(liquidity_amount).min(borrow_amount),
             AmountType::PercentAmount => {
-                // @FIXME: convert error to ProgramError
-                let settle_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
+                let settle_pct = Rate::from_percent(liquidity_amount as u8);
                 borrow_amount.try_mul(settle_pct)?
             }
         };
@@ -251,8 +249,7 @@ impl Reserve {
                 Decimal::from(liquidity_amount).min(liquidity.borrowed_amount_wads)
             }
             AmountType::PercentAmount => {
-                // @FIXME: convert error to ProgramError
-                let liquidate_pct = Rate::from_percent(u8::try_from(liquidity_amount)?);
+                let liquidate_pct = Rate::from_percent(liquidity_amount as u8);
                 liquidity.borrowed_amount_wads.try_mul(liquidate_pct)?
             }
         };
@@ -718,7 +715,7 @@ impl Pack for Reserve {
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update.slot.to_le_bytes();
-        *last_update_stale = u8::from(self.last_update.stale).to_le_bytes();
+        pack_bool(self.last_update.stale, last_update_stale);
         lending_market.copy_from_slice(self.lending_market.as_ref());
 
         // liquidity
@@ -749,7 +746,7 @@ impl Pack for Reserve {
         *min_borrow_rate = self.config.min_borrow_rate.to_le_bytes();
         *optimal_borrow_rate = self.config.optimal_borrow_rate.to_le_bytes();
         *max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();
-        *collateral_enabled = u8::from(self.config.collateral_enabled).to_le_bytes();
+        pack_bool(self.config.collateral_enabled, collateral_enabled);
         *borrow_fee_wad = self.config.fees.borrow_fee_wad.to_le_bytes();
         *host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
     }
@@ -816,8 +813,7 @@ impl Pack for Reserve {
             version: u8::from_le_bytes(*version),
             last_update: LastUpdate {
                 slot: u64::from_le_bytes(*last_update_slot),
-                // @FIXME: convert error to ProgramError
-                stale: bool::try_from(u8::from_le_bytes(*last_update_stale))?,
+                stale: unpack_bool(last_update_stale)?,
             },
             lending_market: Pubkey::new_from_array(*lending_market),
             liquidity: ReserveLiquidity {
@@ -842,8 +838,7 @@ impl Pack for Reserve {
                 min_borrow_rate: u8::from_le_bytes(*min_borrow_rate),
                 optimal_borrow_rate: u8::from_le_bytes(*optimal_borrow_rate),
                 max_borrow_rate: u8::from_le_bytes(*max_borrow_rate),
-                // @FIXME: convert error to ProgramError
-                collateral_enabled: bool::try_from(u8::from_le_bytes(*collateral_enabled))?,
+                collateral_enabled: unpack_bool(collateral_enabled)?,
                 fees: ReserveFees {
                     borrow_fee_wad: u64::from_le_bytes(*borrow_fee_wad),
                     host_fee_percentage: u8::from_le_bytes(*host_fee_percentage),
