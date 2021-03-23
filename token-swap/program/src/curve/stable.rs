@@ -217,10 +217,10 @@ impl CurveCalculator for StableCurve {
         let leverage = self.amp.checked_mul(N_COINS as u64)?;
         let d0 = compute_d(leverage, swap_source_amount, swap_destination_amount)?;
         let new_swap_source_amount = match liquidity_provider_operation {
-            LiquidityProviderOperation::Deposit => swap_source_amount + source_amount,
-            LiquidityProviderOperation::Withdrawal => swap_source_amount - source_amount,
+            LiquidityProviderOperation::Deposit => swap_source_amount.checked_add(source_amount),
+            LiquidityProviderOperation::Withdrawal => swap_source_amount.checked_sub(source_amount),
         };
-        let d1 = compute_d(leverage, new_swap_source_amount, swap_destination_amount)?;
+        let d1 = compute_d(leverage, new_swap_source_amount?, swap_destination_amount)?;
         let diff = match liquidity_provider_operation {
             LiquidityProviderOperation::Deposit => d1.checked_sub(d0)?,
             LiquidityProviderOperation::Withdrawal => d0.checked_sub(d1)?
