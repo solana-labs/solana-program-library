@@ -7,7 +7,6 @@ use thiserror::Error;
 /// Errors that may be returned by the TokenLending program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum LendingError {
-    // @FIXME: reorganize
     // 0
     /// Invalid instruction data passed in.
     #[error("Failed to unpack instruction data")]
@@ -76,83 +75,75 @@ pub enum LendingError {
     #[error("Token burn failed")]
     TokenBurnFailed,
 
-    // @TODO: these are only used in one place that might be removed
+    // 20
+    // @TODO: this is only used in one place that might be removed.
     /// Input reserves cannot be the same
     #[error("Input reserves cannot be the same")]
     DuplicateReserve,
+    // @TODO: this is only used in one place that might be removed.
     /// Input reserves cannot use the same liquidity mint
     #[error("Input reserves cannot use the same liquidity mint")]
     DuplicateReserveMint,
-
-    // 20
-    // @FIXME: reserve needs a new field to support this
-    /// This reserve's collateral cannot be used for borrows
-    #[error("Input reserve has collateral disabled")]
-    ReserveCollateralDisabled,
     /// Insufficient liquidity available
     #[error("Insufficient liquidity available")]
     InsufficientLiquidity,
+    /// This reserve's collateral cannot be used for borrows
+    #[error("Input reserve has collateral disabled")]
+    ReserveCollateralDisabled,
     /// Reserve state stale
     #[error("Reserve state needs to be refreshed")]
     ReserveStale,
 
     // 25
+    /// Withdraw amount too small
+    #[error("Withdraw amount too small")]
+    WithdrawTooSmall,
+    /// Withdraw amount too large
+    #[error("Withdraw amount too large")]
+    WithdrawTooLarge,
     /// Borrow amount too small
     #[error("Borrow amount too small to receive liquidity after fees")]
     BorrowTooSmall,
     /// Borrow amount too large
     #[error("Borrow amount too large for deposited collateral")]
     BorrowTooLarge,
+    /// Repay amount too small
+    #[error("Repay amount too small to transfer liquidity")]
+    RepayTooSmall,
 
-    // @FIXME: name + message
+    // 30
     /// Liquidation amount too small
     #[error("Liquidation amount too small to receive collateral")]
     LiquidationTooSmall,
-    // @FIXME: name + message
     /// Cannot liquidate healthy obligations
     #[error("Cannot liquidate healthy obligations")]
     ObligationHealthy,
-
-    // 35
-    /// Obligation account limit reached
-    #[error("Obligation account limit reached")]
-    ObligationAccountLimit,
     /// Obligation state stale
     #[error("Obligation state needs to be refreshed")]
     ObligationStale,
+    /// Obligation reserve limit exceeded
+    #[error("Obligation reserve limit exceeded")]
+    ObligationReserveLimit,
+    /// Obligation loan to value limit exceeded
+    #[error("Obligation loan to value limit exceeded")]
+    ObligationLoanToValueLimit,
 
-    // @FIXME: change name + message
-    /// Obligation LTV is above the lending market LTV
-    #[error("Obligation LTV is above the lending market LTV")]
-    ObligationLTVAboveLendingMarketLTV,
-    // @FIXME: change name + message
-    /// Obligation LTV cannot go above the lending market LTV
-    #[error("Obligation LTV cannot go above the lending market LTV")]
-    ObligationLTVCannotGoAboveLendingMarketLTV,
-
-    /// Invalid obligation collateral
-    #[error("Invalid obligation collateral")]
-    InvalidObligationCollateral,
-    /// Obligation collateral is empty
-    #[error("Obligation collateral is empty")]
-    ObligationCollateralEmpty,
-    /// Obligation collateral withdraw too large
-    #[error("Obligation collateral withdraw too large for borrowed liquidity")]
-    ObligationCollateralWithdrawTooLarge,
-
-    /// Invalid obligation liquidity
-    #[error("Invalid obligation liquidity")]
-    InvalidObligationLiquidity,
-    /// Obligation liquidity is empty
-    #[error("Obligation liquidity is empty")]
-    ObligationLiquidityEmpty,
-    /// Obligation liquidity stale
-    #[error("Obligation liquidity state needs to be refreshed")]
-    ObligationLiquidityStale,
-
+    // 35
     /// Negative interest rate
     #[error("Interest rate is negative")]
     NegativeInterestRate,
+    /// Invalid obligation collateral
+    #[error("Invalid obligation collateral")]
+    InvalidObligationCollateral,
+    /// Invalid obligation liquidity
+    #[error("Invalid obligation liquidity")]
+    InvalidObligationLiquidity,
+    /// Obligation collateral is empty
+    #[error("Obligation collateral is empty")]
+    ObligationCollateralEmpty,
+    /// Obligation liquidity is empty
+    #[error("Obligation liquidity is empty")]
+    ObligationLiquidityEmpty,
 }
 
 impl From<LendingError> for ProgramError {
