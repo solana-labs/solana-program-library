@@ -711,13 +711,15 @@ fn command_wrap(config: &Config, sol: f64, account: Option<Pubkey>) -> CommandRe
     } else {
         let account = get_associated_token_address(&config.owner, &native_mint::id());
 
-        if let Some(account_data) = config
-            .rpc_client
-            .get_account_with_commitment(&account, config.rpc_client.commitment())?
-            .value
-        {
-            if account_data.owner != system_program::id() {
-                return Err(format!("Error: Account already exists: {}", account).into());
+        if !config.sign_only {
+            if let Some(account_data) = config
+                .rpc_client
+                .get_account_with_commitment(&account, config.rpc_client.commitment())?
+                .value
+            {
+                if account_data.owner != system_program::id() {
+                    return Err(format!("Error: Account already exists: {}", account).into());
+                }
             }
         }
 
@@ -1606,9 +1608,9 @@ fn main() {
                         .help("Amount of SOL to wrap"),
                 )
                 .arg(
-                    Arg::with_name("aux")
+                    Arg::with_name("create_aux_account")
                         .takes_value(false)
-                        .long("aux")
+                        .long("create-aux-account")
                         .help("Wrap SOL in an auxillary account instead of associated token account"),
                 )
                 .nonce_args(true)
@@ -2084,7 +2086,7 @@ fn main() {
         }
         ("wrap", Some(arg_matches)) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            let account = if arg_matches.is_present("aux") {
+            let account = if arg_matches.is_present("create_aux_account") {
                 let (signer, account) = new_throwaway_signer();
                 bulk_signers.push(signer);
                 account
