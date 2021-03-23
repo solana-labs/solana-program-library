@@ -54,9 +54,9 @@ pub enum LendingError {
     /// Math operation overflow
     #[error("Math operation overflow")]
     MathOverflow,
-    /// Memory is too small
-    #[error("Memory is too small")]
-    MemoryTooSmall,
+    /// Negative interest rate
+    #[error("Interest rate is negative")]
+    NegativeInterestRate,
 
     // 15
     /// Token initialize mint failed
@@ -129,9 +129,6 @@ pub enum LendingError {
     ObligationLoanToValueLimit,
 
     // 35
-    /// Negative interest rate
-    #[error("Interest rate is negative")]
-    NegativeInterestRate,
     /// Invalid obligation collateral
     #[error("Invalid obligation collateral")]
     InvalidObligationCollateral,
