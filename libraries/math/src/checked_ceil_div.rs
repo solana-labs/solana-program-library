@@ -1,6 +1,6 @@
-//! Defines useful math utils
+//! Defines performing checked ceiling division for different types
 
-use spl_math::uint::U256;
+use crate::uint::U256;
 
 /// Perform a division that does not truncate value from either side, returning
 /// the (quotient, divisor) as a tuple

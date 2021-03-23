@@ -1090,7 +1090,7 @@ impl Processor {
             .ok_or(StakePoolError::ValidatorNotFound)?;
 
         let stake_amount = stake_pool
-            .calc_lamports_amount(pool_amount)
+            .calc_lamports_withdraw_amount(pool_amount)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         Self::stake_split(
