@@ -65,11 +65,13 @@ impl Reserve {
             .collateral_exchange_rate()?
             .liquidity_to_collateral(liquidity_amount)?;
 
-        self.liquidity
+        self.liquidity.available_amount = self
+            .liquidity
             .available_amount
             .checked_add(liquidity_amount)
             .ok_or(LendingError::MathOverflow)?;
-        self.collateral
+        self.collateral.mint_total_supply = self
+            .collateral
             .mint_total_supply
             .checked_add(collateral_amount)
             .ok_or(LendingError::MathOverflow)?;

@@ -120,7 +120,6 @@ async fn test_borrow_quote_currency() {
         .unwrap()
         .0;
 
-    // @FIXME: fees
     let collateral_supply =
         get_token_balance(&mut banks_client, sol_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, collateral_deposit_amount - borrow_fees);
@@ -158,7 +157,6 @@ async fn test_borrow_quote_currency() {
     assert!(total_fee > 0);
     assert!(host_fee > 0);
 
-    // @FIXME: fees
     let collateral_supply =
         get_token_balance(&mut banks_client, sol_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, collateral_deposited - total_fee);
@@ -278,7 +276,6 @@ async fn test_borrow_base_currency() {
         .unwrap()
         .0;
 
-    // @FIXME: fees
     let collateral_supply =
         get_token_balance(&mut banks_client, usdc_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, collateral_deposit_amount - borrow_fees);
@@ -315,7 +312,6 @@ async fn test_borrow_base_currency() {
     assert!(total_fee > 0);
     assert!(host_fee > 0);
 
-    // @FIXME: fees
     let collateral_supply =
         get_token_balance(&mut banks_client, usdc_reserve.collateral_supply).await;
     assert_eq!(collateral_supply, 2 * collateral_deposit_amount - total_fee);

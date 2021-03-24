@@ -428,20 +428,18 @@ impl LendingInstruction {
 
     fn unpack_bool(input: &[u8]) -> Result<(bool, &[u8]), ProgramError> {
         if !input.is_empty() {
-            let (bool, rest) = input.split_at(1);
-            let bool = bool
+            let (byte, rest) = input.split_at(1);
+            let boolean = byte
                 .get(..1)
                 .and_then(|slice| slice.try_into().ok())
                 .map(u8::from_le_bytes)
-                .and_then(|bool| match bool {
-                    // @TODO bool::try_from(u8).ok() fails with
-                    //       ^^^^^^^^^^^^^^ the trait `std::convert::From<u8>` is not implemented for `bool`
+                .and_then(|uint| match uint {
                     0 => Some(false),
                     1 => Some(true),
                     _ => None,
                 })
                 .ok_or(LendingError::InstructionUnpackError)?;
-            Ok((bool, rest))
+            Ok((boolean, rest))
         } else {
             Err(LendingError::InstructionUnpackError.into())
         }
@@ -742,7 +740,7 @@ pub fn refresh_reserve(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
     if let Some(reserve_liquidity_aggregator_pubkey) = reserve_liquidity_aggregator_pubkey {
-        accounts.push(AccountMeta::new(reserve_liquidity_aggregator_pubkey, false));
+        accounts.push(AccountMeta::new_readonly(reserve_liquidity_aggregator_pubkey, false));
     }
     Instruction {
         program_id,

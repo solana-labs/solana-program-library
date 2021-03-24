@@ -387,8 +387,8 @@ impl Pack for Obligation {
 
         let collateral_len = u8::from_le_bytes(*collateral_len);
         let liquidity_len = u8::from_le_bytes(*liquidity_len);
-        let mut collateral = Vec::with_capacity(collateral_len as usize);
-        let mut liquidity = Vec::with_capacity(liquidity_len as usize);
+        let mut collateral = Vec::with_capacity(collateral_len as usize + 1);
+        let mut liquidity = Vec::with_capacity(liquidity_len as usize + 1);
 
         let mut offset = 0;
         for _ in 0..collateral_len {

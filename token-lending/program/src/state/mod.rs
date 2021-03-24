@@ -75,8 +75,6 @@ fn pack_bool(bool: bool, dst: &mut [u8; 1]) {
 }
 
 fn unpack_bool(src: &[u8; 1]) -> Result<bool, ProgramError> {
-    // @TODO bool::try_from(u8).ok() fails with
-    //       ^^^^^^^^^^^^^^ the trait `std::convert::From<u8>` is not implemented for `bool`
     match u8::from_le_bytes(*src) {
         0 => Ok(false),
         1 => Ok(true),

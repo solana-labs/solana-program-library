@@ -350,14 +350,6 @@ fn process_init_reserve(
         token_program: token_program_id.clone(),
     })?;
 
-    spl_token_init_account(TokenInitializeAccountParams {
-        account: reserve_liquidity_fee_receiver_info.clone(),
-        mint: reserve_liquidity_mint_info.clone(),
-        owner: lending_market_owner_info.clone(),
-        rent: rent_info.clone(),
-        token_program: token_program_id.clone(),
-    })?;
-
     spl_token_init_mint(TokenInitializeMintParams {
         mint: reserve_collateral_mint_info.clone(),
         authority: lending_market_authority_info.key,
@@ -819,9 +811,6 @@ fn process_deposit_obligation_collateral(
     obligation
         .find_or_add_collateral(*deposit_reserve_info.key)?
         .deposit(collateral_amount)?;
-    // @TODO: instead of always marking stale, we could look for an optional
-    //        reserve_liquidity_aggregator_info and update the market value.
-    //        then the depositor could borrow in the same transaction.
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
