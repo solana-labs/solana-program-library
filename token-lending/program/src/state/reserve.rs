@@ -208,7 +208,7 @@ impl Reserve {
         }
     }
 
-    /// Repay liquidity up to a maximum borrow amount
+    /// Repay liquidity up to the borrowed amount
     pub fn repay_liquidity(
         &self,
         liquidity_amount: u64,

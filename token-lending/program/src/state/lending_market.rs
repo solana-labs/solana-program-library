@@ -17,7 +17,7 @@ pub struct LendingMarket {
     pub token_program_id: Pubkey,
     /// Quote currency token mint
     pub quote_token_mint: Pubkey,
-    /// The target ratio of an obligation's borrowed liquidity to deposited collateral as a percent
+    /// The target ratio of an obligation's borrows to deposits as a percent
     pub loan_to_value_ratio: u8,
     /// The percent at which an obligation is considered unhealthy
     pub liquidation_threshold: u8,

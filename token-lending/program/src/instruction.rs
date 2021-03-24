@@ -38,7 +38,7 @@ pub enum LendingInstruction {
     InitLendingMarket {
         /// Owner authority which can add new reserves
         owner: Pubkey,
-        /// The ratio of the loan to the value of the collateral as a percent
+        /// The target ratio of an obligation's borrows to deposits as a percent
         loan_to_value_ratio: u8,
         /// The percent at which an obligation is considered unhealthy
         liquidation_threshold: u8,
@@ -135,7 +135,7 @@ pub enum LendingInstruction {
     ///   7. `[signer]` User transfer authority ($authority)
     ///   8. `[]` Token program id
     RedeemReserveCollateral {
-        /// Amount of collateral to return in exchange for liquidity
+        /// Amount of collateral to redeem in exchange for liquidity
         collateral_amount: u64,
     },
 
