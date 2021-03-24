@@ -12,10 +12,7 @@ use solana_program::{
     pubkey::{Pubkey, PUBKEY_BYTES},
     sysvar,
 };
-use std::{
-    convert::{TryInto},
-    mem::size_of,
-};
+use std::{convert::TryInto, mem::size_of};
 
 /// Describe how an input amount should be treated
 #[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]

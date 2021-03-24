@@ -114,13 +114,17 @@ impl Obligation {
     }
 
     /// Find collateral by deposit reserve
-    pub fn find_collateral_index(&self, deposit_reserve: Pubkey) -> Result<usize, ProgramError> {
+    pub fn find_collateral(
+        &self,
+        deposit_reserve: Pubkey,
+    ) -> Result<(&ObligationCollateral, usize), ProgramError> {
         if self.collateral.is_empty() {
             return Err(LendingError::ObligationCollateralEmpty.into());
         }
-        self._find_collateral_index(deposit_reserve)
-            // @TODO: .ok_or(LendingError::X) is used elsewhere, but causes a compiler error here?
-            .ok_or_else(|| LendingError::InvalidObligationCollateral.into())
+        let index = self
+            ._find_collateral_index(deposit_reserve)
+            .ok_or(LendingError::InvalidObligationCollateral)?;
+        Ok((&self.collateral[index], index))
     }
 
     /// Find or add collateral by deposit reserve
@@ -146,13 +150,17 @@ impl Obligation {
     }
 
     /// Find liquidity by borrow reserve
-    pub fn find_liquidity_index(&self, borrow_reserve: Pubkey) -> Result<usize, ProgramError> {
+    pub fn find_liquidity(
+        &self,
+        borrow_reserve: Pubkey,
+    ) -> Result<(&ObligationLiquidity, usize), ProgramError> {
         if self.liquidity.is_empty() {
             return Err(LendingError::ObligationLiquidityEmpty.into());
         }
-        self._find_liquidity_index(borrow_reserve)
-            // @TODO: .ok_or(LendingError::X) is used elsewhere, but causes a compiler error here?
-            .ok_or_else(|| LendingError::InvalidObligationLiquidity.into())
+        let index = self
+            ._find_liquidity_index(borrow_reserve)
+            .ok_or(LendingError::InvalidObligationLiquidity)?;
+        Ok((&self.liquidity[index], index))
     }
 
     /// Find or add liquidity by borrow reserve

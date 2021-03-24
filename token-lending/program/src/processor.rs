@@ -919,8 +919,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let index = obligation.find_collateral_index(*withdraw_reserve_info.key)?;
-    let collateral = &obligation.collateral[index];
+    let (collateral, collateral_index) = obligation.find_collateral(*withdraw_reserve_info.key)?;
     if collateral.deposited_amount == 0 {
         return Err(LendingError::ObligationCollateralEmpty.into());
     }
@@ -989,7 +988,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::WithdrawTooSmall.into());
     }
 
-    let collateral = &mut obligation.collateral[index];
+    let collateral = &mut obligation.collateral[collateral_index];
     collateral.withdraw(withdraw_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
@@ -1249,8 +1248,7 @@ fn process_repay_obligation_liquidity(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let index = obligation.find_liquidity_index(*repay_reserve_info.key)?;
-    let liquidity = &obligation.liquidity[index];
+    let (liquidity, liquidity_index) = obligation.find_liquidity(*repay_reserve_info.key)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -1278,7 +1276,7 @@ fn process_repay_obligation_liquidity(
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    let liquidity = &mut obligation.liquidity[index];
+    let liquidity = &mut obligation.liquidity[liquidity_index];
     liquidity.repay(settle_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
@@ -1402,10 +1400,8 @@ fn process_liquidate_obligation(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let liquidity_index = obligation.find_liquidity_index(*repay_reserve_info.key)?;
-    let liquidity = &obligation.liquidity[liquidity_index];
-    let collateral_index = obligation.find_collateral_index(*withdraw_reserve_info.key)?;
-    let collateral = &obligation.collateral[collateral_index];
+    let (liquidity, liquidity_index) = obligation.find_liquidity(*repay_reserve_info.key)?;
+    let (collateral, collateral_index) = obligation.find_collateral(*withdraw_reserve_info.key)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
