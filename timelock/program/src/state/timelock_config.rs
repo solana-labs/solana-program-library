@@ -84,18 +84,16 @@ impl Pack for TimelockConfig {
                     _ => ConsensusAlgorithm::Majority,
                 },
                 execution_type: match execution_type {
-                    0 => ExecutionType::AllOrNothing,
-                    1 => ExecutionType::AnyAboveVoteFinishSlot,
-                    _ => ExecutionType::AllOrNothing,
+                    0 => ExecutionType::Independent,
+                    _ => ExecutionType::Independent,
                 },
                 timelock_type: match timelock_type {
                     0 => TimelockType::Governance,
                     _ => TimelockType::Governance,
                 },
                 voting_entry_rule: match voting_entry_rule {
-                    0 => VotingEntryRule::DraftOnly,
-                    1 => VotingEntryRule::Anytime,
-                    _ => VotingEntryRule::DraftOnly,
+                    0 => VotingEntryRule::Anytime,
+                    _ => VotingEntryRule::Anytime,
                 },
                 minimum_slot_waiting_period,
                 governance_mint: Pubkey::new_from_array(*governance_mint),
@@ -131,8 +129,7 @@ impl Pack for TimelockConfig {
         }
         .to_le_bytes();
         *execution_type = match self.execution_type {
-            ExecutionType::AllOrNothing => 0 as u8,
-            ExecutionType::AnyAboveVoteFinishSlot => 1 as u8,
+            ExecutionType::Independent => 0 as u8,
         }
         .to_le_bytes();
         *timelock_type = match self.timelock_type {
@@ -140,8 +137,7 @@ impl Pack for TimelockConfig {
         }
         .to_le_bytes();
         *voting_entry_rule = match self.voting_entry_rule {
-            VotingEntryRule::DraftOnly => 0 as u8,
-            VotingEntryRule::Anytime => 1 as u8,
+            VotingEntryRule::Anytime => 0 as u8,
         }
         .to_le_bytes();
         *minimum_slot_waiting_period = self.minimum_slot_waiting_period.to_le_bytes();

@@ -66,8 +66,6 @@ pub fn process_add_custom_single_signer_transaction(
     )?;
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_draft(&timelock_state)?;
-    // TODO: Figure out why this causes token_program_account_info to be the same as timelock_mint_authority_info
-    // when passed into assert_is_permissioned when uncommented.
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_is_permissioned(
         program_id,

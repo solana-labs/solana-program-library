@@ -18,15 +18,13 @@ impl Default for ConsensusAlgorithm {
 /// What type of execution a timelock is
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExecutionType {
-    /// Only run the timelock set if all of the transactions have slot times above the slot that the vote finished at
-    AllOrNothing,
-    /// Run the remaining set transactions whose slots are above the slot the vote finished at
-    AnyAboveVoteFinishSlot,
+    /// Each transaction is independent of the other
+    Independent,
 }
 
 impl Default for ExecutionType {
     fn default() -> Self {
-        ExecutionType::AllOrNothing
+        ExecutionType::Independent
     }
 }
 
@@ -73,14 +71,12 @@ impl Default for TimelockType {
 /// Rules for voters entering the timelock
 #[derive(Clone, Debug, PartialEq)]
 pub enum VotingEntryRule {
-    /// Meaning voters can only enter during draft period
-    DraftOnly,
     /// Meaning voters can enter at any point in time
     Anytime,
 }
 
 impl Default for VotingEntryRule {
     fn default() -> Self {
-        VotingEntryRule::DraftOnly
+        VotingEntryRule::Anytime
     }
 }

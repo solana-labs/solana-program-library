@@ -67,9 +67,8 @@ pub fn process_init_timelock_config(
         _ => ConsensusAlgorithm::Majority,
     };
     new_timelock_config.execution_type = match execution_type {
-        0 => ExecutionType::AllOrNothing,
-        1 => ExecutionType::AnyAboveVoteFinishSlot,
-        _ => ExecutionType::AllOrNothing,
+        0 => ExecutionType::Independent,
+        _ => ExecutionType::Independent,
     };
 
     new_timelock_config.timelock_type = match timelock_type {
@@ -78,9 +77,8 @@ pub fn process_init_timelock_config(
     };
 
     new_timelock_config.voting_entry_rule = match voting_entry_rule {
-        0 => VotingEntryRule::DraftOnly,
-        1 => VotingEntryRule::Anytime,
-        _ => VotingEntryRule::DraftOnly,
+        0 => VotingEntryRule::Anytime,
+        _ => VotingEntryRule::Anytime,
     };
 
     TimelockConfig::pack(
