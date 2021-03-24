@@ -16,7 +16,7 @@ use std::convert::{TryFrom, TryInto};
 /// Max number of collateral and liquidity reserve accounts combined for an obligation
 pub const MAX_OBLIGATION_RESERVES: usize = 10;
 
-/// Borrow obligation state
+/// Lending market obligation state
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Obligation {
     /// Version of the struct
