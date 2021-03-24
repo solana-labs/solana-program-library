@@ -39,26 +39,6 @@ pub struct Reserve {
 }
 
 impl Reserve {
-    /// Initialize new reserve state
-    pub fn new(params: NewReserveParams) -> Self {
-        let NewReserveParams {
-            current_slot,
-            lending_market,
-            liquidity,
-            collateral,
-            config,
-        } = params;
-
-        Self {
-            version: PROGRAM_VERSION,
-            last_update: LastUpdate::new(current_slot),
-            lending_market,
-            liquidity,
-            collateral,
-            config,
-        }
-    }
-
     /// Record deposited liquidity and return amount of collateral tokens to mint
     pub fn deposit_liquidity(&mut self, liquidity_amount: u64) -> Result<u64, ProgramError> {
         let collateral_amount = self
@@ -307,20 +287,6 @@ impl Reserve {
     }
 }
 
-/// Create new reserve
-pub struct NewReserveParams {
-    /// Current slot
-    pub current_slot: Slot,
-    /// Lending market address
-    pub lending_market: Pubkey,
-    /// Reserve collateral
-    pub collateral: ReserveCollateral,
-    /// Reserve liquidity
-    pub liquidity: ReserveLiquidity,
-    /// Reserve configuration values
-    pub config: ReserveConfig,
-}
-
 /// Borrow liquidity result
 #[derive(Debug)]
 pub struct BorrowLiquidityResult {
@@ -379,29 +345,6 @@ pub struct ReserveLiquidity {
 }
 
 impl ReserveLiquidity {
-    /// Initialize new reserve state
-    pub fn new(params: NewReserveLiquidityParams) -> Self {
-        let NewReserveLiquidityParams {
-            mint_pubkey,
-            mint_decimals,
-            supply_pubkey,
-            fee_receiver,
-            aggregator,
-            median_price,
-        } = params;
-        Self {
-            mint_pubkey,
-            mint_decimals,
-            supply_pubkey,
-            fee_receiver,
-            aggregator,
-            cumulative_borrow_rate_wads: Decimal::one(),
-            median_price,
-            available_amount: 0,
-            borrowed_amount_wads: Decimal::zero(),
-        }
-    }
-
     /// Calculate the total reserve supply including active loans
     pub fn total_supply(&self) -> Result<Decimal, ProgramError> {
         Decimal::from(self.available_amount).try_add(self.borrowed_amount_wads)
@@ -464,23 +407,6 @@ impl ReserveLiquidity {
     }
 }
 
-/// Reserve liquidity
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct NewReserveLiquidityParams {
-    /// Reserve liquidity mint address
-    pub mint_pubkey: Pubkey,
-    /// Reserve liquidity mint decimals
-    pub mint_decimals: u8,
-    /// Reserve liquidity supply address
-    pub supply_pubkey: Pubkey,
-    /// Reserve liquidity fee receiver address
-    pub fee_receiver: Pubkey,
-    /// Reserve liquidity aggregator state account
-    pub aggregator: COption<Pubkey>,
-    /// Reserve liquidity median price
-    pub median_price: u64,
-}
-
 /// Reserve collateral
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ReserveCollateral {
@@ -493,15 +419,6 @@ pub struct ReserveCollateral {
 }
 
 impl ReserveCollateral {
-    /// New reserve collateral info
-    pub fn new(mint_pubkey: Pubkey, supply_pubkey: Pubkey) -> Self {
-        Self {
-            mint_pubkey,
-            mint_total_supply: 0,
-            supply_pubkey,
-        }
-    }
-
     /// Return the current collateral exchange rate.
     fn exchange_rate(
         &self,

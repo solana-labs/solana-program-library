@@ -1,14 +1,13 @@
 //! Program state processor
 
-use crate::state::NewReserveLiquidityParams;
 use crate::{
     error::LendingError,
     instruction::{AmountType, LendingInstruction},
     math::{Decimal, Rate, TryDiv, TryMul, WAD},
     state::{
-        BorrowLiquidityResult, LendingMarket, LiquidateObligationResult, NewObligationParams,
-        NewReserveParams, Obligation, RepayLiquidityResult, Reserve, ReserveCollateral,
-        ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
+        BorrowLiquidityResult, LastUpdate, LendingMarket, LiquidateObligationResult, Obligation,
+        RepayLiquidityResult, Reserve, ReserveCollateral, ReserveConfig, ReserveLiquidity,
+        PROGRAM_VERSION,
     },
 };
 use flux_aggregator::read_median;
@@ -158,22 +157,22 @@ fn process_init_lending_market(
     let token_program_id = next_account_info(account_info_iter)?;
 
     assert_rent_exempt(rent, lending_market_info)?;
-    assert_uninitialized::<LendingMarket>(lending_market_info)?;
+    let mut lending_market = assert_uninitialized::<LendingMarket>(lending_market_info)?;
 
     unpack_mint(&quote_token_mint_info.data.borrow())?;
     if quote_token_mint_info.owner != token_program_id.key {
         return Err(LendingError::InvalidTokenOwner.into());
     }
 
-    let lending_market = LendingMarket {
-        version: PROGRAM_VERSION,
-        bump_seed: Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1,
-        owner: lending_market_owner,
-        quote_token_mint: *quote_token_mint_info.key,
-        token_program_id: *token_program_id.key,
-        loan_to_value_ratio,
-        liquidation_threshold,
-    };
+    lending_market.version = PROGRAM_VERSION;
+    lending_market.bump_seed =
+        Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1;
+    lending_market.owner = lending_market_owner;
+    lending_market.quote_token_mint = *quote_token_mint_info.key;
+    lending_market.token_program_id = *token_program_id.key;
+    lending_market.loan_to_value_ratio = loan_to_value_ratio;
+    lending_market.liquidation_threshold = liquidation_threshold;
+
     LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
 
     Ok(())
@@ -260,7 +259,7 @@ fn process_init_reserve(
     let token_program_id = next_account_info(account_info_iter)?;
 
     assert_rent_exempt(rent, reserve_info)?;
-    assert_uninitialized::<Reserve>(reserve_info)?;
+    let mut reserve = assert_uninitialized::<Reserve>(reserve_info)?;
     assert_uninitialized::<Account>(reserve_liquidity_supply_info)?;
     assert_uninitialized::<Account>(reserve_liquidity_fee_receiver_info)?;
     assert_uninitialized::<Mint>(reserve_collateral_mint_info)?;
@@ -320,25 +319,27 @@ fn process_init_reserve(
         return Err(LendingError::InvalidTokenOwner.into());
     }
 
-    let reserve_liquidity = ReserveLiquidity::new(NewReserveLiquidityParams {
+    reserve.version = PROGRAM_VERSION;
+    reserve.last_update = LastUpdate::new(clock.slot);
+    reserve.lending_market = *lending_market_info.key;
+    reserve.liquidity = ReserveLiquidity {
         mint_pubkey: *reserve_liquidity_mint_info.key,
         mint_decimals: reserve_liquidity_mint.decimals,
         supply_pubkey: *reserve_liquidity_supply_info.key,
         fee_receiver: *reserve_liquidity_fee_receiver_info.key,
         aggregator: reserve_liquidity_aggregator,
+        cumulative_borrow_rate_wads: Decimal::one(),
         median_price: reserve_liquidity_median_price,
-    });
-    let reserve_collateral = ReserveCollateral::new(
-        *reserve_collateral_mint_info.key,
-        *reserve_collateral_supply_info.key,
-    );
-    let mut reserve = Reserve::new(NewReserveParams {
-        current_slot: clock.slot,
-        lending_market: *lending_market_info.key,
-        liquidity: reserve_liquidity,
-        collateral: reserve_collateral,
-        config,
-    });
+        available_amount: 0,
+        borrowed_amount_wads: Decimal::zero(),
+    };
+    reserve.collateral = ReserveCollateral {
+        mint_pubkey: *reserve_collateral_mint_info.key,
+        mint_total_supply: 0,
+        supply_pubkey: *reserve_collateral_supply_info.key,
+    };
+    reserve.config = config;
+
     let collateral_amount = reserve.deposit_liquidity(liquidity_amount)?;
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
@@ -616,7 +617,7 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     let token_program_id = next_account_info(account_info_iter)?;
 
     assert_rent_exempt(rent, obligation_info)?;
-    assert_uninitialized::<Obligation>(obligation_info)?;
+    let mut obligation = assert_uninitialized::<Obligation>(obligation_info)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
@@ -626,10 +627,11 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
-    let obligation = Obligation::new(NewObligationParams {
-        current_slot: clock.slot,
-        lending_market: *lending_market_info.key,
-    });
+    obligation.version = PROGRAM_VERSION;
+    obligation.last_update = LastUpdate::new(clock.slot);
+    obligation.lending_market = *lending_market_info.key;
+    obligation.deposits = vec![];
+    obligation.borrows = vec![];
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
     Ok(())

@@ -31,31 +31,7 @@ pub struct Obligation {
     pub borrows: Vec<ObligationLiquidity>,
 }
 
-/// Create new obligation
-pub struct NewObligationParams {
-    /// Current slot
-    pub current_slot: Slot,
-    /// Lending market address
-    pub lending_market: Pubkey,
-}
-
 impl Obligation {
-    /// Create new obligation
-    pub fn new(params: NewObligationParams) -> Self {
-        let NewObligationParams {
-            current_slot,
-            lending_market,
-        } = params;
-
-        Self {
-            version: PROGRAM_VERSION,
-            last_update: LastUpdate::new(current_slot),
-            lending_market,
-            deposits: vec![],
-            borrows: vec![],
-        }
-    }
-
     // @TODO: this gets called a lot. we could persist the value on obligation refresh instead,
     //        but that seems sloppy.
     /// Calculate the deposited collateral market value
