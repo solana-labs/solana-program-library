@@ -44,9 +44,10 @@ impl IsInitialized for TimelockConfig {
 }
 
 /// Len of timelock config
-pub const TIMELOCK_CONFIG_LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH;
+pub const TIMELOCK_CONFIG_LEN: usize =
+    1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH + 300;
 impl Pack for TimelockConfig {
-    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH;
+    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_CONFIG_LEN];
@@ -63,7 +64,8 @@ impl Pack for TimelockConfig {
             program,
             time_limit,
             name,
-        ) = array_refs![input, 1, 1, 1, 1, 1, 8, 32, 32, 8, CONFIG_NAME_LENGTH];
+            _padding,
+        ) = array_refs![input, 1, 1, 1, 1, 1, 8, 32, 32, 8, CONFIG_NAME_LENGTH, 300];
         let version = u8::from_le_bytes(*version);
         let consensus_algorithm = u8::from_le_bytes(*consensus_algorithm);
         let execution_type = u8::from_le_bytes(*execution_type);
@@ -119,7 +121,8 @@ impl Pack for TimelockConfig {
             program,
             time_limit,
             name,
-        ) = mut_array_refs![output, 1, 1, 1, 1, 1, 8, 32, 32, 8, CONFIG_NAME_LENGTH];
+            _padding,
+        ) = mut_array_refs![output, 1, 1, 1, 1, 1, 8, 32, 32, 8, CONFIG_NAME_LENGTH, 300];
         *version = self.version.to_le_bytes();
         *consensus_algorithm = match self.consensus_algorithm {
             ConsensusAlgorithm::Majority => 0 as u8,

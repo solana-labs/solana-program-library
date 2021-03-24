@@ -63,9 +63,9 @@ impl IsInitialized for TimelockSet {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 1 + 32 * 13;
+const TIMELOCK_SET_LEN: usize = 1 + 32 * 13 + 300;
 impl Pack for TimelockSet {
-    const LEN: usize = 1 + 32 * 13;
+    const LEN: usize = 1 + 32 * 13 + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_SET_LEN];
@@ -86,7 +86,8 @@ impl Pack for TimelockSet {
             governance_holding,
             yes_voting_dump,
             no_voting_dump,
-        ) = array_refs![input, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32];
+            _padding,
+        ) = array_refs![input, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
         let version = u8::from_le_bytes(*version);
         match version {
             TIMELOCK_SET_VERSION | UNINITIALIZED_VERSION => Ok(Self {
@@ -127,7 +128,8 @@ impl Pack for TimelockSet {
             governance_holding,
             yes_voting_dump,
             no_voting_dump,
-        ) = mut_array_refs![output, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32];
+            _padding,
+        ) = mut_array_refs![output, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
         config.copy_from_slice(self.config.as_ref());
         state.copy_from_slice(self.state.as_ref());
         *version = self.version.to_le_bytes();

@@ -25,14 +25,14 @@ impl IsInitialized for TimelockProgram {
     }
 }
 
-const TIMELOCK_LEN: usize = 65;
+const TIMELOCK_LEN: usize = 65 + 300;
 impl Pack for TimelockProgram {
-    const LEN: usize = 65;
+    const LEN: usize = 65 + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, program_id, token_program_id) = array_refs![input, 1, 32, 32];
+        let (version, program_id, token_program_id, _padding) = array_refs![input, 1, 32, 32, 300];
         let version = u8::from_le_bytes(*version);
         match version {
             TIMELOCK_VERSION | UNINITIALIZED_VERSION => Ok(Self {
@@ -47,7 +47,8 @@ impl Pack for TimelockProgram {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, TIMELOCK_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, program_id, token_program_id) = mut_array_refs![output, 1, 32, 32];
+        let (version, program_id, token_program_id, _padding) =
+            mut_array_refs![output, 1, 32, 32, 300];
         *version = self.version.to_le_bytes();
         program_id.copy_from_slice(self.program_id.as_ref());
         token_program_id.copy_from_slice(self.token_program_id.as_ref())

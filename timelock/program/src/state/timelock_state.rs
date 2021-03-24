@@ -67,8 +67,21 @@ impl IsInitialized for TimelockState {
         self.version != UNINITIALIZED_VERSION
     }
 }
-const TIMELOCK_STATE_LEN: usize =
-    32 + 1 + 1 + 8 + DESC_SIZE + NAME_SIZE + 8 + 8 + 8 + 8 + 8 + 1 + 1 + (32 * TRANSACTION_SLOTS);
+const TIMELOCK_STATE_LEN: usize = 32
+    + 1
+    + 1
+    + 8
+    + DESC_SIZE
+    + NAME_SIZE
+    + 8
+    + 8
+    + 8
+    + 8
+    + 8
+    + 1
+    + 1
+    + (32 * TRANSACTION_SLOTS)
+    + 300;
 impl Pack for TimelockState {
     const LEN: usize = 32
         + 1
@@ -83,7 +96,8 @@ impl Pack for TimelockState {
         + 8
         + 1
         + 1
-        + (32 * TRANSACTION_SLOTS);
+        + (32 * TRANSACTION_SLOTS)
+        + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_STATE_LEN];
@@ -108,8 +122,9 @@ impl Pack for TimelockState {
             timelock_txn_3,
             timelock_txn_4,
             timelock_txn_5,
+            _padding,
         ) = array_refs![
-            input, 32, 1, 1, 8, DESC_SIZE, NAME_SIZE, 8, 8, 8, 8, 8, 1, 1, 32, 32, 32, 32, 32
+            input, 32, 1, 1, 8, DESC_SIZE, NAME_SIZE, 8, 8, 8, 8, 8, 1, 1, 32, 32, 32, 32, 32, 300
         ];
         let version = u8::from_le_bytes(*version);
         let total_signing_tokens_minted = u64::from_le_bytes(*total_signing_tokens_minted);
@@ -177,8 +192,9 @@ impl Pack for TimelockState {
             timelock_txn_3,
             timelock_txn_4,
             timelock_txn_5,
+            _padding,
         ) = mut_array_refs![
-            output, 32, 1, 1, 8, DESC_SIZE, NAME_SIZE, 8, 8, 8, 8, 8, 1, 1, 32, 32, 32, 32, 32
+            output, 32, 1, 1, 8, DESC_SIZE, NAME_SIZE, 8, 8, 8, 8, 8, 1, 1, 32, 32, 32, 32, 32, 300
         ];
         *version = self.version.to_le_bytes();
         timelock_set.copy_from_slice(self.timelock_set.as_ref());
