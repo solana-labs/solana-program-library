@@ -2,8 +2,12 @@ name: Pull Request
 
 on:
   pull_request:
+    paths-ignore:
+    - 'docs/**'
   push:
     branches: [master]
+    paths-ignore:
+    - 'docs/**'
 
 jobs:
   all_github_action_checks:
