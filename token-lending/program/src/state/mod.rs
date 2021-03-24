@@ -36,6 +36,7 @@ pub const SLOTS_PER_YEAR: u64 =
 
 // Helpers
 fn pack_coption_key(src: &COption<Pubkey>, dst: &mut [u8; 4 + PUBKEY_BYTES]) {
+    #[allow(clippy::ptr_offset_with_cast)]
     let (tag, body) = mut_array_refs![dst, 4, PUBKEY_BYTES];
     match src {
         COption::Some(key) => {
@@ -49,6 +50,7 @@ fn pack_coption_key(src: &COption<Pubkey>, dst: &mut [u8; 4 + PUBKEY_BYTES]) {
 }
 
 fn unpack_coption_key(src: &[u8; 4 + PUBKEY_BYTES]) -> Result<COption<Pubkey>, ProgramError> {
+    #[allow(clippy::ptr_offset_with_cast)]
     let (tag, body) = array_refs![src, 4, PUBKEY_BYTES];
     match *tag {
         [0, 0, 0, 0] => Ok(COption::None),

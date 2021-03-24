@@ -208,6 +208,7 @@ impl Reserve {
         }
     }
 
+    /// Repay liquidity up to a maximum borrow amount
     pub fn repay_liquidity(
         &self,
         liquidity_amount: u64,
@@ -659,6 +660,7 @@ impl Pack for Reserve {
 
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, RESERVE_LEN];
+        #[allow(clippy::ptr_offset_with_cast)]
         let (
             version,
             last_update_slot,

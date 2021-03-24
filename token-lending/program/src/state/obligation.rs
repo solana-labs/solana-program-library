@@ -114,54 +114,13 @@ impl Obligation {
     }
 
     /// Find collateral by deposit reserve
-    pub fn find_collateral(
-        &self,
-        deposit_reserve: Pubkey,
-    ) -> Result<&ObligationCollateral, ProgramError> {
-        if self.collateral.len() == 0 {
+    pub fn find_collateral_index(&self, deposit_reserve: Pubkey) -> Result<usize, ProgramError> {
+        if self.collateral.is_empty() {
             return Err(LendingError::ObligationCollateralEmpty.into());
         }
-        if let Some(collateral) = self._find_collateral(deposit_reserve) {
-            Ok(collateral)
-        } else {
-            Err(LendingError::InvalidObligationCollateral.into())
-        }
-    }
-
-    fn _find_collateral(&self, deposit_reserve: Pubkey) -> Option<&ObligationCollateral> {
-        for collateral in &self.collateral {
-            if collateral.deposit_reserve == deposit_reserve {
-                return Some(collateral);
-            }
-        }
-        None
-    }
-
-    /// Find collateral by deposit reserve and borrow a mutable reference to it
-    pub fn find_collateral_mut(
-        &mut self,
-        deposit_reserve: Pubkey,
-    ) -> Result<&mut ObligationCollateral, ProgramError> {
-        if self.collateral.len() == 0 {
-            return Err(LendingError::ObligationCollateralEmpty.into());
-        }
-        if let Some(collateral) = self._find_collateral_mut(deposit_reserve) {
-            Ok(collateral)
-        } else {
-            Err(LendingError::InvalidObligationCollateral.into())
-        }
-    }
-
-    fn _find_collateral_mut(
-        &mut self,
-        deposit_reserve: Pubkey,
-    ) -> Option<&mut ObligationCollateral> {
-        for collateral in &mut self.collateral {
-            if collateral.deposit_reserve == deposit_reserve {
-                return Some(collateral);
-            }
-        }
-        None
+        self._find_collateral_index(deposit_reserve)
+            // @TODO: .ok_or(LendingError::X) is used elsewhere, but causes a compiler error here?
+            .ok_or_else(|| LendingError::InvalidObligationCollateral.into())
     }
 
     /// Find or add collateral by deposit reserve
@@ -169,8 +128,8 @@ impl Obligation {
         &mut self,
         deposit_reserve: Pubkey,
     ) -> Result<&mut ObligationCollateral, ProgramError> {
-        if let Some(collateral) = self._find_collateral_mut(deposit_reserve) {
-            Ok(collateral)
+        if let Some(index) = self._find_collateral_index(deposit_reserve) {
+            Ok(&mut self.collateral[index])
         } else if self.collateral.len() + self.liquidity.len() >= MAX_OBLIGATION_RESERVES {
             Err(LendingError::ObligationReserveLimit.into())
         } else {
@@ -180,52 +139,20 @@ impl Obligation {
         }
     }
 
+    fn _find_collateral_index(&self, deposit_reserve: Pubkey) -> Option<usize> {
+        self.collateral
+            .iter()
+            .position(|collateral| collateral.deposit_reserve == deposit_reserve)
+    }
+
     /// Find liquidity by borrow reserve
-    pub fn find_liquidity(
-        &self,
-        borrow_reserve: Pubkey,
-    ) -> Result<&ObligationLiquidity, ProgramError> {
-        if self.liquidity.len() == 0 {
+    pub fn find_liquidity_index(&self, borrow_reserve: Pubkey) -> Result<usize, ProgramError> {
+        if self.liquidity.is_empty() {
             return Err(LendingError::ObligationLiquidityEmpty.into());
         }
-        if let Some(liquidity) = self._find_liquidity(borrow_reserve) {
-            Ok(liquidity)
-        } else {
-            Err(LendingError::InvalidObligationLiquidity.into())
-        }
-    }
-
-    fn _find_liquidity(&self, borrow_reserve: Pubkey) -> Option<&ObligationLiquidity> {
-        for liquidity in &self.liquidity {
-            if liquidity.borrow_reserve == borrow_reserve {
-                return Some(liquidity);
-            }
-        }
-        None
-    }
-
-    /// Find liquidity by borrow reserve and borrow a mutable reference to it
-    pub fn find_liquidity_mut(
-        &mut self,
-        borrow_reserve: Pubkey,
-    ) -> Result<&mut ObligationLiquidity, ProgramError> {
-        if self.liquidity.len() == 0 {
-            return Err(LendingError::ObligationLiquidityEmpty.into());
-        }
-        if let Some(liquidity) = self._find_liquidity_mut(borrow_reserve) {
-            Ok(liquidity)
-        } else {
-            Err(LendingError::InvalidObligationLiquidity.into())
-        }
-    }
-
-    fn _find_liquidity_mut(&mut self, borrow_reserve: Pubkey) -> Option<&mut ObligationLiquidity> {
-        for liquidity in &mut self.liquidity {
-            if liquidity.borrow_reserve == borrow_reserve {
-                return Some(liquidity);
-            }
-        }
-        None
+        self._find_liquidity_index(borrow_reserve)
+            // @TODO: .ok_or(LendingError::X) is used elsewhere, but causes a compiler error here?
+            .ok_or_else(|| LendingError::InvalidObligationLiquidity.into())
     }
 
     /// Find or add liquidity by borrow reserve
@@ -233,8 +160,8 @@ impl Obligation {
         &mut self,
         borrow_reserve: Pubkey,
     ) -> Result<&mut ObligationLiquidity, ProgramError> {
-        if let Some(liquidity) = self._find_liquidity_mut(borrow_reserve) {
-            Ok(liquidity)
+        if let Some(index) = self._find_liquidity_index(borrow_reserve) {
+            Ok(&mut self.liquidity[index])
         } else if self.collateral.len() + self.liquidity.len() >= MAX_OBLIGATION_RESERVES {
             Err(LendingError::ObligationReserveLimit.into())
         } else {
@@ -242,6 +169,12 @@ impl Obligation {
             self.liquidity.push(liquidity);
             Ok(self.liquidity.last_mut().unwrap())
         }
+    }
+
+    fn _find_liquidity_index(&self, borrow_reserve: Pubkey) -> Option<usize> {
+        self.liquidity
+            .iter()
+            .position(|liquidity| liquidity.borrow_reserve == borrow_reserve)
     }
 }
 
@@ -452,6 +385,7 @@ impl Pack for Obligation {
         let mut offset = 0;
         for _ in 0..collateral_len {
             let collateral_flat = array_ref![data_flat, offset, OBLIGATION_COLLATERAL_LEN];
+            #[allow(clippy::ptr_offset_with_cast)]
             let (deposit_reserve, deposited_amount, market_value) =
                 array_refs![collateral_flat, PUBKEY_BYTES, 8, 16];
             collateral.push(ObligationCollateral {
@@ -463,6 +397,7 @@ impl Pack for Obligation {
         }
         for _ in 0..liquidity_len {
             let liquidity_flat = array_ref![data_flat, offset, OBLIGATION_LIQUIDITY_LEN];
+            #[allow(clippy::ptr_offset_with_cast)]
             let (borrow_reserve, cumulative_borrow_rate_wads, borrowed_amount_wads, market_value) =
                 array_refs![liquidity_flat, PUBKEY_BYTES, 16, 16, 16];
             liquidity.push(ObligationLiquidity {
