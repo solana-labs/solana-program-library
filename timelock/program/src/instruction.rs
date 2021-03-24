@@ -43,26 +43,27 @@ pub enum TimelockInstruction {
     /// Initializes a new empty Timelocked set of Instructions that will be executed at various slots in the future in draft mode.
     /// Grants Admin token to caller.
     ///
-    ///   0. `[writable]` Uninitialized Timelock set account .
-    ///   1. `[writable]` Initialized Signatory Mint account
-    ///   2. `[writable]` Initialized Admin Mint account
-    ///   3. `[writable]` Initialized Voting Mint account
-    ///   4. `[writable]` Initialized Yes Voting Mint account
-    ///   5. `[writable]` Initialized No Voting Mint account
-    ///   6. `[writable]` Initialized Signatory Validation account
-    ///   7. `[writable]` Initialized Admin Validation account
-    ///   8. `[writable]` Initialized Voting Validation account
-    ///   9. `[writable]` Initialized Destination account for first admin token
-    ///   10. `[writable]` Initialized Destination account for first signatory token
-    ///   11. `[writable]` Initialized Yes voting dump account
-    ///   12. `[writable]` Initialized No voting dump account
-    ///   13. `[writable]` Initialized Governance holding account
-    ///   14. `[]` Governance mint
-    ///   15. `[]` Timelock minting authority
+    ///   0. `[writable]` Uninitialized Timelock state account .
+    ///   1. `[writable]` Uninitialized Timelock set account .
+    ///   2. `[writable]` Initialized Signatory Mint account
+    ///   3. `[writable]` Initialized Admin Mint account
+    ///   4. `[writable]` Initialized Voting Mint account
+    ///   5. `[writable]` Initialized Yes Voting Mint account
+    ///   6. `[writable]` Initialized No Voting Mint account
+    ///   7. `[writable]` Initialized Signatory Validation account
+    ///   8. `[writable]` Initialized Admin Validation account
+    ///   9. `[writable]` Initialized Voting Validation account
+    ///   10. `[writable]` Initialized Destination account for first admin token
+    ///   11. `[writable]` Initialized Destination account for first signatory token
+    ///   12. `[writable]` Initialized Yes voting dump account
+    ///   13. `[writable]` Initialized No voting dump account
+    ///   14. `[writable]` Initialized Governance holding account
+    ///   15. `[]` Governance mint
     ///   16. `[]` Timelock config account.
-    ///   17. `[]` Timelock Program
-    ///   18. '[]` Token program id
-    ///   19. `[]` Rent sysvar
+    ///   17. `[]` Timelock minting authority
+    ///   18. `[]` Timelock Program
+    ///   19. '[]` Token program id
+    ///   20. `[]` Rent sysvar
     InitTimelockSet {
         /// Link to gist explaining proposal
         desc_link: [u8; DESC_SIZE],
@@ -79,11 +80,12 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Initialized Signatory mint account.
     ///   2. `[writable]` Admin account.
     ///   3. `[writable]` Admin validation account.
-    ///   4. `[]` Timelock set account.
-    ///   5. `[]` Transfer authority
-    ///   6. `[]` Timelock program mint authority
-    ///   7. `[]` Timelock program account.
-    ///   8. '[]` Token program id.
+    ///   5. `[writable]` Timelock state account.
+    ///   6. `[]` Timelock set account.
+    ///   7. `[]` Transfer authority
+    ///   8. `[]` Timelock program mint authority
+    ///   9. `[]` Timelock program account.
+    ///   10. '[]` Token program id.
     AddSigner,
 
     /// [Requires Admin token]
@@ -93,11 +95,12 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Signatory mint account.
     ///   2. `[writable]` Admin account.
     ///   3. `[writable]` Admin validation account.
-    ///   4. `[]` Timelock set account.
-    ///   5. `[]` Transfer authority
-    ///   5. `[]` Timelock program mint authority
-    ///   6. `[]` Timelock program account.
-    ///   7. '[]` Token program id.
+    ///   4. `[writable]` Timelock state account.
+    ///   5. `[]` Timelock set account.
+    ///   6. `[]` Transfer authority
+    ///   7. `[]` Timelock program mint authority
+    ///   8. `[]` Timelock program account.
+    ///   9. '[]` Token program id.
     RemoveSigner,
 
     /// [Requires Signatory token]
@@ -106,14 +109,15 @@ pub enum TimelockInstruction {
     /// This transaction needs to contain authority to execute the program.
     ///
     ///   0. `[writable]` Uninitialized Timelock Transaction account.
-    ///   1. `[writable]` Timelock set account.
+    ///   1. `[writable]` Timelock state account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Timelock Config account.
-    ///   5. `[]` Transfer authority
-    ///   6. `[]` Timelock mint authority
-    ///   7. `[]` Timelock program account.
-    ///   8. `[]` Token program account.
+    ///   4. `[]` Timelock Set account.
+    ///   5. `[]` Timelock Config account.
+    ///   6. `[]` Transfer authority
+    ///   7. `[]` Timelock mint authority
+    ///   8. `[]` Timelock program account.
+    ///   9. `[]` Token program account.
     AddCustomSingleSignerTransaction {
         /// Slot during which this will run
         slot: u64,
@@ -128,27 +132,29 @@ pub enum TimelockInstruction {
     /// [Requires Signatory token]
     /// Remove Transaction from the Timelock Set.
     ///
-    ///   0. `[writable]` Timelock set account.
+    ///   0. `[writable]` Timelock state account.
     ///   1. `[writable]` Timelock Transaction account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Transfer Authority.
-    ///   5. `[]` Timelock mint authority
-    ///   6. `[]` Timelock program account pub key.
-    ///   7. `[]` Token program account.
+    ///   5. `[]` Timelock set.
+    ///   6. `[]` Transfer Authority.
+    ///   7. `[]` Timelock mint authority
+    ///   8. `[]` Timelock program account pub key.
+    ///   9. `[]` Token program account.
     RemoveTransaction,
 
     /// [Requires Signatory token]
     /// Update Transaction slot in the Timelock Set. Useful during reset periods.
     ///
-    ///   0. `[writable]` Timelock set account.
     ///   1. `[writable]` Timelock Transaction account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Transfer authority.
-    ///   5. `[]` Timelock mint authority
-    ///   6. `[]` Timelock program account pub key.
-    ///   7. `[]` Token program account.
+    ///   4. `[]` Timelock state account.
+    ///   5. `[]` Timelock set account.
+    ///   6. `[]` Transfer authority.
+    ///   7. `[]` Timelock mint authority
+    ///   8. `[]` Timelock program account pub key.
+    ///   9. `[]` Token program account.
     UpdateTransactionSlot {
         /// On what slot this transaction slot will now run
         slot: u64,
@@ -157,10 +163,11 @@ pub enum TimelockInstruction {
     /// [Requires Admin token]
     /// Delete Timelock set entirely.
     ///
-    ///   0. `[writable]` Timelock set account pub key.
+    ///   0. `[writable]` Timelock state account pub key.
     ///   1. `[writable]` Admin account
     ///   2. `[writable]` Admin validation account.
-    ///   3. `[]` Transfer authority.
+    ///   3. `[]` Timelock set account pub key.
+    ///   4. `[]` Transfer authority.
     ///   5. `[]` Timelock mint authority
     ///   6. `[]` Timelock program account pub key.
     ///   7. `[]` Token program account.
@@ -170,21 +177,22 @@ pub enum TimelockInstruction {
     /// Burns signatory token, indicating you approve of moving this Timelock set from Draft state to Voting state.
     /// The last Signatory token to be burned moves the state to Voting.
     ///
-    ///   0. `[writable]` Timelock set account pub key.
+    ///   0. `[writable]` Timelock state account pub key.
     ///   1. `[writable]` Signatory account
     ///   2. `[writable]` Signatory mint account.
-    ///   3. `[]` Transfer authority
-    ///   4. `[]` Timelock mint authority
-    ///   5. `[]` Timelock program account pub key.
-    ///   6. `[]` Token program account.
-    ///   7. `[]` Clock sysvar.
+    ///   3. `[]` Timelock set account pub key.
+    ///   4. `[]` Transfer authority
+    ///   5. `[]` Timelock mint authority
+    ///   6. `[]` Timelock program account pub key.
+    ///   7. `[]` Token program account.
+    ///   8. `[]` Clock sysvar.
     Sign,
 
     /// [Requires Voting tokens]
     /// Burns voting tokens, indicating you approve and/or disapprove of running this set of transactions. If you tip the consensus,
     /// then the transactions can begin to be run at their time slots when people click execute.
     ///
-    ///   0. `[writable]` Timelock set account.
+    ///   0. `[writable]` Timelock state account.
     ///   1. `[writable]` Your Voting account.
     ///   2. `[writable]` Your Yes-Voting account.
     ///   3. `[writable]` Your No-Voting account.
@@ -192,12 +200,13 @@ pub enum TimelockInstruction {
     ///   5. `[writable]` Yes Voting mint account.
     ///   6. `[writable]` No Voting mint account.
     ///   7. `[]` Governance mint account
-    ///   8. `[]` Timelock config account.
-    ///   9. `[]` Transfer authority
-    ///   10. `[]` Timelock program mint authority
-    ///   11. `[]` Timelock program account pub key.
-    ///   12. `[]` Token program account.
-    ///   13. `[]` Clock sysvar.
+    ///   8. `[]` Timelock set account.
+    ///   9. `[]` Timelock config account.
+    ///   10. `[]` Transfer authority
+    ///   11. `[]` Timelock program mint authority
+    ///   12. `[]` Timelock program account pub key.
+    ///   13. `[]` Token program account.
+    ///   14. `[]` Clock sysvar.
     Vote {
         /// How many voting tokens to burn yes
         yes_voting_token_amount: u64,
@@ -211,8 +220,9 @@ pub enum TimelockInstruction {
     /// Executes a command in the timelock set.
     ///
     ///   0. `[writable]` Transaction account you wish to execute.
-    ///   1. `[]` Timelock set account.
+    ///   1. `[writable]` Timelock state account.
     ///   2. `[]` Program being invoked account
+    ///   3. `[]` Timelock set account.
     ///   4. `[]` Timelock config
     ///   5. `[]` Timelock program account pub key.
     ///   6. `[]` Clock sysvar.
@@ -231,12 +241,13 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Source governance token account to deposit tokens from.
     ///   2. `[writable]` Governance holding account for timelock that will accept the tokens in escrow.
     ///   3. `[writable]` Voting mint account.
-    ///   4. `[]` Timelock set account.
-    ///   5. `[]` Timelock config account.
-    ///   6. `[]` Transfer authority
-    ///   7. `[]` Timelock program mint authority
-    ///   8. `[]` Timelock program account pub key.
-    ///   9. `[]` Token program account.
+    ///   4. `[]` Timelock state account.
+    ///   5. `[]` Timelock set account.
+    ///   6. `[]` Timelock config account.
+    ///   7. `[]` Transfer authority
+    ///   8. `[]` Timelock program mint authority
+    ///   9. `[]` Timelock program account pub key.
+    ///   10. `[]` Token program account.
     DepositGovernanceTokens {
         /// How many voting tokens to deposit
         voting_token_amount: u64,
@@ -253,13 +264,14 @@ pub enum TimelockInstruction {
     ///   5. `[writable]` Initialized Yes Voting dump account owned by timelock set to which to send your voting tokens.
     ///   6. `[writable]` Initialized No Voting dump account owned by timelock set to which to send your voting tokens.
     ///   7. `[]` Voting mint account.
-    ///   8. `[]` Timelock set account.
-    ///   9. `[]` Transfer authority
-    ///   10. `[]` Yes Transfer authority
-    ///   11. `[]` No Transfer authority
-    ///   12. `[]` Timelock program mint authority
-    ///   13. `[]` Timelock program account pub key.
-    ///   14. `[]` Token program account.
+    ///   8. `[]` Timelock state account.
+    ///   9. `[]` Timelock set account.
+    ///   10. `[]` Transfer authority
+    ///   11. `[]` Yes Transfer authority
+    ///   12. `[]` No Transfer authority
+    ///   13. `[]` Timelock program mint authority
+    ///   14. `[]` Timelock program account pub key.
+    ///   15. `[]` Token program account.
     WithdrawVotingTokens {
         /// How many voting tokens to withdrawal
         voting_token_amount: u64,

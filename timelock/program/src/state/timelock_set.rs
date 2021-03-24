@@ -1,5 +1,3 @@
-use super::enums::TimelockStateStatus;
-use super::timelock_state::{TimelockState, DESC_SIZE, NAME_SIZE};
 use super::UNINITIALIZED_VERSION;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
@@ -13,6 +11,12 @@ pub const TIMELOCK_SET_VERSION: u8 = 1;
 /// Single instance of a timelock
 #[derive(Clone)]
 pub struct TimelockSet {
+    /// configuration values
+    pub config: Pubkey,
+
+    /// state values
+    pub state: Pubkey,
+
     /// Version of the struct
     pub version: u8,
 
@@ -50,12 +54,6 @@ pub struct TimelockSet {
 
     /// No Voting dump account for exchanged vote tokens
     pub no_voting_dump: Pubkey,
-
-    /// configuration values
-    pub config: Pubkey,
-
-    /// Timelock state
-    pub state: TimelockState,
 }
 
 impl Sealed for TimelockSet {}
@@ -65,15 +63,17 @@ impl IsInitialized for TimelockSet {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 540 + DESC_SIZE + NAME_SIZE;
+const TIMELOCK_SET_LEN: usize = 1 + 32 * 13;
 impl Pack for TimelockSet {
-    const LEN: usize = 540 + DESC_SIZE + NAME_SIZE;
+    const LEN: usize = 1 + 32 * 13;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_SET_LEN];
         // TODO think up better way than txn_* usage here - new to rust
         #[allow(clippy::ptr_offset_with_cast)]
         let (
+            config,
+            state,
             version,
             signatory_mint,
             admin_mint,
@@ -86,32 +86,12 @@ impl Pack for TimelockSet {
             governance_holding,
             yes_voting_dump,
             no_voting_dump,
-            config,
-            timelock_state_status,
-            total_signing_tokens_minted,
-            desc_link,
-            name,
-            voting_ended_at,
-            voting_began_at,
-            executions,
-            used_txn_slots,
-            timelock_txn_1,
-            timelock_txn_2,
-            timelock_txn_3,
-            timelock_txn_4,
-        ) = array_refs![
-            input, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1, 8, DESC_SIZE, NAME_SIZE,
-            8, 8, 1, 1, 32, 32, 32, 32
-        ];
+        ) = array_refs![input, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32];
         let version = u8::from_le_bytes(*version);
-        let total_signing_tokens_minted = u64::from_le_bytes(*total_signing_tokens_minted);
-        let timelock_state_status = u8::from_le_bytes(*timelock_state_status);
-        let voting_ended_at = u64::from_le_bytes(*voting_ended_at);
-        let voting_began_at = u64::from_le_bytes(*voting_began_at);
-        let executions = u8::from_le_bytes(*executions);
-        let used_txn_slots = u8::from_le_bytes(*used_txn_slots);
         match version {
             TIMELOCK_SET_VERSION | UNINITIALIZED_VERSION => Ok(Self {
+                config: Pubkey::new_from_array(*config),
+                state: Pubkey::new_from_array(*state),
                 version,
                 signatory_mint: Pubkey::new_from_array(*signatory_mint),
                 admin_mint: Pubkey::new_from_array(*admin_mint),
@@ -124,30 +104,6 @@ impl Pack for TimelockSet {
                 governance_holding: Pubkey::new_from_array(*governance_holding),
                 yes_voting_dump: Pubkey::new_from_array(*yes_voting_dump),
                 no_voting_dump: Pubkey::new_from_array(*no_voting_dump),
-                config: Pubkey::new_from_array(*config),
-                state: TimelockState {
-                    status: match timelock_state_status {
-                        0 => TimelockStateStatus::Draft,
-                        1 => TimelockStateStatus::Voting,
-                        2 => TimelockStateStatus::Executing,
-                        3 => TimelockStateStatus::Completed,
-                        4 => TimelockStateStatus::Deleted,
-                        _ => TimelockStateStatus::Draft,
-                    },
-                    total_signing_tokens_minted,
-                    timelock_transactions: [
-                        Pubkey::new_from_array(*timelock_txn_1),
-                        Pubkey::new_from_array(*timelock_txn_2),
-                        Pubkey::new_from_array(*timelock_txn_3),
-                        Pubkey::new_from_array(*timelock_txn_4),
-                    ],
-                    desc_link: *desc_link,
-                    name: *name,
-                    voting_ended_at,
-                    voting_began_at,
-                    executions,
-                    used_txn_slots,
-                },
             }),
             _ => Err(ProgramError::InvalidAccountData),
         }
@@ -157,6 +113,8 @@ impl Pack for TimelockSet {
         let output = array_mut_ref![output, 0, TIMELOCK_SET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
+            config,
+            state,
             version,
             signatory_mint,
             admin_mint,
@@ -169,23 +127,9 @@ impl Pack for TimelockSet {
             governance_holding,
             yes_voting_dump,
             no_voting_dump,
-            config,
-            timelock_state_status,
-            total_signing_tokens_minted,
-            desc_link,
-            name,
-            voting_ended_at,
-            voting_began_at,
-            executions,
-            used_txn_slots,
-            timelock_txn_1,
-            timelock_txn_2,
-            timelock_txn_3,
-            timelock_txn_4,
-        ) = mut_array_refs![
-            output, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1, 8, DESC_SIZE, NAME_SIZE,
-            8, 8, 1, 1, 32, 32, 32, 32
-        ];
+        ) = mut_array_refs![output, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32];
+        config.copy_from_slice(self.config.as_ref());
+        state.copy_from_slice(self.state.as_ref());
         *version = self.version.to_le_bytes();
         signatory_mint.copy_from_slice(self.signatory_mint.as_ref());
         admin_mint.copy_from_slice(self.admin_mint.as_ref());
@@ -198,27 +142,6 @@ impl Pack for TimelockSet {
         governance_holding.copy_from_slice(self.governance_holding.as_ref());
         yes_voting_dump.copy_from_slice(self.yes_voting_dump.as_ref());
         no_voting_dump.copy_from_slice(self.no_voting_dump.as_ref());
-        config.copy_from_slice(self.config.as_ref());
-        *timelock_state_status = match self.state.status {
-            TimelockStateStatus::Draft => 0 as u8,
-            TimelockStateStatus::Voting => 1 as u8,
-            TimelockStateStatus::Executing => 2 as u8,
-            TimelockStateStatus::Completed => 3 as u8,
-            TimelockStateStatus::Deleted => 4 as u8,
-            TimelockStateStatus::Defeated => 5 as u8,
-        }
-        .to_le_bytes();
-        *total_signing_tokens_minted = self.state.total_signing_tokens_minted.to_le_bytes();
-        desc_link.copy_from_slice(self.state.desc_link.as_ref());
-        name.copy_from_slice(self.state.name.as_ref());
-        *voting_ended_at = self.state.voting_ended_at.to_le_bytes();
-        *voting_began_at = self.state.voting_began_at.to_le_bytes();
-        *executions = self.state.executions.to_le_bytes();
-        *used_txn_slots = self.state.used_txn_slots.to_le_bytes();
-        timelock_txn_1.copy_from_slice(self.state.timelock_transactions[0].as_ref());
-        timelock_txn_2.copy_from_slice(self.state.timelock_transactions[1].as_ref());
-        timelock_txn_3.copy_from_slice(self.state.timelock_transactions[2].as_ref());
-        timelock_txn_4.copy_from_slice(self.state.timelock_transactions[3].as_ref());
     }
 
     fn get_packed_len() -> usize {

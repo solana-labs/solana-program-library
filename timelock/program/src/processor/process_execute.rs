@@ -9,6 +9,7 @@ use crate::{
         enums::TimelockStateStatus,
         timelock_config::TIMELOCK_CONFIG_LEN,
         timelock_set::TimelockSet,
+        timelock_state::TimelockState,
     },
     utils::{assert_account_equiv, assert_executing, assert_initialized, execute, ExecuteParams},
 };
@@ -31,24 +32,27 @@ pub fn process_execute(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let transaction_account_info = next_account_info(account_info_iter)?;
-    let timelock_set_account_info = next_account_info(account_info_iter)?;
+    let timelock_state_account_info = next_account_info(account_info_iter)?;
     let program_to_invoke_info = next_account_info(account_info_iter)?;
+    let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_config_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let clock_info = next_account_info(account_info_iter)?;
 
-    let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
     let clock = &Clock::from_account_info(clock_info)?;
     // For now we assume all transactions are CustomSingleSignerTransactions even though
     // this will not always be the case...we need to solve that inheritance issue later.
     let mut transaction: CustomSingleSignerTimelockTransaction =
         assert_initialized(transaction_account_info)?;
-    let time_elapsed = clock.slot - timelock_set.state.voting_ended_at;
+    let time_elapsed = clock.slot - timelock_state.voting_ended_at;
     if time_elapsed < transaction.slot {
         return Err(TimelockError::TooEarlyToExecute.into());
     }
 
+    assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
     let seeds = &[
         timelock_program_account_info.key.as_ref(),
@@ -86,7 +90,7 @@ pub fn process_execute(
         account_infos.push(timelock_config_account_info.clone());
     }
 
-    assert_executing(&timelock_set)?;
+    assert_executing(&timelock_state)?;
 
     if transaction.executed == 1 {
         return Err(TimelockError::TimelockTransactionAlreadyExecuted.into());
@@ -123,15 +127,15 @@ pub fn process_execute(
         &mut transaction_account_info.data.borrow_mut(),
     )?;
 
-    timelock_set.state.executions += 1;
+    timelock_state.executions += 1;
 
-    if timelock_set.state.executions == timelock_set.state.used_txn_slots {
-        timelock_set.state.status = TimelockStateStatus::Completed
+    if timelock_state.executions == timelock_state.used_txn_slots {
+        timelock_state.status = TimelockStateStatus::Completed
     }
 
-    TimelockSet::pack(
-        timelock_set,
-        &mut timelock_set_account_info.data.borrow_mut(),
+    TimelockState::pack(
+        timelock_state,
+        &mut timelock_state_account_info.data.borrow_mut(),
     )?;
     Ok(())
 }

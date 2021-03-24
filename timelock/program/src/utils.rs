@@ -2,6 +2,7 @@ use crate::{
     error::TimelockError,
     state::{
         enums::TimelockStateStatus, timelock_program::TimelockProgram, timelock_set::TimelockSet,
+        timelock_state::TimelockState,
     },
 };
 use arrayref::array_ref;
@@ -78,9 +79,9 @@ pub fn assert_is_permissioned<'a>(
 }
 
 /// Asserts a timelock set is in a state that can be edited - if its voting or executing, cant touch it.
-pub fn assert_not_in_voting_or_executing(timelock_set: &TimelockSet) -> ProgramResult {
-    if timelock_set.state.status == TimelockStateStatus::Voting
-        || timelock_set.state.status == TimelockStateStatus::Executing
+pub fn assert_not_in_voting_or_executing(timelock_state: &TimelockState) -> ProgramResult {
+    if timelock_state.status == TimelockStateStatus::Voting
+        || timelock_state.status == TimelockStateStatus::Executing
     {
         return Err(TimelockError::InvalidTimelockSetStateError.into());
     }
@@ -88,24 +89,24 @@ pub fn assert_not_in_voting_or_executing(timelock_set: &TimelockSet) -> ProgramR
 }
 
 /// Asserts a timelock set is in executing state.
-pub fn assert_executing(timelock_set: &TimelockSet) -> ProgramResult {
-    if timelock_set.state.status != TimelockStateStatus::Executing {
+pub fn assert_executing(timelock_state: &TimelockState) -> ProgramResult {
+    if timelock_state.status != TimelockStateStatus::Executing {
         return Err(TimelockError::InvalidTimelockSetStateError.into());
     }
     Ok(())
 }
 
 /// Asserts a timelock set is in voting state.
-pub fn assert_voting(timelock_set: &TimelockSet) -> ProgramResult {
-    if timelock_set.state.status != TimelockStateStatus::Voting {
+pub fn assert_voting(timelock_state: &TimelockState) -> ProgramResult {
+    if timelock_state.status != TimelockStateStatus::Voting {
         return Err(TimelockError::InvalidTimelockSetStateError.into());
     }
     Ok(())
 }
 
 /// Asserts a timelock set is in draft state.
-pub fn assert_draft(timelock_set: &TimelockSet) -> ProgramResult {
-    if timelock_set.state.status != TimelockStateStatus::Draft {
+pub fn assert_draft(timelock_state: &TimelockState) -> ProgramResult {
+    if timelock_state.status != TimelockStateStatus::Draft {
         return Err(TimelockError::InvalidTimelockSetStateError.into());
     }
     Ok(())
@@ -135,13 +136,13 @@ pub fn assert_token_program_is_correct(
 }
 
 /// asserts timelock txn is in timelock set
-pub fn assert_txn_in_set(
-    timelock_set: &TimelockSet,
+pub fn assert_txn_in_state(
+    timelock_state: &TimelockState,
     timelock_txn_account_info: &AccountInfo,
 ) -> ProgramResult {
     let mut found: bool = false;
-    for n in 0..timelock_set.state.timelock_transactions.len() {
-        if timelock_set.state.timelock_transactions[n].to_bytes()
+    for n in 0..timelock_state.timelock_transactions.len() {
+        if timelock_state.timelock_transactions[n].to_bytes()
             == timelock_txn_account_info.key.to_bytes()
         {
             found = true;

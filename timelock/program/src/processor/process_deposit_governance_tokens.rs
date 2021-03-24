@@ -3,7 +3,10 @@
 use crate::{
     error::TimelockError,
     state::timelock_program::TimelockProgram,
-    state::{enums::VotingEntryRule, timelock_config::TimelockConfig, timelock_set::TimelockSet},
+    state::{
+        enums::VotingEntryRule, timelock_config::TimelockConfig, timelock_set::TimelockSet,
+        timelock_state::TimelockState,
+    },
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
         spl_token_mint_to, spl_token_transfer, TokenMintToParams, TokenTransferParams,
@@ -26,6 +29,7 @@ pub fn process_deposit_governance_tokens(
     let source_governance_account_info = next_account_info(account_info_iter)?;
     let governance_holding_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
+    let timelock_state_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_config_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
@@ -33,11 +37,13 @@ pub fn process_deposit_governance_tokens(
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
+    let timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
 
+    assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_account_equiv(
         governance_holding_account_info,
         &timelock_set.governance_holding,
@@ -50,7 +56,7 @@ pub fn process_deposit_governance_tokens(
     }
 
     if timelock_config.voting_entry_rule == VotingEntryRule::DraftOnly {
-        assert_draft(&timelock_set)?;
+        assert_draft(&timelock_state)?;
     }
 
     let (authority_key, bump_seed) =

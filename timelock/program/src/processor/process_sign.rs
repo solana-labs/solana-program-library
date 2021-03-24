@@ -2,7 +2,7 @@
 use crate::{
     error::TimelockError,
     state::timelock_program::TimelockProgram,
-    state::{enums::TimelockStateStatus, timelock_set::TimelockSet},
+    state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
         spl_token_burn, TokenBurnParams,
@@ -21,9 +21,10 @@ use spl_token::state::Mint;
 /// Sign the set and say you're okay with moving it to voting stage.
 pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let timelock_set_account_info = next_account_info(account_info_iter)?;
+    let timelock_state_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_mint_info = next_account_info(account_info_iter)?;
+    let timelock_set_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
@@ -31,12 +32,14 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let clock_info = next_account_info(account_info_iter)?;
 
     let clock = Clock::from_account_info(clock_info)?;
-    let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     let sig_mint: Mint = assert_initialized(signatory_mint_info)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_account_equiv(signatory_mint_info, &timelock_set.signatory_mint)?;
-    assert_draft(&timelock_set)?;
+    assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
+    assert_draft(&timelock_state)?;
 
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
@@ -58,12 +61,12 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
 
     // assuming sig_mint object is now out of date, sub 1
     if sig_mint.supply - 1 == 0 {
-        timelock_set.state.status = TimelockStateStatus::Voting;
-        timelock_set.state.voting_began_at = clock.slot;
+        timelock_state.status = TimelockStateStatus::Voting;
+        timelock_state.voting_began_at = clock.slot;
 
-        TimelockSet::pack(
-            timelock_set.clone(),
-            &mut timelock_set_account_info.data.borrow_mut(),
+        TimelockState::pack(
+            timelock_state.clone(),
+            &mut timelock_state_account_info.data.borrow_mut(),
         )?;
     }
 

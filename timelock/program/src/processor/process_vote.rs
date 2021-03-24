@@ -3,10 +3,11 @@ use crate::{
     error::TimelockError,
     state::{
         enums::TimelockStateStatus, timelock_config::TimelockConfig, timelock_set::TimelockSet,
+        timelock_state::TimelockState,
     },
     utils::{
-        assert_initialized, assert_voting, pull_mint_supply, spl_token_burn, spl_token_mint_to,
-        TokenBurnParams, TokenMintToParams,
+        assert_account_equiv, assert_initialized, assert_voting, pull_mint_supply, spl_token_burn,
+        spl_token_mint_to, TokenBurnParams, TokenMintToParams,
     },
 };
 use solana_program::{
@@ -26,7 +27,7 @@ pub fn process_vote(
     no_voting_token_amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let timelock_set_account_info = next_account_info(account_info_iter)?;
+    let timelock_state_account_info = next_account_info(account_info_iter)?;
     let voting_account_info = next_account_info(account_info_iter)?;
     let yes_voting_account_info = next_account_info(account_info_iter)?;
     let no_voting_account_info = next_account_info(account_info_iter)?;
@@ -34,6 +35,7 @@ pub fn process_vote(
     let yes_voting_mint_account_info = next_account_info(account_info_iter)?;
     let no_voting_mint_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
+    let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_config_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
@@ -42,25 +44,21 @@ pub fn process_vote(
     let clock_info = next_account_info(account_info_iter)?;
 
     let clock = Clock::from_account_info(clock_info)?;
-    let mut timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
-    // Using assert_account_equiv not workable here due to cost of stack size on this method.
-    if voting_mint_account_info.key != &timelock_set.voting_mint {
-        return Err(TimelockError::AccountsShouldMatch.into());
-    }
-    if yes_voting_mint_account_info.key != &timelock_set.yes_voting_mint {
-        return Err(TimelockError::AccountsShouldMatch.into());
-    }
-    if no_voting_mint_account_info.key != &timelock_set.no_voting_mint {
-        return Err(TimelockError::AccountsShouldMatch.into());
-    }
-    if governance_mint_account_info.key != &timelock_config.governance_mint {
-        return Err(TimelockError::AccountsShouldMatch.into());
-    }
-    if timelock_config_account_info.key != &timelock_set.config {
-        return Err(TimelockError::AccountsShouldMatch.into());
-    }
-    assert_voting(&timelock_set)?;
+
+    assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
+    assert_account_equiv(yes_voting_mint_account_info, &timelock_set.yes_voting_mint)?;
+    assert_account_equiv(no_voting_mint_account_info, &timelock_set.no_voting_mint)?;
+    assert_account_equiv(
+        governance_mint_account_info,
+        &timelock_config.governance_mint,
+    )?;
+    assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
+    assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
+
+    assert_voting(&timelock_state)?;
 
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
@@ -118,19 +116,19 @@ pub fn process_vote(
         crate::state::enums::ConsensusAlgorithm::FullConsensus => now_remaining_in_no_column == 0,
     };
 
-    let too_long = clock.slot - timelock_set.state.voting_began_at > timelock_config.time_limit;
+    let too_long = clock.slot - timelock_state.voting_began_at > timelock_config.time_limit;
 
     if tipped || too_long {
         if tipped {
-            timelock_set.state.status = TimelockStateStatus::Executing;
+            timelock_state.status = TimelockStateStatus::Executing;
         } else {
-            timelock_set.state.status = TimelockStateStatus::Defeated;
+            timelock_state.status = TimelockStateStatus::Defeated;
         }
-        timelock_set.state.voting_ended_at = clock.slot;
+        timelock_state.voting_ended_at = clock.slot;
 
-        TimelockSet::pack(
-            timelock_set.clone(),
-            &mut timelock_set_account_info.data.borrow_mut(),
+        TimelockState::pack(
+            timelock_state.clone(),
+            &mut timelock_state_account_info.data.borrow_mut(),
         )?;
     }
 

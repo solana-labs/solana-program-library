@@ -3,10 +3,10 @@
 use crate::{
     error::TimelockError,
     state::timelock_program::TimelockProgram,
-    state::{enums::TimelockStateStatus, timelock_set::TimelockSet},
+    state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
     utils::{
-        assert_initialized, assert_token_program_is_correct, spl_token_burn, spl_token_transfer,
-        TokenBurnParams, TokenTransferParams,
+        assert_account_equiv, assert_initialized, assert_token_program_is_correct, spl_token_burn,
+        spl_token_transfer, TokenBurnParams, TokenTransferParams,
     },
 };
 use solana_program::{
@@ -32,6 +32,7 @@ pub fn process_withdraw_voting_tokens(
     let no_voting_dump_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
 
+    let timelock_state_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
 
     let transfer_authority_info = next_account_info(account_info_iter)?;
@@ -41,22 +42,20 @@ pub fn process_withdraw_voting_tokens(
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
+    let timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     // Using assert_account_equiv not workable here due to cost of stack size on this method.
-    if voting_mint_account_info.key != &timelock_set.voting_mint {
-        return Err(TimelockError::AccountsShouldMatch.into());
-    }
-    if yes_voting_dump_account_info.key != &timelock_set.yes_voting_dump {
-        return Err(TimelockError::AccountsShouldMatch.into());
-    }
-    if no_voting_dump_account_info.key != &timelock_set.no_voting_dump {
-        return Err(TimelockError::AccountsShouldMatch.into());
-    }
-    if governance_holding_account_info.key != &timelock_set.governance_holding {
-        return Err(TimelockError::AccountsShouldMatch.into());
-    }
+
+    assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
+    assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
+    assert_account_equiv(yes_voting_dump_account_info, &timelock_set.yes_voting_dump)?;
+    assert_account_equiv(no_voting_dump_account_info, &timelock_set.no_voting_dump)?;
+    assert_account_equiv(
+        governance_holding_account_info,
+        &timelock_set.governance_holding,
+    )?;
 
     if voting_token_amount < 0 as u64 {
         return Err(TimelockError::TokenAmountBelowZero.into());
@@ -82,7 +81,7 @@ pub fn process_withdraw_voting_tokens(
 
     let total_possible: u64;
 
-    if timelock_set.state.status == TimelockStateStatus::Voting {
+    if timelock_state.status == TimelockStateStatus::Voting {
         total_possible = voting_account.amount
     } else {
         total_possible =
@@ -115,7 +114,7 @@ pub fn process_withdraw_voting_tokens(
         }
     }
 
-    if timelock_set.state.status != TimelockStateStatus::Voting {
+    if timelock_state.status != TimelockStateStatus::Voting {
         if yes_voting_account.amount > 0 {
             let amount_to_transfer: u64;
             if yes_voting_account.amount < voting_fuel_tank {
