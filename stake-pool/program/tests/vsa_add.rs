@@ -2,22 +2,24 @@
 
 mod helpers;
 
-use helpers::*;
-
-use bincode::deserialize;
-use solana_program::hash::Hash;
-use solana_program::instruction::AccountMeta;
-use solana_program::instruction::Instruction;
-use solana_program::sysvar;
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError,
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-    transaction::TransactionError,
-    transport::TransportError,
+use {
+    bincode::deserialize,
+    borsh::BorshSerialize,
+    helpers::*,
+    solana_program::{
+        hash::Hash,
+        instruction::{AccountMeta, Instruction},
+        sysvar,
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
+        transport::TransportError,
+    },
+    spl_stake_pool::{borsh::try_from_slice_unchecked, error, id, instruction, stake, state},
 };
-use spl_stake_pool::*;
 
 async fn setup() -> (
     BanksClient,
@@ -113,7 +115,8 @@ async fn test_add_validator_stake_account() {
     )
     .await;
     let validator_stake_list =
-        state::ValidatorStakeList::deserialize(validator_stake_list.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
+            .unwrap();
     assert_eq!(
         validator_stake_list,
         state::ValidatorStakeList {
@@ -409,7 +412,7 @@ async fn test_not_owner_try_to_add_validator_stake_account_without_signature() {
         program_id: id(),
         accounts,
         data: instruction::StakePoolInstruction::AddValidatorStakeAccount
-            .serialize()
+            .try_to_vec()
             .unwrap(),
     };
 

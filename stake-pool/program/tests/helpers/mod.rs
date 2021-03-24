@@ -1,17 +1,22 @@
 #![allow(dead_code)]
 
-use solana_program::{hash::Hash, program_pack::Pack, pubkey::Pubkey, system_instruction};
-use solana_program_test::*;
-use solana_sdk::{
-    account::Account,
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-    transport::TransportError,
+use {
+    solana_program::{
+        borsh::get_packed_len, hash::Hash, program_pack::Pack, pubkey::Pubkey, system_instruction,
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        account::Account,
+        signature::{Keypair, Signer},
+        transaction::Transaction,
+        transport::TransportError,
+    },
+    solana_vote_program::{self, vote_state::VoteState},
+    spl_stake_pool::{id, instruction, processor, stake, state},
 };
-use solana_vote_program::{self, vote_state::VoteState};
-use spl_stake_pool::*;
 
 pub const TEST_STAKE_AMOUNT: u64 = 100;
+pub const MAX_TEST_VALIDATORS: usize = 10_000;
 
 pub fn program_test() -> ProgramTest {
     ProgramTest::new(
@@ -167,9 +172,10 @@ pub async fn create_stake_pool(
     fee: &instruction::Fee,
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
-    let rent_stake_pool = rent.minimum_balance(state::StakePool::LEN);
-    let rent_validator_stake_list = rent.minimum_balance(state::ValidatorStakeList::LEN);
-    let init_args = instruction::InitArgs { fee: *fee };
+    let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
+    let rent_validator_stake_list = rent.minimum_balance(
+        state::ValidatorStakeList::size_with_max_validators(MAX_TEST_VALIDATORS),
+    );
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -177,14 +183,14 @@ pub async fn create_stake_pool(
                 &payer.pubkey(),
                 &stake_pool.pubkey(),
                 rent_stake_pool,
-                state::StakePool::LEN as u64,
+                get_packed_len::<state::StakePool>() as u64,
                 &id(),
             ),
             system_instruction::create_account(
                 &payer.pubkey(),
                 &validator_stake_list.pubkey(),
                 rent_validator_stake_list,
-                state::ValidatorStakeList::LEN as u64,
+                state::ValidatorStakeList::size_with_max_validators(MAX_TEST_VALIDATORS) as u64,
                 &id(),
             ),
             instruction::initialize(
@@ -195,7 +201,7 @@ pub async fn create_stake_pool(
                 pool_mint,
                 pool_token_account,
                 &spl_token::id(),
-                init_args,
+                fee.clone(),
             )
             .unwrap(),
         ],
