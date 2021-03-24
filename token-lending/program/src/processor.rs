@@ -659,7 +659,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    for collateral in &mut obligation.collateral {
+    for collateral in &mut obligation.deposits {
         let deposit_reserve_info = next_account_info(account_info_iter)?;
         if deposit_reserve_info.owner != program_id {
             return Err(LendingError::InvalidAccountOwner.into());
@@ -684,7 +684,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             .try_mul(deposit_reserve.liquidity.median_price)?;
     }
 
-    for liquidity in &mut obligation.liquidity {
+    for liquidity in &mut obligation.borrows {
         let borrow_reserve_info = next_account_info(account_info_iter)?;
         if borrow_reserve_info.owner != program_id {
             return Err(LendingError::InvalidAccountOwner.into());
@@ -809,7 +809,7 @@ fn process_deposit_obligation_collateral(
     }
 
     obligation
-        .find_or_add_collateral(*deposit_reserve_info.key)?
+        .find_or_add_deposit(*deposit_reserve_info.key)?
         .deposit(collateral_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
@@ -908,7 +908,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let (collateral, collateral_index) = obligation.find_collateral(*withdraw_reserve_info.key)?;
+    let (collateral, deposit_index) = obligation.find_deposit(*withdraw_reserve_info.key)?;
     if collateral.deposited_amount == 0 {
         return Err(LendingError::ObligationCollateralEmpty.into());
     }
@@ -949,7 +949,7 @@ fn process_withdraw_obligation_collateral(
             let withdraw_amount = collateral_amount.min(collateral.deposited_amount);
             let withdraw_pct =
                 Decimal::from(withdraw_amount).try_div(collateral.deposited_amount)?;
-            let withdraw_value = obligation.collateral_value()?.try_mul(withdraw_pct)?;
+            let withdraw_value = obligation.deposited_value()?.try_mul(withdraw_pct)?;
             if withdraw_value > max_withdraw_value {
                 return Err(LendingError::WithdrawTooLarge.into());
             }
@@ -977,7 +977,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::WithdrawTooSmall.into());
     }
 
-    let collateral = &mut obligation.collateral[collateral_index];
+    let collateral = &mut obligation.deposits[deposit_index];
     collateral.withdraw(withdraw_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
@@ -1120,7 +1120,7 @@ fn process_borrow_obligation_liquidity(
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
     obligation
-        .find_or_add_liquidity(*borrow_reserve_info.key)?
+        .find_or_add_borrow(*borrow_reserve_info.key)?
         .borrow(borrow_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
@@ -1237,7 +1237,7 @@ fn process_repay_obligation_liquidity(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let (liquidity, liquidity_index) = obligation.find_liquidity(*repay_reserve_info.key)?;
+    let (liquidity, borrow_index) = obligation.find_borrow(*repay_reserve_info.key)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -1265,7 +1265,7 @@ fn process_repay_obligation_liquidity(
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    let liquidity = &mut obligation.liquidity[liquidity_index];
+    let liquidity = &mut obligation.borrows[borrow_index];
     liquidity.repay(settle_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
@@ -1389,8 +1389,8 @@ fn process_liquidate_obligation(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let (liquidity, liquidity_index) = obligation.find_liquidity(*repay_reserve_info.key)?;
-    let (collateral, collateral_index) = obligation.find_collateral(*withdraw_reserve_info.key)?;
+    let (liquidity, borrow_index) = obligation.find_borrow(*repay_reserve_info.key)?;
+    let (collateral, deposit_index) = obligation.find_deposit(*withdraw_reserve_info.key)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -1427,9 +1427,9 @@ fn process_liquidate_obligation(
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    let liquidity = &mut obligation.liquidity[liquidity_index];
+    let liquidity = &mut obligation.borrows[borrow_index];
+    let collateral = &mut obligation.deposits[deposit_index];
     liquidity.repay(settle_amount)?;
-    let collateral = &mut obligation.collateral[collateral_index];
     collateral.withdraw(withdraw_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;

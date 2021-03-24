@@ -25,10 +25,10 @@ pub struct Obligation {
     pub last_update: LastUpdate,
     /// Lending market address
     pub lending_market: Pubkey,
-    /// Collateral state for the obligation, unique by deposit reserve address
-    pub collateral: Vec<ObligationCollateral>,
-    /// Liquidity state for the obligation, unique by borrow reserve address
-    pub liquidity: Vec<ObligationLiquidity>,
+    /// Deposited collateral for the obligation, unique by deposit reserve address
+    pub deposits: Vec<ObligationCollateral>,
+    /// Borrowed liquidity for the obligation, unique by borrow reserve address
+    pub borrows: Vec<ObligationLiquidity>,
 }
 
 /// Create new obligation
@@ -51,53 +51,53 @@ impl Obligation {
             version: PROGRAM_VERSION,
             last_update: LastUpdate::new(current_slot),
             lending_market,
-            collateral: vec![],
-            liquidity: vec![],
+            deposits: vec![],
+            borrows: vec![],
         }
     }
 
     // @TODO: this gets called a lot. we could persist the value on obligation refresh instead,
     //        but that seems sloppy.
-    /// Calculate the collateral market value
-    pub fn collateral_value(&self) -> Result<Decimal, ProgramError> {
-        let mut collateral_value = Decimal::zero();
-        for collateral in &self.collateral {
-            collateral_value = collateral_value.try_add(collateral.market_value)?;
+    /// Calculate the deposited collateral market value
+    pub fn deposited_value(&self) -> Result<Decimal, ProgramError> {
+        let mut deposited_value = Decimal::zero();
+        for collateral in &self.deposits {
+            deposited_value = deposited_value.try_add(collateral.market_value)?;
         }
-        Ok(collateral_value)
+        Ok(deposited_value)
     }
 
     // @TODO: this gets called a lot. we could persist the value on obligation refresh instead,
     //        but that seems sloppy.
-    /// Calculate the liquidity market value
-    pub fn liquidity_value(&self) -> Result<Decimal, ProgramError> {
-        let mut liquidity_value = Decimal::zero();
-        for liquidity in &self.liquidity {
-            liquidity_value = liquidity_value.try_add(liquidity.market_value)?;
+    /// Calculate the borrowed liquidity market value
+    pub fn borrowed_value(&self) -> Result<Decimal, ProgramError> {
+        let mut borrowed_value = Decimal::zero();
+        for liquidity in &self.borrows {
+            borrowed_value = borrowed_value.try_add(liquidity.market_value)?;
         }
-        Ok(liquidity_value)
+        Ok(borrowed_value)
     }
 
     /// Calculate the ratio of liquidity market value to collateral market value
     pub fn loan_to_value(&self) -> Result<Rate, ProgramError> {
-        let collateral_value = self.collateral_value()?;
-        if collateral_value == Decimal::zero() {
+        let deposited_value = self.deposited_value()?;
+        if deposited_value == Decimal::zero() {
             return Err(LendingError::ObligationCollateralEmpty.into());
         }
-        Rate::try_from(self.liquidity_value()?.try_div(collateral_value)?)
+        Rate::try_from(self.borrowed_value()?.try_div(deposited_value)?)
     }
 
     /// Calculate the maximum collateral value that can be withdrawn for a given loan to value ratio
     pub fn max_withdraw_value(&self, loan_to_value_ratio: Rate) -> Result<Decimal, ProgramError> {
-        let min_collateral_value = self.liquidity_value()?.try_div(loan_to_value_ratio)?;
-        self.collateral_value()?.try_sub(min_collateral_value)
+        let min_deposited_value = self.borrowed_value()?.try_div(loan_to_value_ratio)?;
+        self.deposited_value()?.try_sub(min_deposited_value)
     }
 
     /// Calculate the maximum liquidity value that can be borrowed for a given loan to value ratio
     pub fn max_borrow_value(&self, loan_to_value_ratio: Rate) -> Result<Decimal, ProgramError> {
-        self.collateral_value()?
+        self.deposited_value()?
             .try_mul(loan_to_value_ratio)?
-            .try_sub(self.liquidity_value()?)
+            .try_sub(self.borrowed_value()?)
     }
 
     /// Calculate the maximum liquidation amount for a given liquidity
@@ -106,7 +106,7 @@ impl Obligation {
         liquidity: &ObligationLiquidity,
     ) -> Result<Decimal, ProgramError> {
         let max_liquidation_value = self
-            .liquidity_value()?
+            .borrowed_value()?
             .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
             .min(liquidity.market_value);
         let max_liquidation_pct = max_liquidation_value.try_div(liquidity.market_value)?;
@@ -114,73 +114,73 @@ impl Obligation {
     }
 
     /// Find collateral by deposit reserve
-    pub fn find_collateral(
+    pub fn find_deposit(
         &self,
         deposit_reserve: Pubkey,
     ) -> Result<(&ObligationCollateral, usize), ProgramError> {
-        if self.collateral.is_empty() {
+        if self.deposits.is_empty() {
             return Err(LendingError::ObligationCollateralEmpty.into());
         }
-        let index = self
-            ._find_collateral_index(deposit_reserve)
+        let deposit_index = self
+            ._find_deposit_index(deposit_reserve)
             .ok_or(LendingError::InvalidObligationCollateral)?;
-        Ok((&self.collateral[index], index))
+        Ok((&self.deposits[deposit_index], deposit_index))
     }
 
     /// Find or add collateral by deposit reserve
-    pub fn find_or_add_collateral(
+    pub fn find_or_add_deposit(
         &mut self,
         deposit_reserve: Pubkey,
     ) -> Result<&mut ObligationCollateral, ProgramError> {
-        if let Some(index) = self._find_collateral_index(deposit_reserve) {
-            Ok(&mut self.collateral[index])
-        } else if self.collateral.len() + self.liquidity.len() >= MAX_OBLIGATION_RESERVES {
+        if let Some(deposit_index) = self._find_deposit_index(deposit_reserve) {
+            Ok(&mut self.deposits[deposit_index])
+        } else if self.deposits.len() + self.borrows.len() >= MAX_OBLIGATION_RESERVES {
             Err(LendingError::ObligationReserveLimit.into())
         } else {
             let collateral = ObligationCollateral::new(deposit_reserve);
-            self.collateral.push(collateral);
-            Ok(self.collateral.last_mut().unwrap())
+            self.deposits.push(collateral);
+            Ok(self.deposits.last_mut().unwrap())
         }
     }
 
-    fn _find_collateral_index(&self, deposit_reserve: Pubkey) -> Option<usize> {
-        self.collateral
+    fn _find_deposit_index(&self, deposit_reserve: Pubkey) -> Option<usize> {
+        self.deposits
             .iter()
             .position(|collateral| collateral.deposit_reserve == deposit_reserve)
     }
 
     /// Find liquidity by borrow reserve
-    pub fn find_liquidity(
+    pub fn find_borrow(
         &self,
         borrow_reserve: Pubkey,
     ) -> Result<(&ObligationLiquidity, usize), ProgramError> {
-        if self.liquidity.is_empty() {
+        if self.borrows.is_empty() {
             return Err(LendingError::ObligationLiquidityEmpty.into());
         }
-        let index = self
-            ._find_liquidity_index(borrow_reserve)
+        let borrow_index = self
+            ._find_borrow_index(borrow_reserve)
             .ok_or(LendingError::InvalidObligationLiquidity)?;
-        Ok((&self.liquidity[index], index))
+        Ok((&self.borrows[borrow_index], borrow_index))
     }
 
     /// Find or add liquidity by borrow reserve
-    pub fn find_or_add_liquidity(
+    pub fn find_or_add_borrow(
         &mut self,
         borrow_reserve: Pubkey,
     ) -> Result<&mut ObligationLiquidity, ProgramError> {
-        if let Some(index) = self._find_liquidity_index(borrow_reserve) {
-            Ok(&mut self.liquidity[index])
-        } else if self.collateral.len() + self.liquidity.len() >= MAX_OBLIGATION_RESERVES {
+        if let Some(borrow_index) = self._find_borrow_index(borrow_reserve) {
+            Ok(&mut self.borrows[borrow_index])
+        } else if self.deposits.len() + self.borrows.len() >= MAX_OBLIGATION_RESERVES {
             Err(LendingError::ObligationReserveLimit.into())
         } else {
             let liquidity = ObligationLiquidity::new(borrow_reserve);
-            self.liquidity.push(liquidity);
-            Ok(self.liquidity.last_mut().unwrap())
+            self.borrows.push(liquidity);
+            Ok(self.borrows.last_mut().unwrap())
         }
     }
 
-    fn _find_liquidity_index(&self, borrow_reserve: Pubkey) -> Option<usize> {
-        self.liquidity
+    fn _find_borrow_index(&self, borrow_reserve: Pubkey) -> Option<usize> {
+        self.borrows
             .iter()
             .position(|liquidity| liquidity.borrow_reserve == borrow_reserve)
     }
@@ -315,8 +315,8 @@ impl Pack for Obligation {
             last_update_slot,
             last_update_stale,
             lending_market,
-            collateral_len,
-            liquidity_len,
+            deposits_len,
+            borrows_len,
             data_flat,
         ) = mut_array_refs![
             output,
@@ -333,25 +333,25 @@ impl Pack for Obligation {
         *last_update_slot = self.last_update.slot.to_le_bytes();
         pack_bool(self.last_update.stale, last_update_stale);
         lending_market.copy_from_slice(self.lending_market.as_ref());
-        *collateral_len = u8::try_from(self.collateral.len()).unwrap().to_le_bytes();
-        *liquidity_len = u8::try_from(self.liquidity.len()).unwrap().to_le_bytes();
+        *deposits_len = u8::try_from(self.deposits.len()).unwrap().to_le_bytes();
+        *borrows_len = u8::try_from(self.borrows.len()).unwrap().to_le_bytes();
 
         let mut offset = 0;
-        for collateral in &self.collateral {
-            let collateral_flat = array_mut_ref![data_flat, offset, OBLIGATION_COLLATERAL_LEN];
+        for collateral in &self.deposits {
+            let deposits_flat = array_mut_ref![data_flat, offset, OBLIGATION_COLLATERAL_LEN];
             #[allow(clippy::ptr_offset_with_cast)]
             let (deposit_reserve, deposited_amount, market_value) =
-                mut_array_refs![collateral_flat, PUBKEY_BYTES, 8, 16];
+                mut_array_refs![deposits_flat, PUBKEY_BYTES, 8, 16];
             deposit_reserve.copy_from_slice(collateral.deposit_reserve.as_ref());
             *deposited_amount = collateral.deposited_amount.to_le_bytes();
             pack_decimal(collateral.market_value, market_value);
             offset += OBLIGATION_COLLATERAL_LEN;
         }
-        for liquidity in &self.liquidity {
-            let liquidity_flat = array_mut_ref![data_flat, offset, OBLIGATION_LIQUIDITY_LEN];
+        for liquidity in &self.borrows {
+            let borrows_flat = array_mut_ref![data_flat, offset, OBLIGATION_LIQUIDITY_LEN];
             #[allow(clippy::ptr_offset_with_cast)]
             let (borrow_reserve, cumulative_borrow_rate_wads, borrowed_amount_wads, market_value) =
-                mut_array_refs![liquidity_flat, PUBKEY_BYTES, 16, 16, 16];
+                mut_array_refs![borrows_flat, PUBKEY_BYTES, 16, 16, 16];
             borrow_reserve.copy_from_slice(liquidity.borrow_reserve.as_ref());
             pack_decimal(
                 liquidity.cumulative_borrow_rate_wads,
@@ -371,8 +371,8 @@ impl Pack for Obligation {
             last_update_slot,
             last_update_stale,
             lending_market,
-            collateral_len,
-            liquidity_len,
+            deposits_len,
+            borrows_len,
             data_flat,
         ) = array_refs![
             input,
@@ -385,30 +385,30 @@ impl Pack for Obligation {
             OBLIGATION_COLLATERAL_LEN + (OBLIGATION_LIQUIDITY_LEN * (MAX_OBLIGATION_RESERVES - 1))
         ];
 
-        let collateral_len = u8::from_le_bytes(*collateral_len);
-        let liquidity_len = u8::from_le_bytes(*liquidity_len);
-        let mut collateral = Vec::with_capacity(collateral_len as usize + 1);
-        let mut liquidity = Vec::with_capacity(liquidity_len as usize + 1);
+        let deposits_len = u8::from_le_bytes(*deposits_len);
+        let borrows_len = u8::from_le_bytes(*borrows_len);
+        let mut deposits = Vec::with_capacity(deposits_len as usize + 1);
+        let mut borrows = Vec::with_capacity(borrows_len as usize + 1);
 
         let mut offset = 0;
-        for _ in 0..collateral_len {
-            let collateral_flat = array_ref![data_flat, offset, OBLIGATION_COLLATERAL_LEN];
+        for _ in 0..deposits_len {
+            let deposits_flat = array_ref![data_flat, offset, OBLIGATION_COLLATERAL_LEN];
             #[allow(clippy::ptr_offset_with_cast)]
             let (deposit_reserve, deposited_amount, market_value) =
-                array_refs![collateral_flat, PUBKEY_BYTES, 8, 16];
-            collateral.push(ObligationCollateral {
+                array_refs![deposits_flat, PUBKEY_BYTES, 8, 16];
+            deposits.push(ObligationCollateral {
                 deposit_reserve: Pubkey::new(deposit_reserve),
                 deposited_amount: u64::from_le_bytes(*deposited_amount),
                 market_value: unpack_decimal(market_value),
             });
             offset += OBLIGATION_COLLATERAL_LEN;
         }
-        for _ in 0..liquidity_len {
-            let liquidity_flat = array_ref![data_flat, offset, OBLIGATION_LIQUIDITY_LEN];
+        for _ in 0..borrows_len {
+            let borrows_flat = array_ref![data_flat, offset, OBLIGATION_LIQUIDITY_LEN];
             #[allow(clippy::ptr_offset_with_cast)]
             let (borrow_reserve, cumulative_borrow_rate_wads, borrowed_amount_wads, market_value) =
-                array_refs![liquidity_flat, PUBKEY_BYTES, 16, 16, 16];
-            liquidity.push(ObligationLiquidity {
+                array_refs![borrows_flat, PUBKEY_BYTES, 16, 16, 16];
+            borrows.push(ObligationLiquidity {
                 borrow_reserve: Pubkey::new(borrow_reserve),
                 cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
                 borrowed_amount_wads: unpack_decimal(borrowed_amount_wads),
@@ -424,8 +424,8 @@ impl Pack for Obligation {
                 stale: unpack_bool(last_update_stale)?,
             },
             lending_market: Pubkey::new_from_array(*lending_market),
-            collateral,
-            liquidity,
+            deposits,
+            borrows,
         })
     }
 }
