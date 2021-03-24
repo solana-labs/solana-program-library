@@ -474,6 +474,14 @@ fn resolve_mint_info(
     }
 }
 
+fn validate_mint(config: &Config, token: Pubkey) -> Result<(), Error> {
+    let mint = config.rpc_client.get_account(&token);
+    if mint.is_err() || Mint::unpack(&mint.unwrap().data).is_err() {
+        return Err(format!("Invalid mint account {:?}", token).into());
+    }
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn command_transfer(
     config: &Config,
@@ -884,6 +892,9 @@ fn command_supply(config: &Config, address: Pubkey) -> CommandResult {
 }
 
 fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
+    if let Some(token) = token {
+        validate_mint(config, token)?;
+    }
     let accounts = config.rpc_client.get_token_accounts_by_owner(
         &config.owner,
         match token {
@@ -1006,10 +1017,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>) -> CommandResult {
 
 fn command_address(config: &Config, token: Option<Pubkey>) -> CommandResult {
     if let Some(token) = token {
-        let mint = config.rpc_client.get_account(&token);
-        if mint.is_err() || Mint::unpack(&mint.unwrap().data).is_err() {
-            return Err(format!("Invalid mint account {:?}", token).into());
-        }
+        validate_mint(config, token)?;
         let associated_token_address = get_associated_token_address(&config.owner, &token);
         println!("Wallet address: {:?}", config.owner);
         println!("Associated token address: {:?}", associated_token_address);
