@@ -56,15 +56,15 @@ impl IsInitialized for CustomSingleSignerTimelockTransaction {
         self.version != UNINITIALIZED_VERSION
     }
 }
-const CUSTOM_SINGLE_SIGNER_LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2;
+const CUSTOM_SINGLE_SIGNER_LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2 + 300;
 impl Pack for CustomSingleSignerTimelockTransaction {
-    const LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2;
+    const LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2 + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, CUSTOM_SINGLE_SIGNER_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, slot, instruction, executed, instruction_end_index) =
-            array_refs![input, 1, 8, INSTRUCTION_LIMIT, 1, 2];
+        let (version, slot, instruction, executed, instruction_end_index, _padding) =
+            array_refs![input, 1, 8, INSTRUCTION_LIMIT, 1, 2, 300];
         let version = u8::from_le_bytes(*version);
         let slot = u64::from_le_bytes(*slot);
         let executed = u8::from_le_bytes(*executed);
@@ -82,8 +82,8 @@ impl Pack for CustomSingleSignerTimelockTransaction {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, CUSTOM_SINGLE_SIGNER_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, slot, instruction, executed, instruction_end_index) =
-            mut_array_refs![output, 1, 8, INSTRUCTION_LIMIT, 1, 2];
+        let (version, slot, instruction, executed, instruction_end_index, _padding) =
+            mut_array_refs![output, 1, 8, INSTRUCTION_LIMIT, 1, 2, 300];
         *version = self.version.to_le_bytes();
         *slot = self.slot.to_le_bytes();
         instruction.copy_from_slice(self.instruction.as_ref());
