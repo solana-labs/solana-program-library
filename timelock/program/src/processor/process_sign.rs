@@ -60,7 +60,12 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     })?;
 
     // assuming sig_mint object is now out of date, sub 1
-    if sig_mint.supply - 1 == 0 {
+    let diminished_supply = match sig_mint.supply.checked_sub(1) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
+
+    if diminished_supply == 0 {
         timelock_state.status = TimelockStateStatus::Voting;
         timelock_state.voting_began_at = clock.slot;
 

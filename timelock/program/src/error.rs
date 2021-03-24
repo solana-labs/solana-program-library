@@ -138,6 +138,10 @@ pub enum TimelockError {
     /// Cannot reimburse more tokens than you put in
     #[error("Cannot reimburse more tokens than you put in")]
     TokenAmountAboveGivenAmount,
+
+    /// Numerical overflow
+    #[error("Numerical overflow")]
+    NumericalOverflow,
 }
 
 impl PrintProgramError for TimelockError {

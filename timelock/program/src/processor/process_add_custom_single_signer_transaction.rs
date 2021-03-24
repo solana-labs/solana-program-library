@@ -86,7 +86,10 @@ pub fn process_add_custom_single_signer_transaction(
     timelock_txn.instruction = instruction;
     timelock_txn.instruction_end_index = instruction_end_index;
     timelock_state.timelock_transactions[position as usize] = *timelock_txn_account_info.key;
-    timelock_state.used_txn_slots += 1;
+    timelock_state.used_txn_slots = match timelock_state.used_txn_slots.checked_add(1) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
 
     TimelockState::pack(
         timelock_state.clone(),

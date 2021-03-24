@@ -67,7 +67,12 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;
-    timelock_state.total_signing_tokens_minted += 1;
+
+    timelock_state.total_signing_tokens_minted =
+        match timelock_state.total_signing_tokens_minted.checked_add(1) {
+            Some(val) => val,
+            None => return Err(TimelockError::NumericalOverflow.into()),
+        };
 
     TimelockState::pack(
         timelock_state.clone(),

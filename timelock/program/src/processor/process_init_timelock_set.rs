@@ -33,6 +33,7 @@ pub fn process_init_timelock_set(
     let account_info_iter = &mut accounts.iter();
     let timelock_state_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
+    let timelock_config_account_info = next_account_info(account_info_iter)?;
     let signatory_mint_account_info = next_account_info(account_info_iter)?;
     let admin_mint_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
@@ -47,14 +48,13 @@ pub fn process_init_timelock_set(
     let no_voting_dump_account_info = next_account_info(account_info_iter)?;
     let governance_holding_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
-    let timelock_config_account_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_info)?;
-    let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    let mut timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
     // Using assert_account_equiv not workable here due to cost of stack size on this method.
     if governance_mint_account_info.key != &timelock_config.governance_mint {
         return Err(TimelockError::AccountsShouldMatch.into());
@@ -82,6 +82,10 @@ pub fn process_init_timelock_set(
     new_timelock_state.total_signing_tokens_minted = 1;
     new_timelock_state.executions = 0;
     new_timelock_state.used_txn_slots = 0;
+    timelock_config.count = match timelock_config.count.checked_add(1) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
 
     assert_token_program_is_correct(&timelock_program, token_program_info)?;
 
@@ -146,6 +150,10 @@ pub fn process_init_timelock_set(
     TimelockState::pack(
         new_timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
+    )?;
+    TimelockConfig::pack(
+        timelock_config,
+        &mut timelock_config_account_info.data.borrow_mut(),
     )?;
 
     let (authority_key, bump_seed) =

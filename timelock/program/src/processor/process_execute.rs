@@ -47,7 +47,12 @@ pub fn process_execute(
     // this will not always be the case...we need to solve that inheritance issue later.
     let mut transaction: CustomSingleSignerTimelockTransaction =
         assert_initialized(transaction_account_info)?;
-    let time_elapsed = clock.slot - timelock_state.voting_ended_at;
+
+    let time_elapsed = match clock.slot.checked_sub(timelock_state.voting_ended_at) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
+
     if time_elapsed < transaction.slot {
         return Err(TimelockError::TooEarlyToExecute.into());
     }
@@ -127,7 +132,10 @@ pub fn process_execute(
         &mut transaction_account_info.data.borrow_mut(),
     )?;
 
-    timelock_state.executions += 1;
+    timelock_state.executions = match timelock_state.executions.checked_add(1) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
 
     if timelock_state.executions == timelock_state.used_txn_slots {
         timelock_state.status = TimelockStateStatus::Completed

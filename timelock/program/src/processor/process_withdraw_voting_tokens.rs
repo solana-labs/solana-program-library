@@ -79,13 +79,19 @@ pub fn process_withdraw_voting_tokens(
     // voting_token_amount <= no
     // because at best they dumped 100 in and that 100 is mixed between all 3 or all in one.
 
-    let total_possible: u64;
+    let mut total_possible: u64;
 
     if timelock_state.status == TimelockStateStatus::Voting {
         total_possible = voting_account.amount
     } else {
-        total_possible =
-            voting_account.amount + yes_voting_account.amount + no_voting_account.amount;
+        total_possible = match voting_account.amount.checked_add(yes_voting_account.amount) {
+            Some(val) => val,
+            None => return Err(TimelockError::NumericalOverflow.into()),
+        };
+        total_possible = match total_possible.checked_add(no_voting_account.amount) {
+            Some(val) => val,
+            None => return Err(TimelockError::NumericalOverflow.into()),
+        };
     };
 
     let mut voting_fuel_tank = voting_token_amount;
@@ -97,7 +103,10 @@ pub fn process_withdraw_voting_tokens(
         let amount_to_burn: u64;
         if voting_account.amount < voting_fuel_tank {
             amount_to_burn = voting_account.amount;
-            voting_fuel_tank -= amount_to_burn;
+            voting_fuel_tank = match voting_fuel_tank.checked_sub(amount_to_burn) {
+                Some(val) => val,
+                None => return Err(TimelockError::NumericalOverflow.into()),
+            };
         } else {
             amount_to_burn = voting_fuel_tank;
             voting_fuel_tank = 0;
@@ -119,7 +128,10 @@ pub fn process_withdraw_voting_tokens(
             let amount_to_transfer: u64;
             if yes_voting_account.amount < voting_fuel_tank {
                 amount_to_transfer = yes_voting_account.amount;
-                voting_fuel_tank -= amount_to_transfer;
+                voting_fuel_tank = match voting_fuel_tank.checked_sub(amount_to_transfer) {
+                    Some(val) => val,
+                    None => return Err(TimelockError::NumericalOverflow.into()),
+                };
             } else {
                 amount_to_transfer = voting_fuel_tank;
                 voting_fuel_tank = 0;

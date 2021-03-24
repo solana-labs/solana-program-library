@@ -34,6 +34,8 @@ pub struct TimelockConfig {
     pub time_limit: u64,
     /// Optional name
     pub name: [u8; CONFIG_NAME_LENGTH],
+    /// Running count of proposals
+    pub count: u32,
 }
 
 impl Sealed for TimelockConfig {}
@@ -45,9 +47,9 @@ impl IsInitialized for TimelockConfig {
 
 /// Len of timelock config
 pub const TIMELOCK_CONFIG_LEN: usize =
-    1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH + 300;
+    1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH + 4 + 296;
 impl Pack for TimelockConfig {
-    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH + 300;
+    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH + 4 + 296;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_CONFIG_LEN];
@@ -64,8 +66,23 @@ impl Pack for TimelockConfig {
             program,
             time_limit,
             name,
+            count,
             _padding,
-        ) = array_refs![input, 1, 1, 1, 1, 1, 8, 32, 32, 8, CONFIG_NAME_LENGTH, 300];
+        ) = array_refs![
+            input,
+            1,
+            1,
+            1,
+            1,
+            1,
+            8,
+            32,
+            32,
+            8,
+            CONFIG_NAME_LENGTH,
+            4,
+            296
+        ];
         let version = u8::from_le_bytes(*version);
         let consensus_algorithm = u8::from_le_bytes(*consensus_algorithm);
         let execution_type = u8::from_le_bytes(*execution_type);
@@ -73,6 +90,7 @@ impl Pack for TimelockConfig {
         let voting_entry_rule = u8::from_le_bytes(*voting_entry_rule);
         let minimum_slot_waiting_period = u64::from_le_bytes(*minimum_slot_waiting_period);
         let time_limit = u64::from_le_bytes(*time_limit);
+        let count = u32::from_le_bytes(*count);
 
         match version {
             TIMELOCK_CONFIG_VERSION | UNINITIALIZED_VERSION => Ok(Self {
@@ -100,6 +118,7 @@ impl Pack for TimelockConfig {
                 program: Pubkey::new_from_array(*program),
                 time_limit,
                 name: *name,
+                count,
             }),
             _ => Err(ProgramError::InvalidAccountData),
         }
@@ -119,8 +138,23 @@ impl Pack for TimelockConfig {
             program,
             time_limit,
             name,
+            count,
             _padding,
-        ) = mut_array_refs![output, 1, 1, 1, 1, 1, 8, 32, 32, 8, CONFIG_NAME_LENGTH, 300];
+        ) = mut_array_refs![
+            output,
+            1,
+            1,
+            1,
+            1,
+            1,
+            8,
+            32,
+            32,
+            8,
+            CONFIG_NAME_LENGTH,
+            4,
+            296
+        ];
         *version = self.version.to_le_bytes();
         *consensus_algorithm = match self.consensus_algorithm {
             ConsensusAlgorithm::Majority => 0 as u8,
@@ -145,6 +179,7 @@ impl Pack for TimelockConfig {
         program.copy_from_slice(self.program.as_ref());
         *time_limit = self.time_limit.to_le_bytes();
         name.copy_from_slice(self.name.as_ref());
+        *count = self.count.to_le_bytes();
     }
 
     fn get_packed_len() -> usize {

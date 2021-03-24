@@ -73,8 +73,16 @@ pub fn process_vote(
 
     let total_ever_existed = governance_mint_supply;
 
-    let now_remaining_in_no_column =
-        governance_mint_supply - yes_voting_token_amount - yes_mint_supply;
+    let mut now_remaining_in_no_column =
+        match governance_mint_supply.checked_sub(yes_voting_token_amount) {
+            Some(val) => val,
+            None => return Err(TimelockError::NumericalOverflow.into()),
+        };
+
+    now_remaining_in_no_column = match now_remaining_in_no_column.checked_sub(yes_mint_supply) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
 
     // The act of voting proves you are able to vote. No need to assert permission here.
     spl_token_burn(TokenBurnParams {
@@ -116,7 +124,11 @@ pub fn process_vote(
         crate::state::enums::ConsensusAlgorithm::FullConsensus => now_remaining_in_no_column == 0,
     };
 
-    let too_long = clock.slot - timelock_state.voting_began_at > timelock_config.time_limit;
+    let elapsed = match clock.slot.checked_sub(timelock_state.voting_began_at) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
+    let too_long = elapsed > timelock_config.time_limit;
 
     if tipped || too_long {
         if tipped {
