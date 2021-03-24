@@ -990,6 +990,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::WithdrawTooSmall.into());
     }
 
+    // @FIXME: this is just a temporary hack to get a mutable borrow.
     obligation
         .find_collateral_mut(*withdraw_reserve_info.key)?
         .withdraw(withdraw_amount)?;
@@ -1279,6 +1280,7 @@ fn process_repay_obligation_liquidity(
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
+    // @FIXME: this is just a temporary hack to get a mutable borrow.
     obligation
         .find_liquidity_mut(*repay_reserve_info.key)?
         .repay(settle_amount);
@@ -1442,9 +1444,11 @@ fn process_liquidate_obligation(
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
+    // @FIXME: this is just a temporary hack to get a mutable borrow.
     obligation
         .find_liquidity_mut(*repay_reserve_info.key)?
         .repay(settle_amount);
+    // @FIXME: this is just a temporary hack to get a mutable borrow.
     obligation
         .find_collateral_mut(*withdraw_reserve_info.key)?
         .withdraw(withdraw_amount);
