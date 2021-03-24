@@ -13,7 +13,7 @@ use crate::{
     },
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,
-        assert_uninitialized,
+        assert_token_program_is_correct, assert_uninitialized,
     },
 };
 use solana_program::{
@@ -47,7 +47,7 @@ pub fn process_add_custom_single_signer_transaction(
     let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
-    let _timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
+    let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
 
     let mut timelock_txn: CustomSingleSignerTimelockTransaction =
         assert_uninitialized(timelock_txn_account_info)?;
@@ -68,7 +68,7 @@ pub fn process_add_custom_single_signer_transaction(
     assert_draft(&timelock_state)?;
     // TODO: Figure out why this causes token_program_account_info to be the same as timelock_mint_authority_info
     // when passed into assert_is_permissioned when uncommented.
-    //assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
+    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     assert_is_permissioned(
         program_id,
         signatory_account_info,
