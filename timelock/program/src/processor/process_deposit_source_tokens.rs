@@ -39,10 +39,6 @@ pub fn process_deposit_source_tokens(
     assert_account_equiv(source_holding_account_info, &timelock_set.source_holding)?;
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
 
-    if voting_token_amount < 0 as u64 {
-        return Err(TimelockError::TokenAmountBelowZero.into());
-    }
-
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
     if timelock_program_authority_info.key != &authority_key {

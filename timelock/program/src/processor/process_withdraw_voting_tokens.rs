@@ -54,10 +54,6 @@ pub fn process_withdraw_voting_tokens(
     assert_account_equiv(no_voting_dump_account_info, &timelock_set.no_voting_dump)?;
     assert_account_equiv(source_holding_account_info, &timelock_set.source_holding)?;
 
-    if voting_token_amount < 0 as u64 {
-        return Err(TimelockError::TokenAmountBelowZero.into());
-    }
-
     let voting_account: Account = assert_initialized(voting_account_info)?;
     let yes_voting_account: Account = assert_initialized(yes_voting_account_info)?;
     let no_voting_account: Account = assert_initialized(no_voting_account_info)?;

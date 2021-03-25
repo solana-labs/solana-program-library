@@ -91,10 +91,6 @@ pub enum TimelockError {
     #[error("Invalid instruction end index, above instruction limit")]
     InvalidInstructionEndIndex,
 
-    /// Token amount below zero
-    #[error("Token amount below zero")]
-    TokenAmountBelowZero,
-
     /// Too early to execute this transaction
     #[error("Too early to execute this transaction")]
     TooEarlyToExecute,
@@ -118,14 +114,6 @@ pub enum TimelockError {
     /// Provided wrong mint type for a token holding account on timelock set
     #[error("Provided wrong mint type for a token holding account on timelock set")]
     MintsShouldMatch,
-
-    /// Invalid minimum waiting period
-    #[error("Invalid minimum waiting period")]
-    InvalidMinimumSlotWaitingPeriod,
-
-    /// Invalid Time limit
-    #[error("Invalid time limit")]
-    InvalidTimeLimit,
 
     /// Waiting period must be greater than or equal to minimum waiting period
     #[error("Waiting period must be greater than or equal to minimum waiting period")]

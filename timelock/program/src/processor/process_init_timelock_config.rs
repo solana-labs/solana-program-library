@@ -36,12 +36,6 @@ pub fn process_init_timelock_config(
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
-    if minimum_slot_waiting_period < 0 as u64 {
-        return Err(TimelockError::InvalidMinimumSlotWaitingPeriod.into());
-    }
-    if time_limit < 0 as u64 {
-        return Err(TimelockError::InvalidTimeLimit.into());
-    }
 
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     let seeds = &[
