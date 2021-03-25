@@ -60,10 +60,10 @@ impl Obligation {
     }
 
     /// Withdraw collateral and remove it from deposits if zeroed out
-    pub fn withdraw(&mut self, withdraw_amount: u64, deposit_index: usize) -> ProgramResult {
-        let collateral = &mut self.deposits[deposit_index];
+    pub fn withdraw(&mut self, withdraw_amount: u64, collateral_index: usize) -> ProgramResult {
+        let collateral = &mut self.deposits[collateral_index];
         if withdraw_amount == collateral.deposited_amount {
-            self.deposits.remove(deposit_index);
+            self.deposits.remove(collateral_index);
         } else {
             collateral.withdraw(withdraw_amount)?;
         }
@@ -71,10 +71,10 @@ impl Obligation {
     }
 
     /// Repay liquidity and remove it from borrows if zeroed out
-    pub fn repay(&mut self, settle_amount: Decimal, borrow_index: usize) -> ProgramResult {
-        let liquidity = &mut self.borrows[borrow_index];
+    pub fn repay(&mut self, settle_amount: Decimal, liquidity_index: usize) -> ProgramResult {
+        let liquidity = &mut self.borrows[liquidity_index];
         if settle_amount == liquidity.borrowed_amount_wads {
-            self.borrows.remove(borrow_index);
+            self.borrows.remove(liquidity_index);
         } else {
             liquidity.repay(settle_amount)?;
         }
@@ -139,26 +139,26 @@ impl Obligation {
     }
 
     /// Find collateral by deposit reserve
-    pub fn find_deposit(
+    pub fn find_collateral_in_deposits(
         &self,
         deposit_reserve: Pubkey,
     ) -> Result<(&ObligationCollateral, usize), ProgramError> {
         if self.deposits.is_empty() {
             return Err(LendingError::ObligationCollateralEmpty.into());
         }
-        let deposit_index = self
-            ._find_deposit_index(deposit_reserve)
+        let collateral_index = self
+            ._find_collateral_index_in_deposits(deposit_reserve)
             .ok_or(LendingError::InvalidObligationCollateral)?;
-        Ok((&self.deposits[deposit_index], deposit_index))
+        Ok((&self.deposits[collateral_index], collateral_index))
     }
 
     /// Find or add collateral by deposit reserve
-    pub fn find_or_add_deposit(
+    pub fn find_or_add_collateral_to_deposits(
         &mut self,
         deposit_reserve: Pubkey,
     ) -> Result<&mut ObligationCollateral, ProgramError> {
-        if let Some(deposit_index) = self._find_deposit_index(deposit_reserve) {
-            Ok(&mut self.deposits[deposit_index])
+        if let Some(collateral_index) = self._find_collateral_index_in_deposits(deposit_reserve) {
+            Ok(&mut self.deposits[collateral_index])
         } else if self.deposits.len() + self.borrows.len() >= MAX_OBLIGATION_RESERVES {
             Err(LendingError::ObligationReserveLimit.into())
         } else {
@@ -168,33 +168,33 @@ impl Obligation {
         }
     }
 
-    fn _find_deposit_index(&self, deposit_reserve: Pubkey) -> Option<usize> {
+    fn _find_collateral_index_in_deposits(&self, deposit_reserve: Pubkey) -> Option<usize> {
         self.deposits
             .iter()
             .position(|collateral| collateral.deposit_reserve == deposit_reserve)
     }
 
     /// Find liquidity by borrow reserve
-    pub fn find_borrow(
+    pub fn find_liquidity_in_borrows(
         &self,
         borrow_reserve: Pubkey,
     ) -> Result<(&ObligationLiquidity, usize), ProgramError> {
         if self.borrows.is_empty() {
             return Err(LendingError::ObligationLiquidityEmpty.into());
         }
-        let borrow_index = self
-            ._find_borrow_index(borrow_reserve)
+        let liquidity_index = self
+            ._find_liquidity_index_in_borrows(borrow_reserve)
             .ok_or(LendingError::InvalidObligationLiquidity)?;
-        Ok((&self.borrows[borrow_index], borrow_index))
+        Ok((&self.borrows[liquidity_index], liquidity_index))
     }
 
     /// Find or add liquidity by borrow reserve
-    pub fn find_or_add_borrow(
+    pub fn find_or_add_liquidity_to_borrows(
         &mut self,
         borrow_reserve: Pubkey,
     ) -> Result<&mut ObligationLiquidity, ProgramError> {
-        if let Some(borrow_index) = self._find_borrow_index(borrow_reserve) {
-            Ok(&mut self.borrows[borrow_index])
+        if let Some(liquidity_index) = self._find_liquidity_index_in_borrows(borrow_reserve) {
+            Ok(&mut self.borrows[liquidity_index])
         } else if self.deposits.len() + self.borrows.len() >= MAX_OBLIGATION_RESERVES {
             Err(LendingError::ObligationReserveLimit.into())
         } else {
@@ -204,7 +204,7 @@ impl Obligation {
         }
     }
 
-    fn _find_borrow_index(&self, borrow_reserve: Pubkey) -> Option<usize> {
+    fn _find_liquidity_index_in_borrows(&self, borrow_reserve: Pubkey) -> Option<usize> {
         self.borrows
             .iter()
             .position(|liquidity| liquidity.borrow_reserve == borrow_reserve)
