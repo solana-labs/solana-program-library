@@ -59,6 +59,28 @@ impl Obligation {
         self.borrows = params.borrows;
     }
 
+    /// Withdraw collateral and remove it from deposits if zeroed out
+    pub fn withdraw(&mut self, withdraw_amount: u64, deposit_index: usize) -> ProgramResult {
+        let collateral = &mut self.deposits[deposit_index];
+        if withdraw_amount == collateral.deposited_amount {
+            self.deposits.remove(deposit_index);
+        } else {
+            collateral.withdraw(withdraw_amount)?;
+        }
+        Ok(())
+    }
+
+    /// Repay liquidity and remove it from borrows if zeroed out
+    pub fn repay(&mut self, settle_amount: Decimal, borrow_index: usize) -> ProgramResult {
+        let liquidity = &mut self.borrows[borrow_index];
+        if settle_amount == liquidity.borrowed_amount_wads {
+            self.borrows.remove(borrow_index);
+        } else {
+            liquidity.repay(settle_amount)?;
+        }
+        Ok(())
+    }
+
     // @TODO: this gets called a lot. we could persist the value on obligation refresh instead,
     //        but that seems sloppy.
     /// Calculate the deposited collateral market value

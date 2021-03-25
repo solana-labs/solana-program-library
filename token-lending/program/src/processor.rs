@@ -933,8 +933,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::WithdrawTooSmall.into());
     }
 
-    let collateral = &mut obligation.deposits[deposit_index];
-    collateral.withdraw(withdraw_amount)?;
+    obligation.withdraw(withdraw_amount, deposit_index)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
@@ -1199,8 +1198,7 @@ fn process_repay_obligation_liquidity(
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    let liquidity = &mut obligation.borrows[borrow_index];
-    liquidity.repay(settle_amount)?;
+    obligation.repay(settle_amount, borrow_index)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
@@ -1353,10 +1351,8 @@ fn process_liquidate_obligation(
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
-    let liquidity = &mut obligation.borrows[borrow_index];
-    let collateral = &mut obligation.deposits[deposit_index];
-    liquidity.repay(settle_amount)?;
-    collateral.withdraw(withdraw_amount)?;
+    obligation.repay(settle_amount, borrow_index)?;
+    obligation.withdraw(withdraw_amount, deposit_index)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
