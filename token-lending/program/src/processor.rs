@@ -771,6 +771,7 @@ fn process_deposit_obligation_collateral(
     }
     // @TODO: is this necessary? we don't care about market price or interest here yet.
     //        however, we will if we add the ability to deposit and borrow in one transaction.
+    //        it would also be important if deposit_reserve.config.collateral_enabled changes.
     if deposit_reserve.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ReserveStale.into());
     }
