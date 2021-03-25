@@ -310,7 +310,7 @@ impl Processor {
         if !validator_stake_list.is_uninitialized() {
             return Err(StakePoolError::AlreadyInUse.into());
         }
-        validator_stake_list.account_type = AccountType::ValidatorStakeListV1;
+        validator_stake_list.account_type = AccountType::ValidatorStakeList;
         validator_stake_list.validators.clear();
 
         // Check if stake pool account is rent-exempt
@@ -370,7 +370,7 @@ impl Processor {
         msg!("Clock data: {:?}", clock_info.data.borrow());
         msg!("Epoch: {}", clock.epoch);
 
-        stake_pool.account_type = AccountType::StakePoolV1;
+        stake_pool.account_type = AccountType::StakePool;
         stake_pool.owner = *owner_info.key;
         stake_pool.deposit_bump_seed = deposit_bump_seed;
         stake_pool.withdraw_bump_seed = withdraw_bump_seed;

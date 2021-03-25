@@ -16,10 +16,10 @@ use {
 pub enum AccountType {
     /// If the account has not been initialized, the enum will be 0
     Uninitialized,
-    /// Stake pool v1
-    StakePoolV1,
+    /// Stake pool
+    StakePool,
     /// Validator stake list
-    ValidatorStakeListV1,
+    ValidatorStakeList,
 }
 
 impl Default for AccountType {
@@ -32,7 +32,7 @@ impl Default for AccountType {
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct StakePool {
-    /// Account type, must be StakePoolV1 currently
+    /// Account type, must be StakePool currently
     pub account_type: AccountType,
     /// Owner authority
     /// allows for updating the staking authority
@@ -146,7 +146,7 @@ impl StakePool {
 
     /// Check if StakePool is actually initialized as a stake pool
     pub fn is_valid(&self) -> bool {
-        self.account_type == AccountType::StakePoolV1
+        self.account_type == AccountType::StakePool
     }
 
     /// Check if StakePool is currently uninitialized
@@ -159,7 +159,7 @@ impl StakePool {
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeList {
-    /// Account type, must be ValidatorStakeListV1 currently
+    /// Account type, must be ValidatorStakeList currently
     pub account_type: AccountType,
     /// List of all validator stake accounts and their info
     pub validators: Vec<ValidatorStakeInfo>,
@@ -207,7 +207,7 @@ impl ValidatorStakeList {
 
     /// Check if validator stake list is actually initialized as a validator stake list
     pub fn is_valid(&self) -> bool {
-        self.account_type == AccountType::ValidatorStakeListV1
+        self.account_type == AccountType::ValidatorStakeList
     }
 
     /// Check if the validator stake list is uninitialized
@@ -238,7 +238,7 @@ mod test {
 
         // Empty
         let stake_list = ValidatorStakeList {
-            account_type: AccountType::ValidatorStakeListV1,
+            account_type: AccountType::ValidatorStakeList,
             validators: vec![],
         };
         let mut byte_vec = vec![0u8; size];
@@ -250,7 +250,7 @@ mod test {
 
         // With several accounts
         let stake_list = ValidatorStakeList {
-            account_type: AccountType::ValidatorStakeListV1,
+            account_type: AccountType::ValidatorStakeList,
             validators: vec![
                 ValidatorStakeInfo {
                     validator_account: Pubkey::new_from_array([1; 32]),

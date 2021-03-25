@@ -120,7 +120,7 @@ async fn test_add_validator_stake_account() {
     assert_eq!(
         validator_stake_list,
         state::ValidatorStakeList {
-            account_type: state::AccountType::ValidatorStakeListV1,
+            account_type: state::AccountType::ValidatorStakeList,
             validators: vec![state::ValidatorStakeInfo {
                 validator_account: user_stake.vote.pubkey(),
                 last_update_epoch: 0,
