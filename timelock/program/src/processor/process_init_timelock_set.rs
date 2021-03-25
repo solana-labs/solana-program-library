@@ -65,6 +65,7 @@ pub fn process_init_timelock_set(
     new_timelock_set.voting_mint = *voting_mint_account_info.key;
     new_timelock_set.yes_voting_mint = *yes_voting_mint_account_info.key;
     new_timelock_set.no_voting_mint = *no_voting_mint_account_info.key;
+    new_timelock_set.source_mint = *source_mint_account_info.key;
     new_timelock_set.signatory_mint = *signatory_mint_account_info.key;
     new_timelock_set.source_holding = *source_holding_account_info.key;
     new_timelock_set.yes_voting_dump = *yes_voting_dump_account_info.key;
@@ -118,7 +119,6 @@ pub fn process_init_timelock_set(
     assert_mint_matching(yes_voting_dump_account_info, yes_voting_mint_account_info)?;
     assert_mint_matching(no_voting_dump_account_info, no_voting_mint_account_info)?;
     assert_mint_matching(source_holding_account_info, source_mint_account_info)?;
-
     if source_holding_mint != timelock_config.governance_mint
         && source_holding_mint != timelock_config.council_mint
     {

@@ -48,10 +48,11 @@ solana_program::declare_id!("BPFLoaderUpgradeab1e11111111111111111111111");
 const BUFFER_PATH: &str = "/Users/jprince/.config/solana/bpf_place.json";
 const DEPLOY_PATH: &str =
     "/Users/jprince/Documents/other/solana-program-library/target/deploy/spl_hello_world_escrow.so";
-const TIMELOCK_PROGRAM_ID: &str = "7SH5hE7uBecnfMpGjdPyJupgBhFHaXcNMCEgJbmoVV7t";
-const TIMELOCK_PROGRAM_ACCOUNT_ID: &str = "8KkpkoDAQaQqjnkCtNXAyk2A8GLmsmWPjBLK7jmahhxZ";
-const MINT_ID: &str = "GiGdHFswGhwMsgiHJzARNNiTFXgzLgZYMWYukpSnAUKZ";
-const PROGRAM_ID: &str = "Fi21py7sZRjjj6TC2MyRTdB3a4apyFe89nQBQLGKcBBs";
+const TIMELOCK_PROGRAM_ID: &str = "kJC6ipYWmLrGgnXCNJMpqgbFDSqjBpsKLzdqcifi8Tj";
+const TIMELOCK_PROGRAM_ACCOUNT_ID: &str = "2XrpU3Xj6yCqBFGKb1Z46jdWPv49vNJHcCLX6PmjFp9v";
+const GOVERNANCE_MINT_ID: &str = "kg4VmAyWebKQ7Aimgnv4xmFkA7yBGL3TCWKE7cXLQzC";
+const COUNCIL_MINT_ID: &str = "2NSitSXJdhw7Fyw7xcD6DbjvxDR6fgXsLoPAfen8LoVi";
+const PROGRAM_ID: &str = "5o45iw6s89iGPAg25yGTT8RFFJnbGcLyvxhSXLsqF4Cf";
 // -------- UPDATE END ---------
 
 pub fn main() {
@@ -64,12 +65,14 @@ pub fn main() {
     let timelock_program_account_key = Pubkey::from_str(TIMELOCK_PROGRAM_ACCOUNT_ID).unwrap();
     let timelock_program_id = Pubkey::from_str(TIMELOCK_PROGRAM_ID).unwrap();
     let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
-    let mint_id = Pubkey::from_str(MINT_ID).unwrap();
+    let governance_mint_id = Pubkey::from_str(GOVERNANCE_MINT_ID).unwrap();
+    let council_mint_id = Pubkey::from_str(COUNCIL_MINT_ID).unwrap();
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(
         &[
             timelock_program_account_key.as_ref(),
-            mint_id.as_ref(),
+            governance_mint_id.as_ref(),
+            council_mint_id.as_ref(),
             program_id.as_ref(),
         ],
         &timelock_program_id,

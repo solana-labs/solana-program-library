@@ -62,6 +62,7 @@ pub fn process_execute(
     let seeds = &[
         timelock_program_account_info.key.as_ref(),
         timelock_config.governance_mint.as_ref(),
+        timelock_config.council_mint.as_ref(),
         timelock_config.program.as_ref(),
     ];
     let (governance_authority, bump_seed) = Pubkey::find_program_address(seeds, program_id);
@@ -119,6 +120,7 @@ pub fn process_execute(
         authority_signer_seeds: &[
             timelock_program_account_info.key.as_ref(),
             timelock_config.governance_mint.as_ref(),
+            timelock_config.council_mint.as_ref(),
             timelock_config.program.as_ref(),
             &[bump_seed],
         ],
