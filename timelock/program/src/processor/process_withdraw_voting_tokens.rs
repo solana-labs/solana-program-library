@@ -26,8 +26,8 @@ pub fn process_withdraw_voting_tokens(
     let voting_account_info = next_account_info(account_info_iter)?;
     let yes_voting_account_info = next_account_info(account_info_iter)?;
     let no_voting_account_info = next_account_info(account_info_iter)?;
-    let destination_governance_account_info = next_account_info(account_info_iter)?;
-    let governance_holding_account_info = next_account_info(account_info_iter)?;
+    let user_account_info = next_account_info(account_info_iter)?;
+    let source_holding_account_info = next_account_info(account_info_iter)?;
     let yes_voting_dump_account_info = next_account_info(account_info_iter)?;
     let no_voting_dump_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
@@ -52,10 +52,7 @@ pub fn process_withdraw_voting_tokens(
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
     assert_account_equiv(yes_voting_dump_account_info, &timelock_set.yes_voting_dump)?;
     assert_account_equiv(no_voting_dump_account_info, &timelock_set.no_voting_dump)?;
-    assert_account_equiv(
-        governance_holding_account_info,
-        &timelock_set.governance_holding,
-    )?;
+    assert_account_equiv(source_holding_account_info, &timelock_set.source_holding)?;
 
     if voting_token_amount < 0 as u64 {
         return Err(TimelockError::TokenAmountBelowZero.into());
@@ -163,8 +160,8 @@ pub fn process_withdraw_voting_tokens(
     }
 
     spl_token_transfer(TokenTransferParams {
-        source: governance_holding_account_info.clone(),
-        destination: destination_governance_account_info.clone(),
+        source: source_holding_account_info.clone(),
+        destination: user_account_info.clone(),
         amount: voting_token_amount,
         authority: timelock_program_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,

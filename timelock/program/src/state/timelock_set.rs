@@ -46,8 +46,11 @@ pub struct TimelockSet {
     /// Used to validate voting tokens in a round trip transfer
     pub voting_validation: Pubkey,
 
-    /// Governance holding account
-    pub governance_holding: Pubkey,
+    /// Source token holding account
+    pub source_holding: Pubkey,
+
+    /// Source mint - either governance or council mint from config
+    pub source_mint: Pubkey,
 
     /// Yes Voting dump account for exchanged vote tokens
     pub yes_voting_dump: Pubkey,
@@ -63,9 +66,9 @@ impl IsInitialized for TimelockSet {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 1 + 32 * 13 + 300;
+const TIMELOCK_SET_LEN: usize = 1 + 32 * 14 + 300;
 impl Pack for TimelockSet {
-    const LEN: usize = 1 + 32 * 13 + 300;
+    const LEN: usize = 1 + 32 * 14 + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_SET_LEN];
@@ -80,14 +83,15 @@ impl Pack for TimelockSet {
             voting_mint,
             yes_voting_mint,
             no_voting_mint,
+            source_mint,
             signatory_validation,
             admin_validation,
             voting_validation,
-            governance_holding,
+            source_holding,
             yes_voting_dump,
             no_voting_dump,
             _padding,
-        ) = array_refs![input, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
+        ) = array_refs![input, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
         let version = u8::from_le_bytes(*version);
         match version {
             TIMELOCK_SET_VERSION | UNINITIALIZED_VERSION => Ok(Self {
@@ -99,10 +103,11 @@ impl Pack for TimelockSet {
                 voting_mint: Pubkey::new_from_array(*voting_mint),
                 yes_voting_mint: Pubkey::new_from_array(*yes_voting_mint),
                 no_voting_mint: Pubkey::new_from_array(*no_voting_mint),
+                source_mint: Pubkey::new_from_array(*source_mint),
                 signatory_validation: Pubkey::new_from_array(*signatory_validation),
                 admin_validation: Pubkey::new_from_array(*admin_validation),
                 voting_validation: Pubkey::new_from_array(*voting_validation),
-                governance_holding: Pubkey::new_from_array(*governance_holding),
+                source_holding: Pubkey::new_from_array(*source_holding),
                 yes_voting_dump: Pubkey::new_from_array(*yes_voting_dump),
                 no_voting_dump: Pubkey::new_from_array(*no_voting_dump),
             }),
@@ -122,14 +127,15 @@ impl Pack for TimelockSet {
             voting_mint,
             yes_voting_mint,
             no_voting_mint,
+            source_mint,
             signatory_validation,
             admin_validation,
             voting_validation,
-            governance_holding,
+            source_holding,
             yes_voting_dump,
             no_voting_dump,
             _padding,
-        ) = mut_array_refs![output, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
+        ) = mut_array_refs![output, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
         config.copy_from_slice(self.config.as_ref());
         state.copy_from_slice(self.state.as_ref());
         *version = self.version.to_le_bytes();
@@ -138,10 +144,11 @@ impl Pack for TimelockSet {
         voting_mint.copy_from_slice(self.voting_mint.as_ref());
         yes_voting_mint.copy_from_slice(self.yes_voting_mint.as_ref());
         no_voting_mint.copy_from_slice(self.no_voting_mint.as_ref());
+        source_mint.copy_from_slice(self.source_mint.as_ref());
         signatory_validation.copy_from_slice(self.signatory_validation.as_ref());
         admin_validation.copy_from_slice(self.admin_validation.as_ref());
         voting_validation.copy_from_slice(self.voting_validation.as_ref());
-        governance_holding.copy_from_slice(self.governance_holding.as_ref());
+        source_holding.copy_from_slice(self.source_holding.as_ref());
         yes_voting_dump.copy_from_slice(self.yes_voting_dump.as_ref());
         no_voting_dump.copy_from_slice(self.no_voting_dump.as_ref());
     }

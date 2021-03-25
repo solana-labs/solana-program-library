@@ -26,8 +26,10 @@ pub struct TimelockConfig {
     pub voting_entry_rule: VotingEntryRule,
     /// Minimum slot time-distance from creation of proposal for an instruction to be placed
     pub minimum_slot_waiting_period: u64,
-    /// Governance mint (optional)
+    /// Governance mint
     pub governance_mint: Pubkey,
+    /// Council mint
+    pub council_mint: Pubkey,
     /// Program ID that is tied to this config (optional)
     pub program: Pubkey,
     /// Time limit in slots for proposal to be open to voting
@@ -47,9 +49,9 @@ impl IsInitialized for TimelockConfig {
 
 /// Len of timelock config
 pub const TIMELOCK_CONFIG_LEN: usize =
-    1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH + 4 + 296;
+    1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 32 + 8 + CONFIG_NAME_LENGTH + 4 + 296;
 impl Pack for TimelockConfig {
-    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 8 + CONFIG_NAME_LENGTH + 4 + 296;
+    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 32 + 32 + 8 + CONFIG_NAME_LENGTH + 4 + 296;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_CONFIG_LEN];
@@ -63,6 +65,7 @@ impl Pack for TimelockConfig {
             voting_entry_rule,
             minimum_slot_waiting_period,
             governance_mint,
+            council_mint,
             program,
             time_limit,
             name,
@@ -76,6 +79,7 @@ impl Pack for TimelockConfig {
             1,
             1,
             8,
+            32,
             32,
             32,
             8,
@@ -115,6 +119,7 @@ impl Pack for TimelockConfig {
                 },
                 minimum_slot_waiting_period,
                 governance_mint: Pubkey::new_from_array(*governance_mint),
+                council_mint: Pubkey::new_from_array(*council_mint),
                 program: Pubkey::new_from_array(*program),
                 time_limit,
                 name: *name,
@@ -135,6 +140,7 @@ impl Pack for TimelockConfig {
             voting_entry_rule,
             minimum_slot_waiting_period,
             governance_mint,
+            council_mint,
             program,
             time_limit,
             name,
@@ -148,6 +154,7 @@ impl Pack for TimelockConfig {
             1,
             1,
             8,
+            32,
             32,
             32,
             8,
@@ -176,6 +183,7 @@ impl Pack for TimelockConfig {
         .to_le_bytes();
         *minimum_slot_waiting_period = self.minimum_slot_waiting_period.to_le_bytes();
         governance_mint.copy_from_slice(self.governance_mint.as_ref());
+        council_mint.copy_from_slice(self.council_mint.as_ref());
         program.copy_from_slice(self.program.as_ref());
         *time_limit = self.time_limit.to_le_bytes();
         name.copy_from_slice(self.name.as_ref());

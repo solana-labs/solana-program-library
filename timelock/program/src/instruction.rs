@@ -58,8 +58,8 @@ pub enum TimelockInstruction {
     ///   12. `[writable]` Initialized Destination account for first signatory token
     ///   13. `[writable]` Initialized Yes voting dump account
     ///   14. `[writable]` Initialized No voting dump account
-    ///   15. `[writable]` Initialized Governance holding account
-    ///   16. `[]` Governance mint
+    ///   15. `[writable]` Initialized source holding account
+    ///   16. `[]` Source mint
     ///   17. `[]` Timelock minting authority
     ///   18. `[]` Timelock Program
     ///   19. '[]` Token program id
@@ -199,7 +199,7 @@ pub enum TimelockInstruction {
     ///   4. `[writable]` Voting mint account.
     ///   5. `[writable]` Yes Voting mint account.
     ///   6. `[writable]` No Voting mint account.
-    ///   7. `[]` Governance mint account
+    ///   7. `[]` Source mint account
     ///   8. `[]` Timelock set account.
     ///   9. `[]` Timelock config account.
     ///   10. `[]` Transfer authority
@@ -232,21 +232,21 @@ pub enum TimelockInstruction {
         number_of_extra_accounts: u8,
     },
 
-    /// [Requires tokens of the Governance mint]
+    /// [Requires tokens of the Governance mint or Council mint depending on type of TimelockSet]
     /// Deposits voting tokens to be used during the voting process in a timelock.
     /// These tokens are removed from your account and can be returned by withdrawing
     /// them from the timelock (but then you will miss the vote.)
     ///
     ///   0. `[writable]` Initialized Voting account to hold your received voting tokens.
-    ///   1. `[writable]` Source governance token account to deposit tokens from.
-    ///   2. `[writable]` Governance holding account for timelock that will accept the tokens in escrow.
+    ///   1. `[writable]` User token account to deposit tokens from.
+    ///   2. `[writable]` Source holding account for timelock that will accept the tokens in escrow.
     ///   3. `[writable]` Voting mint account.
     ///   4. `[]` Timelock set account.
     ///   5. `[]` Transfer authority
     ///   6. `[]` Timelock program mint authority
     ///   7. `[]` Timelock program account pub key.
     ///   8. `[]` Token program account.
-    DepositGovernanceTokens {
+    DepositSourceTokens {
         /// How many voting tokens to deposit
         voting_token_amount: u64,
     },
@@ -257,8 +257,8 @@ pub enum TimelockInstruction {
     ///   0. `[writable]` Initialized Voting account from which to remove your voting tokens.
     ///   1. `[writable]` Initialized Yes Voting account from which to remove your voting tokens.
     ///   2. `[writable]` Initialized No Voting account from which to remove your voting tokens.
-    ///   3. `[writable]` Governance token account that you wish your actual tokens to be returned to.
-    ///   4. `[writable]` Governance holding account owned by the timelock that will has the actual tokens in escrow.
+    ///   3. `[writable]` User token account that you wish your actual tokens to be returned to.
+    ///   4. `[writable]` Source holding account owned by the timelock that will has the actual tokens in escrow.
     ///   5. `[writable]` Initialized Yes Voting dump account owned by timelock set to which to send your voting tokens.
     ///   6. `[writable]` Initialized No Voting dump account owned by timelock set to which to send your voting tokens.
     ///   7. `[]` Voting mint account.
@@ -276,11 +276,12 @@ pub enum TimelockInstruction {
     },
 
     ///   0. `[writable]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
-    ///           program account key, governance mint key, timelock program account key.
+    ///           program account key, governance mint key, council mint key, timelock program account key.
     ///   1. `[]` Program account that this config uses
     ///   2. `[]` Governance mint that this config uses
-    ///   3. `[]` Timelock program account pub key.
-    ///   4. `[]` Token program account.
+    ///   3. `[]` Council mint that this config uses [Optional] [Pass in 0s otherwise]
+    ///   4. `[]` Timelock program account pub key.
+    ///   5. `[]` Token program account.
     InitTimelockConfig {
         /// Consensus Algorithm
         consensus_algorithm: u8,
@@ -299,14 +300,15 @@ pub enum TimelockInstruction {
     },
 
     ///   0. `[writable]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
-    ///           program account key, governance mint key, timelock program account key.
+    ///           program account key, governance mint key, council mint key, and timelock program account key.
     ///   1. `[]` Program account to tie this config to.
     ///   2. `[]` Governance mint to tie this config to
-    ///   3. `[]` Payer
-    ///   4. `[]` Timelock program account pub key.
-    ///   5. `[]` Timelock program pub key. Different from program account - is the actual id of the executable.
-    ///   6. `[]` Token program account.
-    ///   7. `[]` System account.
+    ///   3. `[]` Council mint [optional] to tie this config to [Pass in 0s otherwise]
+    ///   4. `[]` Payer
+    ///   5. `[]` Timelock program account pub key.
+    ///   6. `[]` Timelock program pub key. Different from program account - is the actual id of the executable.
+    ///   7. `[]` Token program account.
+    ///   8. `[]` System account.
     CreateEmptyTimelockConfig,
 }
 
@@ -392,7 +394,7 @@ impl TimelockInstruction {
             }
             13 => {
                 let (voting_token_amount, _) = Self::unpack_u64(rest)?;
-                Self::DepositGovernanceTokens {
+                Self::DepositSourceTokens {
                     voting_token_amount,
                 }
             }
@@ -533,7 +535,7 @@ impl TimelockInstruction {
                 buf.push(12);
                 buf.extend_from_slice(&number_of_extra_accounts.to_le_bytes());
             }
-            Self::DepositGovernanceTokens {
+            Self::DepositSourceTokens {
                 voting_token_amount,
             } => {
                 buf.push(13);

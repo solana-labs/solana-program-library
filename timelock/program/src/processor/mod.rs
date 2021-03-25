@@ -2,7 +2,7 @@ pub mod process_add_custom_single_signer_transaction;
 pub mod process_add_signer;
 pub mod process_create_empty_timelock_config;
 pub mod process_delete_timelock_set;
-pub mod process_deposit_governance_tokens;
+pub mod process_deposit_source_tokens;
 pub mod process_execute;
 pub mod process_init_timelock_config;
 pub mod process_init_timelock_program;
@@ -19,7 +19,7 @@ use process_add_custom_single_signer_transaction::process_add_custom_single_sign
 use process_add_signer::process_add_signer;
 use process_create_empty_timelock_config::process_create_empty_timelock_config;
 use process_delete_timelock_set::process_delete_timelock_set;
-use process_deposit_governance_tokens::process_deposit_governance_tokens;
+use process_deposit_source_tokens::process_deposit_source_tokens;
 use process_execute::process_execute;
 use process_init_timelock_config::process_init_timelock_config;
 use process_init_timelock_program::process_init_timelock_program;
@@ -129,11 +129,11 @@ pub fn process_instruction(
             msg!("Instruction: Execute");
             process_execute(program_id, accounts, number_of_extra_accounts)
         }
-        TimelockInstruction::DepositGovernanceTokens {
+        TimelockInstruction::DepositSourceTokens {
             voting_token_amount,
         } => {
-            msg!("Instruction: Deposit Governance Tokens");
-            process_deposit_governance_tokens(program_id, accounts, voting_token_amount)
+            msg!("Instruction: Deposit Source Tokens");
+            process_deposit_source_tokens(program_id, accounts, voting_token_amount)
         }
         TimelockInstruction::WithdrawVotingTokens {
             voting_token_amount,

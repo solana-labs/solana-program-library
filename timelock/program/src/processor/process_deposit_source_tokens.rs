@@ -15,16 +15,16 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-/// Deposit governance tokens
-pub fn process_deposit_governance_tokens(
+/// Deposit source tokens
+pub fn process_deposit_source_tokens(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     voting_token_amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let voting_account_info = next_account_info(account_info_iter)?;
-    let source_governance_account_info = next_account_info(account_info_iter)?;
-    let governance_holding_account_info = next_account_info(account_info_iter)?;
+    let user_holding_account_info = next_account_info(account_info_iter)?;
+    let source_holding_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
@@ -36,10 +36,7 @@ pub fn process_deposit_governance_tokens(
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
 
-    assert_account_equiv(
-        governance_holding_account_info,
-        &timelock_set.governance_holding,
-    )?;
+    assert_account_equiv(source_holding_account_info, &timelock_set.source_holding)?;
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
 
     if voting_token_amount < 0 as u64 {
@@ -63,8 +60,8 @@ pub fn process_deposit_governance_tokens(
     })?;
 
     spl_token_transfer(TokenTransferParams {
-        source: source_governance_account_info.clone(),
-        destination: governance_holding_account_info.clone(),
+        source: user_holding_account_info.clone(),
+        destination: source_holding_account_info.clone(),
         amount: voting_token_amount,
         authority: transfer_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,

@@ -34,7 +34,7 @@ pub fn process_vote(
     let voting_mint_account_info = next_account_info(account_info_iter)?;
     let yes_voting_mint_account_info = next_account_info(account_info_iter)?;
     let no_voting_mint_account_info = next_account_info(account_info_iter)?;
-    let governance_mint_account_info = next_account_info(account_info_iter)?;
+    let source_mint_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_config_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
@@ -51,12 +51,9 @@ pub fn process_vote(
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
     assert_account_equiv(yes_voting_mint_account_info, &timelock_set.yes_voting_mint)?;
     assert_account_equiv(no_voting_mint_account_info, &timelock_set.no_voting_mint)?;
-    assert_account_equiv(
-        governance_mint_account_info,
-        &timelock_config.governance_mint,
-    )?;
     assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
+    assert_account_equiv(source_mint_account_info, &timelock_set.source_mint)?;
 
     assert_voting(&timelock_state)?;
 
@@ -68,13 +65,13 @@ pub fn process_vote(
     let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
 
     // We dont initialize the mints because it's too expensive on the stack size.
-    let governance_mint_supply: u64 = pull_mint_supply(governance_mint_account_info)?;
+    let source_mint_supply: u64 = pull_mint_supply(source_mint_account_info)?;
     let yes_mint_supply: u64 = pull_mint_supply(yes_voting_mint_account_info)?;
 
-    let total_ever_existed = governance_mint_supply;
+    let total_ever_existed = source_mint_supply;
 
     let mut now_remaining_in_no_column =
-        match governance_mint_supply.checked_sub(yes_voting_token_amount) {
+        match source_mint_supply.checked_sub(yes_voting_token_amount) {
             Some(val) => val,
             None => return Err(TimelockError::NumericalOverflow.into()),
         };

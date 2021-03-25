@@ -10,9 +10,9 @@ use crate::{
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
-        assert_cheap_mint_initialized, assert_initialized, assert_rent_exempt,
-        assert_token_program_is_correct, assert_uninitialized, get_mint_from_account,
-        spl_token_mint_to, TokenMintToParams,
+        assert_cheap_mint_initialized, assert_initialized, assert_mint_matching,
+        assert_rent_exempt, assert_token_program_is_correct, assert_uninitialized,
+        get_mint_from_account, spl_token_mint_to, TokenMintToParams,
     },
 };
 use solana_program::{
@@ -46,8 +46,8 @@ pub fn process_init_timelock_set(
     let destination_sig_account_info = next_account_info(account_info_iter)?;
     let yes_voting_dump_account_info = next_account_info(account_info_iter)?;
     let no_voting_dump_account_info = next_account_info(account_info_iter)?;
-    let governance_holding_account_info = next_account_info(account_info_iter)?;
-    let governance_mint_account_info = next_account_info(account_info_iter)?;
+    let source_holding_account_info = next_account_info(account_info_iter)?;
+    let source_mint_account_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
@@ -55,10 +55,7 @@ pub fn process_init_timelock_set(
     let rent = &Rent::from_account_info(rent_info)?;
     let timelock_program: TimelockProgram = assert_initialized(timelock_program_info)?;
     let mut timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
-    // Using assert_account_equiv not workable here due to cost of stack size on this method.
-    if governance_mint_account_info.key != &timelock_config.governance_mint {
-        return Err(TimelockError::AccountsShouldMatch.into());
-    }
+
     let mut new_timelock_state: TimelockState = assert_uninitialized(timelock_state_account_info)?;
     let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
     new_timelock_set.version = TIMELOCK_SET_VERSION;
@@ -69,7 +66,7 @@ pub fn process_init_timelock_set(
     new_timelock_set.yes_voting_mint = *yes_voting_mint_account_info.key;
     new_timelock_set.no_voting_mint = *no_voting_mint_account_info.key;
     new_timelock_set.signatory_mint = *signatory_mint_account_info.key;
-    new_timelock_set.governance_holding = *governance_holding_account_info.key;
+    new_timelock_set.source_holding = *source_holding_account_info.key;
     new_timelock_set.yes_voting_dump = *yes_voting_dump_account_info.key;
     new_timelock_set.no_voting_dump = *no_voting_dump_account_info.key;
     new_timelock_set.admin_validation = *admin_validation_account_info.key;
@@ -90,7 +87,7 @@ pub fn process_init_timelock_set(
     assert_token_program_is_correct(&timelock_program, token_program_info)?;
 
     assert_rent_exempt(rent, timelock_set_account_info)?;
-    assert_rent_exempt(rent, governance_holding_account_info)?;
+    assert_rent_exempt(rent, source_holding_account_info)?;
     assert_rent_exempt(rent, admin_mint_account_info)?;
     assert_rent_exempt(rent, voting_mint_account_info)?;
     assert_rent_exempt(rent, yes_voting_mint_account_info)?;
@@ -106,41 +103,26 @@ pub fn process_init_timelock_set(
     assert_cheap_mint_initialized(yes_voting_mint_account_info)?;
     assert_cheap_mint_initialized(no_voting_mint_account_info)?;
     assert_cheap_mint_initialized(signatory_mint_account_info)?;
-    assert_cheap_mint_initialized(governance_mint_account_info)?;
+    assert_cheap_mint_initialized(source_mint_account_info)?;
 
-    let sig_acct_mint: Pubkey = get_mint_from_account(destination_sig_account_info)?;
-    let admin_acct_mint: Pubkey = get_mint_from_account(destination_admin_account_info)?;
-    let sig_validation_mint: Pubkey = get_mint_from_account(signatory_validation_account_info)?;
-    let admin_validation_mint: Pubkey = get_mint_from_account(admin_validation_account_info)?;
-    let voting_validation_mint: Pubkey = get_mint_from_account(voting_validation_account_info)?;
-    let yes_voting_dump_mint: Pubkey = get_mint_from_account(yes_voting_dump_account_info)?;
-    let no_voting_dump_mint: Pubkey = get_mint_from_account(no_voting_dump_account_info)?;
-    let governance_holding_mint: Pubkey = get_mint_from_account(governance_holding_account_info)?;
+    let source_holding_mint: Pubkey = get_mint_from_account(source_holding_account_info)?;
 
-    // Cant use helper or a loop because will blow out stack size with this many uses
-    if &sig_acct_mint != signatory_mint_account_info.key {
-        return Err(TimelockError::MintsShouldMatch.into());
-    }
-    if &admin_acct_mint != admin_mint_account_info.key {
-        return Err(TimelockError::MintsShouldMatch.into());
-    }
-    if &sig_validation_mint != signatory_mint_account_info.key {
-        return Err(TimelockError::MintsShouldMatch.into());
-    }
-    if &admin_validation_mint != admin_mint_account_info.key {
-        return Err(TimelockError::MintsShouldMatch.into());
-    }
-    if &voting_validation_mint != voting_mint_account_info.key {
-        return Err(TimelockError::MintsShouldMatch.into());
-    }
-    if &yes_voting_dump_mint != yes_voting_mint_account_info.key {
-        return Err(TimelockError::MintsShouldMatch.into());
-    }
-    if &no_voting_dump_mint != no_voting_mint_account_info.key {
-        return Err(TimelockError::MintsShouldMatch.into());
-    }
-    if &governance_holding_mint != governance_mint_account_info.key {
-        return Err(TimelockError::MintsShouldMatch.into());
+    assert_mint_matching(destination_sig_account_info, signatory_mint_account_info)?;
+    assert_mint_matching(destination_admin_account_info, admin_mint_account_info)?;
+    assert_mint_matching(
+        signatory_validation_account_info,
+        signatory_mint_account_info,
+    )?;
+    assert_mint_matching(admin_validation_account_info, admin_mint_account_info)?;
+    assert_mint_matching(voting_validation_account_info, voting_mint_account_info)?;
+    assert_mint_matching(yes_voting_dump_account_info, yes_voting_mint_account_info)?;
+    assert_mint_matching(no_voting_dump_account_info, no_voting_mint_account_info)?;
+    assert_mint_matching(source_holding_account_info, source_mint_account_info)?;
+
+    if source_holding_mint != timelock_config.governance_mint
+        && source_holding_mint != timelock_config.council_mint
+    {
+        return Err(TimelockError::AccountsShouldMatch.into());
     }
 
     TimelockSet::pack(
