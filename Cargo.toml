@@ -26,9 +26,7 @@ members = [
   "timelock/cli",
   "timelock/proposal-loader-cli",
   "utils/cgen",
-  "utils/test-client",
-  "hello-world-escrow/program",
-  "hello-world-escrow/cli"
+  "utils/test-client"
 ]
 exclude = [
   "themis/client_ristretto",
