@@ -400,15 +400,14 @@ impl ReserveLiquidity {
 
     /// Subtract borrow amount from available liquidity and add to borrows
     pub fn borrow(&mut self, borrow_amount: Decimal) -> ProgramResult {
-        // @TODO: should this be rounded differently?
-        let borrow_rounded = borrow_amount.try_ceil_u64()?;
-        if borrow_rounded > self.available_amount {
+        let receive_amount = borrow_amount.try_floor_u64()?;
+        if receive_amount > self.available_amount {
             return Err(LendingError::InsufficientLiquidity.into());
         }
 
         self.available_amount = self
             .available_amount
-            .checked_sub(borrow_rounded)
+            .checked_sub(receive_amount)
             .ok_or(LendingError::MathOverflow)?;
         self.borrowed_amount_wads = self.borrowed_amount_wads.try_add(borrow_amount)?;
 
