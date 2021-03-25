@@ -31,7 +31,34 @@ pub struct Obligation {
     pub borrows: Vec<ObligationLiquidity>,
 }
 
+/// Initialize an obligation
+pub struct InitObligationParams {
+    /// Last update to collateral, liquidity, or their market values
+    pub current_slot: Slot,
+    /// Lending market address
+    pub lending_market: Pubkey,
+    /// Deposited collateral for the obligation, unique by deposit reserve address
+    pub deposits: Vec<ObligationCollateral>,
+    /// Borrowed liquidity for the obligation, unique by borrow reserve address
+    pub borrows: Vec<ObligationLiquidity>,
+}
+
 impl Obligation {
+    /// Create a new obligation
+    pub fn new(params: InitObligationParams) -> Self {
+        let mut obligation = Self::default();
+        Self::init(&mut obligation, params);
+        obligation
+    }
+
+    /// Initialize an obligation
+    pub fn init(&mut self, params: InitObligationParams) {
+        self.version = PROGRAM_VERSION;
+        self.last_update = LastUpdate::new(params.current_slot);
+        self.deposits = params.deposits;
+        self.borrows = params.borrows;
+    }
+
     // @TODO: this gets called a lot. we could persist the value on obligation refresh instead,
     //        but that seems sloppy.
     /// Calculate the deposited collateral market value

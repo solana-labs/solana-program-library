@@ -742,7 +742,10 @@ pub fn refresh_reserve(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
     if let Some(reserve_liquidity_aggregator_pubkey) = reserve_liquidity_aggregator_pubkey {
-        accounts.push(AccountMeta::new_readonly(reserve_liquidity_aggregator_pubkey, false));
+        accounts.push(AccountMeta::new_readonly(
+            reserve_liquidity_aggregator_pubkey,
+            false,
+        ));
     }
     Instruction {
         program_id,

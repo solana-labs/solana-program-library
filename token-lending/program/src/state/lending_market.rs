@@ -25,6 +25,42 @@ pub struct LendingMarket {
     pub owner: Pubkey,
 }
 
+/// Initialize a lending market
+pub struct InitLendingMarketParams {
+    /// Bump seed for derived authority address
+    pub bump_seed: u8,
+    /// Token program id
+    pub token_program_id: Pubkey,
+    /// Quote currency token mint
+    pub quote_token_mint: Pubkey,
+    /// The target ratio of an obligation's borrows to deposits as a percent
+    pub loan_to_value_ratio: u8,
+    /// The percent at which an obligation is considered unhealthy
+    pub liquidation_threshold: u8,
+    /// Owner authority which can add new reserves
+    pub owner: Pubkey,
+}
+
+impl LendingMarket {
+    /// Create a new lending market
+    pub fn new(params: InitLendingMarketParams) -> Self {
+        let mut lending_market = Self::default();
+        Self::init(&mut lending_market, params);
+        lending_market
+    }
+
+    /// Initialize a lending market
+    pub fn init(&mut self, params: InitLendingMarketParams) {
+        self.version = PROGRAM_VERSION;
+        self.bump_seed = params.bump_seed;
+        self.owner = params.owner;
+        self.quote_token_mint = params.quote_token_mint;
+        self.token_program_id = params.token_program_id;
+        self.loan_to_value_ratio = params.loan_to_value_ratio;
+        self.liquidation_threshold = params.liquidation_threshold;
+    }
+}
+
 impl Sealed for LendingMarket {}
 impl IsInitialized for LendingMarket {
     fn is_initialized(&self) -> bool {
