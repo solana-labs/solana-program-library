@@ -1,7 +1,6 @@
 use super::*;
 use crate::{
     error::LendingError,
-    instruction::AmountType,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
@@ -172,53 +171,47 @@ impl Reserve {
     pub fn borrow_liquidity(
         &self,
         liquidity_amount: u64,
-        liquidity_amount_type: AmountType,
         max_borrow_value: Decimal,
     ) -> Result<BorrowLiquidityResult, ProgramError> {
-        match liquidity_amount_type {
-            AmountType::ExactAmount => {
-                let receive_amount = liquidity_amount;
-                let borrow_amount = Decimal::from(receive_amount);
-                let (borrow_fee, host_fee) = self
-                    .config
-                    .fees
-                    .calculate_borrow_fees(borrow_amount, FeeCalculation::Exclusive)?;
+        if liquidity_amount == u64::MAX {
+            let borrow_amount = max_borrow_value
+                .try_div(self.liquidity.median_price)?
+                .min(self.liquidity.available_amount.into());
+            let (origination_fee, host_fee) = self
+                .config
+                .fees
+                .calculate_borrow_fees(borrow_amount, FeeCalculation::Inclusive)?;
+            let receive_amount = borrow_amount
+                .try_floor_u64()?
+                .checked_sub(origination_fee)
+                .ok_or(LendingError::MathOverflow)?;
 
-                let borrow_amount = borrow_amount.try_add(borrow_fee.into())?;
-                let borrow_value = borrow_amount.try_mul(self.liquidity.median_price)?;
-                if borrow_value > max_borrow_value {
-                    return Err(LendingError::BorrowTooLarge.into());
-                }
+            Ok(BorrowLiquidityResult {
+                borrow_amount,
+                receive_amount,
+                borrow_fee: origination_fee,
+                host_fee,
+            })
+        } else {
+            let receive_amount = liquidity_amount;
+            let borrow_amount = Decimal::from(receive_amount);
+            let (borrow_fee, host_fee) = self
+                .config
+                .fees
+                .calculate_borrow_fees(borrow_amount, FeeCalculation::Exclusive)?;
 
-                Ok(BorrowLiquidityResult {
-                    borrow_amount,
-                    receive_amount,
-                    borrow_fee,
-                    host_fee,
-                })
+            let borrow_amount = borrow_amount.try_add(borrow_fee.into())?;
+            let borrow_value = borrow_amount.try_mul(self.liquidity.median_price)?;
+            if borrow_value > max_borrow_value {
+                return Err(LendingError::BorrowTooLarge.into());
             }
-            AmountType::PercentAmount => {
-                let borrow_pct = Rate::from_percent(liquidity_amount as u8);
-                let borrow_value = max_borrow_value.try_mul(borrow_pct)?;
-                let borrow_amount = borrow_value
-                    .try_div(self.liquidity.median_price)?
-                    .min(self.liquidity.available_amount.into());
-                let (origination_fee, host_fee) = self
-                    .config
-                    .fees
-                    .calculate_borrow_fees(borrow_amount, FeeCalculation::Inclusive)?;
-                let receive_amount = borrow_amount
-                    .try_floor_u64()?
-                    .checked_sub(origination_fee)
-                    .ok_or(LendingError::MathOverflow)?;
 
-                Ok(BorrowLiquidityResult {
-                    borrow_amount,
-                    receive_amount,
-                    borrow_fee: origination_fee,
-                    host_fee,
-                })
-            }
+            Ok(BorrowLiquidityResult {
+                borrow_amount,
+                receive_amount,
+                borrow_fee,
+                host_fee,
+            })
         }
     }
 
@@ -226,15 +219,12 @@ impl Reserve {
     pub fn repay_liquidity(
         &self,
         liquidity_amount: u64,
-        liquidity_amount_type: AmountType,
         borrow_amount: Decimal,
     ) -> Result<RepayLiquidityResult, ProgramError> {
-        let settle_amount = match liquidity_amount_type {
-            AmountType::ExactAmount => Decimal::from(liquidity_amount).min(borrow_amount),
-            AmountType::PercentAmount => {
-                let settle_pct = Rate::from_percent(liquidity_amount as u8);
-                borrow_amount.try_mul(settle_pct)?
-            }
+        let settle_amount = if liquidity_amount == u64::MAX {
+            borrow_amount
+        } else {
+            Decimal::from(liquidity_amount).min(borrow_amount)
         };
         let repay_amount = if settle_amount == borrow_amount {
             settle_amount.try_ceil_u64()?
@@ -252,21 +242,16 @@ impl Reserve {
     pub fn liquidate_obligation(
         &self,
         liquidity_amount: u64,
-        liquidity_amount_type: AmountType,
         obligation: &Obligation,
         liquidity: &ObligationLiquidity,
         collateral: &ObligationCollateral,
     ) -> Result<LiquidateObligationResult, ProgramError> {
         let bonus_rate = Rate::from_percent(self.config.liquidation_bonus).try_add(Rate::one())?;
 
-        let liquidate_amount = match liquidity_amount_type {
-            AmountType::ExactAmount => {
-                Decimal::from(liquidity_amount).min(liquidity.borrowed_amount_wads)
-            }
-            AmountType::PercentAmount => {
-                let liquidate_pct = Rate::from_percent(liquidity_amount as u8);
-                liquidity.borrowed_amount_wads.try_mul(liquidate_pct)?
-            }
+        let liquidate_amount = if liquidity_amount == u64::MAX {
+            liquidity.borrowed_amount_wads
+        } else {
+            Decimal::from(liquidity_amount).min(liquidity.borrowed_amount_wads)
         };
 
         let (settle_amount, settle_pct, repay_amount) =

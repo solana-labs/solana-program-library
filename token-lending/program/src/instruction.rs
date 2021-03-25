@@ -4,8 +4,6 @@ use crate::{
     error::LendingError,
     state::{ReserveConfig, ReserveFees},
 };
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
@@ -13,15 +11,6 @@ use solana_program::{
     sysvar,
 };
 use std::{convert::TryInto, mem::size_of};
-
-/// Describe how an input amount should be treated
-#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
-pub enum AmountType {
-    /// Treat amount as an exact amount of tokens
-    ExactAmount,
-    /// Treat amount as a percentage of available tokens
-    PercentAmount,
-}
 
 /// Instructions supported by the lending program.
 #[derive(Clone, Debug, PartialEq)]
@@ -210,10 +199,8 @@ pub enum LendingInstruction {
     ///   9. `[]` Clock sysvar.
     ///   10 `[]` Token program id.
     WithdrawObligationCollateral {
-        /// Amount of collateral to withdraw - usage depends on `collateral_amount_type`
+        /// Amount of collateral to withdraw - u64::MAX for up to 100% of deposited amount
         collateral_amount: u64,
-        /// Describe how `collateral_amount` should be treated
-        collateral_amount_type: AmountType,
     },
 
     // 10
@@ -235,10 +222,8 @@ pub enum LendingInstruction {
     ///   8. `[]` Token program id.
     ///   9. `[optional, writable]` Host fee receiver account.
     BorrowObligationLiquidity {
-        /// Amount of liquidity to borrow - usage depends on `liquidity_amount_type`
+        /// Amount of liquidity to borrow - u64::MAX for 100% of borrowing power
         liquidity_amount: u64,
-        /// Describe how `liquidity_amount` should be treated
-        liquidity_amount_type: AmountType,
         // @TODO: slippage constraint - https://git.io/JmV67
     },
 
@@ -259,10 +244,8 @@ pub enum LendingInstruction {
     ///   7. `[]` Clock sysvar.
     ///   8. `[]` Token program id.
     RepayObligationLiquidity {
-        /// Amount of liquidity to repay - usage depends on `liquidity_amount_type`
+        /// Amount of liquidity to repay - u64::MAX for 100% of borrowed amount
         liquidity_amount: u64,
-        /// Describe how `liquidity_amount` should be treated
-        liquidity_amount_type: AmountType,
     },
 
     // 12
@@ -287,10 +270,8 @@ pub enum LendingInstruction {
     ///   10 `[]` Clock sysvar.
     ///   11 `[]` Token program id.
     LiquidateObligation {
-        /// Amount of liquidity to repay - usage depends on `liquidity_amount_type`
+        /// Amount of liquidity to repay - u64::MAX for up to 100% of borrowed amount
         liquidity_amount: u64,
-        /// Describe how `liquidity_amount` should be treated
-        liquidity_amount_type: AmountType,
     },
 }
 
@@ -357,44 +338,20 @@ impl LendingInstruction {
                 Self::DepositObligationCollateral { collateral_amount }
             }
             9 => {
-                let (collateral_amount, rest) = Self::unpack_u64(rest)?;
-                let (collateral_amount_type, _rest) = Self::unpack_u8(rest)?;
-                let collateral_amount_type = AmountType::from_u8(collateral_amount_type)
-                    .ok_or(LendingError::InstructionUnpackError)?;
-                Self::WithdrawObligationCollateral {
-                    collateral_amount,
-                    collateral_amount_type,
-                }
+                let (collateral_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::WithdrawObligationCollateral { collateral_amount }
             }
             10 => {
-                let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
-                let (liquidity_amount_type, _rest) = Self::unpack_u8(rest)?;
-                let liquidity_amount_type = AmountType::from_u8(liquidity_amount_type)
-                    .ok_or(LendingError::InstructionUnpackError)?;
-                Self::BorrowObligationLiquidity {
-                    liquidity_amount,
-                    liquidity_amount_type,
-                }
+                let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::BorrowObligationLiquidity { liquidity_amount }
             }
             11 => {
-                let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
-                let (liquidity_amount_type, _rest) = Self::unpack_u8(rest)?;
-                let liquidity_amount_type = AmountType::from_u8(liquidity_amount_type)
-                    .ok_or(LendingError::InstructionUnpackError)?;
-                Self::RepayObligationLiquidity {
-                    liquidity_amount,
-                    liquidity_amount_type,
-                }
+                let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::RepayObligationLiquidity { liquidity_amount }
             }
             12 => {
-                let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
-                let (liquidity_amount_type, _rest) = Self::unpack_u8(rest)?;
-                let liquidity_amount_type = AmountType::from_u8(liquidity_amount_type)
-                    .ok_or(LendingError::InstructionUnpackError)?;
-                Self::LiquidateObligation {
-                    liquidity_amount,
-                    liquidity_amount_type,
-                }
+                let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::LiquidateObligation { liquidity_amount }
             }
             _ => return Err(LendingError::InstructionUnpackError.into()),
         })
@@ -524,37 +481,21 @@ impl LendingInstruction {
                 buf.push(8);
                 buf.extend_from_slice(&collateral_amount.to_le_bytes());
             }
-            Self::WithdrawObligationCollateral {
-                collateral_amount,
-                collateral_amount_type,
-            } => {
+            Self::WithdrawObligationCollateral { collateral_amount } => {
                 buf.push(9);
                 buf.extend_from_slice(&collateral_amount.to_le_bytes());
-                buf.extend_from_slice(&collateral_amount_type.to_u8().unwrap().to_le_bytes());
             }
-            Self::BorrowObligationLiquidity {
-                liquidity_amount,
-                liquidity_amount_type,
-            } => {
+            Self::BorrowObligationLiquidity { liquidity_amount } => {
                 buf.push(10);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
-                buf.extend_from_slice(&liquidity_amount_type.to_u8().unwrap().to_le_bytes());
             }
-            Self::RepayObligationLiquidity {
-                liquidity_amount,
-                liquidity_amount_type,
-            } => {
+            Self::RepayObligationLiquidity { liquidity_amount } => {
                 buf.push(11);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
-                buf.extend_from_slice(&liquidity_amount_type.to_u8().unwrap().to_le_bytes());
             }
-            Self::LiquidateObligation {
-                liquidity_amount,
-                liquidity_amount_type,
-            } => {
+            Self::LiquidateObligation { liquidity_amount } => {
                 buf.push(12);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
-                buf.extend_from_slice(&liquidity_amount_type.to_u8().unwrap().to_le_bytes());
             }
         }
         buf
@@ -842,7 +783,6 @@ pub fn deposit_obligation_collateral(
 pub fn withdraw_obligation_collateral(
     program_id: Pubkey,
     collateral_amount: u64,
-    collateral_amount_type: AmountType,
     source_collateral_pubkey: Pubkey,
     destination_collateral_pubkey: Pubkey,
     withdraw_reserve_pubkey: Pubkey,
@@ -871,11 +811,7 @@ pub fn withdraw_obligation_collateral(
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: LendingInstruction::WithdrawObligationCollateral {
-            collateral_amount,
-            collateral_amount_type,
-        }
-        .pack(),
+        data: LendingInstruction::WithdrawObligationCollateral { collateral_amount }.pack(),
     }
 }
 
@@ -884,7 +820,6 @@ pub fn withdraw_obligation_collateral(
 pub fn borrow_obligation_liquidity(
     program_id: Pubkey,
     liquidity_amount: u64,
-    liquidity_amount_type: AmountType,
     source_liquidity_pubkey: Pubkey,
     destination_liquidity_pubkey: Pubkey,
     borrow_reserve_pubkey: Pubkey,
@@ -914,11 +849,7 @@ pub fn borrow_obligation_liquidity(
     Instruction {
         program_id,
         accounts,
-        data: LendingInstruction::BorrowObligationLiquidity {
-            liquidity_amount,
-            liquidity_amount_type,
-        }
-        .pack(),
+        data: LendingInstruction::BorrowObligationLiquidity { liquidity_amount }.pack(),
     }
 }
 
@@ -927,7 +858,6 @@ pub fn borrow_obligation_liquidity(
 pub fn repay_obligation_liquidity(
     program_id: Pubkey,
     liquidity_amount: u64,
-    liquidity_amount_type: AmountType,
     source_liquidity_pubkey: Pubkey,
     destination_liquidity_pubkey: Pubkey,
     repay_reserve_pubkey: Pubkey,
@@ -952,11 +882,7 @@ pub fn repay_obligation_liquidity(
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: LendingInstruction::RepayObligationLiquidity {
-            liquidity_amount,
-            liquidity_amount_type,
-        }
-        .pack(),
+        data: LendingInstruction::RepayObligationLiquidity { liquidity_amount }.pack(),
     }
 }
 
@@ -965,7 +891,6 @@ pub fn repay_obligation_liquidity(
 pub fn liquidate_obligation(
     program_id: Pubkey,
     liquidity_amount: u64,
-    liquidity_amount_type: AmountType,
     source_liquidity_pubkey: Pubkey,
     destination_collateral_pubkey: Pubkey,
     repay_reserve_pubkey: Pubkey,
@@ -996,10 +921,6 @@ pub fn liquidate_obligation(
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: LendingInstruction::LiquidateObligation {
-            liquidity_amount,
-            liquidity_amount_type,
-        }
-        .pack(),
+        data: LendingInstruction::LiquidateObligation { liquidity_amount }.pack(),
     }
 }

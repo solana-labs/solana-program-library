@@ -2,7 +2,7 @@
 
 use crate::{
     error::LendingError,
-    instruction::{AmountType, LendingInstruction},
+    instruction::LendingInstruction,
     math::{Decimal, Rate, TryDiv, TryMul, WAD},
     state::{
         BorrowLiquidityResult, InitLendingMarketParams, InitObligationParams, InitReserveParams,
@@ -84,53 +84,21 @@ pub fn process_instruction(
             msg!("Instruction: Deposit Obligation Collateral");
             process_deposit_obligation_collateral(program_id, collateral_amount, accounts)
         }
-        LendingInstruction::WithdrawObligationCollateral {
-            collateral_amount,
-            collateral_amount_type,
-        } => {
+        LendingInstruction::WithdrawObligationCollateral { collateral_amount } => {
             msg!("Instruction: Withdraw Obligation Collateral");
-            process_withdraw_obligation_collateral(
-                program_id,
-                collateral_amount,
-                collateral_amount_type,
-                accounts,
-            )
+            process_withdraw_obligation_collateral(program_id, collateral_amount, accounts)
         }
-        LendingInstruction::BorrowObligationLiquidity {
-            liquidity_amount,
-            liquidity_amount_type,
-        } => {
+        LendingInstruction::BorrowObligationLiquidity { liquidity_amount } => {
             msg!("Instruction: Borrow Obligation Liquidity");
-            process_borrow_obligation_liquidity(
-                program_id,
-                liquidity_amount,
-                liquidity_amount_type,
-                accounts,
-            )
+            process_borrow_obligation_liquidity(program_id, liquidity_amount, accounts)
         }
-        LendingInstruction::RepayObligationLiquidity {
-            liquidity_amount,
-            liquidity_amount_type,
-        } => {
+        LendingInstruction::RepayObligationLiquidity { liquidity_amount } => {
             msg!("Instruction: Repay Obligation Liquidity");
-            process_repay_obligation_liquidity(
-                program_id,
-                liquidity_amount,
-                liquidity_amount_type,
-                accounts,
-            )
+            process_repay_obligation_liquidity(program_id, liquidity_amount, accounts)
         }
-        LendingInstruction::LiquidateObligation {
-            liquidity_amount,
-            liquidity_amount_type,
-        } => {
+        LendingInstruction::LiquidateObligation { liquidity_amount } => {
             msg!("Instruction: Liquidate Obligation");
-            process_liquidate_obligation(
-                program_id,
-                liquidity_amount,
-                liquidity_amount_type,
-                accounts,
-            )
+            process_liquidate_obligation(program_id, liquidity_amount, accounts)
         }
     }
 }
@@ -841,17 +809,10 @@ fn process_deposit_obligation_collateral(
 fn process_withdraw_obligation_collateral(
     program_id: &Pubkey,
     collateral_amount: u64,
-    collateral_amount_type: AmountType,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if collateral_amount == 0 {
         return Err(LendingError::InvalidAmount.into());
-    }
-    if let AmountType::PercentAmount = collateral_amount_type {
-        if collateral_amount > 100 {
-            msg!("Collateral amount must be in range (0, 100]");
-            return Err(LendingError::InvalidAmount.into());
-        }
     }
 
     let account_info_iter = &mut accounts.iter();
@@ -946,28 +907,21 @@ fn process_withdraw_obligation_collateral(
 
     let max_withdraw_value = obligation.max_withdraw_value(loan_to_value_ratio)?;
 
-    let withdraw_amount = match collateral_amount_type {
-        AmountType::ExactAmount => {
-            let withdraw_amount = collateral_amount.min(collateral.deposited_amount);
-            let withdraw_pct =
-                Decimal::from(withdraw_amount).try_div(collateral.deposited_amount)?;
-            let withdraw_value = obligation.deposited_value()?.try_mul(withdraw_pct)?;
-            if withdraw_value > max_withdraw_value {
-                return Err(LendingError::WithdrawTooLarge.into());
-            }
-
-            withdraw_amount
+    let withdraw_amount = if collateral_amount == u64::MAX {
+        let withdraw_value = max_withdraw_value.min(collateral.market_value);
+        withdraw_value
+            .try_div(collateral.market_value)?
+            .try_mul(collateral.deposited_amount)?
+            .try_floor_u64()?
+            .min(collateral.deposited_amount)
+    } else {
+        let withdraw_amount = collateral_amount.min(collateral.deposited_amount);
+        let withdraw_pct = Decimal::from(withdraw_amount).try_div(collateral.deposited_amount)?;
+        let withdraw_value = obligation.deposited_value()?.try_mul(withdraw_pct)?;
+        if withdraw_value > max_withdraw_value {
+            return Err(LendingError::WithdrawTooLarge.into());
         }
-        AmountType::PercentAmount => {
-            let withdraw_pct = Rate::from_percent(collateral_amount as u8);
-            let withdraw_value = max_withdraw_value
-                .try_mul(withdraw_pct)?
-                .min(collateral.market_value);
-            withdraw_value
-                .try_div(collateral.market_value)?
-                .try_mul(collateral.deposited_amount)?
-                .try_floor_u64()?
-        }
+        withdraw_amount
     };
     if withdraw_amount == 0 {
         return Err(LendingError::WithdrawTooSmall.into());
@@ -1009,17 +963,10 @@ fn process_withdraw_obligation_collateral(
 fn process_borrow_obligation_liquidity(
     program_id: &Pubkey,
     liquidity_amount: u64,
-    liquidity_amount_type: AmountType,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if liquidity_amount == 0 {
         return Err(LendingError::InvalidAmount.into());
-    }
-    if let AmountType::PercentAmount = liquidity_amount_type {
-        if liquidity_amount > 100 {
-            msg!("Liquidity amount must be in range (0, 100]");
-            return Err(LendingError::InvalidAmount.into());
-        }
     }
 
     let account_info_iter = &mut accounts.iter();
@@ -1108,11 +1055,7 @@ fn process_borrow_obligation_liquidity(
         receive_amount,
         borrow_fee,
         host_fee,
-    } = borrow_reserve.borrow_liquidity(
-        liquidity_amount,
-        liquidity_amount_type,
-        max_borrow_value,
-    )?;
+    } = borrow_reserve.borrow_liquidity(liquidity_amount, max_borrow_value)?;
 
     if receive_amount == 0 {
         return Err(LendingError::BorrowTooSmall.into());
@@ -1171,17 +1114,10 @@ fn process_borrow_obligation_liquidity(
 fn process_repay_obligation_liquidity(
     program_id: &Pubkey,
     liquidity_amount: u64,
-    liquidity_amount_type: AmountType,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if liquidity_amount == 0 {
         return Err(LendingError::InvalidAmount.into());
-    }
-    if let AmountType::PercentAmount = liquidity_amount_type {
-        if liquidity_amount > 100 {
-            msg!("Liquidity amount must be in range (0, 100]");
-            return Err(LendingError::InvalidAmount.into());
-        }
     }
 
     let account_info_iter = &mut accounts.iter();
@@ -1254,11 +1190,7 @@ fn process_repay_obligation_liquidity(
     let RepayLiquidityResult {
         settle_amount,
         repay_amount,
-    } = repay_reserve.repay_liquidity(
-        liquidity_amount,
-        liquidity_amount_type,
-        liquidity.borrowed_amount_wads,
-    )?;
+    } = repay_reserve.repay_liquidity(liquidity_amount, liquidity.borrowed_amount_wads)?;
 
     if repay_amount == 0 {
         return Err(LendingError::RepayTooSmall.into());
@@ -1288,17 +1220,10 @@ fn process_repay_obligation_liquidity(
 fn process_liquidate_obligation(
     program_id: &Pubkey,
     liquidity_amount: u64,
-    liquidity_amount_type: AmountType,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if liquidity_amount == 0 {
         return Err(LendingError::InvalidAmount.into());
-    }
-    if let AmountType::PercentAmount = liquidity_amount_type {
-        if liquidity_amount > 100 {
-            msg!("Liquidity amount must be in range (0, 100]");
-            return Err(LendingError::InvalidAmount.into());
-        }
     }
 
     let account_info_iter = &mut accounts.iter();
@@ -1416,7 +1341,6 @@ fn process_liquidate_obligation(
         withdraw_amount,
     } = withdraw_reserve.liquidate_obligation(
         liquidity_amount,
-        liquidity_amount_type,
         &obligation,
         &liquidity,
         &collateral,
