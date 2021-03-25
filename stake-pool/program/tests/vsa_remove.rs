@@ -136,7 +136,7 @@ async fn test_remove_validator_stake_account() {
     assert_eq!(
         validator_stake_list,
         state::ValidatorStakeList {
-            version: state::ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
+            account_type: state::AccountType::ValidatorStakeListV1,
             validators: vec![]
         }
     );

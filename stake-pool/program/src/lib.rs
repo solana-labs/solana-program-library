@@ -9,9 +9,6 @@ pub mod processor;
 pub mod stake;
 pub mod state;
 
-/// Current program version
-pub const PROGRAM_VERSION: u8 = 1;
-
 #[cfg(not(feature = "no-entrypoint"))]
 pub mod entrypoint;
 

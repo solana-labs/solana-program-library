@@ -6,8 +6,7 @@ use {
         error::StakePoolError,
         instruction::{Fee, StakePoolInstruction},
         stake,
-        state::{StakePool, ValidatorStakeInfo, ValidatorStakeList},
-        PROGRAM_VERSION,
+        state::{AccountType, StakePool, ValidatorStakeInfo, ValidatorStakeList},
     },
     bincode::deserialize,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -300,7 +299,7 @@ impl Processor {
 
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         // Stake pool account should not be already initialized
-        if stake_pool.is_initialized() {
+        if !stake_pool.is_uninitialized() {
             return Err(StakePoolError::AlreadyInUse.into());
         }
 
@@ -308,10 +307,10 @@ impl Processor {
         let mut validator_stake_list = try_from_slice_unchecked::<ValidatorStakeList>(
             &validator_stake_list_info.data.borrow(),
         )?;
-        if validator_stake_list.is_initialized() {
+        if !validator_stake_list.is_uninitialized() {
             return Err(StakePoolError::AlreadyInUse.into());
         }
-        validator_stake_list.version = ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION;
+        validator_stake_list.account_type = AccountType::ValidatorStakeListV1;
         validator_stake_list.validators.clear();
 
         // Check if stake pool account is rent-exempt
@@ -371,7 +370,7 @@ impl Processor {
         msg!("Clock data: {:?}", clock_info.data.borrow());
         msg!("Epoch: {}", clock.epoch);
 
-        stake_pool.version = PROGRAM_VERSION;
+        stake_pool.account_type = AccountType::StakePoolV1;
         stake_pool.owner = *owner_info.key;
         stake_pool.deposit_bump_seed = deposit_bump_seed;
         stake_pool.withdraw_bump_seed = withdraw_bump_seed;
@@ -511,7 +510,7 @@ impl Processor {
 
         // Get stake pool stake (and check if it is initialized)
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_initialized() {
+        if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -543,7 +542,7 @@ impl Processor {
         let mut validator_stake_list = try_from_slice_unchecked::<ValidatorStakeList>(
             &validator_stake_list_info.data.borrow(),
         )?;
-        if !validator_stake_list.is_initialized() {
+        if !validator_stake_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -645,7 +644,7 @@ impl Processor {
 
         // Get stake pool stake (and check if it is initialized)
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_initialized() {
+        if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -676,7 +675,7 @@ impl Processor {
         let mut validator_stake_list = try_from_slice_unchecked::<ValidatorStakeList>(
             &validator_stake_list_info.data.borrow(),
         )?;
-        if !validator_stake_list.is_initialized() {
+        if !validator_stake_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -754,7 +753,7 @@ impl Processor {
         let mut validator_stake_list = try_from_slice_unchecked::<ValidatorStakeList>(
             &validator_stake_list_info.data.borrow(),
         )?;
-        if !validator_stake_list.is_initialized() {
+        if !validator_stake_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -807,7 +806,7 @@ impl Processor {
 
         // Get stake pool stake (and check if it is initialized)
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_initialized() {
+        if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -820,7 +819,7 @@ impl Processor {
         let validator_stake_list = try_from_slice_unchecked::<ValidatorStakeList>(
             &validator_stake_list_info.data.borrow(),
         )?;
-        if !validator_stake_list.is_initialized() {
+        if !validator_stake_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -906,7 +905,7 @@ impl Processor {
         }
 
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_initialized() {
+        if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -938,7 +937,7 @@ impl Processor {
         let mut validator_stake_list = try_from_slice_unchecked::<ValidatorStakeList>(
             &validator_stake_list_info.data.borrow(),
         )?;
-        if !validator_stake_list.is_initialized() {
+        if !validator_stake_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -1066,7 +1065,7 @@ impl Processor {
         }
 
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_initialized() {
+        if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -1091,7 +1090,7 @@ impl Processor {
         let mut validator_stake_list = try_from_slice_unchecked::<ValidatorStakeList>(
             &validator_stake_list_info.data.borrow(),
         )?;
-        if !validator_stake_list.is_initialized() {
+        if !validator_stake_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -1170,7 +1169,7 @@ impl Processor {
         let new_owner_fee_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_initialized() {
+        if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 

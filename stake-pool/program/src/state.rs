@@ -11,12 +11,29 @@ use {
     std::convert::TryFrom,
 };
 
+/// Enum representing the account type managed by the program
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum AccountType {
+    /// If the account has not been initialized, the enum will be 0
+    Uninitialized,
+    /// Stake pool v1
+    StakePoolV1,
+    /// Validator stake list
+    ValidatorStakeListV1,
+}
+
+impl Default for AccountType {
+    fn default() -> Self {
+        AccountType::Uninitialized
+    }
+}
+
 /// Initialized program details.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct StakePool {
-    /// Pool version
-    pub version: u8,
+    /// Account type, must be StakePoolV1 currently
+    pub account_type: AccountType,
     /// Owner authority
     /// allows for updating the staking authority
     pub owner: Pubkey,
@@ -127,9 +144,14 @@ impl StakePool {
         Ok(())
     }
 
-    /// Check if StakePool is initialized
-    pub fn is_initialized(&self) -> bool {
-        self.version > 0
+    /// Check if StakePool is actually initialized as a stake pool
+    pub fn is_valid(&self) -> bool {
+        self.account_type == AccountType::StakePoolV1
+    }
+
+    /// Check if StakePool is currently uninitialized
+    pub fn is_uninitialized(&self) -> bool {
+        self.account_type == AccountType::Uninitialized
     }
 }
 
@@ -137,8 +159,8 @@ impl StakePool {
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeList {
-    /// Validator stake list version
-    pub version: u8,
+    /// Account type, must be ValidatorStakeListV1 currently
+    pub account_type: AccountType,
     /// List of all validator stake accounts and their info
     pub validators: Vec<ValidatorStakeInfo>,
 }
@@ -158,9 +180,6 @@ pub struct ValidatorStakeInfo {
 }
 
 impl ValidatorStakeList {
-    /// Version of validator stake list
-    pub const VALIDATOR_STAKE_LIST_VERSION: u8 = 1;
-
     /// Get the Borsh size for a list containing up to `max_validators`
     pub fn size_with_max_validators(max_validators: usize) -> usize {
         1 + 4 + get_packed_len::<ValidatorStakeInfo>() * max_validators
@@ -186,9 +205,14 @@ impl ValidatorStakeList {
             .find(|x| x.validator_account == *validator)
     }
 
-    /// Check if validator stake list is initialized
-    pub fn is_initialized(&self) -> bool {
-        self.version > 0
+    /// Check if validator stake list is actually initialized as a validator stake list
+    pub fn is_valid(&self) -> bool {
+        self.account_type == AccountType::ValidatorStakeListV1
+    }
+
+    /// Check if the validator stake list is uninitialized
+    pub fn is_uninitialized(&self) -> bool {
+        self.account_type == AccountType::Uninitialized
     }
 }
 
@@ -202,7 +226,7 @@ mod test {
         let size = ValidatorStakeList::size_with_max_validators(max_validators);
         // Not initialized
         let stake_list = ValidatorStakeList {
-            version: 0,
+            account_type: AccountType::Uninitialized,
             validators: vec![],
         };
         let mut byte_vec = vec![0u8; size];
@@ -214,7 +238,7 @@ mod test {
 
         // Empty
         let stake_list = ValidatorStakeList {
-            version: ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
+            account_type: AccountType::ValidatorStakeListV1,
             validators: vec![],
         };
         let mut byte_vec = vec![0u8; size];
@@ -226,7 +250,7 @@ mod test {
 
         // With several accounts
         let stake_list = ValidatorStakeList {
-            version: ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
+            account_type: AccountType::ValidatorStakeListV1,
             validators: vec![
                 ValidatorStakeInfo {
                     validator_account: Pubkey::new_from_array([1; 32]),
