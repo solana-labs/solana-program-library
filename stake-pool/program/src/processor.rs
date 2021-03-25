@@ -403,23 +403,37 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         // Stake pool account
         let stake_pool_info = next_account_info(account_info_iter)?;
+        // Owner account
+        let owner_info = next_account_info(account_info_iter)?;
         // Account creation funder account
         let funder_info = next_account_info(account_info_iter)?;
         // Stake account to be created
         let stake_account_info = next_account_info(account_info_iter)?;
         // Validator this stake account will vote for
         let validator_info = next_account_info(account_info_iter)?;
-        // Stake authority for the new stake account
-        let stake_authority_info = next_account_info(account_info_iter)?;
-        // Withdraw authority for the new stake account
-        let withdraw_authority_info = next_account_info(account_info_iter)?;
         // Rent sysvar account
         let rent_info = next_account_info(account_info_iter)?;
         let rent = &Rent::from_account_info(rent_info)?;
+        // Clock sysvar account
+        let clock_info = next_account_info(account_info_iter)?;
+        // Stake history sysvar account
+        let stake_history_info = next_account_info(account_info_iter)?;
+        // Stake config sysvar account
+        let stake_config_info = next_account_info(account_info_iter)?;
         // System program id
         let system_program_info = next_account_info(account_info_iter)?;
         // Staking program id
         let stake_program_info = next_account_info(account_info_iter)?;
+
+        // Get stake pool stake (and check if it is initialized)
+        if stake_pool_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+        stake_pool.check_owner(owner_info)?;
 
         // Check program ids
         if *system_program_info.key != solana_program::system_program::id() {
@@ -466,8 +480,8 @@ impl Processor {
             &stake::initialize(
                 &stake_account_info.key,
                 &stake::Authorized {
-                    staker: *stake_authority_info.key,
-                    withdrawer: *withdraw_authority_info.key,
+                    staker: *owner_info.key,
+                    withdrawer: *owner_info.key,
                 },
                 &stake::Lockup::default(),
             ),
@@ -475,6 +489,22 @@ impl Processor {
                 stake_account_info.clone(),
                 rent_info.clone(),
                 stake_program_info.clone(),
+            ],
+        )?;
+
+        invoke(
+            &stake::delegate_stake(
+                &stake_account_info.key,
+                &owner_info.key,
+                &validator_info.key,
+            ),
+            &[
+                stake_account_info.clone(),
+                validator_info.clone(),
+                clock_info.clone(),
+                stake_history_info.clone(),
+                stake_config_info.clone(),
+                owner_info.clone(),
             ],
         )
     }
