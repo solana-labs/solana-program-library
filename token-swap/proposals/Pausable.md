@@ -1,18 +1,25 @@
 # Pausable & Ownable 
 
-Implement shared library for SPL that can be used to extend contracts with ability to pause, resume and check for the owner before instructions are executed.
+Implement two programs for SPL that can be used to extend contracts with ability to pause, resume and check for the owner before instructions are executed.
 
-PR should include:
-* Implementation of Ownable library with:
-    - exposed current owner of the program
-    - ability to transfer/renounce ownership
-    - helper function to verify if call is issued by the owner
-* Implementation of Pausable library with operations
+An Owner program with the instructions you've listed:
+
+    - set owner
+    - renounce ownership
+    - check owner
+
+Additionally:
+* an Owner struct should contain Option<Pubkey>
+* library code should generate a pda, probably given (struct_key, program_id)
+
+Given an Owner program, compose it with the Pause program.
+
     - pause
     - resume
-* Only owner can pause/resume normal operations
-* Example usage how other programs can interact with library
-* Unit tests 
+
+Note: only owner can pause/resume normal operations
+
+For both programs provide example usage from other programs via CPI and unit tests.
 
 Links: 
 * [Pausable solidity contract](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/24a0bc23cfe3fbc76f8f2510b78af1e948ae6651/contracts/security/Pausable.sol)
