@@ -299,7 +299,7 @@ mod test {
 
     proptest! {
         #[test]
-        fn stake_list_size_calculation(test_amount in 0..=100_000 as u32) {
+        fn stake_list_size_calculation(test_amount in 0..=100_000_u32) {
             let validators = ValidatorStakeList::new_with_max_validators(test_amount);
             let size = get_instance_packed_len(&validators).unwrap();
             assert_eq!(ValidatorStakeList::calculate_max_validators(size), test_amount as usize);
