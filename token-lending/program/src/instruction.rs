@@ -27,10 +27,6 @@ pub enum LendingInstruction {
     InitLendingMarket {
         /// Owner authority which can add new reserves
         owner: Pubkey,
-        /// The target ratio of an obligation's borrows to deposits as a percent
-        loan_to_value_ratio: u8,
-        /// The percent at which an obligation is considered unhealthy
-        liquidation_threshold: u8,
     },
 
     // 1
@@ -283,14 +279,8 @@ impl LendingInstruction {
             .ok_or(LendingError::InstructionUnpackError)?;
         Ok(match tag {
             0 => {
-                let (owner, rest) = Self::unpack_pubkey(rest)?;
-                let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
-                let (liquidation_threshold, _rest) = Self::unpack_u8(rest)?;
-                Self::InitLendingMarket {
-                    owner,
-                    loan_to_value_ratio,
-                    liquidation_threshold,
-                }
+                let (owner, _rest) = Self::unpack_pubkey(rest)?;
+                Self::InitLendingMarket { owner }
             }
             1 => {
                 let (new_owner, _rest) = Self::unpack_pubkey(rest)?;
@@ -299,22 +289,24 @@ impl LendingInstruction {
             2 => {
                 let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
                 let (optimal_utilization_rate, rest) = Self::unpack_u8(rest)?;
-                let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
                 let (min_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
-                let (collateral_enabled, rest) = Self::unpack_bool(rest)?;
                 let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
+                let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
+                let (liquidation_threshold, rest) = Self::unpack_u8(rest)?;
+                let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
                 let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
                 let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
                 Self::InitReserve {
                     liquidity_amount,
                     config: ReserveConfig {
                         optimal_utilization_rate,
-                        liquidation_bonus,
                         min_borrow_rate,
                         optimal_borrow_rate,
                         max_borrow_rate,
-                        collateral_enabled,
+                        loan_to_value_ratio,
+                        liquidation_threshold,
+                        liquidation_bonus,
                         fees: ReserveFees {
                             borrow_fee_wad,
                             host_fee_percentage,
@@ -418,15 +410,9 @@ impl LendingInstruction {
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match *self {
-            Self::InitLendingMarket {
-                owner,
-                loan_to_value_ratio,
-                liquidation_threshold,
-            } => {
+            Self::InitLendingMarket { owner } => {
                 buf.push(0);
                 buf.extend_from_slice(owner.as_ref());
-                buf.extend_from_slice(&loan_to_value_ratio.to_le_bytes());
-                buf.extend_from_slice(&liquidation_threshold.to_le_bytes());
             }
             Self::SetLendingMarketOwner { new_owner } => {
                 buf.push(1);
@@ -437,11 +423,12 @@ impl LendingInstruction {
                 config:
                     ReserveConfig {
                         optimal_utilization_rate,
-                        liquidation_bonus,
                         min_borrow_rate,
                         optimal_borrow_rate,
                         max_borrow_rate,
-                        collateral_enabled,
+                        loan_to_value_ratio,
+                        liquidation_threshold,
+                        liquidation_bonus,
                         fees:
                             ReserveFees {
                                 borrow_fee_wad,
@@ -452,11 +439,12 @@ impl LendingInstruction {
                 buf.push(2);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
                 buf.extend_from_slice(&optimal_utilization_rate.to_le_bytes());
-                buf.extend_from_slice(&liquidation_bonus.to_le_bytes());
                 buf.extend_from_slice(&min_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&optimal_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&max_borrow_rate.to_le_bytes());
-                buf.extend_from_slice(&u8::from(collateral_enabled).to_le_bytes());
+                buf.extend_from_slice(&loan_to_value_ratio.to_le_bytes());
+                buf.extend_from_slice(&liquidation_threshold.to_le_bytes());
+                buf.extend_from_slice(&liquidation_bonus.to_le_bytes());
                 buf.extend_from_slice(&borrow_fee_wad.to_le_bytes());
                 buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
             }
@@ -505,8 +493,6 @@ impl LendingInstruction {
 /// Creates an 'InitLendingMarket' instruction.
 pub fn init_lending_market(
     program_id: Pubkey,
-    loan_to_value_ratio: u8,
-    liquidation_threshold: u8,
     lending_market_pubkey: Pubkey,
     lending_market_owner: Pubkey,
     quote_token_mint: Pubkey,
@@ -521,8 +507,6 @@ pub fn init_lending_market(
         ],
         data: LendingInstruction::InitLendingMarket {
             owner: lending_market_owner,
-            loan_to_value_ratio,
-            liquidation_threshold,
         }
         .pack(),
     }

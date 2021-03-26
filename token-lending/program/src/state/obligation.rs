@@ -112,12 +112,14 @@ impl Obligation {
         Rate::try_from(self.borrowed_value()?.try_div(deposited_value)?)
     }
 
+    // @FIXME: LTV
     /// Calculate the maximum collateral value that can be withdrawn for a given loan to value ratio
     pub fn max_withdraw_value(&self, loan_to_value_ratio: Rate) -> Result<Decimal, ProgramError> {
         let min_deposited_value = self.borrowed_value()?.try_div(loan_to_value_ratio)?;
         self.deposited_value()?.try_sub(min_deposited_value)
     }
 
+    // @FIXME: LTV
     /// Calculate the maximum liquidity value that can be borrowed for a given loan to value ratio
     pub fn max_borrow_value(&self, loan_to_value_ratio: Rate) -> Result<Decimal, ProgramError> {
         self.deposited_value()?

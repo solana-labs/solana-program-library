@@ -35,19 +35,9 @@ pub fn process_instruction(
 ) -> ProgramResult {
     let instruction = LendingInstruction::unpack(input)?;
     match instruction {
-        LendingInstruction::InitLendingMarket {
-            owner,
-            loan_to_value_ratio,
-            liquidation_threshold,
-        } => {
+        LendingInstruction::InitLendingMarket { owner } => {
             msg!("Instruction: Init Lending Market");
-            process_init_lending_market(
-                program_id,
-                owner,
-                loan_to_value_ratio,
-                liquidation_threshold,
-                accounts,
-            )
+            process_init_lending_market(program_id, owner, accounts)
         }
         LendingInstruction::SetLendingMarketOwner { new_owner } => {
             msg!("Instruction: Set Lending Market Owner");
@@ -106,19 +96,8 @@ pub fn process_instruction(
 fn process_init_lending_market(
     program_id: &Pubkey,
     owner: Pubkey,
-    loan_to_value_ratio: u8,
-    liquidation_threshold: u8,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
-    if loan_to_value_ratio >= 100 {
-        msg!("Loan to value ratio must be in range [0, 100)");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if liquidation_threshold <= loan_to_value_ratio || liquidation_threshold > 100 {
-        msg!("Liquidation threshold must be in range (LTV, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-
     let account_info_iter = &mut accounts.iter();
     let lending_market_info = next_account_info(account_info_iter)?;
     let quote_token_mint_info = next_account_info(account_info_iter)?;
@@ -138,8 +117,6 @@ fn process_init_lending_market(
         owner,
         quote_token_mint: *quote_token_mint_info.key,
         token_program_id: *token_program_id.key,
-        loan_to_value_ratio,
-        liquidation_threshold,
     });
     LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
 
@@ -187,16 +164,26 @@ fn process_init_reserve(
         msg!("Optimal utilization rate must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.liquidation_bonus > 100 {
-        msg!("Liquidation bonus must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
     if config.optimal_borrow_rate < config.min_borrow_rate {
         msg!("Optimal borrow rate must be >= min borrow rate");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.optimal_borrow_rate > config.max_borrow_rate {
         msg!("Optimal borrow rate must be <= max borrow rate");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.loan_to_value_ratio >= 100 {
+        msg!("Loan to value ratio must be in range [0, 100)");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.liquidation_threshold <= config.loan_to_value_ratio
+        || config.liquidation_threshold > 100
+    {
+        msg!("Liquidation threshold must be in range (LTV, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.liquidation_bonus > 100 {
+        msg!("Liquidation bonus must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.fees.borrow_fee_wad >= WAD {
@@ -742,7 +729,7 @@ fn process_deposit_obligation_collateral(
     if deposit_reserve.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ReserveStale.into());
     }
-    if !deposit_reserve.config.collateral_enabled {
+    if deposit_reserve.config.loan_to_value_ratio == 0 {
         return Err(LendingError::ReserveCollateralDisabled.into());
     }
 
@@ -899,7 +886,9 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let loan_to_value_ratio = Rate::from_percent(lending_market.loan_to_value_ratio);
+    // @FIXME: LTV
+    let loan_to_value_ratio = Rate::from_percent(50);
+    // let loan_to_value_ratio = Rate::from_percent(lending_market.loan_to_value_ratio);
     let loan_to_value = obligation.loan_to_value()?;
     if loan_to_value >= loan_to_value_ratio {
         return Err(LendingError::ObligationLoanToValueLimit.into());
@@ -1041,7 +1030,9 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let loan_to_value_ratio = Rate::from_percent(lending_market.loan_to_value_ratio);
+    // @FIXME: LTV
+    let loan_to_value_ratio = Rate::from_percent(50);
+    // let loan_to_value_ratio = Rate::from_percent(lending_market.loan_to_value_ratio);
     let loan_to_value = obligation.loan_to_value()?;
     if loan_to_value >= loan_to_value_ratio {
         return Err(LendingError::ObligationLoanToValueLimit.into());
@@ -1327,7 +1318,9 @@ fn process_liquidate_obligation(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let liquidation_threshold = Rate::from_percent(lending_market.liquidation_threshold);
+    // @FIXME: LTV
+    let liquidation_threshold = Rate::from_percent(55);
+    // let liquidation_threshold = Rate::from_percent(lending_market.liquidation_threshold);
     let loan_to_value = obligation.loan_to_value()?;
     if loan_to_value < liquidation_threshold {
         return Err(LendingError::ObligationHealthy.into());

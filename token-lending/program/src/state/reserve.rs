@@ -544,16 +544,18 @@ impl From<CollateralExchangeRate> for Rate {
 pub struct ReserveConfig {
     /// Optimal utilization rate as a percent
     pub optimal_utilization_rate: u8,
-    /// The percent bonus the liquidator gets when repaying liquidity to an unhealthy obligation
-    pub liquidation_bonus: u8,
     /// Min borrow APY
     pub min_borrow_rate: u8,
     /// Optimal (utilization) borrow APY
     pub optimal_borrow_rate: u8,
     /// Max borrow APY
     pub max_borrow_rate: u8,
-    /// Collateral is enabled for borrows
-    pub collateral_enabled: bool,
+    /// Ratio of the value of borrows to deposits as a percent; 0 if use as collateral is disabled
+    pub loan_to_value_ratio: u8,
+    /// The percent at which an obligation is considered unhealthy
+    pub liquidation_threshold: u8,
+    /// The percent bonus the liquidator gets when repaying liquidity to an unhealthy obligation
+    pub liquidation_bonus: u8,
     /// Program owner fees assessed, separate from gains due to interest accrual
     pub fees: ReserveFees,
 }
@@ -637,7 +639,7 @@ impl IsInitialized for Reserve {
 }
 
 // @TODO: adjust padding. what's a reasonable number?
-const RESERVE_LEN: usize = 610; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + (4 + 32) + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 1 + 300
+const RESERVE_LEN: usize = 567; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + (4 + 32) + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 1 + 256
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
@@ -661,14 +663,15 @@ impl Pack for Reserve {
             collateral_supply,
             collateral_mint,
             collateral_mint_supply,
-            optimal_utilization_rate,
-            liquidation_bonus,
-            min_borrow_rate,
-            optimal_borrow_rate,
-            max_borrow_rate,
-            collateral_enabled,
-            borrow_fee_wad,
-            host_fee_percentage,
+            config_optimal_utilization_rate,
+            config_min_borrow_rate,
+            config_optimal_borrow_rate,
+            config_max_borrow_rate,
+            config_loan_to_value_ratio,
+            config_liquidation_threshold,
+            config_liquidation_bonus,
+            config_fees_borrow_fee_wad,
+            config_fees_host_fee_percentage,
             _padding,
         ) = mut_array_refs![
             output,
@@ -694,9 +697,10 @@ impl Pack for Reserve {
             1,
             1,
             1,
+            1,
             8,
             1,
-            300
+            256
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update.slot.to_le_bytes();
@@ -726,14 +730,15 @@ impl Pack for Reserve {
         *collateral_mint_supply = self.collateral.mint_total_supply.to_le_bytes();
 
         // config
-        *optimal_utilization_rate = self.config.optimal_utilization_rate.to_le_bytes();
-        *liquidation_bonus = self.config.liquidation_bonus.to_le_bytes();
-        *min_borrow_rate = self.config.min_borrow_rate.to_le_bytes();
-        *optimal_borrow_rate = self.config.optimal_borrow_rate.to_le_bytes();
-        *max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();
-        pack_bool(self.config.collateral_enabled, collateral_enabled);
-        *borrow_fee_wad = self.config.fees.borrow_fee_wad.to_le_bytes();
-        *host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
+        *config_optimal_utilization_rate = self.config.optimal_utilization_rate.to_le_bytes();
+        *config_min_borrow_rate = self.config.min_borrow_rate.to_le_bytes();
+        *config_optimal_borrow_rate = self.config.optimal_borrow_rate.to_le_bytes();
+        *config_max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();
+        *config_loan_to_value_ratio = self.config.loan_to_value_ratio.to_le_bytes();
+        *config_liquidation_threshold = self.config.liquidation_threshold.to_le_bytes();
+        *config_liquidation_bonus = self.config.liquidation_bonus.to_le_bytes();
+        *config_fees_borrow_fee_wad = self.config.fees.borrow_fee_wad.to_le_bytes();
+        *config_fees_host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
     }
 
     /// Unpacks a byte buffer into a [ReserveInfo](struct.ReserveInfo.html).
@@ -757,14 +762,15 @@ impl Pack for Reserve {
             collateral_supply,
             collateral_mint,
             collateral_mint_supply,
-            optimal_utilization_rate,
-            liquidation_bonus,
-            min_borrow_rate,
-            optimal_borrow_rate,
-            max_borrow_rate,
-            collateral_enabled,
-            borrow_fee_wad,
-            host_fee_percentage,
+            config_optimal_utilization_rate,
+            config_min_borrow_rate,
+            config_optimal_borrow_rate,
+            config_max_borrow_rate,
+            config_loan_to_value_ratio,
+            config_liquidation_threshold,
+            config_liquidation_bonus,
+            config_fees_borrow_fee_wad,
+            config_fees_host_fee_percentage,
             __padding,
         ) = array_refs![
             input,
@@ -790,9 +796,10 @@ impl Pack for Reserve {
             1,
             1,
             1,
+            1,
             8,
             1,
-            300
+            256
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),
@@ -818,15 +825,16 @@ impl Pack for Reserve {
                 supply_pubkey: Pubkey::new_from_array(*collateral_supply),
             },
             config: ReserveConfig {
-                optimal_utilization_rate: u8::from_le_bytes(*optimal_utilization_rate),
-                liquidation_bonus: u8::from_le_bytes(*liquidation_bonus),
-                min_borrow_rate: u8::from_le_bytes(*min_borrow_rate),
-                optimal_borrow_rate: u8::from_le_bytes(*optimal_borrow_rate),
-                max_borrow_rate: u8::from_le_bytes(*max_borrow_rate),
-                collateral_enabled: unpack_bool(collateral_enabled)?,
+                optimal_utilization_rate: u8::from_le_bytes(*config_optimal_utilization_rate),
+                min_borrow_rate: u8::from_le_bytes(*config_min_borrow_rate),
+                optimal_borrow_rate: u8::from_le_bytes(*config_optimal_borrow_rate),
+                max_borrow_rate: u8::from_le_bytes(*config_max_borrow_rate),
+                loan_to_value_ratio: u8::from_le_bytes(*config_loan_to_value_ratio),
+                liquidation_threshold: u8::from_le_bytes(*config_liquidation_threshold),
+                liquidation_bonus: u8::from_le_bytes(*config_liquidation_bonus),
                 fees: ReserveFees {
-                    borrow_fee_wad: u64::from_le_bytes(*borrow_fee_wad),
-                    host_fee_percentage: u8::from_le_bytes(*host_fee_percentage),
+                    borrow_fee_wad: u64::from_le_bytes(*config_fees_borrow_fee_wad),
+                    host_fee_percentage: u8::from_le_bytes(*config_fees_host_fee_percentage),
                 },
             },
         })
