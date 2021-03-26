@@ -40,6 +40,9 @@ pub enum StakePoolInstruction {
         /// Deposit fee assessed
         #[allow(dead_code)] // but it's not
         fee: Fee,
+        /// Maximum expected number of validators
+        #[allow(dead_code)] // but it's not
+        max_validators: u32,
     },
 
     ///   Creates new program account for accumulating stakes for a particular validator
@@ -154,8 +157,12 @@ pub fn initialize(
     owner_pool_account: &Pubkey,
     token_program_id: &Pubkey,
     fee: Fee,
+    max_validators: u32,
 ) -> Result<Instruction, ProgramError> {
-    let init_data = StakePoolInstruction::Initialize { fee };
+    let init_data = StakePoolInstruction::Initialize {
+        fee,
+        max_validators,
+    };
     let data = init_data.try_to_vec()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, true),

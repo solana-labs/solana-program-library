@@ -137,6 +137,7 @@ async fn test_remove_validator_stake_account() {
         validator_stake_list,
         state::ValidatorStakeList {
             account_type: state::AccountType::ValidatorStakeList,
+            max_validators: stake_pool_accounts.max_validators,
             validators: vec![]
         }
     );

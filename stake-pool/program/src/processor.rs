@@ -276,6 +276,7 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         fee: Fee,
+        max_validators: u32,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -310,12 +311,20 @@ impl Processor {
         if !validator_stake_list.is_uninitialized() {
             return Err(StakePoolError::AlreadyInUse.into());
         }
+        // Check validator list size
+        let data_length = validator_stake_list_info.data_len();
+        let expected_max_validators = ValidatorStakeList::calculate_max_validators(data_length);
+        if expected_max_validators != max_validators as usize {
+            return Err(StakePoolError::UnexpectedValidatorListAccountSize.into());
+        }
         validator_stake_list.account_type = AccountType::ValidatorStakeList;
         validator_stake_list.validators.clear();
+        validator_stake_list.max_validators = max_validators;
 
         // Check if stake pool account is rent-exempt
         if !rent.is_exempt(stake_pool_info.lamports(), stake_pool_info.data_len()) {
-            return Err(StakePoolError::AccountNotRentExempt.into());
+            msg!("Stake pool not rent-exempt");
+            return Err(ProgramError::AccountNotRentExempt);
         }
 
         // Check if validator stake list account is rent-exempt
@@ -323,7 +332,8 @@ impl Processor {
             validator_stake_list_info.lamports(),
             validator_stake_list_info.data_len(),
         ) {
-            return Err(StakePoolError::AccountNotRentExempt.into());
+            msg!("Validator stake list not rent-exempt");
+            return Err(ProgramError::AccountNotRentExempt);
         }
 
         // Numerator should be smaller than or equal to denominator (fee <= 1)
@@ -544,6 +554,9 @@ impl Processor {
         )?;
         if !validator_stake_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
+        }
+        if validator_stake_list.max_validators as usize == validator_stake_list.validators.len() {
+            return Err(ProgramError::AccountDataTooSmall);
         }
 
         let validator_account =
@@ -1192,9 +1205,12 @@ impl Processor {
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = StakePoolInstruction::try_from_slice(input)?;
         match instruction {
-            StakePoolInstruction::Initialize { fee } => {
+            StakePoolInstruction::Initialize {
+                fee,
+                max_validators,
+            } => {
                 msg!("Instruction: Init");
-                Self::process_initialize(program_id, accounts, fee)
+                Self::process_initialize(program_id, accounts, fee, max_validators)
             }
             StakePoolInstruction::CreateValidatorStakeAccount => {
                 msg!("Instruction: CreateValidatorStakeAccount");
@@ -1260,7 +1276,7 @@ impl PrintProgramError for StakePoolError {
                 msg!("Error: Validator stake account is not found in the list storage")
             }
             StakePoolError::WrongMintingAuthority => msg!("Error: Wrong minting authority set for mint pool account"),
-            StakePoolError::AccountNotRentExempt => msg!("Error: Account is not rent-exempt"),
+            StakePoolError::UnexpectedValidatorListAccountSize=> msg!("Error: The size of the given validator stake list does match the expected amount"),
         }
     }
 }

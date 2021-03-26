@@ -32,7 +32,7 @@ use {
         transaction::Transaction,
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked,
+        borsh::{get_instance_packed_len, try_from_slice_unchecked},
         instruction::{
             add_validator_stake_account, create_validator_stake_account, deposit,
             initialize as initialize_pool, remove_validator_stake_account, set_owner,
@@ -115,8 +115,7 @@ fn get_authority_accounts(config: &Config, authority: &Pubkey) -> Vec<(Pubkey, A
         .unwrap()
 }
 
-fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u64) -> CommandResult {
-    let max_validators = max_validators as usize;
+fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> CommandResult {
     let mint_account = Keypair::new();
     println!("Creating mint {}", mint_account.pubkey());
 
@@ -140,9 +139,11 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u64) -> Co
     let pool_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(get_packed_len::<StakePool>())?;
-    let validator_stake_list_balance = config.rpc_client.get_minimum_balance_for_rent_exemption(
-        ValidatorStakeList::size_with_max_validators(max_validators),
-    )?;
+    let empty_validator_list = ValidatorStakeList::new_with_max_validators(max_validators);
+    let validator_stake_list_size = get_instance_packed_len(&empty_validator_list)?;
+    let validator_stake_list_balance = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(validator_stake_list_size)?;
     let total_rent_free_balances = mint_account_balance
         + pool_fee_account_balance
         + pool_account_balance
@@ -192,7 +193,7 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u64) -> Co
                 &config.fee_payer.pubkey(),
                 &validator_stake_list.pubkey(),
                 validator_stake_list_balance,
-                ValidatorStakeList::size_with_max_validators(max_validators) as u64,
+                validator_stake_list_size as u64,
                 &spl_stake_pool::id(),
             ),
             // Initialize pool token mint account
@@ -220,6 +221,7 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u64) -> Co
                 &pool_fee_account.pubkey(),
                 &spl_token::id(),
                 fee,
+                max_validators,
             )?,
         ],
         Some(&config.fee_payer.pubkey()),
@@ -1099,7 +1101,7 @@ fn main() {
                 Arg::with_name("max_validators")
                     .long("max-validators")
                     .short("m")
-                    .validator(is_parsable::<u64>)
+                    .validator(is_parsable::<u32>)
                     .value_name("NUMBER")
                     .takes_value(true)
                     .required(true)
@@ -1361,7 +1363,7 @@ fn main() {
         ("create-pool", Some(arg_matches)) => {
             let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
-            let max_validators = value_t_or_exit!(arg_matches, "max_validators", u64);
+            let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             command_create_pool(
                 &config,
                 PoolFee {

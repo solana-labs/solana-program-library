@@ -3860,6 +3860,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "num_enum",
+ "proptest",
  "serde",
  "serde_derive",
  "solana-program",

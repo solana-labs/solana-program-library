@@ -3,10 +3,7 @@
 use {
     crate::{error::StakePoolError, instruction::Fee, processor::Processor},
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    solana_program::{
-        account_info::AccountInfo, borsh::get_packed_len, program_error::ProgramError,
-        pubkey::Pubkey,
-    },
+    solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     spl_math::checked_ceil_div::CheckedCeilDiv,
     std::convert::TryFrom,
 };
@@ -161,6 +158,10 @@ impl StakePool {
 pub struct ValidatorStakeList {
     /// Account type, must be ValidatorStakeList currently
     pub account_type: AccountType,
+
+    /// Maximum allowable number of validators
+    pub max_validators: u32,
+
     /// List of all validator stake accounts and their info
     pub validators: Vec<ValidatorStakeInfo>,
 }
@@ -180,9 +181,18 @@ pub struct ValidatorStakeInfo {
 }
 
 impl ValidatorStakeList {
-    /// Get the Borsh size for a list containing up to `max_validators`
-    pub fn size_with_max_validators(max_validators: usize) -> usize {
-        1 + 4 + get_packed_len::<ValidatorStakeInfo>() * max_validators
+    /// Create an empty instance containing space for `max_validators`
+    pub fn new_with_max_validators(max_validators: u32) -> Self {
+        Self {
+            account_type: AccountType::ValidatorStakeList,
+            max_validators,
+            validators: vec![ValidatorStakeInfo::default(); max_validators as usize],
+        }
+    }
+
+    /// Calculate the number of validator entries that fit in the provided length
+    pub fn calculate_max_validators(buffer_length: usize) -> usize {
+        (buffer_length - 1 - 4 - 4) / 48
     }
 
     /// Check if contains validator with particular pubkey
@@ -218,15 +228,23 @@ impl ValidatorStakeList {
 
 #[cfg(test)]
 mod test {
-    use {super::*, crate::borsh::try_from_slice_unchecked};
+    use {
+        super::*,
+        crate::borsh::{get_instance_packed_len, try_from_slice_unchecked},
+        proptest::prelude::*,
+        solana_program::borsh::get_packed_len,
+    };
 
     #[test]
     fn test_state_packing() {
         let max_validators = 10_000;
-        let size = ValidatorStakeList::size_with_max_validators(max_validators);
+        let size =
+            get_instance_packed_len(&ValidatorStakeList::new_with_max_validators(max_validators))
+                .unwrap();
         // Not initialized
         let stake_list = ValidatorStakeList {
             account_type: AccountType::Uninitialized,
+            max_validators: 0,
             validators: vec![],
         };
         let mut byte_vec = vec![0u8; size];
@@ -239,6 +257,7 @@ mod test {
         // Empty
         let stake_list = ValidatorStakeList {
             account_type: AccountType::ValidatorStakeList,
+            max_validators: 0,
             validators: vec![],
         };
         let mut byte_vec = vec![0u8; size];
@@ -251,6 +270,7 @@ mod test {
         // With several accounts
         let stake_list = ValidatorStakeList {
             account_type: AccountType::ValidatorStakeList,
+            max_validators,
             validators: vec![
                 ValidatorStakeInfo {
                     validator_account: Pubkey::new_from_array([1; 32]),
@@ -275,5 +295,17 @@ mod test {
         let stake_list_unpacked =
             try_from_slice_unchecked::<ValidatorStakeList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
+    }
+
+    proptest! {
+        #[test]
+        fn stake_list_size_calculation(test_amount in 0..=100_000 as u32) {
+            let validators = ValidatorStakeList::new_with_max_validators(test_amount);
+            let size = get_instance_packed_len(&validators).unwrap();
+            assert_eq!(ValidatorStakeList::calculate_max_validators(size), test_amount as usize);
+            assert_eq!(ValidatorStakeList::calculate_max_validators(size + 1), test_amount as usize);
+            assert_eq!(ValidatorStakeList::calculate_max_validators(size + get_packed_len::<ValidatorStakeInfo>()), (test_amount + 1)as usize);
+            assert_eq!(ValidatorStakeList::calculate_max_validators(size - 1), (test_amount - 1) as usize);
+        }
     }
 }
