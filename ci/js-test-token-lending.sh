@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
-set -ex
+set -e
 cd "$(dirname "$0")/.."
 source ./ci/solana-version.sh install
 
-cd ../token-lending/js
+set -x
+cd token-lending/js
 npm install
 npm run lint
 npm run build
