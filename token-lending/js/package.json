@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@solana/spl-token": "0.0.13",
-    "@solana/web3.js": "^0.94.2",
+    "@solana/web3.js": "^1.1.1",
     "bn.js": "^5.2.0",
     "mkdirp": "^1.0.4"
   },
@@ -51,7 +51,7 @@
     "@types/eslint-plugin-prettier": "^3.1.0",
     "@types/mkdirp": "^1.0.1",
     "@types/mz": "^2.7.3",
-    "@types/node": "^14.14.34",
+    "@types/node": "^14.14.36",
     "@types/prettier": "^2.2.3",
     "@types/rollup-plugin-json": "^3.0.2",
     "@typescript-eslint/eslint-plugin": "^4.17.0",
