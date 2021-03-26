@@ -5,6 +5,7 @@ members = [
   "examples/rust/cross-program-invocation",
   "examples/rust/custom-heap",
   "examples/rust/logging",
+  "examples/rust/packed-len",
   "examples/rust/sysvar",
   "examples/rust/transfer-lamports",
   "feature-proposal/program",
