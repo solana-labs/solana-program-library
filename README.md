@@ -22,6 +22,7 @@ Full documentation is available at https://spl.solana.com
 
 1. Install the latest Rust stable from https://rustup.rs/
 2. Install Solana v1.4.7 or later from https://docs.solana.com/cli/install-solana-cli-tools
+3. Install the `libudev` development package for your distribution (`libudev-dev` on Debian-derived distros, `libudev-devel` on Redhat-derived).
 
 ### Build
 
