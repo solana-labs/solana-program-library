@@ -205,7 +205,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: programs
-          path: target/bpfel-unknown-unknown/release
+          path: target/deploy
       - run: ./ci/js-test-token-lending.sh
 
   fuzz:
