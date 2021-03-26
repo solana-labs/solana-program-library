@@ -548,6 +548,74 @@ async fn test_add_validator_stake_account_with_wrong_stake_program_id() {
 }
 
 #[tokio::test]
+async fn test_add_too_many_validator_stake_accounts() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let mut stake_pool_accounts = StakePoolAccounts::new();
+    stake_pool_accounts.max_validators = 1;
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .await
+        .unwrap();
+
+    let user = Keypair::new();
+
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
+        &stake_pool_accounts.deposit_authority,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
+    user_stake
+        .create_and_delegate(&mut banks_client, &payer, &recent_blockhash)
+        .await;
+
+    // make pool token account
+    let user_pool_account = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_pool_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &user.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    let error = stake_pool_accounts
+        .add_validator_stake_account(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake.stake_account,
+            &user_pool_account.pubkey(),
+        )
+        .await;
+    assert!(error.is_none());
+
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
+        &stake_pool_accounts.deposit_authority,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
+    user_stake
+        .create_and_delegate(&mut banks_client, &payer, &recent_blockhash)
+        .await;
+    let error = stake_pool_accounts
+        .add_validator_stake_account(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake.stake_account,
+            &user_pool_account.pubkey(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::AccountDataTooSmall),
+    );
+}
+
+#[tokio::test]
 async fn test_add_validator_stake_account_to_unupdated_stake_pool() {} // TODO
 
 #[tokio::test]

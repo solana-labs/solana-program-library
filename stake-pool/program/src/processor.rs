@@ -314,7 +314,7 @@ impl Processor {
         // Check validator list size
         let data_length = validator_stake_list_info.data_len();
         let expected_max_validators = ValidatorStakeList::calculate_max_validators(data_length);
-        if expected_max_validators != max_validators as usize {
+        if expected_max_validators != max_validators as usize || max_validators == 0 {
             return Err(StakePoolError::UnexpectedValidatorListAccountSize.into());
         }
         validator_stake_list.account_type = AccountType::ValidatorStakeList;
