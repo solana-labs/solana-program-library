@@ -14,3 +14,6 @@ pub mod timelock_program;
 pub mod timelock_set;
 /// Timelock state
 pub mod timelock_state;
+
+/// Governance Voting Record
+pub mod governance_voting_record;
