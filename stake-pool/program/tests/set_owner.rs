@@ -2,16 +2,20 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program::hash::Hash;
-use solana_program::instruction::AccountMeta;
-use solana_program::instruction::Instruction;
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError, signature::Keypair, signature::Signer, transaction::Transaction,
-    transaction::TransactionError, transport::TransportError,
+use {
+    borsh::{BorshDeserialize, BorshSerialize},
+    helpers::*,
+    solana_program::{
+        hash::Hash,
+        instruction::{AccountMeta, Instruction},
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError, signature::Keypair, signature::Signer,
+        transaction::Transaction, transaction::TransactionError, transport::TransportError,
+    },
+    spl_stake_pool::{error, id, instruction, state},
 };
-use spl_stake_pool::*;
 
 async fn setup() -> (
     BanksClient,
@@ -71,7 +75,7 @@ async fn test_set_owner() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::StakePool::deserialize(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = state::StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(stake_pool.owner, new_owner.pubkey());
 }
@@ -116,8 +120,9 @@ async fn test_set_owner_without_signature() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_pool_fee, new_owner) =
         setup().await;
 
-    let args = instruction::StakePoolInstruction::SetOwner;
-    let data = args.serialize().unwrap();
+    let data = instruction::StakePoolInstruction::SetOwner
+        .try_to_vec()
+        .unwrap();
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.owner.pubkey(), false),

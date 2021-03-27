@@ -1,52 +1,58 @@
 #[macro_use]
 extern crate lazy_static;
-use bincode::deserialize;
-use clap::{
-    crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
-    ArgGroup, SubCommand,
-};
-use solana_account_decoder::UiAccountEncoding;
-use solana_clap_utils::{
-    input_parsers::pubkey_of,
-    input_validators::{is_amount, is_keypair, is_parsable, is_pubkey, is_url},
-    keypair::signer_from_path,
-};
-use solana_client::{
-    rpc_client::RpcClient,
-    rpc_config::RpcAccountInfoConfig,
-    rpc_config::RpcProgramAccountsConfig,
-    rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
-};
-use solana_program::{instruction::Instruction, program_pack::Pack, pubkey::Pubkey};
-use solana_sdk::{
-    account::Account,
-    commitment_config::CommitmentConfig,
-    native_token::{self, Sol},
-    signature::{Keypair, Signer},
-    system_instruction,
-    transaction::Transaction,
-};
-use spl_stake_pool::{
-    instruction::{
-        add_validator_stake_account, create_validator_stake_account, deposit,
-        initialize as initialize_pool, remove_validator_stake_account, set_owner,
-        update_list_balance, update_pool_balance, withdraw, Fee as PoolFee,
-        InitArgs as PoolInitArgs,
+
+use {
+    bincode::deserialize,
+    borsh::BorshDeserialize,
+    clap::{
+        crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings,
+        Arg, ArgGroup, SubCommand,
     },
-    processor::Processor as PoolProcessor,
-    stake::authorize as authorize_stake,
-    stake::id as stake_program_id,
-    stake::StakeAuthorize,
-    stake::StakeState,
-    state::StakePool,
-    state::ValidatorStakeList,
+    solana_account_decoder::UiAccountEncoding,
+    solana_clap_utils::{
+        input_parsers::pubkey_of,
+        input_validators::{is_amount, is_keypair, is_parsable, is_pubkey, is_url},
+        keypair::signer_from_path,
+    },
+    solana_client::{
+        rpc_client::RpcClient,
+        rpc_config::RpcAccountInfoConfig,
+        rpc_config::RpcProgramAccountsConfig,
+        rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
+    },
+    solana_program::{
+        borsh::get_packed_len, instruction::Instruction, program_pack::Pack, pubkey::Pubkey,
+    },
+    solana_sdk::{
+        account::Account,
+        commitment_config::CommitmentConfig,
+        native_token::{self, Sol},
+        signature::{Keypair, Signer},
+        system_instruction,
+        transaction::Transaction,
+    },
+    spl_stake_pool::{
+        borsh::{get_instance_packed_len, try_from_slice_unchecked},
+        instruction::{
+            add_validator_stake_account, create_validator_stake_account, deposit,
+            initialize as initialize_pool, remove_validator_stake_account, set_owner,
+            update_list_balance, update_pool_balance, withdraw, Fee as PoolFee,
+        },
+        processor::Processor as PoolProcessor,
+        stake::authorize as authorize_stake,
+        stake::id as stake_program_id,
+        stake::StakeAuthorize,
+        stake::StakeState,
+        state::StakePool,
+        state::ValidatorStakeList,
+    },
+    spl_token::{
+        self, instruction::approve as approve_token, instruction::initialize_account,
+        instruction::initialize_mint, native_mint, state::Account as TokenAccount,
+        state::Mint as TokenMint,
+    },
+    std::process::exit,
 };
-use spl_token::{
-    self, instruction::approve as approve_token, instruction::initialize_account,
-    instruction::initialize_mint, native_mint, state::Account as TokenAccount,
-    state::Mint as TokenMint,
-};
-use std::process::exit;
 
 struct Config {
     rpc_client: RpcClient,
@@ -109,7 +115,7 @@ fn get_authority_accounts(config: &Config, authority: &Pubkey) -> Vec<(Pubkey, A
         .unwrap()
 }
 
-fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
+fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> CommandResult {
     let mint_account = Keypair::new();
     println!("Creating mint {}", mint_account.pubkey());
 
@@ -132,10 +138,12 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
         .get_minimum_balance_for_rent_exemption(TokenAccount::LEN)?;
     let pool_account_balance = config
         .rpc_client
-        .get_minimum_balance_for_rent_exemption(StakePool::LEN)?;
+        .get_minimum_balance_for_rent_exemption(get_packed_len::<StakePool>())?;
+    let empty_validator_list = ValidatorStakeList::new_with_max_validators(max_validators);
+    let validator_stake_list_size = get_instance_packed_len(&empty_validator_list)?;
     let validator_stake_list_balance = config
         .rpc_client
-        .get_minimum_balance_for_rent_exemption(ValidatorStakeList::LEN)?;
+        .get_minimum_balance_for_rent_exemption(validator_stake_list_size)?;
     let total_rent_free_balances = mint_account_balance
         + pool_fee_account_balance
         + pool_account_balance
@@ -177,7 +185,7 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
                 &config.fee_payer.pubkey(),
                 &pool_account.pubkey(),
                 pool_account_balance,
-                StakePool::LEN as u64,
+                get_packed_len::<StakePool>() as u64,
                 &spl_stake_pool::id(),
             ),
             // Validator stake account list storage
@@ -185,7 +193,7 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
                 &config.fee_payer.pubkey(),
                 &validator_stake_list.pubkey(),
                 validator_stake_list_balance,
-                ValidatorStakeList::LEN as u64,
+                validator_stake_list_size as u64,
                 &spl_stake_pool::id(),
             ),
             // Initialize pool token mint account
@@ -212,7 +220,8 @@ fn command_create_pool(config: &Config, fee: PoolFee) -> CommandResult {
                 &mint_account.pubkey(),
                 &pool_fee_account.pubkey(),
                 &spl_token::id(),
-                PoolInitArgs { fee },
+                fee,
+                max_validators,
             )?,
         ],
         Some(&config.fee_payer.pubkey()),
@@ -274,7 +283,7 @@ fn command_vsa_add(
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
 
     let mut total_rent_free_balances: u64 = 0;
 
@@ -365,7 +374,7 @@ fn command_vsa_remove(
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data: StakePool = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
 
     let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
         &spl_stake_pool::id(),
@@ -495,7 +504,7 @@ fn command_deposit(
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data: StakePool = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
 
     // Get stake account data
     let stake_data = config.rpc_client.get_account_data(&stake)?;
@@ -514,7 +523,7 @@ fn command_deposit(
         .rpc_client
         .get_account_data(&pool_data.validator_stake_list)?;
     let validator_stake_list_data =
-        ValidatorStakeList::deserialize(&validator_stake_list_data.as_slice())?;
+        try_from_slice_unchecked::<ValidatorStakeList>(&validator_stake_list_data.as_slice())?;
     if !validator_stake_list_data.contains(&validator) {
         return Err("Stake account for this validator does not exist in the pool.".into());
     }
@@ -617,14 +626,14 @@ fn command_deposit(
 fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
 
     if config.verbose {
         let validator_list = config
             .rpc_client
             .get_account_data(&pool_data.validator_stake_list)?;
         let validator_stake_list_data =
-            ValidatorStakeList::deserialize(&validator_list.as_slice())?;
+            try_from_slice_unchecked::<ValidatorStakeList>(&validator_list.as_slice())?;
         println!("Current validator list");
         for validator in validator_stake_list_data.validators {
             println!(
@@ -669,12 +678,12 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
 fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
     let validator_stake_list_data = config
         .rpc_client
         .get_account_data(&pool_data.validator_stake_list)?;
     let validator_stake_list_data =
-        ValidatorStakeList::deserialize(&validator_stake_list_data.as_slice())?;
+        try_from_slice_unchecked::<ValidatorStakeList>(&validator_stake_list_data.as_slice())?;
 
     let epoch_info = config.rpc_client.get_epoch_info()?;
 
@@ -815,7 +824,7 @@ fn command_withdraw(
 ) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
 
     let pool_mint_data = config.rpc_client.get_account_data(&pool_data.pool_mint)?;
     let pool_mint = TokenMint::unpack_from_slice(pool_mint_data.as_slice()).unwrap();
@@ -954,7 +963,7 @@ fn command_set_owner(
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data: StakePool = StakePool::deserialize(pool_data.as_slice()).unwrap();
+    let pool_data: StakePool = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
 
     // If new accounts are missing in the arguments use the old ones
     let new_owner: Pubkey = match new_owner {
@@ -1087,6 +1096,16 @@ fn main() {
                     .takes_value(true)
                     .required(true)
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
+            )
+            .arg(
+                Arg::with_name("max_validators")
+                    .long("max-validators")
+                    .short("m")
+                    .validator(is_parsable::<u32>)
+                    .value_name("NUMBER")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Max number of validators included in the stake pool"),
             )
         )
         .subcommand(SubCommand::with_name("create-validator-stake").about("Create a new validator stake account to use with the pool")
@@ -1344,12 +1363,14 @@ fn main() {
         ("create-pool", Some(arg_matches)) => {
             let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
+            let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             command_create_pool(
                 &config,
                 PoolFee {
                     denominator,
                     numerator,
                 },
+                max_validators,
             )
         }
         ("create-validator-stake", Some(arg_matches)) => {

@@ -37,8 +37,6 @@ pub enum StakePoolError {
     /// Invalid validator stake list account.
     #[error("InvalidValidatorStakeList")]
     InvalidValidatorStakeList,
-
-    // 10.
     /// Invalid owner fee account.
     #[error("InvalidFeeAccount")]
     InvalidFeeAccount,
@@ -56,8 +54,6 @@ pub enum StakePoolError {
     /// Stake account voting for this validator already exists in the pool.
     #[error("ValidatorAlreadyAdded")]
     ValidatorAlreadyAdded,
-
-    // 15.
     /// Stake account for this validator not found in the pool.
     #[error("ValidatorNotFound")]
     ValidatorNotFound,
@@ -75,16 +71,14 @@ pub enum StakePoolError {
     /// Validator stake account is not found in the list storage.
     #[error("UnknownValidatorStakeAccount")]
     UnknownValidatorStakeAccount,
-
-    // 20.
     /// Wrong minting authority set for mint pool account
     #[error("WrongMintingAuthority")]
     WrongMintingAuthority,
 
     // 20.
-    /// Account is not rent-exempt
-    #[error("AccountNotRentExempt")]
-    AccountNotRentExempt,
+    /// The size of the given validator stake list does match the expected amount
+    #[error("UnexpectedValidatorListAccountSize")]
+    UnexpectedValidatorListAccountSize,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
