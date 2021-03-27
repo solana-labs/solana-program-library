@@ -31,6 +31,8 @@ pub fn process_withdraw_voting_tokens(
     let yes_voting_dump_account_info = next_account_info(account_info_iter)?;
     let no_voting_dump_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
+    let yes_voting_mint_account_info = next_account_info(account_info_iter)?;
+    let no_voting_mint_account_info = next_account_info(account_info_iter)?;
 
     let timelock_state_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
@@ -50,6 +52,8 @@ pub fn process_withdraw_voting_tokens(
 
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
+    assert_account_equiv(yes_voting_mint_account_info, &timelock_set.yes_voting_mint)?;
+    assert_account_equiv(no_voting_mint_account_info, &timelock_set.no_voting_mint)?;
     assert_account_equiv(yes_voting_dump_account_info, &timelock_set.yes_voting_dump)?;
     assert_account_equiv(no_voting_dump_account_info, &timelock_set.no_voting_dump)?;
     assert_account_equiv(source_holding_account_info, &timelock_set.source_holding)?;
@@ -74,17 +78,13 @@ pub fn process_withdraw_voting_tokens(
 
     let mut total_possible: u64;
 
-    if timelock_state.status == TimelockStateStatus::Voting {
-        total_possible = voting_account.amount
-    } else {
-        total_possible = match voting_account.amount.checked_add(yes_voting_account.amount) {
-            Some(val) => val,
-            None => return Err(TimelockError::NumericalOverflow.into()),
-        };
-        total_possible = match total_possible.checked_add(no_voting_account.amount) {
-            Some(val) => val,
-            None => return Err(TimelockError::NumericalOverflow.into()),
-        };
+    total_possible = match voting_account.amount.checked_add(yes_voting_account.amount) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
+    total_possible = match total_possible.checked_add(no_voting_account.amount) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
     };
 
     let mut voting_fuel_tank = voting_token_amount;
@@ -116,21 +116,30 @@ pub fn process_withdraw_voting_tokens(
         }
     }
 
-    if timelock_state.status != TimelockStateStatus::Voting {
-        if yes_voting_account.amount > 0 {
-            let amount_to_transfer: u64;
-            if yes_voting_account.amount < voting_fuel_tank {
-                amount_to_transfer = yes_voting_account.amount;
-                voting_fuel_tank = match voting_fuel_tank.checked_sub(amount_to_transfer) {
-                    Some(val) => val,
-                    None => return Err(TimelockError::NumericalOverflow.into()),
-                };
-            } else {
-                amount_to_transfer = voting_fuel_tank;
-                voting_fuel_tank = 0;
-            }
+    if yes_voting_account.amount > 0 {
+        let amount_to_transfer: u64;
+        if yes_voting_account.amount < voting_fuel_tank {
+            amount_to_transfer = yes_voting_account.amount;
+            voting_fuel_tank = match voting_fuel_tank.checked_sub(amount_to_transfer) {
+                Some(val) => val,
+                None => return Err(TimelockError::NumericalOverflow.into()),
+            };
+        } else {
+            amount_to_transfer = voting_fuel_tank;
+            voting_fuel_tank = 0;
+        }
 
-            if amount_to_transfer > 0 {
+        if amount_to_transfer > 0 {
+            if timelock_state.status == TimelockStateStatus::Voting {
+                spl_token_burn(TokenBurnParams {
+                    mint: yes_voting_mint_account_info.clone(),
+                    amount: amount_to_transfer,
+                    authority: yes_transfer_authority_info.clone(),
+                    authority_signer_seeds: authority_signer_seeds,
+                    token_program: token_program_account_info.clone(),
+                    source: yes_voting_account_info.clone(),
+                })?;
+            } else {
                 spl_token_transfer(TokenTransferParams {
                     source: yes_voting_account_info.clone(),
                     destination: yes_voting_dump_account_info.clone(),
@@ -141,9 +150,20 @@ pub fn process_withdraw_voting_tokens(
                 })?;
             }
         }
+    }
 
-        if no_voting_account.amount > 0 && voting_fuel_tank > 0 {
-            // whatever is left, no account gets by default
+    if no_voting_account.amount > 0 && voting_fuel_tank > 0 {
+        // whatever is left, no account gets by default
+        if timelock_state.status == TimelockStateStatus::Voting {
+            spl_token_burn(TokenBurnParams {
+                mint: no_voting_mint_account_info.clone(),
+                amount: voting_fuel_tank,
+                authority: no_transfer_authority_info.clone(),
+                authority_signer_seeds: authority_signer_seeds,
+                token_program: token_program_account_info.clone(),
+                source: no_voting_account_info.clone(),
+            })?;
+        } else {
             spl_token_transfer(TokenTransferParams {
                 source: no_voting_account_info.clone(),
                 destination: no_voting_dump_account_info.clone(),

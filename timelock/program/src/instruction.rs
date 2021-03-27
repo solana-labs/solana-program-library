@@ -261,15 +261,17 @@ pub enum TimelockInstruction {
     ///   4. `[writable]` Source holding account owned by the timelock that will has the actual tokens in escrow.
     ///   5. `[writable]` Initialized Yes Voting dump account owned by timelock set to which to send your voting tokens.
     ///   6. `[writable]` Initialized No Voting dump account owned by timelock set to which to send your voting tokens.
-    ///   7. `[]` Voting mint account.
-    ///   8. `[]` Timelock state account.
-    ///   9. `[]` Timelock set account.
-    ///   10. `[]` Transfer authority
-    ///   11. `[]` Yes Transfer authority
-    ///   12. `[]` No Transfer authority
-    ///   13. `[]` Timelock program mint authority
-    ///   14. `[]` Timelock program account pub key.
-    ///   15. `[]` Token program account.
+    ///   7. `[writable]` Voting mint account.
+    ///   8. `[writable]` Yes Voting mint account.
+    ///   9. `[writable]` No Voting mint account.
+    ///   10. `[]` Timelock state account.
+    ///   11. `[]` Timelock set account.
+    ///   12. `[]` Transfer authority
+    ///   13. `[]` Yes Transfer authority
+    ///   14. `[]` No Transfer authority
+    ///   15. `[]` Timelock program mint authority
+    ///   16. `[]` Timelock program account pub key.
+    ///   17. `[]` Token program account.
     WithdrawVotingTokens {
         /// How many voting tokens to withdrawal
         voting_token_amount: u64,
