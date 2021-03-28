@@ -43,16 +43,6 @@ pub enum RoundDirection {
     Ceiling,
 }
 
-/// The operation for the liquidity into the pool, either deposit or withdrawal
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum LiquidityProviderOperation {
-    /// add liquidity
-    Deposit,
-    /// remove liquidity
-    Withdrawal
-}
-
 impl TradeDirection {
     /// Given a trade direction, gives the opposite direction of the trade, so
     /// A to B becomes B to A, and vice versa
