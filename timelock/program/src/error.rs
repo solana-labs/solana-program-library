@@ -130,6 +130,10 @@ pub enum TimelockError {
     /// Numerical overflow
     #[error("Numerical overflow")]
     NumericalOverflow,
+
+    /// Invalid Governance Record Key, must use program account id, proposal key, and voting account as tuple seed
+    #[error("Invalid Governance Record Key, must use program account id, proposal key, and voting account as tuple seed")]
+    InvalidGovernanceVotingRecord,
 }
 
 impl PrintProgramError for TimelockError {

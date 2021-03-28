@@ -2,6 +2,7 @@
 
 use crate::{
     error::TimelockError,
+    state::governance_voting_record::GovernanceVotingRecord,
     state::timelock_program::TimelockProgram,
     state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
     utils::{
@@ -12,6 +13,7 @@ use crate::{
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    program_pack::Pack,
     pubkey::Pubkey,
 };
 use spl_token::state::Account;
@@ -23,6 +25,7 @@ pub fn process_withdraw_voting_tokens(
     voting_token_amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
+    let voting_record_account_info = next_account_info(account_info_iter)?;
     let voting_account_info = next_account_info(account_info_iter)?;
     let yes_voting_account_info = next_account_info(account_info_iter)?;
     let no_voting_account_info = next_account_info(account_info_iter)?;
@@ -68,6 +71,20 @@ pub fn process_withdraw_voting_tokens(
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
     let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
+    let (voting_record_key, _) = Pubkey::find_program_address(
+        &[
+            timelock_program_account_info.key.as_ref(),
+            timelock_set_account_info.key.as_ref(),
+            voting_account_info.key.as_ref(),
+        ],
+        program_id,
+    );
+    if voting_record_account_info.key != &voting_record_key {
+        return Err(TimelockError::InvalidGovernanceVotingRecord.into());
+    }
+
+    let mut voting_record: GovernanceVotingRecord =
+        GovernanceVotingRecord::unpack_unchecked(&voting_record_account_info.data.borrow())?;
 
     // prefer voting account first, then yes, then no. Invariants we know are
     // voting_token_amount <= voting + yes + no
@@ -113,6 +130,11 @@ pub fn process_withdraw_voting_tokens(
                 token_program: token_program_account_info.clone(),
                 source: voting_account_info.clone(),
             })?;
+            voting_record.undecided_count =
+                match voting_record.undecided_count.checked_sub(amount_to_burn) {
+                    Some(val) => val,
+                    None => return Err(TimelockError::NumericalOverflow.into()),
+                };
         }
     }
 
@@ -149,6 +171,11 @@ pub fn process_withdraw_voting_tokens(
                     token_program: token_program_account_info.clone(),
                 })?;
             }
+            voting_record.yes_count = match voting_record.yes_count.checked_sub(amount_to_transfer)
+            {
+                Some(val) => val,
+                None => return Err(TimelockError::NumericalOverflow.into()),
+            };
         }
     }
 
@@ -173,6 +200,10 @@ pub fn process_withdraw_voting_tokens(
                 token_program: token_program_account_info.clone(),
             })?;
         }
+        voting_record.no_count = match voting_record.no_count.checked_sub(voting_fuel_tank) {
+            Some(val) => val,
+            None => return Err(TimelockError::NumericalOverflow.into()),
+        };
     }
 
     spl_token_transfer(TokenTransferParams {
@@ -184,5 +215,9 @@ pub fn process_withdraw_voting_tokens(
         token_program: token_program_account_info.clone(),
     })?;
 
+    GovernanceVotingRecord::pack(
+        voting_record.clone(),
+        &mut voting_record_account_info.data.borrow_mut(),
+    )?;
     Ok(())
 }

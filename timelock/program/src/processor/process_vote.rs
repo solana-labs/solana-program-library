@@ -2,8 +2,8 @@
 use crate::{
     error::TimelockError,
     state::{
-        enums::TimelockStateStatus, timelock_config::TimelockConfig, timelock_set::TimelockSet,
-        timelock_state::TimelockState,
+        enums::TimelockStateStatus, governance_voting_record::GovernanceVotingRecord,
+        timelock_config::TimelockConfig, timelock_set::TimelockSet, timelock_state::TimelockState,
     },
     utils::{
         assert_account_equiv, assert_initialized, assert_voting, pull_mint_supply, spl_token_burn,
@@ -18,6 +18,7 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
+use spl_token::state::Account;
 
 /// Vote on the timelock
 pub fn process_vote(
@@ -27,6 +28,7 @@ pub fn process_vote(
     no_voting_token_amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
+    let voting_record_account_info = next_account_info(account_info_iter)?;
     let timelock_state_account_info = next_account_info(account_info_iter)?;
     let voting_account_info = next_account_info(account_info_iter)?;
     let yes_voting_account_info = next_account_info(account_info_iter)?;
@@ -80,6 +82,10 @@ pub fn process_vote(
         Some(val) => val,
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
+
+    let starting_vote_acct: Account = assert_initialized(voting_account_info)?;
+    let yes_vote_acct: Account = assert_initialized(yes_voting_account_info)?;
+    let no_vote_acct: Account = assert_initialized(no_voting_account_info)?;
 
     // The act of voting proves you are able to vote. No need to assert permission here.
     spl_token_burn(TokenBurnParams {
@@ -140,6 +146,41 @@ pub fn process_vote(
             &mut timelock_state_account_info.data.borrow_mut(),
         )?;
     }
+    let (voting_record_key, _) = Pubkey::find_program_address(
+        &[
+            timelock_program_account_info.key.as_ref(),
+            timelock_set_account_info.key.as_ref(),
+            voting_account_info.key.as_ref(),
+        ],
+        program_id,
+    );
+    if voting_record_account_info.key != &voting_record_key {
+        return Err(TimelockError::InvalidGovernanceVotingRecord.into());
+    }
+
+    let mut voting_record: GovernanceVotingRecord =
+        GovernanceVotingRecord::unpack_unchecked(&voting_record_account_info.data.borrow())?;
+
+    voting_record.yes_count = match yes_vote_acct.amount.checked_add(yes_voting_token_amount) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
+    voting_record.no_count = match no_vote_acct.amount.checked_add(no_voting_token_amount) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
+    let total_change = match yes_voting_token_amount.checked_add(no_voting_token_amount) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
+    voting_record.undecided_count = match starting_vote_acct.amount.checked_sub(total_change) {
+        Some(val) => val,
+        None => return Err(TimelockError::NumericalOverflow.into()),
+    };
+    GovernanceVotingRecord::pack(
+        voting_record.clone(),
+        &mut voting_record_account_info.data.borrow_mut(),
+    )?;
 
     Ok(())
 }

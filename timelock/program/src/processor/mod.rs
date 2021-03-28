@@ -1,5 +1,6 @@
 pub mod process_add_custom_single_signer_transaction;
 pub mod process_add_signer;
+pub mod process_create_empty_governance_voting_record;
 pub mod process_create_empty_timelock_config;
 pub mod process_delete_timelock_set;
 pub mod process_deposit_source_tokens;
@@ -17,6 +18,7 @@ pub mod process_withdraw_voting_tokens;
 use crate::instruction::TimelockInstruction;
 use process_add_custom_single_signer_transaction::process_add_custom_single_signer_transaction;
 use process_add_signer::process_add_signer;
+use process_create_empty_governance_voting_record::process_create_empty_governance_voting_record;
 use process_create_empty_timelock_config::process_create_empty_timelock_config;
 use process_delete_timelock_set::process_delete_timelock_set;
 use process_deposit_source_tokens::process_deposit_source_tokens;
@@ -144,6 +146,11 @@ pub fn process_instruction(
         TimelockInstruction::CreateEmptyTimelockConfig => {
             msg!("Instruction: Create Empty Timelock Config");
             process_create_empty_timelock_config(program_id, accounts)
+        }
+
+        TimelockInstruction::CreateEmptyGovernanceVotingRecord => {
+            msg!("Instruction: Create Empty Governance Voting Record");
+            process_create_empty_governance_voting_record(program_id, accounts)
         }
     }
 }

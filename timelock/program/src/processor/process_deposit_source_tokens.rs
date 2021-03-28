@@ -2,6 +2,7 @@
 
 use crate::{
     error::TimelockError,
+    state::governance_voting_record::{GovernanceVotingRecord, GOVERNANCE_VOTING_RECORD_VERSION},
     state::timelock_program::TimelockProgram,
     state::timelock_set::TimelockSet,
     utils::{
@@ -12,8 +13,10 @@ use crate::{
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
 };
+use spl_token::state::Account;
 
 /// Deposit source tokens
 pub fn process_deposit_source_tokens(
@@ -22,6 +25,7 @@ pub fn process_deposit_source_tokens(
     voting_token_amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
+    let voting_record_account_info = next_account_info(account_info_iter)?;
     let voting_account_info = next_account_info(account_info_iter)?;
     let user_holding_account_info = next_account_info(account_info_iter)?;
     let source_holding_account_info = next_account_info(account_info_iter)?;
@@ -64,5 +68,40 @@ pub fn process_deposit_source_tokens(
         token_program: token_program_account_info.clone(),
     })?;
 
+    let (voting_record_key, _) = Pubkey::find_program_address(
+        &[
+            timelock_program_account_info.key.as_ref(),
+            timelock_set_account_info.key.as_ref(),
+            voting_account_info.key.as_ref(),
+        ],
+        program_id,
+    );
+    if voting_record_account_info.key != &voting_record_key {
+        return Err(TimelockError::InvalidGovernanceVotingRecord.into());
+    }
+
+    let mut voting_record: GovernanceVotingRecord =
+        GovernanceVotingRecord::unpack_unchecked(&voting_record_account_info.data.borrow())?;
+    if !voting_record.is_initialized() {
+        let voting_account: Account = assert_initialized(voting_account_info)?;
+        voting_record.proposal = *timelock_set_account_info.key;
+        voting_record.owner = voting_account.owner;
+        voting_record.version = GOVERNANCE_VOTING_RECORD_VERSION;
+        voting_record.undecided_count = voting_token_amount;
+        voting_record.yes_count = 0;
+        voting_record.no_count = 0;
+    } else {
+        voting_record.undecided_count = match voting_record
+            .undecided_count
+            .checked_add(voting_token_amount)
+        {
+            Some(val) => val,
+            None => return Err(TimelockError::NumericalOverflow.into()),
+        };
+    }
+    GovernanceVotingRecord::pack(
+        voting_record.clone(),
+        &mut voting_record_account_info.data.borrow_mut(),
+    )?;
     Ok(())
 }

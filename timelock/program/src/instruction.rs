@@ -190,23 +190,26 @@ pub enum TimelockInstruction {
 
     /// [Requires Voting tokens]
     /// Burns voting tokens, indicating you approve and/or disapprove of running this set of transactions. If you tip the consensus,
-    /// then the transactions can begin to be run at their time slots when people click execute.
+    /// then the transactions can begin to be run at their time slots when people click execute. You are then given yes and/or no tokens.
     ///
-    ///   0. `[writable]` Timelock state account.
-    ///   1. `[writable]` Your Voting account.
-    ///   2. `[writable]` Your Yes-Voting account.
-    ///   3. `[writable]` Your No-Voting account.
-    ///   4. `[writable]` Voting mint account.
-    ///   5. `[writable]` Yes Voting mint account.
-    ///   6. `[writable]` No Voting mint account.
-    ///   7. `[]` Source mint account
-    ///   8. `[]` Timelock set account.
-    ///   9. `[]` Timelock config account.
-    ///   10. `[]` Transfer authority
-    ///   11. `[]` Timelock program mint authority
-    ///   12. `[]` Timelock program account pub key.
-    ///   13. `[]` Token program account.
-    ///   14. `[]` Clock sysvar.
+    ///   0. `[writable]` Governance voting record account.
+    ///                   Can be uninitialized or initialized(if already used once in this proposal)
+    ///                   Must have address with PDA having seed tuple [timelock acct key, proposal key, your voting account key]
+    ///   1. `[writable]` Timelock state account.
+    ///   2. `[writable]` Your Voting account.
+    ///   3. `[writable]` Your Yes-Voting account.
+    ///   4. `[writable]` Your No-Voting account.
+    ///   5. `[writable]` Voting mint account.
+    ///   6. `[writable]` Yes Voting mint account.
+    ///   7. `[writable]` No Voting mint account.
+    ///   8. `[]` Source mint account
+    ///   9. `[]` Timelock set account.
+    ///   10. `[]` Timelock config account.
+    ///   12. `[]` Transfer authority
+    ///   13. `[]` Timelock program mint authority
+    ///   14. `[]` Timelock program account pub key.
+    ///   15. `[]` Token program account.
+    ///   16. `[]` Clock sysvar.
     Vote {
         /// How many voting tokens to burn yes
         yes_voting_token_amount: u64,
@@ -237,15 +240,16 @@ pub enum TimelockInstruction {
     /// These tokens are removed from your account and can be returned by withdrawing
     /// them from the timelock (but then you will miss the vote.)
     ///
-    ///   0. `[writable]` Initialized Voting account to hold your received voting tokens.
-    ///   1. `[writable]` User token account to deposit tokens from.
-    ///   2. `[writable]` Source holding account for timelock that will accept the tokens in escrow.
-    ///   3. `[writable]` Voting mint account.
-    ///   4. `[]` Timelock set account.
-    ///   5. `[]` Transfer authority
-    ///   6. `[]` Timelock program mint authority
-    ///   7. `[]` Timelock program account pub key.
-    ///   8. `[]` Token program account.
+    ///   0. `[writable]` Governance voting record account. See Vote docs for more detail.
+    ///   1. `[writable]` Initialized Voting account to hold your received voting tokens.
+    ///   2. `[writable]` User token account to deposit tokens from.
+    ///   3. `[writable]` Source holding account for timelock that will accept the tokens in escrow.
+    ///   4. `[writable]` Voting mint account.
+    ///   5. `[]` Timelock set account.
+    ///   6. `[]` Transfer authority
+    ///   7. `[]` Timelock program mint authority
+    ///   8. `[]` Timelock program account pub key.
+    ///   9. `[]` Token program account.
     DepositSourceTokens {
         /// How many voting tokens to deposit
         voting_token_amount: u64,
@@ -254,24 +258,25 @@ pub enum TimelockInstruction {
     /// [Requires voting tokens]
     /// Withdraws voting tokens.
     ///
-    ///   0. `[writable]` Initialized Voting account from which to remove your voting tokens.
-    ///   1. `[writable]` Initialized Yes Voting account from which to remove your voting tokens.
-    ///   2. `[writable]` Initialized No Voting account from which to remove your voting tokens.
-    ///   3. `[writable]` User token account that you wish your actual tokens to be returned to.
-    ///   4. `[writable]` Source holding account owned by the timelock that will has the actual tokens in escrow.
-    ///   5. `[writable]` Initialized Yes Voting dump account owned by timelock set to which to send your voting tokens.
-    ///   6. `[writable]` Initialized No Voting dump account owned by timelock set to which to send your voting tokens.
-    ///   7. `[writable]` Voting mint account.
-    ///   8. `[writable]` Yes Voting mint account.
-    ///   9. `[writable]` No Voting mint account.
-    ///   10. `[]` Timelock state account.
-    ///   11. `[]` Timelock set account.
-    ///   12. `[]` Transfer authority
-    ///   13. `[]` Yes Transfer authority
-    ///   14. `[]` No Transfer authority
-    ///   15. `[]` Timelock program mint authority
-    ///   16. `[]` Timelock program account pub key.
-    ///   17. `[]` Token program account.
+    ///   0. `[writable]` Governance voting record account. See Vote docs for more detail.
+    ///   1. `[writable]` Initialized Voting account from which to remove your voting tokens.
+    ///   2. `[writable]` Initialized Yes Voting account from which to remove your voting tokens.
+    ///   3. `[writable]` Initialized No Voting account from which to remove your voting tokens.
+    ///   4. `[writable]` User token account that you wish your actual tokens to be returned to.
+    ///   5. `[writable]` Source holding account owned by the timelock that will has the actual tokens in escrow.
+    ///   6. `[writable]` Initialized Yes Voting dump account owned by timelock set to which to send your voting tokens.
+    ///   7. `[writable]` Initialized No Voting dump account owned by timelock set to which to send your voting tokens.
+    ///   8. `[writable]` Voting mint account.
+    ///   9. `[writable]` Yes Voting mint account.
+    ///   10. `[writable]` No Voting mint account.
+    ///   11. `[]` Timelock state account.
+    ///   12. `[]` Timelock set account.
+    ///   13. `[]` Transfer authority
+    ///   14. `[]` Yes Transfer authority
+    ///   15. `[]` No Transfer authority
+    ///   16. `[]` Timelock program mint authority
+    ///   17. `[]` Timelock program account pub key.
+    ///   18. `[]` Token program account.
     WithdrawVotingTokens {
         /// How many voting tokens to withdrawal
         voting_token_amount: u64,
@@ -301,7 +306,7 @@ pub enum TimelockInstruction {
         name: [u8; CONFIG_NAME_LENGTH],
     },
 
-    ///   0. `[writable]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
+    ///   0. `[]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
     ///           program account key, governance mint key, council mint key, and timelock program account key.
     ///   1. `[]` Program account to tie this config to.
     ///   2. `[]` Governance mint to tie this config to
@@ -312,6 +317,16 @@ pub enum TimelockInstruction {
     ///   7. `[]` Token program account.
     ///   8. `[]` System account.
     CreateEmptyTimelockConfig,
+
+    ///   0. `[]` Governance voting record key. Needs to be set with pubkey set to PDA with seeds of the
+    ///           program account key, proposal key, your voting account key.
+    ///   1. `[]` Proposal key
+    ///   2. `[]` Your voting account
+    ///   3. `[]` Payer
+    ///   4. `[]` Timelock program account pub key.
+    ///   5. `[]` Timelock program pub key. Different from program account - is the actual id of the executable.
+    ///   6. `[]` System account.
+    CreateEmptyGovernanceVotingRecord,
 }
 
 impl TimelockInstruction {
@@ -407,6 +422,7 @@ impl TimelockInstruction {
                 }
             }
             15 => Self::CreateEmptyTimelockConfig,
+            16 => Self::CreateEmptyGovernanceVotingRecord,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -550,6 +566,7 @@ impl TimelockInstruction {
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
             Self::CreateEmptyTimelockConfig => buf.push(15),
+            Self::CreateEmptyGovernanceVotingRecord => buf.push(16),
         }
         buf
     }
