@@ -115,7 +115,7 @@ pub trait CurveCalculator: Debug + DynPack {
         pool_token_supply: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-        liquidity_provider_operation: LiquidityProviderOperation
+        round_direction: RoundDirection,
     ) -> Option<TradingTokenResult>;
 
     /// Get the amount of pool tokens for the given amount of token A or B.
@@ -134,7 +134,7 @@ pub trait CurveCalculator: Debug + DynPack {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        liquidity_provider_operation: LiquidityProviderOperation
+        round_direction: RoundDirection,
     ) -> Option<u128>;
 
     /// Validate that the given curve has no invalid parameters
@@ -229,7 +229,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
-                LiquidityProviderOperation::Deposit,
+                RoundDirection::Ceiling,
             )
             .unwrap();
 
@@ -251,7 +251,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
-                LiquidityProviderOperation::Deposit,
+                RoundDirection::Ceiling,
             )
             .unwrap();
         let pool_tokens_from_destination = curve
@@ -261,7 +261,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply + pool_tokens_from_source,
                 opposite_direction,
-                LiquidityProviderOperation::Deposit,
+                RoundDirection::Ceiling,
             )
             .unwrap();
 
@@ -357,7 +357,7 @@ pub mod test {
                 pool_token_supply,
                 swap_token_a_amount,
                 swap_token_b_amount,
-                LiquidityProviderOperation::Deposit,
+                RoundDirection::Ceiling,
             )
             .unwrap();
         let new_swap_token_a_amount = swap_token_a_amount + deposit_result.token_a_amount;
@@ -408,7 +408,7 @@ pub mod test {
                 pool_token_supply,
                 swap_token_a_amount,
                 swap_token_b_amount,
-                LiquidityProviderOperation::Withdrawal,
+                RoundDirection::Floor
             )
             .unwrap();
         let new_swap_token_a_amount = swap_token_a_amount - withdraw_result.token_a_amount;

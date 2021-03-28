@@ -4,7 +4,7 @@ use {
     crate::{
         curve::{
             calculator::{
-                CurveCalculator, DynPack, LiquidityProviderOperation, SwapWithoutFeesResult, TradeDirection,
+                CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
                 TradingTokenResult,
             },
             constant_product::{
@@ -64,7 +64,7 @@ impl CurveCalculator for OffsetCurve {
         pool_token_supply: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-        liquidity_provider_operation: LiquidityProviderOperation,
+        round_direction: RoundDirection,
     ) -> Option<TradingTokenResult> {
         let token_b_offset = self.token_b_offset as u128;
         pool_tokens_to_trading_tokens(
@@ -72,7 +72,7 @@ impl CurveCalculator for OffsetCurve {
             pool_token_supply,
             swap_token_a_amount,
             swap_token_b_amount.checked_add(token_b_offset)?,
-            liquidity_provider_operation,
+            round_direction,
         )
     }
 
@@ -85,7 +85,7 @@ impl CurveCalculator for OffsetCurve {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        liquidity_provider_operation: LiquidityProviderOperation,
+        round_direction: RoundDirection,
     ) -> Option<u128> {
         let token_b_offset = self.token_b_offset as u128;
         trading_tokens_to_pool_tokens(
@@ -94,7 +94,7 @@ impl CurveCalculator for OffsetCurve {
             swap_token_b_amount.checked_add(token_b_offset)?,
             pool_supply,
             trade_direction,
-            liquidity_provider_operation,
+            round_direction,
         )
     }
 
@@ -492,7 +492,7 @@ mod tests {
                     pool_token_supply,
                     swap_token_a_amount,
                     swap_token_b_amount,
-                    LiquidityProviderOperation::Withdrawal,
+                    RoundDirection::Floor,
                 )
                 .unwrap();
             prop_assume!(withdraw_result.token_b_amount <= swap_token_b_amount); // avoid overdrawing to 0 for calc

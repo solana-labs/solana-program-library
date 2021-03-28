@@ -8,7 +8,7 @@ use solana_program::{
 
 use crate::curve::{
     calculator::{
-        CurveCalculator, DynPack, LiquidityProviderOperation, SwapWithoutFeesResult, TradeDirection,
+        CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
         TradingTokenResult,
     },
     constant_product::{
@@ -174,7 +174,7 @@ impl CurveCalculator for StableCurve {
         pool_token_supply: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-        liquidity_provider_operation: LiquidityProviderOperation,
+        round_direction: RoundDirection,
     ) -> Option<TradingTokenResult> {
         let pool_token_amount = PreciseNumber::new(pool_tokens)?;
         let pool_token_total_supply = PreciseNumber::new(pool_token_supply)?;
@@ -183,14 +183,14 @@ impl CurveCalculator for StableCurve {
         let token_a_value = token_a_amount.checked_mul(&pool_ratio)?;
         let token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
         let token_b_value = token_b_amount.checked_mul(&pool_ratio)?;
-        match liquidity_provider_operation {
-            LiquidityProviderOperation::Withdrawal => {
+        match round_direction {
+            RoundDirection::Floor => {
                 Some(TradingTokenResult {
                     token_a_amount: token_a_value.floor()?.to_imprecise()?,
                     token_b_amount: token_b_value.floor()?.to_imprecise()?
                 })
             },
-            LiquidityProviderOperation::Deposit => {
+            RoundDirection::Ceiling => {
                 Some(TradingTokenResult {
                     token_a_amount: token_a_value.ceiling()?.to_imprecise()?,
                     token_b_amount: token_b_value.ceiling()?.to_imprecise()?
@@ -208,7 +208,7 @@ impl CurveCalculator for StableCurve {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        liquidity_provider_operation: LiquidityProviderOperation,
+        round_direction: RoundDirection,
     ) -> Option<u128> {
         let (swap_source_amount, swap_destination_amount) = match trade_direction {
             TradeDirection::AtoB => (swap_token_a_amount, swap_token_b_amount),
@@ -216,19 +216,19 @@ impl CurveCalculator for StableCurve {
         };
         let leverage = self.amp.checked_mul(N_COINS as u64)?;
         let d0 = compute_d(leverage, swap_source_amount, swap_destination_amount)?;
-        let new_swap_source_amount = match liquidity_provider_operation {
-            LiquidityProviderOperation::Deposit => swap_source_amount.checked_add(source_amount),
-            LiquidityProviderOperation::Withdrawal => swap_source_amount.checked_sub(source_amount),
+        let new_swap_source_amount = match round_direction {
+            RoundDirection::Floor => swap_source_amount.checked_add(source_amount),
+            RoundDirection::Ceiling => swap_source_amount.checked_sub(source_amount),
         };
         let d1 = compute_d(leverage, new_swap_source_amount?, swap_destination_amount)?;
-        let diff = match liquidity_provider_operation {
-            LiquidityProviderOperation::Deposit => d1.checked_sub(d0)?,
-            LiquidityProviderOperation::Withdrawal => d0.checked_sub(d1)?
+        let diff = match round_direction {
+            RoundDirection::Floor => d1.checked_sub(d0)?,
+            RoundDirection::Ceiling => d0.checked_sub(d1)?
         };
         let final_amount = (diff.checked_mul(pool_supply))?.checked_div(d0)?;
-        match liquidity_provider_operation {
-            LiquidityProviderOperation::Deposit => Some(PreciseNumber::new(final_amount)?.floor()?.to_imprecise()?),
-            LiquidityProviderOperation::Withdrawal => Some(PreciseNumber::new(final_amount)?.ceiling()?.to_imprecise()?)
+        match round_direction {
+            RoundDirection::Floor => Some(PreciseNumber::new(final_amount)?.floor()?.to_imprecise()?),
+            RoundDirection::Ceiling => Some(PreciseNumber::new(final_amount)?.ceiling()?.to_imprecise()?)
         }
     }
 
@@ -283,7 +283,7 @@ mod tests {
             check_pool_value_from_deposit, check_pool_value_from_withdraw, total_and_intermediate,
             CONVERSION_BASIS_POINTS_GUARANTEE,
         },
-        LiquidityProviderOperation, INITIAL_SWAP_POOL_AMOUNT,
+        RoundDirection, INITIAL_SWAP_POOL_AMOUNT,
     };
     use proptest::prelude::*;
     use sim::StableSwapModel;
@@ -311,7 +311,7 @@ mod tests {
                 supply,
                 token_a,
                 token_b,
-                LiquidityProviderOperation::Deposit,
+                RoundDirection::Ceiling,
             )
             .unwrap();
         assert_eq!(results.token_a_amount, expected_a);
@@ -330,10 +330,10 @@ mod tests {
         let amp = 1;
         let calculator = StableCurve { amp };
         let results =
-            calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX, 0, LiquidityProviderOperation::Withdrawal);
+            calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX, 0, RoundDirection::Floor);
         assert!(results.is_none());
         let results =
-            calculator.pool_tokens_to_trading_tokens(5, 10, 0, u128::MAX, LiquidityProviderOperation::Withdrawal);
+            calculator.pool_tokens_to_trading_tokens(5, 10, 0, u128::MAX, RoundDirection::Floor);
         assert!(results.is_none());
     }
 

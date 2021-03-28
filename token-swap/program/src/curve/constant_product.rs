@@ -4,7 +4,7 @@ use {
     crate::{
         curve::calculator::{
             map_zero_to_none, CurveCalculator, DynPack, SwapWithoutFeesResult,
-            TradeDirection, TradingTokenResult, LiquidityProviderOperation
+            TradeDirection, TradingTokenResult, RoundDirection
         },
         error::SwapError,
     },
@@ -55,7 +55,7 @@ pub fn pool_tokens_to_trading_tokens(
     pool_token_supply: u128,
     swap_token_a_amount: u128,
     swap_token_b_amount: u128,
-    liquidity_provider_operation: LiquidityProviderOperation
+    round_direction: RoundDirection,
 ) -> Option<TradingTokenResult> {
     let mut token_a_amount = pool_tokens
         .checked_mul(swap_token_a_amount)?
@@ -63,9 +63,9 @@ pub fn pool_tokens_to_trading_tokens(
     let mut token_b_amount = pool_tokens
         .checked_mul(swap_token_b_amount)?
         .checked_div(pool_token_supply)?;
-    let (token_a_amount, token_b_amount) = match liquidity_provider_operation {
-        LiquidityProviderOperation::Withdrawal => (token_a_amount, token_b_amount),
-        LiquidityProviderOperation::Deposit => {
+    let (token_a_amount, token_b_amount) = match round_direction {
+        RoundDirection::Floor => (token_a_amount, token_b_amount),
+        RoundDirection::Ceiling => {
             let token_a_remainder = pool_tokens
                 .checked_mul(swap_token_a_amount)?
                 .checked_rem(pool_token_supply)?;
@@ -103,7 +103,7 @@ pub fn trading_tokens_to_pool_tokens(
     swap_token_b_amount: u128,
     pool_supply: u128,
     trade_direction: TradeDirection,
-    liquidity_provider_operation: LiquidityProviderOperation,
+    round_direction: RoundDirection,
 ) -> Option<u128> {
     let swap_source_amount = match trade_direction {
         TradeDirection::AtoB => swap_token_a_amount,
@@ -117,9 +117,9 @@ pub fn trading_tokens_to_pool_tokens(
     let root = base.sqrt()?.checked_sub(&one)?;
     let pool_supply = PreciseNumber::new(pool_supply)?;
     let pool_tokens = pool_supply.checked_mul(&root)?;
-    match liquidity_provider_operation {
-        LiquidityProviderOperation::Deposit => pool_tokens.floor()?.to_imprecise(),
-        LiquidityProviderOperation::Withdrawal => pool_tokens.ceiling()?.to_imprecise(),
+    match round_direction {
+        RoundDirection::Floor => pool_tokens.floor()?.to_imprecise(),
+        RoundDirection::Ceiling => pool_tokens.ceiling()?.to_imprecise(),
     }
 }
 
@@ -159,14 +159,14 @@ impl CurveCalculator for ConstantProductCurve {
         pool_token_supply: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
-        liquidity_provider_operation: LiquidityProviderOperation,
+        round_direction: RoundDirection,
     ) -> Option<TradingTokenResult> {
         pool_tokens_to_trading_tokens(
             pool_tokens,
             pool_token_supply,
             swap_token_a_amount,
             swap_token_b_amount,
-            liquidity_provider_operation,
+            round_direction,
         )
     }
 
@@ -178,7 +178,7 @@ impl CurveCalculator for ConstantProductCurve {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        liquidity_provider_operation: LiquidityProviderOperation,
+        round_direction: RoundDirection,
     ) -> Option<u128> {
         trading_tokens_to_pool_tokens(
             source_amount,
@@ -186,7 +186,7 @@ impl CurveCalculator for ConstantProductCurve {
             swap_token_b_amount,
             pool_supply,
             trade_direction,
-            liquidity_provider_operation,
+            round_direction,
         )
     }
 
@@ -234,7 +234,7 @@ mod tests {
             check_pool_value_from_deposit, check_pool_value_from_withdraw, total_and_intermediate,
             CONVERSION_BASIS_POINTS_GUARANTEE,
         },
-        LiquidityProviderOperation, INITIAL_SWAP_POOL_AMOUNT,
+        RoundDirection, INITIAL_SWAP_POOL_AMOUNT,
     };
     use proptest::prelude::*;
 
@@ -259,7 +259,7 @@ mod tests {
                 supply,
                 token_a,
                 token_b,
-                LiquidityProviderOperation::Deposit,
+                RoundDirection::Ceiling,
             )
             .unwrap();
         assert_eq!(results.token_a_amount, expected_a);
@@ -277,10 +277,10 @@ mod tests {
     fn fail_trading_token_conversion() {
         let calculator = ConstantProductCurve {};
         let results =
-            calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX, 0, LiquidityProviderOperation::Withdrawal);
+            calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX, 0, RoundDirection::Floor);
         assert!(results.is_none());
         let results =
-            calculator.pool_tokens_to_trading_tokens(5, 10, 0, u128::MAX, LiquidityProviderOperation::Withdrawal);
+            calculator.pool_tokens_to_trading_tokens(5, 10, 0, u128::MAX, RoundDirection::Floor);
         assert!(results.is_none());
     }
 
