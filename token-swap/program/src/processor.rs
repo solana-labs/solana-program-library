@@ -1654,7 +1654,7 @@ mod tests {
                     .unwrap(),
                     vec![&mut self.swap_account, &mut Account::default()],
                 ),
-                COption::None => return Err(SwapError::InvalidFreezeAuthority.into()),
+                COption::None => Err(SwapError::InvalidFreezeAuthority.into()),
             }
         }
 
@@ -3652,8 +3652,8 @@ mod tests {
             };
             let mut accounts = SwapAccountInfo::new(
                 &user_key,
-                fees.clone(),
-                swap_curve.clone(),
+                fees,
+                swap_curve,
                 token_a_amount,
                 token_b_amount,
                 true,
@@ -3707,8 +3707,8 @@ mod tests {
             };
             let mut accounts = SwapAccountInfo::new(
                 &user_key,
-                fees.clone(),
-                swap_curve.clone(),
+                fees,
+                swap_curve,
                 token_a_amount,
                 token_b_amount,
                 true,
