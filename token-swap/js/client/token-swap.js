@@ -83,6 +83,9 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     Layout.uint64('hostFeeDenominator'),
     BufferLayout.u8('curveType'),
     BufferLayout.blob(32, 'curveParameters'),
+    BufferLayout.u8('freezeAuthorityOption'),
+    Layout.publicKey('freezeAuthority'),
+    BufferLayout.u8('freezeAuthorityBitMask')
   ],
 );
 
@@ -319,6 +322,9 @@ export class TokenSwap {
       BufferLayout.nu64('hostFeeDenominator'),
       BufferLayout.u8('curveType'),
       BufferLayout.blob(32, 'curveParameters'),
+      BufferLayout.u8('freezeAuthorityOption'),
+      Layout.publicKey('freezeAuthority'),
+      BufferLayout.u8('freezeAuthorityBitMask')
     ]);
     let data = Buffer.alloc(1024);
     {
