@@ -3,7 +3,7 @@
 use crate::{
     constraints::{SwapConstraints, SWAP_CONSTRAINTS},
     instruction::SetFreezeAuthorityBitMask,
-    state::{SwapV2, SwapVersionList},
+    state::SwapV2,
 };
 use crate::{
     curve::{
@@ -1060,23 +1060,22 @@ impl Processor {
 
         Self::check_allowed_to_freeze(token_swap.as_ref(), freeze_authority_info)?;
 
-        // The way SwapVersion is setup, it is immutable, can't get at it except through this fashion,
-        // This is because unpack returns an immutable SwapState and pack expects a SwapVersion struct
-        // which we cannot get to from a SwapState unless we make a new Clone, which we can't really easily do
-        // (I tried it, causes compiler issues with the swap_curve.) Also is expensive on CPU.
-
-        // With this version method here, and match, we are guaranteed any later swap versions
-        // must get a branch entry here and we can get direct access to their underlying mutable
-        // state objects and pack functionalities, bypassing the immutable SwapVersion structure.
-
-        match token_swap.version() {
-            SwapVersionList::SwapV2 => {
-                let mut swap = SwapV2::unpack(&swap_info.data.borrow())?;
-                swap.freeze_authority_bit_mask = freeze_authority_bit_mask;
-                SwapV2::pack(swap, &mut swap_info.data.borrow_mut())?;
-            }
-            SwapVersionList::SwapV1 => return Err(SwapError::SwapV1UnsupportedAction.into()),
-        }
+        let clone = SwapVersion::SwapV2(SwapV2 {
+            is_initialized: true,
+            nonce: token_swap.nonce(),
+            token_program_id: *token_swap.token_program_id(),
+            token_a: *token_swap.token_a_account(),
+            token_b: *token_swap.token_b_account(),
+            pool_mint: *token_swap.pool_mint(),
+            token_a_mint: *token_swap.token_a_mint(),
+            token_b_mint: *token_swap.token_b_mint(),
+            pool_fee_account: *token_swap.pool_fee_account(),
+            fees: token_swap.fees().clone(),
+            swap_curve: token_swap.swap_curve().clone(),
+            freeze_authority: token_swap.freeze_authority(),
+            freeze_authority_bit_mask,
+        });
+        SwapVersion::pack(clone, &mut swap_info.data.borrow_mut())?;
 
         Ok(())
     }

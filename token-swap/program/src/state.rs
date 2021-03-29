@@ -13,8 +13,6 @@ use solana_program::{
 /// Trait representing access to program state across all versions
 #[enum_dispatch]
 pub trait SwapState {
-    /// The version of the object
-    fn version(&self) -> SwapVersionList;
     /// Is the swap initialized, with data written to it
     fn is_initialized(&self) -> bool;
     /// Bump seed used to generate the program address / authority
@@ -56,17 +54,6 @@ pub trait SwapState {
 /// All versions of SwapState
 #[enum_dispatch(SwapState)]
 pub enum SwapVersion {
-    /// Latest version, used for all new swaps
-    SwapV2,
-    /// Deprecated version, used for some existing swaps
-    SwapV1,
-}
-
-/// A hack introduced to allow processor's freeze authority action to figure out
-/// Which swap version struct to unpack and pack with to make a mutable reference it can then update
-/// the bitmask with. Can't use the SwapVersion enum because this requires a dereferenced SwapV1 or SwapV2
-/// which we can't use due to compiler reference sharing restriction.
-pub enum SwapVersionList {
     /// Latest version, used for all new swaps
     SwapV2,
     /// Deprecated version, used for some existing swaps
@@ -169,10 +156,6 @@ pub struct SwapV2 {
 }
 
 impl SwapState for SwapV2 {
-    fn version(&self) -> SwapVersionList {
-        SwapVersionList::SwapV2
-    }
-
     fn is_initialized(&self) -> bool {
         self.is_initialized
     }
@@ -351,10 +334,6 @@ pub struct SwapV1 {
 }
 
 impl SwapState for SwapV1 {
-    fn version(&self) -> SwapVersionList {
-        SwapVersionList::SwapV1
-    }
-
     fn is_initialized(&self) -> bool {
         self.is_initialized
     }
