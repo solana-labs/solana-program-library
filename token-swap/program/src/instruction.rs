@@ -30,7 +30,7 @@ pub struct Initialize {
     pub swap_curve: SwapCurve,
     /// The freeze authority of the swap.
     pub freeze_authority: COption<Pubkey>,
-    /// bits, from left to right - 1 disables, 0 enables the actions:
+    /// bits, from right to left - 1 disables, 0 enables the actions:
     /// 0. process_swap,
     /// 1. process_deposit_all_token_types,
     /// 2. process_withdraw_all_token_types,
@@ -107,7 +107,7 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct SetFreezeAuthorityBitMask {
-    /// bits, from left to right - 1 disables, 0 enables the actions:
+    /// bits, from right to left - 1 disables, 0 enables the actions:
     /// 0. process_swap,
     /// 1. process_deposit_all_token_types,
     /// 2. process_withdraw_all_token_types,
@@ -636,6 +636,28 @@ pub fn swap(
     if let Some(host_fee_pubkey) = host_fee_pubkey {
         accounts.push(AccountMeta::new(*host_fee_pubkey, false));
     }
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a set_freeze_authority_bit_mask instruction
+/// Creates a 'swap' instruction.
+pub fn set_freeze_authority_bit_mask(
+    program_id: &Pubkey,
+    swap_pubkey: &Pubkey,
+    freeze_authority_pubkey: &Pubkey,
+    instruction: SetFreezeAuthorityBitMask,
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::SetFreezeAuthorityBitMask(instruction).pack();
+
+    let accounts = vec![
+        AccountMeta::new(*swap_pubkey, false),
+        AccountMeta::new_readonly(*freeze_authority_pubkey, true),
+    ];
 
     Ok(Instruction {
         program_id: *program_id,

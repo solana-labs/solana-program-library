@@ -42,7 +42,7 @@ pub trait SwapState {
     /// Freeze authority
     fn freeze_authority(&self) -> COption<Pubkey>;
 
-    /// bits, from left to right - 1 disables, 0 enables the actions:
+    /// bits, from right to left - 1 disables, 0 enables the actions:
     /// 0. process_swap,
     /// 1. process_deposit_all_token_types,
     /// 2. process_withdraw_all_token_types,
@@ -205,7 +205,7 @@ impl SwapState for SwapV2 {
     }
 
     fn freeze_authority_bit_mask(&self) -> u8 {
-        return self.freeze_authority_bit_mask;
+        self.freeze_authority_bit_mask
     }
 }
 
@@ -383,7 +383,7 @@ impl SwapState for SwapV1 {
     }
 
     fn freeze_authority_bit_mask(&self) -> u8 {
-        return 0 as u8;
+        0_u8
     }
 }
 

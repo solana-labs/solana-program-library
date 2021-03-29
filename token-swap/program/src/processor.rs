@@ -165,7 +165,7 @@ impl Processor {
         token_swap: &dyn SwapState,
         freeze_authority_info: &AccountInfo,
     ) -> ProgramResult {
-        return match token_swap.freeze_authority() {
+        match token_swap.freeze_authority() {
             COption::Some(key) => {
                 if key == *freeze_authority_info.key && freeze_authority_info.is_signer {
                     Ok(())
@@ -174,20 +174,20 @@ impl Processor {
                 }
             }
             COption::None => Err(SwapError::UnauthorizedToFreeze.into()),
-        };
+        }
     }
 
     fn check_allowed_to_use(token_swap: &dyn SwapState, bit_position: usize) -> ProgramResult {
         let bitmask: u8 = token_swap.freeze_authority_bit_mask();
         match Self::get_bit_at(bitmask, bit_position) {
-            Ok(val) => {
-                if val {
-                    Ok(())
+            Ok(frozen) => {
+                if frozen {
+                    Err(SwapError::FrozenAction.into())
                 } else {
-                    return Err(SwapError::FrozenAction.into());
+                    Ok(())
                 }
             }
-            Err(_) => return Err(SwapError::InvalidBitMaskOperation.into()),
+            Err(_) => Err(SwapError::InvalidBitMaskOperation.into()),
         }
     }
 
@@ -244,6 +244,7 @@ impl Processor {
     }
 
     /// Processes an [Initialize](enum.Instruction.html).
+    #[allow(clippy::too_many_arguments)]
     pub fn process_initialize(
         program_id: &Pubkey,
         nonce: u8,
@@ -1288,8 +1289,9 @@ mod tests {
             constant_product::ConstantProductCurve, offset::OffsetCurve,
         },
         instruction::{
-            deposit_all_token_types, deposit_single_token_type_exact_amount_in, initialize, swap,
-            withdraw_all_token_types, withdraw_single_token_type_exact_amount_out,
+            deposit_all_token_types, deposit_single_token_type_exact_amount_in, initialize,
+            set_freeze_authority_bit_mask, swap, withdraw_all_token_types,
+            withdraw_single_token_type_exact_amount_out,
         },
     };
     use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
@@ -1378,6 +1380,7 @@ mod tests {
         token_b_account: Account,
         token_b_mint_key: Pubkey,
         token_b_mint_account: Account,
+        freeze_authority: COption<Pubkey>,
     }
 
     impl SwapAccountInfo {
@@ -1387,8 +1390,14 @@ mod tests {
             swap_curve: SwapCurve,
             token_a_amount: u64,
             token_b_amount: u64,
+            with_freeze: bool,
         ) -> Self {
             let swap_key = Pubkey::new_unique();
+
+            let freeze_authority = match with_freeze {
+                true => COption::Some(Pubkey::new_unique()),
+                false => COption::None,
+            };
             let swap_account = Account::new(0, SwapVersion::LATEST_LEN, &SWAP_PROGRAM_ID);
             let (authority_key, nonce) =
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
@@ -1453,6 +1462,7 @@ mod tests {
                 token_b_account,
                 token_b_mint_key,
                 token_b_mint_account,
+                freeze_authority,
             }
         }
 
@@ -1471,7 +1481,7 @@ mod tests {
                     self.nonce,
                     self.fees.clone(),
                     self.swap_curve.clone(),
-                    COption::None,
+                    self.freeze_authority,
                     0,
                 )
                 .unwrap(),
@@ -1625,6 +1635,27 @@ mod tests {
             self.set_token_account(swap_destination_key, swap_destination_account);
 
             Ok(())
+        }
+
+        pub fn set_freeze_authority_bit_mask(
+            &mut self,
+            freeze_authority_bit_mask: u8,
+        ) -> ProgramResult {
+            match self.freeze_authority {
+                COption::Some(key) => do_process_instruction(
+                    set_freeze_authority_bit_mask(
+                        &SWAP_PROGRAM_ID,
+                        &TOKEN_PROGRAM_ID,
+                        &key,
+                        SetFreezeAuthorityBitMask {
+                            freeze_authority_bit_mask,
+                        },
+                    )
+                    .unwrap(),
+                    vec![&mut self.swap_account, &mut Account::default()],
+                ),
+                COption::None => return Err(SwapError::InvalidFreezeAuthority.into()),
+            }
         }
 
         #[allow(clippy::too_many_arguments)]
@@ -2115,8 +2146,14 @@ mod tests {
             calculator: Box::new(ConstantProductCurve {}),
         };
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            false,
+        );
 
         // wrong nonce for authority_key
         {
@@ -2626,8 +2663,14 @@ mod tests {
                 curve_type: CurveType::ConstantPrice,
                 calculator: Box::new(ConstantPriceCurve { token_b_price }),
             };
-            let mut accounts =
-                SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                false,
+            );
             assert_eq!(
                 Err(SwapError::InvalidCurve.into()),
                 accounts.initialize_swap()
@@ -2651,8 +2694,14 @@ mod tests {
                 curve_type: CurveType::ConstantPrice,
                 calculator: Box::new(ConstantPriceCurve { token_b_price }),
             };
-            let mut accounts =
-                SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                false,
+            );
             accounts.initialize_swap().unwrap();
         }
 
@@ -2673,8 +2722,14 @@ mod tests {
                 curve_type: CurveType::Offset,
                 calculator: Box::new(OffsetCurve { token_b_offset }),
             };
-            let mut accounts =
-                SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                false,
+            );
             assert_eq!(
                 Err(SwapError::InvalidCurve.into()),
                 accounts.initialize_swap()
@@ -2698,8 +2753,14 @@ mod tests {
                 curve_type: CurveType::Offset,
                 calculator: Box::new(OffsetCurve { token_b_offset }),
             };
-            let mut accounts =
-                SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                false,
+            );
             accounts.initialize_swap().unwrap();
         }
 
@@ -2740,6 +2801,7 @@ mod tests {
                 swap_curve,
                 token_a_amount,
                 token_b_amount,
+                false,
             );
             assert_eq!(
                 Err(SwapError::InvalidOwner.into()),
@@ -2814,6 +2876,7 @@ mod tests {
                 swap_curve,
                 token_a_amount,
                 token_b_amount,
+                false,
             );
             assert_eq!(
                 Err(SwapError::InvalidFee.into()),
@@ -2886,6 +2949,7 @@ mod tests {
                 swap_curve,
                 token_a_amount,
                 token_b_amount,
+                false,
             );
             do_process_instruction_with_fee_constraints(
                 initialize(
@@ -2982,8 +3046,14 @@ mod tests {
             calculator: Box::new(ConstantProductCurve {}),
         };
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            false,
+        );
 
         // depositing 10% of the current pool amount in token A and B means
         // that our pool tokens will be worth 1 / 10 of the current pool amount
@@ -3561,6 +3631,134 @@ mod tests {
                 pool_account.amount + swap_pool_account.amount
             );
         }
+
+        // adding freeze authority and turning off deposit throws FrozenAction
+        {
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+                host_fee_numerator,
+                host_fee_denominator,
+            };
+
+            let curve_type = CurveType::ConstantProduct;
+            let swap_curve = SwapCurve {
+                curve_type,
+                calculator: Box::new(ConstantProductCurve {}),
+            };
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees.clone(),
+                swap_curve.clone(),
+                token_a_amount,
+                token_b_amount,
+                true,
+            );
+
+            accounts.initialize_swap().unwrap();
+            accounts.set_freeze_authority_bit_mask(1 << 1).unwrap();
+
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            assert_eq!(
+                Err(SwapError::FrozenAction.into()),
+                accounts.deposit_all_token_types(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    pool_amount.try_into().unwrap(),
+                    deposit_a,
+                    deposit_b,
+                )
+            );
+        }
+
+        // adding freeze authority and leaving on deposit works fine
+        {
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+                host_fee_numerator,
+                host_fee_denominator,
+            };
+
+            let curve_type = CurveType::ConstantProduct;
+            let swap_curve = SwapCurve {
+                curve_type,
+                calculator: Box::new(ConstantProductCurve {}),
+            };
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees.clone(),
+                swap_curve.clone(),
+                token_a_amount,
+                token_b_amount,
+                true,
+            );
+
+            accounts.initialize_swap().unwrap();
+
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            accounts
+                .deposit_all_token_types(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    pool_amount.try_into().unwrap(),
+                    deposit_a,
+                    deposit_b,
+                )
+                .unwrap();
+
+            let swap_token_a =
+                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+            assert_eq!(swap_token_a.amount, deposit_a + token_a_amount);
+            let swap_token_b =
+                spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
+            assert_eq!(swap_token_b.amount, deposit_b + token_b_amount);
+            let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
+            assert_eq!(token_a.amount, 0);
+            let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
+            assert_eq!(token_b.amount, 0);
+            let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
+            let swap_pool_account =
+                spl_token::state::Account::unpack(&accounts.pool_token_account.data).unwrap();
+            let pool_mint =
+                spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
+            assert_eq!(
+                pool_mint.supply,
+                pool_account.amount + swap_pool_account.amount
+            );
+        }
     }
 
     #[test]
@@ -3602,8 +3800,14 @@ mod tests {
         let minimum_token_a_amount = initial_a / 40;
         let minimum_token_b_amount = initial_b / 40;
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            false,
+        );
 
         // swap not initialized
         {
@@ -4368,6 +4572,174 @@ mod tests {
                 TryInto::<u64>::try_into(results.token_b_amount).unwrap()
             );
         }
+
+        // add freeze authority and freeze withdrawal throws FrozenAction error
+        {
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+                host_fee_numerator,
+                host_fee_denominator,
+            };
+
+            let curve_type = CurveType::ConstantProduct;
+            let swap_curve = SwapCurve {
+                curve_type,
+                calculator: Box::new(ConstantProductCurve {}),
+            };
+
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                true,
+            );
+            accounts.initialize_swap().unwrap();
+            accounts.set_freeze_authority_bit_mask(1 << 2).unwrap();
+
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                _pool_key,
+                mut _pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, 0, 0, 0);
+
+            let pool_fee_key = accounts.pool_fee_key;
+            let mut pool_fee_account = accounts.pool_fee_account.clone();
+            let fee_account = spl_token::state::Account::unpack(&pool_fee_account.data).unwrap();
+            let pool_fee_amount = fee_account.amount;
+
+            assert_eq!(
+                Err(SwapError::FrozenAction.into()),
+                accounts.withdraw_all_token_types(
+                    &user_key,
+                    &pool_fee_key,
+                    &mut pool_fee_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    pool_fee_amount,
+                    0,
+                    0,
+                )
+            )
+        }
+        // add freeze authority does not break withdrawal
+        {
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+                host_fee_numerator,
+                host_fee_denominator,
+            };
+
+            let curve_type = CurveType::ConstantProduct;
+            let swap_curve = SwapCurve {
+                curve_type,
+                calculator: Box::new(ConstantProductCurve {}),
+            };
+
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                true,
+            );
+            accounts.initialize_swap().unwrap();
+
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &withdrawer_key,
+                initial_a,
+                initial_b,
+                initial_pool.try_into().unwrap(),
+            );
+
+            accounts
+                .withdraw_all_token_types(
+                    &withdrawer_key,
+                    &pool_key,
+                    &mut pool_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    withdraw_amount.try_into().unwrap(),
+                    minimum_token_a_amount,
+                    minimum_token_b_amount,
+                )
+                .unwrap();
+
+            let swap_token_a =
+                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+            let swap_token_b =
+                spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
+            let pool_mint =
+                spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
+            let withdraw_fee = accounts.fees.owner_withdraw_fee(withdraw_amount).unwrap();
+            let results = accounts
+                .swap_curve
+                .calculator
+                .pool_tokens_to_trading_tokens(
+                    withdraw_amount - withdraw_fee,
+                    pool_mint.supply.try_into().unwrap(),
+                    swap_token_a.amount.try_into().unwrap(),
+                    swap_token_b.amount.try_into().unwrap(),
+                    RoundDirection::Floor,
+                )
+                .unwrap();
+            assert_eq!(
+                swap_token_a.amount,
+                token_a_amount - to_u64(results.token_a_amount).unwrap()
+            );
+            assert_eq!(
+                swap_token_b.amount,
+                token_b_amount - to_u64(results.token_b_amount).unwrap()
+            );
+            let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
+            assert_eq!(
+                token_a.amount,
+                initial_a + to_u64(results.token_a_amount).unwrap()
+            );
+            let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
+            assert_eq!(
+                token_b.amount,
+                initial_b + to_u64(results.token_b_amount).unwrap()
+            );
+            let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
+            assert_eq!(
+                pool_account.amount,
+                to_u64(initial_pool - withdraw_amount).unwrap()
+            );
+            let fee_account =
+                spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
+            assert_eq!(
+                fee_account.amount,
+                TryInto::<u64>::try_into(withdraw_fee).unwrap()
+            );
+        }
     }
 
     #[test]
@@ -4402,8 +4774,14 @@ mod tests {
             calculator: Box::new(ConstantProductCurve {}),
         };
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            false,
+        );
 
         let deposit_a = token_a_amount / 10;
         let deposit_b = token_b_amount / 10;
@@ -4881,6 +5259,143 @@ mod tests {
                 pool_account.amount + swap_pool_account.amount
             );
         }
+
+        // freeze authority throws FrozenAction error when bit mask turned on
+        {
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+                host_fee_numerator,
+                host_fee_denominator,
+            };
+
+            let curve_type = CurveType::ConstantProduct;
+            let swap_curve = SwapCurve {
+                curve_type,
+                calculator: Box::new(ConstantProductCurve {}),
+            };
+
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                true,
+            );
+            accounts.initialize_swap().unwrap();
+            accounts.set_freeze_authority_bit_mask(1 << 3).unwrap();
+
+            let (
+                token_a_key,
+                mut token_a_account,
+                _token_b_key,
+                mut _token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            assert_eq!(
+                Err(SwapError::FrozenAction.into()),
+                accounts.deposit_single_token_type_exact_amount_in(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &pool_key,
+                    &mut pool_account,
+                    deposit_a,
+                    pool_amount,
+                )
+            );
+        }
+
+        // freeze authority correctly deposits when no mask set
+        {
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+                host_fee_numerator,
+                host_fee_denominator,
+            };
+
+            let curve_type = CurveType::ConstantProduct;
+            let swap_curve = SwapCurve {
+                curve_type,
+                calculator: Box::new(ConstantProductCurve {}),
+            };
+
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                true,
+            );
+            accounts.initialize_swap().unwrap();
+
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            accounts
+                .deposit_single_token_type_exact_amount_in(
+                    &depositor_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &pool_key,
+                    &mut pool_account,
+                    deposit_a,
+                    pool_amount,
+                )
+                .unwrap();
+
+            let swap_token_a =
+                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+            assert_eq!(swap_token_a.amount, deposit_a + token_a_amount);
+
+            let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
+            assert_eq!(token_a.amount, 0);
+
+            accounts
+                .deposit_single_token_type_exact_amount_in(
+                    &depositor_key,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    deposit_b,
+                    pool_amount,
+                )
+                .unwrap();
+            let swap_token_b =
+                spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
+            assert_eq!(swap_token_b.amount, deposit_b + token_b_amount);
+
+            let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
+            assert_eq!(token_b.amount, 0);
+
+            let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
+            let swap_pool_account =
+                spl_token::state::Account::unpack(&accounts.pool_token_account.data).unwrap();
+            let pool_mint =
+                spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
+            assert_eq!(
+                pool_mint.supply,
+                pool_account.amount + swap_pool_account.amount
+            );
+        }
     }
 
     #[test]
@@ -4922,8 +5437,14 @@ mod tests {
         let destination_a_amount = initial_a / 40;
         let destination_b_amount = initial_b / 40;
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            false,
+        );
 
         // swap not initialized
         {
@@ -5532,6 +6053,162 @@ mod tests {
             let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
             assert_eq!(token_a.amount, initial_a + fee_a_amount);
         }
+
+        // freeze authority throws FrozenAction error when bit mask flipped
+        {
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+                host_fee_numerator,
+                host_fee_denominator,
+            };
+
+            let curve_type = CurveType::ConstantProduct;
+            let swap_curve = SwapCurve {
+                curve_type,
+                calculator: Box::new(ConstantProductCurve {}),
+            };
+
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                true,
+            );
+            accounts.initialize_swap().unwrap();
+            // Let's add 1 here to test possibility of having additional bits flipped
+            accounts
+                .set_freeze_authority_bit_mask((1 << 4) + 1)
+                .unwrap();
+
+            let (
+                token_a_key,
+                mut token_a_account,
+                _token_b_key,
+                _token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &withdrawer_key,
+                initial_a,
+                initial_b,
+                initial_pool.try_into().unwrap(),
+            );
+            assert_eq!(
+                Err(SwapError::FrozenAction.into()),
+                accounts.withdraw_single_token_type_exact_amount_out(
+                    &withdrawer_key,
+                    &pool_key,
+                    &mut pool_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    destination_a_amount,
+                    maximum_pool_token_amount,
+                )
+            );
+        }
+
+        // freeze authority has correct withdrawal
+        {
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+                host_fee_numerator,
+                host_fee_denominator,
+            };
+
+            let curve_type = CurveType::ConstantProduct;
+            let swap_curve = SwapCurve {
+                curve_type,
+                calculator: Box::new(ConstantProductCurve {}),
+            };
+
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                true,
+            );
+            accounts.initialize_swap().unwrap();
+            let (
+                token_a_key,
+                mut token_a_account,
+                _token_b_key,
+                _token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(
+                &user_key,
+                &withdrawer_key,
+                initial_a,
+                initial_b,
+                initial_pool.try_into().unwrap(),
+            );
+
+            let swap_token_a =
+                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+            let swap_token_b =
+                spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
+            let pool_mint =
+                spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
+
+            let pool_token_amount = accounts
+                .swap_curve
+                .trading_tokens_to_pool_tokens(
+                    destination_a_amount.try_into().unwrap(),
+                    (swap_token_a.amount - destination_a_amount)
+                        .try_into()
+                        .unwrap(),
+                    swap_token_b.amount.try_into().unwrap(),
+                    pool_mint.supply.try_into().unwrap(),
+                    TradeDirection::AtoB,
+                    RoundDirection::Ceiling,
+                    &accounts.fees,
+                )
+                .unwrap();
+            let withdraw_fee = accounts.fees.owner_withdraw_fee(pool_token_amount).unwrap();
+
+            accounts
+                .withdraw_single_token_type_exact_amount_out(
+                    &withdrawer_key,
+                    &pool_key,
+                    &mut pool_account,
+                    &token_a_key,
+                    &mut token_a_account,
+                    destination_a_amount,
+                    maximum_pool_token_amount,
+                )
+                .unwrap();
+
+            let swap_token_a =
+                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+
+            assert_eq!(swap_token_a.amount, token_a_amount - destination_a_amount);
+            let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
+            assert_eq!(token_a.amount, initial_a + destination_a_amount);
+
+            let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
+            assert_eq!(
+                pool_account.amount,
+                to_u64(initial_pool - pool_token_amount - withdraw_fee).unwrap()
+            );
+            let fee_account =
+                spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
+            assert_eq!(fee_account.amount, to_u64(withdraw_fee).unwrap());
+        }
     }
 
     fn check_valid_swap_curve(
@@ -5555,6 +6232,7 @@ mod tests {
             swap_curve.clone(),
             token_a_amount,
             token_b_amount,
+            false,
         );
         let initial_a = token_a_amount / 5;
         let initial_b = token_b_amount / 5;
@@ -5861,6 +6539,7 @@ mod tests {
             swap_curve,
             token_a_amount,
             token_b_amount,
+            false,
         );
 
         // initialize swap
@@ -5996,8 +6675,14 @@ mod tests {
             curve_type,
             calculator: Box::new(ConstantProductCurve {}),
         };
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            false,
+        );
 
         let initial_a = token_a_amount / 5;
         let initial_b = token_b_amount / 5;
@@ -6627,6 +7312,239 @@ mod tests {
     }
 
     #[test]
+    fn test_freeze_authority_can_freeze_swap() {
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 10;
+        let owner_trade_fee_numerator = 1;
+        let owner_trade_fee_denominator = 30;
+        let owner_withdraw_fee_numerator = 1;
+        let owner_withdraw_fee_denominator = 30;
+        let host_fee_numerator = 10;
+        let host_fee_denominator = 100;
+
+        let token_a_amount = 1_000_000_000;
+        let token_b_amount = 0;
+        let fees = Fees {
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
+        };
+
+        let token_b_offset = 2_000_000;
+        let swap_curve = SwapCurve {
+            curve_type: CurveType::Offset,
+            calculator: Box::new(OffsetCurve { token_b_offset }),
+        };
+        let user_key = Pubkey::new_unique();
+        let swapper_key = Pubkey::new_unique();
+
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            true,
+        );
+
+        accounts.initialize_swap().unwrap();
+        accounts.set_freeze_authority_bit_mask(1 << 0).unwrap();
+
+        let swap_token_a_key = accounts.token_a_key;
+        let swap_token_b_key = accounts.token_b_key;
+        let initial_a = 500_000;
+        let initial_b = 1_000;
+
+        let (
+            token_a_key,
+            mut token_a_account,
+            token_b_key,
+            mut token_b_account,
+            _pool_key,
+            _pool_account,
+        ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+
+        // swap a to b way, fails, there's no liquidity
+        let a_to_b_amount = initial_a;
+        let minimum_token_b_amount = 0;
+
+        assert_eq!(
+            Err(SwapError::FrozenAction.into()),
+            accounts.swap(
+                &swapper_key,
+                &token_a_key,
+                &mut token_a_account,
+                &swap_token_a_key,
+                &swap_token_b_key,
+                &token_b_key,
+                &mut token_b_account,
+                a_to_b_amount,
+                minimum_token_b_amount,
+            )
+        );
+    }
+
+    #[test]
+    fn test_freeze_authority_does_not_affect_swap() {
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 10;
+        let owner_trade_fee_numerator = 1;
+        let owner_trade_fee_denominator = 30;
+        let owner_withdraw_fee_numerator = 1;
+        let owner_withdraw_fee_denominator = 30;
+        let host_fee_numerator = 10;
+        let host_fee_denominator = 100;
+
+        let token_a_amount = 1_000_000_000;
+        let token_b_amount = 0;
+        let fees = Fees {
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
+        };
+
+        let token_b_offset = 2_000_000;
+        let swap_curve = SwapCurve {
+            curve_type: CurveType::Offset,
+            calculator: Box::new(OffsetCurve { token_b_offset }),
+        };
+        let user_key = Pubkey::new_unique();
+        let swapper_key = Pubkey::new_unique();
+
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            true,
+        );
+
+        accounts.initialize_swap().unwrap();
+
+        let swap_token_a_key = accounts.token_a_key;
+        let swap_token_b_key = accounts.token_b_key;
+        let initial_a = 500_000;
+        let initial_b = 1_000;
+
+        let (
+            token_a_key,
+            mut token_a_account,
+            token_b_key,
+            mut token_b_account,
+            _pool_key,
+            _pool_account,
+        ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+
+        // swap a to b way, fails, there's no liquidity
+        let a_to_b_amount = initial_a;
+        let minimum_token_b_amount = 0;
+
+        assert_eq!(
+            Err(SwapError::ZeroTradingTokens.into()),
+            accounts.swap(
+                &swapper_key,
+                &token_a_key,
+                &mut token_a_account,
+                &swap_token_a_key,
+                &swap_token_b_key,
+                &token_b_key,
+                &mut token_b_account,
+                a_to_b_amount,
+                minimum_token_b_amount,
+            )
+        );
+
+        // swap b to a, succeeds at offset price
+        let b_to_a_amount = initial_b;
+        let minimum_token_a_amount = 0;
+        accounts
+            .swap(
+                &swapper_key,
+                &token_b_key,
+                &mut token_b_account,
+                &swap_token_b_key,
+                &swap_token_a_key,
+                &token_a_key,
+                &mut token_a_account,
+                b_to_a_amount,
+                minimum_token_a_amount,
+            )
+            .unwrap();
+
+        // try a to b again, succeeds due to new liquidity
+        accounts
+            .swap(
+                &swapper_key,
+                &token_a_key,
+                &mut token_a_account,
+                &swap_token_a_key,
+                &swap_token_b_key,
+                &token_b_key,
+                &mut token_b_account,
+                a_to_b_amount,
+                minimum_token_b_amount,
+            )
+            .unwrap();
+
+        // try a to b again, fails due to no more liquidity
+        assert_eq!(
+            Err(SwapError::ZeroTradingTokens.into()),
+            accounts.swap(
+                &swapper_key,
+                &token_a_key,
+                &mut token_a_account,
+                &swap_token_a_key,
+                &swap_token_b_key,
+                &token_b_key,
+                &mut token_b_account,
+                a_to_b_amount,
+                minimum_token_b_amount,
+            )
+        );
+
+        // Try to deposit, fails because deposits are not allowed for offset
+        // curve swaps
+        {
+            let initial_a = 100;
+            let initial_b = 100;
+            let pool_amount = 100;
+            let (
+                token_a_key,
+                mut token_a_account,
+                token_b_key,
+                mut token_b_account,
+                pool_key,
+                mut pool_account,
+            ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+            assert_eq!(
+                Err(SwapError::UnsupportedCurveOperation.into()),
+                accounts.deposit_all_token_types(
+                    &swapper_key,
+                    &token_a_key,
+                    &mut token_a_account,
+                    &token_b_key,
+                    &mut token_b_account,
+                    &pool_key,
+                    &mut pool_account,
+                    pool_amount,
+                    initial_a,
+                    initial_b,
+                )
+            );
+        }
+    }
+    #[test]
     fn test_overdraw_offset_curve() {
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 10;
@@ -6658,8 +7576,14 @@ mod tests {
         let user_key = Pubkey::new_unique();
         let swapper_key = Pubkey::new_unique();
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            false,
+        );
 
         accounts.initialize_swap().unwrap();
 
@@ -6809,8 +7733,14 @@ mod tests {
         let user_key = Pubkey::new_unique();
         let withdrawer_key = Pubkey::new_unique();
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            false,
+        );
 
         accounts.initialize_swap().unwrap();
 
