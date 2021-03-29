@@ -523,7 +523,7 @@ mod tests {
             curve_type,
             calculator,
         };
-        let swap_info = SwapVersion::SwapV1(SwapV1 {
+        let swap_info = SwapVersion::SwapV2(SwapV2 {
             is_initialized: true,
             nonce: TEST_NONCE,
             token_program_id: TEST_TOKEN_PROGRAM_ID,
@@ -535,6 +535,8 @@ mod tests {
             pool_fee_account: TEST_POOL_FEE_ACCOUNT,
             fees: TEST_FEES,
             swap_curve: swap_curve.clone(),
+            freeze_authority: COption::None,
+            freeze_authority_bit_mask: 0,
         });
 
         let mut packed = [0u8; SwapVersion::LATEST_LEN];
