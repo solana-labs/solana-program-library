@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@solana/spl-token": "0.0.13",
-    "@solana/web3.js": "^0.94.2",
+    "@solana/web3.js": "^1.2.0",
     "bn.js": "^5.2.0",
     "mkdirp": "^1.0.4"
   },
