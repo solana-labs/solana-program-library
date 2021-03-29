@@ -91,6 +91,22 @@ pub enum SwapError {
     /// The operation cannot be performed on the given curve
     #[error("The operation cannot be performed on the given curve")]
     UnsupportedCurveOperation,
+
+    /// Attempted to access an invalid bit in the freeze authority bitmask
+    #[error("Attempted to access an invalid bit in the freeze authority bitmask")]
+    InvalidBitMaskOperation,
+
+    /// This action has been frozen by the Freeze Authority
+    #[error("This action has been frozen by the Freeze Authority")]
+    FrozenAction,
+
+    /// Unauthorized to freeze
+    #[error("Unauthorized to freeze")]
+    UnauthorizedToFreeze,
+
+    /// Attempted to set bit mask on Swap V1
+    #[error("Attempted to set bit mask on Swap V1")]
+    SwapV1UnsupportedAction,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

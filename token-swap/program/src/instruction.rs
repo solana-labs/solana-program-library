@@ -7,6 +7,7 @@ use crate::error::SwapError;
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
+    program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
 };
@@ -27,6 +28,15 @@ pub struct Initialize {
     /// swap curve info for pool, including CurveType and anything
     /// else that may be required
     pub swap_curve: SwapCurve,
+    /// The freeze authority of the swap.
+    pub freeze_authority: COption<Pubkey>,
+    /// bits, from left to right - 1 disables, 0 enables the actions:
+    /// 0. process_swap,
+    /// 1. process_deposit_all_token_types,
+    /// 2. process_withdraw_all_token_types,
+    /// 3. process_deposit_single_token_type_exact_amount_in,
+    /// 4. process_withdraw_single_token_type_exact_amount_out,
+    pub freeze_authority_bit_mask: u8,
 }
 
 /// Swap instruction data
@@ -92,6 +102,20 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
     pub maximum_pool_token_amount: u64,
 }
 
+/// SetFreezeAuthorityBitMask instruction data
+#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct SetFreezeAuthorityBitMask {
+    /// bits, from left to right - 1 disables, 0 enables the actions:
+    /// 0. process_swap,
+    /// 1. process_deposit_all_token_types,
+    /// 2. process_withdraw_all_token_types,
+    /// 3. process_deposit_single_token_type_exact_amount_in,
+    /// 4. process_withdraw_single_token_type_exact_amount_out,
+    pub freeze_authority_bit_mask: u8,
+}
+
 /// Instructions supported by the token swap program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -107,7 +131,8 @@ pub enum SwapInstruction {
     ///   Must be empty, not owned by swap authority
     ///   6. `[writable]` Pool Token Account to deposit the initial pool token
     ///   supply.  Must be empty, not owned by swap authority.
-    ///   7. '[]` Token program id
+    ///   7. '[]` Freeze authority. Optional.
+    ///   8. '[]` Token program id
     Initialize(Initialize),
 
     ///   Swap the tokens in the pool.
@@ -187,6 +212,11 @@ pub enum SwapInstruction {
     ///   8. `[writable]` Fee account, to receive withdrawal fees
     ///   9. '[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
+
+    /// Update the freeze authority bit mask.
+    ///   0. `[writable]` Token-swap
+    ///   1. `[]` Freeze authority (must be signer)
+    SetFreezeAuthorityBitMask(SetFreezeAuthorityBitMask),
 }
 
 impl SwapInstruction {
@@ -199,11 +229,16 @@ impl SwapInstruction {
                 if rest.len() >= Fees::LEN {
                     let (fees, rest) = rest.split_at(Fees::LEN);
                     let fees = Fees::unpack_unchecked(fees)?;
-                    let swap_curve = SwapCurve::unpack_unchecked(rest)?;
+                    let (swap_curve_data, rest) = rest.split_at(SwapCurve::LEN);
+                    let swap_curve = SwapCurve::unpack_unchecked(swap_curve_data)?;
+                    let (freeze_authority, rest) = Self::unpack_pubkey_option(rest)?;
+                    let freeze_authority_bit_mask = rest[0];
                     Self::Initialize(Initialize {
                         nonce,
                         fees,
                         swap_curve,
+                        freeze_authority,
+                        freeze_authority_bit_mask,
                     })
                 } else {
                     return Err(SwapError::InvalidInstruction.into());
@@ -253,6 +288,9 @@ impl SwapInstruction {
                     maximum_pool_token_amount,
                 })
             }
+            6 => Self::SetFreezeAuthorityBitMask(SetFreezeAuthorityBitMask {
+                freeze_authority_bit_mask: rest[0],
+            }),
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
     }
@@ -271,6 +309,28 @@ impl SwapInstruction {
         }
     }
 
+    fn unpack_pubkey_option(input: &[u8]) -> Result<(COption<Pubkey>, &[u8]), ProgramError> {
+        match input.split_first() {
+            Option::Some((&0, rest)) => Ok((COption::None, rest)),
+            Option::Some((&1, rest)) if rest.len() >= 32 => {
+                let (key, rest) = rest.split_at(32);
+                let pk = Pubkey::new(key);
+                Ok((COption::Some(pk), rest))
+            }
+            _ => Err(SwapError::InvalidInstruction.into()),
+        }
+    }
+
+    fn pack_pubkey_option(value: &COption<Pubkey>, buf: &mut Vec<u8>) {
+        match *value {
+            COption::Some(ref key) => {
+                buf.push(1);
+                buf.extend_from_slice(&key.to_bytes());
+            }
+            COption::None => buf.push(0),
+        }
+    }
+
     /// Packs a [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
@@ -279,6 +339,8 @@ impl SwapInstruction {
                 nonce,
                 fees,
                 swap_curve,
+                freeze_authority,
+                freeze_authority_bit_mask,
             }) => {
                 buf.push(0);
                 buf.push(*nonce);
@@ -288,6 +350,8 @@ impl SwapInstruction {
                 let mut swap_curve_slice = [0u8; SwapCurve::LEN];
                 Pack::pack_into_slice(swap_curve, &mut swap_curve_slice[..]);
                 buf.extend_from_slice(&swap_curve_slice);
+                Self::pack_pubkey_option(freeze_authority, &mut buf);
+                buf.push(*freeze_authority_bit_mask);
             }
             Self::Swap(Swap {
                 amount_in,
@@ -335,6 +399,13 @@ impl SwapInstruction {
                 buf.extend_from_slice(&destination_token_amount.to_le_bytes());
                 buf.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
             }
+
+            Self::SetFreezeAuthorityBitMask(SetFreezeAuthorityBitMask {
+                freeze_authority_bit_mask,
+            }) => {
+                buf.push(6);
+                buf.extend_from_slice(&freeze_authority_bit_mask.to_le_bytes());
+            }
         }
         buf
     }
@@ -354,11 +425,15 @@ pub fn initialize(
     nonce: u8,
     fees: Fees,
     swap_curve: SwapCurve,
+    freeze_authority: COption<Pubkey>,
+    freeze_authority_bit_mask: u8,
 ) -> Result<Instruction, ProgramError> {
     let init_data = SwapInstruction::Initialize(Initialize {
         nonce,
         fees,
         swap_curve,
+        freeze_authority,
+        freeze_authority_bit_mask,
     });
     let data = init_data.pack();
 
@@ -618,6 +693,8 @@ mod tests {
             nonce,
             fees,
             swap_curve,
+            freeze_authority: COption::None,
+            freeze_authority_bit_mask: 0,
         });
         let packed = check.pack();
         let mut expect = vec![0u8, nonce];

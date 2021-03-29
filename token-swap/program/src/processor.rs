@@ -1,6 +1,10 @@
 //! Program state processor
 
-use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS};
+use crate::{
+    constraints::{SwapConstraints, SWAP_CONSTRAINTS},
+    instruction::SetFreezeAuthorityBitMask,
+    state::{SwapV2, SwapVersionList},
+};
 use crate::{
     curve::{
         base::SwapCurve,
@@ -12,7 +16,7 @@ use crate::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
     },
-    state::{SwapState, SwapV1, SwapVersion},
+    state::{SwapState, SwapVersion},
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -149,6 +153,43 @@ impl Processor {
             signers,
         )
     }
+    fn get_bit_at(input: u8, n: usize) -> Result<bool, ()> {
+        if n < 8 {
+            Ok(input & (1 << n) != 0)
+        } else {
+            Err(())
+        }
+    }
+
+    fn check_allowed_to_freeze(
+        token_swap: &dyn SwapState,
+        freeze_authority_info: &AccountInfo,
+    ) -> ProgramResult {
+        return match token_swap.freeze_authority() {
+            COption::Some(key) => {
+                if key == *freeze_authority_info.key && freeze_authority_info.is_signer {
+                    Ok(())
+                } else {
+                    Err(SwapError::UnauthorizedToFreeze.into())
+                }
+            }
+            COption::None => Err(SwapError::UnauthorizedToFreeze.into()),
+        };
+    }
+
+    fn check_allowed_to_use(token_swap: &dyn SwapState, bit_position: usize) -> ProgramResult {
+        let bitmask: u8 = token_swap.freeze_authority_bit_mask();
+        match Self::get_bit_at(bitmask, bit_position) {
+            Ok(val) => {
+                if val {
+                    Ok(())
+                } else {
+                    return Err(SwapError::FrozenAction.into());
+                }
+            }
+            Err(_) => return Err(SwapError::InvalidBitMaskOperation.into()),
+        }
+    }
 
     #[allow(clippy::too_many_arguments)]
     fn check_accounts(
@@ -210,6 +251,8 @@ impl Processor {
         swap_curve: SwapCurve,
         accounts: &[AccountInfo],
         swap_constraints: &Option<SwapConstraints>,
+        freeze_authority: COption<Pubkey>,
+        freeze_authority_bit_mask: u8,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
@@ -305,7 +348,7 @@ impl Processor {
             to_u64(initial_amount)?,
         )?;
 
-        let obj = SwapVersion::SwapV1(SwapV1 {
+        let obj = SwapVersion::SwapV2(SwapV2 {
             is_initialized: true,
             nonce,
             token_program_id,
@@ -317,6 +360,8 @@ impl Processor {
             pool_fee_account: *fee_account_info.key,
             fees,
             swap_curve,
+            freeze_authority,
+            freeze_authority_bit_mask,
         });
         SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
@@ -345,6 +390,7 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        Self::check_allowed_to_use(token_swap.as_ref(), 0)?;
 
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce())?
         {
@@ -512,6 +558,8 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        Self::check_allowed_to_use(token_swap.as_ref(), 1)?;
+
         let calculator = &token_swap.swap_curve().calculator;
         if !calculator.allows_deposits() {
             return Err(SwapError::UnsupportedCurveOperation.into());
@@ -615,6 +663,8 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        Self::check_allowed_to_use(token_swap.as_ref(), 2)?;
+
         Self::check_accounts(
             token_swap.as_ref(),
             program_id,
@@ -739,6 +789,8 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        Self::check_allowed_to_use(token_swap.as_ref(), 3)?;
+
         let source_account =
             Self::unpack_token_account(source_info, &token_swap.token_program_id())?;
         let swap_token_a =
@@ -854,6 +906,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+
+        Self::check_allowed_to_use(token_swap.as_ref(), 4)?;
+
         let destination_account =
             Self::unpack_token_account(destination_info, &token_swap.token_program_id())?;
         let swap_token_a =
@@ -992,6 +1047,40 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [SetFreezeAuthorityBitMask](enum.Instruction.html).
+    pub fn process_set_freeze_authority_bit_mask(
+        _: &Pubkey,
+        freeze_authority_bit_mask: u8,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let swap_info = next_account_info(account_info_iter)?;
+        let freeze_authority_info = next_account_info(account_info_iter)?;
+        let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+
+        Self::check_allowed_to_freeze(token_swap.as_ref(), freeze_authority_info)?;
+
+        // The way SwapVersion is setup, it is immutable, can't get at it except through this fashion,
+        // This is because unpack returns an immutable SwapState and pack expects a SwapVersion struct
+        // which we cannot get to from a SwapState unless we make a new Clone, which we can't really easily do
+        // (I tried it, causes compiler issues with the swap_curve.) Also is expensive on CPU.
+
+        // With this version method here, and match, we are guaranteed any later swap versions
+        // must get a branch entry here and we can get direct access to their underlying mutable
+        // state objects and pack functionalities, bypassing the immutable SwapVersion structure.
+
+        match token_swap.version() {
+            SwapVersionList::SwapV2 => {
+                let mut swap = SwapV2::unpack(&swap_info.data.borrow())?;
+                swap.freeze_authority_bit_mask = freeze_authority_bit_mask;
+                SwapV2::pack(swap, &mut swap_info.data.borrow_mut())?;
+            }
+            SwapVersionList::SwapV1 => return Err(SwapError::SwapV1UnsupportedAction.into()),
+        }
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         Self::process_with_constraints(program_id, accounts, input, &SWAP_CONSTRAINTS)
@@ -1010,6 +1099,8 @@ impl Processor {
                 nonce,
                 fees,
                 swap_curve,
+                freeze_authority,
+                freeze_authority_bit_mask,
             }) => {
                 msg!("Instruction: Init");
                 Self::process_initialize(
@@ -1019,6 +1110,8 @@ impl Processor {
                     swap_curve,
                     accounts,
                     swap_constraints,
+                    freeze_authority,
+                    freeze_authority_bit_mask,
                 )
             }
             SwapInstruction::Swap(Swap {
@@ -1081,6 +1174,16 @@ impl Processor {
                     program_id,
                     destination_token_amount,
                     maximum_pool_token_amount,
+                    accounts,
+                )
+            }
+            SwapInstruction::SetFreezeAuthorityBitMask(SetFreezeAuthorityBitMask {
+                freeze_authority_bit_mask,
+            }) => {
+                msg!("Instruction: SetFreezeAuthorityBitMask");
+                Self::process_set_freeze_authority_bit_mask(
+                    program_id,
+                    freeze_authority_bit_mask,
                     accounts,
                 )
             }
@@ -1151,6 +1254,18 @@ impl PrintProgramError for SwapError {
             }
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
+            }
+            SwapError::InvalidBitMaskOperation => {
+                msg!("Error: Attempted to access an invalid bit in the freeze authority bitmask")
+            }
+            SwapError::FrozenAction => {
+                msg!("Error: This action has been frozen by the Freeze Authority")
+            }
+            SwapError::UnauthorizedToFreeze => {
+                msg!("Error: Unauthorized to freeze")
+            }
+            SwapError::SwapV1UnsupportedAction => {
+                msg!("Error: Attempted to set bit mask on Swap V1")
             }
         }
     }
@@ -1357,6 +1472,8 @@ mod tests {
                     self.nonce,
                     self.fees.clone(),
                     self.swap_curve.clone(),
+                    COption::None,
+                    0,
                 )
                 .unwrap(),
                 vec![
@@ -2453,6 +2570,8 @@ mod tests {
                         accounts.nonce,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
+                        COption::None,
+                        0,
                     )
                     .unwrap(),
                     vec![
@@ -2639,6 +2758,8 @@ mod tests {
                         accounts.nonce,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
+                        COption::None,
+                        0,
                     )
                     .unwrap(),
                     vec![
@@ -2711,6 +2832,8 @@ mod tests {
                         accounts.nonce,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
+                        COption::None,
+                        0,
                     )
                     .unwrap(),
                     vec![
@@ -2779,6 +2902,8 @@ mod tests {
                     accounts.nonce,
                     accounts.fees,
                     accounts.swap_curve.clone(),
+                    COption::None,
+                    0,
                 )
                 .unwrap(),
                 vec![
@@ -5754,6 +5879,8 @@ mod tests {
                 accounts.nonce,
                 accounts.fees.clone(),
                 accounts.swap_curve.clone(),
+                COption::None,
+                0,
             )
             .unwrap(),
             vec![
