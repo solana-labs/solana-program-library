@@ -2,22 +2,76 @@
 
 mod helpers;
 
-use crate::solana_program::pubkey::Pubkey;
-use helpers::*;
-
-use bincode::deserialize;
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError,
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-    transaction::TransactionError,
-    transport::TransportError,
+use {
+    bincode::deserialize,
+    borsh::BorshSerialize,
+    helpers::*,
+    solana_program::{
+        instruction::{AccountMeta, Instruction, InstructionError},
+        pubkey::Pubkey,
+        system_program, sysvar,
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        signature::{Keypair, Signer},
+        transaction::Transaction,
+        transaction::TransactionError,
+        transport::TransportError,
+    },
+    spl_stake_pool::{error, id, instruction, processor, stake},
 };
-use spl_stake_pool::*;
 
 #[tokio::test]
-async fn test_create_validator_stake_account() {
+async fn success_create_validator_stake_account() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .await
+        .unwrap();
+
+    let validator = Keypair::new();
+    create_vote(&mut banks_client, &payer, &recent_blockhash, &validator).await;
+
+    let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
+        &id(),
+        &validator.pubkey(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::create_validator_stake_account(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.owner.pubkey(),
+            &payer.pubkey(),
+            &stake_account,
+            &validator.pubkey(),
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    // Check authorities
+    let stake = get_account(&mut banks_client, &stake_account).await;
+    let stake_state = deserialize::<stake::StakeState>(&stake.data).unwrap();
+    match stake_state {
+        stake::StakeState::Stake(meta, stake) => {
+            assert_eq!(&meta.authorized.staker, &stake_pool_accounts.owner.pubkey());
+            assert_eq!(
+                &meta.authorized.withdrawer,
+                &stake_pool_accounts.owner.pubkey()
+            );
+            assert_eq!(stake.delegation.voter_pubkey, validator.pubkey());
+        }
+        _ => panic!(),
+    }
+}
+
+#[tokio::test]
+async fn fail_create_validator_stake_account_on_non_vote_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -26,8 +80,6 @@ async fn test_create_validator_stake_account() {
         .unwrap();
 
     let validator = Pubkey::new_unique();
-    let user_stake_authority = Keypair::new();
-    let user_withdraw_authority = Keypair::new();
 
     let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
         &id(),
@@ -39,37 +91,30 @@ async fn test_create_validator_stake_account() {
         &[instruction::create_validator_stake_account(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.owner.pubkey(),
             &payer.pubkey(),
             &stake_account,
             &validator,
-            &user_stake_authority.pubkey(),
-            &user_withdraw_authority.pubkey(),
-            &solana_program::system_program::id(),
-            &stake::id(),
         )
         .unwrap()],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer], recent_blockhash);
-    banks_client.process_transaction(transaction).await.unwrap();
+    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
+    let transaction_error = banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
 
-    // Check authorities
-    let stake = get_account(&mut banks_client, &stake_account).await;
-    let stake_state = deserialize::<stake::StakeState>(&stake.data).unwrap();
-    match stake_state {
-        stake::StakeState::Initialized(meta) => {
-            assert_eq!(&meta.authorized.staker, &user_stake_authority.pubkey());
-            assert_eq!(
-                &meta.authorized.withdrawer,
-                &user_withdraw_authority.pubkey()
-            );
-        }
-        _ => panic!(),
-    }
+    assert_eq!(
+        transaction_error,
+        TransactionError::InstructionError(0, InstructionError::IncorrectProgramId,)
+    );
 }
 
 #[tokio::test]
-async fn test_create_validator_stake_account_with_incorrect_address() {
+async fn fail_create_validator_stake_account_with_wrong_system_program() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -78,26 +123,127 @@ async fn test_create_validator_stake_account_with_incorrect_address() {
         .unwrap();
 
     let validator = Pubkey::new_unique();
-    let user_stake_authority = Keypair::new();
-    let user_withdraw_authority = Keypair::new();
+
+    let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
+        &id(),
+        &validator,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
+    let wrong_system_program = Pubkey::new_unique();
+    let accounts = vec![
+        AccountMeta::new_readonly(stake_pool_accounts.stake_pool.pubkey(), false),
+        AccountMeta::new_readonly(stake_pool_accounts.owner.pubkey(), true),
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(stake_account, false),
+        AccountMeta::new_readonly(validator, false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake::config_id(), false),
+        AccountMeta::new_readonly(wrong_system_program, false),
+        AccountMeta::new_readonly(stake::id(), false),
+    ];
+    let instruction = Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction::StakePoolInstruction::CreateValidatorStakeAccount
+            .try_to_vec()
+            .unwrap(),
+    };
+
+    let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
+    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
+    let transaction_error = banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        transaction_error,
+        TransactionError::InstructionError(0, InstructionError::IncorrectProgramId,)
+    );
+}
+
+#[tokio::test]
+async fn fail_create_validator_stake_account_with_wrong_stake_program() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .await
+        .unwrap();
+
+    let validator = Pubkey::new_unique();
+
+    let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
+        &id(),
+        &validator,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
+    let wrong_stake_program = Pubkey::new_unique();
+    let accounts = vec![
+        AccountMeta::new_readonly(stake_pool_accounts.stake_pool.pubkey(), false),
+        AccountMeta::new_readonly(stake_pool_accounts.owner.pubkey(), true),
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(stake_account, false),
+        AccountMeta::new_readonly(validator, false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake::config_id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(wrong_stake_program, false),
+    ];
+    let instruction = Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction::StakePoolInstruction::CreateValidatorStakeAccount
+            .try_to_vec()
+            .unwrap(),
+    };
+
+    let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
+    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
+    let transaction_error = banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        transaction_error,
+        TransactionError::InstructionError(0, InstructionError::IncorrectProgramId,)
+    );
+}
+
+#[tokio::test]
+async fn fail_create_validator_stake_account_with_incorrect_address() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .await
+        .unwrap();
+
+    let validator = Pubkey::new_unique();
     let stake_account = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::create_validator_stake_account(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.owner.pubkey(),
             &payer.pubkey(),
             &stake_account.pubkey(),
             &validator,
-            &user_stake_authority.pubkey(),
-            &user_withdraw_authority.pubkey(),
-            &solana_program::system_program::id(),
-            &stake::id(),
         )
         .unwrap()],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer], recent_blockhash);
+    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -114,112 +260,6 @@ async fn test_create_validator_stake_account_with_incorrect_address() {
         }
         _ => panic!(
             "Wrong error occurs while try to create validator stake account with incorrect address"
-        ),
-    }
-}
-
-#[tokio::test]
-async fn test_create_validator_stake_account_with_wrong_system_program() {
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
-        .await
-        .unwrap();
-
-    let validator = Pubkey::new_unique();
-    let user_stake_authority = Keypair::new();
-    let user_withdraw_authority = Keypair::new();
-
-    let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
-        &id(),
-        &validator,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
-
-    let wrong_system_program = Keypair::new();
-
-    let mut transaction = Transaction::new_with_payer(
-        &[instruction::create_validator_stake_account(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &payer.pubkey(),
-            &stake_account,
-            &validator,
-            &user_stake_authority.pubkey(),
-            &user_withdraw_authority.pubkey(),
-            &wrong_system_program.pubkey(),
-            &stake::id(),
-        )
-        .unwrap()],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer], recent_blockhash);
-    let transaction_error = banks_client
-        .process_transaction(transaction)
-        .await
-        .err()
-        .unwrap();
-
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
-            assert_eq!(error, InstructionError::IncorrectProgramId);
-        }
-        _ => panic!(
-            "Wrong error occurs while try to create validator stake account with wrong token program ID"
-        ),
-    }
-}
-
-#[tokio::test]
-async fn test_create_validator_stake_account_with_wrong_stake_program() {
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
-        .await
-        .unwrap();
-
-    let validator = Pubkey::new_unique();
-    let user_stake_authority = Keypair::new();
-    let user_withdraw_authority = Keypair::new();
-
-    let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
-        &id(),
-        &validator,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
-
-    let wrong_stake_program = Keypair::new();
-
-    let mut transaction = Transaction::new_with_payer(
-        &[instruction::create_validator_stake_account(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &payer.pubkey(),
-            &stake_account,
-            &validator,
-            &user_stake_authority.pubkey(),
-            &user_withdraw_authority.pubkey(),
-            &solana_program::system_program::id(),
-            &wrong_stake_program.pubkey(),
-        )
-        .unwrap()],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer], recent_blockhash);
-    let transaction_error = banks_client
-        .process_transaction(transaction)
-        .await
-        .err()
-        .unwrap();
-
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
-            assert_eq!(error, InstructionError::IncorrectProgramId);
-        }
-        _ => panic!(
-            "Wrong error occurs while try to create validator stake account with wrong stake program ID"
         ),
     }
 }

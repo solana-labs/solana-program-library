@@ -3,12 +3,13 @@
 #![allow(clippy::too_many_arguments)]
 
 use {
+    crate::stake,
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar,
+        system_program, sysvar,
     },
 };
 
@@ -48,17 +49,17 @@ pub enum StakePoolInstruction {
     ///   Creates new program account for accumulating stakes for a particular validator
     ///
     ///   0. `[]` Stake pool account this stake will belong to
-    ///   1. `[ws]` Funding account (must be a system account)
-    ///   2. `[w]` Stake account to be created
-    ///   3. `[]` Validator this stake account will vote for
-    ///   4. `[]` Stake authority for the new stake account
-    ///   5. `[]` Withdraw authority for the new stake account
-    ///   6. `[]` Rent sysvar
-    ///   7. `[]` System program
-    ///   8. `[]` Stake program
+    ///   1. `[s]` Owner
+    ///   2. `[ws]` Funding account (must be a system account)
+    ///   3. `[w]` Stake account to be created
+    ///   4. `[]` Validator this stake account will vote for
+    ///   5. `[]` Rent sysvar
+    ///   6. `[]` System program
+    ///   7. `[]` Stake program
     CreateValidatorStakeAccount,
 
-    ///   Adds validator stake account to the pool
+    ///   Adds stake account delegated to validator to the pool's list of
+    ///   managed validators
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Owner
@@ -185,24 +186,23 @@ pub fn initialize(
 pub fn create_validator_stake_account(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
+    owner: &Pubkey,
     funder: &Pubkey,
     stake_account: &Pubkey,
     validator: &Pubkey,
-    stake_authority: &Pubkey,
-    withdraw_authority: &Pubkey,
-    system_program_id: &Pubkey,
-    stake_program_id: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*owner, true),
         AccountMeta::new(*funder, true),
         AccountMeta::new(*stake_account, false),
         AccountMeta::new_readonly(*validator, false),
-        AccountMeta::new_readonly(*stake_authority, false),
-        AccountMeta::new_readonly(*withdraw_authority, false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(*system_program_id, false),
-        AccountMeta::new_readonly(*stake_program_id, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake::config_id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(stake::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -220,10 +220,9 @@ pub fn add_validator_to_pool(
     stake_pool_withdraw: &Pubkey,
     validator_list: &Pubkey,
     stake_account: &Pubkey,
-    pool_tokens_to: &Pubkey,
+    pool_token_receiver: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    stake_program_id: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -232,12 +231,12 @@ pub fn add_validator_to_pool(
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
-        AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*pool_token_receiver, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*stake_program_id, false),
+        AccountMeta::new_readonly(stake::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -258,7 +257,6 @@ pub fn remove_validator_from_pool(
     burn_from: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    stake_program_id: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -271,7 +269,7 @@ pub fn remove_validator_from_pool(
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*stake_program_id, false),
+        AccountMeta::new_readonly(stake::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -330,7 +328,6 @@ pub fn deposit(
     pool_fee_to: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    stake_program_id: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -345,7 +342,7 @@ pub fn deposit(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*stake_program_id, false),
+        AccountMeta::new_readonly(stake::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -366,7 +363,6 @@ pub fn withdraw(
     burn_from: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    stake_program_id: &Pubkey,
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
@@ -380,7 +376,7 @@ pub fn withdraw(
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*stake_program_id, false),
+        AccountMeta::new_readonly(stake::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,

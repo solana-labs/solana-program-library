@@ -277,13 +277,10 @@ fn command_vsa_create(config: &Config, pool: &Pubkey, vote_account: &Pubkey) -> 
             create_validator_stake_account(
                 &spl_stake_pool::id(),
                 &pool,
+                &config.owner.pubkey(),
                 &config.fee_payer.pubkey(),
                 &stake_account,
                 &vote_account,
-                &config.owner.pubkey(),
-                &config.owner.pubkey(),
-                &solana_program::system_program::id(),
-                &stake_program_id(),
             )?,
         ],
         Some(&config.fee_payer.pubkey()),
@@ -291,7 +288,10 @@ fn command_vsa_create(config: &Config, pool: &Pubkey, vote_account: &Pubkey) -> 
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
+    transaction.sign(
+        &[config.fee_payer.as_ref(), config.owner.as_ref()],
+        recent_blockhash,
+    );
     send_transaction(&config, transaction)?;
     Ok(())
 }
@@ -377,7 +377,6 @@ fn command_vsa_add(
             &token_receiver,
             &pool_data.pool_mint,
             &spl_token::id(),
-            &stake_program_id(),
         )?,
     ]);
 
@@ -468,7 +467,6 @@ fn command_vsa_remove(
                 &withdraw_from,
                 &pool_data.pool_mint,
                 &spl_token::id(),
-                &stake_program_id(),
             )?,
         ],
         Some(&config.fee_payer.pubkey()),
@@ -645,7 +643,6 @@ fn command_deposit(
             &pool_data.owner_fee_account,
             &pool_data.pool_mint,
             &spl_token::id(),
-            &stake_program_id(),
         )?,
     ]);
 
@@ -984,7 +981,6 @@ fn command_withdraw(
             &withdraw_from,
             &pool_data.pool_mint,
             &spl_token::id(),
-            &stake_program_id(),
             withdraw_stake.pool_amount,
         )?);
     }
@@ -1163,7 +1159,7 @@ fn main() {
                     .help("Max number of validators included in the stake pool"),
             )
         )
-        .subcommand(SubCommand::with_name("create-validator-stake").about("Create a new stake account to use with the pool")
+        .subcommand(SubCommand::with_name("create-validator-stake").about("Create a new stake account to use with the pool. Must be signed by the pool owner.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)

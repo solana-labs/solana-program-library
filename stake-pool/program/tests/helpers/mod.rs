@@ -300,30 +300,26 @@ pub async fn create_validator_stake_account(
     payer: &Keypair,
     recent_blockhash: &Hash,
     stake_pool: &Pubkey,
+    owner: &Keypair,
     stake_account: &Pubkey,
     validator: &Pubkey,
-    stake_authority: &Pubkey,
-    withdraw_authority: &Pubkey,
 ) {
     let mut transaction = Transaction::new_with_payer(
         &[
             instruction::create_validator_stake_account(
                 &id(),
                 &stake_pool,
+                &owner.pubkey(),
                 &payer.pubkey(),
                 &stake_account,
                 &validator,
-                &stake_authority,
-                &withdraw_authority,
-                &solana_program::system_program::id(),
-                &stake::id(),
             )
             .unwrap(),
             system_instruction::transfer(&payer.pubkey(), &stake_account, TEST_STAKE_AMOUNT),
         ],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[payer], *recent_blockhash);
+    transaction.sign(&[payer, owner], *recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
@@ -393,28 +389,17 @@ impl ValidatorStakeAccount {
         mut banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
+        owner: &Keypair,
     ) {
-        // make stake account
-        let user_stake_authority = Keypair::new();
+        create_vote(&mut banks_client, &payer, &recent_blockhash, &self.vote).await;
+
         create_validator_stake_account(
             &mut banks_client,
             &payer,
             &recent_blockhash,
             &self.stake_pool,
+            owner,
             &self.stake_account,
-            &self.vote.pubkey(),
-            &user_stake_authority.pubkey(),
-            &self.target_authority,
-        )
-        .await;
-
-        create_vote(&mut banks_client, &payer, &recent_blockhash, &self.vote).await;
-        delegate_stake_account(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &self.stake_account,
-            &user_stake_authority,
             &self.vote.pubkey(),
         )
         .await;
@@ -424,9 +409,20 @@ impl ValidatorStakeAccount {
             &payer,
             &recent_blockhash,
             &self.stake_account,
-            &user_stake_authority,
+            &owner,
             &self.target_authority,
             stake::StakeAuthorize::Staker,
+        )
+        .await;
+
+        authorize_stake_account(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &self.stake_account,
+            &owner,
+            &self.target_authority,
+            stake::StakeAuthorize::Withdrawer,
         )
         .await;
     }
@@ -542,7 +538,6 @@ impl StakePoolAccounts {
                 &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
-                &stake::id(),
             )
             .unwrap()],
             Some(&payer.pubkey()),
@@ -575,7 +570,6 @@ impl StakePoolAccounts {
                 pool_account,
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
-                &stake::id(),
                 amount,
             )
             .unwrap()],
@@ -606,7 +600,6 @@ impl StakePoolAccounts {
                 pool_account,
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
-                &stake::id(),
             )
             .unwrap()],
             Some(&payer.pubkey()),
@@ -636,7 +629,6 @@ impl StakePoolAccounts {
                 pool_account,
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
-                &stake::id(),
             )
             .unwrap()],
             Some(&payer.pubkey()),
@@ -657,7 +649,12 @@ pub async fn simple_add_validator_to_pool(
         &stake_pool_accounts.stake_pool.pubkey(),
     );
     user_stake
-        .create_and_delegate(banks_client, &payer, &recent_blockhash)
+        .create_and_delegate(
+            banks_client,
+            &payer,
+            &recent_blockhash,
+            &stake_pool_accounts.owner,
+        )
         .await;
 
     let user_pool_account = Keypair::new();
