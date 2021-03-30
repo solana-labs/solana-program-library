@@ -70,7 +70,7 @@ async fn setup() -> (
 }
 
 #[tokio::test]
-async fn test_add_validator_stake_account() {
+async fn test_add_validator_to_pool() {
     let (
         mut banks_client,
         payer,
@@ -81,7 +81,7 @@ async fn test_add_validator_stake_account() {
     ) = setup().await;
 
     let error = stake_pool_accounts
-        .add_validator_stake_account(
+        .add_validator_to_pool(
             &mut banks_client,
             &payer,
             &recent_blockhash,
@@ -109,18 +109,17 @@ async fn test_add_validator_stake_account() {
     assert_eq!(pool_fee_token_balance, 0); // No fee when adding validator stake accounts
 
     // Check if validator account was added to the list
-    let validator_stake_list = get_account(
+    let validator_list = get_account(
         &mut banks_client,
-        &stake_pool_accounts.validator_stake_list.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
     )
     .await;
-    let validator_stake_list =
-        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
-            .unwrap();
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
     assert_eq!(
-        validator_stake_list,
-        state::ValidatorStakeList {
-            account_type: state::AccountType::ValidatorStakeList,
+        validator_list,
+        state::ValidatorList {
+            account_type: state::AccountType::ValidatorList,
             max_validators: stake_pool_accounts.max_validators,
             validators: vec![state::ValidatorStakeInfo {
                 validator_account: user_stake.vote.pubkey(),
@@ -149,7 +148,7 @@ async fn test_add_validator_stake_account() {
 }
 
 #[tokio::test]
-async fn test_add_validator_stake_account_with_wrong_token_program_id() {
+async fn test_add_validator_to_pool_with_wrong_token_program_id() {
     let (
         mut banks_client,
         payer,
@@ -160,13 +159,13 @@ async fn test_add_validator_stake_account_with_wrong_token_program_id() {
     ) = setup().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::add_validator_stake_account(
+        &[instruction::add_validator_to_pool(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.owner.pubkey(),
             &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.withdraw_authority,
-            &stake_pool_accounts.validator_stake_list.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
             &user_stake.stake_account,
             &user_pool_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
@@ -192,7 +191,7 @@ async fn test_add_validator_stake_account_with_wrong_token_program_id() {
 }
 
 #[tokio::test]
-async fn test_add_validator_stake_account_with_wrong_pool_mint_account() {
+async fn test_add_validator_to_pool_with_wrong_pool_mint_account() {
     let (
         mut banks_client,
         payer,
@@ -205,13 +204,13 @@ async fn test_add_validator_stake_account_with_wrong_pool_mint_account() {
     let wrong_pool_mint = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::add_validator_stake_account(
+        &[instruction::add_validator_to_pool(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.owner.pubkey(),
             &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.withdraw_authority,
-            &stake_pool_accounts.validator_stake_list.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
             &user_stake.stake_account,
             &user_pool_account.pubkey(),
             &wrong_pool_mint.pubkey(),
@@ -241,7 +240,7 @@ async fn test_add_validator_stake_account_with_wrong_pool_mint_account() {
 }
 
 #[tokio::test]
-async fn test_add_validator_stake_account_with_wrong_validator_stake_list_account() {
+async fn test_add_validator_to_pool_with_wrong_validator_list_account() {
     let (
         mut banks_client,
         payer,
@@ -251,16 +250,16 @@ async fn test_add_validator_stake_account_with_wrong_validator_stake_list_accoun
         user_pool_account,
     ) = setup().await;
 
-    let wrong_validator_stake_list = Keypair::new();
+    let wrong_validator_list = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::add_validator_stake_account(
+        &[instruction::add_validator_to_pool(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.owner.pubkey(),
             &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.withdraw_authority,
-            &wrong_validator_stake_list.pubkey(),
+            &wrong_validator_list.pubkey(),
             &user_stake.stake_account,
             &user_pool_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
@@ -301,7 +300,7 @@ async fn test_try_to_add_already_added_validator_stake_account() {
     ) = setup().await;
 
     stake_pool_accounts
-        .add_validator_stake_account(
+        .add_validator_to_pool(
             &mut banks_client,
             &payer,
             &recent_blockhash,
@@ -313,7 +312,7 @@ async fn test_try_to_add_already_added_validator_stake_account() {
     let latest_blockhash = banks_client.get_recent_blockhash().await.unwrap();
 
     let transaction_error = stake_pool_accounts
-        .add_validator_stake_account(
+        .add_validator_to_pool(
             &mut banks_client,
             &payer,
             &latest_blockhash,
@@ -336,7 +335,7 @@ async fn test_try_to_add_already_added_validator_stake_account() {
 }
 
 #[tokio::test]
-async fn test_not_owner_try_to_add_validator_stake_account() {
+async fn test_not_owner_try_to_add_validator_to_pool() {
     let (
         mut banks_client,
         payer,
@@ -349,13 +348,13 @@ async fn test_not_owner_try_to_add_validator_stake_account() {
     let malicious = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::add_validator_stake_account(
+        &[instruction::add_validator_to_pool(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &malicious.pubkey(),
             &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.withdraw_authority,
-            &stake_pool_accounts.validator_stake_list.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
             &user_stake.stake_account,
             &user_pool_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
@@ -385,7 +384,7 @@ async fn test_not_owner_try_to_add_validator_stake_account() {
 }
 
 #[tokio::test]
-async fn test_not_owner_try_to_add_validator_stake_account_without_signature() {
+async fn test_not_owner_try_to_add_validator_to_pool_without_signature() {
     let (
         mut banks_client,
         payer,
@@ -400,7 +399,7 @@ async fn test_not_owner_try_to_add_validator_stake_account_without_signature() {
         AccountMeta::new_readonly(stake_pool_accounts.owner.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.deposit_authority, false),
         AccountMeta::new_readonly(stake_pool_accounts.withdraw_authority, false),
-        AccountMeta::new(stake_pool_accounts.validator_stake_list.pubkey(), false),
+        AccountMeta::new(stake_pool_accounts.validator_list.pubkey(), false),
         AccountMeta::new(user_stake.stake_account, false),
         AccountMeta::new(user_pool_account.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
@@ -412,7 +411,7 @@ async fn test_not_owner_try_to_add_validator_stake_account_without_signature() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::AddValidatorStakeAccount
+        data: instruction::StakePoolInstruction::AddValidatorToPool
             .try_to_vec()
             .unwrap(),
     };
@@ -438,7 +437,7 @@ async fn test_not_owner_try_to_add_validator_stake_account_without_signature() {
 }
 
 #[tokio::test]
-async fn test_add_validator_stake_account_when_stake_acc_not_in_stake_state() {
+async fn test_add_validator_to_pool_when_stake_acc_not_in_stake_state() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -478,7 +477,7 @@ async fn test_add_validator_stake_account_when_stake_acc_not_in_stake_state() {
     .unwrap();
 
     let transaction_error = stake_pool_accounts
-        .add_validator_stake_account(
+        .add_validator_to_pool(
             &mut banks_client,
             &payer,
             &recent_blockhash,
@@ -501,7 +500,7 @@ async fn test_add_validator_stake_account_when_stake_acc_not_in_stake_state() {
 }
 
 #[tokio::test]
-async fn test_add_validator_stake_account_with_wrong_stake_program_id() {
+async fn test_add_validator_to_pool_with_wrong_stake_program_id() {
     let (
         mut banks_client,
         payer,
@@ -514,13 +513,13 @@ async fn test_add_validator_stake_account_with_wrong_stake_program_id() {
     let wrong_stake_program = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::add_validator_stake_account(
+        &[instruction::add_validator_to_pool(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.owner.pubkey(),
             &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.withdraw_authority,
-            &stake_pool_accounts.validator_stake_list.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
             &user_stake.stake_account,
             &user_pool_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
@@ -581,7 +580,7 @@ async fn test_add_too_many_validator_stake_accounts() {
     .unwrap();
 
     let error = stake_pool_accounts
-        .add_validator_stake_account(
+        .add_validator_to_pool(
             &mut banks_client,
             &payer,
             &recent_blockhash,
@@ -599,7 +598,7 @@ async fn test_add_too_many_validator_stake_accounts() {
         .create_and_delegate(&mut banks_client, &payer, &recent_blockhash)
         .await;
     let error = stake_pool_accounts
-        .add_validator_stake_account(
+        .add_validator_to_pool(
             &mut banks_client,
             &payer,
             &recent_blockhash,
@@ -616,7 +615,7 @@ async fn test_add_too_many_validator_stake_accounts() {
 }
 
 #[tokio::test]
-async fn test_add_validator_stake_account_to_unupdated_stake_pool() {} // TODO
+async fn test_add_validator_to_pool_to_unupdated_stake_pool() {} // TODO
 
 #[tokio::test]
-async fn test_add_validator_stake_account_with_uninitialized_validator_stake_list_account() {} // TODO
+async fn test_add_validator_to_pool_with_uninitialized_validator_list_account() {} // TODO

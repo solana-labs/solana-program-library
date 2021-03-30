@@ -11,17 +11,16 @@ use {
     spl_stake_pool::{borsh::try_from_slice_unchecked, stake, state},
 };
 
-async fn get_list_sum(banks_client: &mut BanksClient, validator_stake_list_key: &Pubkey) -> u64 {
-    let validator_stake_list = banks_client
-        .get_account(*validator_stake_list_key)
+async fn get_list_sum(banks_client: &mut BanksClient, validator_list_key: &Pubkey) -> u64 {
+    let validator_list = banks_client
+        .get_account(*validator_list_key)
         .await
         .expect("get_account")
         .expect("validator stake list not none");
-    let validator_stake_list =
-        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
-            .unwrap();
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
 
-    validator_stake_list
+    validator_list
         .validators
         .iter()
         .map(|info| info.balance)
@@ -29,7 +28,7 @@ async fn get_list_sum(banks_client: &mut BanksClient, validator_stake_list_key: 
 }
 
 #[tokio::test]
-async fn test_update_list_balance() {
+async fn test_update_validator_list_balance() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -42,7 +41,7 @@ async fn test_update_list_balance() {
     const STAKE_ACCOUNTS: u64 = 3;
     for _ in 0..STAKE_ACCOUNTS {
         stake_accounts.push(
-            simple_add_validator_stake_account(
+            simple_add_validator_to_pool(
                 &mut banks_client,
                 &payer,
                 &recent_blockhash,
@@ -74,7 +73,7 @@ async fn test_update_list_balance() {
     assert_eq!(
         get_list_sum(
             &mut banks_client,
-            &stake_pool_accounts.validator_stake_list.pubkey()
+            &stake_pool_accounts.validator_list.pubkey()
         )
         .await,
         STAKE_ACCOUNTS * (stake_rent + TEST_STAKE_AMOUNT)
@@ -84,7 +83,7 @@ async fn test_update_list_balance() {
 }
 
 #[tokio::test]
-async fn test_update_list_balance_with_uninitialized_validator_stake_list() {} // TODO
+async fn test_update_validator_list_balance_with_uninitialized_validator_list() {} // TODO
 
 #[tokio::test]
-async fn test_update_list_balance_with_wrong_stake_state() {} // TODO
+async fn test_update_validator_list_balance_with_wrong_stake_state() {} // TODO

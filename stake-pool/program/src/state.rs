@@ -16,7 +16,7 @@ pub enum AccountType {
     /// Stake pool
     StakePool,
     /// Validator stake list
-    ValidatorStakeList,
+    ValidatorList,
 }
 
 impl Default for AccountType {
@@ -41,7 +41,7 @@ pub struct StakePool {
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
     pub withdraw_bump_seed: u8,
     /// Validator stake list storage account
-    pub validator_stake_list: Pubkey,
+    pub validator_list: Pubkey,
     /// Pool Mint
     pub pool_mint: Pubkey,
     /// Owner fee account
@@ -155,8 +155,8 @@ impl StakePool {
 /// Storage list for all validator stake accounts in the pool.
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct ValidatorStakeList {
-    /// Account type, must be ValidatorStakeList currently
+pub struct ValidatorList {
+    /// Account type, must be ValidatorList currently
     pub account_type: AccountType,
 
     /// Maximum allowable number of validators
@@ -180,11 +180,11 @@ pub struct ValidatorStakeInfo {
     pub last_update_epoch: u64,
 }
 
-impl ValidatorStakeList {
+impl ValidatorList {
     /// Create an empty instance containing space for `max_validators`
     pub fn new_with_max_validators(max_validators: u32) -> Self {
         Self {
-            account_type: AccountType::ValidatorStakeList,
+            account_type: AccountType::ValidatorList,
             max_validators,
             validators: vec![ValidatorStakeInfo::default(); max_validators as usize],
         }
@@ -192,7 +192,8 @@ impl ValidatorStakeList {
 
     /// Calculate the number of validator entries that fit in the provided length
     pub fn calculate_max_validators(buffer_length: usize) -> usize {
-        (buffer_length - 1 - 4 - 4) / 48
+        let header_size = 1 + 4 + 4;
+        buffer_length.saturating_sub(header_size) / 48
     }
 
     /// Check if contains validator with particular pubkey
@@ -217,7 +218,7 @@ impl ValidatorStakeList {
 
     /// Check if validator stake list is actually initialized as a validator stake list
     pub fn is_valid(&self) -> bool {
-        self.account_type == AccountType::ValidatorStakeList
+        self.account_type == AccountType::ValidatorList
     }
 
     /// Check if the validator stake list is uninitialized
@@ -238,11 +239,10 @@ mod test {
     #[test]
     fn test_state_packing() {
         let max_validators = 10_000;
-        let size =
-            get_instance_packed_len(&ValidatorStakeList::new_with_max_validators(max_validators))
-                .unwrap();
+        let size = get_instance_packed_len(&ValidatorList::new_with_max_validators(max_validators))
+            .unwrap();
         // Not initialized
-        let stake_list = ValidatorStakeList {
+        let stake_list = ValidatorList {
             account_type: AccountType::Uninitialized,
             max_validators: 0,
             validators: vec![],
@@ -250,26 +250,24 @@ mod test {
         let mut byte_vec = vec![0u8; size];
         let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
-        let stake_list_unpacked =
-            try_from_slice_unchecked::<ValidatorStakeList>(&byte_vec).unwrap();
+        let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
 
         // Empty
-        let stake_list = ValidatorStakeList {
-            account_type: AccountType::ValidatorStakeList,
+        let stake_list = ValidatorList {
+            account_type: AccountType::ValidatorList,
             max_validators: 0,
             validators: vec![],
         };
         let mut byte_vec = vec![0u8; size];
         let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
-        let stake_list_unpacked =
-            try_from_slice_unchecked::<ValidatorStakeList>(&byte_vec).unwrap();
+        let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
 
         // With several accounts
-        let stake_list = ValidatorStakeList {
-            account_type: AccountType::ValidatorStakeList,
+        let stake_list = ValidatorList {
+            account_type: AccountType::ValidatorList,
             max_validators,
             validators: vec![
                 ValidatorStakeInfo {
@@ -292,20 +290,19 @@ mod test {
         let mut byte_vec = vec![0u8; size];
         let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
-        let stake_list_unpacked =
-            try_from_slice_unchecked::<ValidatorStakeList>(&byte_vec).unwrap();
+        let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
     }
 
     proptest! {
         #[test]
         fn stake_list_size_calculation(test_amount in 0..=100_000_u32) {
-            let validators = ValidatorStakeList::new_with_max_validators(test_amount);
+            let validators = ValidatorList::new_with_max_validators(test_amount);
             let size = get_instance_packed_len(&validators).unwrap();
-            assert_eq!(ValidatorStakeList::calculate_max_validators(size), test_amount as usize);
-            assert_eq!(ValidatorStakeList::calculate_max_validators(size + 1), test_amount as usize);
-            assert_eq!(ValidatorStakeList::calculate_max_validators(size + get_packed_len::<ValidatorStakeInfo>()), (test_amount + 1)as usize);
-            assert_eq!(ValidatorStakeList::calculate_max_validators(size - 1), (test_amount - 1) as usize);
+            assert_eq!(ValidatorList::calculate_max_validators(size), test_amount as usize);
+            assert_eq!(ValidatorList::calculate_max_validators(size.saturating_add(1)), test_amount as usize);
+            assert_eq!(ValidatorList::calculate_max_validators(size.saturating_add(get_packed_len::<ValidatorStakeInfo>())), (test_amount + 1)as usize);
+            assert_eq!(ValidatorList::calculate_max_validators(size.saturating_sub(1)), (test_amount.saturating_sub(1)) as usize);
         }
     }
 }

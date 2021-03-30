@@ -32,7 +32,7 @@ async fn setup() -> (
         .await
         .unwrap();
 
-    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_stake_account(
+    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_to_pool(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -134,15 +134,14 @@ async fn test_stake_pool_deposit() {
         state::StakePool::try_from_slice(&stake_pool_before.data.as_slice()).unwrap();
 
     // Save validator stake account record before depositing
-    let validator_stake_list = get_account(
+    let validator_list = get_account(
         &mut banks_client,
-        &stake_pool_accounts.validator_stake_list.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
     )
     .await;
-    let validator_stake_list =
-        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
-            .unwrap();
-    let validator_stake_item_before = validator_stake_list
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
+    let validator_stake_item_before = validator_list
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
 
@@ -192,15 +191,14 @@ async fn test_stake_pool_deposit() {
     assert_eq!(pool_fee_token_balance, fee);
 
     // Check balances in validator stake account list storage
-    let validator_stake_list = get_account(
+    let validator_list = get_account(
         &mut banks_client,
-        &stake_pool_accounts.validator_stake_list.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
     )
     .await;
-    let validator_stake_list =
-        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
-            .unwrap();
-    let validator_stake_item = validator_stake_list
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
+    let validator_stake_item = validator_list
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
@@ -245,7 +243,7 @@ async fn test_stake_pool_deposit_with_wrong_stake_program_id() {
         &[instruction::deposit(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.validator_stake_list.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
             &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.withdraw_authority,
             &user_stake.pubkey(),
@@ -385,7 +383,7 @@ async fn test_stake_pool_deposit_with_wrong_token_program_id() {
         &[instruction::deposit(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.validator_stake_list.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
             &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.withdraw_authority,
             &user_stake.pubkey(),
@@ -415,7 +413,7 @@ async fn test_stake_pool_deposit_with_wrong_token_program_id() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_deposit_with_wrong_validator_stake_list_account() {
+async fn test_stake_pool_deposit_with_wrong_validator_list_account() {
     let (
         mut banks_client,
         payer,
@@ -455,8 +453,8 @@ async fn test_stake_pool_deposit_with_wrong_validator_stake_list_account() {
     .await
     .unwrap();
 
-    let wrong_validator_stake_list = Keypair::new();
-    stake_pool_accounts.validator_stake_list = wrong_validator_stake_list;
+    let wrong_validator_list = Keypair::new();
+    stake_pool_accounts.validator_list = wrong_validator_list;
 
     let transaction_error = stake_pool_accounts
         .deposit_stake(
@@ -907,7 +905,7 @@ async fn test_stake_pool_deposit_with_wrong_mint_for_receiver_acc() {
 }
 
 #[tokio::test]
-async fn test_deposit_with_uninitialized_validator_stake_list() {} // TODO
+async fn test_deposit_with_uninitialized_validator_list() {} // TODO
 
 #[tokio::test]
 async fn test_deposit_with_out_of_dated_pool_balances() {} // TODO

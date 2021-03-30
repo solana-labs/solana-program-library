@@ -34,9 +34,9 @@ use {
     spl_stake_pool::{
         borsh::{get_instance_packed_len, try_from_slice_unchecked},
         instruction::{
-            add_validator_stake_account, create_validator_stake_account, deposit,
-            initialize as initialize_pool, remove_validator_stake_account, set_owner,
-            update_list_balance, update_pool_balance, withdraw, Fee as PoolFee,
+            add_validator_to_pool, create_validator_stake_account, deposit,
+            initialize as initialize_pool, remove_validator_from_pool, set_owner,
+            update_stake_pool_balance, update_validator_list_balance, withdraw, Fee as PoolFee,
         },
         processor::Processor as PoolProcessor,
         stake::authorize as authorize_stake,
@@ -44,7 +44,7 @@ use {
         stake::StakeAuthorize,
         stake::StakeState,
         state::StakePool,
-        state::ValidatorStakeList,
+        state::ValidatorList,
     },
     spl_token::{
         self, instruction::approve as approve_token, instruction::initialize_account,
@@ -145,7 +145,7 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> Co
     let pool_account = Keypair::new();
     println!("Creating stake pool {}", pool_account.pubkey());
 
-    let validator_stake_list = Keypair::new();
+    let validator_list = Keypair::new();
 
     let mint_account_balance = config
         .rpc_client
@@ -156,15 +156,15 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> Co
     let pool_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(get_packed_len::<StakePool>())?;
-    let empty_validator_list = ValidatorStakeList::new_with_max_validators(max_validators);
-    let validator_stake_list_size = get_instance_packed_len(&empty_validator_list)?;
-    let validator_stake_list_balance = config
+    let empty_validator_list = ValidatorList::new_with_max_validators(max_validators);
+    let validator_list_size = get_instance_packed_len(&empty_validator_list)?;
+    let validator_list_balance = config
         .rpc_client
-        .get_minimum_balance_for_rent_exemption(validator_stake_list_size)?;
+        .get_minimum_balance_for_rent_exemption(validator_list_size)?;
     let total_rent_free_balances = mint_account_balance
         + pool_fee_account_balance
         + pool_account_balance
-        + validator_stake_list_balance;
+        + validator_list_balance;
 
     let default_decimals = native_mint::DECIMALS;
 
@@ -208,9 +208,9 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> Co
             // Validator stake account list storage
             system_instruction::create_account(
                 &config.fee_payer.pubkey(),
-                &validator_stake_list.pubkey(),
-                validator_stake_list_balance,
-                validator_stake_list_size as u64,
+                &validator_list.pubkey(),
+                validator_list_balance,
+                validator_list_size as u64,
                 &spl_stake_pool::id(),
             ),
             // Initialize pool token mint account
@@ -233,7 +233,7 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> Co
                 &spl_stake_pool::id(),
                 &pool_account.pubkey(),
                 &config.owner.pubkey(),
-                &validator_stake_list.pubkey(),
+                &validator_list.pubkey(),
                 &mint_account.pubkey(),
                 &pool_fee_account.pubkey(),
                 &spl_token::id(),
@@ -252,7 +252,7 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> Co
     let mut signers = vec![
         config.fee_payer.as_ref(),
         &pool_account,
-        &validator_stake_list,
+        &validator_list,
         &mint_account,
         &pool_fee_account,
         config.owner.as_ref(),
@@ -367,13 +367,13 @@ fn command_vsa_add(
             StakeAuthorize::Staker,
         ),
         // Add validator stake account to the pool
-        add_validator_stake_account(
+        add_validator_to_pool(
             &spl_stake_pool::id(),
             &pool,
             &config.owner.pubkey(),
             &pool_deposit_authority,
             &pool_withdraw_authority,
-            &pool_data.validator_stake_list,
+            &pool_data.validator_list,
             &stake,
             &token_receiver,
             &pool_data.pool_mint,
@@ -458,13 +458,13 @@ fn command_vsa_remove(
                 tokens_to_withdraw,
             )?,
             // Create new validator stake account address
-            remove_validator_stake_account(
+            remove_validator_from_pool(
                 &spl_stake_pool::id(),
                 &pool,
                 &config.owner.pubkey(),
                 &pool_withdraw_authority,
                 &new_authority,
-                &pool_data.validator_stake_list,
+                &pool_data.validator_list,
                 &stake,
                 &withdraw_from,
                 &pool_data.pool_mint,
@@ -559,12 +559,12 @@ fn command_deposit(
     }?;
 
     // Check if this vote account has staking account in the pool
-    let validator_stake_list_data = config
+    let validator_list_data = config
         .rpc_client
-        .get_account_data(&pool_data.validator_stake_list)?;
-    let validator_stake_list_data =
-        try_from_slice_unchecked::<ValidatorStakeList>(&validator_stake_list_data.as_slice())?;
-    if !validator_stake_list_data.contains(&vote_account) {
+        .get_account_data(&pool_data.validator_list)?;
+    let validator_list_data =
+        try_from_slice_unchecked::<ValidatorList>(&validator_list_data.as_slice())?;
+    if !validator_list_data.contains(&vote_account) {
         return Err("Stake account for this validator does not exist in the pool.".into());
     }
 
@@ -637,7 +637,7 @@ fn command_deposit(
         deposit(
             &spl_stake_pool::id(),
             &pool,
-            &pool_data.validator_stake_list,
+            &pool_data.validator_list,
             &pool_deposit_authority,
             &pool_withdraw_authority,
             &stake,
@@ -672,11 +672,11 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     if config.verbose {
         let validator_list = config
             .rpc_client
-            .get_account_data(&pool_data.validator_stake_list)?;
-        let validator_stake_list_data =
-            try_from_slice_unchecked::<ValidatorStakeList>(&validator_list.as_slice())?;
+            .get_account_data(&pool_data.validator_list)?;
+        let validator_list_data =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list.as_slice())?;
         println!("Current validator list");
-        for validator in validator_stake_list_data.validators {
+        for validator in validator_list_data.validators {
             println!(
                 "Vote Account: {}\tBalance: {}\tEpoch: {}",
                 validator.validator_account, validator.balance, validator.last_update_epoch
@@ -720,15 +720,15 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
     let pool_data = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
-    let validator_stake_list_data = config
+    let validator_list_data = config
         .rpc_client
-        .get_account_data(&pool_data.validator_stake_list)?;
-    let validator_stake_list_data =
-        try_from_slice_unchecked::<ValidatorStakeList>(&validator_stake_list_data.as_slice())?;
+        .get_account_data(&pool_data.validator_list)?;
+    let validator_list_data =
+        try_from_slice_unchecked::<ValidatorList>(&validator_list_data.as_slice())?;
 
     let epoch_info = config.rpc_client.get_epoch_info()?;
 
-    let accounts_to_update: Vec<Pubkey> = validator_stake_list_data
+    let accounts_to_update: Vec<Pubkey> = validator_list_data
         .validators
         .iter()
         .filter_map(|item| {
@@ -748,9 +748,9 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
     let mut instructions: Vec<Instruction> = vec![];
 
     for chunk in accounts_to_update.chunks(MAX_ACCOUNTS_TO_UPDATE) {
-        instructions.push(update_list_balance(
+        instructions.push(update_validator_list_balance(
             &spl_stake_pool::id(),
-            &pool_data.validator_stake_list,
+            &pool_data.validator_list,
             &chunk,
         )?);
     }
@@ -760,10 +760,10 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
         Ok(())
     } else {
         println!("Updating stake pool...");
-        instructions.push(update_pool_balance(
+        instructions.push(update_stake_pool_balance(
             &spl_stake_pool::id(),
             pool,
-            &pool_data.validator_stake_list,
+            &pool_data.validator_list,
         )?);
 
         let mut transaction =
@@ -976,7 +976,7 @@ fn command_withdraw(
         instructions.push(withdraw(
             &spl_stake_pool::id(),
             &pool,
-            &pool_data.validator_stake_list,
+            &pool_data.validator_list,
             &pool_withdraw_authority,
             &withdraw_stake.pubkey,
             &stake_receiver.unwrap(), // Cannot be none at this point
@@ -1183,7 +1183,7 @@ fn main() {
                     .help("The validator vote account that this stake will be delegated to"),
             )
         )
-        .subcommand(SubCommand::with_name("add-validator-stake").about("Add validator stake account to the stake pool. Must be signed by the pool owner.")
+        .subcommand(SubCommand::with_name("add-validator").about("Add validator account to the stake pool. Must be signed by the pool owner.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -1211,7 +1211,7 @@ fn main() {
                     .help("Account to receive pool token. Must be initialized account of the stake pool token. Defaults to the new pool token account."),
             )
         )
-        .subcommand(SubCommand::with_name("remove-validator-stake").about("Add validator stake account to the stake pool. Must be signed by the pool owner.")
+        .subcommand(SubCommand::with_name("remove-validator").about("Remove validator account from the stake pool. Must be signed by the pool owner.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -1435,13 +1435,13 @@ fn main() {
             let vote_account: Pubkey = pubkey_of(arg_matches, "vote_account").unwrap();
             command_vsa_create(&config, &pool_account, &vote_account)
         }
-        ("add-validator-stake", Some(arg_matches)) => {
+        ("add-validator", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account: Pubkey = pubkey_of(arg_matches, "stake_account").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             command_vsa_add(&config, &pool_account, &stake_account, &token_receiver)
         }
-        ("remove-validator-stake", Some(arg_matches)) => {
+        ("remove-validator", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account: Pubkey = pubkey_of(arg_matches, "stake_account").unwrap();
             let withdraw_from: Pubkey = pubkey_of(arg_matches, "withdraw_from").unwrap();

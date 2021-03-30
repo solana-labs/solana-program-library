@@ -235,7 +235,7 @@ We created new validator stake accounts in the last step and staked them. Once
 the stake activates, we can add them to the stake pool.
 
 ```sh
-$ spl-stake-pool add-validator-stake 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
+$ spl-stake-pool add-validator 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
 Creating account to receive tokens Gu8xqzYFg2sPHWHhUivKNBeF9uikiauihLs9hLzziKu7
 Signature: 3N1K89rGV9gWueTTrPGTDBwKAp8BikQhKHMFoREw98Q1piXFeZSSxqfnRQexrfAZQfrpYH9qwsaPWRruwkVeBivV
 ```
@@ -265,7 +265,7 @@ totally remove the validator stake account from the stake pool by providing
 staking derivatives, just like `withdraw`.
 
 ```sh
-$ spl-stake-pool remove-validator-stake 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC CrStLEWfme37kDc3nubK9HsmWR5dsuVUuqEKqTR4Mc5E --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+$ spl-stake-pool remove-validator 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC CrStLEWfme37kDc3nubK9HsmWR5dsuVUuqEKqTR4Mc5E --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
 Signature: 5rrQ3xhDWyiPkUTAQkNAeq31n6sMf1xsg2x9hVY8Vj1NonwBnhxuTv87nADLkwC8Xzc4CGTNCTX2Vph9esWnXk2d
 ```
 

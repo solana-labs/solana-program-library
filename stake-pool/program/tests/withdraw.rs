@@ -34,7 +34,7 @@ async fn setup() -> (
         .await
         .unwrap();
 
-    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_stake_account(
+    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_to_pool(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -105,15 +105,14 @@ async fn test_stake_pool_withdraw() {
         state::StakePool::try_from_slice(&stake_pool_before.data.as_slice()).unwrap();
 
     // Save validator stake account record before withdrawal
-    let validator_stake_list = get_account(
+    let validator_list = get_account(
         &mut banks_client,
-        &stake_pool_accounts.validator_stake_list.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
     )
     .await;
-    let validator_stake_list =
-        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
-            .unwrap();
-    let validator_stake_item_before = validator_stake_list
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
+    let validator_stake_item_before = validator_list
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
 
@@ -149,15 +148,14 @@ async fn test_stake_pool_withdraw() {
     );
 
     // Check validator stake list storage
-    let validator_stake_list = get_account(
+    let validator_list = get_account(
         &mut banks_client,
-        &stake_pool_accounts.validator_stake_list.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
     )
     .await;
-    let validator_stake_list =
-        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
-            .unwrap();
-    let validator_stake_item = validator_stake_list
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
+    let validator_stake_item = validator_list
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
@@ -212,7 +210,7 @@ async fn test_stake_pool_withdraw_with_wrong_stake_program() {
         &[instruction::withdraw(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.validator_stake_list.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &validator_stake_account.stake_account,
             &user_stake_recipient.pubkey(),
@@ -308,7 +306,7 @@ async fn test_stake_pool_withdraw_with_wrong_token_program_id() {
         &[instruction::withdraw(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.validator_stake_list.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &validator_stake_account.stake_account,
             &user_stake_recipient.pubkey(),
@@ -338,7 +336,7 @@ async fn test_stake_pool_withdraw_with_wrong_token_program_id() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_withdraw_with_wrong_validator_stake_list() {
+async fn test_stake_pool_withdraw_with_wrong_validator_list() {
     let (
         mut banks_client,
         payer,
@@ -353,7 +351,7 @@ async fn test_stake_pool_withdraw_with_wrong_validator_stake_list() {
     let user_stake_recipient = Keypair::new();
 
     let new_authority = Pubkey::new_unique();
-    stake_pool_accounts.validator_stake_list = Keypair::new();
+    stake_pool_accounts.validator_list = Keypair::new();
 
     let transaction_error = stake_pool_accounts
         .withdraw_stake(
@@ -678,7 +676,7 @@ async fn test_stake_pool_withdraw_token_delegate_was_not_setup() {
         .await
         .unwrap();
 
-    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_stake_account(
+    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_to_pool(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -746,7 +744,7 @@ async fn test_stake_pool_withdraw_with_low_delegation() {
         .await
         .unwrap();
 
-    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_stake_account(
+    let validator_stake_account: ValidatorStakeAccount = simple_add_validator_to_pool(
         &mut banks_client,
         &payer,
         &recent_blockhash,
