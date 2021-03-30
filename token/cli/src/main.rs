@@ -1776,7 +1776,7 @@ fn main() {
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
-                        .required_unless("token")
+                        .conflicts_with("token")
                         .help("Specify the token account to close \
                             [default: owner's associated token account]"),
                 )
@@ -1802,7 +1802,7 @@ fn main() {
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("address")
-                        .required_unless("token")
+                        .conflicts_with("token")
                         .help("Specify the token account to query \
                             [default: owner's associated token account]"),
                 ),
@@ -1863,7 +1863,7 @@ fn main() {
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("address")
-                        .required_unless("token")
+                        .conflicts_with("token")
                         .help("Specify the token account to query"),
                 ),
         )
