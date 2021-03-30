@@ -76,14 +76,6 @@ pub enum LendingError {
     TokenBurnFailed,
 
     // 20
-    // @TODO: this is only used in one place that might be removed.
-    /// Input reserves cannot be the same
-    #[error("Input reserves cannot be the same")]
-    DuplicateReserve,
-    // @TODO: this is only used in one place that might be removed.
-    /// Input reserves cannot use the same liquidity mint
-    #[error("Input reserves cannot use the same liquidity mint")]
-    DuplicateReserveMint,
     /// Insufficient liquidity available
     #[error("Insufficient liquidity available")]
     InsufficientLiquidity,
@@ -93,14 +85,14 @@ pub enum LendingError {
     /// Reserve state stale
     #[error("Reserve state needs to be refreshed")]
     ReserveStale,
-
-    // 25
     /// Withdraw amount too small
     #[error("Withdraw amount too small")]
     WithdrawTooSmall,
     /// Withdraw amount too large
     #[error("Withdraw amount too large")]
     WithdrawTooLarge,
+
+    // 25
     /// Borrow amount too small
     #[error("Borrow amount too small to receive liquidity after fees")]
     BorrowTooSmall,
@@ -110,25 +102,20 @@ pub enum LendingError {
     /// Repay amount too small
     #[error("Repay amount too small to transfer liquidity")]
     RepayTooSmall,
-
-    // 30
     /// Liquidation amount too small
     #[error("Liquidation amount too small to receive collateral")]
     LiquidationTooSmall,
     /// Cannot liquidate healthy obligations
     #[error("Cannot liquidate healthy obligations")]
     ObligationHealthy,
+
+    // 30
     /// Obligation state stale
     #[error("Obligation state needs to be refreshed")]
     ObligationStale,
     /// Obligation reserve limit exceeded
     #[error("Obligation reserve limit exceeded")]
     ObligationReserveLimit,
-    /// Obligation loan to value limit exceeded
-    #[error("Obligation loan to value limit exceeded")]
-    ObligationLoanToValueLimit,
-
-    // 35
     /// Expected a different obligation owner
     #[error("Obligation owner is invalid")]
     InvalidObligationOwner,
@@ -138,12 +125,17 @@ pub enum LendingError {
     /// Invalid obligation liquidity
     #[error("Invalid obligation liquidity")]
     InvalidObligationLiquidity,
+
+    // 35
     /// Obligation collateral is empty
     #[error("Obligation collateral is empty")]
     ObligationCollateralEmpty,
     /// Obligation liquidity is empty
     #[error("Obligation liquidity is empty")]
     ObligationLiquidityEmpty,
+    /// Obligation loan to value limit exceeded
+    #[error("Obligation loan to value limit exceeded")]
+    ObligationLoanToValueLimit,
 }
 
 impl From<LendingError> for ProgramError {

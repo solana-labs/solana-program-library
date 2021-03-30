@@ -1293,16 +1293,6 @@ fn process_liquidate_obligation(
         return Err(LendingError::ReserveStale.into());
     }
 
-    // @TODO: what if a user borrows using the same reserve & mint for collateral?
-    //        this is permitted in borrow_obligation_liquidity and could be used for leverage.
-    //        maybe liquidation should be allowed, but reduce/eliminate the bonus.
-    if repay_reserve_info.key == withdraw_reserve_info.key {
-        return Err(LendingError::DuplicateReserve.into());
-    }
-    if repay_reserve.liquidity.mint_pubkey == withdraw_reserve.liquidity.mint_pubkey {
-        return Err(LendingError::DuplicateReserveMint.into());
-    }
-
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
