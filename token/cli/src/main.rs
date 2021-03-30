@@ -1238,6 +1238,7 @@ impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
 
 fn main() {
     let default_decimals = &format!("{}", native_mint::DECIMALS);
+    let mut no_wait = false;
     let app_matches = App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
@@ -1503,6 +1504,12 @@ fn main() {
                         .long("fund-recipient")
                         .takes_value(false)
                         .help("Create the associated token account for the recipient if doesn't already exist")
+                )
+                .arg(
+                    Arg::with_name("no_wait")
+                        .long("no-wait")
+                        .takes_value(false)
+                        .help("Return signature immediately after submitting the transaction, instead of waiting for confirmations"),
                 )
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
@@ -2044,6 +2051,7 @@ fn main() {
             let fund_recipient = matches.is_present("fund_recipient");
             let allow_unfunded_recipient = matches.is_present("allow_empty_recipient")
                 || matches.is_present("allow_unfunded_recipient");
+            no_wait = matches.is_present("no_wait");
             command_transfer(
                 &config,
                 token,
@@ -2228,9 +2236,13 @@ fn main() {
                     println!("{}", return_signers(&transaction, &OutputFormat::Display)?);
                 } else {
                     transaction.try_sign(&signer_info.signers, recent_blockhash)?;
-                    let signature = config
-                        .rpc_client
-                        .send_and_confirm_transaction_with_spinner(&transaction)?;
+                    let signature = if no_wait {
+                        config.rpc_client.send_transaction(&transaction)?
+                    } else {
+                        config
+                            .rpc_client
+                            .send_and_confirm_transaction_with_spinner(&transaction)?
+                    };
                     println!("Signature: {}", signature);
                 }
             }
