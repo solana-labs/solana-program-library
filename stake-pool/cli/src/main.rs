@@ -245,9 +245,12 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> Co
     Ok(Some(transaction))
 }
 
-fn command_vsa_create(config: &Config, pool: &Pubkey, validator: &Pubkey) -> CommandResult {
-    let (stake_account, _) =
-        PoolProcessor::find_stake_address_for_validator(&spl_stake_pool::id(), &validator, &pool);
+fn command_vsa_create(config: &Config, pool: &Pubkey, vote_account: &Pubkey) -> CommandResult {
+    let (stake_account, _) = PoolProcessor::find_stake_address_for_validator(
+        &spl_stake_pool::id(),
+        &vote_account,
+        &pool,
+    );
 
     println!("Creating stake account {}", stake_account);
 
@@ -259,7 +262,7 @@ fn command_vsa_create(config: &Config, pool: &Pubkey, validator: &Pubkey) -> Com
                 &pool,
                 &config.fee_payer.pubkey(),
                 &stake_account,
-                &validator,
+                &vote_account,
                 &config.owner.pubkey(),
                 &config.owner.pubkey(),
                 &solana_program::system_program::id(),
@@ -513,24 +516,24 @@ fn command_deposit(
     if config.verbose {
         println!("Depositing stake account {:?}", stake_data);
     }
-    let validator: Pubkey = match stake_data {
+    let vote_account: Pubkey = match stake_data {
         StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
         _ => Err("Wrong stake account state, must be delegated to validator"),
     }?;
 
-    // Check if this validator has staking account in the pool
+    // Check if this vote account has staking account in the pool
     let validator_stake_list_data = config
         .rpc_client
         .get_account_data(&pool_data.validator_stake_list)?;
     let validator_stake_list_data =
         try_from_slice_unchecked::<ValidatorStakeList>(&validator_stake_list_data.as_slice())?;
-    if !validator_stake_list_data.contains(&validator) {
+    if !validator_stake_list_data.contains(&vote_account) {
         return Err("Stake account for this validator does not exist in the pool.".into());
     }
 
     // Calculate validator stake account address linked to the pool
     let (validator_stake_account, _) =
-        PoolProcessor::find_stake_address_for_validator(&spl_stake_pool::id(), &validator, pool);
+        PoolProcessor::find_stake_address_for_validator(&spl_stake_pool::id(), &vote_account, pool);
     let validator_stake_data = config
         .rpc_client
         .get_account_data(&validator_stake_account)?;
@@ -637,7 +640,7 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
         println!("Current validator list");
         for validator in validator_stake_list_data.validators {
             println!(
-                "Vote: {}\tBalance: {}\tEpoch: {}",
+                "Vote Account: {}\tBalance: {}\tEpoch: {}",
                 validator.validator_account, validator.balance, validator.last_update_epoch
             );
         }
@@ -664,7 +667,7 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
         let balance = account.lamports;
         total_balance += balance;
         println!(
-            "Pubkey: {}\tVote: {}\t{}",
+            "Stake Account: {}\tVote Account: {}\t{}",
             pubkey,
             stake_data.delegation().unwrap().voter_pubkey,
             Sol(balance)
@@ -1108,41 +1111,41 @@ fn main() {
                     .help("Max number of validators included in the stake pool"),
             )
         )
-        .subcommand(SubCommand::with_name("create-validator-stake").about("Create a new validator stake account to use with the pool")
+        .subcommand(SubCommand::with_name("create-validator-stake").about("Create a new stake account to use with the pool")
             .arg(
                 Arg::with_name("pool")
-                    .long("pool")
+                    .index(1)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("POOL_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake pool address"),
             )
             .arg(
-                Arg::with_name("validator")
-                    .long("validator")
+                Arg::with_name("vote_account")
+                    .index(2)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("VOTE_ACCOUNT_ADDRESS")
                     .takes_value(true)
                     .required(true)
-                    .help("Validator this stake account will vote for"),
+                    .help("The validator vote account that this stake will be delegated to"),
             )
         )
         .subcommand(SubCommand::with_name("add-validator-stake").about("Add validator stake account to the stake pool. Must be signed by the pool owner.")
             .arg(
                 Arg::with_name("pool")
-                    .long("pool")
+                    .index(1)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("POOL_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake pool address"),
             )
             .arg(
-                Arg::with_name("stake")
-                    .long("stake")
+                Arg::with_name("stake_account")
+                    .index(2)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("STAKE_ACCOUNT_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake account to add to the pool"),
@@ -1159,18 +1162,18 @@ fn main() {
         .subcommand(SubCommand::with_name("remove-validator-stake").about("Add validator stake account to the stake pool. Must be signed by the pool owner.")
             .arg(
                 Arg::with_name("pool")
-                    .long("pool")
+                    .index(1)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("POOL_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake pool address"),
             )
             .arg(
-                Arg::with_name("stake")
-                    .long("stake")
+                Arg::with_name("stake_account")
+                    .index(2)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("STAKE_ACCOUNT_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake account to remove from the pool"),
@@ -1196,18 +1199,18 @@ fn main() {
         .subcommand(SubCommand::with_name("deposit").about("Add stake account to the stake pool")
             .arg(
                 Arg::with_name("pool")
-                    .long("pool")
+                    .index(1)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("POOL_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake pool address"),
             )
             .arg(
-                Arg::with_name("stake")
-                    .long("stake")
+                Arg::with_name("stake_account")
+                    .index(2)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("STAKE_ACCOUNT_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake address to join the pool"),
@@ -1224,9 +1227,9 @@ fn main() {
         .subcommand(SubCommand::with_name("list").about("List stake accounts managed by this pool")
             .arg(
                 Arg::with_name("pool")
-                    .long("pool")
+                    .index(1)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("POOL_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake pool address."),
@@ -1235,9 +1238,9 @@ fn main() {
         .subcommand(SubCommand::with_name("update").about("Updates all balances in the pool after validator stake accounts receive rewards.")
             .arg(
                 Arg::with_name("pool")
-                    .long("pool")
+                    .index(1)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("POOL_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake pool address."),
@@ -1246,9 +1249,9 @@ fn main() {
         .subcommand(SubCommand::with_name("withdraw").about("Withdraw amount from the stake pool")
             .arg(
                 Arg::with_name("pool")
-                    .long("pool")
+                    .index(1)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("POOL_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake pool address."),
@@ -1275,7 +1278,7 @@ fn main() {
                 Arg::with_name("stake_receiver")
                     .long("stake-receiver")
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("STAKE_ACCOUNT_ADDRESS")
                     .takes_value(true)
                     .help("Stake account to receive SOL from the stake pool. Defaults to a new stake account."),
             )
@@ -1283,9 +1286,9 @@ fn main() {
         .subcommand(SubCommand::with_name("set-owner").about("Changes owner or fee receiver account for the stake pool.")
             .arg(
                 Arg::with_name("pool")
-                    .long("pool")
+                    .index(1)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("POOL_ADDRESS")
                     .takes_value(true)
                     .required(true)
                     .help("Stake pool address."),
@@ -1375,18 +1378,18 @@ fn main() {
         }
         ("create-validator-stake", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let validator_account: Pubkey = pubkey_of(arg_matches, "validator").unwrap();
-            command_vsa_create(&config, &pool_account, &validator_account)
+            let vote_account: Pubkey = pubkey_of(arg_matches, "vote_account").unwrap();
+            command_vsa_create(&config, &pool_account, &vote_account)
         }
         ("add-validator-stake", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let stake_account: Pubkey = pubkey_of(arg_matches, "stake").unwrap();
+            let stake_account: Pubkey = pubkey_of(arg_matches, "stake_account").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             command_vsa_add(&config, &pool_account, &stake_account, &token_receiver)
         }
         ("remove-validator-stake", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let stake_account: Pubkey = pubkey_of(arg_matches, "stake").unwrap();
+            let stake_account: Pubkey = pubkey_of(arg_matches, "stake_account").unwrap();
             let withdraw_from: Pubkey = pubkey_of(arg_matches, "withdraw_from").unwrap();
             let new_authority: Option<Pubkey> = pubkey_of(arg_matches, "new_authority");
             command_vsa_remove(
@@ -1399,7 +1402,7 @@ fn main() {
         }
         ("deposit", Some(arg_matches)) => {
             let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let stake_account: Pubkey = pubkey_of(arg_matches, "stake").unwrap();
+            let stake_account: Pubkey = pubkey_of(arg_matches, "stake_account").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             command_deposit(&config, &pool_account, &stake_account, &token_receiver)
         }

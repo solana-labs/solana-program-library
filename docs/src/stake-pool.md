@@ -10,7 +10,7 @@ to maximize censorship resistance and rewards.
 
 SOL token holders can earn rewards and help secure the network by staking tokens
 to one or more validators. Rewards for staked tokens are based on the current
-inflation rate, total number of SOL staked on the network, and an individual 
+inflation rate, total number of SOL staked on the network, and an individual
 validator’s uptime and commission (fee).
 
 Stake pools are an alternative method of earning staking rewards. This on-chain
@@ -29,7 +29,7 @@ stake pools, and users who want to provide staked SOL into an existing stake
 pool.
 
 In its current iteration, the stake pool only processes totally active stakes.
-Deposits must come from fully active stakes, and withdrawals return a fully 
+Deposits must come from fully active stakes, and withdrawals return a fully
 active stake account.
 
 This means that stake pool managers and users must be comfortable with creating
@@ -165,12 +165,12 @@ to the stake pool, we first create a validator-associated stake account.
 
 Looking at [validators.app](https://www.validators.app/) or other Solana validator
 lists, we choose some validators at random and start with identity
-`8SQEcP4FaYQySktNQeyxF3w8pvArx3oMEh7fPrzkN9pu` on vote account 
+`8SQEcP4FaYQySktNQeyxF3w8pvArx3oMEh7fPrzkN9pu` on vote account
 `2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3`. Let's create a validator stake account
 delegated to that vote account.
 
 ```sh
-$ spl-stake-pool create-validator-stake --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --validator 2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3
+$ spl-stake-pool create-validator-stake 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3
 Creating stake account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
 Signature: 4pA2WKT6d2wkXEtSpiQswv22WyoFad2KX6FdPEzwBiEquvaUBEtzenys5Jh1ABPCh7yc4w8kzqMRRCwDj6ZSUV1K
 ```
@@ -179,13 +179,13 @@ In order to maximize censorship resistance, we want to distribute our SOL to as
 many validators as possible, so let's add a few more.
 
 ```sh
-$ spl-stake-pool create-validator-stake --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --validator HJiC8iJ4Sj846SswQuauFJK93UvV6zp3c2T6jzGqzhhz
+$ spl-stake-pool create-validator-stake 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC HJiC8iJ4Sj846SswQuauFJK93UvV6zp3c2T6jzGqzhhz
 Creating stake account E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie
 Signature: 4pyRZzjsWG7jP3GRZeZCo2Eb2TPjHM4kAYRFMivimme6HAee1nhzoNJBe3VSt2sv7acp5fwT7J8omBM8o3niY8gu
-$ spl-stake-pool create-validator-stake --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --validator AUCzCaGAGjL3uyjFBtJs7KuJcgQWvNZu1Z2S9G3pw77G
+$ spl-stake-pool create-validator-stake 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC AUCzCaGAGjL3uyjFBtJs7KuJcgQWvNZu1Z2S9G3pw77G
 Creating stake account CrStLEWfme37kDc3nubK9HsmWR5dsuVUuqEKqTR4Mc5E
 Signature: 4ZUdZzUARgUCPuY8nVsJbN6vRDbVX8sYAQGYYXj2YVvjoJ2oevq2H8uzrhYApe419uoP7QYukqNstiti5p5DDukN
-$ spl-stake-pool create-validator-stake --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --validator 8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm
+$ spl-stake-pool create-validator-stake 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm
 Creating stake account FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13
 Signature: yQqXCbuA66wQsHtkziNg3XadfZF5aCmvjfentwbZJnSPeEjJwPka3M1QY5GmR1efprptqaePn71BTMSLscX8DLr
 ```
@@ -231,11 +231,11 @@ to activate.
 
 As mentioned in the last step, the stake pool only manages one stake account per
 validator. Also, the stake pool only processes fully activated stake accounts.
-We created new validator stake accounts in the last step and staked them. Once 
+We created new validator stake accounts in the last step and staked them. Once
 the stake activates, we can add them to the stake pool.
 
 ```sh
-$ spl-stake-pool add-validator-stake --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
+$ spl-stake-pool add-validator-stake 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
 Creating account to receive tokens Gu8xqzYFg2sPHWHhUivKNBeF9uikiauihLs9hLzziKu7
 Signature: 3N1K89rGV9gWueTTrPGTDBwKAp8BikQhKHMFoREw98Q1piXFeZSSxqfnRQexrfAZQfrpYH9qwsaPWRruwkVeBivV
 ```
@@ -265,7 +265,7 @@ totally remove the validator stake account from the stake pool by providing
 staking derivatives, just like `withdraw`.
 
 ```sh
-$ spl-stake-pool remove-validator-stake --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake CrStLEWfme37kDc3nubK9HsmWR5dsuVUuqEKqTR4Mc5E --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+$ spl-stake-pool remove-validator-stake 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC CrStLEWfme37kDc3nubK9HsmWR5dsuVUuqEKqTR4Mc5E --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
 Signature: 5rrQ3xhDWyiPkUTAQkNAeq31n6sMf1xsg2x9hVY8Vj1NonwBnhxuTv87nADLkwC8Xzc4CGTNCTX2Vph9esWnXk2d
 ```
 
@@ -291,7 +291,7 @@ removal of staked SOL from the pool.
 We can also double-check that the stake pool no longer shows the stake account:
 
 ```sh
-$ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
+$ spl-stake-pool list 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
 Pubkey: FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13    Vote: 8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm ◎1.002282881
 Pubkey: FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    Vote: 2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3 ◎3.410872673
 Pubkey: E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    Vote: HJiC8iJ4Sj846SswQuauFJK93UvV6zp3c2T6jzGqzhhz ◎11.436803652
@@ -307,7 +307,7 @@ For example, let's say the manager wants the same delegation to every validator
 in the pool. When they look at the state of the pool, they see:
 
 ```sh
-$ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
+$ spl-stake-pool list 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
 Pubkey: FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13    Vote: 8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm ◎1.002282881
 Pubkey: FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    Vote: 2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3 ◎3.410872673
 Pubkey: E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    Vote: HJiC8iJ4Sj846SswQuauFJK93UvV6zp3c2T6jzGqzhhz ◎11.436803652
@@ -340,7 +340,7 @@ sol_to_withdraw * total_pool_tokens / total_sol_staked = pool_tokens_to_withdraw
 They withdraw that amount of pool tokens:
 
 ```sh
-$ spl-stake-pool withdraw --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --amount 0.013468659 --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+$ spl-stake-pool withdraw 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --amount 0.013468659 --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
 Withdrawing from account E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie, amount ◎6.153483855, 0.013468659 pool tokens
 Creating account to receive stake 8ykyY7maA9HUfUphZHBkhsnydY5gFfyHFSfxCA7imqrk
 Signature: z8a5ZRfWdj8Fcsr3ttCJ731wFKyhZNcqoKEdV1RBCkzr3tHGQNCC56qvRVJ6oxyCVDqWZ3KL1Bkyn3sDpjYPDku
@@ -372,10 +372,10 @@ delegated to `2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3`.
 
 Once the new stakes are ready, the manager deposits them back into the stake pool:
 ```sh
-$ spl-stake-pool deposit --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake GCJnuFGCDzaToPwJtG5GiK4g3DJBfuhQy6388NyGcfwf --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+$ spl-stake-pool deposit 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC GCJnuFGCDzaToPwJtG5GiK4g3DJBfuhQy6388NyGcfwf --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
 Depositing into stake account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
 Signature: jKsdEr3zxF2zZs78rmrP3PmQiTwE7v15ieEuxp4db1VQe9owXVGM8nM3dJqVRHXPsS4frQW4gJ6xBfTTk2HvKDX
-$ spl-stake-pool deposit --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake 4zppED2kFodUS2hBf8Fzeepu6yZ6QuyeNPBXCT9VU6fK --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+$ spl-stake-pool deposit 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 4zppED2kFodUS2hBf8Fzeepu6yZ6QuyeNPBXCT9VU6fK --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
 Depositing into stake account FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13
 Signature: 3JXvTvea6F4Epd2krSxnTRZPB4gLZ8GqisFE58Z4ocV92fDN1HRMVPoPhJtYcfuF12vyQZUueKwVmkvL6Wgf2evc
 ```
@@ -383,7 +383,7 @@ Signature: 3JXvTvea6F4Epd2krSxnTRZPB4gLZ8GqisFE58Z4ocV92fDN1HRMVPoPhJtYcfuF12vyQ
 Leaving them with a rebalanced stake pool!
 
 ```sh
-$ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
+$ spl-stake-pool list 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
 Pubkey: FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13    Vote: 8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm ◎5.283340235
 Pubkey: FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    Vote: 2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3 ◎5.283612231
 Pubkey: E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    Vote: HJiC8iJ4Sj846SswQuauFJK93UvV6zp3c2T6jzGqzhhz ◎5.284317422
@@ -395,11 +395,11 @@ not prefectly balanced. This is completely normal.
 
 #### Set staking authority
 
-In order to manage the stake accounts more directly, the stake pool owner can 
+In order to manage the stake accounts more directly, the stake pool owner can
 set the stake authority of the stake pool's managed accounts.
 
 ```sh
-$ spl-stake-pool set-staking-auth --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake-account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN --new-staker 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+$ spl-stake-pool set-staking-auth 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake-account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN --new-staker 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
 Signature: 39N5gkaqXuWm6JPEUWfenKXeG4nSa71p7iHb9zurvdZcsWmbjdmSXwLVYfhAVHWucTY77sJ8SkUNpVpVAhe4eZ53
 ```
 
@@ -407,7 +407,7 @@ Now, the new staking authority can perform any normal staking operations,
 including deactivating or re-staking.
 
 Important security note: the stake pool program only gives staking authority to
-the pool owner and always retains withdraw authority. Therefore, a malicious 
+the pool owner and always retains withdraw authority. Therefore, a malicious
 stake pool manager cannot steal funds from the stake pool.
 
 #### Set owner
@@ -415,7 +415,7 @@ stake pool manager cannot steal funds from the stake pool.
 The stake pool owner may pass their administrator privileges to another account.
 
 ```sh
-$ spl-stake-pool --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --new-owner 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+$ spl-stake-pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --new-owner 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
 Signature: 39N5gkaqXuWm6JPEUWfenKXeG4nSa71p7iHb9zurvdZcsWmbjdmSXwLVYfhAVHWucTY77sJ8SkUNpVpVAhe4eZ53
 ```
 
@@ -429,7 +429,7 @@ command-line utility has a special instruction for finding out which vote
 accounts are already associated with the stake pool.
 
 ```sh
-$ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
+$ spl-stake-pool list 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
 CrStLEWfme37kDc3nubK9HsmWR5dsuVUuqEKqTR4Mc5E    1.002282880 SOL
 E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie    1.002282880 SOL
 FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN    1.002282880 SOL
@@ -441,7 +441,7 @@ If the manager has recently created the stake pool, and there are no stake
 accounts present yet, the command-line utility will inform us.
 
 ```sh
-$ spl-stake-pool list --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
+$ spl-stake-pool list 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
 No accounts found.
 ```
 
@@ -473,7 +473,7 @@ Two epochs later, when the stake is fully active and has received one epoch of
 rewards, we can deposit the stake into the stake pool.
 
 ```sh
-$ spl-stake-pool deposit --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake 4F4AYKZbNtDnu7uQey2Vkz9VgkVtLE6XWLezYjc9yxZa
+$ spl-stake-pool deposit 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 4F4AYKZbNtDnu7uQey2Vkz9VgkVtLE6XWLezYjc9yxZa
 Depositing into stake account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
 Creating account to receive tokens 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
 Signature: 4AESGZzqBVfj5xQnMiPWAwzJnAtQDRFK1Ha6jqKKTs46Zm5fw3LqgU1mRAT6CKTywVfFMHZCLm1hcQNScSMwVvjQ
@@ -483,7 +483,7 @@ Alternatively, you can create an SPL token account yourself and pass it as the
 `token-receiver` for the command.
 
 ```sh
-$ spl-stake-pool deposit --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake 4F4AYKZbNtDnu7uQey2Vkz9VgkVtLE6XWLezYjc9yxZa --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+$ spl-stake-pool deposit 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 4F4AYKZbNtDnu7uQey2Vkz9VgkVtLE6XWLezYjc9yxZa --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
 Depositing into stake account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
 Signature: 4AESGZzqBVfj5xQnMiPWAwzJnAtQDRFK1Ha6jqKKTs46Zm5fw3LqgU1mRAT6CKTywVfFMHZCLm1hcQNScSMwVvjQ
 ```
@@ -505,7 +505,7 @@ In order to calculate the proper value of these stake pool tokens, we must updat
 the total value managed by the stake pool every epoch.
 
 ```sh
-$ spl-stake-pool update --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 
+$ spl-stake-pool update 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
 Signature: 3Yx1RH3Afqj5ckX8YvPCRt1DudVP4HuRPkh1dBPvTM9GqGxcB9ZXHGZPADVSZiaqKi166fevMG232EWxrRWswPtt
 ```
 
@@ -513,7 +513,7 @@ If another user already updated the stake pool balance for the current epoch, we
 see a different output.
 
 ```sh
-$ spl-stake-pool update --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 
+$ spl-stake-pool update 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC
 Stake pool balances are up to date, no update required.
 ```
 
@@ -529,7 +529,7 @@ staking derivative SPL tokens in exchange for an activated stake account.
 Let's withdraw 0.02 staking derivative tokens from the stake pool.
 
 ```sh
-$ spl-stake-pool withdraw --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC  --amount 0.02 --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+$ spl-stake-pool withdraw 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --amount 0.02 --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
 Withdrawing from account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN, amount 8.867176377 SOL, 0.02 pool tokens
 Creating account to receive stake CZF2z3JJoDmJRcVjtsrz1BKUUGNL3VPW5FPFqge1bzmQ
 Signature: 2xBPVPJ749AE4hHNCNYdjuHv1EdMvxm9uvvraWfTA7Urrvecwh9w64URCyLLroLQ2RKDGE2QELM2ZHd8qRkjavJM
@@ -554,7 +554,7 @@ Alternatively, the user can specify an existing stake account to receive their
 stake using the `stake-receiver` parameter.
 
 ```sh
-$ spl-stake-pool withdraw --pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC  --amount 0.02 --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF --stake-receiver CZF2z3JJoDmJRcVjtsrz1BKUUGNL3VPW5FPFqge1bzmQ
+$ spl-stake-pool withdraw 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC  --amount 0.02 --withdraw-from 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF --stake-receiver CZF2z3JJoDmJRcVjtsrz1BKUUGNL3VPW5FPFqge1bzmQ
 Withdrawing from account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN, amount 8.867176377 SOL, 0.02 pool tokens
 Signature: 2xBPVPJ749AE4hHNCNYdjuHv1EdMvxm9uvvraWfTA7Urrvecwh9w64URCyLLroLQ2RKDGE2QELM2ZHd8qRkjavJM
 ```
