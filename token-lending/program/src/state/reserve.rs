@@ -660,9 +660,9 @@ impl Pack for Reserve {
             liquidity_median_price,
             liquidity_available_amount,
             liquidity_borrowed_amount_wads,
-            collateral_supply,
             collateral_mint,
             collateral_mint_supply,
+            collateral_supply,
             config_optimal_utilization_rate,
             config_min_borrow_rate,
             config_optimal_borrow_rate,
@@ -689,8 +689,8 @@ impl Pack for Reserve {
             8,
             16,
             PUBKEY_BYTES,
-            PUBKEY_BYTES,
             8,
+            PUBKEY_BYTES,
             1,
             1,
             1,
@@ -726,8 +726,8 @@ impl Pack for Reserve {
 
         // collateral
         collateral_mint.copy_from_slice(self.collateral.mint_pubkey.as_ref());
-        collateral_supply.copy_from_slice(self.collateral.supply_pubkey.as_ref());
         *collateral_mint_supply = self.collateral.mint_total_supply.to_le_bytes();
+        collateral_supply.copy_from_slice(self.collateral.supply_pubkey.as_ref());
 
         // config
         *config_optimal_utilization_rate = self.config.optimal_utilization_rate.to_le_bytes();
@@ -759,9 +759,9 @@ impl Pack for Reserve {
             liquidity_median_price,
             liquidity_available_amount,
             liquidity_borrowed_amount_wads,
-            collateral_supply,
             collateral_mint,
             collateral_mint_supply,
+            collateral_supply,
             config_optimal_utilization_rate,
             config_min_borrow_rate,
             config_optimal_borrow_rate,
@@ -771,7 +771,7 @@ impl Pack for Reserve {
             config_liquidation_bonus,
             config_fees_borrow_fee_wad,
             config_fees_host_fee_percentage,
-            __padding,
+            _padding,
         ) = array_refs![
             input,
             1,
@@ -788,8 +788,8 @@ impl Pack for Reserve {
             8,
             16,
             PUBKEY_BYTES,
-            PUBKEY_BYTES,
             8,
+            PUBKEY_BYTES,
             1,
             1,
             1,

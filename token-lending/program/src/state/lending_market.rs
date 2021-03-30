@@ -45,9 +45,9 @@ impl LendingMarket {
     pub fn init(&mut self, params: InitLendingMarketParams) {
         self.version = PROGRAM_VERSION;
         self.bump_seed = params.bump_seed;
-        self.owner = params.owner;
-        self.quote_token_mint = params.quote_token_mint;
         self.token_program_id = params.token_program_id;
+        self.quote_token_mint = params.quote_token_mint;
+        self.owner = params.owner;
     }
 }
 
@@ -79,7 +79,7 @@ impl Pack for LendingMarket {
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, LENDING_MARKET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, bump_seed, quote_token_mint, token_program_id, owner, _padding) =
+        let (version, bump_seed, token_program_id, quote_token_mint, owner, _padding) =
             array_refs![input, 1, 1, PUBKEY_BYTES, PUBKEY_BYTES, PUBKEY_BYTES, 128];
         let version = u8::from_le_bytes(*version);
         if version > PROGRAM_VERSION {

@@ -114,9 +114,9 @@ fn process_init_lending_market(
 
     lending_market.init(InitLendingMarketParams {
         bump_seed: Pubkey::find_program_address(&[lending_market_info.key.as_ref()], program_id).1,
-        owner,
-        quote_token_mint: *quote_token_mint_info.key,
         token_program_id: *token_program_id.key,
+        quote_token_mint: *quote_token_mint_info.key,
+        owner,
     });
     LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
 
