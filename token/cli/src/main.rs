@@ -834,7 +834,17 @@ fn command_revoke(config: &Config, account: Pubkey, delegate: Option<Pubkey>) ->
     Ok(Some((0, vec![instructions])))
 }
 
-fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> CommandResult {
+fn command_close(
+    config: &Config,
+    token: Option<Pubkey>,
+    recipient: Pubkey,
+    account: Option<Pubkey>,
+) -> CommandResult {
+    let account = if let Some(account) = account {
+        account
+    } else {
+        get_associated_token_address(&config.owner, &token.unwrap())
+    };
     if !config.sign_only {
         let source_account = config
             .rpc_client
@@ -864,7 +874,7 @@ fn command_close(config: &Config, account: Pubkey, destination: Pubkey) -> Comma
     let instructions = vec![close_account(
         &spl_token::id(),
         &account,
-        &destination,
+        &recipient,
         &config.owner,
         &config.multisigner_pubkeys,
     )?];
@@ -1703,21 +1713,31 @@ fn main() {
             SubCommand::with_name("close")
                 .about("Close a token account")
                 .arg(
-                    Arg::with_name("account")
+                    Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
                         .index(1)
-                        .required(true)
-                        .help("The address of the token account to close"),
+                        .required_unless("address")
+                        .help("Token to close. To close a specific account, use the `--address` parameter instead"),
                 )
                 .arg(
-                    Arg::with_name("destination")
+                    Arg::with_name("recipient")
+                        .long("recipient")
                         .validator(is_valid_pubkey)
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
-                        .index(2)
                         .help("The address of the account to receive remaining SOL [default: --owner]"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .required_unless("token")
+                        .help("Specify the token account to close \
+                            [default: owner's associated token account]"),
                 )
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
@@ -2146,13 +2166,12 @@ fn main() {
             command_revoke(&config, account, delegate_address)
         }
         ("close", Some(arg_matches)) => {
-            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
-            let destination = pubkey_of_signer(arg_matches, "destination", &mut wallet_manager)
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+            let recipient = pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager)
                 .unwrap()
                 .unwrap_or(config.owner);
-            command_close(&config, account, destination)
+            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
+            command_close(&config, token, recipient, account)
         }
         ("balance", Some(arg_matches)) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
