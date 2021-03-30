@@ -60,10 +60,11 @@ struct Config {
     owner: Box<dyn Signer>,
     fee_payer: Box<dyn Signer>,
     dry_run: bool,
+    no_update: bool,
 }
 
 type Error = Box<dyn std::error::Error>;
-type CommandResult = Result<Option<Transaction>, Error>;
+type CommandResult = Result<(), Error>;
 
 const STAKE_STATE_LEN: usize = 200;
 const MAX_ACCOUNTS_TO_UPDATE: usize = 10;
@@ -113,6 +114,22 @@ fn get_authority_accounts(config: &Config, authority: &Pubkey) -> Vec<(Pubkey, A
             },
         )
         .unwrap()
+}
+
+fn send_transaction(
+    config: &Config,
+    transaction: Transaction,
+) -> solana_client::client_error::Result<()> {
+    if config.dry_run {
+        let result = config.rpc_client.simulate_transaction(&transaction)?;
+        println!("Simulate result: {:?}", result);
+    } else {
+        let signature = config
+            .rpc_client
+            .send_and_confirm_transaction_with_spinner(&transaction)?;
+        println!("Signature: {}", signature);
+    }
+    Ok(())
 }
 
 fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> CommandResult {
@@ -242,7 +259,8 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> Co
     ];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    send_transaction(&config, transaction)?;
+    Ok(())
 }
 
 fn command_vsa_create(config: &Config, pool: &Pubkey, vote_account: &Pubkey) -> CommandResult {
@@ -275,7 +293,8 @@ fn command_vsa_create(config: &Config, pool: &Pubkey, vote_account: &Pubkey) -> 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
     transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
-    Ok(Some(transaction))
+    send_transaction(&config, transaction)?;
+    Ok(())
 }
 
 fn command_vsa_add(
@@ -286,6 +305,10 @@ fn command_vsa_add(
 ) -> CommandResult {
     if config.rpc_client.get_stake_activation(*stake, None)?.state != StakeActivationState::Active {
         return Err("Stake account is not active.".into());
+    }
+
+    if !config.no_update {
+        command_update(config, pool)?;
     }
 
     // Get stake pool state
@@ -369,7 +392,8 @@ fn command_vsa_add(
     )?;
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    send_transaction(&config, transaction)?;
+    Ok(())
 }
 
 fn command_vsa_remove(
@@ -379,6 +403,10 @@ fn command_vsa_remove(
     withdraw_from: &Pubkey,
     new_authority: &Option<Pubkey>,
 ) -> CommandResult {
+    if !config.no_update {
+        command_update(config, pool)?;
+    }
+
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
     let pool_data: StakePool = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
@@ -453,7 +481,8 @@ fn command_vsa_remove(
         &[config.fee_payer.as_ref(), config.owner.as_ref()],
         recent_blockhash,
     );
-    Ok(Some(transaction))
+    send_transaction(&config, transaction)?;
+    Ok(())
 }
 
 fn unwrap_create_token_account<F>(
@@ -509,6 +538,10 @@ fn command_deposit(
     stake: &Pubkey,
     token_receiver: &Option<Pubkey>,
 ) -> CommandResult {
+    if !config.no_update {
+        command_update(config, pool)?;
+    }
+
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
     let pool_data: StakePool = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
@@ -627,7 +660,8 @@ fn command_deposit(
     )?;
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    send_transaction(&config, transaction)?;
+    Ok(())
 }
 
 fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
@@ -679,7 +713,7 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     }
     println!("Total: {}", Sol(total_balance));
 
-    Ok(None)
+    Ok(())
 }
 
 fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
@@ -723,8 +757,9 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
 
     if instructions.is_empty() && pool_data.last_update_epoch == epoch_info.epoch {
         println!("Stake pool balances are up to date, no update required.");
-        Ok(None)
+        Ok(())
     } else {
+        println!("Updating stake pool...");
         instructions.push(update_pool_balance(
             &spl_stake_pool::id(),
             pool,
@@ -737,7 +772,8 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
         let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
         check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
         transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
-        Ok(Some(transaction))
+        send_transaction(&config, transaction)?;
+        Ok(())
     }
 }
 
@@ -829,6 +865,10 @@ fn command_withdraw(
     withdraw_from: &Pubkey,
     stake_receiver_param: &Option<Pubkey>,
 ) -> CommandResult {
+    if !config.no_update {
+        command_update(config, pool)?;
+    }
+
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
     let pool_data = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
@@ -959,8 +999,8 @@ fn command_withdraw(
     )?;
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
-
-    Ok(Some(transaction))
+    send_transaction(&config, transaction)?;
+    Ok(())
 }
 
 fn command_set_owner(
@@ -1014,7 +1054,8 @@ fn command_set_owner(
     let mut signers = vec![config.fee_payer.as_ref(), config.owner.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
-    Ok(Some(transaction))
+    send_transaction(&config, transaction)?;
+    Ok(())
 }
 
 fn main() {
@@ -1050,6 +1091,13 @@ fn main() {
                 .takes_value(false)
                 .global(true)
                 .help("Simluate transaction instead of executing"),
+        )
+        .arg(
+            Arg::with_name("no_update")
+                .long("no-update")
+                .takes_value(false)
+                .global(true)
+                .help("Do not automatically update the stake pool if needed"),
         )
         .arg(
             Arg::with_name("json_rpc_url")
@@ -1354,6 +1402,7 @@ fn main() {
         });
         let verbose = matches.is_present("verbose");
         let dry_run = matches.is_present("dry_run");
+        let no_update = matches.is_present("no_update");
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
@@ -1361,6 +1410,7 @@ fn main() {
             owner,
             fee_payer,
             dry_run,
+            no_update,
         }
     };
 
@@ -1439,20 +1489,6 @@ fn main() {
         }
         _ => unreachable!(),
     }
-    .and_then(|transaction| {
-        if let Some(transaction) = transaction {
-            if config.dry_run {
-                let result = config.rpc_client.simulate_transaction(&transaction)?;
-                println!("Simulate result: {:?}", result);
-            } else {
-                let signature = config
-                    .rpc_client
-                    .send_and_confirm_transaction_with_spinner(&transaction)?;
-                println!("Signature: {}", signature);
-            }
-        }
-        Ok(())
-    })
     .map_err(|err| {
         eprintln!("{}", err);
         exit(1);
