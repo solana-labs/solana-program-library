@@ -811,7 +811,7 @@ mod tests {
         account_info::IntoAccountInfo, clock::Epoch, instruction::Instruction, sysvar::rent,
     };
     use solana_sdk::account::{
-        create_account, create_is_signer_account_infos, Account as SolanaAccount,
+        create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
     };
 
     fn do_process_instruction(
@@ -841,7 +841,7 @@ mod tests {
     }
 
     fn rent_sysvar() -> SolanaAccount {
-        create_account(&Rent::default(), 42)
+        create_account_for_test(&Rent::default())
     }
 
     fn mint_minimum_balance() -> u64 {
