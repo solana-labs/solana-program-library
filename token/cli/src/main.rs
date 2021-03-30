@@ -881,8 +881,20 @@ fn command_close(
     Ok(Some((0, vec![instructions])))
 }
 
-fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
-    let balance = config.rpc_client.get_token_account_balance(&address)?;
+fn command_balance(
+    config: &Config,
+    token: Option<Pubkey>,
+    address: Option<Pubkey>,
+) -> CommandResult {
+    let address = if let Some(address) = address {
+        address
+    } else {
+        get_associated_token_address(&config.owner, &token.unwrap())
+    };
+    let balance = config
+        .rpc_client
+        .get_token_account_balance(&address)
+        .map_err(|_| format!("Could not find token account {}", address))?;
 
     if config.verbose {
         println!("ui amount: {}", balance.real_number_string_trimmed());
@@ -1037,8 +1049,21 @@ fn command_address(config: &Config, token: Option<Pubkey>) -> CommandResult {
     Ok(None)
 }
 
-fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
-    let account = config.rpc_client.get_token_account(&address)?.unwrap();
+fn command_account_info(
+    config: &Config,
+    token: Option<Pubkey>,
+    address: Option<Pubkey>,
+) -> CommandResult {
+    let address = if let Some(address) = address {
+        address
+    } else {
+        get_associated_token_address(&config.owner, &token.unwrap())
+    };
+    let account = config
+        .rpc_client
+        .get_token_account(&address)
+        .map_err(|_| format!("Could not find token account {}", address))?
+        .unwrap();
     println!();
     println_name_value("Address:", &address.to_string());
     println_name_value(
@@ -1747,13 +1772,23 @@ fn main() {
             SubCommand::with_name("balance")
                 .about("Get token account balance")
                 .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required_unless("address")
+                        .help("Token of associated account. To query a specific account, use the `--address` parameter instead"),
+                )
+                .arg(
                     Arg::with_name("address")
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
-                        .index(1)
-                        .required(true)
-                        .help("The token account address"),
+                        .long("address")
+                        .required_unless("token")
+                        .help("Specify the token account to query \
+                            [default: owner's associated token account]"),
                 ),
         )
         .subcommand(
@@ -1798,13 +1833,22 @@ fn main() {
             SubCommand::with_name("account-info")
                 .about("Query details of an SPL Token account by address")
                 .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required_unless("address")
+                        .help("Token of associated account. To query a specific account, use the `--address` parameter instead"),
+                )
+                .arg(
                     Arg::with_name("address")
-                    .validator(is_valid_pubkey)
-                    .value_name("TOKEN_ACCOUNT_ADDRESS")
-                    .takes_value(true)
-                    .index(1)
-                    .required(true)
-                    .help("The address of the SPL Token account to query"),
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .long("address")
+                        .required_unless("token")
+                        .help("Specify the token account to query"),
                 ),
         )
         .subcommand(
@@ -2174,10 +2218,9 @@ fn main() {
             command_close(&config, token, recipient, account)
         }
         ("balance", Some(arg_matches)) => {
-            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
-            command_balance(&config, address)
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
+            command_balance(&config, token, address)
         }
         ("supply", Some(arg_matches)) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
@@ -2194,10 +2237,9 @@ fn main() {
             command_address(&config, token)
         }
         ("account-info", Some(arg_matches)) => {
-            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
-            command_account_info(&config, address)
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
+            command_account_info(&config, token, address)
         }
         ("multisig-info", Some(arg_matches)) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
