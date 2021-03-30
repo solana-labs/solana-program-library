@@ -251,8 +251,6 @@ fn process_init_reserve(
         } else {
             let aggregator_info = next_account_info(account_info_iter)?;
             assert_rent_exempt(rent, aggregator_info)?;
-
-            // @TODO: is there a way to check that aggregator_info represents the base:quote pair?
             (
                 COption::Some(*aggregator_info.key),
                 read_median(aggregator_info)?.median,
