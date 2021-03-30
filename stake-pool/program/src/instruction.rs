@@ -72,7 +72,7 @@ pub enum StakePoolInstruction {
     ///   9. '[]' Sysvar stake history account
     ///  10. `[]` Pool token program id,
     ///  11. `[]` Stake program id,
-    AddValidatorStakeAccount,
+    AddValidatorToPool,
 
     ///   Removes validator stake account from the pool
     ///
@@ -87,21 +87,21 @@ pub enum StakePoolInstruction {
     ///   8. '[]' Sysvar clock account (required)
     ///   9. `[]` Pool token program id
     ///  10. `[]` Stake program id,
-    RemoveValidatorStakeAccount,
+    RemoveValidatorFromPool,
 
     ///   Updates balances of validator stake accounts in the pool
     ///
     ///   0. `[w]` Validator stake list storage account
     ///   1. `[]` Sysvar clock account
     ///   2. ..2+N ` [] N validator stake accounts to update balances
-    UpdateListBalance,
+    UpdateValidatorListBalance,
 
     ///   Updates total pool balance based on balances in validator stake account list storage
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[]` Validator stake list storage account
     ///   2. `[]` Sysvar clock account
-    UpdatePoolBalance,
+    UpdateStakePoolBalance,
 
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
@@ -152,7 +152,7 @@ pub fn initialize(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     owner: &Pubkey,
-    validator_stake_list: &Pubkey,
+    validator_list: &Pubkey,
     pool_mint: &Pubkey,
     owner_pool_account: &Pubkey,
     token_program_id: &Pubkey,
@@ -167,7 +167,7 @@ pub fn initialize(
     let accounts = vec![
         AccountMeta::new(*stake_pool, true),
         AccountMeta::new_readonly(*owner, true),
-        AccountMeta::new(*validator_stake_list, false),
+        AccountMeta::new(*validator_list, false),
         AccountMeta::new_readonly(*pool_mint, false),
         AccountMeta::new_readonly(*owner_pool_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
@@ -211,14 +211,14 @@ pub fn create_validator_stake_account(
     })
 }
 
-/// Creates `AddValidatorStakeAccount` instruction (add new validator stake account to the pool)
-pub fn add_validator_stake_account(
+/// Creates `AddValidatorToPool` instruction (add new validator stake account to the pool)
+pub fn add_validator_to_pool(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     owner: &Pubkey,
     stake_pool_deposit: &Pubkey,
     stake_pool_withdraw: &Pubkey,
-    validator_stake_list: &Pubkey,
+    validator_list: &Pubkey,
     stake_account: &Pubkey,
     pool_tokens_to: &Pubkey,
     pool_mint: &Pubkey,
@@ -230,7 +230,7 @@ pub fn add_validator_stake_account(
         AccountMeta::new_readonly(*owner, true),
         AccountMeta::new_readonly(*stake_pool_deposit, false),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
-        AccountMeta::new(*validator_stake_list, false),
+        AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
         AccountMeta::new(*pool_tokens_to, false),
         AccountMeta::new(*pool_mint, false),
@@ -242,18 +242,18 @@ pub fn add_validator_stake_account(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::AddValidatorStakeAccount.try_to_vec()?,
+        data: StakePoolInstruction::AddValidatorToPool.try_to_vec()?,
     })
 }
 
-/// Creates `RemoveValidatorStakeAccount` instruction (remove validator stake account from the pool)
-pub fn remove_validator_stake_account(
+/// Creates `RemoveValidatorFromPool` instruction (remove validator stake account from the pool)
+pub fn remove_validator_from_pool(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     owner: &Pubkey,
     stake_pool_withdraw: &Pubkey,
     new_stake_authority: &Pubkey,
-    validator_stake_list: &Pubkey,
+    validator_list: &Pubkey,
     stake_account: &Pubkey,
     burn_from: &Pubkey,
     pool_mint: &Pubkey,
@@ -265,7 +265,7 @@ pub fn remove_validator_stake_account(
         AccountMeta::new_readonly(*owner, true),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new_readonly(*new_stake_authority, false),
-        AccountMeta::new(*validator_stake_list, false),
+        AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
         AccountMeta::new(*burn_from, false),
         AccountMeta::new(*pool_mint, false),
@@ -276,44 +276,44 @@ pub fn remove_validator_stake_account(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::RemoveValidatorStakeAccount.try_to_vec()?,
+        data: StakePoolInstruction::RemoveValidatorFromPool.try_to_vec()?,
     })
 }
 
-/// Creates `UpdateListBalance` instruction (update validator stake account balances)
-pub fn update_list_balance(
+/// Creates `UpdateValidatorListBalance` instruction (update validator stake account balances)
+pub fn update_validator_list_balance(
     program_id: &Pubkey,
-    validator_stake_list_storage: &Pubkey,
-    validator_stake_list: &[Pubkey],
+    validator_list_storage: &Pubkey,
+    validator_list: &[Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    let mut accounts: Vec<AccountMeta> = validator_stake_list
+    let mut accounts: Vec<AccountMeta> = validator_list
         .iter()
         .map(|pubkey| AccountMeta::new_readonly(*pubkey, false))
         .collect();
-    accounts.insert(0, AccountMeta::new(*validator_stake_list_storage, false));
+    accounts.insert(0, AccountMeta::new(*validator_list_storage, false));
     accounts.insert(1, AccountMeta::new_readonly(sysvar::clock::id(), false));
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::UpdateListBalance.try_to_vec()?,
+        data: StakePoolInstruction::UpdateValidatorListBalance.try_to_vec()?,
     })
 }
 
-/// Creates `UpdatePoolBalance` instruction (pool balance from the stake account list balances)
-pub fn update_pool_balance(
+/// Creates `UpdateStakePoolBalance` instruction (pool balance from the stake account list balances)
+pub fn update_stake_pool_balance(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    validator_stake_list_storage: &Pubkey,
+    validator_list_storage: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*validator_stake_list_storage, false),
+        AccountMeta::new(*validator_list_storage, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::UpdatePoolBalance.try_to_vec()?,
+        data: StakePoolInstruction::UpdateStakePoolBalance.try_to_vec()?,
     })
 }
 
@@ -321,7 +321,7 @@ pub fn update_pool_balance(
 pub fn deposit(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    validator_stake_list_storage: &Pubkey,
+    validator_list_storage: &Pubkey,
     stake_pool_deposit: &Pubkey,
     stake_pool_withdraw: &Pubkey,
     stake_to_join: &Pubkey,
@@ -334,7 +334,7 @@ pub fn deposit(
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*validator_stake_list_storage, false),
+        AccountMeta::new(*validator_list_storage, false),
         AccountMeta::new_readonly(*stake_pool_deposit, false),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*stake_to_join, false),
@@ -358,7 +358,7 @@ pub fn deposit(
 pub fn withdraw(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    validator_stake_list_storage: &Pubkey,
+    validator_list_storage: &Pubkey,
     stake_pool_withdraw: &Pubkey,
     stake_to_split: &Pubkey,
     stake_to_receive: &Pubkey,
@@ -371,7 +371,7 @@ pub fn withdraw(
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*validator_stake_list_storage, false),
+        AccountMeta::new(*validator_list_storage, false),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*stake_to_split, false),
         AccountMeta::new(*stake_to_receive, false),
