@@ -1054,9 +1054,11 @@ fn command_account_info(
     token: Option<Pubkey>,
     address: Option<Pubkey>,
 ) -> CommandResult {
+    let mut is_associated = false;
     let address = if let Some(address) = address {
         address
     } else {
+        is_associated = true;
         get_associated_token_address(&config.owner, &token.unwrap())
     };
     let account = config
@@ -1064,8 +1066,18 @@ fn command_account_info(
         .get_token_account(&address)
         .map_err(|_| format!("Could not find token account {}", address))?
         .unwrap();
+    if !is_associated {
+        if let Ok(mint) = Pubkey::from_str(&account.mint) {
+            is_associated = get_associated_token_address(&config.owner, &mint) == address;
+        }
+    }
+    let address_message = if is_associated {
+        address.to_string()
+    } else {
+        format!("{}  (Aux*)", address)
+    };
     println!();
-    println_name_value("Address:", &address.to_string());
+    println_name_value("Address:", &address_message);
     println_name_value(
         "Balance:",
         &account.token_amount.real_number_string_trimmed(),
@@ -1090,6 +1102,10 @@ fn command_account_info(
         "Close authority:",
         &account.close_authority.as_ref().unwrap_or(&String::new()),
     );
+    if !is_associated {
+        println!();
+        println!("* Please run `spl-token gc` to clean up Aux accounts");
+    }
     Ok(None)
 }
 
