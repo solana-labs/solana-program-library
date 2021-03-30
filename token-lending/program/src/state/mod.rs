@@ -70,8 +70,8 @@ fn unpack_decimal(src: &[u8; 16]) -> Decimal {
     Decimal::from_scaled_val(u128::from_le_bytes(*src))
 }
 
-fn pack_bool(bool: bool, dst: &mut [u8; 1]) {
-    *dst = (bool as u8).to_le_bytes()
+fn pack_bool(boolean: bool, dst: &mut [u8; 1]) {
+    *dst = (boolean as u8).to_le_bytes()
 }
 
 fn unpack_bool(src: &[u8; 1]) -> Result<bool, ProgramError> {
