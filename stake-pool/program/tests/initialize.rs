@@ -545,18 +545,15 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_pool() {
         ],
         recent_blockhash,
     );
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
-        TransactionError::InstructionError(
-            2,
-            InstructionError::InvalidError,
-            // should be InstructionError::AccountNotRentExempt, but the mapping
-            // is wrong
-        )
+    let result = banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert!(
+        result == TransactionError::InstructionError(2, InstructionError::InvalidError,)
+            || result
+                == TransactionError::InstructionError(2, InstructionError::AccountNotRentExempt,)
     );
 }
 
@@ -621,18 +618,16 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_validator_list() {
         recent_blockhash,
     );
 
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
-        TransactionError::InstructionError(
-            2,
-            InstructionError::InvalidError,
-            // should be InstructionError::AccountNotRentExempt, but the mapping
-            // is wrong
-        )
+    let result = banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+
+    assert!(
+        result == TransactionError::InstructionError(2, InstructionError::InvalidError,)
+            || result
+                == TransactionError::InstructionError(2, InstructionError::AccountNotRentExempt,)
     );
 }
 
