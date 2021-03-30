@@ -16,9 +16,9 @@ use {
     },
     solana_client::{
         rpc_client::RpcClient,
-        rpc_config::RpcAccountInfoConfig,
-        rpc_config::RpcProgramAccountsConfig,
+        rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
         rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
+        rpc_response::StakeActivationState,
     },
     solana_program::{
         borsh::get_packed_len, instruction::Instruction, program_pack::Pack, pubkey::Pubkey,
@@ -284,6 +284,10 @@ fn command_vsa_add(
     stake: &Pubkey,
     token_receiver: &Option<Pubkey>,
 ) -> CommandResult {
+    if config.rpc_client.get_stake_activation(*stake, None)?.state != StakeActivationState::Active {
+        return Err("Stake account is not active.".into());
+    }
+
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
     let pool_data = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
