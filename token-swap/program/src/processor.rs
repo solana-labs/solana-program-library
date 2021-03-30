@@ -1058,11 +1058,7 @@ impl Processor {
         let swap_info = next_account_info(account_info_iter)?;
         let freeze_authority_info = next_account_info(account_info_iter)?;
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        msg!(
-            "My freeze authority {:?} as compared to {:?}",
-            freeze_authority_info.key,
-            token_swap.as_ref().freeze_authority()
-        );
+
         Self::check_allowed_to_freeze(token_swap.as_ref(), freeze_authority_info)?;
 
         let clone = SwapVersion::SwapV2(SwapV2 {

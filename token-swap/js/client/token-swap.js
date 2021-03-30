@@ -85,7 +85,7 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     BufferLayout.blob(32, 'curveParameters'),
     BufferLayout.u8('freezeAuthorityOption'),
     Layout.publicKey('freezeAuthority'),
-    BufferLayout.u8('freezeAuthorityBitMask')
+    BufferLayout.u8('freezeAuthorityBitMask'),
   ],
 );
 
@@ -324,7 +324,7 @@ export class TokenSwap {
       BufferLayout.blob(32, 'curveParameters'),
       BufferLayout.u8('freezeAuthorityOption'),
       Layout.publicKey('freezeAuthority'),
-      BufferLayout.u8('freezeAuthorityBitMask')
+      BufferLayout.u8('freezeAuthorityBitMask'),
     ]);
     let data = Buffer.alloc(1024);
     {
