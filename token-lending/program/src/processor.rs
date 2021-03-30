@@ -772,7 +772,10 @@ fn process_deposit_obligation_collateral(
     }
 
     obligation
-        .find_or_add_collateral_to_deposits(*deposit_reserve_info.key, *obligation_token_mint_info.key)?
+        .find_or_add_collateral_to_deposits(
+            *deposit_reserve_info.key,
+            *obligation_token_mint_info.key,
+        )?
         .deposit(collateral_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
@@ -864,7 +867,8 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let (collateral, collateral_index) = obligation.find_collateral_in_deposits(*withdraw_reserve_info.key)?;
+    let (collateral, collateral_index) =
+        obligation.find_collateral_in_deposits(*withdraw_reserve_info.key)?;
     if collateral.token_mint != obligation_token_mint_info.key {
         return Err(LendingError::InvalidTokenMint.into());
     }
@@ -1176,7 +1180,8 @@ fn process_repay_obligation_liquidity(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let (liquidity, liquidity_index) = obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
+    let (liquidity, liquidity_index) =
+        obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -1316,8 +1321,10 @@ fn process_liquidate_obligation(
         return Err(LendingError::ObligationStale.into());
     }
 
-    let (liquidity, liquidity_index) = obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
-    let (collateral, collateral_index) = obligation.find_collateral_in_deposits(*withdraw_reserve_info.key)?;
+    let (liquidity, liquidity_index) =
+        obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
+    let (collateral, collateral_index) =
+        obligation.find_collateral_in_deposits(*withdraw_reserve_info.key)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
