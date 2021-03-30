@@ -36,7 +36,7 @@ use {
         instruction::{
             add_validator_to_pool, create_validator_stake_account, deposit,
             initialize as initialize_pool, remove_validator_from_pool, set_owner,
-            update_validator_list_balance, update_stake_pool_balance, withdraw, Fee as PoolFee,
+            update_stake_pool_balance, update_validator_list_balance, withdraw, Fee as PoolFee,
         },
         processor::Processor as PoolProcessor,
         stake::authorize as authorize_stake,

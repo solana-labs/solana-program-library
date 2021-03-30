@@ -115,8 +115,7 @@ async fn test_add_validator_to_pool() {
     )
     .await;
     let validator_list =
-        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice())
-            .unwrap();
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
     assert_eq!(
         validator_list,
         state::ValidatorList {

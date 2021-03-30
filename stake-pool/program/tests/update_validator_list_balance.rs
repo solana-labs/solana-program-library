@@ -18,8 +18,7 @@ async fn get_list_sum(banks_client: &mut BanksClient, validator_list_key: &Pubke
         .expect("get_account")
         .expect("validator stake list not none");
     let validator_list =
-        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice())
-            .unwrap();
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
 
     validator_list
         .validators

@@ -6,7 +6,7 @@ use {
         error::StakePoolError,
         instruction::{Fee, StakePoolInstruction},
         stake,
-        state::{AccountType, StakePool, ValidatorStakeInfo, ValidatorList},
+        state::{AccountType, StakePool, ValidatorList, ValidatorStakeInfo},
     },
     bincode::deserialize,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -305,9 +305,8 @@ impl Processor {
         }
 
         // Check if validator stake list storage is unitialized
-        let mut validator_list = try_from_slice_unchecked::<ValidatorList>(
-            &validator_list_info.data.borrow(),
-        )?;
+        let mut validator_list =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_uninitialized() {
             return Err(StakePoolError::AlreadyInUse.into());
         }
@@ -549,9 +548,8 @@ impl Processor {
         }
 
         // Read validator stake list account and check if it is valid
-        let mut validator_list = try_from_slice_unchecked::<ValidatorList>(
-            &validator_list_info.data.borrow(),
-        )?;
+        let mut validator_list =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -685,9 +683,8 @@ impl Processor {
         }
 
         // Read validator stake list account and check if it is valid
-        let mut validator_list = try_from_slice_unchecked::<ValidatorList>(
-            &validator_list_info.data.borrow(),
-        )?;
+        let mut validator_list =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -763,9 +760,8 @@ impl Processor {
         let validator_stake_accounts = account_info_iter.as_slice();
 
         // Read validator stake list account and check if it is valid
-        let mut validator_list = try_from_slice_unchecked::<ValidatorList>(
-            &validator_list_info.data.borrow(),
-        )?;
+        let mut validator_list =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -829,9 +825,8 @@ impl Processor {
         }
 
         // Read validator stake list account and check if it is valid
-        let validator_list = try_from_slice_unchecked::<ValidatorList>(
-            &validator_list_info.data.borrow(),
-        )?;
+        let validator_list =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -947,9 +942,8 @@ impl Processor {
         }
 
         // Read validator stake list account and check if it is valid
-        let mut validator_list = try_from_slice_unchecked::<ValidatorList>(
-            &validator_list_info.data.borrow(),
-        )?;
+        let mut validator_list =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -1100,9 +1094,8 @@ impl Processor {
         }
 
         // Read validator stake list account and check if it is valid
-        let mut validator_list = try_from_slice_unchecked::<ValidatorList>(
-            &validator_list_info.data.borrow(),
-        )?;
+        let mut validator_list =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }

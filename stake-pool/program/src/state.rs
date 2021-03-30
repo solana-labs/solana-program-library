@@ -238,9 +238,8 @@ mod test {
     #[test]
     fn test_state_packing() {
         let max_validators = 10_000;
-        let size =
-            get_instance_packed_len(&ValidatorList::new_with_max_validators(max_validators))
-                .unwrap();
+        let size = get_instance_packed_len(&ValidatorList::new_with_max_validators(max_validators))
+            .unwrap();
         // Not initialized
         let stake_list = ValidatorList {
             account_type: AccountType::Uninitialized,
@@ -250,8 +249,7 @@ mod test {
         let mut byte_vec = vec![0u8; size];
         let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
-        let stake_list_unpacked =
-            try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
+        let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
 
         // Empty
@@ -263,8 +261,7 @@ mod test {
         let mut byte_vec = vec![0u8; size];
         let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
-        let stake_list_unpacked =
-            try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
+        let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
 
         // With several accounts
@@ -292,8 +289,7 @@ mod test {
         let mut byte_vec = vec![0u8; size];
         let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
-        let stake_list_unpacked =
-            try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
+        let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
     }
 
