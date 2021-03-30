@@ -163,13 +163,17 @@ impl Obligation {
     pub fn find_or_add_collateral_to_deposits(
         &mut self,
         deposit_reserve: Pubkey,
+        token_mint: Pubkey,
     ) -> Result<&mut ObligationCollateral, ProgramError> {
         if let Some(collateral_index) = self._find_collateral_index_in_deposits(deposit_reserve) {
+            if self.deposits[collateral_index].token_mint != token_mint {
+                return Err(LendingError::InvalidTokenMint.into());
+            }
             Ok(&mut self.deposits[collateral_index])
         } else if self.deposits.len() + self.borrows.len() >= MAX_OBLIGATION_RESERVES {
             Err(LendingError::ObligationReserveLimit.into())
         } else {
-            let collateral = ObligationCollateral::new(deposit_reserve);
+            let collateral = ObligationCollateral::new(deposit_reserve, token_mint);
             self.deposits.push(collateral);
             Ok(self.deposits.last_mut().unwrap())
         }
@@ -230,6 +234,8 @@ impl IsInitialized for Obligation {
 pub struct ObligationCollateral {
     /// Reserve collateral is deposited to
     pub deposit_reserve: Pubkey,
+    /// Mint address of the tokens for this obligation collateral
+    pub token_mint: Pubkey,
     /// Amount of collateral deposited
     pub deposited_amount: u64,
     /// Collateral market value in quote currency
@@ -238,9 +244,10 @@ pub struct ObligationCollateral {
 
 impl ObligationCollateral {
     /// Create new obligation collateral
-    pub fn new(deposit_reserve: Pubkey) -> Self {
+    pub fn new(deposit_reserve: Pubkey, token_mint: Pubkey) -> Self {
         Self {
             deposit_reserve,
+            token_mint,
             deposited_amount: 0,
             market_value: Decimal::zero(),
         }
@@ -333,7 +340,7 @@ impl ObligationLiquidity {
 }
 
 // @TODO: adjust padding. what's a reasonable number?
-const OBLIGATION_COLLATERAL_LEN: usize = 56; // 32 + 8 + 16
+const OBLIGATION_COLLATERAL_LEN: usize = 88; // 32 + 32 + 8 + 16
 const OBLIGATION_LIQUIDITY_LEN: usize = 80; // 32 + 16 + 16 + 16
 const OBLIGATION_LEN: usize = 820; // 1 + 8 + 1 + 32 + 1 + 1 + (56 * 1) + (80 * 9)
 impl Pack for Obligation {
@@ -375,9 +382,10 @@ impl Pack for Obligation {
         for collateral in &self.deposits {
             let deposits_flat = array_mut_ref![data_flat, offset, OBLIGATION_COLLATERAL_LEN];
             #[allow(clippy::ptr_offset_with_cast)]
-            let (deposit_reserve, deposited_amount, market_value) =
-                mut_array_refs![deposits_flat, PUBKEY_BYTES, 8, 16];
+            let (deposit_reserve, token_mint, deposited_amount, market_value) =
+                mut_array_refs![deposits_flat, PUBKEY_BYTES, PUBKEY_BYTES, 8, 16];
             deposit_reserve.copy_from_slice(collateral.deposit_reserve.as_ref());
+            token_mint.copy_from_slice(collateral.token_mint.as_ref());
             *deposited_amount = collateral.deposited_amount.to_le_bytes();
             pack_decimal(collateral.market_value, market_value);
             offset += OBLIGATION_COLLATERAL_LEN;
@@ -431,10 +439,11 @@ impl Pack for Obligation {
         for _ in 0..deposits_len {
             let deposits_flat = array_ref![data_flat, offset, OBLIGATION_COLLATERAL_LEN];
             #[allow(clippy::ptr_offset_with_cast)]
-            let (deposit_reserve, deposited_amount, market_value) =
-                array_refs![deposits_flat, PUBKEY_BYTES, 8, 16];
+            let (deposit_reserve, token_mint, deposited_amount, market_value) =
+                array_refs![deposits_flat, PUBKEY_BYTES, PUBKEY_BYTES, 8, 16];
             deposits.push(ObligationCollateral {
                 deposit_reserve: Pubkey::new(deposit_reserve),
+                token_mint: Pubkey::new(token_mint),
                 deposited_amount: u64::from_le_bytes(*deposited_amount),
                 market_value: unpack_decimal(market_value),
             });
