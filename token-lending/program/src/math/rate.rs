@@ -193,6 +193,6 @@ mod test {
 
     #[test]
     fn checked_pow() {
-        assert_eq!(Rate::one(), Rate::one().try_pow(u64::MAX).unwrap());
+        assert_eq!(Rate::one(), Rate::one().try_pow(u64::max_value()).unwrap());
     }
 }

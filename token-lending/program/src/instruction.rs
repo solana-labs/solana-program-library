@@ -196,7 +196,7 @@ pub enum LendingInstruction {
     ///   9. `[]` Clock sysvar.
     ///   10 `[]` Token program id.
     WithdrawObligationCollateral {
-        /// Amount of collateral to withdraw - u64::MAX for up to 100% of deposited amount
+        /// Amount of collateral to withdraw - u64::max_value() for up to 100% of deposited amount
         collateral_amount: u64,
     },
 
@@ -220,7 +220,7 @@ pub enum LendingInstruction {
     ///   9. `[]` Token program id.
     ///   10. `[optional, writable]` Host fee receiver account.
     BorrowObligationLiquidity {
-        /// Amount of liquidity to borrow - u64::MAX for 100% of borrowing power
+        /// Amount of liquidity to borrow - u64::max_value() for 100% of borrowing power
         liquidity_amount: u64,
         // @TODO: slippage constraint - https://git.io/JmV67
     },
@@ -242,7 +242,7 @@ pub enum LendingInstruction {
     ///   7. `[]` Clock sysvar.
     ///   8. `[]` Token program id.
     RepayObligationLiquidity {
-        /// Amount of liquidity to repay - u64::MAX for 100% of borrowed amount
+        /// Amount of liquidity to repay - u64::max_value() for 100% of borrowed amount
         liquidity_amount: u64,
     },
 
@@ -268,7 +268,7 @@ pub enum LendingInstruction {
     ///   10 `[]` Clock sysvar.
     ///   11 `[]` Token program id.
     LiquidateObligation {
-        /// Amount of liquidity to repay - u64::MAX for up to 100% of borrowed amount
+        /// Amount of liquidity to repay - u64::max_value() for up to 100% of borrowed amount
         liquidity_amount: u64,
     },
 }

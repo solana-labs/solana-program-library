@@ -867,7 +867,7 @@ fn process_withdraw_obligation_collateral(
 
     let (collateral, collateral_index) =
         obligation.find_collateral_in_deposits(*withdraw_reserve_info.key)?;
-    if collateral.token_mint != obligation_token_mint_info.key {
+    if &collateral.token_mint != obligation_token_mint_info.key {
         return Err(LendingError::InvalidTokenMint.into());
     }
     if collateral.deposited_amount == 0 {
@@ -907,7 +907,7 @@ fn process_withdraw_obligation_collateral(
 
     let max_withdraw_value = obligation.max_withdraw_value(loan_to_value_ratio)?;
 
-    let withdraw_amount = if collateral_amount == u64::MAX {
+    let withdraw_amount = if collateral_amount == u64::max_value() {
         let withdraw_value = max_withdraw_value.min(collateral.market_value);
         withdraw_value
             .try_div(collateral.market_value)?

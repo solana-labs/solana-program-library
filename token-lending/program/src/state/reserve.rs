@@ -173,7 +173,7 @@ impl Reserve {
         liquidity_amount: u64,
         max_borrow_value: Decimal,
     ) -> Result<BorrowLiquidityResult, ProgramError> {
-        if liquidity_amount == u64::MAX {
+        if liquidity_amount == u64::max_value() {
             let borrow_amount = max_borrow_value
                 .try_div(self.liquidity.median_price)?
                 .min(self.liquidity.available_amount.into());
@@ -221,7 +221,7 @@ impl Reserve {
         liquidity_amount: u64,
         borrow_amount: Decimal,
     ) -> Result<RepayLiquidityResult, ProgramError> {
-        let settle_amount = if liquidity_amount == u64::MAX {
+        let settle_amount = if liquidity_amount == u64::max_value() {
             borrow_amount
         } else {
             Decimal::from(liquidity_amount).min(borrow_amount)
@@ -248,7 +248,7 @@ impl Reserve {
     ) -> Result<LiquidateObligationResult, ProgramError> {
         let bonus_rate = Rate::from_percent(self.config.liquidation_bonus).try_add(Rate::one())?;
 
-        let liquidate_amount = if liquidity_amount == u64::MAX {
+        let liquidate_amount = if liquidity_amount == u64::max_value() {
             liquidity.borrowed_amount_wads
         } else {
             Decimal::from(liquidity_amount).min(liquidity.borrowed_amount_wads)
