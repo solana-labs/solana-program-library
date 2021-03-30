@@ -2,19 +2,26 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program::hash::Hash;
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_pack::Pack,
-    system_instruction, sysvar,
+use {
+    borsh::BorshSerialize,
+    helpers::*,
+    solana_program::{
+        borsh::get_packed_len,
+        hash::Hash,
+        instruction::{AccountMeta, Instruction},
+        program_pack::Pack,
+        system_instruction, sysvar,
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError, signature::Keypair, signature::Signer,
+        transaction::Transaction, transaction::TransactionError, transport::TransportError,
+    },
+    spl_stake_pool::{
+        borsh::{get_instance_packed_len, try_from_slice_unchecked},
+        error, id, instruction, state,
+    },
 };
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError, signature::Keypair, signature::Signer, transaction::Transaction,
-    transaction::TransactionError, transport::TransportError,
-};
-use spl_stake_pool::*;
 
 async fn create_mint_and_token_account(
     banks_client: &mut BanksClient,
@@ -55,7 +62,7 @@ async fn test_stake_pool_initialize() {
 
     // Stake pool now exists
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    assert_eq!(stake_pool.data.len(), state::StakePool::LEN);
+    assert_eq!(stake_pool.data.len(), get_packed_len::<state::StakePool>());
     assert_eq!(stake_pool.owner, id());
 
     // Validator stake list storage initialized
@@ -65,8 +72,9 @@ async fn test_stake_pool_initialize() {
     )
     .await;
     let validator_stake_list =
-        state::ValidatorStakeList::deserialize(validator_stake_list.data.as_slice()).unwrap();
-    assert_eq!(validator_stake_list.is_initialized(), true);
+        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
+            .unwrap();
+    assert_eq!(validator_stake_list.is_valid(), true);
 }
 
 #[tokio::test]
@@ -158,6 +166,85 @@ async fn test_initialize_stake_pool_with_high_fee() {
 }
 
 #[tokio::test]
+async fn test_initialize_stake_pool_with_wrong_max_validators() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+
+    create_mint_and_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+    )
+    .await;
+
+    let rent = banks_client.get_rent().await.unwrap();
+    let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
+    let validator_stake_list_size = get_instance_packed_len(
+        &state::ValidatorStakeList::new_with_max_validators(stake_pool_accounts.max_validators - 1),
+    )
+    .unwrap();
+    let rent_validator_stake_list = rent.minimum_balance(validator_stake_list_size);
+
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            system_instruction::create_account(
+                &payer.pubkey(),
+                &stake_pool_accounts.stake_pool.pubkey(),
+                rent_stake_pool,
+                get_packed_len::<state::StakePool>() as u64,
+                &id(),
+            ),
+            system_instruction::create_account(
+                &payer.pubkey(),
+                &stake_pool_accounts.validator_stake_list.pubkey(),
+                rent_validator_stake_list,
+                validator_stake_list_size as u64,
+                &id(),
+            ),
+            instruction::initialize(
+                &id(),
+                &stake_pool_accounts.stake_pool.pubkey(),
+                &stake_pool_accounts.owner.pubkey(),
+                &stake_pool_accounts.validator_stake_list.pubkey(),
+                &stake_pool_accounts.pool_mint.pubkey(),
+                &stake_pool_accounts.pool_fee_account.pubkey(),
+                &spl_token::id(),
+                stake_pool_accounts.fee.clone(),
+                stake_pool_accounts.max_validators,
+            )
+            .unwrap(),
+        ],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(
+        &[
+            &payer,
+            &stake_pool_accounts.stake_pool,
+            &stake_pool_accounts.validator_stake_list,
+            &stake_pool_accounts.owner,
+        ],
+        recent_blockhash,
+    );
+    let transaction_error = banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap();
+
+    match transaction_error {
+        TransportError::TransactionError(TransactionError::InstructionError(
+            _,
+            InstructionError::Custom(error_index),
+        )) => {
+            let program_error = error::StakePoolError::UnexpectedValidatorListAccountSize as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs while try to initialize stake pool with high fee"),
+    }
+}
+
+#[tokio::test]
 async fn test_initialize_stake_pool_with_wrong_mint_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
@@ -192,6 +279,7 @@ async fn test_initialize_stake_pool_with_wrong_mint_authority() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.owner,
         &stake_pool_accounts.fee,
+        stake_pool_accounts.max_validators,
     )
     .await
     .err()
@@ -245,11 +333,12 @@ async fn test_initialize_stake_pool_with_wrong_token_program_id() {
     );
     banks_client.process_transaction(transaction).await.unwrap();
 
-    let rent_stake_pool = rent.minimum_balance(state::StakePool::LEN);
-    let rent_validator_stake_list = rent.minimum_balance(state::ValidatorStakeList::LEN);
-    let init_args = instruction::InitArgs {
-        fee: stake_pool_accounts.fee,
-    };
+    let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
+    let validator_stake_list_size = get_instance_packed_len(
+        &state::ValidatorStakeList::new_with_max_validators(stake_pool_accounts.max_validators),
+    )
+    .unwrap();
+    let rent_validator_stake_list = rent.minimum_balance(validator_stake_list_size);
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -257,14 +346,14 @@ async fn test_initialize_stake_pool_with_wrong_token_program_id() {
                 &payer.pubkey(),
                 &stake_pool_accounts.stake_pool.pubkey(),
                 rent_stake_pool,
-                state::StakePool::LEN as u64,
+                get_packed_len::<state::StakePool>() as u64,
                 &id(),
             ),
             system_instruction::create_account(
                 &payer.pubkey(),
                 &stake_pool_accounts.validator_stake_list.pubkey(),
                 rent_validator_stake_list,
-                state::ValidatorStakeList::LEN as u64,
+                validator_stake_list_size as u64,
                 &id(),
             ),
             instruction::initialize(
@@ -275,7 +364,8 @@ async fn test_initialize_stake_pool_with_wrong_token_program_id() {
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &wrong_token_program.pubkey(),
-                init_args,
+                stake_pool_accounts.fee.clone(),
+                stake_pool_accounts.max_validators,
             )
             .unwrap(),
         ],
@@ -349,6 +439,7 @@ async fn test_initialize_stake_pool_with_wrong_fee_accounts_owner() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.owner,
         &stake_pool_accounts.fee,
+        stake_pool_accounts.max_validators,
     )
     .await
     .err()
@@ -409,10 +500,11 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_pool() {
     .await;
 
     let rent = banks_client.get_rent().await.unwrap();
-    let rent_validator_stake_list = rent.minimum_balance(state::ValidatorStakeList::LEN);
-    let init_args = instruction::InitArgs {
-        fee: stake_pool_accounts.fee,
-    };
+    let validator_stake_list_size = get_instance_packed_len(
+        &state::ValidatorStakeList::new_with_max_validators(stake_pool_accounts.max_validators),
+    )
+    .unwrap();
+    let rent_validator_stake_list = rent.minimum_balance(validator_stake_list_size);
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -420,14 +512,14 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_pool() {
                 &payer.pubkey(),
                 &stake_pool_accounts.stake_pool.pubkey(),
                 1,
-                state::StakePool::LEN as u64,
+                get_packed_len::<state::StakePool>() as u64,
                 &id(),
             ),
             system_instruction::create_account(
                 &payer.pubkey(),
                 &stake_pool_accounts.validator_stake_list.pubkey(),
                 rent_validator_stake_list,
-                state::ValidatorStakeList::LEN as u64,
+                validator_stake_list_size as u64,
                 &id(),
             ),
             instruction::initialize(
@@ -438,7 +530,8 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_pool() {
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
-                init_args,
+                stake_pool_accounts.fee.clone(),
+                stake_pool_accounts.max_validators,
             )
             .unwrap(),
         ],
@@ -453,24 +546,19 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_pool() {
         ],
         recent_blockhash,
     );
-    let transaction_error = banks_client
-        .process_transaction(transaction)
-        .await
-        .err()
-        .unwrap();
-
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::AccountNotRentExempt as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!(
-            "Wrong error occurs while try to initialize stake pool with not rent exempt stake pool account"
-        ),
-    }
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(
+            2,
+            InstructionError::InvalidError,
+            // should be InstructionError::AccountNotRentExempt, but the mapping
+            // is wrong
+        )
+    );
 }
 
 #[tokio::test]
@@ -487,10 +575,11 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_validator_stake_list() 
     .await;
 
     let rent = banks_client.get_rent().await.unwrap();
-    let rent_stake_pool = rent.minimum_balance(state::StakePool::LEN);
-    let init_args = instruction::InitArgs {
-        fee: stake_pool_accounts.fee,
-    };
+    let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
+    let validator_stake_list_size = get_instance_packed_len(
+        &state::ValidatorStakeList::new_with_max_validators(stake_pool_accounts.max_validators),
+    )
+    .unwrap();
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -498,14 +587,14 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_validator_stake_list() 
                 &payer.pubkey(),
                 &stake_pool_accounts.stake_pool.pubkey(),
                 rent_stake_pool,
-                state::StakePool::LEN as u64,
+                get_packed_len::<state::StakePool>() as u64,
                 &id(),
             ),
             system_instruction::create_account(
                 &payer.pubkey(),
                 &stake_pool_accounts.validator_stake_list.pubkey(),
                 1,
-                state::ValidatorStakeList::LEN as u64,
+                validator_stake_list_size as u64,
                 &id(),
             ),
             instruction::initialize(
@@ -516,7 +605,8 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_validator_stake_list() 
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
-                init_args,
+                stake_pool_accounts.fee.clone(),
+                stake_pool_accounts.max_validators,
             )
             .unwrap(),
         ],
@@ -531,24 +621,20 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_validator_stake_list() 
         ],
         recent_blockhash,
     );
-    let transaction_error = banks_client
-        .process_transaction(transaction)
-        .await
-        .err()
-        .unwrap();
 
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::AccountNotRentExempt as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!(
-            "Wrong error occurs while try to initialize stake pool with not rent exempt validator stake list account"
-        ),
-    }
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(
+            2,
+            InstructionError::InvalidError,
+            // should be InstructionError::AccountNotRentExempt, but the mapping
+            // is wrong
+        )
+    );
 }
 
 #[tokio::test]
@@ -565,13 +651,18 @@ async fn test_initialize_stake_pool_without_owner_signature() {
     .await;
 
     let rent = banks_client.get_rent().await.unwrap();
-    let rent_stake_pool = rent.minimum_balance(state::StakePool::LEN);
-    let init_args = instruction::InitArgs {
-        fee: stake_pool_accounts.fee,
-    };
+    let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
+    let validator_stake_list_size = get_instance_packed_len(
+        &state::ValidatorStakeList::new_with_max_validators(stake_pool_accounts.max_validators),
+    )
+    .unwrap();
+    let rent_validator_stake_list = rent.minimum_balance(validator_stake_list_size);
 
-    let init_data = instruction::StakePoolInstruction::Initialize(init_args);
-    let data = init_data.serialize().unwrap();
+    let init_data = instruction::StakePoolInstruction::Initialize {
+        fee: stake_pool_accounts.fee.clone(),
+        max_validators: stake_pool_accounts.max_validators,
+    };
+    let data = init_data.try_to_vec().unwrap();
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), true),
         AccountMeta::new_readonly(stake_pool_accounts.owner.pubkey(), false),
@@ -594,14 +685,14 @@ async fn test_initialize_stake_pool_without_owner_signature() {
                 &payer.pubkey(),
                 &stake_pool_accounts.stake_pool.pubkey(),
                 rent_stake_pool,
-                state::StakePool::LEN as u64,
+                get_packed_len::<state::StakePool>() as u64,
                 &id(),
             ),
             system_instruction::create_account(
                 &payer.pubkey(),
                 &stake_pool_accounts.validator_stake_list.pubkey(),
-                state::ValidatorStakeList::LEN as u64,
-                state::ValidatorStakeList::LEN as u64,
+                rent_validator_stake_list,
+                validator_stake_list_size as u64,
                 &id(),
             ),
             stake_pool_init_instruction,
