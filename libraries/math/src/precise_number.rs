@@ -361,6 +361,21 @@ impl PreciseNumber {
         let guess = self.checked_add(&one)?.checked_div(&two)?;
         self.newtonian_root_approximation(&two, guess, Self::MAX_APPROXIMATION_ITERATIONS)
     }
+
+    /// Approximate the square root using Newton's method.  Based on testing,
+    /// this provides a precision of 11 digits for inputs between 0 and u128::MAX
+    pub fn cuberoot(&self) -> Option<Self> {
+        if self.less_than(&Self::minimum_sqrt_base()) || self.greater_than(&Self::maximum_sqrt_base())
+        {
+            return None;
+        }
+        let two = PreciseNumber::new(2)?;
+        let three = PreciseNumber::new(3)?;
+        // A good initial guess is the average of the interval that contains the
+        // input number.  For all numbers, that will be between 1 and the given number.
+        let guess = self.checked_add(&two)?.checked_div(&three)?;
+        self.newtonian_root_approximation(&three, guess, Self::MAX_APPROXIMATION_ITERATIONS)
+    }
 }
 
 #[cfg(test)]

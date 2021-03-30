@@ -1,5 +1,4 @@
 //! The curve.fi invariant calculator.
-
 use crate::error::SwapError;
 use solana_program::{
     program_error::ProgramError,
@@ -10,10 +9,7 @@ use crate::curve::{
     calculator::{
         CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
         TradingTokenResult,
-    },
-    constant_product::{
-        normalized_value
-    },
+    }
 };
 use arrayref::{array_mut_ref, array_ref};
 use spl_math::{precise_number::PreciseNumber, uint::U256};
@@ -237,7 +233,27 @@ impl CurveCalculator for StableCurve {
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
     ) -> Option<PreciseNumber> {
-        normalized_value(swap_token_a_amount, swap_token_b_amount)
+        let leverage = self.amp.checked_mul(N_COINS as u64)?;
+        let invariant = compute_d(leverage, swap_token_a_amount, swap_token_b_amount)?;
+        let a = PreciseNumber::new(self.amp.checked_mul(8)?.into())?;
+        let b_imprecise = invariant.checked_sub(invariant.checked_mul(4)?.checked_mul(self.amp.into())?)?;
+        let b = PreciseNumber::new(b_imprecise)?;
+        let _c = 0;
+        let d = PreciseNumber::new(invariant.checked_pow(3)?.checked_div(4)?)?;
+        let delta_zero = b.checked_pow(2)?;
+        let delta_one_term1 = b.checked_pow(3)?.checked_mul(&PreciseNumber::new(2)?)?;
+        let delta_one_term2 = a.checked_pow(2)?.checked_mul(&d)?.checked_mul(&PreciseNumber::new(27)?)?;
+        let delta_one = delta_one_term1.checked_add(&delta_one_term2)?;
+        let delta_one_squared = delta_one.checked_pow(2)?;
+        let delta_zero_cubed = delta_zero.checked_pow(3)?.checked_mul(&PreciseNumber::new(4)?)?;
+        let inside_inner_root = delta_one_squared.checked_sub(&delta_zero_cubed)?;
+        let inner_root = inside_inner_root.sqrt()?;
+        let c_numerator = delta_one.checked_add(&inner_root)?;
+        let c_inside_cuberoot = c_numerator.checked_div(&PreciseNumber::new(2)?)?;
+        let big_c = c_inside_cuberoot.cuberoot()?;
+        let x0_inner_sum = b.checked_add(&big_c)?.checked_add(&(delta_zero.checked_div(&big_c)?))?;
+        let x0 = (PreciseNumber::new(1)?.checked_div(&a.checked_mul(&PreciseNumber::new(3)?)?)?).checked_mul(&x0_inner_sum)?;
+        x0.checked_sub(&x0.checked_mul(&PreciseNumber::new(2)?)?)
     }
 
     fn validate(&self) -> Result<(), SwapError> {
