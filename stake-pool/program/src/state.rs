@@ -192,7 +192,8 @@ impl ValidatorList {
 
     /// Calculate the number of validator entries that fit in the provided length
     pub fn calculate_max_validators(buffer_length: usize) -> usize {
-        (buffer_length - 1 - 4 - 4) / 48
+        let header_size = 1 + 4 + 4;
+        buffer_length.saturating_sub(header_size) / 48
     }
 
     /// Check if contains validator with particular pubkey
@@ -299,9 +300,9 @@ mod test {
             let validators = ValidatorList::new_with_max_validators(test_amount);
             let size = get_instance_packed_len(&validators).unwrap();
             assert_eq!(ValidatorList::calculate_max_validators(size), test_amount as usize);
-            assert_eq!(ValidatorList::calculate_max_validators(size + 1), test_amount as usize);
-            assert_eq!(ValidatorList::calculate_max_validators(size + get_packed_len::<ValidatorStakeInfo>()), (test_amount + 1)as usize);
-            assert_eq!(ValidatorList::calculate_max_validators(size - 1), (test_amount - 1) as usize);
+            assert_eq!(ValidatorList::calculate_max_validators(size.saturating_add(1)), test_amount as usize);
+            assert_eq!(ValidatorList::calculate_max_validators(size.saturating_add(get_packed_len::<ValidatorStakeInfo>())), (test_amount + 1)as usize);
+            assert_eq!(ValidatorList::calculate_max_validators(size.saturating_sub(1)), (test_amount.saturating_sub(1)) as usize);
         }
     }
 }
