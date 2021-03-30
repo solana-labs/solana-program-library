@@ -2,13 +2,15 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError, signature::Keypair, signature::Signer, transaction::Transaction,
-    transaction::TransactionError, transport::TransportError,
+use {
+    helpers::*,
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError, signature::Keypair, signature::Signer,
+        transaction::Transaction, transaction::TransactionError, transport::TransportError,
+    },
+    spl_stake_pool::*,
 };
-use spl_stake_pool::*;
 
 #[tokio::test]
 async fn test_update_pool_balance() {

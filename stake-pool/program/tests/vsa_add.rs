@@ -2,22 +2,24 @@
 
 mod helpers;
 
-use helpers::*;
-
-use bincode::deserialize;
-use solana_program::hash::Hash;
-use solana_program::instruction::AccountMeta;
-use solana_program::instruction::Instruction;
-use solana_program::sysvar;
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError,
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-    transaction::TransactionError,
-    transport::TransportError,
+use {
+    bincode::deserialize,
+    borsh::BorshSerialize,
+    helpers::*,
+    solana_program::{
+        hash::Hash,
+        instruction::{AccountMeta, Instruction},
+        sysvar,
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
+        transport::TransportError,
+    },
+    spl_stake_pool::{borsh::try_from_slice_unchecked, error, id, instruction, stake, state},
 };
-use spl_stake_pool::*;
 
 async fn setup() -> (
     BanksClient,
@@ -113,11 +115,13 @@ async fn test_add_validator_stake_account() {
     )
     .await;
     let validator_stake_list =
-        state::ValidatorStakeList::deserialize(validator_stake_list.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
+            .unwrap();
     assert_eq!(
         validator_stake_list,
         state::ValidatorStakeList {
-            version: state::ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
+            account_type: state::AccountType::ValidatorStakeList,
+            max_validators: stake_pool_accounts.max_validators,
             validators: vec![state::ValidatorStakeInfo {
                 validator_account: user_stake.vote.pubkey(),
                 last_update_epoch: 0,
@@ -409,7 +413,7 @@ async fn test_not_owner_try_to_add_validator_stake_account_without_signature() {
         program_id: id(),
         accounts,
         data: instruction::StakePoolInstruction::AddValidatorStakeAccount
-            .serialize()
+            .try_to_vec()
             .unwrap(),
     };
 
@@ -541,6 +545,74 @@ async fn test_add_validator_stake_account_with_wrong_stake_program_id() {
             "Wrong error occurs while try to add validator stake account with wrong stake program ID"
         ),
     }
+}
+
+#[tokio::test]
+async fn test_add_too_many_validator_stake_accounts() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let mut stake_pool_accounts = StakePoolAccounts::new();
+    stake_pool_accounts.max_validators = 1;
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .await
+        .unwrap();
+
+    let user = Keypair::new();
+
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
+        &stake_pool_accounts.deposit_authority,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
+    user_stake
+        .create_and_delegate(&mut banks_client, &payer, &recent_blockhash)
+        .await;
+
+    // make pool token account
+    let user_pool_account = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_pool_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &user.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    let error = stake_pool_accounts
+        .add_validator_stake_account(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake.stake_account,
+            &user_pool_account.pubkey(),
+        )
+        .await;
+    assert!(error.is_none());
+
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
+        &stake_pool_accounts.deposit_authority,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
+    user_stake
+        .create_and_delegate(&mut banks_client, &payer, &recent_blockhash)
+        .await;
+    let error = stake_pool_accounts
+        .add_validator_stake_account(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake.stake_account,
+            &user_pool_account.pubkey(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::AccountDataTooSmall),
+    );
 }
 
 #[tokio::test]

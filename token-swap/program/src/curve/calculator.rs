@@ -219,7 +219,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
-                RoundDirection::Ceiling,
+                RoundDirection::Floor,
             )
             .unwrap();
 
@@ -241,7 +241,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
-                RoundDirection::Ceiling,
+                RoundDirection::Floor,
             )
             .unwrap();
         let pool_tokens_from_destination = curve
@@ -251,7 +251,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_supply + pool_tokens_from_source,
                 opposite_direction,
-                RoundDirection::Ceiling,
+                RoundDirection::Floor,
             )
             .unwrap();
 

@@ -8,7 +8,7 @@ use {
     solana_program::{native_token, pubkey::Pubkey},
     solana_program_test::*,
     solana_sdk::signature::Signer,
-    spl_stake_pool::*,
+    spl_stake_pool::{borsh::try_from_slice_unchecked, stake, state},
 };
 
 async fn get_list_sum(banks_client: &mut BanksClient, validator_stake_list_key: &Pubkey) -> u64 {
@@ -18,7 +18,8 @@ async fn get_list_sum(banks_client: &mut BanksClient, validator_stake_list_key: 
         .expect("get_account")
         .expect("validator stake list not none");
     let validator_stake_list =
-        state::ValidatorStakeList::deserialize(validator_stake_list.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
+            .unwrap();
 
     validator_stake_list
         .validators

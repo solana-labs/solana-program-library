@@ -578,7 +578,7 @@ export async function multisig(): Promise<void> {
 
   // Approve via multisig
   {
-    const delegate = new PublicKey();
+    const delegate = new PublicKey(0);
     await testToken.approve(
       multisigOwnedAccount,
       delegate,
@@ -596,7 +596,7 @@ export async function multisig(): Promise<void> {
 
   // SetAuthority of account via multisig
   {
-    const newOwner = new PublicKey();
+    const newOwner = new PublicKey(0);
     await testToken.setAuthority(
       multisigOwnedAccount,
       newOwner,

@@ -2,22 +2,25 @@
 
 mod helpers;
 
-use bincode::deserialize;
-use helpers::*;
-use solana_program::hash::Hash;
-use solana_program::instruction::AccountMeta;
-use solana_program::instruction::Instruction;
-use solana_program::pubkey::Pubkey;
-use solana_program::sysvar;
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError,
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-    transaction::TransactionError,
-    transport::TransportError,
+use {
+    bincode::deserialize,
+    borsh::BorshSerialize,
+    helpers::*,
+    solana_program::{
+        hash::Hash,
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+        sysvar,
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
+        transport::TransportError,
+    },
+    spl_stake_pool::{borsh::try_from_slice_unchecked, error, id, instruction, stake, state},
 };
-use spl_stake_pool::*;
 
 async fn setup() -> (
     BanksClient,
@@ -128,11 +131,13 @@ async fn test_remove_validator_stake_account() {
     )
     .await;
     let validator_stake_list =
-        state::ValidatorStakeList::deserialize(validator_stake_list.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
+            .unwrap();
     assert_eq!(
         validator_stake_list,
         state::ValidatorStakeList {
-            version: state::ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
+            account_type: state::AccountType::ValidatorStakeList,
+            max_validators: stake_pool_accounts.max_validators,
             validators: vec![]
         }
     );
@@ -495,7 +500,7 @@ async fn test_not_owner_try_to_remove_validator_stake_account_without_signature(
         program_id: id(),
         accounts,
         data: instruction::StakePoolInstruction::RemoveValidatorStakeAccount
-            .serialize()
+            .try_to_vec()
             .unwrap(),
     };
 

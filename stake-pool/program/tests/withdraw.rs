@@ -2,20 +2,21 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program::pubkey::Pubkey;
-
-use solana_program::hash::Hash;
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError,
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-    transaction::TransactionError,
-    transport::TransportError,
+use {
+    borsh::BorshDeserialize,
+    helpers::*,
+    solana_program::hash::Hash,
+    solana_program::pubkey::Pubkey,
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
+        transport::TransportError,
+    },
+    spl_stake_pool::{borsh::try_from_slice_unchecked, error, id, instruction, stake, state},
+    spl_token::error::TokenError,
 };
-use spl_stake_pool::*;
-use spl_token::error::TokenError;
 
 async fn setup() -> (
     BanksClient,
@@ -101,7 +102,7 @@ async fn test_stake_pool_withdraw() {
     let stake_pool_before =
         get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool_before =
-        state::StakePool::deserialize(&stake_pool_before.data.as_slice()).unwrap();
+        state::StakePool::try_from_slice(&stake_pool_before.data.as_slice()).unwrap();
 
     // Save validator stake account record before withdrawal
     let validator_stake_list = get_account(
@@ -110,7 +111,8 @@ async fn test_stake_pool_withdraw() {
     )
     .await;
     let validator_stake_list =
-        state::ValidatorStakeList::deserialize(validator_stake_list.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
+            .unwrap();
     let validator_stake_item_before = validator_stake_list
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
@@ -136,7 +138,7 @@ async fn test_stake_pool_withdraw() {
 
     // Check pool stats
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::StakePool::deserialize(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = state::StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(
         stake_pool.stake_total,
         stake_pool_before.stake_total - tokens_to_burn
@@ -153,7 +155,8 @@ async fn test_stake_pool_withdraw() {
     )
     .await;
     let validator_stake_list =
-        state::ValidatorStakeList::deserialize(validator_stake_list.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::ValidatorStakeList>(validator_stake_list.data.as_slice())
+            .unwrap();
     let validator_stake_item = validator_stake_list
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();

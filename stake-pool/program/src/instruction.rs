@@ -3,19 +3,18 @@
 #![allow(clippy::too_many_arguments)]
 
 use {
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
         sysvar,
     },
-    std::mem::size_of,
 };
 
-/// Fee rate as a ratio
-/// Fee is minted on deposit
+/// Fee rate as a ratio, minted on deposit
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct Fee {
     /// denominator of the fee ratio
     pub denominator: u64,
@@ -23,17 +22,9 @@ pub struct Fee {
     pub numerator: u64,
 }
 
-/// Inital values for the Stake Pool
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct InitArgs {
-    /// Fee paid to the owner in pool tokens
-    pub fee: Fee,
-}
-
 /// Instructions supported by the StakePool program.
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub enum StakePoolInstruction {
     ///   Initializes a new StakePool.
     ///
@@ -45,7 +36,14 @@ pub enum StakePoolInstruction {
     ///   5. `[]` Clock sysvar
     ///   6. `[]` Rent sysvar
     ///   7. `[]` Token program id
-    Initialize(InitArgs),
+    Initialize {
+        /// Deposit fee assessed
+        #[allow(dead_code)] // but it's not
+        fee: Fee,
+        /// Maximum expected number of validators
+        #[allow(dead_code)] // but it's not
+        max_validators: u32,
+    },
 
     ///   Creates new program account for accumulating stakes for a particular validator
     ///
@@ -149,86 +147,6 @@ pub enum StakePoolInstruction {
     SetOwner,
 }
 
-impl StakePoolInstruction {
-    /// Deserializes a byte buffer into an [StakePoolInstruction](enum.StakePoolInstruction.html).
-    /// TODO efficient unpacking here
-    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < size_of::<u8>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        Ok(match input[0] {
-            0 => {
-                let val: &InitArgs = unpack(input)?;
-                Self::Initialize(*val)
-            }
-            1 => Self::CreateValidatorStakeAccount,
-            2 => Self::AddValidatorStakeAccount,
-            3 => Self::RemoveValidatorStakeAccount,
-            4 => Self::UpdateListBalance,
-            5 => Self::UpdatePoolBalance,
-            6 => Self::Deposit,
-            7 => {
-                let val: &u64 = unpack(input)?;
-                Self::Withdraw(*val)
-            }
-            8 => Self::SetOwner,
-            _ => return Err(ProgramError::InvalidAccountData),
-        })
-    }
-
-    /// Serializes an [StakePoolInstruction](enum.StakePoolInstruction.html) into a byte buffer.
-    /// TODO efficient packing here
-    pub fn serialize(&self) -> Result<Vec<u8>, ProgramError> {
-        let mut output = vec![0u8; size_of::<StakePoolInstruction>()];
-        match self {
-            Self::Initialize(init) => {
-                output[0] = 0;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut InitArgs) };
-                *value = *init;
-            }
-            Self::CreateValidatorStakeAccount => {
-                output[0] = 1;
-            }
-            Self::AddValidatorStakeAccount => {
-                output[0] = 2;
-            }
-            Self::RemoveValidatorStakeAccount => {
-                output[0] = 3;
-            }
-            Self::UpdateListBalance => {
-                output[0] = 4;
-            }
-            Self::UpdatePoolBalance => {
-                output[0] = 5;
-            }
-            Self::Deposit => {
-                output[0] = 6;
-            }
-            Self::Withdraw(val) => {
-                output[0] = 7;
-                #[allow(clippy::cast_ptr_alignment)]
-                let value = unsafe { &mut *(&mut output[1] as *mut u8 as *mut u64) };
-                *value = *val;
-            }
-            Self::SetOwner => {
-                output[0] = 8;
-            }
-        }
-        Ok(output)
-    }
-}
-
-/// Unpacks a reference from a bytes buffer.
-pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
-    if input.len() < size_of::<u8>() + size_of::<T>() {
-        return Err(ProgramError::InvalidAccountData);
-    }
-    #[allow(clippy::cast_ptr_alignment)]
-    let val: &T = unsafe { &*(&input[1] as *const u8 as *const T) };
-    Ok(val)
-}
-
 /// Creates an 'initialize' instruction.
 pub fn initialize(
     program_id: &Pubkey,
@@ -238,10 +156,14 @@ pub fn initialize(
     pool_mint: &Pubkey,
     owner_pool_account: &Pubkey,
     token_program_id: &Pubkey,
-    init_args: InitArgs,
+    fee: Fee,
+    max_validators: u32,
 ) -> Result<Instruction, ProgramError> {
-    let init_data = StakePoolInstruction::Initialize(init_args);
-    let data = init_data.serialize()?;
+    let init_data = StakePoolInstruction::Initialize {
+        fee,
+        max_validators,
+    };
+    let data = init_data.try_to_vec()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, true),
         AccountMeta::new_readonly(*owner, true),
@@ -285,7 +207,7 @@ pub fn create_validator_stake_account(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::CreateValidatorStakeAccount.serialize()?,
+        data: StakePoolInstruction::CreateValidatorStakeAccount.try_to_vec()?,
     })
 }
 
@@ -320,7 +242,7 @@ pub fn add_validator_stake_account(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::AddValidatorStakeAccount.serialize()?,
+        data: StakePoolInstruction::AddValidatorStakeAccount.try_to_vec()?,
     })
 }
 
@@ -354,7 +276,7 @@ pub fn remove_validator_stake_account(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::RemoveValidatorStakeAccount.serialize()?,
+        data: StakePoolInstruction::RemoveValidatorStakeAccount.try_to_vec()?,
     })
 }
 
@@ -373,7 +295,7 @@ pub fn update_list_balance(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::UpdateListBalance.serialize()?,
+        data: StakePoolInstruction::UpdateListBalance.try_to_vec()?,
     })
 }
 
@@ -391,7 +313,7 @@ pub fn update_pool_balance(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::UpdatePoolBalance.serialize()?,
+        data: StakePoolInstruction::UpdatePoolBalance.try_to_vec()?,
     })
 }
 
@@ -410,8 +332,6 @@ pub fn deposit(
     token_program_id: &Pubkey,
     stake_program_id: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    let args = StakePoolInstruction::Deposit;
-    let data = args.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new(*validator_stake_list_storage, false),
@@ -430,7 +350,7 @@ pub fn deposit(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data,
+        data: StakePoolInstruction::Deposit.try_to_vec()?,
     })
 }
 
@@ -449,8 +369,6 @@ pub fn withdraw(
     stake_program_id: &Pubkey,
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    let args = StakePoolInstruction::Withdraw(amount);
-    let data = args.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new(*validator_stake_list_storage, false),
@@ -467,7 +385,7 @@ pub fn withdraw(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data,
+        data: StakePoolInstruction::Withdraw(amount).try_to_vec()?,
     })
 }
 
@@ -479,8 +397,6 @@ pub fn set_owner(
     stake_pool_new_owner: &Pubkey,
     stake_pool_new_fee_receiver: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    let args = StakePoolInstruction::SetOwner;
-    let data = args.serialize()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*stake_pool_owner, true),
@@ -490,6 +406,6 @@ pub fn set_owner(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data,
+        data: StakePoolInstruction::SetOwner.try_to_vec()?,
     })
 }
