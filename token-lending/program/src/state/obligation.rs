@@ -25,6 +25,8 @@ pub struct Obligation {
     pub last_update: LastUpdate,
     /// Lending market address
     pub lending_market: Pubkey,
+    /// Owner authority which can borrow liquidity
+    pub owner: Pubkey,
     /// Deposited collateral for the obligation, unique by deposit reserve address
     pub deposits: Vec<ObligationCollateral>,
     /// Borrowed liquidity for the obligation, unique by borrow reserve address
@@ -37,6 +39,8 @@ pub struct InitObligationParams {
     pub current_slot: Slot,
     /// Lending market address
     pub lending_market: Pubkey,
+    /// Owner authority which can borrow liquidity
+    pub owner: Pubkey,
     /// Deposited collateral for the obligation, unique by deposit reserve address
     pub deposits: Vec<ObligationCollateral>,
     /// Borrowed liquidity for the obligation, unique by borrow reserve address
@@ -55,6 +59,7 @@ impl Obligation {
     pub fn init(&mut self, params: InitObligationParams) {
         self.version = PROGRAM_VERSION;
         self.last_update = LastUpdate::new(params.current_slot);
+        self.owner = params.owner;
         self.deposits = params.deposits;
         self.borrows = params.borrows;
     }
@@ -342,6 +347,7 @@ impl Pack for Obligation {
             last_update_slot,
             last_update_stale,
             lending_market,
+            owner,
             deposits_len,
             borrows_len,
             data_flat,
@@ -350,6 +356,7 @@ impl Pack for Obligation {
             1,
             8,
             1,
+            PUBKEY_BYTES,
             PUBKEY_BYTES,
             1,
             1,
@@ -360,6 +367,7 @@ impl Pack for Obligation {
         *last_update_slot = self.last_update.slot.to_le_bytes();
         pack_bool(self.last_update.stale, last_update_stale);
         lending_market.copy_from_slice(self.lending_market.as_ref());
+        owner.copy_from_slice(self.owner.as_ref());
         *deposits_len = u8::try_from(self.deposits.len()).unwrap().to_le_bytes();
         *borrows_len = u8::try_from(self.borrows.len()).unwrap().to_le_bytes();
 
@@ -398,6 +406,7 @@ impl Pack for Obligation {
             last_update_slot,
             last_update_stale,
             lending_market,
+            owner,
             deposits_len,
             borrows_len,
             data_flat,
@@ -406,6 +415,7 @@ impl Pack for Obligation {
             1,
             8,
             1,
+            PUBKEY_BYTES,
             PUBKEY_BYTES,
             1,
             1,
@@ -451,6 +461,7 @@ impl Pack for Obligation {
                 stale: unpack_bool(last_update_stale)?,
             },
             lending_market: Pubkey::new_from_array(*lending_market),
+            owner: Pubkey::new_from_array(*owner),
             deposits,
             borrows,
         })

@@ -565,6 +565,7 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     let account_info_iter = &mut accounts.iter();
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
+    let obligation_owner_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
@@ -580,9 +581,14 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
+    if !obligation_owner_info.is_signer {
+        return Err(LendingError::InvalidSigner.into());
+    }
+
     obligation.init(InitObligationParams {
         current_slot: clock.slot,
         lending_market: *lending_market_info.key,
+        owner: *obligation_owner_info.key,
         deposits: Vec::with_capacity(0),
         borrows: Vec::with_capacity(0),
     });
@@ -965,6 +971,7 @@ fn process_borrow_obligation_liquidity(
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let obligation_owner_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -1013,6 +1020,12 @@ fn process_borrow_obligation_liquidity(
     }
     if obligation.last_update < borrow_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
+    }
+    if &obligation.owner != obligation_owner_info.key {
+        return Err(LendingError::InvalidObligationOwner.into());
+    }
+    if !obligation_owner_info.is_signer {
+        return Err(LendingError::InvalidSigner.into());
     }
 
     let authority_signer_seeds = &[

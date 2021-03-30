@@ -133,9 +133,10 @@ pub enum LendingInstruction {
     ///
     ///   0. `[writable]` Obligation account - uninitialized.
     ///   1. `[]` Lending market account.
-    ///   2. `[]` Clock sysvar.
-    ///   3. `[]` Rent sysvar.
-    ///   4. `[]` Token program id.
+    ///   2. `[signer]` Obligation owner.
+    ///   3. `[]` Clock sysvar.
+    ///   4. `[]` Rent sysvar.
+    ///   5. `[]` Token program id.
     InitObligation,
 
     // 7
@@ -214,9 +215,10 @@ pub enum LendingInstruction {
     ///   4. `[writable]` Obligation account - refreshed.
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
-    ///   7. `[]` Clock sysvar.
-    ///   8. `[]` Token program id.
-    ///   9. `[optional, writable]` Host fee receiver account.
+    ///   7. `[signer]` Obligation owner.
+    ///   8. `[]` Clock sysvar.
+    ///   9. `[]` Token program id.
+    ///   10. `[optional, writable]` Host fee receiver account.
     BorrowObligationLiquidity {
         /// Amount of liquidity to borrow - u64::MAX for 100% of borrowing power
         liquidity_amount: u64,
@@ -685,12 +687,14 @@ pub fn init_obligation(
     program_id: Pubkey,
     obligation_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
+    obligation_owner_pubkey: Pubkey,
 ) -> Instruction {
     Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(obligation_owner_pubkey, true),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
@@ -810,6 +814,7 @@ pub fn borrow_obligation_liquidity(
     borrow_reserve_liquidity_fee_receiver_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
+    obligation_owner_pubkey: Pubkey,
     host_fee_receiver_pubkey: Option<Pubkey>,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
@@ -824,6 +829,7 @@ pub fn borrow_obligation_liquidity(
         AccountMeta::new(obligation_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(obligation_owner_pubkey, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];

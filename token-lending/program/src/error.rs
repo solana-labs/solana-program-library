@@ -129,6 +129,9 @@ pub enum LendingError {
     ObligationLoanToValueLimit,
 
     // 35
+    /// Expected a different obligation owner
+    #[error("Obligation owner is invalid")]
+    InvalidObligationOwner,
     /// Invalid obligation collateral
     #[error("Invalid obligation collateral")]
     InvalidObligationCollateral,
