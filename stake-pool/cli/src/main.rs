@@ -94,14 +94,13 @@ fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(),
     }
 }
 
-fn get_authority_accounts(config: &Config, authority: &Pubkey) -> Vec<(Pubkey, Account)> {
-    config
-        .rpc_client
+fn get_authority_accounts(rpc_client: &RpcClient, authority: &Pubkey) -> Vec<(Pubkey, Account)> {
+    rpc_client
         .get_program_accounts_with_config(
             &stake_program_id(),
             RpcProgramAccountsConfig {
                 filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
-                    offset: 44, // 44 is Withdrawer authority offset in stake accoun stake
+                    offset: 44, // 44 is Withdrawer authority offset in stake account stake
                     bytes: MemcmpEncodedBytes::Binary(
                         bs58::encode(authority.to_bytes()).into_string(),
                     ),
@@ -692,7 +691,7 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     )
     .unwrap();
 
-    let accounts = get_authority_accounts(config, &pool_withdraw_authority);
+    let accounts = get_authority_accounts(&config.rpc_client, &pool_withdraw_authority);
 
     if accounts.is_empty() {
         return Err("No accounts found.".to_string().into());
@@ -785,20 +784,17 @@ struct WithdrawAccount {
 }
 
 fn prepare_withdraw_accounts(
-    config: &Config,
+    rpc_client: &RpcClient,
     stake_pool: &StakePool,
     pool_withdraw_authority: &Pubkey,
     pool_amount: u64,
 ) -> Result<Vec<WithdrawAccount>, Error> {
-    let mut accounts = get_authority_accounts(config, &pool_withdraw_authority);
+    let mut accounts = get_authority_accounts(rpc_client, &pool_withdraw_authority);
     if accounts.is_empty() {
         return Err("No accounts found.".to_string().into());
     }
-    let min_balance = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
-        + 1;
-    let pool_mint_data = config.rpc_client.get_account_data(&stake_pool.pool_mint)?;
+    let min_balance = rpc_client.get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)? + 1;
+    let pool_mint_data = rpc_client.get_account_data(&stake_pool.pool_mint)?;
     let pool_mint = TokenMint::unpack_from_slice(pool_mint_data.as_slice()).unwrap();
     pick_withdraw_accounts(
         &mut accounts,
@@ -905,8 +901,12 @@ fn command_withdraw(
     }
 
     // Get the list of accounts to withdraw from
-    let withdraw_accounts: Vec<WithdrawAccount> =
-        prepare_withdraw_accounts(config, &pool_data, &pool_withdraw_authority, pool_amount)?;
+    let withdraw_accounts: Vec<WithdrawAccount> = prepare_withdraw_accounts(
+        &config.rpc_client,
+        &pool_data,
+        &pool_withdraw_authority,
+        pool_amount,
+    )?;
 
     // Construct transaction to withdraw from withdraw_accounts account list
     let mut instructions: Vec<Instruction> = vec![];
