@@ -6,6 +6,7 @@ authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2018"
+publish = false
 
 [dependencies]
 solana-client = "1.5.6"
