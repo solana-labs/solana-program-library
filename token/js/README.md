@@ -67,7 +67,7 @@ $ npm run cluster:localnet
 ## Releasing
 
 1. Create your account on npmjs.com (with 2FA enabled!) and ask @mvines about granting the publish right
-2. Bump version in `packages.json` and `npm install` (to update package-lock.json)
+2. Bump version in `package.json` and `npm install` (to update `package-lock.json`)
 3. Create a PR for the version bump
-4. Merge PR and push new git tag on master branch
+4. Merge the PR and push new git tag on master branch
 5. Run `npm run build` and `npm publish`
