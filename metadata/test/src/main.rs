@@ -15,19 +15,11 @@ use spl_token::{instruction::initialize_mint, state::Mint};
 use std::str::FromStr;
 // -------- UPDATE START -------
 
-/*
 const KEYPAIR_PATH: &str = "/your/path";
 const METADATA_PROGRAM_PUBKEY_PATH: &str = "/your/path";
 const NEW_MINT_PATH: &str = "/your/path";
 const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const CLUSTER_ADDRESS: &str = "https://api.mainnet-beta.solana.com";
-*/
-const KEYPAIR_PATH: &str = "/Users/jprince/.config/solana/id.json";
-const METADATA_PROGRAM_PUBKEY_PATH: &str =
-    "/Users/jprince/Documents/other/solana-program-library/target/deploy/spl_metadata-keypair.json";
-const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
-const CLUSTER_ADDRESS: &str = "https://devnet.solana.com";
-const NEW_MINT_PATH: &str = "/Users/jprince/.config/solana/mint.json";
 
 // -------- UPDATE END ---------
 pub fn main() {
