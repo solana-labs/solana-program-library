@@ -1,19 +1,45 @@
-use std::{mem::size_of, str::FromStr};
+use std::str::FromStr;
 
 use solana_program::{
     instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
     pubkey::Pubkey,
     sysvar,
 };
 
-use crate::{
-    error::MetadataError,
-    state::metadata::{NAME_LENGTH, SYMBOL_LENGTH, URI_LENGTH},
-};
+use borsh::{BorshDeserialize, BorshSerialize};
+
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+/// Args for Create call
+pub struct CreateMetadataAccountArgs {
+    /// The name of the asset
+    pub name: String,
+    /// The symbol for the asset, ie, AAPL or SHOES
+    pub symbol: String,
+}
+
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+/// Args for init call
+pub struct InitMetadataAccountArgs {
+    /// The name of the asset
+    pub name: String,
+    /// The symbol for the asset, ie, AAPL or SHOES
+    pub symbol: String,
+    /// URI pointing to JSON representing the asset
+    pub uri: String,
+}
+
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+/// Args for update call
+pub struct UpdateMetadataAccountArgs {
+    /// URI pointing to JSON representing the asset
+    pub uri: String,
+}
 
 /// Instructions supported by the Metadata program.
-#[derive(Clone)]
+#[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub enum MetadataInstruction {
     /// Create an  Owner and  Metadata objects.
     ///   0. `[writable]`  Owner key (pda of ['metadata', program id, name, symbol])
@@ -23,12 +49,7 @@ pub enum MetadataInstruction {
     ///   4. `[signer]` payer
     ///   5. `[]`  metadata program
     ///   6. `[]` System program
-    CreateMetadataAccounts {
-        /// name
-        name: [u8; NAME_LENGTH],
-        /// symbol
-        symbol: [u8; SYMBOL_LENGTH],
-    },
+    CreateMetadataAccounts(CreateMetadataAccountArgs),
 
     /// Instantiate an  Owner and  Metadata object.
     ///   0. `[writable]` Uninitialized  Owner account
@@ -37,93 +58,13 @@ pub enum MetadataInstruction {
     ///   3. `[signer]` Mint authority of
     ///   4. `[]` Owner key
     ///   5. `[]` Rent sysvar
-    InitMetadataAccounts {
-        /// name
-        name: [u8; NAME_LENGTH],
-        /// symbol
-        symbol: [u8; SYMBOL_LENGTH],
-        /// uri
-        uri: [u8; URI_LENGTH],
-    },
+    InitMetadataAccounts(InitMetadataAccountArgs),
 
     /// Update an  Metadata (name/symbol are unchangeable)
     ///   0. `[writable]`  Metadata account
     ///   1. `[signer]` Owner key
     ///   2. `[]`  Owner account
-    UpdateMetadataAccounts {
-        /// uri
-        uri: [u8; URI_LENGTH],
-    },
-}
-
-impl MetadataInstruction {
-    /// Unpacks a byte buffer into a [MetadataInstruction](enum.MetadataInstruction.html).
-    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        let (&tag, rest) = input
-            .split_first()
-            .ok_or(MetadataError::InstructionUnpackError)?;
-        Ok(match tag {
-            0 => {
-                let (input_name, rest) = rest.split_at(NAME_LENGTH);
-                let (input_symbol, _rest) = rest.split_at(SYMBOL_LENGTH);
-                let mut name: [u8; NAME_LENGTH] = [0; NAME_LENGTH];
-                let mut symbol: [u8; SYMBOL_LENGTH] = [0; SYMBOL_LENGTH];
-
-                name[..(NAME_LENGTH - 1)].clone_from_slice(&input_name[..(NAME_LENGTH - 1)]);
-                symbol[..(SYMBOL_LENGTH - 1)]
-                    .clone_from_slice(&input_symbol[..(SYMBOL_LENGTH - 1)]);
-
-                Self::CreateMetadataAccounts { name, symbol }
-            }
-            1 => {
-                let (input_name, rest) = rest.split_at(NAME_LENGTH);
-                let (input_symbol, rest) = rest.split_at(SYMBOL_LENGTH);
-                let (input_uri, _rest) = rest.split_at(URI_LENGTH);
-                let mut name: [u8; NAME_LENGTH] = [0; NAME_LENGTH];
-                let mut symbol: [u8; SYMBOL_LENGTH] = [0; SYMBOL_LENGTH];
-                let mut uri: [u8; URI_LENGTH] = [0; URI_LENGTH];
-
-                name[..(NAME_LENGTH - 1)].clone_from_slice(&input_name[..(NAME_LENGTH - 1)]);
-                symbol[..(SYMBOL_LENGTH - 1)]
-                    .clone_from_slice(&input_symbol[..(SYMBOL_LENGTH - 1)]);
-                uri[..(URI_LENGTH - 1)].clone_from_slice(&input_uri[..(URI_LENGTH - 1)]);
-
-                Self::InitMetadataAccounts { name, symbol, uri }
-            }
-            2 => {
-                let (input_uri, _rest) = rest.split_at(URI_LENGTH);
-                let mut uri: [u8; URI_LENGTH] = [0; URI_LENGTH];
-                uri[..(URI_LENGTH - 1)].clone_from_slice(&input_uri[..(URI_LENGTH - 1)]);
-
-                Self::UpdateMetadataAccounts { uri }
-            }
-            _ => return Err(MetadataError::InstructionUnpackError.into()),
-        })
-    }
-
-    /// Packs a [MetadataInstruction](enum.MetadataInstruction.html) into a byte buffer.
-    pub fn pack(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(size_of::<Self>());
-
-        match self {
-            Self::CreateMetadataAccounts { name, symbol } => {
-                buf.push(0);
-                buf.extend_from_slice(name);
-                buf.extend_from_slice(symbol);
-            }
-            Self::InitMetadataAccounts { name, symbol, uri } => {
-                buf.push(1);
-                buf.extend_from_slice(name);
-                buf.extend_from_slice(symbol);
-                buf.extend_from_slice(uri);
-            }
-            Self::UpdateMetadataAccounts { uri } => {
-                buf.push(2);
-                buf.extend_from_slice(uri);
-            }
-        }
-        buf
-    }
+    UpdateMetadataAccounts(UpdateMetadataAccountArgs),
 }
 
 /// Creates an CreateMetadataAccounts instruction
@@ -135,25 +76,9 @@ pub fn create_metadata_accounts(
     mint: Pubkey,
     mint_authority: Pubkey,
     payer: Pubkey,
-    name_str: &str,
-    symbol_str: &str,
+    name: String,
+    symbol: String,
 ) -> Instruction {
-    let mut name: [u8; NAME_LENGTH] = [0; NAME_LENGTH];
-    let mut symbol: [u8; SYMBOL_LENGTH] = [0; SYMBOL_LENGTH];
-
-    let name_bytes = name_str.as_bytes();
-    for n in 0..(NAME_LENGTH - 1) {
-        if n < name_bytes.len() {
-            name[n] = name_bytes[n];
-        }
-    }
-
-    let symbol_bytes = symbol_str.as_bytes();
-    for n in 0..(SYMBOL_LENGTH - 1) {
-        if n < symbol_bytes.len() {
-            symbol[n] = symbol_bytes[n];
-        }
-    }
     Instruction {
         program_id,
         accounts: vec![
@@ -168,7 +93,12 @@ pub fn create_metadata_accounts(
                 false,
             ),
         ],
-        data: MetadataInstruction::CreateMetadataAccounts { name, symbol }.pack(),
+        data: MetadataInstruction::CreateMetadataAccounts(CreateMetadataAccountArgs {
+            name,
+            symbol,
+        })
+        .try_to_vec()
+        .unwrap(),
     }
 }
 
@@ -181,35 +111,10 @@ pub fn init_metadata_accounts(
     mint: Pubkey,
     mint_authority: Pubkey,
     owner: Pubkey,
-    name_str: &str,
-    symbol_str: &str,
-    uri_str: &str,
+    name: String,
+    symbol: String,
+    uri: String,
 ) -> Instruction {
-    let mut name: [u8; NAME_LENGTH] = [0; NAME_LENGTH];
-    let mut symbol: [u8; SYMBOL_LENGTH] = [0; SYMBOL_LENGTH];
-    let mut uri: [u8; URI_LENGTH] = [0; URI_LENGTH];
-
-    let name_bytes = name_str.as_bytes();
-    for n in 0..(NAME_LENGTH - 1) {
-        if n < name_bytes.len() {
-            name[n] = name_bytes[n];
-        }
-    }
-
-    let symbol_bytes = symbol_str.as_bytes();
-    for n in 0..(SYMBOL_LENGTH - 1) {
-        if n < symbol_bytes.len() {
-            symbol[n] = symbol_bytes[n];
-        }
-    }
-
-    let uri_bytes = uri_str.as_bytes();
-    for n in 0..(URI_LENGTH - 1) {
-        if n < uri_bytes.len() {
-            uri[n] = uri_bytes[n];
-        }
-    }
-
     Instruction {
         program_id,
         accounts: vec![
@@ -220,7 +125,13 @@ pub fn init_metadata_accounts(
             AccountMeta::new_readonly(owner, false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
-        data: MetadataInstruction::InitMetadataAccounts { name, symbol, uri }.pack(),
+        data: MetadataInstruction::InitMetadataAccounts(InitMetadataAccountArgs {
+            name,
+            symbol,
+            uri,
+        })
+        .try_to_vec()
+        .unwrap(),
     }
 }
 
@@ -230,17 +141,8 @@ pub fn update_metadata_accounts(
     metadata_account: Pubkey,
     owner_account: Pubkey,
     owner: Pubkey,
-    uri_str: &str,
+    uri: String,
 ) -> Instruction {
-    let mut uri: [u8; URI_LENGTH] = [0; URI_LENGTH];
-
-    let uri_bytes = uri_str.as_bytes();
-    for n in 0..(URI_LENGTH - 1) {
-        if n < uri_bytes.len() {
-            uri[n] = uri_bytes[n];
-        }
-    }
-
     Instruction {
         program_id,
         accounts: vec![
@@ -248,6 +150,8 @@ pub fn update_metadata_accounts(
             AccountMeta::new_readonly(owner, true),
             AccountMeta::new_readonly(owner_account, false),
         ],
-        data: MetadataInstruction::UpdateMetadataAccounts { uri }.pack(),
+        data: MetadataInstruction::UpdateMetadataAccounts(UpdateMetadataAccountArgs { uri })
+            .try_to_vec()
+            .unwrap(),
     }
 }

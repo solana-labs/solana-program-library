@@ -3803,6 +3803,7 @@ version = "0.0.1"
 dependencies = [
  "arrayref",
  "assert_matches",
+ "borsh 0.8.2",
  "log",
  "num-derive",
  "num-traits",
@@ -3822,6 +3823,7 @@ name = "spl-metadata-test-client"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "borsh 0.8.2",
  "solana-client",
  "solana-program",
  "solana-sdk",

@@ -56,6 +56,18 @@ pub enum MetadataError {
     /// Mint authority provided does not match the authority on the mint
     #[error("Mint authority provided does not match the authority on the mint")]
     InvalidMintAuthority,
+
+    /// Name too long
+    #[error("Name too long")]
+    NameTooLong,
+
+    /// Symbol too long
+    #[error("Symbol too long")]
+    SymbolTooLong,
+
+    /// URI too long
+    #[error("URI too long")]
+    UriTooLong,
 }
 
 impl PrintProgramError for MetadataError {
