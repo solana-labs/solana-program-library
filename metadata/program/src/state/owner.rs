@@ -7,11 +7,11 @@ use solana_program::{
 };
 
 /// STRUCT VERSION
-pub const NFT_OWNER_VERSION: u8 = 1;
+pub const OWNER_VERSION: u8 = 1;
 
-/// NFTMetadata
+/// Metadata
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct NFTOwner {
+pub struct Owner {
     ///version
     pub version: u8,
     /// owner
@@ -20,27 +20,27 @@ pub struct NFTOwner {
     pub metadata: Pubkey,
 }
 
-impl Sealed for NFTOwner {}
-impl IsInitialized for NFTOwner {
+impl Sealed for Owner {}
+impl IsInitialized for Owner {
     fn is_initialized(&self) -> bool {
         self.version != UNINITIALIZED_VERSION
     }
 }
 
-/// Len of nft owner
-pub const NFT_OWNER_LEN: usize = 1 + 32 + 32 + 100;
-impl Pack for NFTOwner {
+/// Len of  owner
+pub const OWNER_LEN: usize = 1 + 32 + 32 + 100;
+impl Pack for Owner {
     const LEN: usize = 1 + 32 + 32 + 100;
-    /// Unpacks a byte buffer into a [NFTOwner](struct.NFTOwner.html).
+    /// Unpacks a byte buffer into a [Owner](struct.Owner.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, NFT_OWNER_LEN];
+        let input = array_ref![input, 0, OWNER_LEN];
         // TODO think up better way than txn_* usage here - new to rust
         #[allow(clippy::ptr_offset_with_cast)]
         let (version, owner, metadata, _padding) = array_refs![input, 1, 32, 32, 100];
         let version = u8::from_le_bytes(*version);
 
         match version {
-            NFT_OWNER_VERSION | UNINITIALIZED_VERSION => Ok(Self {
+            OWNER_VERSION | UNINITIALIZED_VERSION => Ok(Self {
                 version,
                 owner: Pubkey::new_from_array(*owner),
                 metadata: Pubkey::new_from_array(*metadata),
@@ -50,7 +50,7 @@ impl Pack for NFTOwner {
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, NFT_OWNER_LEN];
+        let output = array_mut_ref![output, 0, OWNER_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (version, owner, metadata, _padding) = mut_array_refs![output, 1, 32, 32, 100];
         *version = self.version.to_le_bytes();

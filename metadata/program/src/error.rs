@@ -8,9 +8,9 @@ use solana_program::{
 };
 use thiserror::Error;
 
-/// Errors that may be returned by the NFTMetadata program.
+/// Errors that may be returned by the Metadata program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
-pub enum NFTMetadataError {
+pub enum MetadataError {
     /// Invalid instruction data passed in.
     #[error("Failed to unpack instruction data")]
     InstructionUnpackError,
@@ -27,26 +27,24 @@ pub enum NFTMetadataError {
     #[error("Uninitialized")]
     Uninitialized,
 
-    /// NFT Metadata's key must match seed of ['metadata', program id, mint] provided
-    #[error("NFT Metadata's key must match seed of ['metadata', program id, mint] provided")]
-    InvalidNFTMetadataKey,
+    ///  Metadata's key must match seed of ['metadata', program id, mint] provided
+    #[error(" Metadata's key must match seed of ['metadata', program id, mint] provided")]
+    InvalidMetadataKey,
 
-    /// NFT Owner's key must match seed of ['metadata', program id, name, symbol] provided
-    #[error(
-        "NFT Metadata's key must match seed of ['metadata', program id, name, symbol] provided"
-    )]
-    InvalidNFTOwnerKey,
+    ///  Owner's key must match seed of ['metadata', program id, name, symbol] provided
+    #[error(" Metadata's key must match seed of ['metadata', program id, name, symbol] provided")]
+    InvalidOwnerKey,
 
-    /// This nft owner does not own this nft metadata
-    #[error("This nft owner does not own this nft metadata")]
-    InvalidMetadataForNFTOwner,
+    /// This  owner does not own this  metadata
+    #[error("This  owner does not own this  metadata")]
+    InvalidMetadataForOwner,
 
-    /// Owner given does not match owner key on NFT Owner
-    #[error("Owner given does not match owner key on NFT Owner")]
-    NFTOwnerNotOwner,
+    /// Owner given does not match owner key on  Owner
+    #[error("Owner given does not match owner key on  Owner")]
+    OwnerNotOwner,
 
-    /// Owner needs to be signer to update NFT metadata
-    #[error("Owner needs to be signer to update NFT metadata")]
+    /// Owner needs to be signer to update  metadata
+    #[error("Owner needs to be signer to update  metadata")]
     OwnerIsNotSigner,
 
     /// You must be the mint authority and signer on this transaction to create it's metadata
@@ -60,20 +58,20 @@ pub enum NFTMetadataError {
     InvalidMintAuthority,
 }
 
-impl PrintProgramError for NFTMetadataError {
+impl PrintProgramError for MetadataError {
     fn print<E>(&self) {
         msg!(&self.to_string());
     }
 }
 
-impl From<NFTMetadataError> for ProgramError {
-    fn from(e: NFTMetadataError) -> Self {
+impl From<MetadataError> for ProgramError {
+    fn from(e: MetadataError) -> Self {
         ProgramError::Custom(e as u32)
     }
 }
 
-impl<T> DecodeError<T> for NFTMetadataError {
+impl<T> DecodeError<T> for MetadataError {
     fn type_of() -> &'static str {
-        "NFTMetadata Error"
+        "Metadata Error"
     }
 }

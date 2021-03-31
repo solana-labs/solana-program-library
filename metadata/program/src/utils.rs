@@ -1,4 +1,4 @@
-use crate::error::NFTMetadataError;
+use crate::error::MetadataError;
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
@@ -13,7 +13,7 @@ use solana_program::{
 /// assert rent exempt
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
-        Err(NFTMetadataError::NotRentExempt.into())
+        Err(MetadataError::NotRentExempt.into())
     } else {
         Ok(())
     }
@@ -25,7 +25,7 @@ pub fn assert_uninitialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if account.is_initialized() {
-        Err(NFTMetadataError::AlreadyInitialized.into())
+        Err(MetadataError::AlreadyInitialized.into())
     } else {
         Ok(account)
     }
@@ -37,7 +37,7 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(NFTMetadataError::Uninitialized.into())
+        Err(MetadataError::Uninitialized.into())
     } else {
         Ok(account)
     }

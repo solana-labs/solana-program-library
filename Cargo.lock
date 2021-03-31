@@ -3798,7 +3798,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-nft-metadata"
+name = "spl-metadata"
 version = "0.0.1"
 dependencies = [
  "arrayref",
@@ -3818,14 +3818,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-nft-metadata-test-client"
+name = "spl-metadata-test-client"
 version = "0.1.0"
 dependencies = [
  "bincode",
  "solana-client",
  "solana-program",
  "solana-sdk",
- "spl-nft-metadata",
+ "spl-metadata",
  "spl-token 3.1.0",
 ]
 
