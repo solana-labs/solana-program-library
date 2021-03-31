@@ -70,4 +70,5 @@ $ npm run cluster:localnet
 2. Bump version in `package.json` and `npm install` (to update `package-lock.json`)
 3. Create a PR for the version bump
 4. Merge the PR and push new git tag on master branch
-5. Run `npm run build` and `npm publish`
+5. Create release on github.com from the pushed tag
+6. Run `npm run build` and `npm publish`
