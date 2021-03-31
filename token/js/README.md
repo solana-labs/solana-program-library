@@ -63,3 +63,10 @@ To point back to the local cluster:
 ```bash
 $ npm run cluster:localnet
 ```
+
+## Releasing
+
+- Create your account on npmjs.com
+- Ask teammate about granting the publish right
+- bump the version
+- npm publish
