@@ -25,7 +25,6 @@ pub const LIQUIDATION_CLOSE_AMOUNT: u64 = 2;
 pub struct Reserve {
     /// Version of the struct
     pub version: u8,
-    // @TODO: check to see if `last_update` is changed when supply changes
     /// Last slot when supply and rates updated
     pub last_update: LastUpdate,
     /// Lending market address
@@ -162,7 +161,6 @@ impl Reserve {
             let current_borrow_rate = self.current_borrow_rate()?;
             self.liquidity
                 .compound_interest(current_borrow_rate, slots_elapsed)?;
-            self.last_update.update_slot(current_slot);
         }
         Ok(())
     }

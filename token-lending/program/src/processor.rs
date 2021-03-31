@@ -371,6 +371,7 @@ fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     }
 
     reserve.accrue_interest(clock.slot)?;
+    reserve.last_update.update_slot(clock.slot);
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
     Ok(())
@@ -444,6 +445,7 @@ fn process_deposit_reserve_liquidity(
     }
 
     let collateral_amount = reserve.deposit_liquidity(liquidity_amount)?;
+    reserve.last_update.mark_stale();
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
     spl_token_transfer(TokenTransferParams {
@@ -535,6 +537,7 @@ fn process_redeem_reserve_collateral(
     }
 
     let liquidity_amount = reserve.redeem_collateral(collateral_amount)?;
+    reserve.last_update.mark_stale();
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
     spl_token_burn(TokenBurnParams {
@@ -1065,6 +1068,7 @@ fn process_borrow_obligation_liquidity(
     }
 
     borrow_reserve.liquidity.borrow(borrow_amount)?;
+    borrow_reserve.last_update.mark_stale();
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
     obligation
@@ -1201,6 +1205,7 @@ fn process_repay_obligation_liquidity(
     }
 
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
+    repay_reserve.last_update.mark_stale();
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
     obligation.repay(settle_amount, liquidity_index)?;
@@ -1348,6 +1353,7 @@ fn process_liquidate_obligation(
     }
 
     repay_reserve.liquidity.repay(repay_amount, settle_amount)?;
+    repay_reserve.last_update.mark_stale();
     Reserve::pack(repay_reserve, &mut repay_reserve_info.data.borrow_mut())?;
 
     obligation.repay(settle_amount, liquidity_index)?;
