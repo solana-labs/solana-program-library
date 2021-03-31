@@ -69,12 +69,10 @@ impl MetadataInstruction {
                 let mut name: [u8; NAME_LENGTH] = [0; NAME_LENGTH];
                 let mut symbol: [u8; SYMBOL_LENGTH] = [0; SYMBOL_LENGTH];
 
-                for n in 0..(NAME_LENGTH - 1) {
-                    name[n] = input_name[n];
-                }
-                for n in 0..(SYMBOL_LENGTH - 1) {
-                    symbol[n] = input_symbol[n];
-                }
+                name[..(NAME_LENGTH - 1)].clone_from_slice(&input_name[..(NAME_LENGTH - 1)]);
+                symbol[..(SYMBOL_LENGTH - 1)]
+                    .clone_from_slice(&input_symbol[..(SYMBOL_LENGTH - 1)]);
+
                 Self::CreateMetadataAccounts { name, symbol }
             }
             1 => {
@@ -85,24 +83,17 @@ impl MetadataInstruction {
                 let mut symbol: [u8; SYMBOL_LENGTH] = [0; SYMBOL_LENGTH];
                 let mut uri: [u8; URI_LENGTH] = [0; URI_LENGTH];
 
-                for n in 0..(NAME_LENGTH - 1) {
-                    name[n] = input_name[n];
-                }
-                for n in 0..(SYMBOL_LENGTH - 1) {
-                    symbol[n] = input_symbol[n];
-                }
-                for n in 0..(URI_LENGTH - 1) {
-                    uri[n] = input_uri[n];
-                }
+                name[..(NAME_LENGTH - 1)].clone_from_slice(&input_name[..(NAME_LENGTH - 1)]);
+                symbol[..(SYMBOL_LENGTH - 1)]
+                    .clone_from_slice(&input_symbol[..(SYMBOL_LENGTH - 1)]);
+                uri[..(URI_LENGTH - 1)].clone_from_slice(&input_uri[..(URI_LENGTH - 1)]);
 
                 Self::InitMetadataAccounts { name, symbol, uri }
             }
             2 => {
                 let (input_uri, _rest) = rest.split_at(URI_LENGTH);
                 let mut uri: [u8; URI_LENGTH] = [0; URI_LENGTH];
-                for n in 0..(URI_LENGTH - 1) {
-                    uri[n] = input_uri[n];
-                }
+                uri[..(URI_LENGTH - 1)].clone_from_slice(&input_uri[..(URI_LENGTH - 1)]);
 
                 Self::UpdateMetadataAccounts { uri }
             }
@@ -136,6 +127,7 @@ impl MetadataInstruction {
 }
 
 /// Creates an CreateMetadataAccounts instruction
+#[allow(clippy::too_many_arguments)]
 pub fn create_metadata_accounts(
     program_id: Pubkey,
     owner_account: Pubkey,
@@ -181,6 +173,7 @@ pub fn create_metadata_accounts(
 }
 
 /// Creates an 'InitMetadataAccounts' instruction.
+#[allow(clippy::too_many_arguments)]
 pub fn init_metadata_accounts(
     program_id: Pubkey,
     owner_account: Pubkey,

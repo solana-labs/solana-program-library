@@ -16,7 +16,7 @@ use std::str::FromStr;
 // -------- UPDATE START -------
 
 const KEYPAIR_PATH: &str = "/your/path";
-const METADATA_PROGRAM_PUBKEY_PATH: &str = "/your/path";
+const METADATA_PROGRAM_PUBKEY: &str = "metaTMm9vFU2h7m97KYJA9k2JQUG21rfb434rWUQBiH";
 const NEW_MINT_PATH: &str = "/your/path";
 const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const CLUSTER_ADDRESS: &str = "https://api.mainnet-beta.solana.com";
@@ -25,36 +25,35 @@ const CLUSTER_ADDRESS: &str = "https://api.mainnet-beta.solana.com";
 pub fn main() {
     let client = RpcClient::new(CLUSTER_ADDRESS.to_owned());
     let payer = read_keypair_file(KEYPAIR_PATH).unwrap();
-    let program_key = read_keypair_file(METADATA_PROGRAM_PUBKEY_PATH).unwrap();
+    let program_key = Pubkey::from_str(METADATA_PROGRAM_PUBKEY).unwrap();
     let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
     let new_mint = read_keypair_file(NEW_MINT_PATH).unwrap();
 
-    let program_id = program_key.pubkey();
     let new_mint_key = new_mint.pubkey();
     let metadata_seeds = &[
         PREFIX.as_bytes(),
-        &program_id.as_ref(),
+        &program_key.as_ref(),
         new_mint_key.as_ref(),
     ];
-    let (metadata_key, _) = Pubkey::find_program_address(metadata_seeds, &program_key.pubkey());
+    let (metadata_key, _) = Pubkey::find_program_address(metadata_seeds, &program_key);
     let mut name: [u8; NAME_LENGTH] = [0; NAME_LENGTH];
     let mut symbol: [u8; SYMBOL_LENGTH] = [0; SYMBOL_LENGTH];
 
-    let name_bytes = "Billy".as_bytes();
+    let name_bytes = "Billy1".as_bytes();
     for n in 0..(NAME_LENGTH - 1) {
         if n < name_bytes.len() {
             name[n] = name_bytes[n];
         }
     }
 
-    let symbol_bytes = "Bob".as_bytes();
+    let symbol_bytes = "Bob1".as_bytes();
     for n in 0..(SYMBOL_LENGTH - 1) {
         if n < symbol_bytes.len() {
             symbol[n] = symbol_bytes[n];
         }
     }
-    let owner_seeds = &[PREFIX.as_bytes(), &program_id.as_ref(), &name, &symbol];
-    let (owner_key, _) = Pubkey::find_program_address(owner_seeds, &program_key.pubkey());
+    let owner_seeds = &[PREFIX.as_bytes(), &program_key.as_ref(), &name, &symbol];
+    let (owner_key, _) = Pubkey::find_program_address(owner_seeds, &program_key);
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -76,28 +75,28 @@ pub fn main() {
             )
             .unwrap(),
             create_metadata_accounts(
-                program_key.pubkey(),
+                program_key,
                 owner_key,
                 metadata_key,
                 new_mint.pubkey(),
                 payer.pubkey(),
                 payer.pubkey(),
-                "Billy",
-                "Bob",
+                "Billy1",
+                "Bob1",
             ),
             init_metadata_accounts(
-                program_key.pubkey(),
+                program_key,
                 owner_key,
                 metadata_key,
                 new_mint.pubkey(),
                 payer.pubkey(),
                 payer.pubkey(),
-                "Billy",
-                "Bob",
+                "Billy1",
+                "Bob1",
                 "www.billybob.com",
             ),
             update_metadata_accounts(
-                program_key.pubkey(),
+                program_key,
                 metadata_key,
                 owner_key,
                 payer.pubkey(),
