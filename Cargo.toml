@@ -19,6 +19,8 @@ members = [
   "token-lending/client",
   "token-swap/program",
   "token-swap/program/fuzz",
+  "nft_metadata/program",
+  "nft_metadata/test",
   "token/cli",
   "token/program",
   "utils/cgen",
