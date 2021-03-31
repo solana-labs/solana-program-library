@@ -75,16 +75,8 @@ impl Reserve {
             .collateral_exchange_rate()?
             .liquidity_to_collateral(liquidity_amount)?;
 
-        self.liquidity.available_amount = self
-            .liquidity
-            .available_amount
-            .checked_add(liquidity_amount)
-            .ok_or(LendingError::MathOverflow)?;
-        self.collateral.mint_total_supply = self
-            .collateral
-            .mint_total_supply
-            .checked_add(collateral_amount)
-            .ok_or(LendingError::MathOverflow)?;
+        self.liquidity.deposit(liquidity_amount)?;
+        self.collateral.mint(collateral_amount)?;
 
         Ok(collateral_amount)
     }
@@ -94,20 +86,9 @@ impl Reserve {
         let collateral_exchange_rate = self.collateral_exchange_rate()?;
         let liquidity_amount =
             collateral_exchange_rate.collateral_to_liquidity(collateral_amount)?;
-        if liquidity_amount > self.liquidity.available_amount {
-            return Err(LendingError::InsufficientLiquidity.into());
-        }
 
-        self.liquidity.available_amount = self
-            .liquidity
-            .available_amount
-            .checked_sub(liquidity_amount)
-            .ok_or(LendingError::MathOverflow)?;
-        self.collateral.mint_total_supply = self
-            .collateral
-            .mint_total_supply
-            .checked_sub(collateral_amount)
-            .ok_or(LendingError::MathOverflow)?;
+        self.collateral.burn(collateral_amount)?;
+        self.liquidity.withdraw(liquidity_amount)?;
 
         Ok(liquidity_amount)
     }
@@ -396,6 +377,27 @@ impl ReserveLiquidity {
         Decimal::from(self.available_amount).try_add(self.borrowed_amount_wads)
     }
 
+    /// Add liquidity to available amount
+    pub fn deposit(&mut self, liquidity_amount: u64) -> ProgramResult {
+        self.available_amount = self
+            .available_amount
+            .checked_add(liquidity_amount)
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(())
+    }
+
+    /// Remove liquidity from available amount
+    pub fn withdraw(&mut self, liquidity_amount: u64) -> ProgramResult {
+        if liquidity_amount > self.available_amount {
+            return Err(LendingError::InsufficientLiquidity.into());
+        }
+        self.available_amount = self
+            .available_amount
+            .checked_sub(liquidity_amount)
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(())
+    }
+
     /// Subtract borrow amount from available liquidity and add to borrows
     pub fn borrow(&mut self, borrow_amount: Decimal) -> ProgramResult {
         let receive_amount = borrow_amount.try_floor_u64()?;
@@ -479,6 +481,24 @@ impl ReserveCollateral {
             mint_total_supply: 0,
             supply_pubkey: params.supply_pubkey,
         }
+    }
+
+    /// Add collateral to total supply
+    pub fn mint(&mut self, collateral_amount: u64) -> ProgramResult {
+        self.mint_total_supply = self
+            .mint_total_supply
+            .checked_add(collateral_amount)
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(())
+    }
+
+    /// Remove collateral from total supply
+    pub fn burn(&mut self, collateral_amount: u64) -> ProgramResult {
+        self.mint_total_supply = self
+            .mint_total_supply
+            .checked_sub(collateral_amount)
+            .ok_or(LendingError::MathOverflow)?;
+        Ok(())
     }
 
     /// Return the current collateral exchange rate.
