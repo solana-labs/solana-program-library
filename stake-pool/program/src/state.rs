@@ -110,7 +110,7 @@ impl StakePool {
             authority_to_check,
             program_id,
             stake_pool_key,
-            Processor::AUTHORITY_WITHDRAW,
+            crate::AUTHORITY_WITHDRAW,
             self.withdraw_bump_seed,
         )
     }
@@ -125,7 +125,7 @@ impl StakePool {
             authority_to_check,
             program_id,
             stake_pool_key,
-            Processor::AUTHORITY_DEPOSIT,
+            crate::AUTHORITY_DEPOSIT,
             self.deposit_bump_seed,
         )
     }

@@ -3,7 +3,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use {
-    crate::stake,
+    crate::stake_program,
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -200,9 +200,9 @@ pub fn create_validator_stake_account(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake::config_id(), false),
+        AccountMeta::new_readonly(stake_program::config_id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake::id(), false),
+        AccountMeta::new_readonly(stake_program::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -236,7 +236,7 @@ pub fn add_validator_to_pool(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake::id(), false),
+        AccountMeta::new_readonly(stake_program::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -269,7 +269,7 @@ pub fn remove_validator_from_pool(
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake::id(), false),
+        AccountMeta::new_readonly(stake_program::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -342,7 +342,7 @@ pub fn deposit(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake::id(), false),
+        AccountMeta::new_readonly(stake_program::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -376,7 +376,7 @@ pub fn withdraw(
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake::id(), false),
+        AccountMeta::new_readonly(stake_program::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,

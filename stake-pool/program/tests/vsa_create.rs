@@ -18,7 +18,7 @@ use {
         transaction::TransactionError,
         transport::TransportError,
     },
-    spl_stake_pool::{error, id, instruction, processor, stake},
+    spl_stake_pool::{error, find_stake_address_for_validator, id, instruction, stake_program},
 };
 
 #[tokio::test]
@@ -33,7 +33,7 @@ async fn success_create_validator_stake_account() {
     let validator = Keypair::new();
     create_vote(&mut banks_client, &payer, &recent_blockhash, &validator).await;
 
-    let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
+    let (stake_account, _) = find_stake_address_for_validator(
         &id(),
         &validator.pubkey(),
         &stake_pool_accounts.stake_pool.pubkey(),
@@ -56,9 +56,9 @@ async fn success_create_validator_stake_account() {
 
     // Check authorities
     let stake = get_account(&mut banks_client, &stake_account).await;
-    let stake_state = deserialize::<stake::StakeState>(&stake.data).unwrap();
+    let stake_state = deserialize::<stake_program::StakeState>(&stake.data).unwrap();
     match stake_state {
-        stake::StakeState::Stake(meta, stake) => {
+        stake_program::StakeState::Stake(meta, stake) => {
             assert_eq!(&meta.authorized.staker, &stake_pool_accounts.owner.pubkey());
             assert_eq!(
                 &meta.authorized.withdrawer,
@@ -81,7 +81,7 @@ async fn fail_create_validator_stake_account_on_non_vote_account() {
 
     let validator = Pubkey::new_unique();
 
-    let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
+    let (stake_account, _) = find_stake_address_for_validator(
         &id(),
         &validator,
         &stake_pool_accounts.stake_pool.pubkey(),
@@ -124,7 +124,7 @@ async fn fail_create_validator_stake_account_with_wrong_system_program() {
 
     let validator = Pubkey::new_unique();
 
-    let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
+    let (stake_account, _) = find_stake_address_for_validator(
         &id(),
         &validator,
         &stake_pool_accounts.stake_pool.pubkey(),
@@ -139,9 +139,9 @@ async fn fail_create_validator_stake_account_with_wrong_system_program() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake::config_id(), false),
+        AccountMeta::new_readonly(stake_program::config_id(), false),
         AccountMeta::new_readonly(wrong_system_program, false),
-        AccountMeta::new_readonly(stake::id(), false),
+        AccountMeta::new_readonly(stake_program::id(), false),
     ];
     let instruction = Instruction {
         program_id: id(),
@@ -177,7 +177,7 @@ async fn fail_create_validator_stake_account_with_wrong_stake_program() {
 
     let validator = Pubkey::new_unique();
 
-    let (stake_account, _) = processor::Processor::find_stake_address_for_validator(
+    let (stake_account, _) = find_stake_address_for_validator(
         &id(),
         &validator,
         &stake_pool_accounts.stake_pool.pubkey(),
@@ -192,7 +192,7 @@ async fn fail_create_validator_stake_account_with_wrong_stake_program() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake::config_id(), false),
+        AccountMeta::new_readonly(stake_program::config_id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(wrong_stake_program, false),
     ];

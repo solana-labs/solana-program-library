@@ -17,7 +17,9 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
-    spl_stake_pool::{borsh::try_from_slice_unchecked, error, id, instruction, stake, state},
+    spl_stake_pool::{
+        borsh::try_from_slice_unchecked, error, id, instruction, stake_program, state,
+    },
     spl_token::error::TokenError,
 };
 
@@ -439,8 +441,8 @@ async fn test_stake_pool_withdraw_from_unknown_validator() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
-    let authorized = stake::Authorized {
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
         staker: stake_pool_accounts.deposit_authority,
         withdrawer: stake_pool_accounts.deposit_authority,
     };
