@@ -40,8 +40,8 @@ pub fn main() {
     let owner_seeds = &[
         PREFIX.as_bytes(),
         &program_key.as_ref(),
-        &"Billy3".as_bytes(),
-        &"Bob3".as_bytes(),
+        &"Billy4".as_bytes(),
+        &"Bob4".as_bytes(),
     ];
     let (owner_key, _) = Pubkey::find_program_address(owner_seeds, &program_key);
 
@@ -71,8 +71,10 @@ pub fn main() {
                 new_mint.pubkey(),
                 payer.pubkey(),
                 payer.pubkey(),
-                "Billy3".to_owned(),
-                "Bob3".to_owned(),
+                payer.pubkey(),
+                "Billy4".to_owned(),
+                "Bob4".to_owned(),
+                "www.billybob.com".to_owned(),
             ),
             init_metadata_accounts(
                 program_key,
@@ -81,8 +83,8 @@ pub fn main() {
                 new_mint.pubkey(),
                 payer.pubkey(),
                 payer.pubkey(),
-                "Billy3".to_owned(),
-                "Bob3".to_owned(),
+                "Billy4".to_owned(),
+                "Bob4".to_owned(),
                 "www.billybob.com".to_owned(),
             ),
             update_metadata_accounts(

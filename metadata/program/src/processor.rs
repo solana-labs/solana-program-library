@@ -6,7 +6,7 @@ use crate::{
     state::{
         Metadata, Owner, METADATA_LEN, NAME_LENGTH, OWNER_LEN, PREFIX, SYMBOL_LENGTH, URI_LENGTH,
     },
-    utils::{assert_initialized, create_account_raw},
+    utils::{assert_initialized, create_or_allocate_account_raw},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
@@ -31,7 +31,7 @@ pub fn process_instruction(
     match instruction {
         MetadataInstruction::CreateMetadataAccounts(args) => {
             msg!("Instruction: Create Metadata Accounts");
-            process_create_metadata_accounts(program_id, accounts, args.name, args.symbol)
+            process_create_metadata_accounts(program_id, accounts, args.name, args.symbol, args.uri)
         }
         MetadataInstruction::InitMetadataAccounts(args) => {
             msg!("Instruction: Init Metadata Accounts");
@@ -50,15 +50,18 @@ pub fn process_create_metadata_accounts(
     accounts: &[AccountInfo],
     name: String,
     symbol: String,
+    uri: String,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let owner_info = next_account_info(account_info_iter)?;
-    let metadata_info = next_account_info(account_info_iter)?;
+    let owner_account_info = next_account_info(account_info_iter)?;
+    let metadata_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let mint_authority_info = next_account_info(account_info_iter)?;
     let payer_account_info = next_account_info(account_info_iter)?;
+    let owner_info = next_account_info(account_info_iter)?;
     let program_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
+    let rent_info = next_account_info(account_info_iter)?;
 
     if name.len() > NAME_LENGTH {
         return Err(MetadataError::NameTooLong.into());
@@ -68,6 +71,9 @@ pub fn process_create_metadata_accounts(
         return Err(MetadataError::SymbolTooLong.into());
     }
 
+    if uri.len() > URI_LENGTH {
+        return Err(MetadataError::UriTooLong.into());
+    }
     let mint: Mint = assert_initialized(mint_info)?;
     match mint.mint_authority {
         solana_program::program_option::COption::None => {
@@ -98,6 +104,10 @@ pub fn process_create_metadata_accounts(
         &[metadata_bump_seed],
     ];
 
+    if metadata_account_info.key != &metadata_key {
+        return Err(MetadataError::InvalidMetadataKey.into());
+    }
+
     let owner_seeds = &[
         PREFIX.as_bytes(),
         program_id.as_ref(),
@@ -113,31 +123,27 @@ pub fn process_create_metadata_accounts(
         &[owner_bump_seed],
     ];
 
-    create_account_raw::<Metadata>(
-        &[
-            payer_account_info.clone(),
-            metadata_info.clone(),
-            program_info.clone(),
-            system_account_info.clone(),
-        ],
-        &metadata_key,
-        payer_account_info.key,
-        program_id,
+    if owner_account_info.key != &owner_key {
+        return Err(MetadataError::InvalidOwnerKey.into());
+    }
+
+    create_or_allocate_account_raw(
+        *program_id,
+        metadata_account_info,
+        rent_info,
+        system_account_info,
+        payer_account_info,
+        METADATA_LEN,
         metadata_authority_signer_seeds,
-        METADATA_LEN.try_into().unwrap(),
     )?;
-    create_account_raw::<Owner>(
-        &[
-            payer_account_info.clone(),
-            owner_info.clone(),
-            program_info.clone(),
-            system_account_info.clone(),
-        ],
-        &owner_key,
-        payer_account_info.key,
-        program_id,
+    create_or_allocate_account_raw(
+        *program_id,
+        owner_account_info,
+        rent_info,
+        system_account_info,
+        payer_account_info,
+        OWNER_LEN,
         owner_authority_signer_seeds,
-        OWNER_LEN.try_into().unwrap(),
     )?;
 
     Ok(())

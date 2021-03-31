@@ -16,6 +16,8 @@ pub struct CreateMetadataAccountArgs {
     pub name: String,
     /// The symbol for the asset, ie, AAPL or SHOES
     pub symbol: String,
+    /// URI pointing to JSON representing the asset
+    pub uri: String,
 }
 
 #[repr(C)]
@@ -76,8 +78,10 @@ pub fn create_metadata_accounts(
     mint: Pubkey,
     mint_authority: Pubkey,
     payer: Pubkey,
+    owner: Pubkey,
     name: String,
     symbol: String,
+    uri: String,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -87,15 +91,18 @@ pub fn create_metadata_accounts(
             AccountMeta::new_readonly(mint, false),
             AccountMeta::new_readonly(mint_authority, true),
             AccountMeta::new_readonly(payer, true),
+            AccountMeta::new_readonly(owner, false),
             AccountMeta::new_readonly(program_id, false),
             AccountMeta::new_readonly(
                 Pubkey::from_str("11111111111111111111111111111111").unwrap(),
                 false,
             ),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
         data: MetadataInstruction::CreateMetadataAccounts(CreateMetadataAccountArgs {
             name,
             symbol,
+            uri,
         })
         .try_to_vec()
         .unwrap(),
