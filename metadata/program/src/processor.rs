@@ -1,25 +1,23 @@
-use std::convert::TryInto;
-
-use crate::{
-    error::MetadataError,
-    instruction::MetadataInstruction,
-    state::{
-        Metadata, Owner, METADATA_LEN, NAME_LENGTH, OWNER_LEN, PREFIX, SYMBOL_LENGTH, URI_LENGTH,
+use {
+    crate::{
+        error::MetadataError,
+        instruction::MetadataInstruction,
+        state::{
+            Metadata, Owner, METADATA_LEN, NAME_LENGTH, OWNER_LEN, PREFIX, SYMBOL_LENGTH,
+            URI_LENGTH,
+        },
+        utils::{assert_initialized, create_or_allocate_account_raw},
     },
-    utils::{assert_initialized, create_or_allocate_account_raw},
+    borsh::{BorshDeserialize, BorshSerialize},
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        borsh::try_from_slice_unchecked,
+        entrypoint::ProgramResult,
+        msg,
+        pubkey::Pubkey,
+    },
+    spl_token::state::Mint,
 };
-use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    borsh::try_from_slice_unchecked,
-    entrypoint::ProgramResult,
-    msg,
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-
-use spl_token::state::Mint;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -32,10 +30,6 @@ pub fn process_instruction(
         MetadataInstruction::CreateMetadataAccounts(args) => {
             msg!("Instruction: Create Metadata Accounts");
             process_create_metadata_accounts(program_id, accounts, args.name, args.symbol, args.uri)
-        }
-        MetadataInstruction::InitMetadataAccounts(args) => {
-            msg!("Instruction: Init Metadata Accounts");
-            process_init_metadata_accounts(program_id, accounts, args.name, args.symbol, args.uri)
         }
         MetadataInstruction::UpdateMetadataAccounts(args) => {
             msg!("Instruction: Update Metadata Accounts");
@@ -59,7 +53,6 @@ pub fn process_create_metadata_accounts(
     let mint_authority_info = next_account_info(account_info_iter)?;
     let payer_account_info = next_account_info(account_info_iter)?;
     let owner_info = next_account_info(account_info_iter)?;
-    let program_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
 
@@ -74,6 +67,7 @@ pub fn process_create_metadata_accounts(
     if uri.len() > URI_LENGTH {
         return Err(MetadataError::UriTooLong.into());
     }
+
     let mint: Mint = assert_initialized(mint_info)?;
     match mint.mint_authority {
         solana_program::program_option::COption::None => {
@@ -146,82 +140,8 @@ pub fn process_create_metadata_accounts(
         owner_authority_signer_seeds,
     )?;
 
-    Ok(())
-}
-
-/// Create a new accounts
-pub fn process_init_metadata_accounts(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    name: String,
-    symbol: String,
-    uri: String,
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-
-    let owner_account_info = next_account_info(account_info_iter)?;
-    let metadata_account_info = next_account_info(account_info_iter)?;
-    let mint_info = next_account_info(account_info_iter)?;
-    let mint_authority_info = next_account_info(account_info_iter)?;
-    let owner_info = next_account_info(account_info_iter)?;
-    let rent_info = next_account_info(account_info_iter)?;
-    let _rent = &Rent::from_account_info(rent_info)?;
-
-    if name.len() > NAME_LENGTH {
-        return Err(MetadataError::NameTooLong.into());
-    }
-
-    if symbol.len() > SYMBOL_LENGTH {
-        return Err(MetadataError::SymbolTooLong.into());
-    }
-
-    if uri.len() > URI_LENGTH {
-        return Err(MetadataError::UriTooLong.into());
-    }
-
     let mut owner: Owner = try_from_slice_unchecked(&owner_account_info.data.borrow())?;
     let mut metadata: Metadata = try_from_slice_unchecked(&metadata_account_info.data.borrow())?;
-
-    let mint: Mint = assert_initialized(mint_info)?;
-    match mint.mint_authority {
-        solana_program::program_option::COption::None => {
-            return Err(MetadataError::InvalidMintAuthority.into());
-        }
-        solana_program::program_option::COption::Some(key) => {
-            if *mint_authority_info.key != key {
-                return Err(MetadataError::InvalidMintAuthority.into());
-            }
-        }
-    }
-
-    if !mint_authority_info.is_signer {
-        return Err(MetadataError::NotMintAuthority.into());
-    }
-
-    let (metadata_address, _) = Pubkey::find_program_address(
-        &[
-            PREFIX.as_bytes(),
-            program_id.as_ref(),
-            mint_info.key.as_ref(),
-        ],
-        program_id,
-    );
-    if metadata_account_info.key != &metadata_address {
-        return Err(MetadataError::InvalidMetadataKey.into());
-    }
-
-    let (owner_address, _) = Pubkey::find_program_address(
-        &[
-            PREFIX.as_bytes(),
-            program_id.as_ref(),
-            &name.as_bytes(),
-            &symbol.as_bytes(),
-        ],
-        program_id,
-    );
-    if owner_account_info.key != &owner_address {
-        return Err(MetadataError::InvalidOwnerKey.into());
-    }
 
     owner.owner = *owner_info.key;
     owner.metadata = *metadata_account_info.key;

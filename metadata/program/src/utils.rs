@@ -1,16 +1,17 @@
-use std::convert::TryInto;
-
-use crate::error::MetadataError;
-use solana_program::{
-    account_info::AccountInfo,
-    entrypoint::ProgramResult,
-    msg,
-    program::{invoke, invoke_signed},
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack},
-    pubkey::Pubkey,
-    system_instruction,
-    sysvar::{rent::Rent, Sysvar},
+use {
+    crate::error::MetadataError,
+    solana_program::{
+        account_info::AccountInfo,
+        entrypoint::ProgramResult,
+        msg,
+        program::{invoke, invoke_signed},
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack},
+        pubkey::Pubkey,
+        system_instruction,
+        sysvar::{rent::Rent, Sysvar},
+    },
+    std::convert::TryInto,
 };
 
 /// assert rent exempt

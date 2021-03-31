@@ -1,5 +1,7 @@
-use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::pubkey::Pubkey;
+use {
+    borsh::{BorshDeserialize, BorshSerialize},
+    solana_program::pubkey::Pubkey,
+};
 ///prefix
 pub const PREFIX: &str = "metadata";
 

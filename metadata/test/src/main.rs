@@ -1,18 +1,19 @@
-use solana_client::rpc_client::RpcClient;
-use solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack};
-use solana_sdk::{
-    pubkey::Pubkey,
-    signature::{read_keypair_file, Signer},
-    system_instruction::create_account,
-    transaction::Transaction,
+use {
+    solana_client::rpc_client::RpcClient,
+    solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack},
+    solana_sdk::{
+        pubkey::Pubkey,
+        signature::{read_keypair_file, Signer},
+        system_instruction::create_account,
+        transaction::Transaction,
+    },
+    spl_metadata::{
+        instruction::{create_metadata_accounts, update_metadata_accounts},
+        state::{Metadata, PREFIX},
+    },
+    spl_token::{instruction::initialize_mint, state::Mint},
+    std::str::FromStr,
 };
-use spl_metadata::{
-    instruction::{create_metadata_accounts, init_metadata_accounts, update_metadata_accounts},
-    state::{Metadata, PREFIX},
-};
-
-use spl_token::{instruction::initialize_mint, state::Mint};
-use std::str::FromStr;
 // -------- UPDATE START -------
 
 const KEYPAIR_PATH: &str = "/Users/jprince/.config/solana/id.json";
@@ -40,8 +41,8 @@ pub fn main() {
     let owner_seeds = &[
         PREFIX.as_bytes(),
         &program_key.as_ref(),
-        &"Billy4".as_bytes(),
-        &"Bob4".as_bytes(),
+        &"Billy5".as_bytes(),
+        &"Bob5".as_bytes(),
     ];
     let (owner_key, _) = Pubkey::find_program_address(owner_seeds, &program_key);
 
@@ -72,19 +73,8 @@ pub fn main() {
                 payer.pubkey(),
                 payer.pubkey(),
                 payer.pubkey(),
-                "Billy4".to_owned(),
-                "Bob4".to_owned(),
-                "www.billybob.com".to_owned(),
-            ),
-            init_metadata_accounts(
-                program_key,
-                owner_key,
-                metadata_key,
-                new_mint.pubkey(),
-                payer.pubkey(),
-                payer.pubkey(),
-                "Billy4".to_owned(),
-                "Bob4".to_owned(),
+                "Billy5".to_owned(),
+                "Bob5".to_owned(),
                 "www.billybob.com".to_owned(),
             ),
             update_metadata_accounts(
