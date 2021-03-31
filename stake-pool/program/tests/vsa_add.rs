@@ -18,7 +18,9 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
-    spl_stake_pool::{borsh::try_from_slice_unchecked, error, id, instruction, stake, state},
+    spl_stake_pool::{
+        borsh::try_from_slice_unchecked, error, id, instruction, stake_program, state,
+    },
 };
 
 async fn setup() -> (
@@ -136,9 +138,9 @@ async fn test_add_validator_to_pool() {
 
     // Check of stake account authority has changed
     let stake = get_account(&mut banks_client, &user_stake.stake_account).await;
-    let stake_state = deserialize::<stake::StakeState>(&stake.data).unwrap();
+    let stake_state = deserialize::<stake_program::StakeState>(&stake.data).unwrap();
     match stake_state {
-        stake::StakeState::Stake(meta, _) => {
+        stake_program::StakeState::Stake(meta, _) => {
             assert_eq!(
                 &meta.authorized.staker,
                 &stake_pool_accounts.withdraw_authority
@@ -174,7 +176,7 @@ async fn test_add_validator_to_pool_with_wrong_token_program_id() {
             &user_stake.stake_account,
             &user_pool_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
-            &stake::id(),
+            &stake_program::id(),
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -407,7 +409,7 @@ async fn test_not_owner_try_to_add_validator_to_pool_without_signature() {
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
-        AccountMeta::new_readonly(stake::id(), false),
+        AccountMeta::new_readonly(stake_program::id(), false),
     ];
     let instruction = Instruction {
         program_id: id(),

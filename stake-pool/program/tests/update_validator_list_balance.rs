@@ -8,7 +8,7 @@ use {
     solana_program::{native_token, pubkey::Pubkey},
     solana_program_test::*,
     solana_sdk::signature::Signer,
-    spl_stake_pool::{borsh::try_from_slice_unchecked, stake, state},
+    spl_stake_pool::{borsh::try_from_slice_unchecked, stake_program, state},
 };
 
 async fn get_list_sum(banks_client: &mut BanksClient, validator_list_key: &Pubkey) -> u64 {
@@ -66,7 +66,7 @@ async fn test_update_validator_list_balance() {
     }
 
     let rent = banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::StakeState>())
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>())
         + native_token::sol_to_lamports(1.0);
 
     // Check current balance in the list

@@ -3,10 +3,13 @@
 use {
     crate::{
         borsh::try_from_slice_unchecked,
+        create_pool_authority_address,
         error::StakePoolError,
+        find_authority_bump_seed, find_stake_address_for_validator,
         instruction::{Fee, StakePoolInstruction},
-        stake,
+        stake_program,
         state::{AccountType, StakePool, ValidatorList, ValidatorStakeInfo},
+        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW,
     },
     bincode::deserialize,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -35,53 +38,16 @@ use {
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
-    /// Suffix for deposit authority seed
-    pub const AUTHORITY_DEPOSIT: &'static [u8] = b"deposit";
-    /// Suffix for withdraw authority seed
-    pub const AUTHORITY_WITHDRAW: &'static [u8] = b"withdraw";
-    /// Calculates the authority id by generating a program address.
-    pub fn authority_id(
-        program_id: &Pubkey,
-        stake_pool: &Pubkey,
-        authority_type: &[u8],
-        bump_seed: u8,
-    ) -> Result<Pubkey, ProgramError> {
-        Pubkey::create_program_address(
-            &[&stake_pool.to_bytes()[..32], authority_type, &[bump_seed]],
-            program_id,
-        )
-        .map_err(|_| StakePoolError::InvalidProgramAddress.into())
-    }
-    /// Generates seed bump for stake pool authorities
-    pub fn find_authority_bump_seed(
-        program_id: &Pubkey,
-        stake_pool: &Pubkey,
-        authority_type: &[u8],
-    ) -> (Pubkey, u8) {
-        Pubkey::find_program_address(&[&stake_pool.to_bytes()[..32], authority_type], program_id)
-    }
-    /// Generates stake account address for the validator
-    pub fn find_stake_address_for_validator(
-        program_id: &Pubkey,
-        validator: &Pubkey,
-        stake_pool: &Pubkey,
-    ) -> (Pubkey, u8) {
-        Pubkey::find_program_address(
-            &[&validator.to_bytes()[..32], &stake_pool.to_bytes()[..32]],
-            program_id,
-        )
-    }
-
     /// Checks withdraw or deposit authority
     pub fn check_authority(
         authority_to_check: &Pubkey,
         program_id: &Pubkey,
         stake_pool_key: &Pubkey,
-        authority_type: &[u8],
+        authority: &[u8],
         bump_seed: u8,
     ) -> Result<(), ProgramError> {
         if *authority_to_check
-            != Self::authority_id(program_id, stake_pool_key, authority_type, bump_seed)?
+            != create_pool_authority_address(program_id, stake_pool_key, authority, bump_seed)?
         {
             return Err(StakePoolError::InvalidProgramAddress.into());
         }
@@ -90,10 +56,10 @@ impl Processor {
 
     /// Returns validator address for a particular stake account
     pub fn get_validator(stake_account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {
-        let stake_state: stake::StakeState = deserialize(&stake_account_info.data.borrow())
+        let stake_state: stake_program::StakeState = deserialize(&stake_account_info.data.borrow())
             .or(Err(ProgramError::InvalidAccountData))?;
         match stake_state {
-            stake::StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
+            stake_program::StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
             _ => Err(StakePoolError::WrongStakeState.into()),
         }
     }
@@ -106,11 +72,8 @@ impl Processor {
         stake_account_info: &AccountInfo,
     ) -> bool {
         // Check stake account address validity
-        let (stake_address, _) = Self::find_stake_address_for_validator(
-            &program_id,
-            &validator_account,
-            &stake_pool_info.key,
-        );
+        let (stake_address, _) =
+            find_stake_address_for_validator(&program_id, &validator_account, &stake_pool_info.key);
         stake_address == *stake_account_info.key
     }
 
@@ -147,7 +110,8 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = stake::split_only(stake_account.key, authority.key, amount, split_stake.key);
+        let ix =
+            stake_program::split_only(stake_account.key, authority.key, amount, split_stake.key);
 
         invoke_signed(&ix, &[stake_account, split_stake, authority], signers)
     }
@@ -169,7 +133,7 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = stake::merge(merge_with.key, stake_account.key, authority.key);
+        let ix = stake_program::merge(merge_with.key, stake_account.key, authority.key);
 
         invoke_signed(
             &ix,
@@ -194,7 +158,7 @@ impl Processor {
         authority_type: &[u8],
         bump_seed: u8,
         new_staker: &Pubkey,
-        staker_auth: stake::StakeAuthorize,
+        staker_auth: stake_program::StakeAuthorize,
         reserved: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
@@ -202,7 +166,8 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = stake::authorize(stake_account.key, authority.key, new_staker, staker_auth);
+        let ix =
+            stake_program::authorize(stake_account.key, authority.key, new_staker, staker_auth);
 
         invoke_signed(
             &ix,
@@ -357,16 +322,10 @@ impl Processor {
             return Err(StakePoolError::WrongAccountMint.into());
         }
 
-        let (_, deposit_bump_seed) = Self::find_authority_bump_seed(
-            program_id,
-            stake_pool_info.key,
-            Self::AUTHORITY_DEPOSIT,
-        );
-        let (withdraw_authority_key, withdraw_bump_seed) = Self::find_authority_bump_seed(
-            program_id,
-            stake_pool_info.key,
-            Self::AUTHORITY_WITHDRAW,
-        );
+        let (_, deposit_bump_seed) =
+            find_authority_bump_seed(program_id, stake_pool_info.key, AUTHORITY_DEPOSIT);
+        let (withdraw_authority_key, withdraw_bump_seed) =
+            find_authority_bump_seed(program_id, stake_pool_info.key, AUTHORITY_WITHDRAW);
 
         let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
 
@@ -439,12 +398,12 @@ impl Processor {
         if *system_program_info.key != solana_program::system_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
-        if *stake_program_info.key != stake::id() {
+        if *stake_program_info.key != stake_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
 
         // Check stake account address validity
-        let (stake_address, bump_seed) = Self::find_stake_address_for_validator(
+        let (stake_address, bump_seed) = find_stake_address_for_validator(
             &program_id,
             &validator_info.key,
             &stake_pool_info.key,
@@ -460,8 +419,8 @@ impl Processor {
         ];
 
         // Fund the stake account with 1 SOL + rent-exempt balance
-        let required_lamports =
-            sol_to_lamports(1.0) + rent.minimum_balance(std::mem::size_of::<stake::StakeState>());
+        let required_lamports = sol_to_lamports(1.0)
+            + rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
 
         // Create new stake account
         invoke_signed(
@@ -469,21 +428,21 @@ impl Processor {
                 &funder_info.key,
                 &stake_account_info.key,
                 required_lamports,
-                std::mem::size_of::<stake::StakeState>() as u64,
-                &stake::id(),
+                std::mem::size_of::<stake_program::StakeState>() as u64,
+                &stake_program::id(),
             ),
             &[funder_info.clone(), stake_account_info.clone()],
             &[&stake_account_signer_seeds],
         )?;
 
         invoke(
-            &stake::initialize(
+            &stake_program::initialize(
                 &stake_account_info.key,
-                &stake::Authorized {
+                &stake_program::Authorized {
                     staker: *owner_info.key,
                     withdrawer: *owner_info.key,
                 },
-                &stake::Lockup::default(),
+                &stake_program::Lockup::default(),
             ),
             &[
                 stake_account_info.clone(),
@@ -493,7 +452,7 @@ impl Processor {
         )?;
 
         invoke(
-            &stake::delegate_stake(
+            &stake_program::delegate_stake(
                 &stake_account_info.key,
                 &owner_info.key,
                 &validator_info.key,
@@ -543,7 +502,7 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
 
         // Check program ids
-        if *stake_program_info.key != stake::id() {
+        if *stake_program_info.key != stake_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
 
@@ -596,14 +555,14 @@ impl Processor {
 
         // Update Withdrawer and Staker authority to the program withdraw authority
         for authority in &[
-            stake::StakeAuthorize::Withdrawer,
-            stake::StakeAuthorize::Staker,
+            stake_program::StakeAuthorize::Withdrawer,
+            stake_program::StakeAuthorize::Staker,
         ] {
             Self::stake_authorize(
                 stake_pool_info.key,
                 stake_account_info.clone(),
                 deposit_info.clone(),
-                Self::AUTHORITY_DEPOSIT,
+                AUTHORITY_DEPOSIT,
                 stake_pool.deposit_bump_seed,
                 withdraw_info.key,
                 *authority,
@@ -623,7 +582,7 @@ impl Processor {
             pool_mint_info.clone(),
             dest_user_info.clone(),
             withdraw_info.clone(),
-            Self::AUTHORITY_WITHDRAW,
+            AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             token_amount,
         )?;
@@ -679,7 +638,7 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
 
         // Check program ids
-        if *stake_program_info.key != stake::id() {
+        if *stake_program_info.key != stake_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
 
@@ -728,14 +687,14 @@ impl Processor {
 
         // Update Withdrawer and Staker authority to the provided authority
         for authority in &[
-            stake::StakeAuthorize::Withdrawer,
-            stake::StakeAuthorize::Staker,
+            stake_program::StakeAuthorize::Withdrawer,
+            stake_program::StakeAuthorize::Staker,
         ] {
             Self::stake_authorize(
                 stake_pool_info.key,
                 stake_account_info.clone(),
                 withdraw_info.clone(),
-                Self::AUTHORITY_WITHDRAW,
+                AUTHORITY_WITHDRAW,
                 stake_pool.withdraw_bump_seed,
                 new_stake_authority_info.key,
                 *authority,
@@ -755,7 +714,7 @@ impl Processor {
             burn_from_info.clone(),
             pool_mint_info.clone(),
             withdraw_info.clone(),
-            Self::AUTHORITY_WITHDRAW,
+            AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             token_amount,
         )?;
@@ -886,7 +845,7 @@ impl Processor {
         //#[cfg(not(feature = "test-bpf"))]
         // This check is commented to make tests run without special command line arguments
         /*{
-            let stake_acc_state: stake::StakeState =
+            let stake_acc_state: stake_program::StakeState =
                 deserialize(&stake_info.data.borrow()).unwrap();
             let delegation = stake_acc_state.delegation();
             if let Some(delegation) = delegation {
@@ -938,7 +897,7 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
 
         // Check program ids
-        if *stake_program_info.key != stake::id() {
+        if *stake_program_info.key != stake_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
 
@@ -1002,10 +961,10 @@ impl Processor {
             stake_pool_info.key,
             stake_info.clone(),
             deposit_info.clone(),
-            Self::AUTHORITY_DEPOSIT,
+            AUTHORITY_DEPOSIT,
             stake_pool.deposit_bump_seed,
             withdraw_info.key,
-            stake::StakeAuthorize::Withdrawer,
+            stake_program::StakeAuthorize::Withdrawer,
             clock_info.clone(),
             stake_program_info.clone(),
         )?;
@@ -1014,10 +973,10 @@ impl Processor {
             stake_pool_info.key,
             stake_info.clone(),
             deposit_info.clone(),
-            Self::AUTHORITY_DEPOSIT,
+            AUTHORITY_DEPOSIT,
             stake_pool.deposit_bump_seed,
             withdraw_info.key,
-            stake::StakeAuthorize::Staker,
+            stake_program::StakeAuthorize::Staker,
             clock_info.clone(),
             stake_program_info.clone(),
         )?;
@@ -1026,7 +985,7 @@ impl Processor {
             stake_pool_info.key,
             stake_info.clone(),
             withdraw_info.clone(),
-            Self::AUTHORITY_WITHDRAW,
+            AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             validator_stake_account_info.clone(),
             clock_info.clone(),
@@ -1040,7 +999,7 @@ impl Processor {
             pool_mint_info.clone(),
             dest_user_info.clone(),
             withdraw_info.clone(),
-            Self::AUTHORITY_WITHDRAW,
+            AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             user_amount,
         )?;
@@ -1051,7 +1010,7 @@ impl Processor {
             pool_mint_info.clone(),
             owner_fee_info.clone(),
             withdraw_info.clone(),
-            Self::AUTHORITY_WITHDRAW,
+            AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             fee_amount,
         )?;
@@ -1097,7 +1056,7 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
 
         // Check program ids
-        if *stake_program_info.key != stake::id() {
+        if *stake_program_info.key != stake_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
 
@@ -1145,7 +1104,7 @@ impl Processor {
             stake_pool_info.key,
             stake_split_from.clone(),
             withdraw_info.clone(),
-            Self::AUTHORITY_WITHDRAW,
+            AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             stake_amount,
             stake_split_to.clone(),
@@ -1155,10 +1114,10 @@ impl Processor {
             stake_pool_info.key,
             stake_split_to.clone(),
             withdraw_info.clone(),
-            Self::AUTHORITY_WITHDRAW,
+            AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             user_stake_authority.key,
-            stake::StakeAuthorize::Withdrawer,
+            stake_program::StakeAuthorize::Withdrawer,
             clock_info.clone(),
             stake_program_info.clone(),
         )?;
@@ -1167,10 +1126,10 @@ impl Processor {
             stake_pool_info.key,
             stake_split_to.clone(),
             withdraw_info.clone(),
-            Self::AUTHORITY_WITHDRAW,
+            AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             user_stake_authority.key,
-            stake::StakeAuthorize::Staker,
+            stake_program::StakeAuthorize::Staker,
             clock_info.clone(),
             stake_program_info.clone(),
         )?;
@@ -1181,7 +1140,7 @@ impl Processor {
             burn_from_info.clone(),
             pool_mint_info.clone(),
             withdraw_info.clone(),
-            Self::AUTHORITY_WITHDRAW,
+            AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             pool_amount,
         )?;

@@ -18,7 +18,9 @@ use {
         transaction::TransactionError,
         transport::TransportError,
     },
-    spl_stake_pool::{borsh::try_from_slice_unchecked, error, id, instruction, stake, state},
+    spl_stake_pool::{
+        borsh::try_from_slice_unchecked, error, id, instruction, stake_program, state,
+    },
     spl_token::error as token_error,
 };
 
@@ -61,10 +63,10 @@ async fn test_stake_pool_deposit() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
+    let lockup = stake_program::Lockup::default();
 
     let stake_authority = Keypair::new();
-    let authorized = stake::Authorized {
+    let authorized = stake_program::Authorized {
         staker: stake_authority.pubkey(),
         withdrawer: stake_authority.pubkey(),
     };
@@ -104,7 +106,7 @@ async fn test_stake_pool_deposit() {
         &user_stake.pubkey(),
         &stake_authority,
         &stake_pool_accounts.deposit_authority,
-        stake::StakeAuthorize::Withdrawer,
+        stake_program::StakeAuthorize::Withdrawer,
     )
     .await;
     authorize_stake_account(
@@ -114,7 +116,7 @@ async fn test_stake_pool_deposit() {
         &user_stake.pubkey(),
         &stake_authority,
         &stake_pool_accounts.deposit_authority,
-        stake::StakeAuthorize::Staker,
+        stake_program::StakeAuthorize::Staker,
     )
     .await;
 
@@ -295,8 +297,8 @@ async fn test_stake_pool_deposit_with_wrong_pool_fee_account() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
-    let authorized = stake::Authorized {
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
         staker: stake_pool_accounts.deposit_authority,
         withdrawer: stake_pool_accounts.deposit_authority,
     };
@@ -359,8 +361,8 @@ async fn test_stake_pool_deposit_with_wrong_token_program_id() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
-    let authorized = stake::Authorized {
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
         staker: stake_pool_accounts.deposit_authority,
         withdrawer: stake_pool_accounts.deposit_authority,
     };
@@ -434,8 +436,8 @@ async fn test_stake_pool_deposit_with_wrong_validator_list_account() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
-    let authorized = stake::Authorized {
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
         staker: stake_pool_accounts.deposit_authority,
         withdrawer: stake_pool_accounts.deposit_authority,
     };
@@ -527,8 +529,8 @@ async fn test_stake_pool_deposit_to_unknown_validator() {
 
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
-    let authorized = stake::Authorized {
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
         staker: stake_pool_accounts.deposit_authority,
         withdrawer: stake_pool_accounts.deposit_authority,
     };
@@ -582,8 +584,8 @@ async fn test_stake_pool_deposit_with_wrong_deposit_authority() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
-    let authorized = stake::Authorized {
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
         staker: stake_pool_accounts.deposit_authority,
         withdrawer: stake_pool_accounts.deposit_authority,
     };
@@ -650,8 +652,8 @@ async fn test_stake_pool_deposit_with_wrong_withdraw_authority() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
-    let authorized = stake::Authorized {
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
         staker: stake_pool_accounts.deposit_authority,
         withdrawer: stake_pool_accounts.deposit_authority,
     };
@@ -713,8 +715,8 @@ async fn test_stake_pool_deposit_with_wrong_set_deposit_authority() {
     let user = Keypair::new();
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
-    let authorized = stake::Authorized {
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
         staker: Keypair::new().pubkey(),
         withdrawer: stake_pool_accounts.deposit_authority,
     };
@@ -770,8 +772,8 @@ async fn test_stake_pool_deposit_with_wrong_mint_for_receiver_acc() {
 
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake::Lockup::default();
-    let authorized = stake::Authorized {
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
         staker: stake_pool_accounts.deposit_authority,
         withdrawer: stake_pool_accounts.deposit_authority,
     };

@@ -15,6 +15,7 @@ use {
         keypair::signer_from_path,
     },
     solana_client::{
+        client_error::ClientError,
         rpc_client::RpcClient,
         rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
         rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
@@ -24,7 +25,6 @@ use {
         borsh::get_packed_len, instruction::Instruction, program_pack::Pack, pubkey::Pubkey,
     },
     solana_sdk::{
-        account::Account,
         commitment_config::CommitmentConfig,
         native_token::{self, Sol},
         signature::{Keypair, Signer},
@@ -33,18 +33,15 @@ use {
     },
     spl_stake_pool::{
         borsh::{get_instance_packed_len, try_from_slice_unchecked},
+        create_pool_authority_address, find_authority_bump_seed, find_stake_address_for_validator,
         instruction::{
             add_validator_to_pool, create_validator_stake_account, deposit,
             initialize as initialize_pool, remove_validator_from_pool, set_owner,
             update_stake_pool_balance, update_validator_list_balance, withdraw, Fee as PoolFee,
         },
-        processor::Processor as PoolProcessor,
-        stake::authorize as authorize_stake,
-        stake::id as stake_program_id,
-        stake::StakeAuthorize,
-        stake::StakeState,
-        state::StakePool,
-        state::ValidatorList,
+        stake_program::{self, StakeAuthorize, StakeState},
+        state::{StakePool, ValidatorList},
+        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW,
     },
     spl_token::{
         self, instruction::approve as approve_token, instruction::initialize_account,
@@ -94,16 +91,17 @@ fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(),
     }
 }
 
-fn get_authority_accounts(rpc_client: &RpcClient, authority: &Pubkey) -> Vec<(Pubkey, Account)> {
+fn get_stake_accounts_by_withdrawer(
+    rpc_client: &RpcClient,
+    withdrawer: &Pubkey,
+) -> Result<Vec<(Pubkey, u64, StakeState)>, ClientError> {
     rpc_client
         .get_program_accounts_with_config(
-            &stake_program_id(),
+            &stake_program::id(),
             RpcProgramAccountsConfig {
                 filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
                     offset: 44, // 44 is Withdrawer authority offset in stake account stake
-                    bytes: MemcmpEncodedBytes::Binary(
-                        bs58::encode(authority.to_bytes()).into_string(),
-                    ),
+                    bytes: MemcmpEncodedBytes::Binary(format!("{}", withdrawer)),
                     encoding: None,
                 })]),
                 account_config: RpcAccountInfoConfig {
@@ -112,7 +110,20 @@ fn get_authority_accounts(rpc_client: &RpcClient, authority: &Pubkey) -> Vec<(Pu
                 },
             },
         )
-        .unwrap()
+        .map(|accounts| {
+            accounts
+                .into_iter()
+                .filter_map(
+                    |(address, account)| match deserialize(account.data.as_slice()) {
+                        Ok(stake_state) => Some((address, account.lamports, stake_state)),
+                        Err(err) => {
+                            eprintln!("Invalid stake account data for {}: {}", address, err);
+                            None
+                        }
+                    },
+                )
+                .collect()
+        })
 }
 
 fn send_transaction(
@@ -168,10 +179,10 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> Co
     let default_decimals = native_mint::DECIMALS;
 
     // Calculate withdraw authority used for minting pool tokens
-    let (withdraw_authority, _) = PoolProcessor::find_authority_bump_seed(
+    let (withdraw_authority, _) = find_authority_bump_seed(
         &spl_stake_pool::id(),
         &pool_account.pubkey(),
-        PoolProcessor::AUTHORITY_WITHDRAW,
+        AUTHORITY_WITHDRAW,
     );
 
     if config.verbose {
@@ -263,11 +274,8 @@ fn command_create_pool(config: &Config, fee: PoolFee, max_validators: u32) -> Co
 }
 
 fn command_vsa_create(config: &Config, pool: &Pubkey, vote_account: &Pubkey) -> CommandResult {
-    let (stake_account, _) = PoolProcessor::find_stake_address_for_validator(
-        &spl_stake_pool::id(),
-        &vote_account,
-        &pool,
-    );
+    let (stake_account, _) =
+        find_stake_address_for_validator(&spl_stake_pool::id(), &vote_account, &pool);
 
     println!("Creating stake account {}", stake_account);
 
@@ -335,31 +343,31 @@ fn command_vsa_add(
     )?;
 
     // Calculate Deposit and Withdraw stake pool authorities
-    let pool_deposit_authority: Pubkey = PoolProcessor::authority_id(
+    let pool_deposit_authority: Pubkey = create_pool_authority_address(
         &spl_stake_pool::id(),
         pool,
-        PoolProcessor::AUTHORITY_DEPOSIT,
+        AUTHORITY_DEPOSIT,
         pool_data.deposit_bump_seed,
     )
     .unwrap();
-    let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
+    let pool_withdraw_authority: Pubkey = create_pool_authority_address(
         &spl_stake_pool::id(),
         pool,
-        PoolProcessor::AUTHORITY_WITHDRAW,
+        AUTHORITY_WITHDRAW,
         pool_data.withdraw_bump_seed,
     )
     .unwrap();
 
     instructions.extend(vec![
         // Set Withdrawer on stake account to Deposit authority of the stake pool
-        authorize_stake(
+        stake_program::authorize(
             &stake,
             &config.owner.pubkey(),
             &pool_deposit_authority,
             StakeAuthorize::Withdrawer,
         ),
         // Set Staker on stake account to Deposit authority of the stake pool
-        authorize_stake(
+        stake_program::authorize(
             &stake,
             &config.owner.pubkey(),
             &pool_deposit_authority,
@@ -409,10 +417,10 @@ fn command_vsa_remove(
     let pool_data = config.rpc_client.get_account_data(&pool)?;
     let pool_data: StakePool = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
 
-    let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
+    let pool_withdraw_authority: Pubkey = create_pool_authority_address(
         &spl_stake_pool::id(),
         pool,
-        PoolProcessor::AUTHORITY_WITHDRAW,
+        AUTHORITY_WITHDRAW,
         pool_data.withdraw_bump_seed,
     )
     .unwrap();
@@ -567,7 +575,7 @@ fn command_deposit(
 
     // Calculate validator stake account address linked to the pool
     let (validator_stake_account, _) =
-        PoolProcessor::find_stake_address_for_validator(&spl_stake_pool::id(), &vote_account, pool);
+        find_stake_address_for_validator(&spl_stake_pool::id(), &vote_account, pool);
     let validator_stake_data = config
         .rpc_client
         .get_account_data(&validator_stake_account)?;
@@ -600,31 +608,31 @@ fn command_deposit(
     )?;
 
     // Calculate Deposit and Withdraw stake pool authorities
-    let pool_deposit_authority: Pubkey = PoolProcessor::authority_id(
+    let pool_deposit_authority: Pubkey = create_pool_authority_address(
         &spl_stake_pool::id(),
         pool,
-        PoolProcessor::AUTHORITY_DEPOSIT,
+        AUTHORITY_DEPOSIT,
         pool_data.deposit_bump_seed,
     )
     .unwrap();
-    let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
+    let pool_withdraw_authority: Pubkey = create_pool_authority_address(
         &spl_stake_pool::id(),
         pool,
-        PoolProcessor::AUTHORITY_WITHDRAW,
+        AUTHORITY_WITHDRAW,
         pool_data.withdraw_bump_seed,
     )
     .unwrap();
 
     instructions.extend(vec![
         // Set Withdrawer on stake account to Deposit authority of the stake pool
-        authorize_stake(
+        stake_program::authorize(
             &stake,
             &config.owner.pubkey(),
             &pool_deposit_authority,
             StakeAuthorize::Withdrawer,
         ),
         // Set Staker on stake account to Deposit authority of the stake pool
-        authorize_stake(
+        stake_program::authorize(
             &stake,
             &config.owner.pubkey(),
             &pool_deposit_authority,
@@ -663,14 +671,22 @@ fn command_deposit(
 fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     // Get stake pool state
     let pool_data = config.rpc_client.get_account_data(&pool)?;
-    let pool_data = StakePool::try_from_slice(pool_data.as_slice()).unwrap();
+    let pool_data = StakePool::try_from_slice(pool_data.as_slice())
+        .map_err(|err| format!("Invalid pool {}: {}", pool, err))?;
 
     if config.verbose {
         let validator_list = config
             .rpc_client
             .get_account_data(&pool_data.validator_list)?;
-        let validator_list_data =
-            try_from_slice_unchecked::<ValidatorList>(&validator_list.as_slice())?;
+        let validator_list_data = try_from_slice_unchecked::<ValidatorList>(
+            &validator_list.as_slice(),
+        )
+        .map_err(|err| {
+            format!(
+                "Invalid validator list{}: {}",
+                pool_data.validator_list, err
+            )
+        })?;
         println!("Current validator list");
         for validator in validator_list_data.validators {
             println!(
@@ -680,31 +696,27 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
         }
     }
 
-    let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
+    let pool_withdraw_authority: Pubkey = create_pool_authority_address(
         &spl_stake_pool::id(),
         pool,
-        PoolProcessor::AUTHORITY_WITHDRAW,
+        AUTHORITY_WITHDRAW,
         pool_data.withdraw_bump_seed,
     )
     .unwrap();
 
-    let accounts = get_authority_accounts(&config.rpc_client, &pool_withdraw_authority);
-
+    let accounts = get_stake_accounts_by_withdrawer(&config.rpc_client, &pool_withdraw_authority)?;
     if accounts.is_empty() {
         return Err("No accounts found.".to_string().into());
     }
 
     let mut total_balance: u64 = 0;
-    for (pubkey, account) in accounts {
-        let stake_data: StakeState =
-            deserialize(account.data.as_slice()).or(Err("Invalid stake account data"))?;
-        let balance = account.lamports;
-        total_balance += balance;
+    for (pubkey, lamports, stake_state) in accounts {
+        total_balance += lamports;
         println!(
             "Stake Account: {}\tVote Account: {}\t{}",
             pubkey,
-            stake_data.delegation().unwrap().voter_pubkey,
-            Sol(balance)
+            stake_state.delegation().expect("delegation").voter_pubkey,
+            Sol(lamports)
         );
     }
     println!("Total: {}", Sol(total_balance));
@@ -731,7 +743,7 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
             if item.last_update_epoch >= epoch_info.epoch {
                 None
             } else {
-                let (stake_account, _) = PoolProcessor::find_stake_address_for_validator(
+                let (stake_account, _) = find_stake_address_for_validator(
                     &spl_stake_pool::id(),
                     &item.validator_account,
                     &pool,
@@ -775,8 +787,7 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
 
 #[derive(PartialEq, Debug)]
 struct WithdrawAccount {
-    pubkey: Pubkey,
-    account: Account,
+    address: Pubkey,
     pool_amount: u64,
 }
 
@@ -786,53 +797,37 @@ fn prepare_withdraw_accounts(
     pool_withdraw_authority: &Pubkey,
     pool_amount: u64,
 ) -> Result<Vec<WithdrawAccount>, Error> {
-    let mut accounts = get_authority_accounts(rpc_client, &pool_withdraw_authority);
+    let mut accounts = get_stake_accounts_by_withdrawer(rpc_client, &pool_withdraw_authority)?;
     if accounts.is_empty() {
         return Err("No accounts found.".to_string().into());
     }
     let min_balance = rpc_client.get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)? + 1;
     let pool_mint_data = rpc_client.get_account_data(&stake_pool.pool_mint)?;
     let pool_mint = TokenMint::unpack_from_slice(pool_mint_data.as_slice()).unwrap();
-    pick_withdraw_accounts(
-        &mut accounts,
-        stake_pool,
-        &pool_mint,
-        pool_amount,
-        min_balance,
-    )
-}
 
-fn pick_withdraw_accounts(
-    accounts: &mut Vec<(Pubkey, Account)>,
-    stake_pool: &StakePool,
-    pool_mint: &TokenMint,
-    pool_amount: u64,
-    min_balance: u64,
-) -> Result<Vec<WithdrawAccount>, Error> {
     // Sort from highest to lowest balance
-    accounts.sort_by(|a, b| b.1.lamports.cmp(&a.1.lamports));
+    accounts.sort_by(|a, b| b.1.cmp(&a.1));
 
     // Prepare the list of accounts to withdraw from
     let mut withdraw_from: Vec<WithdrawAccount> = vec![];
     let mut remaining_amount = pool_amount;
 
     // Go through available accounts and withdraw from largest to smallest
-    for (pubkey, account) in accounts {
-        if account.lamports <= min_balance {
+    for (address, lamports, _) in accounts {
+        if lamports <= min_balance {
             continue;
         }
         let available_for_withdrawal = stake_pool
-            .calc_lamports_withdraw_amount(account.lamports - *MIN_STAKE_BALANCE)
+            .calc_lamports_withdraw_amount(lamports - *MIN_STAKE_BALANCE)
             .unwrap();
-        let withdraw_amount = u64::min(available_for_withdrawal, remaining_amount);
+        let pool_amount = u64::min(available_for_withdrawal, remaining_amount);
 
         // Those accounts will be withdrawn completely with `claim` instruction
         withdraw_from.push(WithdrawAccount {
-            pubkey: *pubkey,
-            account: account.clone(),
-            pool_amount: withdraw_amount,
+            address,
+            pool_amount,
         });
-        remaining_amount -= withdraw_amount;
+        remaining_amount -= pool_amount;
 
         if remaining_amount == 0 {
             break;
@@ -870,10 +865,10 @@ fn command_withdraw(
     let pool_mint = TokenMint::unpack_from_slice(pool_mint_data.as_slice()).unwrap();
     let pool_amount = spl_token::ui_amount_to_amount(pool_amount, pool_mint.decimals);
 
-    let pool_withdraw_authority: Pubkey = PoolProcessor::authority_id(
+    let pool_withdraw_authority: Pubkey = create_pool_authority_address(
         &spl_stake_pool::id(),
         pool,
-        PoolProcessor::AUTHORITY_WITHDRAW,
+        AUTHORITY_WITHDRAW,
         pool_data.withdraw_bump_seed,
     )
     .unwrap();
@@ -898,7 +893,7 @@ fn command_withdraw(
     }
 
     // Get the list of accounts to withdraw from
-    let withdraw_accounts: Vec<WithdrawAccount> = prepare_withdraw_accounts(
+    let withdraw_accounts = prepare_withdraw_accounts(
         &config.rpc_client,
         &pool_data,
         &pool_withdraw_authority,
@@ -928,17 +923,17 @@ fn command_withdraw(
     let mut total_rent_free_balances = 0;
 
     // Go through prepared accounts and withdraw/claim them
-    for withdraw_stake in withdraw_accounts {
+    for withdraw_account in withdraw_accounts {
         // Convert pool tokens amount to lamports
         let sol_withdraw_amount = pool_data
-            .calc_lamports_withdraw_amount(withdraw_stake.pool_amount)
+            .calc_lamports_withdraw_amount(withdraw_account.pool_amount)
             .unwrap();
 
         println!(
             "Withdrawing from account {}, amount {}, {} pool tokens",
-            withdraw_stake.pubkey,
+            withdraw_account.address,
             Sol(sol_withdraw_amount),
-            spl_token::amount_to_ui_amount(withdraw_stake.pool_amount, pool_mint.decimals),
+            spl_token::amount_to_ui_amount(withdraw_account.pool_amount, pool_mint.decimals),
         );
 
         if stake_receiver.is_none() {
@@ -959,7 +954,7 @@ fn command_withdraw(
                     &stake_receiver_account.pubkey(),
                     stake_receiver_account_balance,
                     STAKE_STATE_LEN as u64,
-                    &stake_program_id(),
+                    &stake_program::id(),
                 ),
             );
 
@@ -975,13 +970,13 @@ fn command_withdraw(
             &pool,
             &pool_data.validator_list,
             &pool_withdraw_authority,
-            &withdraw_stake.pubkey,
+            &withdraw_account.address,
             &stake_receiver.unwrap(), // Cannot be none at this point
             &config.owner.pubkey(),
             &withdraw_from,
             &pool_data.pool_mint,
             &spl_token::id(),
-            withdraw_stake.pool_amount,
+            withdraw_account.pool_amount,
         )?);
     }
 
