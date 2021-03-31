@@ -43,6 +43,7 @@ via separate system calls in the transaction beforehand, they must rely on this 
 Since this action is the one making those calls, prior to making those calls, the account_infos that
 do get passed in have zero-length arrays and are not writable. Trying to deserialize them AFTER making
 those raw account create calls will still be attempting to deserialize zero-length arrays.
+
 So we must do the initialization of these accounts in a separate follow up command.
 
 ## init_metadata_accounts
