@@ -12,20 +12,6 @@ use crate::{
     state::metadata::{NAME_LENGTH, SYMBOL_LENGTH, URI_LENGTH},
 };
 
-/// Used for telling caller what type of format you want back
-#[derive(Clone, PartialEq)]
-pub enum Format {
-    /// JSON format
-    JSON,
-    /// MsgPack format
-    MsgPack,
-}
-impl Default for Format {
-    fn default() -> Self {
-        Format::JSON
-    }
-}
-
 /// Instructions supported by the Metadata program.
 #[derive(Clone)]
 pub enum MetadataInstruction {
