@@ -59,6 +59,7 @@ impl Obligation {
     pub fn init(&mut self, params: InitObligationParams) {
         self.version = PROGRAM_VERSION;
         self.last_update = LastUpdate::new(params.current_slot);
+        self.lending_market = params.lending_market;
         self.owner = params.owner;
         self.deposits = params.deposits;
         self.borrows = params.borrows;
