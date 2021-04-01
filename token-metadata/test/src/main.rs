@@ -20,7 +20,7 @@ use {
 const METADATA_PROGRAM_PUBKEY: &str = "7DPp8nvckiC9aZcxBKztuucBPSkpzk539T1wyJfWyXnv";
 const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> () {
     let app_matches = App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
@@ -165,5 +165,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "If this worked correctly, updated metadata should have {:?}: {:?} ",
         update_uri, metadata.uri
     );
-    Ok(())
 }
