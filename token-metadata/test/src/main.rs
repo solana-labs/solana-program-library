@@ -20,7 +20,7 @@ use {
 const METADATA_PROGRAM_PUBKEY: &str = "meta75ZHbozdG3sYzM6PdN7PNK6w9PgsAEEjVYKoAKr";
 const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
-fn main() -> () {
+fn main() {
     let app_matches = App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
