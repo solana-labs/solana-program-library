@@ -2,30 +2,36 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::pubkey::Pubkey,
 };
-/// prefix used for PDAs to avoid certain collision attacks
+/// prefix used for PDAs to avoid certain collision attacks (https://en.wikipedia.org/wiki/Collision_attack#Chosen-prefix_collision_attack)
 pub const PREFIX: &str = "metadata";
 
-pub const NAME_LENGTH: usize = 32;
+pub const MAX_NAME_LENGTH: usize = 32;
 
-pub const SYMBOL_LENGTH: usize = 10;
+pub const MAX_SYMBOL_LENGTH: usize = 10;
 
-pub const URI_LENGTH: usize = 200;
+pub const MAX_URI_LENGTH: usize = 200;
 
-pub const METADATA_LEN: usize = 32 + NAME_LENGTH + SYMBOL_LENGTH + URI_LENGTH + 200;
+pub const MAX_METADATA_LEN: usize = 32 + MAX_NAME_LENGTH + MAX_SYMBOL_LENGTH + MAX_URI_LENGTH;
 
-pub const OWNER_LEN: usize = 32 + 32 + 200;
+pub const MAX_OWNER_LEN: usize = 32 + 32;
 
 #[repr(C)]
-#[derive(Clone, Default, BorshSerialize, BorshDeserialize)]
-pub struct Metadata {
-    /// Mint of the token asset
-    pub mint: Pubkey,
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+/// Args for Create call
+pub struct Data {
     /// The name of the asset
     pub name: String,
-    /// The symbol for the asset, ie, AAPL or SHOES
+    /// The symbol for the asset
     pub symbol: String,
     /// URI pointing to JSON representing the asset
     pub uri: String,
+}
+
+#[repr(C)]
+#[derive(Clone, BorshSerialize, BorshDeserialize)]
+pub struct Metadata {
+    pub mint: Pubkey,
+    pub data: Data,
 }
 
 #[repr(C)]

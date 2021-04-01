@@ -3,8 +3,8 @@ use {
         error::MetadataError,
         instruction::MetadataInstruction,
         state::{
-            Metadata, Owner, METADATA_LEN, NAME_LENGTH, OWNER_LEN, PREFIX, SYMBOL_LENGTH,
-            URI_LENGTH,
+            Metadata, Owner, MAX_METADATA_LEN, MAX_NAME_LENGTH, MAX_OWNER_LEN, MAX_SYMBOL_LENGTH,
+            MAX_URI_LENGTH, PREFIX,
         },
         utils::{assert_initialized, create_or_allocate_account_raw},
     },
@@ -55,15 +55,15 @@ pub fn process_create_metadata_accounts(
     let system_account_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
 
-    if name.len() > NAME_LENGTH {
+    if name.len() > MAX_NAME_LENGTH {
         return Err(MetadataError::NameTooLong.into());
     }
 
-    if symbol.len() > SYMBOL_LENGTH {
+    if symbol.len() > MAX_SYMBOL_LENGTH {
         return Err(MetadataError::SymbolTooLong.into());
     }
 
-    if uri.len() > URI_LENGTH {
+    if uri.len() > MAX_URI_LENGTH {
         return Err(MetadataError::UriTooLong.into());
     }
 
@@ -126,7 +126,7 @@ pub fn process_create_metadata_accounts(
         rent_info,
         system_account_info,
         payer_account_info,
-        METADATA_LEN,
+        MAX_METADATA_LEN,
         metadata_authority_signer_seeds,
     )?;
     create_or_allocate_account_raw(
@@ -135,7 +135,7 @@ pub fn process_create_metadata_accounts(
         rent_info,
         system_account_info,
         payer_account_info,
-        OWNER_LEN,
+        MAX_OWNER_LEN,
         owner_authority_signer_seeds,
     )?;
 
@@ -146,9 +146,9 @@ pub fn process_create_metadata_accounts(
     owner.metadata = *metadata_account_info.key;
 
     metadata.mint = *mint_info.key;
-    metadata.name = name;
-    metadata.symbol = symbol;
-    metadata.uri = uri;
+    metadata.data.name = name;
+    metadata.data.symbol = symbol;
+    metadata.data.uri = uri;
 
     owner.serialize(&mut *owner_account_info.data.borrow_mut())?;
     metadata.serialize(&mut *metadata_account_info.data.borrow_mut())?;
@@ -168,7 +168,7 @@ pub fn process_update_metadata_accounts(
     let owner_info = next_account_info(account_info_iter)?;
     let owner_account_info = next_account_info(account_info_iter)?;
 
-    if uri.len() > URI_LENGTH {
+    if uri.len() > MAX_URI_LENGTH {
         return Err(MetadataError::UriTooLong.into());
     }
 
@@ -187,7 +187,7 @@ pub fn process_update_metadata_accounts(
         return Err(MetadataError::OwnerIsNotSigner.into());
     }
 
-    metadata.uri = uri;
+    metadata.data.uri = uri;
 
     metadata.serialize(&mut *metadata_account_info.data.borrow_mut())?;
     Ok(())

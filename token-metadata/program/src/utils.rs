@@ -2,7 +2,6 @@ use {
     crate::error::MetadataError,
     solana_program::{
         account_info::AccountInfo,
-        entrypoint::ProgramResult,
         msg,
         program::{invoke, invoke_signed},
         program_error::ProgramError,
@@ -13,15 +12,6 @@ use {
     },
     std::convert::TryInto,
 };
-
-/// assert rent exempt
-pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
-    if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
-        Err(MetadataError::NotRentExempt.into())
-    } else {
-        Ok(())
-    }
-}
 
 /// assert initialized account
 pub fn assert_initialized<T: Pack + IsInitialized>(

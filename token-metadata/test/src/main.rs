@@ -163,6 +163,6 @@ fn main() {
     let metadata: Metadata = try_from_slice_unchecked(&account.data).unwrap();
     println!(
         "If this worked correctly, updated metadata should have {:?}: {:?} ",
-        update_uri, metadata.uri
+        update_uri, metadata.data.uri
     );
 }

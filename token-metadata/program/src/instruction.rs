@@ -1,3 +1,5 @@
+use crate::state::Data;
+
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
@@ -5,32 +7,7 @@ use {
         pubkey::Pubkey,
         sysvar,
     },
-    std::str::FromStr,
 };
-
-#[repr(C)]
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
-/// Args for Create call
-pub struct CreateMetadataAccountArgs {
-    /// The name of the asset
-    pub name: String,
-    /// The symbol for the asset
-    pub symbol: String,
-    /// URI pointing to JSON representing the asset
-    pub uri: String,
-}
-
-#[repr(C)]
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
-/// Args for init call
-pub struct InitMetadataAccountArgs {
-    /// The name of the asset
-    pub name: String,
-    /// The symbol for the asset, ie, AAPL or SHOES
-    pub symbol: String,
-    /// URI pointing to JSON representing the asset
-    pub uri: String,
-}
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -50,7 +27,7 @@ pub enum MetadataInstruction {
     ///   3. `[signer]` Mint authority
     ///   4. `[signer]` payer
     ///   5. `[]` System program
-    CreateMetadataAccounts(CreateMetadataAccountArgs),
+    CreateMetadataAccounts(Data),
 
     /// Update an  Metadata (name/symbol are unchangeable)
     ///   0. `[writable]`  Metadata account
@@ -82,19 +59,12 @@ pub fn create_metadata_accounts(
             AccountMeta::new_readonly(mint_authority, true),
             AccountMeta::new_readonly(payer, true),
             AccountMeta::new_readonly(owner, false),
-            AccountMeta::new_readonly(
-                Pubkey::from_str("11111111111111111111111111111111").unwrap(),
-                false,
-            ),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
-        data: MetadataInstruction::CreateMetadataAccounts(CreateMetadataAccountArgs {
-            name,
-            symbol,
-            uri,
-        })
-        .try_to_vec()
-        .unwrap(),
+        data: MetadataInstruction::CreateMetadataAccounts(Data { name, symbol, uri })
+            .try_to_vec()
+            .unwrap(),
     }
 }
 
