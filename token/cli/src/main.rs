@@ -14,7 +14,7 @@ use solana_clap_utils::{
         is_amount, is_amount_or_all, is_parsable, is_url_or_moniker, is_valid_pubkey,
         is_valid_signer, normalize_to_url_if_moniker,
     },
-    keypair::{pubkey_from_path, signer_from_path, DefaultSigner},
+    keypair::{signer_from_path, DefaultSigner, SignerFromPathConfig},
     nonce::*,
     offline::{self, *},
     ArgConstant,
@@ -1915,32 +1915,19 @@ fn main() {
             arg_name: default_signer_arg_name,
         };
 
-        // Owner doesn't sign when using a mulitisig...
-        let owner = if matches.is_present(MULTISIG_SIGNER_ARG.name)
-          || sub_command == "accounts" // when calling the `accounts` command...
-          || sub_command == "address" // when calling the `address` command...
-          || (sub_command == "create-account" // or when creating an associated token account.
-              && !matches.is_present("account_keypair"))
-        {
-            let owner_val = matches
-                .value_of("owner")
-                .unwrap_or(&cli_config.keypair_path);
-            pubkey_from_path(&matches, owner_val, "owner", &mut wallet_manager).unwrap_or_else(
-                |e| {
-                    eprintln!("error: {}", e);
-                    exit(1);
-                },
-            )
-        } else {
-            bulk_signers.push(None);
-            default_signer
-                .signer_from_path(&matches, &mut wallet_manager)
+        let (owner, signer) = {
+            let config = SignerFromPathConfig {
+                allow_null_signer: true,
+            };
+            let owner = default_signer
+                .signer_from_path_with_config(&matches, &mut wallet_manager, &config)
                 .unwrap_or_else(|e| {
                     eprintln!("error: {}", e);
                     exit(1);
-                })
-                .pubkey()
+                });
+            (owner.pubkey(), Some(owner))
         };
+        bulk_signers.push(signer);
 
         let (signer, fee_payer) = signer_from_path(
             &matches,
@@ -2306,13 +2293,14 @@ fn main() {
                     )?;
                 }
 
+                let signers = signer_info.signers_for_message(&message);
                 let mut transaction = Transaction::new_unsigned(message);
 
                 if config.sign_only {
-                    transaction.try_partial_sign(&signer_info.signers, recent_blockhash)?;
+                    transaction.try_partial_sign(&signers, recent_blockhash)?;
                     println!("{}", return_signers(&transaction, &OutputFormat::Display)?);
                 } else {
-                    transaction.try_sign(&signer_info.signers, recent_blockhash)?;
+                    transaction.try_sign(&signers, recent_blockhash)?;
                     let signature = if no_wait {
                         config.rpc_client.send_transaction(&transaction)?
                     } else {
