@@ -1056,7 +1056,7 @@ impl Processor {
     fn process_set_staker(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
-        let manager_info = next_account_info(account_info_iter)?;
+        let set_staker_authority_info = next_account_info(account_info_iter)?;
         let new_staker_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
@@ -1064,7 +1064,11 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        stake_pool.check_manager(manager_info)?;
+        let staker_signed = stake_pool.check_staker(set_staker_authority_info);
+        let manager_signed = stake_pool.check_manager(set_staker_authority_info);
+        if staker_signed.is_err() && manager_signed.is_err() {
+            return Err(StakePoolError::SignatureMissing.into());
+        }
         stake_pool.staker = *new_staker_info.key;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())

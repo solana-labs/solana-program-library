@@ -149,10 +149,10 @@ pub enum StakePoolInstruction {
     ///  3. '[]` New manager fee account
     SetManager,
 
-    ///  (Manager only) Update staker
+    ///  (Manager or staker only) Update staker
     ///
     ///  0. `[w]` StakePool
-    ///  1. `[s]` Manager
+    ///  1. `[s]` Manager or current staker
     ///  2. '[]` New staker pubkey
     SetStaker,
 }
@@ -421,12 +421,12 @@ pub fn set_manager(
 pub fn set_staker(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    manager: &Pubkey,
+    set_staker_authority: &Pubkey,
     new_staker: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(*set_staker_authority, true),
         AccountMeta::new_readonly(*new_staker, false),
     ];
     Ok(Instruction {

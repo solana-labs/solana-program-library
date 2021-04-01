@@ -1290,7 +1290,7 @@ fn main() {
             )
         )
         .subcommand(SubCommand::with_name("set-staker")
-            .about("Change staker account for the stake pool. Must be signed by the manager.")
+            .about("Change staker account for the stake pool. Must be signed by the manager or current staker.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
