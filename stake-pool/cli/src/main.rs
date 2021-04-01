@@ -559,7 +559,7 @@ fn command_deposit(
             &stake,
             &validator_stake_account,
             &token_receiver,
-            &stake_pool.owner_fee_account,
+            &stake_pool.manager_fee_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
         )?,
@@ -866,21 +866,21 @@ fn command_withdraw(
     Ok(())
 }
 
-fn command_set_owner(
+fn command_set_manager(
     config: &Config,
     stake_pool_address: &Pubkey,
-    new_owner: &Option<Pubkey>,
+    new_manager: &Option<Pubkey>,
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
     // If new accounts are missing in the arguments use the old ones
-    let new_owner = match new_owner {
-        None => stake_pool.owner,
+    let new_manager = match new_manager {
+        None => stake_pool.manager,
         Some(value) => *value,
     };
     let new_fee_receiver = match new_fee_receiver {
-        None => stake_pool.owner_fee_account,
+        None => stake_pool.manager_fee_account,
         Some(value) => {
             // Check for fee receiver being a valid token account and have to same mint as the stake pool
             let token_account =
@@ -895,11 +895,11 @@ fn command_set_owner(
     };
 
     let mut transaction = Transaction::new_with_payer(
-        &[spl_stake_pool::instruction::set_owner(
+        &[spl_stake_pool::instruction::set_manager(
             &spl_stake_pool::id(),
             &stake_pool_address,
             &config.authority.pubkey(),
-            &new_owner,
+            &new_manager,
             &new_fee_receiver,
         )?],
         Some(&config.fee_payer.pubkey()),
@@ -914,17 +914,17 @@ fn command_set_owner(
     Ok(())
 }
 
-fn command_set_manager(
+fn command_set_staker(
     config: &Config,
     stake_pool_address: &Pubkey,
-    new_manager: &Pubkey,
+    new_staker: &Pubkey,
 ) -> CommandResult {
     let mut transaction = Transaction::new_with_payer(
-        &[spl_stake_pool::instruction::set_manager(
+        &[spl_stake_pool::instruction::set_staker(
             &spl_stake_pool::id(),
             &stake_pool_address,
             &config.authority.pubkey(),
-            &new_manager,
+            &new_staker,
         )?],
         Some(&config.fee_payer.pubkey()),
     );
@@ -996,7 +996,7 @@ fn main() {
                 .validator(is_keypair)
                 .takes_value(true)
                 .help(
-                    "Specify the stake pool manager or owner. \
+                    "Specify the stake pool staker or manager. \
                      This may be a keypair file, the ASK keyword. \
                      Defaults to the client keypair.",
                 ),
@@ -1047,7 +1047,7 @@ fn main() {
             )
         )
         .subcommand(SubCommand::with_name("create-validator-stake")
-            .about("Create a new stake account to use with the pool. Must be signed by the pool manager.")
+            .about("Create a new stake account to use with the pool. Must be signed by the pool staker.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -1068,7 +1068,7 @@ fn main() {
             )
         )
         .subcommand(SubCommand::with_name("add-validator")
-            .about("Add validator account to the stake pool. Must be signed by the pool manager.")
+            .about("Add validator account to the stake pool. Must be signed by the pool staker.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -1098,7 +1098,7 @@ fn main() {
             )
         )
         .subcommand(SubCommand::with_name("remove-validator")
-            .about("Remove validator account from the stake pool. Must be signed by the pool manager.")
+            .about("Remove validator account from the stake pool. Must be signed by the pool staker.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -1229,42 +1229,8 @@ fn main() {
                     .help("Stake account to receive SOL from the stake pool. Defaults to a new stake account."),
             )
         )
-        .subcommand(SubCommand::with_name("set-owner")
-            .about("Change owner or fee receiver account for the stake pool. Must be signed by the current owner.")
-            .arg(
-                Arg::with_name("pool")
-                    .index(1)
-                    .validator(is_pubkey)
-                    .value_name("POOL_ADDRESS")
-                    .takes_value(true)
-                    .required(true)
-                    .help("Stake pool address."),
-            )
-            .arg(
-                Arg::with_name("new_owner")
-                    .long("new-owner")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
-                    .takes_value(true)
-                    .help("Public key for the new stake pool owner."),
-            )
-            .arg(
-                Arg::with_name("new_fee_receiver")
-                    .long("new-fee-receiver")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
-                    .takes_value(true)
-                    .help("Public key for the new account to set as the stake pool fee receiver."),
-            )
-            .group(ArgGroup::with_name("new_accounts")
-                .arg("new_owner")
-                .arg("new_fee_receiver")
-                .required(true)
-                .multiple(true)
-            )
-        )
         .subcommand(SubCommand::with_name("set-manager")
-            .about("Change manager account for the stake pool. Must be signed by the owner.")
+            .about("Change manager or fee receiver account for the stake pool. Must be signed by the current manager.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -1276,11 +1242,45 @@ fn main() {
             )
             .arg(
                 Arg::with_name("new_manager")
-                    .index(2)
+                    .long("new-manager")
                     .validator(is_pubkey)
                     .value_name("ADDRESS")
                     .takes_value(true)
                     .help("Public key for the new stake pool manager."),
+            )
+            .arg(
+                Arg::with_name("new_fee_receiver")
+                    .long("new-fee-receiver")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .help("Public key for the new account to set as the stake pool fee receiver."),
+            )
+            .group(ArgGroup::with_name("new_accounts")
+                .arg("new_manager")
+                .arg("new_fee_receiver")
+                .required(true)
+                .multiple(true)
+            )
+        )
+        .subcommand(SubCommand::with_name("set-staker")
+            .about("Change staker account for the stake pool. Must be signed by the manager.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("new_staker")
+                    .index(2)
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .help("Public key for the new stake pool staker."),
             )
         )
         .get_matches();
@@ -1404,16 +1404,21 @@ fn main() {
                 &stake_receiver,
             )
         }
-        ("set-owner", Some(arg_matches)) => {
-            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let new_owner: Option<Pubkey> = pubkey_of(arg_matches, "new_owner");
-            let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
-            command_set_owner(&config, &stake_pool_address, &new_owner, &new_fee_receiver)
-        }
         ("set-manager", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let new_manager = pubkey_of(arg_matches, "new_manager").unwrap();
-            command_set_manager(&config, &stake_pool_address, &new_manager)
+            let new_manager: Option<Pubkey> = pubkey_of(arg_matches, "new_manager");
+            let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
+            command_set_manager(
+                &config,
+                &stake_pool_address,
+                &new_manager,
+                &new_fee_receiver,
+            )
+        }
+        ("set-staker", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let new_staker = pubkey_of(arg_matches, "new_staker").unwrap();
+            command_set_staker(&config, &stake_pool_address, &new_staker)
         }
         _ => unreachable!(),
     }

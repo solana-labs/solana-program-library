@@ -25,57 +25,57 @@ async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, Keypair) {
         .await
         .unwrap();
 
-    let new_manager = Keypair::new();
+    let new_staker = Keypair::new();
 
     (
         banks_client,
         payer,
         recent_blockhash,
         stake_pool_accounts,
-        new_manager,
+        new_staker,
     )
 }
 
 #[tokio::test]
-async fn success_set_manager() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_manager) =
+async fn success_set_staker() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_staker) =
         setup().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_manager(
+        &[instruction::set_staker(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.owner.pubkey(),
-            &new_manager.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            &new_staker.pubkey(),
         )
         .unwrap()],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
+    transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool = state::StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
 
-    assert_eq!(stake_pool.manager, new_manager.pubkey());
+    assert_eq!(stake_pool.staker, new_staker.pubkey());
 }
 
 #[tokio::test]
-async fn fail_wrong_owner() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_manager) =
+async fn fail_wrong_manager() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_staker) =
         setup().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_manager(
+        &[instruction::set_staker(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &new_manager.pubkey(),
-            &new_manager.pubkey(),
+            &new_staker.pubkey(),
+            &new_staker.pubkey(),
         )
         .unwrap()],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &new_manager], recent_blockhash);
+    transaction.sign(&[&payer, &new_staker], recent_blockhash);
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -87,25 +87,25 @@ async fn fail_wrong_owner() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::WrongOwner as u32;
+            let program_error = error::StakePoolError::WrongManager as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while malicious try to set owner"),
+        _ => panic!("Wrong error occurs while malicious try to set manager"),
     }
 }
 
 #[tokio::test]
-async fn fail_set_manager_without_signature() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_manager) =
+async fn fail_set_staker_without_signature() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_staker) =
         setup().await;
 
-    let data = instruction::StakePoolInstruction::SetManager
+    let data = instruction::StakePoolInstruction::SetStaker
         .try_to_vec()
         .unwrap();
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
-        AccountMeta::new_readonly(stake_pool_accounts.owner.pubkey(), false),
-        AccountMeta::new_readonly(new_manager.pubkey(), false),
+        AccountMeta::new_readonly(stake_pool_accounts.manager.pubkey(), false),
+        AccountMeta::new_readonly(new_staker.pubkey(), false),
     ];
     let instruction = Instruction {
         program_id: id(),
@@ -129,6 +129,6 @@ async fn fail_set_manager_without_signature() {
             let program_error = error::StakePoolError::SignatureMissing as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while try to set new owner without signature"),
+        _ => panic!("Wrong error occurs while try to set new manager without signature"),
     }
 }
