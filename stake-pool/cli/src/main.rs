@@ -607,7 +607,7 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
         for validator in validator_list.validators {
             println!(
                 "Vote Account: {}\tBalance: {}\tEpoch: {}",
-                validator.validator_account, validator.balance, validator.last_update_epoch
+                validator.vote_account, validator.balance, validator.last_update_epoch
             );
         }
     }
@@ -654,7 +654,7 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
             } else {
                 let (stake_account, _) = find_stake_address_for_validator(
                     &spl_stake_pool::id(),
-                    &item.validator_account,
+                    &item.vote_account,
                     &pool,
                 );
                 Some(stake_account)
