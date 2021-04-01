@@ -14,7 +14,7 @@ use {
 pub struct CreateMetadataAccountArgs {
     /// The name of the asset
     pub name: String,
-    /// The symbol for the asset, ie, AAPL or SHOES
+    /// The symbol for the asset
     pub symbol: String,
     /// URI pointing to JSON representing the asset
     pub uri: String,
