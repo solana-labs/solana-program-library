@@ -228,6 +228,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let owner_fee_info = next_account_info(account_info_iter)?;
@@ -311,6 +312,7 @@ impl Processor {
 
         stake_pool.account_type = AccountType::StakePool;
         stake_pool.owner = *owner_info.key;
+        stake_pool.manager = *manager_info.key;
         stake_pool.deposit_bump_seed = deposit_bump_seed;
         stake_pool.withdraw_bump_seed = withdraw_bump_seed;
         stake_pool.validator_list = *validator_list_info.key;
@@ -332,7 +334,7 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
-        let owner_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
         let funder_info = next_account_info(account_info_iter)?;
         let stake_account_info = next_account_info(account_info_iter)?;
         let validator_info = next_account_info(account_info_iter)?;
@@ -351,7 +353,7 @@ impl Processor {
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
-        stake_pool.check_owner(owner_info)?;
+        stake_pool.check_manager(manager_info)?;
 
         if *system_program_info.key != solana_program::system_program::id() {
             return Err(ProgramError::IncorrectProgramId);
@@ -396,8 +398,8 @@ impl Processor {
             &stake_program::initialize(
                 &stake_account_info.key,
                 &stake_program::Authorized {
-                    staker: *owner_info.key,
-                    withdrawer: *owner_info.key,
+                    staker: *manager_info.key,
+                    withdrawer: *manager_info.key,
                 },
                 &stake_program::Lockup::default(),
             ),
@@ -411,7 +413,7 @@ impl Processor {
         invoke(
             &stake_program::delegate_stake(
                 &stake_account_info.key,
-                &owner_info.key,
+                &manager_info.key,
                 &validator_info.key,
             ),
             &[
@@ -420,7 +422,7 @@ impl Processor {
                 clock_info.clone(),
                 stake_history_info.clone(),
                 stake_config_info.clone(),
-                owner_info.clone(),
+                manager_info.clone(),
             ],
         )
     }
@@ -432,7 +434,7 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
-        let owner_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
         let deposit_info = next_account_info(account_info_iter)?;
         let withdraw_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
@@ -458,7 +460,7 @@ impl Processor {
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
         stake_pool.check_authority_deposit(deposit_info.key, program_id, stake_pool_info.key)?;
 
-        stake_pool.check_owner(owner_info)?;
+        stake_pool.check_manager(manager_info)?;
 
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
@@ -549,7 +551,7 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
-        let owner_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
         let withdraw_info = next_account_info(account_info_iter)?;
         let new_stake_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
@@ -571,7 +573,7 @@ impl Processor {
         }
 
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
-        stake_pool.check_owner(owner_info)?;
+        stake_pool.check_manager(manager_info)?;
 
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
@@ -1049,6 +1051,24 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes [SetOwner](enum.Instruction.html).
+    fn process_set_manager(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let owner_info = next_account_info(account_info_iter)?;
+        let new_manager_info = next_account_info(account_info_iter)?;
+
+        let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_owner(owner_info)?;
+        stake_pool.manager = *new_manager_info.key;
+        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
+        Ok(())
+    }
+
     /// Processes [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = StakePoolInstruction::try_from_slice(input)?;
@@ -1092,6 +1112,10 @@ impl Processor {
                 msg!("Instruction: SetOwner");
                 Self::process_set_owner(program_id, accounts)
             }
+            StakePoolInstruction::SetManager => {
+                msg!("Instruction: SetManager");
+                Self::process_set_manager(program_id, accounts)
+            }
         }
     }
 }
@@ -1125,6 +1149,7 @@ impl PrintProgramError for StakePoolError {
             }
             StakePoolError::WrongMintingAuthority => msg!("Error: Wrong minting authority set for mint pool account"),
             StakePoolError::UnexpectedValidatorListAccountSize=> msg!("Error: The size of the given validator stake list does match the expected amount"),
+            StakePoolError::WrongManager=> msg!("Error: Wrong pool manager account"),
         }
     }
 }

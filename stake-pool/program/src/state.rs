@@ -31,9 +31,11 @@ impl Default for AccountType {
 pub struct StakePool {
     /// Account type, must be StakePool currently
     pub account_type: AccountType,
-    /// Owner authority
-    /// allows for updating the staking authority
+    /// Owner authority, allows for updating the manager, owner, and fee account
     pub owner: Pubkey,
+    /// Manager authority, allows for adding and removing validators, and managing stake
+    /// distribution
+    pub manager: Pubkey,
     /// Deposit authority bump seed
     /// for `create_program_address(&[state::StakePool account, "deposit"])`
     pub deposit_bump_seed: u8,
@@ -160,6 +162,17 @@ impl StakePool {
             return Err(StakePoolError::WrongOwner.into());
         }
         if !owner_info.is_signer {
+            return Err(StakePoolError::SignatureMissing.into());
+        }
+        Ok(())
+    }
+
+    /// Check manager validity and signature
+    pub(crate) fn check_manager(&self, manager_info: &AccountInfo) -> Result<(), ProgramError> {
+        if *manager_info.key != self.manager {
+            return Err(StakePoolError::WrongManager.into());
+        }
+        if !manager_info.is_signer {
             return Err(StakePoolError::SignatureMissing.into());
         }
         Ok(())

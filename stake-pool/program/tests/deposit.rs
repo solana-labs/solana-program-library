@@ -510,7 +510,7 @@ async fn test_stake_pool_deposit_to_unknown_validator() {
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            &stake_pool_accounts.owner,
+            &stake_pool_accounts.manager,
         )
         .await;
 

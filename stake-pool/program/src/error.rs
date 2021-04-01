@@ -79,6 +79,9 @@ pub enum StakePoolError {
     /// The size of the given validator stake list does match the expected amount
     #[error("UnexpectedValidatorListAccountSize")]
     UnexpectedValidatorListAccountSize,
+    /// Wrong pool manager account.
+    #[error("WrongManager")]
+    WrongManager,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
