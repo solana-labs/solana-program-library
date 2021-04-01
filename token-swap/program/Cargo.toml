@@ -1,6 +1,6 @@
 [package]
 name = "spl-token-swap"
-version = "0.1.0"
+version = "2.0.0"
 description = "Solana Program Library Token Swap"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -30,3 +30,6 @@ sim =  { path = "./sim" }
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
