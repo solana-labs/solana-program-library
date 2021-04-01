@@ -23,7 +23,7 @@ that can be perused learning and run if desired with `cargo run --bin spl-metada
 
 The on-chain Token Metadata program is written in Rust and available on crates.io as
 [spl-metadata](https://crates.io/crates/spl-token-metadata) and
-[docs.rs](https://docs.rs/spl-metadata).
+[docs.rs](https://docs.rs/spl-token-metadata).
 
 The crate provides two instructions, `create_metadata_accounts()`, and `update_metadata_accounts()` to easily create instructions for the program
 
