@@ -3798,40 +3798,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-metadata"
-version = "0.0.1"
-dependencies = [
- "arrayref",
- "assert_matches",
- "borsh 0.8.2",
- "log",
- "num-derive",
- "num-traits",
- "proptest",
- "serde",
- "serde_yaml",
- "solana-program",
- "solana-program-test",
- "solana-sdk",
- "spl-token 3.1.0",
- "thiserror",
- "tokio 0.3.7",
-]
-
-[[package]]
-name = "spl-metadata-test-client"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "borsh 0.8.2",
- "solana-client",
- "solana-program",
- "solana-sdk",
- "spl-metadata",
- "spl-token 3.1.0",
-]
-
-[[package]]
 name = "spl-record"
 version = "0.1.0"
 dependencies = [
@@ -3976,6 +3942,43 @@ dependencies = [
  "solana-sdk",
  "spl-token 3.1.0",
  "spl-token-lending",
+]
+
+[[package]]
+name = "spl-token-metadata"
+version = "0.0.1"
+dependencies = [
+ "arrayref",
+ "assert_matches",
+ "borsh 0.8.2",
+ "log",
+ "num-derive",
+ "num-traits",
+ "proptest",
+ "serde",
+ "serde_yaml",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token 3.1.0",
+ "thiserror",
+ "tokio 0.3.7",
+]
+
+[[package]]
+name = "spl-token-metadata-test-client"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "borsh 0.8.2",
+ "clap",
+ "solana-clap-utils",
+ "solana-cli-config",
+ "solana-client",
+ "solana-program",
+ "solana-sdk",
+ "spl-token 3.1.0",
+ "spl-token-metadata",
 ]
 
 [[package]]

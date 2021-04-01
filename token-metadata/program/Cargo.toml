@@ -1,5 +1,5 @@
 [package]
-name = "spl-metadata"
+name = "spl-token-metadata"
 version = "0.0.1"
 description = "Solana Program Metadata"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]

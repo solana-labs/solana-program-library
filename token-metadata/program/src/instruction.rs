@@ -46,7 +46,7 @@ pub enum MetadataInstruction {
     /// Create an  Owner and  Metadata objects.
     ///   0. `[writable]`  Owner key (pda of ['metadata', program id, name, symbol])
     ///   1. `[writable]`  metadata key (pda of ['metadata', program id, mint id])
-    ///   2. `[]` Mint of
+    ///   2. `[]` Mint of token asset
     ///   3. `[signer]` Mint authority
     ///   4. `[signer]` payer
     ///   5. `[]` System program

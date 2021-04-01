@@ -19,7 +19,6 @@ use {
     spl_token::state::Mint,
 };
 
-/// Processes an instruction
 pub fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -38,7 +37,7 @@ pub fn process_instruction(
     }
 }
 
-/// Create a new accounts
+/// Create a new account instruction
 pub fn process_create_metadata_accounts(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -157,7 +156,7 @@ pub fn process_create_metadata_accounts(
     Ok(())
 }
 
-/// Update existing accounts
+/// Update existing account instruction
 pub fn process_update_metadata_accounts(
     _: &Pubkey,
     accounts: &[AccountInfo],

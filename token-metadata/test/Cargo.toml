@@ -1,5 +1,5 @@
 [package]
-name = "spl-metadata-test-client"
+name = "spl-token-metadata-test-client"
 version = "0.1.0"
 description = "Solana Program Library Metadata Integration Test Client"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
@@ -14,5 +14,8 @@ solana-program = "1.6.2"
 solana-sdk = "1.6.2"
 bincode = "1.3.2"
 borsh = "0.8.2"
-spl-metadata = { path = "../program", features = [ "no-entrypoint" ] }
+clap = "2.33.3"
+solana-clap-utils = "1.6"
+solana-cli-config = "1.6"
+spl-token-metadata = { path = "../program", features = [ "no-entrypoint" ] }
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
