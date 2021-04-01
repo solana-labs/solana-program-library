@@ -1097,6 +1097,22 @@ impl Processor {
                 msg!("Instruction: RemoveValidatorFromPool");
                 Self::process_remove_validator_from_pool(program_id, accounts)
             }
+            StakePoolInstruction::SplitIntoTransient(_amount) => {
+                msg!("Instruction: SplitIntoTransient");
+                Ok(())
+            }
+            StakePoolInstruction::TransferTransientStake(_amount) => {
+                msg!("Instruction: TransferTransientStake");
+                Ok(())
+            }
+            StakePoolInstruction::DelegateTransientStake => {
+                msg!("Instruction: DelegateTransientStake");
+                Ok(())
+            }
+            StakePoolInstruction::MergeTransientStake => {
+                msg!("Instruction: MergeTransientStake");
+                Ok(())
+            }
             StakePoolInstruction::UpdateValidatorListBalance => {
                 msg!("Instruction: UpdateValidatorListBalance");
                 Self::process_update_validator_list_balance(program_id, accounts)

@@ -92,11 +92,102 @@ pub enum StakePoolInstruction {
     ///  10. `[]` Stake program id,
     RemoveValidatorFromPool,
 
+    /// (Staker only) Split a validator stake account into a transient stake account.
+    ///
+    /// In order to rebalance the pool without taking custody, the staker needs
+    /// a way of reducing the stake on a stake account. This instruction splits
+    /// some amount of stake, up to the total activated stake, from the canonical
+    /// validator stake account, into its "transient" stake account, defined by:
+    ///
+    /// ```
+    /// Pubkey::find_program_address(
+    ///     &[&stake_account_address.to_bytes()[..32],], program_id,
+    /// )
+    /// ```
+    ///
+    /// After the split, the instruction automatically deactivates the stake.
+    ///
+    /// The instruction only succeeds if the transient stake account does not exist,
+    /// or exists with deactivating stake.
+    ///
+    ///  0. `[]` Stake pool
+    ///  1. `[s]` Stake pool staker
+    ///  2. `[s]` Funder for stake account
+    ///  3. `[]` Validator list
+    ///  4. `[]` Stake pool withdraw authority
+    ///  5. `[w]` Canonical stake account to split from
+    ///  5. `[w]` Transient stake account to receive split
+    ///  6. `[]` Clock sysvar
+    ///  7. `[]` Rent sysvar
+    ///  8. `[]` System program
+    ///  9. `[]` Stake program
+    ///  userdata: amount of lamports to split
+    SplitIntoTransient(u64),
+
+    /// (Staker only) Move stake from one transient stake account to another.
+    ///
+    /// Once a transient stake is deactivated, some or all of it can be moved
+    /// to another deactivated transient stake for rebalancing. This instruction
+    /// also updates both validator balances in the validator list.
+    ///
+    /// This instruction only succeeds if the source transient stake account is
+    /// deactivated, and the destination transient stake account is either
+    /// deactivated or non-existent.
+    ///
+    ///  0. `[]` Stake pool
+    ///  1. `[s]` Stake pool staker
+    ///  2. `[s]` Funder for stake account
+    ///  3. `[w]` Validator list
+    ///  4. `[]` Stake pool withdraw authority
+    ///  5. `[w]` Source transient stake account
+    ///  6. `[]` Source canonical stake account
+    ///  7. `[w]` Destination transient stake account
+    ///  8. `[]` Destination canonical stake account
+    ///  9. `[]` Clock sysvar
+    /// 10. `[]` Rent sysvar
+    /// 11. `[]` System program
+    /// 12. `[]` Stake program
+    /// userdata: amount of lamports to move
+    TransferTransientStake(u64),
+
+    /// (Staker only) Delegate transient stake to the appropriate validator
+    ///
+    /// Once a deactived transient stake is rebalanced, the staker can delegate it.
+    ///
+    /// This instruction only succeeds if the transient stake account exists and is
+    /// deactivated.
+    ///
+    ///  0. `[]` Stake pool
+    ///  1. `[s]` Stake pool staker
+    ///  2. `[]` Validator list
+    ///  3. `[]` Stake pool withdraw authority
+    ///  4. `[w]` Transient stake account
+    ///  5. `[]` Canonical stake account
+    ///  6. '[]' Clock sysvar
+    ///  7. `[]` Stake program
+    DelegateTransientStake,
+
+    /// (Staker only) Merge transient stake into its corresponding canonical stake account
+    ///
+    /// This instruction only succeeds if both stake accounts exist and are
+    /// activated.
+    ///
+    ///  0. `[]` Stake pool
+    ///  1. `[s]` Stake pool staker
+    ///  2. `[]` Validator list
+    ///  3. `[]` Stake pool withdraw authority
+    ///  4. `[w]` Transient stake account
+    ///  5. `[w]` Canonical stake account
+    ///  6. '[]' Clock sysvar
+    ///  7. `[]` Stake program
+    MergeTransientStake,
+
     ///   Updates balances of validator stake accounts in the pool
     ///
     ///   0. `[w]` Validator stake list storage account
     ///   1. `[]` Sysvar clock account
-    ///   2. ..2+N ` [] N validator stake accounts to update balances
+    ///   2. ..2+N ` [] N pairs of validator and transient stake accounts to
+    ///   update balances
     UpdateValidatorListBalance,
 
     ///   Updates total pool balance based on balances in validator stake account list storage
@@ -127,10 +218,15 @@ pub enum StakePoolInstruction {
     ///   Withdraw the token from the pool at the current ratio.
     ///   The amount withdrawn is the MIN(u64, stake size)
     ///
+    ///   A validator stake account can be withdrawn from freely, and a transient
+    ///   stake account can be withdrawn from if it is:
+    ///   * activated
+    ///   * deactivated and untouched for more than 1 epoch
+    ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
     ///   2. `[]` Stake pool withdraw authority
-    ///   3. `[w]` Validator stake account to split
+    ///   3. `[w]` Validator or untouched transient stake account to split
     ///   4. `[w]` Unitialized stake account to receive withdrawal
     ///   5. `[]` User account to set as a new withdraw authority
     ///   6. `[w]` User account with pool tokens to burn from
