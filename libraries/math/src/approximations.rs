@@ -1,8 +1,8 @@
 //! Approximation calculations
 
 use {
-    num_traits::{PrimInt, CheckedShl, CheckedShr},
-    std::cmp::{Ordering},
+    num_traits::{CheckedShl, CheckedShr, PrimInt},
+    std::cmp::Ordering,
 };
 
 const MAX_SQRT_ITERATIONS: u8 = 50;
@@ -16,7 +16,7 @@ const MAX_SQRT_ITERATIONS: u8 = 50;
 /// https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)
 pub fn sqrt<T: PrimInt + CheckedShl + CheckedShr>(radicand: T) -> Option<T> {
     match radicand.cmp(&T::zero()) {
-        Ordering::Less => return None, // fail for less than 0
+        Ordering::Less => return None,             // fail for less than 0
         Ordering::Equal => return Some(T::zero()), // do nothing for 0
         _ => {}
     }
