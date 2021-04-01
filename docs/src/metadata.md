@@ -78,5 +78,5 @@ metadata, we could create a new struct called Youtube and seed it with the seed
 ["metadata".as_bytes(), program_id.as_ref(), mint_key.as_ref(), "youtube".as_bytes()]
 ```
 
-And then only those interested in that metadata need search for it, and it's uniqueness is ensured. It can also
+And then only those interested in that metadata need search for it, and its uniqueness is ensured. It can also
 have it's own update action that follows a similar pattern to the original update action.
