@@ -1,35 +1,45 @@
 //! Approximation calculations
 
 use {
-    num_traits::{CheckedAdd, CheckedDiv, One, Zero},
-    std::cmp::Eq,
+    num_traits::{PrimInt, CheckedShl, CheckedShr},
+    std::cmp::{Ordering},
 };
 
-const SQRT_ITERATIONS: u8 = 50;
+const MAX_SQRT_ITERATIONS: u8 = 50;
 
-/// Perform square root
-pub fn sqrt<T: CheckedAdd + CheckedDiv + One + Zero + Eq + Copy>(radicand: T) -> Option<T> {
-    if radicand == T::zero() {
-        return Some(T::zero());
+/// Calculate square root of the given number
+///
+/// Code lovingly adapted from the excellent work at:
+/// https://github.com/derekdreery/integer-sqrt-rs
+///
+/// The algorithm is based on the implementation in:
+/// https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)
+pub fn sqrt<T: PrimInt + CheckedShl + CheckedShr>(radicand: T) -> Option<T> {
+    match radicand.cmp(&T::zero()) {
+        Ordering::Less => return None, // fail for less than 0
+        Ordering::Equal => return Some(T::zero()), // do nothing for 0
+        _ => {}
     }
-    // A good initial guess is the average of the interval that contains the
-    // input number.  For all numbers, that will be between 1 and the given number.
-    let one = T::one();
-    let two = one.checked_add(&one)?;
-    let mut guess = radicand.checked_div(&two)?.checked_add(&one)?;
-    let mut last_guess = guess;
-    for _ in 0..SQRT_ITERATIONS {
-        // x_k+1 = (x_k + radicand / x_k) / 2
-        guess = last_guess
-            .checked_add(&radicand.checked_div(&last_guess)?)?
-            .checked_div(&two)?;
-        if last_guess == guess {
-            break;
+
+    // Compute bit, the largest power of 4 <= n
+    let max_shift: u32 = T::zero().leading_zeros() - 1;
+    let shift: u32 = (max_shift - radicand.leading_zeros()) & !1;
+    let mut bit = T::one().checked_shl(shift)?;
+
+    let mut n = radicand;
+    let mut result = T::zero();
+    let mut num_iterations = 0;
+    while bit != T::zero() && num_iterations < MAX_SQRT_ITERATIONS {
+        if n >= result.checked_add(&bit)? {
+            n = n.checked_sub(&result.checked_add(&bit)?)?;
+            result = result.checked_shr(1)?.checked_add(&bit)?;
         } else {
-            last_guess = guess;
+            result = result.checked_shr(1)?;
         }
+        bit = bit.checked_shr(2)?;
+        num_iterations += 1;
     }
-    Some(guess)
+    Some(result)
 }
 
 #[cfg(test)]

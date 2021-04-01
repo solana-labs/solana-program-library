@@ -62,7 +62,7 @@ async fn test_sqrt_u128() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
     // Dial down the BPF compute budget to detect if the operation gets bloated in the future
-    pc.set_bpf_compute_max_units(5_500);
+    pc.set_bpf_compute_max_units(4_000);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -78,8 +78,7 @@ async fn test_sqrt_u128() {
 async fn test_sqrt_u128_max() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    // This is pretty big too!
-    pc.set_bpf_compute_max_units(90_000);
+    pc.set_bpf_compute_max_units(6_000);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
