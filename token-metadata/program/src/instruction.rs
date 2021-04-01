@@ -98,7 +98,7 @@ pub fn create_metadata_accounts(
     }
 }
 
-/// update  metadata account instruction
+/// update metadata account instruction
 pub fn update_metadata_accounts(
     program_id: Pubkey,
     metadata_account: Pubkey,
