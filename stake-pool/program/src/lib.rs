@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-//! A program for creating pools of Solana stakes managed by a Stake-o-Matic
+//! A program for creating and managing pools of stake
 
 pub mod borsh;
 pub mod error;
@@ -14,44 +14,47 @@ pub mod entrypoint;
 
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
-use solana_program::{program_error::ProgramError, pubkey::Pubkey};
+use solana_program::pubkey::Pubkey;
 
 /// Seed for deposit authority seed
-pub const AUTHORITY_DEPOSIT: &[u8] = b"deposit";
+const AUTHORITY_DEPOSIT: &[u8] = b"deposit";
 
 /// Seed for withdraw authority seed
-pub const AUTHORITY_WITHDRAW: &[u8] = b"withdraw";
+const AUTHORITY_WITHDRAW: &[u8] = b"withdraw";
 
-/// Calculates the authority address
-pub fn create_pool_authority_address(
+/// Generates the deposit authority program address for the stake pool
+pub fn find_deposit_authority_program_address(
     program_id: &Pubkey,
-    stake_pool: &Pubkey,
-    authority: &[u8],
-    bump_seed: u8,
-) -> Result<Pubkey, ProgramError> {
-    Pubkey::create_program_address(
-        &[&stake_pool.to_bytes()[..32], authority, &[bump_seed]],
-        program_id,
-    )
-    .map_err(|_| crate::error::StakePoolError::InvalidProgramAddress.into())
-}
-
-/// Generates seed bump for stake pool authorities
-pub fn find_authority_bump_seed(
-    program_id: &Pubkey,
-    stake_pool: &Pubkey,
-    authority: &[u8],
-) -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[&stake_pool.to_bytes()[..32], authority], program_id)
-}
-/// Generates stake account address for the validator
-pub fn find_stake_address_for_validator(
-    program_id: &Pubkey,
-    validator: &Pubkey,
-    stake_pool: &Pubkey,
+    stake_pool_address: &Pubkey,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[&validator.to_bytes()[..32], &stake_pool.to_bytes()[..32]],
+        &[&stake_pool_address.to_bytes()[..32], AUTHORITY_DEPOSIT],
+        program_id,
+    )
+}
+
+/// Generates the withdraw authority program address for the stake pool
+pub fn find_withdraw_authority_program_address(
+    program_id: &Pubkey,
+    stake_pool_address: &Pubkey,
+) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[&stake_pool_address.to_bytes()[..32], AUTHORITY_WITHDRAW],
+        program_id,
+    )
+}
+
+/// Generates the stake program address for a validator's vote account
+pub fn find_stake_program_address(
+    program_id: &Pubkey,
+    vote_account_address: &Pubkey,
+    stake_pool_address: &Pubkey,
+) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[
+            &vote_account_address.to_bytes()[..32],
+            &stake_pool_address.to_bytes()[..32],
+        ],
         program_id,
     )
 }

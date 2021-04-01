@@ -13,8 +13,8 @@ use {
     },
     solana_vote_program::{self, vote_state::VoteState},
     spl_stake_pool::{
-        borsh::get_instance_packed_len, find_stake_address_for_validator, id, instruction,
-        processor, stake_program, state,
+        borsh::get_instance_packed_len, find_stake_program_address, id, instruction, processor,
+        stake_program, state,
     },
 };
 
@@ -376,8 +376,7 @@ pub struct ValidatorStakeAccount {
 impl ValidatorStakeAccount {
     pub fn new_with_target_authority(authority: &Pubkey, stake_pool: &Pubkey) -> Self {
         let validator = Keypair::new();
-        let (stake_account, _) =
-            find_stake_address_for_validator(&id(), &validator.pubkey(), stake_pool);
+        let (stake_account, _) = find_stake_program_address(&id(), &validator.pubkey(), stake_pool);
         ValidatorStakeAccount {
             stake_account,
             target_authority: *authority,

@@ -4,7 +4,6 @@ use {
     crate::{
         borsh::try_from_slice_unchecked,
         error::StakePoolError,
-        find_authority_bump_seed, find_stake_address_for_validator,
         instruction::{Fee, StakePoolInstruction},
         stake_program,
         state::{AccountType, StakePool, ValidatorList, ValidatorStakeInfo},
@@ -56,7 +55,7 @@ impl Processor {
     ) -> bool {
         // Check stake account address validity
         let (stake_address, _) =
-            find_stake_address_for_validator(&program_id, &vote_account, &stake_pool_info.key);
+            crate::find_stake_program_address(&program_id, &vote_account, &stake_pool_info.key);
         stake_address == *stake_account_info.key
     }
 
@@ -295,9 +294,9 @@ impl Processor {
         }
 
         let (_, deposit_bump_seed) =
-            find_authority_bump_seed(program_id, stake_pool_info.key, AUTHORITY_DEPOSIT);
+            crate::find_deposit_authority_program_address(program_id, stake_pool_info.key);
         let (withdraw_authority_key, withdraw_bump_seed) =
-            find_authority_bump_seed(program_id, stake_pool_info.key, AUTHORITY_WITHDRAW);
+            crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
 
         let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
 
@@ -361,7 +360,7 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        let (stake_address, bump_seed) = find_stake_address_for_validator(
+        let (stake_address, bump_seed) = crate::find_stake_program_address(
             &program_id,
             &validator_info.key,
             &stake_pool_info.key,

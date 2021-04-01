@@ -28,10 +28,10 @@ use {
     spl_stake_pool::{
         self,
         borsh::get_instance_packed_len,
-        create_pool_authority_address, find_authority_bump_seed, find_stake_address_for_validator,
+        find_deposit_authority_program_address, find_stake_program_address,
+        find_withdraw_authority_program_address,
         stake_program::{self, StakeAuthorize, StakeState},
         state::{StakePool, ValidatorList},
-        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW,
     },
     std::process::exit,
 };
@@ -133,11 +133,8 @@ fn command_create_pool(
     let default_decimals = spl_token::native_mint::DECIMALS;
 
     // Calculate withdraw authority used for minting pool tokens
-    let (withdraw_authority, _) = find_authority_bump_seed(
-        &spl_stake_pool::id(),
-        &pool_account.pubkey(),
-        AUTHORITY_WITHDRAW,
-    );
+    let (withdraw_authority, _) =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), &pool_account.pubkey());
 
     if config.verbose {
         println!("Stake pool withdraw authority {}", withdraw_authority);
@@ -227,9 +224,13 @@ fn command_create_pool(
     Ok(())
 }
 
-fn command_vsa_create(config: &Config, pool: &Pubkey, vote_account: &Pubkey) -> CommandResult {
+fn command_vsa_create(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    vote_account: &Pubkey,
+) -> CommandResult {
     let (stake_account, _) =
-        find_stake_address_for_validator(&spl_stake_pool::id(), &vote_account, &pool);
+        find_stake_program_address(&spl_stake_pool::id(), &vote_account, &stake_pool_address);
 
     println!("Creating stake account {}", stake_account);
 
@@ -238,7 +239,7 @@ fn command_vsa_create(config: &Config, pool: &Pubkey, vote_account: &Pubkey) -> 
             // Create new validator stake account address
             spl_stake_pool::instruction::create_validator_stake_account(
                 &spl_stake_pool::id(),
-                &pool,
+                &stake_pool_address,
                 &config.owner.pubkey(),
                 &config.fee_payer.pubkey(),
                 &stake_account,
@@ -260,7 +261,7 @@ fn command_vsa_create(config: &Config, pool: &Pubkey, vote_account: &Pubkey) -> 
 
 fn command_vsa_add(
     config: &Config,
-    pool: &Pubkey,
+    stake_pool_address: &Pubkey,
     stake: &Pubkey,
     token_receiver: &Option<Pubkey>,
 ) -> CommandResult {
@@ -269,10 +270,10 @@ fn command_vsa_add(
     }
 
     if !config.no_update {
-        command_update(config, pool)?;
+        command_update(config, stake_pool_address)?;
     }
 
-    let stake_pool = get_stake_pool(&config.rpc_client, pool)?;
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
     let mut total_rent_free_balances: u64 = 0;
 
@@ -295,20 +296,11 @@ fn command_vsa_add(
     )?;
 
     // Calculate Deposit and Withdraw stake pool authorities
-    let pool_deposit_authority: Pubkey = create_pool_authority_address(
-        &spl_stake_pool::id(),
-        pool,
-        AUTHORITY_DEPOSIT,
-        stake_pool.deposit_bump_seed,
-    )
-    .unwrap();
-    let pool_withdraw_authority: Pubkey = create_pool_authority_address(
-        &spl_stake_pool::id(),
-        pool,
-        AUTHORITY_WITHDRAW,
-        stake_pool.withdraw_bump_seed,
-    )
-    .unwrap();
+    let pool_deposit_authority =
+        find_deposit_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
+
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
     instructions.extend(vec![
         // Set Withdrawer on stake account to Deposit authority of the stake pool
@@ -328,7 +320,7 @@ fn command_vsa_add(
         // Add validator stake account to the pool
         spl_stake_pool::instruction::add_validator_to_pool(
             &spl_stake_pool::id(),
-            &pool,
+            &stake_pool_address,
             &config.owner.pubkey(),
             &pool_deposit_authority,
             &pool_withdraw_authority,
@@ -356,23 +348,18 @@ fn command_vsa_add(
 
 fn command_vsa_remove(
     config: &Config,
-    pool: &Pubkey,
+    stake_pool_address: &Pubkey,
     stake: &Pubkey,
     withdraw_from: &Pubkey,
     new_authority: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, pool)?;
+        command_update(config, stake_pool_address)?;
     }
 
-    let stake_pool = get_stake_pool(&config.rpc_client, pool)?;
-    let pool_withdraw_authority: Pubkey = create_pool_authority_address(
-        &spl_stake_pool::id(),
-        pool,
-        AUTHORITY_WITHDRAW,
-        stake_pool.withdraw_bump_seed,
-    )
-    .unwrap();
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
     let owner_pubkey = config.owner.pubkey();
     let new_authority = new_authority.as_ref().unwrap_or(&owner_pubkey);
@@ -409,7 +396,7 @@ fn command_vsa_remove(
             // Create new validator stake account address
             spl_stake_pool::instruction::remove_validator_from_pool(
                 &spl_stake_pool::id(),
-                &pool,
+                &stake_pool_address,
                 &config.owner.pubkey(),
                 &pool_withdraw_authority,
                 &new_authority,
@@ -482,21 +469,21 @@ where
 
 fn command_deposit(
     config: &Config,
-    pool: &Pubkey,
+    stake_pool_address: &Pubkey,
     stake: &Pubkey,
     token_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, pool)?;
+        command_update(config, stake_pool_address)?;
     }
 
-    let stake_pool = get_stake_pool(&config.rpc_client, pool)?;
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let stake_state = get_stake_state(&config.rpc_client, &stake)?;
 
     if config.verbose {
         println!("Depositing stake account {:?}", stake_state);
     }
-    let vote_account: Pubkey = match stake_state {
+    let vote_account = match stake_state {
         StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
         _ => Err("Wrong stake account state, must be delegated to validator"),
     }?;
@@ -509,7 +496,7 @@ fn command_deposit(
 
     // Calculate validator stake account address linked to the pool
     let (validator_stake_account, _) =
-        find_stake_address_for_validator(&spl_stake_pool::id(), &vote_account, pool);
+        find_stake_program_address(&spl_stake_pool::id(), &vote_account, stake_pool_address);
 
     let validator_stake_state = get_stake_state(&config.rpc_client, &validator_stake_account)?;
     println!("Depositing into stake account {}", validator_stake_account);
@@ -538,20 +525,11 @@ fn command_deposit(
     )?;
 
     // Calculate Deposit and Withdraw stake pool authorities
-    let pool_deposit_authority: Pubkey = create_pool_authority_address(
-        &spl_stake_pool::id(),
-        pool,
-        AUTHORITY_DEPOSIT,
-        stake_pool.deposit_bump_seed,
-    )
-    .unwrap();
-    let pool_withdraw_authority: Pubkey = create_pool_authority_address(
-        &spl_stake_pool::id(),
-        pool,
-        AUTHORITY_WITHDRAW,
-        stake_pool.withdraw_bump_seed,
-    )
-    .unwrap();
+    let pool_deposit_authority =
+        find_deposit_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
+
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
     instructions.extend(vec![
         // Set Withdrawer on stake account to Deposit authority of the stake pool
@@ -571,7 +549,7 @@ fn command_deposit(
         // Add stake account to the pool
         spl_stake_pool::instruction::deposit(
             &spl_stake_pool::id(),
-            &pool,
+            &stake_pool_address,
             &stake_pool.validator_list,
             &pool_deposit_authority,
             &pool_withdraw_authority,
@@ -598,8 +576,8 @@ fn command_deposit(
     Ok(())
 }
 
-fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
-    let stake_pool = get_stake_pool(&config.rpc_client, pool)?;
+fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
     if config.verbose {
         println!("Current validator list");
@@ -612,15 +590,11 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
         }
     }
 
-    let pool_withdraw_authority: Pubkey = create_pool_authority_address(
-        &spl_stake_pool::id(),
-        pool,
-        AUTHORITY_WITHDRAW,
-        stake_pool.withdraw_bump_seed,
-    )
-    .unwrap();
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
-    let accounts = get_stake_accounts_by_withdrawer(&config.rpc_client, &pool_withdraw_authority)?;
+    let accounts =
+        get_stake_accounts_by_withdraw_authority(&config.rpc_client, &pool_withdraw_authority)?;
     if accounts.is_empty() {
         return Err("No accounts found.".to_string().into());
     }
@@ -640,8 +614,8 @@ fn command_list(config: &Config, pool: &Pubkey) -> CommandResult {
     Ok(())
 }
 
-fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
-    let stake_pool = get_stake_pool(&config.rpc_client, pool)?;
+fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
     let epoch_info = config.rpc_client.get_epoch_info()?;
 
@@ -652,10 +626,10 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
             if item.last_update_epoch >= epoch_info.epoch {
                 None
             } else {
-                let (stake_account, _) = find_stake_address_for_validator(
+                let (stake_account, _) = find_stake_program_address(
                     &spl_stake_pool::id(),
                     &item.vote_account,
-                    &pool,
+                    &stake_pool_address,
                 );
                 Some(stake_account)
             }
@@ -679,7 +653,7 @@ fn command_update(config: &Config, pool: &Pubkey) -> CommandResult {
         println!("Updating stake pool...");
         instructions.push(spl_stake_pool::instruction::update_stake_pool_balance(
             &spl_stake_pool::id(),
-            pool,
+            stake_pool_address,
             &stake_pool.validator_list,
         )?);
 
@@ -706,7 +680,8 @@ fn prepare_withdraw_accounts(
     pool_withdraw_authority: &Pubkey,
     pool_amount: u64,
 ) -> Result<Vec<WithdrawAccount>, Error> {
-    let mut accounts = get_stake_accounts_by_withdrawer(rpc_client, &pool_withdraw_authority)?;
+    let mut accounts =
+        get_stake_accounts_by_withdraw_authority(rpc_client, &pool_withdraw_authority)?;
     if accounts.is_empty() {
         return Err("No accounts found.".to_string().into());
     }
@@ -756,26 +731,21 @@ fn prepare_withdraw_accounts(
 
 fn command_withdraw(
     config: &Config,
-    pool: &Pubkey,
+    stake_pool_address: &Pubkey,
     pool_amount: f64,
     withdraw_from: &Pubkey,
     stake_receiver_param: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, pool)?;
+        command_update(config, stake_pool_address)?;
     }
 
-    let stake_pool = get_stake_pool(&config.rpc_client, pool)?;
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
     let pool_amount = spl_token::ui_amount_to_amount(pool_amount, pool_mint.decimals);
 
-    let pool_withdraw_authority: Pubkey = create_pool_authority_address(
-        &spl_stake_pool::id(),
-        pool,
-        AUTHORITY_WITHDRAW,
-        stake_pool.withdraw_bump_seed,
-    )
-    .unwrap();
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
     // Check withdraw_from account type
     let token_account =
@@ -866,7 +836,7 @@ fn command_withdraw(
 
         instructions.push(spl_stake_pool::instruction::withdraw(
             &spl_stake_pool::id(),
-            &pool,
+            &stake_pool_address,
             &stake_pool.validator_list,
             &pool_withdraw_authority,
             &withdraw_account.address,
@@ -895,11 +865,11 @@ fn command_withdraw(
 
 fn command_set_owner(
     config: &Config,
-    pool: &Pubkey,
+    stake_pool_address: &Pubkey,
     new_owner: &Option<Pubkey>,
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
-    let stake_pool = get_stake_pool(&config.rpc_client, pool)?;
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
     // If new accounts are missing in the arguments use the old ones
     let new_owner = match new_owner {
@@ -924,7 +894,7 @@ fn command_set_owner(
     let mut transaction = Transaction::new_with_payer(
         &[spl_stake_pool::instruction::set_owner(
             &spl_stake_pool::id(),
-            &pool,
+            &stake_pool_address,
             &config.owner.pubkey(),
             &new_owner,
             &new_fee_receiver,
@@ -1327,20 +1297,20 @@ fn main() {
             )
         }
         ("create-validator-stake", Some(arg_matches)) => {
-            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let vote_account: Pubkey = pubkey_of(arg_matches, "vote_account").unwrap();
+            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
+            let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
             command_vsa_create(&config, &pool_account, &vote_account)
         }
         ("add-validator", Some(arg_matches)) => {
-            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let stake_account: Pubkey = pubkey_of(arg_matches, "stake_account").unwrap();
+            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
+            let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             command_vsa_add(&config, &pool_account, &stake_account, &token_receiver)
         }
         ("remove-validator", Some(arg_matches)) => {
-            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let stake_account: Pubkey = pubkey_of(arg_matches, "stake_account").unwrap();
-            let withdraw_from: Pubkey = pubkey_of(arg_matches, "withdraw_from").unwrap();
+            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
+            let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
+            let withdraw_from = pubkey_of(arg_matches, "withdraw_from").unwrap();
             let new_authority: Option<Pubkey> = pubkey_of(arg_matches, "new_authority");
             command_vsa_remove(
                 &config,
@@ -1351,22 +1321,22 @@ fn main() {
             )
         }
         ("deposit", Some(arg_matches)) => {
-            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let stake_account: Pubkey = pubkey_of(arg_matches, "stake_account").unwrap();
+            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
+            let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             command_deposit(&config, &pool_account, &stake_account, &token_receiver)
         }
         ("list", Some(arg_matches)) => {
-            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
+            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
             command_list(&config, &pool_account)
         }
         ("update", Some(arg_matches)) => {
-            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
+            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
             command_update(&config, &pool_account)
         }
         ("withdraw", Some(arg_matches)) => {
-            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
-            let withdraw_from: Pubkey = pubkey_of(arg_matches, "withdraw_from").unwrap();
+            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
+            let withdraw_from = pubkey_of(arg_matches, "withdraw_from").unwrap();
             let pool_amount = value_t_or_exit!(arg_matches, "amount", f64);
             let stake_receiver: Option<Pubkey> = pubkey_of(arg_matches, "stake_receiver");
             command_withdraw(
@@ -1378,7 +1348,7 @@ fn main() {
             )
         }
         ("set-owner", Some(arg_matches)) => {
-            let pool_account: Pubkey = pubkey_of(arg_matches, "pool").unwrap();
+            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
             let new_owner: Option<Pubkey> = pubkey_of(arg_matches, "new_owner");
             let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
             command_set_owner(&config, &pool_account, &new_owner, &new_fee_receiver)
