@@ -3,7 +3,6 @@
 use {
     crate::{
         borsh::try_from_slice_unchecked,
-        create_pool_authority_address,
         error::StakePoolError,
         find_authority_bump_seed, find_stake_address_for_validator,
         instruction::{Fee, StakePoolInstruction},
@@ -38,24 +37,8 @@ use {
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
-    /// Checks withdraw or deposit authority
-    pub fn check_authority(
-        authority_to_check: &Pubkey,
-        program_id: &Pubkey,
-        stake_pool_key: &Pubkey,
-        authority: &[u8],
-        bump_seed: u8,
-    ) -> Result<(), ProgramError> {
-        if *authority_to_check
-            != create_pool_authority_address(program_id, stake_pool_key, authority, bump_seed)?
-        {
-            return Err(StakePoolError::InvalidProgramAddress.into());
-        }
-        Ok(())
-    }
-
     /// Returns validator address for a particular stake account
-    pub fn get_validator(stake_account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {
+    fn get_validator(stake_account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {
         let stake_state: stake_program::StakeState = deserialize(&stake_account_info.data.borrow())
             .or(Err(ProgramError::InvalidAccountData))?;
         match stake_state {
@@ -65,7 +48,7 @@ impl Processor {
     }
 
     /// Checks if validator stake account is a proper program address
-    pub fn is_validator_stake_address(
+    fn is_validator_stake_address(
         vote_account: &Pubkey,
         program_id: &Pubkey,
         stake_pool_info: &AccountInfo,
@@ -78,7 +61,7 @@ impl Processor {
     }
 
     /// Returns validator address for a particular stake account and checks its validity
-    pub fn get_validator_checked(
+    fn get_validator_checked(
         program_id: &Pubkey,
         stake_pool_info: &AccountInfo,
         stake_account_info: &AccountInfo,
@@ -97,7 +80,7 @@ impl Processor {
     }
 
     /// Issue a stake_split instruction.
-    pub fn stake_split<'a>(
+    fn stake_split<'a>(
         stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
         authority: AccountInfo<'a>,
@@ -118,7 +101,7 @@ impl Processor {
 
     /// Issue a stake_merge instruction.
     #[allow(clippy::too_many_arguments)]
-    pub fn stake_merge<'a>(
+    fn stake_merge<'a>(
         stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
         authority: AccountInfo<'a>,
@@ -151,7 +134,7 @@ impl Processor {
 
     /// Issue a stake_set_owner instruction.
     #[allow(clippy::too_many_arguments)]
-    pub fn stake_authorize<'a>(
+    fn stake_authorize<'a>(
         stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
         authority: AccountInfo<'a>,
@@ -159,7 +142,7 @@ impl Processor {
         bump_seed: u8,
         new_staker: &Pubkey,
         staker_auth: stake_program::StakeAuthorize,
-        reserved: AccountInfo<'a>,
+        clock: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
         let me_bytes = stake_pool.to_bytes();
@@ -171,14 +154,14 @@ impl Processor {
 
         invoke_signed(
             &ix,
-            &[stake_account, reserved, authority, stake_program_info],
+            &[stake_account, clock, authority, stake_program_info],
             signers,
         )
     }
 
     /// Issue a spl_token `Burn` instruction.
     #[allow(clippy::too_many_arguments)]
-    pub fn token_burn<'a>(
+    fn token_burn<'a>(
         stake_pool: &Pubkey,
         token_program: AccountInfo<'a>,
         burn_account: AccountInfo<'a>,
@@ -210,7 +193,7 @@ impl Processor {
 
     /// Issue a spl_token `MintTo` instruction.
     #[allow(clippy::too_many_arguments)]
-    pub fn token_mint_to<'a>(
+    fn token_mint_to<'a>(
         stake_pool: &Pubkey,
         token_program: AccountInfo<'a>,
         mint: AccountInfo<'a>,
@@ -237,7 +220,7 @@ impl Processor {
     }
 
     /// Processes `Initialize` instruction.
-    pub fn process_initialize(
+    fn process_initialize(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         fee: Fee,
@@ -344,7 +327,7 @@ impl Processor {
     }
 
     /// Processes `CreateValidatorStakeAccount` instruction.
-    pub fn process_create_validator_stake_account(
+    fn process_create_validator_stake_account(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
@@ -444,7 +427,7 @@ impl Processor {
     }
 
     /// Processes `AddValidatorToPool` instruction.
-    pub fn process_add_validator_to_pool(
+    fn process_add_validator_to_pool(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
@@ -546,7 +529,6 @@ impl Processor {
         // Check if stake is warmed up
         Self::check_stake_activation(stake_account_info, clock, stake_history)?;
 
-        // Add validator to the list and save
         validator_list.validators.push(ValidatorStakeInfo {
             vote_account,
             balance: stake_lamports,
@@ -554,9 +536,7 @@ impl Processor {
         });
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
-        // Save amounts to the stake pool state
         stake_pool.pool_total += token_amount;
-        // Only update stake total if the last state update epoch is current
         stake_pool.stake_total += stake_lamports;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
@@ -564,7 +544,7 @@ impl Processor {
     }
 
     /// Processes `RemoveValidatorFromPool` instruction.
-    pub fn process_remove_validator_from_pool(
+    fn process_remove_validator_from_pool(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
@@ -655,15 +635,12 @@ impl Processor {
             token_amount,
         )?;
 
-        // Remove validator from the list and save
         validator_list
             .validators
             .retain(|item| item.vote_account != vote_account);
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
-        // Save amounts to the stake pool state
         stake_pool.pool_total -= token_amount;
-        // Only update stake total if the last state update epoch is current
         stake_pool.stake_total -= stake_lamports;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
@@ -671,7 +648,7 @@ impl Processor {
     }
 
     /// Processes `UpdateValidatorListBalance` instruction.
-    pub fn process_update_validator_list_balance(
+    fn process_update_validator_list_balance(
         _program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
@@ -720,7 +697,7 @@ impl Processor {
     }
 
     /// Processes `UpdateStakePoolBalance` instruction.
-    pub fn process_update_stake_pool_balance(
+    fn process_update_stake_pool_balance(
         _program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
@@ -761,7 +738,8 @@ impl Processor {
     }
 
     /// Check stake activation status
-    pub fn check_stake_activation(
+    #[allow(clippy::unnecessary_wraps)]
+    fn check_stake_activation(
         _stake_info: &AccountInfo,
         _clock: &Clock,
         _stake_history: &StakeHistory,
@@ -790,7 +768,7 @@ impl Processor {
     }
 
     /// Processes [Deposit](enum.Instruction.html).
-    pub fn process_deposit(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    fn process_deposit(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
@@ -931,7 +909,7 @@ impl Processor {
     }
 
     /// Processes [Withdraw](enum.Instruction.html).
-    pub fn process_withdraw(
+    fn process_withdraw(
         program_id: &Pubkey,
         pool_amount: u64,
         accounts: &[AccountInfo],
@@ -1046,7 +1024,7 @@ impl Processor {
     }
 
     /// Processes [SetOwner](enum.Instruction.html).
-    pub fn process_set_owner(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    fn process_set_owner(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
