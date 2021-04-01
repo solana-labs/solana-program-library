@@ -33,6 +33,6 @@ pub struct Metadata {
 pub struct Owner {
     /// The person who can make updates to the metadata after it's made
     pub owner: Pubkey,
-    /// Pointer to the metadata object for verification purposes
+    /// Address of the metadata account
     pub metadata: Pubkey,
 }
