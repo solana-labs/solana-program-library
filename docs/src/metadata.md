@@ -15,7 +15,7 @@ document are available at:
 The Metadata Program's source is available on
 [github](https://github.com/solana-labs/solana-program-library)
 
-There is also a helpful example script located at 
+There is also an example Rust client located at 
 [github](https://github.com/solana-labs/solana-program-library/tree/master/metadata/test/src/main.rs)
 that can be perused learning and run if desired with `cargo run --bin  spl-metadata-test-client`;
 
