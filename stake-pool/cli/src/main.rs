@@ -106,8 +106,8 @@ fn command_create_pool(
         pool_fee_account.pubkey()
     );
 
-    let pool_account = Keypair::new();
-    println!("Creating stake pool {}", pool_account.pubkey());
+    let stake_pool_keypair = Keypair::new();
+    println!("Creating stake pool {}", stake_pool_keypair.pubkey());
 
     let validator_list = Keypair::new();
 
@@ -117,7 +117,7 @@ fn command_create_pool(
     let pool_fee_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(spl_token::state::Account::LEN)?;
-    let pool_account_balance = config
+    let stake_pool_account_lamports = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(get_packed_len::<StakePool>())?;
     let empty_validator_list = ValidatorList::new(max_validators);
@@ -127,14 +127,16 @@ fn command_create_pool(
         .get_minimum_balance_for_rent_exemption(validator_list_size)?;
     let total_rent_free_balances = mint_account_balance
         + pool_fee_account_balance
-        + pool_account_balance
+        + stake_pool_account_lamports
         + validator_list_balance;
 
     let default_decimals = spl_token::native_mint::DECIMALS;
 
     // Calculate withdraw authority used for minting pool tokens
-    let (withdraw_authority, _) =
-        find_withdraw_authority_program_address(&spl_stake_pool::id(), &pool_account.pubkey());
+    let (withdraw_authority, _) = find_withdraw_authority_program_address(
+        &spl_stake_pool::id(),
+        &stake_pool_keypair.pubkey(),
+    );
 
     if config.verbose {
         println!("Stake pool withdraw authority {}", withdraw_authority);
@@ -161,8 +163,8 @@ fn command_create_pool(
             // Account for the stake pool
             system_instruction::create_account(
                 &config.fee_payer.pubkey(),
-                &pool_account.pubkey(),
-                pool_account_balance,
+                &stake_pool_keypair.pubkey(),
+                stake_pool_account_lamports,
                 get_packed_len::<StakePool>() as u64,
                 &spl_stake_pool::id(),
             ),
@@ -192,7 +194,7 @@ fn command_create_pool(
             // Initialize stake pool account
             spl_stake_pool::instruction::initialize(
                 &spl_stake_pool::id(),
-                &pool_account.pubkey(),
+                &stake_pool_keypair.pubkey(),
                 &config.owner.pubkey(),
                 &validator_list.pubkey(),
                 &mint_account.pubkey(),
@@ -212,7 +214,7 @@ fn command_create_pool(
     )?;
     let mut signers = vec![
         config.fee_payer.as_ref(),
-        &pool_account,
+        &stake_pool_keypair,
         &validator_list,
         &mint_account,
         &pool_fee_account,
@@ -599,9 +601,9 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         return Err("No accounts found.".to_string().into());
     }
 
-    let mut total_balance: u64 = 0;
+    let mut total_lamports: u64 = 0;
     for (pubkey, lamports, stake_state) in accounts {
-        total_balance += lamports;
+        total_lamports += lamports;
         println!(
             "Stake Account: {}\tVote Account: {}\t{}",
             pubkey,
@@ -609,7 +611,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
             Sol(lamports)
         );
     }
-    println!("Total: {}", Sol(total_balance));
+    println!("Total Stake: {}", Sol(total_lamports));
 
     Ok(())
 }
@@ -638,11 +640,11 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
 
     let mut instructions: Vec<Instruction> = vec![];
 
-    for chunk in accounts_to_update.chunks(MAX_ACCOUNTS_TO_UPDATE) {
+    for accounts_chunk in accounts_to_update.chunks(MAX_ACCOUNTS_TO_UPDATE) {
         instructions.push(spl_stake_pool::instruction::update_validator_list_balance(
             &spl_stake_pool::id(),
             &stake_pool.validator_list,
-            &chunk,
+            &accounts_chunk,
         )?);
     }
 
@@ -912,6 +914,8 @@ fn command_set_owner(
 }
 
 fn main() {
+    solana_logger::setup_with_default("solana=info");
+
     let matches = App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
@@ -1280,8 +1284,6 @@ fn main() {
         }
     };
 
-    solana_logger::setup_with_default("solana=info");
-
     let _ = match matches.subcommand() {
         ("create-pool", Some(arg_matches)) => {
             let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
@@ -1297,61 +1299,71 @@ fn main() {
             )
         }
         ("create-validator-stake", Some(arg_matches)) => {
-            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
-            let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
-            command_vsa_create(&config, &pool_account, &vote_account)
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let vote_account_address = pubkey_of(arg_matches, "vote_account_address").unwrap();
+            command_vsa_create(&config, &stake_pool_address, &vote_account_address)
         }
         ("add-validator", Some(arg_matches)) => {
-            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
-            command_vsa_add(&config, &pool_account, &stake_account, &token_receiver)
+            command_vsa_add(
+                &config,
+                &stake_pool_address,
+                &stake_account,
+                &token_receiver,
+            )
         }
         ("remove-validator", Some(arg_matches)) => {
-            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
             let withdraw_from = pubkey_of(arg_matches, "withdraw_from").unwrap();
             let new_authority: Option<Pubkey> = pubkey_of(arg_matches, "new_authority");
             command_vsa_remove(
                 &config,
-                &pool_account,
+                &stake_pool_address,
                 &stake_account,
                 &withdraw_from,
                 &new_authority,
             )
         }
         ("deposit", Some(arg_matches)) => {
-            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
-            command_deposit(&config, &pool_account, &stake_account, &token_receiver)
+            command_deposit(
+                &config,
+                &stake_pool_address,
+                &stake_account,
+                &token_receiver,
+            )
         }
         ("list", Some(arg_matches)) => {
-            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
-            command_list(&config, &pool_account)
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            command_list(&config, &stake_pool_address)
         }
         ("update", Some(arg_matches)) => {
-            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
-            command_update(&config, &pool_account)
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            command_update(&config, &stake_pool_address)
         }
         ("withdraw", Some(arg_matches)) => {
-            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let withdraw_from = pubkey_of(arg_matches, "withdraw_from").unwrap();
             let pool_amount = value_t_or_exit!(arg_matches, "amount", f64);
             let stake_receiver: Option<Pubkey> = pubkey_of(arg_matches, "stake_receiver");
             command_withdraw(
                 &config,
-                &pool_account,
+                &stake_pool_address,
                 pool_amount,
                 &withdraw_from,
                 &stake_receiver,
             )
         }
         ("set-owner", Some(arg_matches)) => {
-            let pool_account = pubkey_of(arg_matches, "pool").unwrap();
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let new_owner: Option<Pubkey> = pubkey_of(arg_matches, "new_owner");
             let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
-            command_set_owner(&config, &pool_account, &new_owner, &new_fee_receiver)
+            command_set_owner(&config, &stake_pool_address, &new_owner, &new_fee_receiver)
         }
         _ => unreachable!(),
     }
