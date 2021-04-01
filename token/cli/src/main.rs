@@ -1954,16 +1954,23 @@ fn main() {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-        let (signer, nonce_authority) =
-            signer_of(&matches, NONCE_AUTHORITY_ARG.name, &mut wallet_manager).unwrap_or_else(
-                |e| {
-                    eprintln!("error: {}", e);
-                    exit(1);
-                },
-            );
-        if signer.is_some() {
-            bulk_signers.push(signer);
-        }
+        let (signer, nonce_authority) = signer_from_path(
+            &matches,
+            matches
+                .value_of(NONCE_AUTHORITY_ARG.name)
+                .unwrap_or(&cli_config.keypair_path),
+            NONCE_AUTHORITY_ARG.name,
+            &mut wallet_manager,
+        )
+        .map(|s| {
+            let p = s.pubkey();
+            (Some(s), Some(p))
+        })
+        .unwrap_or_else(|e| {
+            eprintln!("error: {}", e);
+            exit(1);
+        });
+        bulk_signers.push(signer);
 
         let blockhash_query = BlockhashQuery::new_from_matches(matches);
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
