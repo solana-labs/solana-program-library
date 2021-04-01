@@ -66,14 +66,14 @@ impl Processor {
 
     /// Checks if validator stake account is a proper program address
     pub fn is_validator_stake_address(
-        validator_account: &Pubkey,
+        vote_account: &Pubkey,
         program_id: &Pubkey,
         stake_pool_info: &AccountInfo,
         stake_account_info: &AccountInfo,
     ) -> bool {
         // Check stake account address validity
         let (stake_address, _) =
-            find_stake_address_for_validator(&program_id, &validator_account, &stake_pool_info.key);
+            find_stake_address_for_validator(&program_id, &vote_account, &stake_pool_info.key);
         stake_address == *stake_account_info.key
     }
 
@@ -83,17 +83,17 @@ impl Processor {
         stake_pool_info: &AccountInfo,
         stake_account_info: &AccountInfo,
     ) -> Result<Pubkey, ProgramError> {
-        let validator_account = Self::get_validator(stake_account_info)?;
+        let vote_account = Self::get_validator(stake_account_info)?;
 
         if !Self::is_validator_stake_address(
-            &validator_account,
+            &vote_account,
             program_id,
             stake_pool_info,
             stake_account_info,
         ) {
             return Err(StakePoolError::InvalidStakeAccountAddress.into());
         }
-        Ok(validator_account)
+        Ok(vote_account)
     }
 
     /// Issue a stake_split instruction.
@@ -249,33 +249,27 @@ impl Processor {
         let validator_list_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let owner_fee_info = next_account_info(account_info_iter)?;
-        // Clock sysvar account
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        // Rent sysvar account
         let rent_info = next_account_info(account_info_iter)?;
         let rent = &Rent::from_account_info(rent_info)?;
-        // Token program ID
         let token_program_info = next_account_info(account_info_iter)?;
 
-        // Check if transaction was signed by owner
         if !owner_info.is_signer {
             return Err(StakePoolError::SignatureMissing.into());
         }
 
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
-        // Stake pool account should not be already initialized
         if !stake_pool.is_uninitialized() {
             return Err(StakePoolError::AlreadyInUse.into());
         }
 
-        // Check if validator stake list storage is unitialized
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_uninitialized() {
             return Err(StakePoolError::AlreadyInUse.into());
         }
-        // Check validator list size
+
         let data_length = validator_list_info.data_len();
         let expected_max_validators = ValidatorList::calculate_max_validators(data_length);
         if expected_max_validators != max_validators as usize || max_validators == 0 {
@@ -285,13 +279,11 @@ impl Processor {
         validator_list.validators.clear();
         validator_list.max_validators = max_validators;
 
-        // Check if stake pool account is rent-exempt
         if !rent.is_exempt(stake_pool_info.lamports(), stake_pool_info.data_len()) {
             msg!("Stake pool not rent-exempt");
             return Err(ProgramError::AccountNotRentExempt);
         }
 
-        // Check if validator stake list account is rent-exempt
         if !rent.is_exempt(
             validator_list_info.lamports(),
             validator_list_info.data_len(),
@@ -305,17 +297,14 @@ impl Processor {
             return Err(StakePoolError::FeeTooHigh.into());
         }
 
-        // Check if fee account's owner the same as token program id
         if owner_fee_info.owner != token_program_info.key {
             return Err(StakePoolError::InvalidFeeAccount.into());
         }
 
-        // Check pool mint program ID
         if pool_mint_info.owner != token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        // Check for owner fee account to have proper mint assigned
         if *pool_mint_info.key
             != spl_token::state::Account::unpack_from_slice(&owner_fee_info.data.borrow())?.mint
         {
@@ -360,31 +349,19 @@ impl Processor {
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        // Stake pool account
         let stake_pool_info = next_account_info(account_info_iter)?;
-        // Owner account
         let owner_info = next_account_info(account_info_iter)?;
-        // Account creation funder account
         let funder_info = next_account_info(account_info_iter)?;
-        // Stake account to be created
         let stake_account_info = next_account_info(account_info_iter)?;
-        // Validator this stake account will vote for
         let validator_info = next_account_info(account_info_iter)?;
-        // Rent sysvar account
         let rent_info = next_account_info(account_info_iter)?;
         let rent = &Rent::from_account_info(rent_info)?;
-        // Clock sysvar account
         let clock_info = next_account_info(account_info_iter)?;
-        // Stake history sysvar account
         let stake_history_info = next_account_info(account_info_iter)?;
-        // Stake config sysvar account
         let stake_config_info = next_account_info(account_info_iter)?;
-        // System program id
         let system_program_info = next_account_info(account_info_iter)?;
-        // Staking program id
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        // Get stake pool stake (and check if it is initialized)
         if stake_pool_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -394,7 +371,6 @@ impl Processor {
         }
         stake_pool.check_owner(owner_info)?;
 
-        // Check program ids
         if *system_program_info.key != solana_program::system_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -402,7 +378,6 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        // Check stake account address validity
         let (stake_address, bump_seed) = find_stake_address_for_validator(
             &program_id,
             &validator_info.key,
@@ -474,52 +449,35 @@ impl Processor {
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        // Stake pool account
         let stake_pool_info = next_account_info(account_info_iter)?;
-        // Pool owner account
         let owner_info = next_account_info(account_info_iter)?;
-        // Stake pool deposit authority
         let deposit_info = next_account_info(account_info_iter)?;
-        // Stake pool withdraw authority
         let withdraw_info = next_account_info(account_info_iter)?;
-        // Account storing validator stake list
         let validator_list_info = next_account_info(account_info_iter)?;
-        // Stake account to add to the pool
         let stake_account_info = next_account_info(account_info_iter)?;
-        // User account to receive pool tokens
         let dest_user_info = next_account_info(account_info_iter)?;
-        // Pool token mint account
         let pool_mint_info = next_account_info(account_info_iter)?;
-        // Clock sysvar account
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        // Stake history sysvar account
         let stake_history_info = next_account_info(account_info_iter)?;
         let stake_history = &StakeHistory::from_account_info(stake_history_info)?;
-        // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
-        // Staking program id
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        // Check program ids
         if *stake_program_info.key != stake_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        // Get stake pool stake (and check if it is initialized)
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        // Check authority accounts
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
         stake_pool.check_authority_deposit(deposit_info.key, program_id, stake_pool_info.key)?;
 
-        // Check owner validity and signature
         stake_pool.check_owner(owner_info)?;
 
-        // Check stake pool last update epoch
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
@@ -531,12 +489,10 @@ impl Processor {
             return Err(StakePoolError::WrongPoolMint.into());
         }
 
-        // Check validator stake account list storage
         if *validator_list_info.key != stake_pool.validator_list {
             return Err(StakePoolError::InvalidValidatorStakeList.into());
         }
 
-        // Read validator stake list account and check if it is valid
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
@@ -546,10 +502,10 @@ impl Processor {
             return Err(ProgramError::AccountDataTooSmall);
         }
 
-        let validator_account =
+        let vote_account =
             Self::get_validator_checked(program_id, stake_pool_info, stake_account_info)?;
 
-        if validator_list.contains(&validator_account) {
+        if validator_list.contains(&vote_account) {
             return Err(StakePoolError::ValidatorAlreadyAdded.into());
         }
 
@@ -592,7 +548,7 @@ impl Processor {
 
         // Add validator to the list and save
         validator_list.validators.push(ValidatorStakeInfo {
-            validator_account,
+            vote_account,
             balance: stake_lamports,
             last_update_epoch: clock.epoch,
         });
@@ -613,48 +569,31 @@ impl Processor {
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        // Stake pool account
         let stake_pool_info = next_account_info(account_info_iter)?;
-        // Pool owner account
         let owner_info = next_account_info(account_info_iter)?;
-        // Stake pool withdraw authority
         let withdraw_info = next_account_info(account_info_iter)?;
-        // New stake authority
         let new_stake_authority_info = next_account_info(account_info_iter)?;
-        // Account storing validator stake list
         let validator_list_info = next_account_info(account_info_iter)?;
-        // Stake account to remove from the pool
         let stake_account_info = next_account_info(account_info_iter)?;
-        // User account with pool tokens to burn from
         let burn_from_info = next_account_info(account_info_iter)?;
-        // Pool token mint account
         let pool_mint_info = next_account_info(account_info_iter)?;
-        // Clock sysvar account
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
-        // Staking program id
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        // Check program ids
         if *stake_program_info.key != stake_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        // Get stake pool stake (and check if it is initialized)
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        // Check authority account
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
-
-        // Check owner validity and signature
         stake_pool.check_owner(owner_info)?;
 
-        // Check stake pool last update epoch
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
@@ -666,26 +605,23 @@ impl Processor {
             return Err(StakePoolError::WrongPoolMint.into());
         }
 
-        // Check validator stake account list storage
         if *validator_list_info.key != stake_pool.validator_list {
             return Err(StakePoolError::InvalidValidatorStakeList.into());
         }
 
-        // Read validator stake list account and check if it is valid
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let validator_account =
+        let vote_account =
             Self::get_validator_checked(program_id, stake_pool_info, stake_account_info)?;
 
-        if !validator_list.contains(&validator_account) {
+        if !validator_list.contains(&vote_account) {
             return Err(StakePoolError::ValidatorNotFound.into());
         }
 
-        // Update Withdrawer and Staker authority to the provided authority
         for authority in &[
             stake_program::StakeAuthorize::Withdrawer,
             stake_program::StakeAuthorize::Staker,
@@ -722,7 +658,7 @@ impl Processor {
         // Remove validator from the list and save
         validator_list
             .validators
-            .retain(|item| item.validator_account != validator_account);
+            .retain(|item| item.vote_account != vote_account);
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         // Save amounts to the stake pool state
@@ -740,22 +676,18 @@ impl Processor {
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        // Account storing validator stake list
         let validator_list_info = next_account_info(account_info_iter)?;
-        // Clock sysvar account
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        // Validator stake accounts
         let validator_stake_accounts = account_info_iter.as_slice();
 
-        // Read validator stake list account and check if it is valid
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let validator_accounts: Vec<Option<Pubkey>> = validator_stake_accounts
+        let vote_accounts: Vec<Option<Pubkey>> = validator_stake_accounts
             .iter()
             .map(|stake| Self::get_validator(stake).ok())
             .collect();
@@ -766,12 +698,11 @@ impl Processor {
             if validator_stake_record.last_update_epoch >= clock.epoch {
                 continue;
             }
-            for (validator_stake_account, validator_account) in validator_stake_accounts
-                .iter()
-                .zip(validator_accounts.iter())
+            for (validator_stake_account, vote_account) in
+                validator_stake_accounts.iter().zip(vote_accounts.iter())
             {
-                if validator_stake_record.validator_account
-                    != validator_account.ok_or(StakePoolError::WrongStakeState)?
+                if validator_stake_record.vote_account
+                    != vote_account.ok_or(StakePoolError::WrongStakeState)?
                 {
                     continue;
                 }
@@ -794,26 +725,20 @@ impl Processor {
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        // Stake pool account
         let stake_pool_info = next_account_info(account_info_iter)?;
-        // Account storing validator stake list
         let validator_list_info = next_account_info(account_info_iter)?;
-        // Clock sysvar account
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
 
-        // Get stake pool stake (and check if it is initialized)
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        // Check validator stake account list storage
         if *validator_list_info.key != stake_pool.validator_list {
             return Err(StakePoolError::InvalidValidatorStakeList.into());
         }
 
-        // Read validator stake list account and check if it is valid
         let validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
@@ -867,36 +792,22 @@ impl Processor {
     /// Processes [Deposit](enum.Instruction.html).
     pub fn process_deposit(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        // Stake pool
         let stake_pool_info = next_account_info(account_info_iter)?;
-        // Account storing validator stake list
         let validator_list_info = next_account_info(account_info_iter)?;
-        // Stake pool deposit authority
         let deposit_info = next_account_info(account_info_iter)?;
-        // Stake pool withdraw authority
         let withdraw_info = next_account_info(account_info_iter)?;
-        // Stake account to join the pool (withdraw should be set to stake pool deposit)
         let stake_info = next_account_info(account_info_iter)?;
-        // Validator stake account to merge with
         let validator_stake_account_info = next_account_info(account_info_iter)?;
-        // User account to receive pool tokens
         let dest_user_info = next_account_info(account_info_iter)?;
-        // Account to receive pool fee tokens
         let owner_fee_info = next_account_info(account_info_iter)?;
-        // Pool token mint account
         let pool_mint_info = next_account_info(account_info_iter)?;
-        // Clock sysvar account
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        // Stake history sysvar account
         let stake_history_info = next_account_info(account_info_iter)?;
         let stake_history = &StakeHistory::from_account_info(stake_history_info)?;
-        // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
-        // Stake program id
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        // Check program ids
         if *stake_program_info.key != stake_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -906,10 +817,8 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        // Check if stake is active
         Self::check_stake_activation(stake_info, clock, stake_history)?;
 
-        // Check authority accounts
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
         stake_pool.check_authority_deposit(deposit_info.key, program_id, stake_pool_info.key)?;
 
@@ -920,28 +829,25 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        // Check validator stake account list storage
         if *validator_list_info.key != stake_pool.validator_list {
             return Err(StakePoolError::InvalidValidatorStakeList.into());
         }
 
-        // Check stake pool last update epoch
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
-        // Read validator stake list account and check if it is valid
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let validator_account =
+        let vote_account =
             Self::get_validator_checked(program_id, stake_pool_info, validator_stake_account_info)?;
 
         let validator_list_item = validator_list
-            .find_mut(&validator_account)
+            .find_mut(&vote_account)
             .ok_or(StakePoolError::ValidatorNotFound)?;
 
         let stake_lamports = **stake_info.lamports.borrow();
@@ -1031,31 +937,19 @@ impl Processor {
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        // Stake pool
         let stake_pool_info = next_account_info(account_info_iter)?;
-        // Account storing validator stake list
         let validator_list_info = next_account_info(account_info_iter)?;
-        // Stake pool withdraw authority
         let withdraw_info = next_account_info(account_info_iter)?;
-        // Stake account to split
         let stake_split_from = next_account_info(account_info_iter)?;
-        // Unitialized stake account to receive withdrawal
         let stake_split_to = next_account_info(account_info_iter)?;
-        // User account to set as a new withdraw authority
         let user_stake_authority = next_account_info(account_info_iter)?;
-        // User account with pool tokens to burn from
         let burn_from_info = next_account_info(account_info_iter)?;
-        // Pool token mint account
         let pool_mint_info = next_account_info(account_info_iter)?;
-        // Clock sysvar account
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        // Pool token program id
         let token_program_info = next_account_info(account_info_iter)?;
-        // Stake program id
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        // Check program ids
         if *stake_program_info.key != stake_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -1065,35 +959,31 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        // Check authority account
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
 
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        // Check validator stake account list storage
         if *validator_list_info.key != stake_pool.validator_list {
             return Err(StakePoolError::InvalidValidatorStakeList.into());
         }
 
-        // Check stake pool last update epoch
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
-        // Read validator stake list account and check if it is valid
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let validator_account =
+        let vote_account =
             Self::get_validator_checked(program_id, stake_pool_info, stake_split_from)?;
 
         let validator_list_item = validator_list
-            .find_mut(&validator_account)
+            .find_mut(&vote_account)
             .ok_or(StakePoolError::ValidatorNotFound)?;
 
         let stake_amount = stake_pool
@@ -1168,10 +1058,8 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        // Check owner validity and signature
         stake_pool.check_owner(owner_info)?;
 
-        // Check for owner fee account to have proper mint assigned
         if stake_pool.pool_mint
             != spl_token::state::Account::unpack_from_slice(&new_owner_fee_info.data.borrow())?.mint
         {
@@ -1183,6 +1071,7 @@ impl Processor {
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
+
     /// Processes [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = StakePoolInstruction::try_from_slice(input)?;

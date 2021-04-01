@@ -129,7 +129,7 @@ async fn test_add_validator_to_pool() {
             account_type: state::AccountType::ValidatorList,
             max_validators: stake_pool_accounts.max_validators,
             validators: vec![state::ValidatorStakeInfo {
-                validator_account: user_stake.vote.pubkey(),
+                vote_account: user_stake.vote.pubkey(),
                 last_update_epoch: 0,
                 balance: stake_account_balance,
             }]

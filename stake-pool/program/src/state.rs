@@ -170,10 +170,10 @@ pub struct ValidatorList {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
-    /// Validator account pubkey
-    pub validator_account: Pubkey,
+    /// Validator vote account address
+    pub vote_account: Pubkey,
 
-    /// Account balance in lamports
+    /// Balance of the validator's stake account
     pub balance: u64,
 
     /// Last epoch balance field was updated
@@ -197,23 +197,23 @@ impl ValidatorList {
     }
 
     /// Check if contains validator with particular pubkey
-    pub fn contains(&self, validator: &Pubkey) -> bool {
+    pub fn contains(&self, vote_account: &Pubkey) -> bool {
         self.validators
             .iter()
-            .any(|x| x.validator_account == *validator)
+            .any(|x| x.vote_account == *vote_account)
     }
 
-    /// Check if contains validator with particular pubkey (mutable)
-    pub fn find_mut(&mut self, validator: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
+    /// Check if contains validator with particular pubkey
+    pub fn find_mut(&mut self, vote_account: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
         self.validators
             .iter_mut()
-            .find(|x| x.validator_account == *validator)
+            .find(|x| x.vote_account == *vote_account)
     }
-    /// Check if contains validator with particular pubkey (immutable)
-    pub fn find(&self, validator: &Pubkey) -> Option<&ValidatorStakeInfo> {
+    /// Check if contains validator with particular pubkey
+    pub fn find(&self, vote_account: &Pubkey) -> Option<&ValidatorStakeInfo> {
         self.validators
             .iter()
-            .find(|x| x.validator_account == *validator)
+            .find(|x| x.vote_account == *vote_account)
     }
 
     /// Check if validator stake list is actually initialized as a validator stake list
@@ -271,17 +271,17 @@ mod test {
             max_validators,
             validators: vec![
                 ValidatorStakeInfo {
-                    validator_account: Pubkey::new_from_array([1; 32]),
+                    vote_account: Pubkey::new_from_array([1; 32]),
                     balance: 123456789,
                     last_update_epoch: 987654321,
                 },
                 ValidatorStakeInfo {
-                    validator_account: Pubkey::new_from_array([2; 32]),
+                    vote_account: Pubkey::new_from_array([2; 32]),
                     balance: 998877665544,
                     last_update_epoch: 11223445566,
                 },
                 ValidatorStakeInfo {
-                    validator_account: Pubkey::new_from_array([3; 32]),
+                    vote_account: Pubkey::new_from_array([3; 32]),
                     balance: 0,
                     last_update_epoch: 999999999999999,
                 },
