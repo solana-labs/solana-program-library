@@ -6,7 +6,7 @@ that can change that metadata going forward. The app is composed of 2 actions, o
 ## Permissioning and Architecture
 
 Only the authority on a mint can create the unique metadata accounts. The two metadata accounts created are the Metadata account, which holds the Name, Symbol, and URI and the Owner account, which holds a key to the Owner of
-the metadata. The authority on a mint is responsible for calling create_metadata_accounts to create
+the metadata. The authority on the mint is responsible for calling create_metadata_accounts to create
 allocated accounts on the chain.
 
 To ensure the uniqueness of a mint's metadata, the address of a Metadata account is a PDA composed of seeds:
