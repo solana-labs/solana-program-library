@@ -21,7 +21,7 @@ that can be perused learning and run if desired with `cargo run --bin  spl-metad
 
 ## Interface
 
-The on-chain Metadata Program is written in Rust and available on crates.io as
+The on-chain Token Metadata program is written in Rust and available on crates.io as
 [spl-metadata](https://crates.io/crates/spl-token-metadata) and
 [docs.rs](https://docs.rs/spl-metadata).
 
