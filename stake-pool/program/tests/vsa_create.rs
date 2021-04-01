@@ -18,7 +18,7 @@ use {
         transaction::TransactionError,
         transport::TransportError,
     },
-    spl_stake_pool::{error, find_stake_address_for_validator, id, instruction, stake_program},
+    spl_stake_pool::{error, find_stake_program_address, id, instruction, stake_program},
 };
 
 #[tokio::test]
@@ -33,7 +33,7 @@ async fn success_create_validator_stake_account() {
     let validator = Keypair::new();
     create_vote(&mut banks_client, &payer, &recent_blockhash, &validator).await;
 
-    let (stake_account, _) = find_stake_address_for_validator(
+    let (stake_account, _) = find_stake_program_address(
         &id(),
         &validator.pubkey(),
         &stake_pool_accounts.stake_pool.pubkey(),
@@ -81,11 +81,8 @@ async fn fail_create_validator_stake_account_on_non_vote_account() {
 
     let validator = Pubkey::new_unique();
 
-    let (stake_account, _) = find_stake_address_for_validator(
-        &id(),
-        &validator,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let (stake_account, _) =
+        find_stake_program_address(&id(), &validator, &stake_pool_accounts.stake_pool.pubkey());
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::create_validator_stake_account(
@@ -124,11 +121,8 @@ async fn fail_create_validator_stake_account_with_wrong_system_program() {
 
     let validator = Pubkey::new_unique();
 
-    let (stake_account, _) = find_stake_address_for_validator(
-        &id(),
-        &validator,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let (stake_account, _) =
+        find_stake_program_address(&id(), &validator, &stake_pool_accounts.stake_pool.pubkey());
     let wrong_system_program = Pubkey::new_unique();
     let accounts = vec![
         AccountMeta::new_readonly(stake_pool_accounts.stake_pool.pubkey(), false),
@@ -177,11 +171,8 @@ async fn fail_create_validator_stake_account_with_wrong_stake_program() {
 
     let validator = Pubkey::new_unique();
 
-    let (stake_account, _) = find_stake_address_for_validator(
-        &id(),
-        &validator,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let (stake_account, _) =
+        find_stake_program_address(&id(), &validator, &stake_pool_accounts.stake_pool.pubkey());
     let wrong_stake_program = Pubkey::new_unique();
     let accounts = vec![
         AccountMeta::new_readonly(stake_pool_accounts.stake_pool.pubkey(), false),

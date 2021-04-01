@@ -79,9 +79,9 @@ pub(crate) fn get_stake_state(
     Ok(stake_state)
 }
 
-pub(crate) fn get_stake_accounts_by_withdrawer(
+pub(crate) fn get_stake_accounts_by_withdraw_authority(
     rpc_client: &RpcClient,
-    withdrawer: &Pubkey,
+    withdraw_authority: &Pubkey,
 ) -> Result<Vec<(Pubkey, u64, stake_program::StakeState)>, ClientError> {
     rpc_client
         .get_program_accounts_with_config(
@@ -89,7 +89,7 @@ pub(crate) fn get_stake_accounts_by_withdrawer(
             RpcProgramAccountsConfig {
                 filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
                     offset: 44, // 44 is Withdrawer authority offset in stake account stake
-                    bytes: MemcmpEncodedBytes::Binary(format!("{}", withdrawer)),
+                    bytes: MemcmpEncodedBytes::Binary(format!("{}", withdraw_authority)),
                     encoding: None,
                 })]),
                 account_config: RpcAccountInfoConfig {

@@ -99,29 +99,32 @@ impl StakePool {
         .ok()
     }
 
-    /// Checks withdraw or deposit authority
+    /// Checks that the withdraw or deposit authority is valid
     fn check_authority(
-        authority: &Pubkey,
+        authority_address: &Pubkey,
         program_id: &Pubkey,
         stake_pool_address: &Pubkey,
-        seed: &[u8],
+        authority_seed: &[u8],
         bump_seed: u8,
     ) -> Result<(), ProgramError> {
-        if *authority
-            != crate::create_pool_authority_address(
+        if *authority_address
+            == Pubkey::create_program_address(
+                &[
+                    &stake_pool_address.to_bytes()[..32],
+                    authority_seed,
+                    &[bump_seed],
+                ],
                 program_id,
-                stake_pool_address,
-                seed,
-                bump_seed,
             )?
         {
-            return Err(StakePoolError::InvalidProgramAddress.into());
+            Ok(())
+        } else {
+            Err(StakePoolError::InvalidProgramAddress.into())
         }
-        Ok(())
     }
 
-    /// Checks withdraw authority
-    pub fn check_authority_withdraw(
+    /// Checks that the withdraw authority is valid
+    pub(crate) fn check_authority_withdraw(
         &self,
         withdraw_authority: &Pubkey,
         program_id: &Pubkey,
@@ -135,8 +138,8 @@ impl StakePool {
             self.withdraw_bump_seed,
         )
     }
-    /// Checks deposit authority
-    pub fn check_authority_deposit(
+    /// Checks that the deposit authority is valid
+    pub(crate) fn check_authority_deposit(
         &self,
         deposit_authority: &Pubkey,
         program_id: &Pubkey,
@@ -152,7 +155,7 @@ impl StakePool {
     }
 
     /// Check owner validity and signature
-    pub fn check_owner(&self, owner_info: &AccountInfo) -> Result<(), ProgramError> {
+    pub(crate) fn check_owner(&self, owner_info: &AccountInfo) -> Result<(), ProgramError> {
         if *owner_info.key != self.owner {
             return Err(StakePoolError::WrongOwner.into());
         }
