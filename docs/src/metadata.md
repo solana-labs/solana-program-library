@@ -1,5 +1,5 @@
 ---
-title: Metadata Program
+title: Token Metadata Program
 ---
 
 ## Background
