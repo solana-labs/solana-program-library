@@ -1973,7 +1973,8 @@ fn main() {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-        if let Some(multisig_signers) = multisig_signers {
+        if let Some(mut multisig_signers) = multisig_signers {
+            multisig_signers.sort_by(|(_, lp), (_, rp)| lp.cmp(rp));
             let (signers, pubkeys): (Vec<_>, Vec<_>) = multisig_signers.into_iter().unzip();
             bulk_signers.extend(signers.into_iter().map(Some));
             multisigner_ids = pubkeys;
