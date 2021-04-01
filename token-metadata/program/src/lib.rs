@@ -1,4 +1,4 @@
-//! A metadata program for the Solana blockchain.
+//! A Token Metadata program for the Solana blockchain.
 
 pub mod entrypoint;
 pub mod error;
