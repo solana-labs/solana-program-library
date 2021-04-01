@@ -1,7 +1,7 @@
 //! State transition types
 
 use {
-    crate::{error::StakePoolError, instruction::Fee, processor::Processor},
+    crate::{error::StakePoolError, instruction::Fee},
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     spl_math::checked_ceil_div::CheckedCeilDiv,
@@ -99,17 +99,38 @@ impl StakePool {
         .ok()
     }
 
+    /// Checks withdraw or deposit authority
+    fn check_authority(
+        authority: &Pubkey,
+        program_id: &Pubkey,
+        stake_pool_address: &Pubkey,
+        seed: &[u8],
+        bump_seed: u8,
+    ) -> Result<(), ProgramError> {
+        if *authority
+            != crate::create_pool_authority_address(
+                program_id,
+                stake_pool_address,
+                seed,
+                bump_seed,
+            )?
+        {
+            return Err(StakePoolError::InvalidProgramAddress.into());
+        }
+        Ok(())
+    }
+
     /// Checks withdraw authority
     pub fn check_authority_withdraw(
         &self,
-        authority_to_check: &Pubkey,
+        withdraw_authority: &Pubkey,
         program_id: &Pubkey,
-        stake_pool_key: &Pubkey,
+        stake_pool_address: &Pubkey,
     ) -> Result<(), ProgramError> {
-        Processor::check_authority(
-            authority_to_check,
+        Self::check_authority(
+            withdraw_authority,
             program_id,
-            stake_pool_key,
+            stake_pool_address,
             crate::AUTHORITY_WITHDRAW,
             self.withdraw_bump_seed,
         )
@@ -117,14 +138,14 @@ impl StakePool {
     /// Checks deposit authority
     pub fn check_authority_deposit(
         &self,
-        authority_to_check: &Pubkey,
+        deposit_authority: &Pubkey,
         program_id: &Pubkey,
-        stake_pool_key: &Pubkey,
+        stake_pool_address: &Pubkey,
     ) -> Result<(), ProgramError> {
-        Processor::check_authority(
-            authority_to_check,
+        Self::check_authority(
+            deposit_authority,
             program_id,
-            stake_pool_key,
+            stake_pool_address,
             crate::AUTHORITY_DEPOSIT,
             self.deposit_bump_seed,
         )
@@ -182,7 +203,7 @@ pub struct ValidatorStakeInfo {
 
 impl ValidatorList {
     /// Create an empty instance containing space for `max_validators`
-    pub fn new_with_max_validators(max_validators: u32) -> Self {
+    pub fn new(max_validators: u32) -> Self {
         Self {
             account_type: AccountType::ValidatorList,
             max_validators,
@@ -239,8 +260,7 @@ mod test {
     #[test]
     fn test_state_packing() {
         let max_validators = 10_000;
-        let size = get_instance_packed_len(&ValidatorList::new_with_max_validators(max_validators))
-            .unwrap();
+        let size = get_instance_packed_len(&ValidatorList::new(max_validators)).unwrap();
         // Not initialized
         let stake_list = ValidatorList {
             account_type: AccountType::Uninitialized,
@@ -297,7 +317,7 @@ mod test {
     proptest! {
         #[test]
         fn stake_list_size_calculation(test_amount in 0..=100_000_u32) {
-            let validators = ValidatorList::new_with_max_validators(test_amount);
+            let validators = ValidatorList::new(test_amount);
             let size = get_instance_packed_len(&validators).unwrap();
             assert_eq!(ValidatorList::calculate_max_validators(size), test_amount as usize);
             assert_eq!(ValidatorList::calculate_max_validators(size.saturating_add(1)), test_amount as usize);

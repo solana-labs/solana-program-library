@@ -177,10 +177,8 @@ pub async fn create_stake_pool(
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
     let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
-    let validator_list_size = get_instance_packed_len(
-        &state::ValidatorList::new_with_max_validators(max_validators),
-    )
-    .unwrap();
+    let validator_list_size =
+        get_instance_packed_len(&state::ValidatorList::new(max_validators)).unwrap();
     let rent_validator_list = rent.minimum_balance(validator_list_size);
 
     let mut transaction = Transaction::new_with_payer(

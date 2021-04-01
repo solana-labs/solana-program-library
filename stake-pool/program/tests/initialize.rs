@@ -179,9 +179,9 @@ async fn test_initialize_stake_pool_with_wrong_max_validators() {
 
     let rent = banks_client.get_rent().await.unwrap();
     let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
-    let validator_list_size = get_instance_packed_len(
-        &state::ValidatorList::new_with_max_validators(stake_pool_accounts.max_validators - 1),
-    )
+    let validator_list_size = get_instance_packed_len(&state::ValidatorList::new(
+        stake_pool_accounts.max_validators - 1,
+    ))
     .unwrap();
     let rent_validator_list = rent.minimum_balance(validator_list_size);
 
@@ -333,9 +333,9 @@ async fn test_initialize_stake_pool_with_wrong_token_program_id() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
-    let validator_list_size = get_instance_packed_len(
-        &state::ValidatorList::new_with_max_validators(stake_pool_accounts.max_validators),
-    )
+    let validator_list_size = get_instance_packed_len(&state::ValidatorList::new(
+        stake_pool_accounts.max_validators,
+    ))
     .unwrap();
     let rent_validator_list = rent.minimum_balance(validator_list_size);
 
@@ -499,9 +499,9 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_pool() {
     .await;
 
     let rent = banks_client.get_rent().await.unwrap();
-    let validator_list_size = get_instance_packed_len(
-        &state::ValidatorList::new_with_max_validators(stake_pool_accounts.max_validators),
-    )
+    let validator_list_size = get_instance_packed_len(&state::ValidatorList::new(
+        stake_pool_accounts.max_validators,
+    ))
     .unwrap();
     let rent_validator_list = rent.minimum_balance(validator_list_size);
 
@@ -572,9 +572,9 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_validator_list() {
 
     let rent = banks_client.get_rent().await.unwrap();
     let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
-    let validator_list_size = get_instance_packed_len(
-        &state::ValidatorList::new_with_max_validators(stake_pool_accounts.max_validators),
-    )
+    let validator_list_size = get_instance_packed_len(&state::ValidatorList::new(
+        stake_pool_accounts.max_validators,
+    ))
     .unwrap();
 
     let mut transaction = Transaction::new_with_payer(
@@ -646,9 +646,9 @@ async fn test_initialize_stake_pool_without_owner_signature() {
 
     let rent = banks_client.get_rent().await.unwrap();
     let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
-    let validator_list_size = get_instance_packed_len(
-        &state::ValidatorList::new_with_max_validators(stake_pool_accounts.max_validators),
-    )
+    let validator_list_size = get_instance_packed_len(&state::ValidatorList::new(
+        stake_pool_accounts.max_validators,
+    ))
     .unwrap();
     let rent_validator_list = rent.minimum_balance(validator_list_size);
 
