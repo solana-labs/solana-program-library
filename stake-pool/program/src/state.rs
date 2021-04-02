@@ -50,6 +50,9 @@ pub struct StakePool {
     /// Validator stake list storage account
     pub validator_list: Pubkey,
 
+    /// Reserve stake account, holds deactivated stake
+    pub reserve_stake: Pubkey,
+
     /// Pool Mint
     pub pool_mint: Pubkey,
 

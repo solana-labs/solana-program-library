@@ -33,11 +33,13 @@ pub enum StakePoolInstruction {
     ///   1. `[s]` Manager
     ///   2. `[]` Staker
     ///   3. `[w]` Uninitialized validator stake list storage account
-    ///   4. `[]` Pool token mint. Must be non zero, owned by withdraw authority.
-    ///   5. `[]` Pool account to deposit the generated fee for manager.
-    ///   6. `[]` Clock sysvar
-    ///   7. `[]` Rent sysvar
-    ///   8. `[]` Token program id
+    ///   4. `[]` Reserve stake account Must be initialized, have zero balance,
+    ///       and staker / withdrawer authority set to pool withdraw authority.
+    ///   5. `[]` Pool token mint. Must be non zero, owned by withdraw authority.
+    ///   6. `[]` Pool account to deposit the generated fee for manager.
+    ///   7. `[]` Clock sysvar
+    ///   8. `[]` Rent sysvar
+    ///   9. `[]` Token program id
     Initialize {
         /// Deposit fee assessed
         #[allow(dead_code)] // but it's not
@@ -107,14 +109,14 @@ pub enum StakePoolInstruction {
     ///
     /// After the split, the instruction automatically deactivates the stake.
     ///
-    /// The instruction only succeeds if the transient stake account does not exist,
-    /// or exists with deactivating stake.
+    /// The instruction only succeeds if the transient stake account does not
+    /// exist. The amount of lamports to move must be at least rent-exemption
+    /// plus 1 lamport.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
-    ///  2. `[s]` Funder for stake account
-    ///  3. `[]` Validator list
-    ///  4. `[]` Stake pool withdraw authority
+    ///  2. `[]` Validator list
+    ///  3. `[]` Stake pool withdraw authority
     ///  5. `[w]` Canonical stake account to split from
     ///  5. `[w]` Transient stake account to receive split
     ///  6. `[]` Clock sysvar
@@ -122,79 +124,49 @@ pub enum StakePoolInstruction {
     ///  8. `[]` System program
     ///  9. `[]` Stake program
     ///  userdata: amount of lamports to split
-    SplitIntoTransient(u64),
+    ValidatorToReserve(u64),
 
-    /// (Staker only) Move stake from one transient stake account to another.
+    /// (Staker only) Split reserve stake into a transient stake account and delegate to the appropriate validator
     ///
-    /// Once a transient stake is deactivated, some or all of it can be moved
-    /// to another deactivated transient stake for rebalancing. This instruction
-    /// also updates both validator balances in the validator list.
-    ///
-    /// This instruction only succeeds if the source transient stake account is
-    /// deactivated, and the destination transient stake account is either
-    /// deactivated or non-existent.
-    ///
-    ///  0. `[]` Stake pool
-    ///  1. `[s]` Stake pool staker
-    ///  2. `[s]` Funder for stake account
-    ///  3. `[w]` Validator list
-    ///  4. `[]` Stake pool withdraw authority
-    ///  5. `[w]` Source transient stake account
-    ///  6. `[]` Source canonical stake account
-    ///  7. `[w]` Destination transient stake account
-    ///  8. `[]` Destination canonical stake account
-    ///  9. `[]` Clock sysvar
-    /// 10. `[]` Rent sysvar
-    /// 11. `[]` System program
-    /// 12. `[]` Stake program
-    /// userdata: amount of lamports to move
-    TransferTransientStake(u64),
-
-    /// (Staker only) Delegate transient stake to the appropriate validator
-    ///
-    /// Once a deactived transient stake is rebalanced, the staker can delegate it.
-    ///
-    /// This instruction only succeeds if the transient stake account exists and is
-    /// deactivated.
+    /// This instruction only succeeds if the transient stake account does not exist.
+    /// The minimum amount to move is rent-exemption plus 1 SOL in order to avoid
+    /// issues on credits observed when merging active stakes later.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
     ///  2. `[]` Validator list
     ///  3. `[]` Stake pool withdraw authority
-    ///  4. `[w]` Transient stake account
-    ///  5. `[]` Canonical stake account
-    ///  6. '[]' Clock sysvar
-    ///  7. `[]` Stake program
-    DelegateTransientStake,
+    ///  4. `[w]` Stake pool reserve stake
+    ///  5. `[w]` Transient stake account
+    ///  6. `[]` Canonical stake account
+    ///  7. '[]' Clock sysvar
+    ///  8. `[]` Stake program
+    ReserveToValidator(u64),
 
-    /// (Staker only) Merge transient stake into its corresponding canonical stake account
+    ///  Updates balances of validator and transient stake accounts in the pool
     ///
-    /// This instruction only succeeds if both stake accounts exist and are
-    /// activated.
+    ///  While going through the pairs of validator and transient stake accounts,
+    ///  if the transient stake is inactive, it is merged into the reserve stake
+    ///  account.  If the transient stake is active and has matching credits
+    ///  observed, it is merged into the canonical validator stake account. In
+    ///  all other states, nothing is done, and the balance is simply added to
+    ///  the canonical stake account balance.
     ///
     ///  0. `[]` Stake pool
-    ///  1. `[s]` Stake pool staker
-    ///  2. `[]` Validator list
+    ///  1. `[w]` Validator stake list storage account
+    ///  2. `[w]` Reserve stake account
     ///  3. `[]` Stake pool withdraw authority
-    ///  4. `[w]` Transient stake account
-    ///  5. `[w]` Canonical stake account
-    ///  6. '[]' Clock sysvar
-    ///  7. `[]` Stake program
-    MergeTransientStake,
-
-    ///   Updates balances of validator stake accounts in the pool
-    ///
-    ///   0. `[w]` Validator stake list storage account
-    ///   1. `[]` Sysvar clock account
-    ///   2. ..2+N ` [] N pairs of validator and transient stake accounts to
-    ///   update balances
+    ///  4. `[]` Sysvar clock account
+    ///  5. `[]` Stake program
+    ///  6. ..6+N ` [] N pairs of validator and transient stake accounts
     UpdateValidatorListBalance,
 
-    ///   Updates total pool balance based on balances in validator stake account list storage
+    ///   Updates total pool balance based on balances in the reserve and validator list
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[]` Validator stake list storage account
-    ///   2. `[]` Sysvar clock account
+    ///   2. `[]` Reserve stake account
+    ///   3. `[]` Sysvar clock account
     UpdateStakePoolBalance,
 
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
@@ -218,15 +190,14 @@ pub enum StakePoolInstruction {
     ///   Withdraw the token from the pool at the current ratio.
     ///   The amount withdrawn is the MIN(u64, stake size)
     ///
-    ///   A validator stake account can be withdrawn from freely, and a transient
-    ///   stake account can be withdrawn from if it is:
-    ///   * activated
-    ///   * deactivated and untouched for more than 1 epoch
+    ///   A validator stake account can be withdrawn from freely, and the reserve
+    ///   can only be drawn from if there is no active stake left, where all
+    ///   validator accounts are left with 1 lamport.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
     ///   2. `[]` Stake pool withdraw authority
-    ///   3. `[w]` Validator or untouched transient stake account to split
+    ///   3. `[w]` Validator or reserve stake account to split
     ///   4. `[w]` Unitialized stake account to receive withdrawal
     ///   5. `[]` User account to set as a new withdraw authority
     ///   6. `[w]` User account with pool tokens to burn from
