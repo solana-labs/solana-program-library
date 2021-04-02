@@ -18,17 +18,17 @@ use {
 
 type Error = Box<dyn std::error::Error>;
 
-pub(crate) fn get_stake_pool(
+pub fn get_stake_pool(
     rpc_client: &RpcClient,
-    pool_address: &Pubkey,
+    stake_pool_address: &Pubkey,
 ) -> Result<StakePool, Error> {
-    let account_data = rpc_client.get_account_data(pool_address)?;
+    let account_data = rpc_client.get_account_data(stake_pool_address)?;
     let stake_pool = StakePool::try_from_slice(account_data.as_slice())
-        .map_err(|err| format!("Invalid stake pool {}: {}", pool_address, err))?;
+        .map_err(|err| format!("Invalid stake pool {}: {}", stake_pool_address, err))?;
     Ok(stake_pool)
 }
 
-pub(crate) fn get_validator_list(
+pub fn get_validator_list(
     rpc_client: &RpcClient,
     validator_list_address: &Pubkey,
 ) -> Result<ValidatorList, Error> {
@@ -38,7 +38,7 @@ pub(crate) fn get_validator_list(
     Ok(validator_list)
 }
 
-pub(crate) fn get_token_account(
+pub fn get_token_account(
     rpc_client: &RpcClient,
     token_account_address: &Pubkey,
     expected_token_mint: &Pubkey,
@@ -58,7 +58,7 @@ pub(crate) fn get_token_account(
     }
 }
 
-pub(crate) fn get_token_mint(
+pub fn get_token_mint(
     rpc_client: &RpcClient,
     token_mint_address: &Pubkey,
 ) -> Result<spl_token::state::Mint, Error> {

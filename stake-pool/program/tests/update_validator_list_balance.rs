@@ -23,7 +23,7 @@ async fn get_list_sum(banks_client: &mut BanksClient, validator_list_key: &Pubke
     validator_list
         .validators
         .iter()
-        .map(|info| info.balance)
+        .map(|info| info.stake_lamports)
         .sum()
 }
 

@@ -31,60 +31,75 @@ impl Default for AccountType {
 pub struct StakePool {
     /// Account type, must be StakePool currently
     pub account_type: AccountType,
+
     /// Manager authority, allows for updating the staker, manager, and fee account
     pub manager: Pubkey,
+
     /// Staker authority, allows for adding and removing validators, and managing stake
     /// distribution
     pub staker: Pubkey,
+
     /// Deposit authority bump seed
     /// for `create_program_address(&[state::StakePool account, "deposit"])`
     pub deposit_bump_seed: u8,
+
     /// Withdrawal authority bump seed
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
     pub withdraw_bump_seed: u8,
+
     /// Validator stake list storage account
     pub validator_list: Pubkey,
+
     /// Pool Mint
     pub pool_mint: Pubkey,
+
     /// Manager fee account
     pub manager_fee_account: Pubkey,
+
     /// Pool token program id
     pub token_program_id: Pubkey,
-    /// total stake under management
-    pub stake_total: u64,
-    /// total pool
-    pub pool_total: u64,
-    /// Last epoch stake_total field was updated
+
+    /// Total stake under management.
+    /// Note that if `last_update_epoch` does not match the current epoch then this field may not
+    /// be accurate
+    pub total_stake_lamports: u64,
+
+    /// Total supply of pool tokens (should always match the supply in the Pool Mint)
+    pub pool_token_supply: u64,
+
+    /// Last epoch the `total_stake_lamports` field was updated
     pub last_update_epoch: u64,
+
     /// Fee applied to deposits
     pub fee: Fee,
 }
 impl StakePool {
-    /// calculate the pool tokens that should be minted
-    pub fn calc_pool_deposit_amount(&self, stake_lamports: u64) -> Option<u64> {
-        if self.stake_total == 0 {
+    /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
+    pub fn calc_pool_tokens_for_deposit(&self, stake_lamports: u64) -> Option<u64> {
+        if self.total_stake_lamports == 0 {
             return Some(stake_lamports);
         }
         u64::try_from(
             (stake_lamports as u128)
-                .checked_mul(self.pool_total as u128)?
-                .checked_div(self.stake_total as u128)?,
+                .checked_mul(self.pool_token_supply as u128)?
+                .checked_div(self.total_stake_lamports as u128)?,
         )
         .ok()
     }
-    /// calculate the pool tokens that should be withdrawn
-    pub fn calc_pool_withdraw_amount(&self, stake_lamports: u64) -> Option<u64> {
+    /// calculate the pool tokens that should be burned for a withdrawal of `stake_lamports`
+    pub fn calc_pool_tokens_for_withdraw(&self, stake_lamports: u64) -> Option<u64> {
         let (quotient, _) = (stake_lamports as u128)
-            .checked_mul(self.pool_total as u128)?
-            .checked_ceil_div(self.stake_total as u128)?;
+            .checked_mul(self.pool_token_supply as u128)?
+            .checked_ceil_div(self.total_stake_lamports as u128)?;
         u64::try_from(quotient).ok()
     }
+
     /// calculate lamports amount on withdrawal
     pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
         u64::try_from(
             (pool_tokens as u128)
-                .checked_mul(self.stake_total as u128)?
-                .checked_div(self.pool_total as u128)?,
+                .checked_mul(self.total_stake_lamports as u128)?
+                .checked_div(self.pool_token_supply as u128)?,
         )
         .ok()
     }
@@ -199,7 +214,7 @@ pub struct ValidatorList {
     /// Maximum allowable number of validators
     pub max_validators: u32,
 
-    /// List of all validator stake accounts and their info
+    /// List of stake info for each validator in the pool
     pub validators: Vec<ValidatorStakeInfo>,
 }
 
@@ -210,10 +225,12 @@ pub struct ValidatorStakeInfo {
     /// Validator vote account address
     pub vote_account: Pubkey,
 
-    /// Balance of the validator's stake account
-    pub balance: u64,
+    /// Amount of stake delegated to this validator
+    /// Note that if `last_update_epoch` does not match the current epoch then this field may not
+    /// be accurate
+    pub stake_lamports: u64,
 
-    /// Last epoch balance field was updated
+    /// Last epoch the `stake_lamports` field was updated
     pub last_update_epoch: u64,
 }
 
@@ -308,17 +325,17 @@ mod test {
             validators: vec![
                 ValidatorStakeInfo {
                     vote_account: Pubkey::new_from_array([1; 32]),
-                    balance: 123456789,
+                    stake_lamports: 123456789,
                     last_update_epoch: 987654321,
                 },
                 ValidatorStakeInfo {
                     vote_account: Pubkey::new_from_array([2; 32]),
-                    balance: 998877665544,
+                    stake_lamports: 998877665544,
                     last_update_epoch: 11223445566,
                 },
                 ValidatorStakeInfo {
                     vote_account: Pubkey::new_from_array([3; 32]),
-                    balance: 0,
+                    stake_lamports: 0,
                     last_update_epoch: 999999999999999,
                 },
             ],

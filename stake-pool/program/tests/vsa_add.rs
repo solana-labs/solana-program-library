@@ -98,14 +98,14 @@ async fn test_add_validator_to_pool() {
         .await;
     assert!(error.is_none());
 
-    let stake_account_balance = banks_client
+    let stake_lamports = banks_client
         .get_account(user_stake.stake_account)
         .await
         .unwrap()
         .unwrap()
         .lamports;
-    let deposit_tokens = stake_account_balance; // For now 1:1 math
-                                                // Check token account balance
+    let deposit_tokens = stake_lamports; // For now 1:1 math
+                                         // Check token account balance
     let token_balance = get_token_balance(&mut banks_client, &user_pool_account.pubkey()).await;
     assert_eq!(token_balance, deposit_tokens);
     let pool_fee_token_balance = get_token_balance(
@@ -131,7 +131,7 @@ async fn test_add_validator_to_pool() {
             validators: vec![state::ValidatorStakeInfo {
                 vote_account: user_stake.vote.pubkey(),
                 last_update_epoch: 0,
-                balance: stake_account_balance,
+                stake_lamports,
             }]
         }
     );

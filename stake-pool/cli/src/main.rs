@@ -372,7 +372,7 @@ fn command_vsa_remove(
     // Calculate amount of tokens to withdraw
     let stake_account = config.rpc_client.get_account(&stake)?;
     let tokens_to_withdraw = stake_pool
-        .calc_pool_withdraw_amount(stake_account.lamports)
+        .calc_pool_tokens_for_withdraw(stake_account.lamports)
         .unwrap();
 
     // Check balance and mint
@@ -583,46 +583,83 @@ fn command_deposit(
 
 fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+    let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
+    let epoch_info = config.rpc_client.get_epoch_info()?;
+
+    for validator in validator_list.validators {
+        println!(
+            "Validator Vote Account: {}\tBalance: {}\tLast Update Epoch: {}{}",
+            validator.vote_account,
+            Sol(validator.stake_lamports),
+            validator.last_update_epoch,
+            if validator.last_update_epoch != epoch_info.epoch {
+                " [UPDATE REQUIRED]"
+            } else {
+                ""
+            }
+        );
+    }
+
+    println!(
+        "Total Pool Stake: {}{}",
+        Sol(stake_pool.total_stake_lamports),
+        if stake_pool.last_update_epoch != epoch_info.epoch {
+            " [UPDATE REQUIRED]"
+        } else {
+            ""
+        }
+    );
+    println!(
+        "Total Pool Tokens: {}",
+        spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals)
+    );
 
     if config.verbose {
-        println!("Current validator list");
-        let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
-        for validator in validator_list.validators {
+        println!();
+
+        let pool_withdraw_authority =
+            find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
+
+        let accounts =
+            get_stake_accounts_by_withdraw_authority(&config.rpc_client, &pool_withdraw_authority)?;
+        if accounts.is_empty() {
+            return Err(format!("No stake accounts found for {}", pool_withdraw_authority).into());
+        }
+
+        let mut total_stake_lamports: u64 = 0;
+        for (pubkey, stake_lamports, stake_state) in accounts {
+            total_stake_lamports += stake_lamports;
             println!(
-                "Vote Account: {}\tBalance: {}\tEpoch: {}",
-                validator.vote_account, validator.balance, validator.last_update_epoch
+                "Stake Account: {}\tVote Account: {}\t{}",
+                pubkey,
+                stake_state.delegation().expect("delegation").voter_pubkey,
+                Sol(stake_lamports)
+            );
+        }
+        println!("Total Stake Account Balance: {}", Sol(total_stake_lamports));
+
+        if pool_mint.supply != stake_pool.pool_token_supply {
+            println!(
+                "BUG! Pool Tokens supply mismatch.  Pool mint reports {}",
+                spl_token::amount_to_ui_amount(pool_mint.supply, pool_mint.decimals)
             );
         }
     }
-
-    let pool_withdraw_authority =
-        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
-
-    let accounts =
-        get_stake_accounts_by_withdraw_authority(&config.rpc_client, &pool_withdraw_authority)?;
-    if accounts.is_empty() {
-        return Err("No accounts found.".to_string().into());
-    }
-
-    let mut total_lamports: u64 = 0;
-    for (pubkey, lamports, stake_state) in accounts {
-        total_lamports += lamports;
-        println!(
-            "Stake Account: {}\tVote Account: {}\t{}",
-            pubkey,
-            stake_state.delegation().expect("delegation").voter_pubkey,
-            Sol(lamports)
-        );
-    }
-    println!("Total Stake: {}", Sol(total_lamports));
 
     Ok(())
 }
 
 fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-    let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
     let epoch_info = config.rpc_client.get_epoch_info()?;
+
+    if stake_pool.last_update_epoch == epoch_info.epoch {
+        println!("Update not required");
+        return Ok(());
+    }
+
+    let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
 
     let accounts_to_update: Vec<Pubkey> = validator_list
         .validators
@@ -651,26 +688,21 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
         )?);
     }
 
-    if instructions.is_empty() && stake_pool.last_update_epoch == epoch_info.epoch {
-        println!("Stake pool balances are up to date, no update required.");
-        Ok(())
-    } else {
-        println!("Updating stake pool...");
-        instructions.push(spl_stake_pool::instruction::update_stake_pool_balance(
-            &spl_stake_pool::id(),
-            stake_pool_address,
-            &stake_pool.validator_list,
-        )?);
+    println!("Updating stake pool...");
+    instructions.push(spl_stake_pool::instruction::update_stake_pool_balance(
+        &spl_stake_pool::id(),
+        stake_pool_address,
+        &stake_pool.validator_list,
+    )?);
 
-        let mut transaction =
-            Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
+    let mut transaction =
+        Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
-        let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-        check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-        transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
-        send_transaction(&config, transaction)?;
-        Ok(())
-    }
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
+    send_transaction(&config, transaction)?;
+    Ok(())
 }
 
 #[derive(PartialEq, Debug)]
