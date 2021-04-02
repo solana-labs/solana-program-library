@@ -104,7 +104,7 @@ pub enum StakePoolInstruction {
     /// some amount of stake, up to the total activated stake, from the canonical
     /// validator stake account, into its "transient" stake account, defined by:
     ///
-    /// ```
+    /// ```ignore
     /// Pubkey::find_program_address(
     ///     &[&stake_account_address.to_bytes()[..32],], program_id,
     /// )
