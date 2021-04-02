@@ -890,14 +890,15 @@ fn process_withdraw_obligation_collateral(
 
     let withdraw_amount = if collateral_amount == u64::max_value() {
         let withdraw_value = max_withdraw_value.min(collateral.market_value);
-        withdraw_value
-            .try_div(collateral.market_value)?
+        let withdraw_pct = withdraw_value.try_div(collateral.market_value)?;
+        withdraw_pct
             .try_mul(collateral.deposited_amount)?
             .try_floor_u64()?
             .min(collateral.deposited_amount)
     } else {
         let withdraw_amount = collateral_amount.min(collateral.deposited_amount);
         let withdraw_pct = Decimal::from(withdraw_amount).try_div(collateral.deposited_amount)?;
+        // @FIXME: this doesn't look correct, withdraw_pct only applies to this collateral
         let withdraw_value = obligation.deposited_value()?.try_mul(withdraw_pct)?;
         if withdraw_value > max_withdraw_value {
             return Err(LendingError::WithdrawTooLarge.into());
