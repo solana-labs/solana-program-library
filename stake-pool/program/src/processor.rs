@@ -281,7 +281,7 @@ impl Processor {
         }
 
         if manager_fee_info.owner != token_program_info.key {
-            return Err(StakePoolError::InvalidFeeAccount.into());
+            return Err(ProgramError::IncorrectProgramId);
         }
 
         if pool_mint_info.owner != token_program_info.key {
@@ -300,6 +300,10 @@ impl Processor {
             crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
 
         let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
+
+        if pool_mint.supply != 0 {
+            return Err(StakePoolError::NonZeroPoolTokenSupply.into());
+        }
 
         if !pool_mint.mint_authority.contains(&withdraw_authority_key) {
             return Err(StakePoolError::WrongMintingAuthority.into());
@@ -1155,6 +1159,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::WrongMintingAuthority => msg!("Error: Wrong minting authority set for mint pool account"),
             StakePoolError::UnexpectedValidatorListAccountSize=> msg!("Error: The size of the given validator stake list does match the expected amount"),
             StakePoolError::WrongStaker=> msg!("Error: Wrong pool staker account"),
+            StakePoolError::NonZeroPoolTokenSupply => msg!("Error: Pool token supply is not zero on initialization"),
         }
     }
 }

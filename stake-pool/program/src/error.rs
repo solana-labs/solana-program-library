@@ -82,6 +82,9 @@ pub enum StakePoolError {
     /// Wrong pool staker account.
     #[error("WrongStaker")]
     WrongStaker,
+    /// Pool token supply is not zero on initialization
+    #[error("NonZeroPoolTokenSupply")]
+    NonZeroPoolTokenSupply,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
