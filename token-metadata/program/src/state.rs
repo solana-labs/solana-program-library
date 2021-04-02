@@ -30,15 +30,19 @@ pub struct Data {
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize)]
 pub struct Metadata {
+    /// This key is only present when the Metadata is used for a name/symbol combo that
+    /// can be duplicated. This means this name/symbol combo has no accompanying
+    /// UpdateAuthority account, and so it's update_authority is stored here.
+    pub non_unique_specific_update_authority: Option<Pubkey>,
     pub mint: Pubkey,
     pub data: Data,
 }
 
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize)]
-pub struct Owner {
+pub struct NameSymbolTuple {
     /// The person who can make updates to the metadata after it's made
-    pub owner: Pubkey,
-    /// Address of the metadata account
+    pub update_authority: Pubkey,
+    /// Address of the current active metadata account
     pub metadata: Pubkey,
 }

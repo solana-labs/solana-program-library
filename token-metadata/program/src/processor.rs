@@ -3,8 +3,8 @@ use {
         error::MetadataError,
         instruction::MetadataInstruction,
         state::{
-            Metadata, Owner, MAX_METADATA_LEN, MAX_NAME_LENGTH, MAX_OWNER_LEN, MAX_SYMBOL_LENGTH,
-            MAX_URI_LENGTH, PREFIX,
+            Metadata, NameSymbolTuple, MAX_METADATA_LEN, MAX_NAME_LENGTH, MAX_OWNER_LEN,
+            MAX_SYMBOL_LENGTH, MAX_URI_LENGTH, PREFIX,
         },
         utils::{assert_initialized, create_or_allocate_account_raw},
     },
@@ -28,7 +28,14 @@ pub fn process_instruction(
     match instruction {
         MetadataInstruction::CreateMetadataAccounts(args) => {
             msg!("Instruction: Create Metadata Accounts");
-            process_create_metadata_accounts(program_id, accounts, args.name, args.symbol, args.uri)
+            process_create_metadata_accounts(
+                program_id,
+                accounts,
+                args.data.name,
+                args.data.symbol,
+                args.data.uri,
+                args.allow_duplication,
+            )
         }
         MetadataInstruction::UpdateMetadataAccounts(args) => {
             msg!("Instruction: Update Metadata Accounts");
@@ -44,14 +51,15 @@ pub fn process_create_metadata_accounts(
     name: String,
     symbol: String,
     uri: String,
+    allow_duplication: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let owner_account_info = next_account_info(account_info_iter)?;
+    let name_symbol_account_info = next_account_info(account_info_iter)?;
     let metadata_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let mint_authority_info = next_account_info(account_info_iter)?;
     let payer_account_info = next_account_info(account_info_iter)?;
-    let owner_info = next_account_info(account_info_iter)?;
+    let update_authority_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
 
@@ -101,25 +109,6 @@ pub fn process_create_metadata_accounts(
         return Err(MetadataError::InvalidMetadataKey.into());
     }
 
-    let owner_seeds = &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        &name.as_bytes(),
-        &symbol.as_bytes(),
-    ];
-    let (owner_key, owner_bump_seed) = Pubkey::find_program_address(owner_seeds, program_id);
-    let owner_authority_signer_seeds = &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        &name.as_bytes(),
-        &symbol.as_bytes(),
-        &[owner_bump_seed],
-    ];
-
-    if owner_account_info.key != &owner_key {
-        return Err(MetadataError::InvalidOwnerKey.into());
-    }
-
     create_or_allocate_account_raw(
         *program_id,
         metadata_account_info,
@@ -129,28 +118,71 @@ pub fn process_create_metadata_accounts(
         MAX_METADATA_LEN,
         metadata_authority_signer_seeds,
     )?;
-    create_or_allocate_account_raw(
-        *program_id,
-        owner_account_info,
-        rent_info,
-        system_account_info,
-        payer_account_info,
-        MAX_OWNER_LEN,
-        owner_authority_signer_seeds,
-    )?;
 
-    let mut owner: Owner = try_from_slice_unchecked(&owner_account_info.data.borrow())?;
     let mut metadata: Metadata = try_from_slice_unchecked(&metadata_account_info.data.borrow())?;
-
-    owner.owner = *owner_info.key;
-    owner.metadata = *metadata_account_info.key;
-
     metadata.mint = *mint_info.key;
-    metadata.data.name = name;
-    metadata.data.symbol = symbol;
+    metadata.data.name = name.to_owned();
+    metadata.data.symbol = symbol.to_owned();
     metadata.data.uri = uri;
+    metadata.non_unique_specific_update_authority = Some(*update_authority_info.key);
 
-    owner.serialize(&mut *owner_account_info.data.borrow_mut())?;
+    if !allow_duplication {
+        let name_symbol_seeds = &[
+            PREFIX.as_bytes(),
+            program_id.as_ref(),
+            &name.as_bytes(),
+            &symbol.as_bytes(),
+        ];
+        let (name_symbol_key, name_symbol_bump_seed) =
+            Pubkey::find_program_address(name_symbol_seeds, program_id);
+        let name_symbol_authority_signer_seeds = &[
+            PREFIX.as_bytes(),
+            program_id.as_ref(),
+            &name.as_bytes(),
+            &symbol.as_bytes(),
+            &[name_symbol_bump_seed],
+        ];
+
+        if name_symbol_account_info.key != &name_symbol_key {
+            return Err(MetadataError::InvalidNameSymbolKey.into());
+        }
+
+        // If this is a brand new NameSymbol, we can simply allocate and be on our way.
+        // If it is an existing NameSymbol, we need to check that you are that authority and are the signer.
+        if !name_symbol_account_info.try_data_is_empty()? {
+            let name_symbol: NameSymbolTuple =
+                try_from_slice_unchecked(&name_symbol_account_info.data.borrow_mut())?;
+            if name_symbol.update_authority != *update_authority_info.key
+                || !update_authority_info.is_signer
+            {
+                return Err(
+                    MetadataError::UpdateAuthorityMustBeEqualToNameSymbolAuthorityAndSigner.into(),
+                );
+            }
+        } else {
+            create_or_allocate_account_raw(
+                *program_id,
+                name_symbol_account_info,
+                rent_info,
+                system_account_info,
+                payer_account_info,
+                MAX_OWNER_LEN,
+                name_symbol_authority_signer_seeds,
+            )?;
+        }
+
+        let mut name_symbol: NameSymbolTuple =
+            try_from_slice_unchecked(&name_symbol_account_info.data.borrow())?;
+
+        // Now this is 0'ed out, so it can be filtered on as a boolean filter for NFTs and other
+        // Unique types
+        metadata.non_unique_specific_update_authority = None;
+
+        name_symbol.update_authority = *update_authority_info.key;
+        name_symbol.metadata = *metadata_account_info.key;
+        name_symbol.serialize(&mut *name_symbol_account_info.data.borrow_mut())?;
+    };
+
     metadata.serialize(&mut *metadata_account_info.data.borrow_mut())?;
 
     Ok(())
@@ -158,33 +190,56 @@ pub fn process_create_metadata_accounts(
 
 /// Update existing account instruction
 pub fn process_update_metadata_accounts(
-    _: &Pubkey,
+    program_id: &Pubkey,
     accounts: &[AccountInfo],
     uri: String,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let metadata_account_info = next_account_info(account_info_iter)?;
-    let owner_info = next_account_info(account_info_iter)?;
-    let owner_account_info = next_account_info(account_info_iter)?;
+    let update_authority_info = next_account_info(account_info_iter)?;
+    let name_symbol_account_info = next_account_info(account_info_iter)?;
 
     if uri.len() > MAX_URI_LENGTH {
         return Err(MetadataError::UriTooLong.into());
     }
-
-    let owner: Owner = try_from_slice_unchecked(&owner_account_info.data.borrow())?;
     let mut metadata: Metadata = try_from_slice_unchecked(&metadata_account_info.data.borrow())?;
 
-    if owner.metadata != *metadata_account_info.key {
-        return Err(MetadataError::InvalidMetadataForOwner.into());
+    // Even if you're a metadata that doesn't use this, you need to send it up with proper key.
+    let name_symbol_seeds = &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        &metadata.data.name.as_bytes(),
+        &metadata.data.symbol.as_bytes(),
+    ];
+    let (name_symbol_key, _) = Pubkey::find_program_address(name_symbol_seeds, program_id);
+
+    if name_symbol_key != *name_symbol_account_info.key {
+        return Err(MetadataError::InvalidNameSymbolKey.into());
     }
 
-    if owner.owner != *owner_info.key {
-        return Err(MetadataError::OwnerNotOwner.into());
+    match metadata.non_unique_specific_update_authority {
+        Some(val) => {
+            if val != *update_authority_info.key {
+                return Err(MetadataError::UpdateAuthorityIncorrect.into());
+            }
+        }
+        None => {
+            let name_symbol: NameSymbolTuple =
+                try_from_slice_unchecked(&name_symbol_account_info.data.borrow())?;
+
+            if name_symbol.metadata != *metadata_account_info.key {
+                return Err(MetadataError::InvalidMetadataForNameSymbolTuple.into());
+            }
+
+            if name_symbol.update_authority != *update_authority_info.key {
+                return Err(MetadataError::UpdateAuthorityIncorrect.into());
+            }
+        }
     }
 
-    if !owner_info.is_signer {
-        return Err(MetadataError::OwnerIsNotSigner.into());
+    if !update_authority_info.is_signer {
+        return Err(MetadataError::UpdateAuthorityIsNotSigner.into());
     }
 
     metadata.data.uri = uri;

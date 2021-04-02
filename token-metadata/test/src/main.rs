@@ -83,6 +83,14 @@ fn main() {
                 .required(true)
                 .help("URI for the Mint to be updated with after creation to test update call"),
         )
+        .arg(
+            Arg::with_name("allow_duplicates")
+                .long("allow_duplicates")
+                .value_name("ALLOW_DUPLICATES")
+                .takes_value(false)
+                .required(false)
+                .help("Allow duplicates"),
+        )
         .get_matches();
 
     let client = RpcClient::new(
@@ -91,6 +99,7 @@ fn main() {
             .unwrap_or(&"https://devnet.solana.com".to_owned())
             .to_owned(),
     );
+    let allow_duplicates = app_matches.is_present("allow_duplicates");
     let payer = read_keypair_file(app_matches.value_of("keypair").unwrap()).unwrap();
     let program_key = Pubkey::from_str(METADATA_PROGRAM_PUBKEY).unwrap();
     let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
@@ -145,6 +154,7 @@ fn main() {
                 name,
                 symbol,
                 uri,
+                allow_duplicates,
             ),
             update_metadata_accounts(
                 program_key,
@@ -159,6 +169,7 @@ fn main() {
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
     transaction.sign(&[&payer, &new_mint], recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
+    println!("The transaction is {:?}", transaction);
     let account = client.get_account(&metadata_key).unwrap();
     let metadata: Metadata = try_from_slice_unchecked(&account.data).unwrap();
     println!(

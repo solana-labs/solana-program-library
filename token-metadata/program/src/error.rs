@@ -33,21 +33,23 @@ pub enum MetadataError {
     #[error(" Metadata's key must match seed of ['metadata', program id, mint] provided")]
     InvalidMetadataKey,
 
-    ///  Owner's key must match seed of ['metadata', program id, name, symbol] provided
-    #[error(" Metadata's key must match seed of ['metadata', program id, name, symbol] provided")]
-    InvalidOwnerKey,
+    ///  NameSymbolTuple's key must match seed of ['metadata', program id, name, symbol] provided
+    #[error(
+        "NameSymbolTuple's key must match seed of ['metadata', program id, name, symbol] provided"
+    )]
+    InvalidNameSymbolKey,
 
-    /// This  owner does not own this  metadata
-    #[error("This  owner does not own this  metadata")]
-    InvalidMetadataForOwner,
+    /// This NameSymbol does not own this metadata
+    #[error("This NameSymbol does not own this metadata")]
+    InvalidMetadataForNameSymbolTuple,
 
-    /// Owner given does not match owner key on  Owner
-    #[error("Owner given does not match owner key on  Owner")]
-    OwnerNotOwner,
+    /// Update Authority given does not match
+    #[error("Update Authority given does not match")]
+    UpdateAuthorityIncorrect,
 
-    /// Owner needs to be signer to update  metadata
-    #[error("Owner needs to be signer to update  metadata")]
-    OwnerIsNotSigner,
+    /// Update Authority needs to be signer to update  metadata
+    #[error("Update Authority needs to be signer to update metadata")]
+    UpdateAuthorityIsNotSigner,
 
     /// You must be the mint authority and signer on this transaction to create it's metadata
     #[error(
@@ -70,6 +72,10 @@ pub enum MetadataError {
     /// URI too long
     #[error("URI too long")]
     UriTooLong,
+
+    /// Update authority must be equivalent to the name symbol tuple's authority and also signer of this transaction
+    #[error("Update authority must be equivalent to the name symbol tuple's authority and also signer of this transaction")]
+    UpdateAuthorityMustBeEqualToNameSymbolAuthorityAndSigner,
 }
 
 impl PrintProgramError for MetadataError {
