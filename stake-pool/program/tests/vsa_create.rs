@@ -43,7 +43,7 @@ async fn success_create_validator_stake_account() {
         &[instruction::create_validator_stake_account(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.owner.pubkey(),
+            &stake_pool_accounts.staker.pubkey(),
             &payer.pubkey(),
             &stake_account,
             &validator.pubkey(),
@@ -51,7 +51,7 @@ async fn success_create_validator_stake_account() {
         .unwrap()],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
+    transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 
     // Check authorities
@@ -59,10 +59,13 @@ async fn success_create_validator_stake_account() {
     let stake_state = deserialize::<stake_program::StakeState>(&stake.data).unwrap();
     match stake_state {
         stake_program::StakeState::Stake(meta, stake) => {
-            assert_eq!(&meta.authorized.staker, &stake_pool_accounts.owner.pubkey());
+            assert_eq!(
+                &meta.authorized.staker,
+                &stake_pool_accounts.staker.pubkey()
+            );
             assert_eq!(
                 &meta.authorized.withdrawer,
-                &stake_pool_accounts.owner.pubkey()
+                &stake_pool_accounts.staker.pubkey()
             );
             assert_eq!(stake.delegation.voter_pubkey, validator.pubkey());
         }
@@ -88,7 +91,7 @@ async fn fail_create_validator_stake_account_on_non_vote_account() {
         &[instruction::create_validator_stake_account(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.owner.pubkey(),
+            &stake_pool_accounts.staker.pubkey(),
             &payer.pubkey(),
             &stake_account,
             &validator,
@@ -96,7 +99,7 @@ async fn fail_create_validator_stake_account_on_non_vote_account() {
         .unwrap()],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
+    transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -126,7 +129,7 @@ async fn fail_create_validator_stake_account_with_wrong_system_program() {
     let wrong_system_program = Pubkey::new_unique();
     let accounts = vec![
         AccountMeta::new_readonly(stake_pool_accounts.stake_pool.pubkey(), false),
-        AccountMeta::new_readonly(stake_pool_accounts.owner.pubkey(), true),
+        AccountMeta::new_readonly(stake_pool_accounts.staker.pubkey(), true),
         AccountMeta::new(payer.pubkey(), true),
         AccountMeta::new(stake_account, false),
         AccountMeta::new_readonly(validator, false),
@@ -146,7 +149,7 @@ async fn fail_create_validator_stake_account_with_wrong_system_program() {
     };
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
-    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
+    transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -176,7 +179,7 @@ async fn fail_create_validator_stake_account_with_wrong_stake_program() {
     let wrong_stake_program = Pubkey::new_unique();
     let accounts = vec![
         AccountMeta::new_readonly(stake_pool_accounts.stake_pool.pubkey(), false),
-        AccountMeta::new_readonly(stake_pool_accounts.owner.pubkey(), true),
+        AccountMeta::new_readonly(stake_pool_accounts.staker.pubkey(), true),
         AccountMeta::new(payer.pubkey(), true),
         AccountMeta::new(stake_account, false),
         AccountMeta::new_readonly(validator, false),
@@ -196,7 +199,7 @@ async fn fail_create_validator_stake_account_with_wrong_stake_program() {
     };
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
-    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
+    transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -226,7 +229,7 @@ async fn fail_create_validator_stake_account_with_incorrect_address() {
         &[instruction::create_validator_stake_account(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.owner.pubkey(),
+            &stake_pool_accounts.staker.pubkey(),
             &payer.pubkey(),
             &stake_account.pubkey(),
             &validator,
@@ -234,7 +237,7 @@ async fn fail_create_validator_stake_account_with_incorrect_address() {
         .unwrap()],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &stake_pool_accounts.owner], recent_blockhash);
+    transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await

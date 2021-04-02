@@ -31,9 +31,11 @@ impl Default for AccountType {
 pub struct StakePool {
     /// Account type, must be StakePool currently
     pub account_type: AccountType,
-    /// Owner authority
-    /// allows for updating the staking authority
-    pub owner: Pubkey,
+    /// Manager authority, allows for updating the staker, manager, and fee account
+    pub manager: Pubkey,
+    /// Staker authority, allows for adding and removing validators, and managing stake
+    /// distribution
+    pub staker: Pubkey,
     /// Deposit authority bump seed
     /// for `create_program_address(&[state::StakePool account, "deposit"])`
     pub deposit_bump_seed: u8,
@@ -44,8 +46,8 @@ pub struct StakePool {
     pub validator_list: Pubkey,
     /// Pool Mint
     pub pool_mint: Pubkey,
-    /// Owner fee account
-    pub owner_fee_account: Pubkey,
+    /// Manager fee account
+    pub manager_fee_account: Pubkey,
     /// Pool token program id
     pub token_program_id: Pubkey,
     /// total stake under management
@@ -86,7 +88,7 @@ impl StakePool {
         )
         .ok()
     }
-    /// calculate the fee in pool tokens that goes to the owner
+    /// calculate the fee in pool tokens that goes to the manager
     pub fn calc_fee_amount(&self, pool_amount: u64) -> Option<u64> {
         if self.fee.denominator == 0 {
             return Some(0);
@@ -154,12 +156,23 @@ impl StakePool {
         )
     }
 
-    /// Check owner validity and signature
-    pub(crate) fn check_owner(&self, owner_info: &AccountInfo) -> Result<(), ProgramError> {
-        if *owner_info.key != self.owner {
-            return Err(StakePoolError::WrongOwner.into());
+    /// Check manager validity and signature
+    pub(crate) fn check_manager(&self, manager_info: &AccountInfo) -> Result<(), ProgramError> {
+        if *manager_info.key != self.manager {
+            return Err(StakePoolError::WrongManager.into());
         }
-        if !owner_info.is_signer {
+        if !manager_info.is_signer {
+            return Err(StakePoolError::SignatureMissing.into());
+        }
+        Ok(())
+    }
+
+    /// Check staker validity and signature
+    pub(crate) fn check_staker(&self, staker_info: &AccountInfo) -> Result<(), ProgramError> {
+        if *staker_info.key != self.staker {
+            return Err(StakePoolError::WrongStaker.into());
+        }
+        if !staker_info.is_signer {
             return Err(StakePoolError::SignatureMissing.into());
         }
         Ok(())

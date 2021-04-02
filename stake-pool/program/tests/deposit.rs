@@ -510,7 +510,7 @@ async fn test_stake_pool_deposit_to_unknown_validator() {
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            &stake_pool_accounts.owner,
+            &stake_pool_accounts.staker,
         )
         .await;
 
@@ -789,7 +789,7 @@ async fn test_stake_pool_deposit_with_wrong_mint_for_receiver_acc() {
 
     let outside_mint = Keypair::new();
     let outside_withdraw_auth = Keypair::new();
-    let outside_owner = Keypair::new();
+    let outside_manager = Keypair::new();
     let outside_pool_fee_acc = Keypair::new();
 
     create_mint(
@@ -808,7 +808,7 @@ async fn test_stake_pool_deposit_with_wrong_mint_for_receiver_acc() {
         &recent_blockhash,
         &outside_pool_fee_acc,
         &outside_mint.pubkey(),
-        &outside_owner.pubkey(),
+        &outside_manager.pubkey(),
     )
     .await
     .unwrap();

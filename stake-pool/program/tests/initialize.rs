@@ -45,7 +45,7 @@ async fn create_mint_and_token_account(
         recent_blockhash,
         &stake_pool_accounts.pool_fee_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &stake_pool_accounts.owner.pubkey(),
+        &stake_pool_accounts.manager.pubkey(),
     )
     .await
     .unwrap();
@@ -204,7 +204,8 @@ async fn test_initialize_stake_pool_with_wrong_max_validators() {
             instruction::initialize(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.owner.pubkey(),
+                &stake_pool_accounts.manager.pubkey(),
+                &stake_pool_accounts.staker.pubkey(),
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
@@ -221,7 +222,7 @@ async fn test_initialize_stake_pool_with_wrong_max_validators() {
             &payer,
             &stake_pool_accounts.stake_pool,
             &stake_pool_accounts.validator_list,
-            &stake_pool_accounts.owner,
+            &stake_pool_accounts.manager,
         ],
         recent_blockhash,
     );
@@ -276,7 +277,8 @@ async fn test_initialize_stake_pool_with_wrong_mint_authority() {
         &stake_pool_accounts.validator_list,
         &wrong_mint.pubkey(),
         &stake_pool_accounts.pool_fee_account.pubkey(),
-        &stake_pool_accounts.owner,
+        &stake_pool_accounts.manager,
+        &stake_pool_accounts.staker.pubkey(),
         &stake_pool_accounts.fee,
         stake_pool_accounts.max_validators,
     )
@@ -358,7 +360,8 @@ async fn test_initialize_stake_pool_with_wrong_token_program_id() {
             instruction::initialize(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.owner.pubkey(),
+                &stake_pool_accounts.manager.pubkey(),
+                &stake_pool_accounts.staker.pubkey(),
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
@@ -375,7 +378,7 @@ async fn test_initialize_stake_pool_with_wrong_token_program_id() {
             &payer,
             &stake_pool_accounts.stake_pool,
             &stake_pool_accounts.validator_list,
-            &stake_pool_accounts.owner,
+            &stake_pool_accounts.manager,
         ],
         recent_blockhash,
     );
@@ -396,7 +399,7 @@ async fn test_initialize_stake_pool_with_wrong_token_program_id() {
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_with_wrong_fee_accounts_owner() {
+async fn test_initialize_stake_pool_with_wrong_fee_accounts_manager() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
 
@@ -436,7 +439,8 @@ async fn test_initialize_stake_pool_with_wrong_fee_accounts_owner() {
         &stake_pool_accounts.validator_list,
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.pool_fee_account.pubkey(),
-        &stake_pool_accounts.owner,
+        &stake_pool_accounts.manager,
+        &stake_pool_accounts.staker.pubkey(),
         &stake_pool_accounts.fee,
         stake_pool_accounts.max_validators,
     )
@@ -453,7 +457,7 @@ async fn test_initialize_stake_pool_with_wrong_fee_accounts_owner() {
             assert_eq!(error_index, program_error);
         }
         _ => panic!(
-            "Wrong error occurs while try to initialize stake pool with wrong fee account's owner"
+            "Wrong error occurs while try to initialize stake pool with wrong fee account's manager"
         ),
     }
 }
@@ -524,7 +528,8 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_pool() {
             instruction::initialize(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.owner.pubkey(),
+                &stake_pool_accounts.manager.pubkey(),
+                &stake_pool_accounts.staker.pubkey(),
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
@@ -541,7 +546,7 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_pool() {
             &payer,
             &stake_pool_accounts.stake_pool,
             &stake_pool_accounts.validator_list,
-            &stake_pool_accounts.owner,
+            &stake_pool_accounts.manager,
         ],
         recent_blockhash,
     );
@@ -596,7 +601,8 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_validator_list() {
             instruction::initialize(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.owner.pubkey(),
+                &stake_pool_accounts.manager.pubkey(),
+                &stake_pool_accounts.staker.pubkey(),
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
@@ -613,7 +619,7 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_validator_list() {
             &payer,
             &stake_pool_accounts.stake_pool,
             &stake_pool_accounts.validator_list,
-            &stake_pool_accounts.owner,
+            &stake_pool_accounts.manager,
         ],
         recent_blockhash,
     );
@@ -632,7 +638,7 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_validator_list() {
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_without_owner_signature() {
+async fn test_initialize_stake_pool_without_manager_signature() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
 
@@ -659,7 +665,8 @@ async fn test_initialize_stake_pool_without_owner_signature() {
     let data = init_data.try_to_vec().unwrap();
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), true),
-        AccountMeta::new_readonly(stake_pool_accounts.owner.pubkey(), false),
+        AccountMeta::new_readonly(stake_pool_accounts.manager.pubkey(), false),
+        AccountMeta::new_readonly(stake_pool_accounts.staker.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.validator_list.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.pool_fee_account.pubkey(), false),
@@ -716,7 +723,7 @@ async fn test_initialize_stake_pool_without_owner_signature() {
             assert_eq!(error_index, program_error);
         }
         _ => panic!(
-            "Wrong error occurs while try to initialize stake pool without owner's signature"
+            "Wrong error occurs while try to initialize stake pool without manager's signature"
         ),
     }
 }

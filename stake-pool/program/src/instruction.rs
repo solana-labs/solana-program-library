@@ -30,13 +30,14 @@ pub enum StakePoolInstruction {
     ///   Initializes a new StakePool.
     ///
     ///   0. `[w]` New StakePool to create.
-    ///   1. `[s]` Owner
-    ///   2. `[w]` Uninitialized validator stake list storage account
-    ///   3. `[]` pool token Mint. Must be non zero, owned by withdraw authority.
-    ///   4. `[]` Pool Account to deposit the generated fee for owner.
-    ///   5. `[]` Clock sysvar
-    ///   6. `[]` Rent sysvar
-    ///   7. `[]` Token program id
+    ///   1. `[s]` Manager
+    ///   2. `[]` Staker
+    ///   3. `[w]` Uninitialized validator stake list storage account
+    ///   4. `[]` Pool token mint. Must be non zero, owned by withdraw authority.
+    ///   5. `[]` Pool account to deposit the generated fee for manager.
+    ///   6. `[]` Clock sysvar
+    ///   7. `[]` Rent sysvar
+    ///   8. `[]` Token program id
     Initialize {
         /// Deposit fee assessed
         #[allow(dead_code)] // but it's not
@@ -46,10 +47,11 @@ pub enum StakePoolInstruction {
         max_validators: u32,
     },
 
-    ///   Creates new program account for accumulating stakes for a particular validator
+    ///   (Staker only) Creates new program account for accumulating stakes for
+    ///   a particular validator
     ///
     ///   0. `[]` Stake pool account this stake will belong to
-    ///   1. `[s]` Owner
+    ///   1. `[s]` Staker
     ///   2. `[ws]` Funding account (must be a system account)
     ///   3. `[w]` Stake account to be created
     ///   4. `[]` Validator this stake account will vote for
@@ -58,11 +60,11 @@ pub enum StakePoolInstruction {
     ///   7. `[]` Stake program
     CreateValidatorStakeAccount,
 
-    ///   Adds stake account delegated to validator to the pool's list of
-    ///   managed validators
+    ///   (Staker only) Adds stake account delegated to validator to the pool's
+    ///   list of managed validators
     ///
     ///   0. `[w]` Stake pool
-    ///   1. `[s]` Owner
+    ///   1. `[s]` Staker
     ///   2. `[]` Stake pool deposit authority
     ///   3. `[]` Stake pool withdraw authority
     ///   4. `[w]` Validator stake list storage account
@@ -75,10 +77,10 @@ pub enum StakePoolInstruction {
     ///  11. `[]` Stake program id,
     AddValidatorToPool,
 
-    ///   Removes validator stake account from the pool
+    ///   (Staker only) Removes validator from the pool
     ///
     ///   0. `[w]` Stake pool
-    ///   1. `[s]` Owner
+    ///   1. `[s]` Staker
     ///   2. `[]` Stake pool withdraw authority
     ///   3. `[]` New withdraw/staker authority to set in the stake account
     ///   4. `[w]` Validator stake list storage account
@@ -139,23 +141,31 @@ pub enum StakePoolInstruction {
     ///   userdata: amount to withdraw
     Withdraw(u64),
 
-    ///   Update owner
+    ///  (Manager only) Update manager
     ///
-    ///   0. `[w]` StakePool
-    ///   1. `[s]` Owner
-    ///   2. '[]` New owner pubkey
-    ///   3. '[]` New owner fee account
-    SetOwner,
+    ///  0. `[w]` StakePool
+    ///  1. `[s]` Manager
+    ///  2. '[]` New manager pubkey
+    ///  3. '[]` New manager fee account
+    SetManager,
+
+    ///  (Manager or staker only) Update staker
+    ///
+    ///  0. `[w]` StakePool
+    ///  1. `[s]` Manager or current staker
+    ///  2. '[]` New staker pubkey
+    SetStaker,
 }
 
 /// Creates an 'initialize' instruction.
 pub fn initialize(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    owner: &Pubkey,
+    manager: &Pubkey,
+    staker: &Pubkey,
     validator_list: &Pubkey,
     pool_mint: &Pubkey,
-    owner_pool_account: &Pubkey,
+    manager_pool_account: &Pubkey,
     token_program_id: &Pubkey,
     fee: Fee,
     max_validators: u32,
@@ -167,10 +177,11 @@ pub fn initialize(
     let data = init_data.try_to_vec()?;
     let accounts = vec![
         AccountMeta::new(*stake_pool, true),
-        AccountMeta::new_readonly(*owner, true),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(*staker, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new_readonly(*pool_mint, false),
-        AccountMeta::new_readonly(*owner_pool_account, false),
+        AccountMeta::new_readonly(*manager_pool_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
@@ -186,14 +197,14 @@ pub fn initialize(
 pub fn create_validator_stake_account(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    owner: &Pubkey,
+    staker: &Pubkey,
     funder: &Pubkey,
     stake_account: &Pubkey,
     validator: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
-        AccountMeta::new_readonly(*owner, true),
+        AccountMeta::new_readonly(*staker, true),
         AccountMeta::new(*funder, true),
         AccountMeta::new(*stake_account, false),
         AccountMeta::new_readonly(*validator, false),
@@ -215,7 +226,7 @@ pub fn create_validator_stake_account(
 pub fn add_validator_to_pool(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    owner: &Pubkey,
+    staker: &Pubkey,
     stake_pool_deposit: &Pubkey,
     stake_pool_withdraw: &Pubkey,
     validator_list: &Pubkey,
@@ -226,7 +237,7 @@ pub fn add_validator_to_pool(
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*owner, true),
+        AccountMeta::new_readonly(*staker, true),
         AccountMeta::new_readonly(*stake_pool_deposit, false),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*validator_list, false),
@@ -249,7 +260,7 @@ pub fn add_validator_to_pool(
 pub fn remove_validator_from_pool(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    owner: &Pubkey,
+    staker: &Pubkey,
     stake_pool_withdraw: &Pubkey,
     new_stake_authority: &Pubkey,
     validator_list: &Pubkey,
@@ -260,7 +271,7 @@ pub fn remove_validator_from_pool(
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*owner, true),
+        AccountMeta::new_readonly(*staker, true),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new_readonly(*new_stake_authority, false),
         AccountMeta::new(*validator_list, false),
@@ -385,23 +396,42 @@ pub fn withdraw(
     })
 }
 
-/// Creates a 'set owner' instruction.
-pub fn set_owner(
+/// Creates a 'set manager' instruction.
+pub fn set_manager(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    stake_pool_owner: &Pubkey,
-    stake_pool_new_owner: &Pubkey,
-    stake_pool_new_fee_receiver: &Pubkey,
+    manager: &Pubkey,
+    new_manager: &Pubkey,
+    new_fee_receiver: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*stake_pool_owner, true),
-        AccountMeta::new_readonly(*stake_pool_new_owner, false),
-        AccountMeta::new_readonly(*stake_pool_new_fee_receiver, false),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(*new_manager, false),
+        AccountMeta::new_readonly(*new_fee_receiver, false),
     ];
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::SetOwner.try_to_vec()?,
+        data: StakePoolInstruction::SetManager.try_to_vec()?,
+    })
+}
+
+/// Creates a 'set staker' instruction.
+pub fn set_staker(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    set_staker_authority: &Pubkey,
+    new_staker: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*set_staker_authority, true),
+        AccountMeta::new_readonly(*new_staker, false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::SetStaker.try_to_vec()?,
     })
 }
