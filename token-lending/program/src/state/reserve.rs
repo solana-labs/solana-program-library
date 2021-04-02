@@ -153,8 +153,11 @@ impl Reserve {
         max_borrow_value: Decimal,
     ) -> Result<BorrowLiquidityResult, ProgramError> {
         if liquidity_amount == u64::max_value() {
+            let decimals = 10u64.checked_pow(self.liquidity.mint_decimals as u32)
+                .ok_or(LendingError::MathOverflow)?;
             let borrow_amount = max_borrow_value
                 .try_div(self.liquidity.median_price)?
+                .try_mul(decimals)?
                 .min(self.liquidity.available_amount.into());
             let (origination_fee, host_fee) = self
                 .config
