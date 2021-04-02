@@ -601,25 +601,11 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
 fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter().peekable();
     let obligation_info = next_account_info(account_info_iter)?;
-    let lending_market_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
-    let token_program_id = next_account_info(account_info_iter)?;
-
-    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
-    if lending_market_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &lending_market.token_program_id != token_program_id.key {
-        return Err(LendingError::InvalidTokenProgram.into());
-    }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &obligation.lending_market != lending_market_info.key {
-        msg!("Invalid obligation lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
     }
 
     for collateral in &mut obligation.deposits {
@@ -633,10 +619,6 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         }
 
         let deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
-        if &deposit_reserve.lending_market != lending_market_info.key {
-            msg!("Invalid deposit reserve lending market account");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
         if deposit_reserve.last_update.is_stale(clock.slot)? {
             return Err(LendingError::ReserveStale.into());
         }
@@ -658,10 +640,6 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         }
 
         let borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
-        if &borrow_reserve.lending_market != lending_market_info.key {
-            msg!("Invalid borrow reserve lending market account");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
         if borrow_reserve.last_update.is_stale(clock.slot)? {
             return Err(LendingError::ReserveStale.into());
         }

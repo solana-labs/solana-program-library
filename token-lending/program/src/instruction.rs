@@ -147,9 +147,7 @@ pub enum LendingInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Obligation account.
-    ///   1. `[]` Lending market account.
-    ///   2. `[]` Clock sysvar.
-    ///   3. `[]` Token program id.
+    ///   1. `[]` Clock sysvar.
     ///   .. `[]` Collateral deposit reserve accounts - refreshed, all, in order.
     ///   .. `[]` Liquidity borrow reserve accounts - refreshed, all, in order.
     RefreshObligation,
@@ -689,14 +687,11 @@ pub fn init_obligation(
 pub fn refresh_obligation(
     program_id: Pubkey,
     obligation_pubkey: Pubkey,
-    lending_market_pubkey: Pubkey,
     reserve_pubkeys: Vec<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(obligation_pubkey, false),
-        AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(spl_token::id(), false),
     ];
     accounts.extend(
         reserve_pubkeys
