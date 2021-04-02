@@ -24,6 +24,7 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
+    msg!("Even here!?");
     let instruction = MetadataInstruction::try_from_slice(input)?;
     match instruction {
         MetadataInstruction::CreateMetadataAccounts(args) => {

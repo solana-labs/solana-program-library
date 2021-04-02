@@ -21,10 +21,8 @@ pub struct UpdateMetadataAccountArgs {
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 /// Args for create call
 pub struct CreateMetadataAccountArgs {
-    pub data: Data,
-    // For whatever reason, Borsh throws IO errors when trying to deserialize booleans over the wire.
-    // use u8 instead.
     pub allow_duplication: bool,
+    pub data: Data,
 }
 
 /// Instructions supported by the Metadata program.

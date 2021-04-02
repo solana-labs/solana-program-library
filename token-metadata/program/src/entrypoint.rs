@@ -2,6 +2,8 @@
 
 #![cfg(all(target_arch = "bpf", not(feature = "no-entrypoint")))]
 
+use solana_program::msg;
+
 use {
     crate::{error::MetadataError, processor},
     solana_program::{
@@ -16,6 +18,7 @@ fn process_instruction(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
+    msg!("LET ME IN");
     if let Err(error) = processor::process_instruction(program_id, accounts, instruction_data) {
         // catch the error so we can print it
         error.print::<MetadataError>();
