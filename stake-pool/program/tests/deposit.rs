@@ -177,12 +177,12 @@ async fn test_stake_pool_deposit() {
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool = state::StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(
-        stake_pool.stake_total,
-        stake_pool_before.stake_total + stake_lamports
+        stake_pool.total_stake_lamports,
+        stake_pool_before.total_stake_lamports + stake_lamports
     );
     assert_eq!(
-        stake_pool.pool_total,
-        stake_pool_before.pool_total + tokens_issued
+        stake_pool.pool_token_supply,
+        stake_pool_before.pool_token_supply + tokens_issued
     );
 
     // Check minted tokens
@@ -208,8 +208,8 @@ async fn test_stake_pool_deposit() {
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
-        validator_stake_item.balance,
-        validator_stake_item_before.balance + stake_lamports
+        validator_stake_item.stake_lamports,
+        validator_stake_item_before.stake_lamports + stake_lamports
     );
 
     // Check validator stake account actual SOL balance
@@ -217,7 +217,7 @@ async fn test_stake_pool_deposit() {
         get_account(&mut banks_client, &validator_stake_account.stake_account).await;
     assert_eq!(
         validator_stake_account.lamports,
-        validator_stake_item.balance
+        validator_stake_item.stake_lamports
     );
 }
 

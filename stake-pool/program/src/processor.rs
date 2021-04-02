@@ -513,8 +513,8 @@ impl Processor {
 
         // Calculate and mint tokens
         let stake_lamports = **stake_account_info.lamports.borrow();
-        let token_amount = stake_pool
-            .calc_pool_deposit_amount(stake_lamports)
+        let pool_tokens = stake_pool
+            .calc_pool_tokens_for_deposit(stake_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         Self::token_mint_to(
             stake_pool_info.key,
@@ -524,7 +524,7 @@ impl Processor {
             withdraw_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            token_amount,
+            pool_tokens,
         )?;
 
         // Check if stake is warmed up
@@ -532,13 +532,13 @@ impl Processor {
 
         validator_list.validators.push(ValidatorStakeInfo {
             vote_account,
-            balance: stake_lamports,
+            stake_lamports,
             last_update_epoch: clock.epoch,
         });
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
-        stake_pool.pool_total += token_amount;
-        stake_pool.stake_total += stake_lamports;
+        stake_pool.pool_token_supply += pool_tokens;
+        stake_pool.total_stake_lamports += stake_lamports;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
         Ok(())
@@ -622,8 +622,8 @@ impl Processor {
 
         // Calculate and burn tokens
         let stake_lamports = **stake_account_info.lamports.borrow();
-        let token_amount = stake_pool
-            .calc_pool_withdraw_amount(stake_lamports)
+        let pool_tokens = stake_pool
+            .calc_pool_tokens_for_withdraw(stake_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         Self::token_burn(
             stake_pool_info.key,
@@ -633,7 +633,7 @@ impl Processor {
             withdraw_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            token_amount,
+            pool_tokens,
         )?;
 
         validator_list
@@ -641,8 +641,8 @@ impl Processor {
             .retain(|item| item.vote_account != vote_account);
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
-        stake_pool.pool_total -= token_amount;
-        stake_pool.stake_total -= stake_lamports;
+        stake_pool.pool_token_supply -= pool_tokens;
+        stake_pool.total_stake_lamports -= stake_lamports;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
         Ok(())
@@ -685,7 +685,7 @@ impl Processor {
                     continue;
                 }
                 validator_stake_record.last_update_epoch = clock.epoch;
-                validator_stake_record.balance = **validator_stake_account.lamports.borrow();
+                validator_stake_record.stake_lamports = **validator_stake_account.lamports.borrow();
                 changes = true;
             }
         }
@@ -723,15 +723,15 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let mut total_balance: u64 = 0;
+        let mut total_stake_lamports: u64 = 0;
         for validator_stake_record in validator_list.validators {
             if validator_stake_record.last_update_epoch < clock.epoch {
                 return Err(StakePoolError::StakeListOutOfDate.into());
             }
-            total_balance += validator_stake_record.balance;
+            total_stake_lamports += validator_stake_record.stake_lamports;
         }
 
-        stake_pool.stake_total = total_balance;
+        stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.last_update_epoch = clock.epoch;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
@@ -830,16 +830,16 @@ impl Processor {
             .ok_or(StakePoolError::ValidatorNotFound)?;
 
         let stake_lamports = **stake_info.lamports.borrow();
-        let pool_amount = stake_pool
-            .calc_pool_deposit_amount(stake_lamports)
+        let new_pool_tokens = stake_pool
+            .calc_pool_tokens_for_deposit(stake_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let fee_amount = stake_pool
-            .calc_fee_amount(pool_amount)
+        let fee_pool_tokens = stake_pool
+            .calc_fee_amount(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let user_amount = pool_amount
-            .checked_sub(fee_amount)
+        let user_pool_tokens = new_pool_tokens
+            .checked_sub(fee_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         Self::stake_authorize(
@@ -886,7 +886,7 @@ impl Processor {
             withdraw_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            user_amount,
+            user_pool_tokens,
         )?;
 
         Self::token_mint_to(
@@ -897,13 +897,13 @@ impl Processor {
             withdraw_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            fee_amount,
+            fee_pool_tokens,
         )?;
-        stake_pool.pool_total += pool_amount;
-        stake_pool.stake_total += stake_lamports;
+        stake_pool.pool_token_supply += new_pool_tokens;
+        stake_pool.total_stake_lamports += stake_lamports;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
-        validator_list_item.balance = **validator_stake_account_info.lamports.borrow();
+        validator_list_item.stake_lamports = **validator_stake_account_info.lamports.borrow();
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         Ok(())
@@ -912,7 +912,7 @@ impl Processor {
     /// Processes [Withdraw](enum.Instruction.html).
     fn process_withdraw(
         program_id: &Pubkey,
-        pool_amount: u64,
+        pool_tokens: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -965,8 +965,8 @@ impl Processor {
             .find_mut(&vote_account)
             .ok_or(StakePoolError::ValidatorNotFound)?;
 
-        let stake_amount = stake_pool
-            .calc_lamports_withdraw_amount(pool_amount)
+        let stake_lamports = stake_pool
+            .calc_lamports_withdraw_amount(pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         Self::stake_split(
@@ -975,7 +975,7 @@ impl Processor {
             withdraw_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            stake_amount,
+            stake_lamports,
             stake_split_to.clone(),
         )?;
 
@@ -1011,14 +1011,14 @@ impl Processor {
             withdraw_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            pool_amount,
+            pool_tokens,
         )?;
 
-        stake_pool.pool_total -= pool_amount;
-        stake_pool.stake_total -= stake_amount;
+        stake_pool.pool_token_supply -= pool_tokens;
+        stake_pool.total_stake_lamports -= stake_lamports;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
-        validator_list_item.balance = **stake_split_from.lamports.borrow();
+        validator_list_item.stake_lamports = **stake_split_from.lamports.borrow();
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         Ok(())
