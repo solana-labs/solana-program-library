@@ -1,3 +1,5 @@
+use spl_token_metadata::instruction::transfer_update_authority;
+
 use {
     clap::{crate_description, crate_name, crate_version, App, Arg},
     solana_clap_utils::input_validators::{is_url, is_valid_signer},
@@ -91,6 +93,29 @@ fn main() {
                 .required(false)
                 .help("Allow duplicates"),
         )
+        .arg(
+            Arg::with_name("update_authority")
+                .long("update_authority")
+                .value_name("UPDATE_AUTHORITY")
+                .takes_value(true)
+                .required(false)
+                .help("Update authority filepath or url to keypair besides yourself, defaults to normal keypair"),
+        )
+        .arg(
+            Arg::with_name("skip_create")
+                .long("skip_create")
+                .value_name("SKIP_CREATE")
+                .takes_value(false)
+                .required(false)
+                .help("Skip the create call and only do an update"),
+        ).arg(
+            Arg::with_name("transfer_authority")
+                .long("transfer_authority")
+                .value_name("TRANSFER_AUTHORITY")
+                .takes_value(true)
+                .required(false)
+                .help("Transfer the authority to a different key"),
+        )
         .get_matches();
 
     let client = RpcClient::new(
@@ -101,6 +126,20 @@ fn main() {
     );
     let allow_duplicates = app_matches.is_present("allow_duplicates");
     let payer = read_keypair_file(app_matches.value_of("keypair").unwrap()).unwrap();
+    let update_authority = read_keypair_file(
+        app_matches
+            .value_of("update_authority")
+            .unwrap_or(app_matches.value_of("keypair").unwrap()),
+    )
+    .unwrap();
+    let transfer_authority = read_keypair_file(
+        app_matches
+            .value_of("transfer_authority")
+            .unwrap_or(app_matches.value_of("keypair").unwrap()),
+    )
+    .unwrap();
+    let add_transfer_authority = app_matches.is_present("transfer_authority");
+
     let program_key = Pubkey::from_str(METADATA_PROGRAM_PUBKEY).unwrap();
     let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
     let new_mint = read_keypair_file(app_matches.value_of("mint_keypair").unwrap()).unwrap();
@@ -109,6 +148,7 @@ fn main() {
     let uri = app_matches.value_of("uri").unwrap().to_owned();
     let update_uri = app_matches.value_of("update_uri").unwrap().to_owned();
     let new_mint_key = new_mint.pubkey();
+    let skip_create = app_matches.is_present("skip_create");
     let metadata_seeds = &[
         PREFIX.as_bytes(),
         &program_key.as_ref(),
@@ -116,25 +156,27 @@ fn main() {
     ];
     let (metadata_key, _) = Pubkey::find_program_address(metadata_seeds, &program_key);
 
-    let owner_seeds = &[
+    let name_symbol_seeds = &[
         PREFIX.as_bytes(),
         &program_key.as_ref(),
         &name.as_bytes(),
         &symbol.as_bytes(),
     ];
-    let (owner_key, _) = Pubkey::find_program_address(owner_seeds, &program_key);
+    let (name_symbol_key, _) = Pubkey::find_program_address(name_symbol_seeds, &program_key);
 
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            create_account(
-                &payer.pubkey(),
-                &new_mint.pubkey(),
-                client
-                    .get_minimum_balance_for_rent_exemption(Mint::LEN)
-                    .unwrap(),
-                Mint::LEN as u64,
-                &token_key,
-            ),
+    let mut instructions = vec![];
+
+    if !skip_create {
+        instructions.push(create_account(
+            &payer.pubkey(),
+            &new_mint.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Mint::LEN)
+                .unwrap(),
+            Mint::LEN as u64,
+            &token_key,
+        ));
+        instructions.push(
             initialize_mint(
                 &token_key,
                 &new_mint.pubkey(),
@@ -143,33 +185,54 @@ fn main() {
                 0,
             )
             .unwrap(),
-            create_metadata_accounts(
-                program_key,
-                owner_key,
-                metadata_key,
-                new_mint.pubkey(),
-                payer.pubkey(),
-                payer.pubkey(),
-                payer.pubkey(),
-                name,
-                symbol,
-                uri,
-                allow_duplicates,
-            ),
-            update_metadata_accounts(
-                program_key,
-                metadata_key,
-                owner_key,
-                payer.pubkey(),
-                update_uri.to_owned(),
-            ),
-        ],
-        Some(&payer.pubkey()),
-    );
+        );
+        instructions.push(create_metadata_accounts(
+            program_key,
+            name_symbol_key,
+            metadata_key,
+            new_mint.pubkey(),
+            payer.pubkey(),
+            payer.pubkey(),
+            update_authority.pubkey(),
+            name,
+            symbol,
+            uri,
+            allow_duplicates,
+            update_authority.pubkey() != payer.pubkey(),
+        ));
+    }
+
+    instructions.push(update_metadata_accounts(
+        program_key,
+        metadata_key,
+        name_symbol_key,
+        update_authority.pubkey(),
+        Some(update_authority.pubkey()),
+        update_uri.to_owned(),
+    ));
+
+    if add_transfer_authority {
+        instructions.push(transfer_update_authority(
+            program_key,
+            name_symbol_key,
+            update_authority.pubkey(),
+            transfer_authority.pubkey(),
+        ))
+    }
+
+    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
-    transaction.sign(&[&payer, &new_mint], recent_blockhash);
+    let mut signers = vec![&payer];
+    if !skip_create {
+        signers.push(&new_mint);
+    }
+
+    if update_authority.pubkey() != payer.pubkey() {
+        signers.push(&update_authority)
+    }
+
+    transaction.sign(&signers, recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
-    println!("The transaction is {:?}", transaction);
     let account = client.get_account(&metadata_key).unwrap();
     let metadata: Metadata = try_from_slice_unchecked(&account.data).unwrap();
     println!(

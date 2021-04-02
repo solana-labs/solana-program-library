@@ -24,7 +24,6 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    msg!("Even here!?");
     let instruction = MetadataInstruction::try_from_slice(input)?;
     match instruction {
         MetadataInstruction::CreateMetadataAccounts(args) => {
@@ -40,7 +39,16 @@ pub fn process_instruction(
         }
         MetadataInstruction::UpdateMetadataAccounts(args) => {
             msg!("Instruction: Update Metadata Accounts");
-            process_update_metadata_accounts(program_id, accounts, args.uri)
+            process_update_metadata_accounts(
+                program_id,
+                accounts,
+                args.uri,
+                args.non_unique_specific_update_authority,
+            )
+        }
+        MetadataInstruction::TransferUpdateAuthority => {
+            msg!("Instruction: Transfer Update Authority");
+            process_transfer_update_authority(program_id, accounts)
         }
     }
 }
@@ -194,6 +202,7 @@ pub fn process_update_metadata_accounts(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     uri: String,
+    non_unique_specific_update_authority: Option<Pubkey>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -245,6 +254,39 @@ pub fn process_update_metadata_accounts(
 
     metadata.data.uri = uri;
 
+    // Only set it if it's specifically a duplicable metadata (not an NFT kind) which can be
+    // determined by the presence of this field already.
+    match metadata.non_unique_specific_update_authority {
+        Some(_) => {
+            metadata.non_unique_specific_update_authority = non_unique_specific_update_authority
+        }
+        None => {}
+    }
+
     metadata.serialize(&mut *metadata_account_info.data.borrow_mut())?;
+    Ok(())
+}
+
+/// Transfer update authority
+pub fn process_transfer_update_authority(_: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+
+    let name_symbol_account_info = next_account_info(account_info_iter)?;
+    let current_update_authority_info = next_account_info(account_info_iter)?;
+    let new_update_authority_info = next_account_info(account_info_iter)?;
+
+    let mut name_symbol: NameSymbolTuple =
+        try_from_slice_unchecked(&name_symbol_account_info.data.borrow())?;
+
+    if name_symbol.update_authority != *current_update_authority_info.key
+        || !current_update_authority_info.is_signer
+    {
+        return Err(MetadataError::UpdateAuthorityMustBeEqualToNameSymbolAuthorityAndSigner.into());
+    }
+
+    name_symbol.update_authority = *new_update_authority_info.key;
+
+    name_symbol.serialize(&mut *name_symbol_account_info.data.borrow_mut())?;
+
     Ok(())
 }
