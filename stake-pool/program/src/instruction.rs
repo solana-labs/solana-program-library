@@ -33,7 +33,7 @@ pub enum StakePoolInstruction {
     ///   1. `[s]` Manager
     ///   2. `[]` Staker
     ///   3. `[w]` Uninitialized validator stake list storage account
-    ///   4. `[]` Reserve stake account Must be initialized, have zero balance,
+    ///   4. `[]` Reserve stake account must be initialized, have zero balance,
     ///       and staker / withdrawer authority set to pool withdraw authority.
     ///   5. `[]` Pool token mint. Must be non zero, owned by withdraw authority.
     ///   6. `[]` Pool account to deposit the generated fee for manager.
@@ -94,7 +94,10 @@ pub enum StakePoolInstruction {
     ///  10. `[]` Stake program id,
     RemoveValidatorFromPool,
 
-    /// (Staker only) Split a validator stake account into a transient stake account.
+    /// (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
+    ///
+    /// Internally, this instruction splits a validator stake account into its
+    /// corresponding transient stake account and deactivates it.
     ///
     /// In order to rebalance the pool without taking custody, the staker needs
     /// a way of reducing the stake on a stake account. This instruction splits
@@ -106,8 +109,6 @@ pub enum StakePoolInstruction {
     ///     &[&stake_account_address.to_bytes()[..32],], program_id,
     /// )
     /// ```
-    ///
-    /// After the split, the instruction automatically deactivates the stake.
     ///
     /// The instruction only succeeds if the transient stake account does not
     /// exist. The amount of lamports to move must be at least rent-exemption
@@ -124,9 +125,13 @@ pub enum StakePoolInstruction {
     ///  8. `[]` System program
     ///  9. `[]` Stake program
     ///  userdata: amount of lamports to split
-    ValidatorToReserve(u64),
+    DecreaseValidatorStake(u64),
 
-    /// (Staker only) Split reserve stake into a transient stake account and delegate to the appropriate validator
+    /// (Staker only) Increase stake on a validator from the reserve account
+    ///
+    /// Internally, this instruction splits reserve stake into a transient stake
+    /// account and delegate to the appropriate validator. `UpdateValidatorListBalance`
+    /// will do the work of merging once it's ready.
     ///
     /// This instruction only succeeds if the transient stake account does not exist.
     /// The minimum amount to move is rent-exemption plus 1 SOL in order to avoid
@@ -141,7 +146,7 @@ pub enum StakePoolInstruction {
     ///  6. `[]` Canonical stake account
     ///  7. '[]' Clock sysvar
     ///  8. `[]` Stake program
-    ReserveToValidator(u64),
+    IncreaseValidatorStake(u64),
 
     ///  Updates balances of validator and transient stake accounts in the pool
     ///
@@ -354,6 +359,18 @@ pub fn remove_validator_from_pool(
         accounts,
         data: StakePoolInstruction::RemoveValidatorFromPool.try_to_vec()?,
     })
+}
+
+/// Creates `DecreaseValidatorStake` instruction (rebalance from validator account to
+/// transient account)
+pub fn decrease_validator_stake() -> Result<Instruction, ProgramError> {
+    Err(ProgramError::IncorrectProgramId)
+}
+
+/// Creates `IncreaseValidatorStake` instruction (rebalance from reserve account to
+/// transient account)
+pub fn increase_validator_stake() -> Result<Instruction, ProgramError> {
+    Err(ProgramError::IncorrectProgramId)
 }
 
 /// Creates `UpdateValidatorListBalance` instruction (update validator stake account balances)
