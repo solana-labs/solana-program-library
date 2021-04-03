@@ -5,11 +5,9 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use crate::curve::{
-    calculator::{
-        CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
-        TradingTokenResult,
-    }
+use crate::curve::calculator::{
+    CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
+    TradingTokenResult,
 };
 use arrayref::{array_mut_ref, array_ref};
 use spl_math::{precise_number::PreciseNumber, uint::U256};
@@ -180,18 +178,14 @@ impl CurveCalculator for StableCurve {
         let token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
         let token_b_value = token_b_amount.checked_mul(&pool_ratio)?;
         match round_direction {
-            RoundDirection::Floor => {
-                Some(TradingTokenResult {
-                    token_a_amount: token_a_value.floor()?.to_imprecise()?,
-                    token_b_amount: token_b_value.floor()?.to_imprecise()?
-                })
-            },
-            RoundDirection::Ceiling => {
-                Some(TradingTokenResult {
-                    token_a_amount: token_a_value.ceiling()?.to_imprecise()?,
-                    token_b_amount: token_b_value.ceiling()?.to_imprecise()?
-                })
-            }
+            RoundDirection::Floor => Some(TradingTokenResult {
+                token_a_amount: token_a_value.floor()?.to_imprecise()?,
+                token_b_amount: token_b_value.floor()?.to_imprecise()?,
+            }),
+            RoundDirection::Ceiling => Some(TradingTokenResult {
+                token_a_amount: token_a_value.ceiling()?.to_imprecise()?,
+                token_b_amount: token_b_value.ceiling()?.to_imprecise()?,
+            }),
         }
     }
 
@@ -207,15 +201,24 @@ impl CurveCalculator for StableCurve {
         round_direction: RoundDirection,
     ) -> Option<u128> {
         let leverage = self.amp.checked_mul(N_COINS as u64)?;
-        let d0 = PreciseNumber::new(compute_d(leverage, swap_token_a_amount, swap_token_b_amount)?)?;
+        let d0 = PreciseNumber::new(compute_d(
+            leverage,
+            swap_token_a_amount,
+            swap_token_b_amount,
+        )?)?;
         let (deposit_token_amount, other_token_amount) = match trade_direction {
             TradeDirection::AtoB => (swap_token_a_amount, swap_token_b_amount),
-            TradeDirection::AtoB => (swap_token_b_amount, swap_token_a_amount)
+            TradeDirection::BtoA => (swap_token_b_amount, swap_token_a_amount),
         };
         let updated_deposit_token_amount = deposit_token_amount.checked_add(source_amount)?;
-        let d1 = PreciseNumber::new(compute_d(leverage, updated_deposit_token_amount, other_token_amount)?)?;
+        let d1 = PreciseNumber::new(compute_d(
+            leverage,
+            updated_deposit_token_amount,
+            other_token_amount,
+        )?)?;
         let diff = d1.checked_sub(&d0)?;
-        let final_amount = (diff.checked_mul(&PreciseNumber::new(pool_supply)?))?.checked_div(&d0)?;
+        let final_amount =
+            (diff.checked_mul(&PreciseNumber::new(pool_supply)?))?.checked_div(&d0)?;
         match round_direction {
             RoundDirection::Floor => final_amount.floor()?.to_imprecise(),
             RoundDirection::Ceiling => final_amount.ceiling()?.to_imprecise(),
