@@ -206,25 +206,19 @@ impl CurveCalculator for StableCurve {
         trade_direction: TradeDirection,
         round_direction: RoundDirection,
     ) -> Option<u128> {
-        let (swap_source_amount, swap_destination_amount) = match trade_direction {
-            TradeDirection::AtoB => (swap_token_a_amount, swap_token_b_amount),
-            TradeDirection::BtoA => (swap_token_b_amount, swap_token_a_amount)
-        };
         let leverage = self.amp.checked_mul(N_COINS as u64)?;
-        let d0 = compute_d(leverage, swap_source_amount, swap_destination_amount)?;
-        let new_swap_source_amount = match trade_direction {
-            TradeDirection::AtoB => swap_source_amount.checked_add(source_amount),
-            TradeDirection::BtoA => swap_source_amount.checked_sub(source_amount),
+        let d0 = PreciseNumber::new(compute_d(leverage, swap_token_a_amount, swap_token_b_amount)?)?;
+        let (deposit_token_amount, other_token_amount) = match trade_direction {
+            TradeDirection::AtoB => (swap_token_a_amount, swap_token_b_amount),
+            TradeDirection::AtoB => (swap_token_b_amount, swap_token_a_amount)
         };
-        let d1 = compute_d(leverage, new_swap_source_amount?, swap_destination_amount)?;
-        let diff = match trade_direction {
-            TradeDirection::AtoB=> d1.checked_sub(d0)?,
-            TradeDirection::BtoA => d0.checked_sub(d1)?
-        };
-        let final_amount = (diff.checked_mul(pool_supply))?.checked_div(d0)?;
+        let updated_deposit_token_amount = deposit_token_amount.checked_add(source_amount)?;
+        let d1 = PreciseNumber::new(compute_d(leverage, updated_deposit_token_amount, other_token_amount)?)?;
+        let diff = d1.checked_sub(&d0)?;
+        let final_amount = (diff.checked_mul(&PreciseNumber::new(pool_supply)?))?.checked_div(&d0)?;
         match round_direction {
-            RoundDirection::Floor => Some(PreciseNumber::new(final_amount)?.floor()?.to_imprecise()?),
-            RoundDirection::Ceiling => Some(PreciseNumber::new(final_amount)?.ceiling()?.to_imprecise()?)
+            RoundDirection::Floor => final_amount.floor()?.to_imprecise(),
+            RoundDirection::Ceiling => final_amount.ceiling()?.to_imprecise(),
         }
     }
 
