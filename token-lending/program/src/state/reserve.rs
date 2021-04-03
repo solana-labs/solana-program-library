@@ -446,7 +446,7 @@ impl ReserveLiquidity {
         current_borrow_rate: Rate,
         slots_elapsed: u64,
     ) -> ProgramResult {
-        let slot_interest_rate: Rate = current_borrow_rate.try_div(SLOTS_PER_YEAR)?;
+        let slot_interest_rate = current_borrow_rate.try_div(SLOTS_PER_YEAR)?;
         let compounded_interest_rate = Rate::one()
             .try_add(slot_interest_rate)?
             .try_pow(slots_elapsed)?;
