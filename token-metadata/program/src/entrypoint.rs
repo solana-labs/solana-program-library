@@ -2,8 +2,6 @@
 
 #![cfg(all(target_arch = "bpf", not(feature = "no-entrypoint")))]
 
-use solana_program::msg;
-
 use {
     crate::{error::MetadataError, processor},
     solana_program::{

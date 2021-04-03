@@ -1,6 +1,5 @@
-use crate::state::Data;
-
 use {
+    crate::state::Data,
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
