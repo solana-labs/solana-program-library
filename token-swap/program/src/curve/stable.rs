@@ -212,14 +212,14 @@ impl CurveCalculator for StableCurve {
         };
         let leverage = self.amp.checked_mul(N_COINS as u64)?;
         let d0 = compute_d(leverage, swap_source_amount, swap_destination_amount)?;
-        let new_swap_source_amount = match round_direction {
-            RoundDirection::Floor => swap_source_amount.checked_add(source_amount),
-            RoundDirection::Ceiling => swap_source_amount.checked_sub(source_amount),
+        let new_swap_source_amount = match trade_direction {
+            TradeDirection::AtoB => swap_source_amount.checked_add(source_amount),
+            TradeDirection::BtoA => swap_source_amount.checked_sub(source_amount),
         };
         let d1 = compute_d(leverage, new_swap_source_amount?, swap_destination_amount)?;
-        let diff = match round_direction {
-            RoundDirection::Floor => d1.checked_sub(d0)?,
-            RoundDirection::Ceiling => d0.checked_sub(d1)?
+        let diff = match trade_direction {
+            TradeDirection::AtoB=> d1.checked_sub(d0)?,
+            TradeDirection::BtoA => d0.checked_sub(d1)?
         };
         let final_amount = (diff.checked_mul(pool_supply))?.checked_div(d0)?;
         match round_direction {
