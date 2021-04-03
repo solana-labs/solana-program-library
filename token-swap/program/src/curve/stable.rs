@@ -386,6 +386,7 @@ mod tests {
             pool_token_supply in 1..u64::MAX,
             swap_token_a_amount in 1..u64::MAX,
             swap_token_b_amount in 1..u64::MAX,
+            amp in 1..100,
         ) {
             let pool_token_amount = pool_token_amount as u128;
             let pool_token_supply = pool_token_supply as u128;
@@ -396,7 +397,7 @@ mod tests {
             prop_assume!(pool_token_amount * swap_token_a_amount / pool_token_supply >= 1);
             prop_assume!(pool_token_amount * swap_token_b_amount / pool_token_supply >= 1);
             let curve = StableCurve {
-                amp: 1
+                amp: amp as u64
             };
             check_pool_value_from_deposit(
                 &curve,
