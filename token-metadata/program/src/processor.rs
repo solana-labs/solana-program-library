@@ -256,11 +256,8 @@ pub fn process_update_metadata_accounts(
 
     // Only set it if it's specifically a duplicable metadata (not an NFT kind) which can be
     // determined by the presence of this field already.
-    match metadata.non_unique_specific_update_authority {
-        Some(_) => {
-            metadata.non_unique_specific_update_authority = non_unique_specific_update_authority
-        }
-        None => {}
+    if let Some(_) = metadata.non_unique_specific_update_authority {
+        metadata.non_unique_specific_update_authority = non_unique_specific_update_authority
     }
 
     metadata.serialize(&mut *metadata_account_info.data.borrow_mut())?;
