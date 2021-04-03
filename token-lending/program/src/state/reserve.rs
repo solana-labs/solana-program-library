@@ -152,9 +152,10 @@ impl Reserve {
         liquidity_amount: u64,
         max_borrow_value: Decimal,
     ) -> Result<BorrowLiquidityResult, ProgramError> {
+        let decimals = 10u64
+            .checked_pow(self.liquidity.mint_decimals as u32)
+            .ok_or(LendingError::MathOverflow)?;
         if liquidity_amount == u64::max_value() {
-            let decimals = 10u64.checked_pow(self.liquidity.mint_decimals as u32)
-                .ok_or(LendingError::MathOverflow)?;
             let borrow_amount = max_borrow_value
                 .try_div(self.liquidity.median_price)?
                 .try_mul(decimals)?
@@ -183,7 +184,9 @@ impl Reserve {
                 .calculate_borrow_fees(borrow_amount, FeeCalculation::Exclusive)?;
 
             let borrow_amount = borrow_amount.try_add(borrow_fee.into())?;
-            let borrow_value = borrow_amount.try_mul(self.liquidity.median_price)?;
+            let borrow_value = borrow_amount
+                .try_div(decimals)?
+                .try_mul(self.liquidity.median_price)?;
             if borrow_value > max_borrow_value {
                 return Err(LendingError::BorrowTooLarge.into());
             }

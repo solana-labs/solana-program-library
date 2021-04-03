@@ -623,9 +623,14 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             return Err(LendingError::ReserveStale.into());
         }
 
+        let decimals = 10u64
+            .checked_pow(deposit_reserve.liquidity.mint_decimals as u32)
+            .ok_or(LendingError::MathOverflow)?;
+
         collateral.market_value = deposit_reserve
             .collateral_exchange_rate()?
             .decimal_collateral_to_liquidity(collateral.deposited_amount.into())?
+            .try_div(decimals)?
             .try_mul(deposit_reserve.liquidity.median_price)?;
     }
 
@@ -644,9 +649,14 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             return Err(LendingError::ReserveStale.into());
         }
 
+        let decimals = 10u64
+            .checked_pow(borrow_reserve.liquidity.mint_decimals as u32)
+            .ok_or(LendingError::MathOverflow)?;
+
         liquidity.accrue_interest(borrow_reserve.liquidity.cumulative_borrow_rate_wads)?;
         liquidity.market_value = liquidity
             .borrowed_amount_wads
+            .try_div(decimals)?
             .try_mul(borrow_reserve.liquidity.median_price)?;
     }
 
