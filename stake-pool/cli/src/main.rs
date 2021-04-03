@@ -678,8 +678,9 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
         })
         .collect();
 
-    let mut instructions: Vec<Instruction> = vec![];
+    println!("Updating stake pool...");
 
+    let mut instructions: Vec<Instruction> = vec![];
     for accounts_chunk in accounts_to_update.chunks(MAX_ACCOUNTS_TO_UPDATE) {
         instructions.push(spl_stake_pool::instruction::update_validator_list_balance(
             &spl_stake_pool::id(),
@@ -688,20 +689,22 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
         )?);
     }
 
-    println!("Updating stake pool...");
     instructions.push(spl_stake_pool::instruction::update_stake_pool_balance(
         &spl_stake_pool::id(),
         stake_pool_address,
         &stake_pool.validator_list,
     )?);
 
-    let mut transaction =
-        Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
+    // TODO: A faster solution would be to send all the `update_validator_list_balance` instructions concurrently
+    for instruction in instructions {
+        let mut transaction =
+            Transaction::new_with_payer(&[instruction], Some(&config.fee_payer.pubkey()));
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
-    send_transaction(&config, transaction)?;
+        let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+        check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+        transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
+        send_transaction(&config, transaction)?;
+    }
     Ok(())
 }
 
