@@ -1110,10 +1110,8 @@ fn process_repay_obligation_liquidity(
     let source_liquidity_info = next_account_info(account_info_iter)?;
     let destination_liquidity_info = next_account_info(account_info_iter)?;
     let repay_reserve_info = next_account_info(account_info_iter)?;
-    let repay_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
-    let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
@@ -1164,16 +1162,6 @@ fn process_repay_obligation_liquidity(
     let (liquidity, liquidity_index) =
         obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
 
-    let authority_signer_seeds = &[
-        lending_market_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
-        return Err(LendingError::InvalidMarketAuthority.into());
-    }
-
     let RepayLiquidityResult {
         settle_amount,
         repay_amount,
@@ -1193,7 +1181,7 @@ fn process_repay_obligation_liquidity(
 
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
-        destination: repay_reserve_liquidity_supply_info.clone(),
+        destination: destination_liquidity_info.clone(),
         amount: repay_amount,
         authority: user_transfer_authority_info.clone(),
         authority_signer_seeds: &[],
