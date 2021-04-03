@@ -129,13 +129,13 @@ fn main() {
     let update_authority = read_keypair_file(
         app_matches
             .value_of("update_authority")
-            .unwrap_or(app_matches.value_of("keypair").unwrap()),
+            .unwrap_or_else(|| app_matches.value_of("keypair").unwrap()),
     )
     .unwrap();
     let transfer_authority = read_keypair_file(
         app_matches
             .value_of("transfer_authority")
-            .unwrap_or(app_matches.value_of("keypair").unwrap()),
+            .unwrap_or_else(|| app_matches.value_of("keypair").unwrap()),
     )
     .unwrap();
     let add_transfer_authority = app_matches.is_present("transfer_authority");

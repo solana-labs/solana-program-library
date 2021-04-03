@@ -39,7 +39,7 @@ The Metadata app creates two different kinds of Metadata: Unique metadata and No
 toggled via the `allow_duplicates` boolean in the `create_metadata_accounts` call.
 
 Only the minting authority on a mint can create metadata accounts. A Metadata account holds the name, symbol,
-and uri of the mint, as well as the mint id. to ensure the uniqueness of
+and uri of the mint, as well as the mint id. To ensure the uniqueness of
 a mint's metadata, the address of a Metadata account is a program derived address composed of seeds:
 
 ```rust
@@ -58,15 +58,18 @@ The NameSymbolTuple address is a program derived address composed of seeds:
 ["metadata".as_bytes(), program_id.as_ref(), name_as_bytes, symbol_as_bytes]
 ```
 
-This ensures easy lookups by those interested - they can simply look up the metadata account by mint address, then
+This account then contains an `update_authority` key and a `metadata` key pointing back at the original account.
+
+This ensures easy lookups by those interested - they can simply look up the Metadata account by mint address, then
 look up NameSymbolTuple with the name and symbol if they want to. This means a client who is interested in NFTs
-can do RPC calls against Metadata only in the unique space by searching for Metadatas with the first bit of 0,
-because the first bit in Metadata is always 0 for unique Metadata and always 1 for non-unique Metadata.
+or other uniques can do RPC calls against Metadata only in the unique space by searching for
+Metadata with the first bit of 0, because the first bit in Metadata is always 0 for unique Metadata and always
+1 for non-unique Metadata.
 
 Also users who wish to look up a particular set of Metadata for a unique name-symbol combo can look up a NameSymbolTuple by it's program-derived address, and because it has both the metadata key and update authority,
 they can easily learn who the owner of that name/symbol is and what mint backs it.
 
-For metadatas that are part of the unique pool, they will need to use the separate `set_update_authority` call,
+For Metadata that are part of the unique pool, they will need to use the separate `set_update_authority` call,
 to change update authorities. For those that aren't, they can do so via the normal update call.
 
 Due to the nature of the addresses on these accounts, name and symbol are immutable.
