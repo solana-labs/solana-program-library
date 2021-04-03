@@ -172,11 +172,10 @@ impl CurveCalculator for StableCurve {
     ) -> Option<TradingTokenResult> {
         let pool_token_amount = PreciseNumber::new(pool_tokens)?;
         let pool_token_total_supply = PreciseNumber::new(pool_token_supply)?;
-        let pool_ratio = pool_token_amount.checked_div(&pool_token_total_supply)?;
         let token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
-        let token_a_value = token_a_amount.checked_mul(&pool_ratio)?;
+        let token_a_value = token_a_amount.checked_mul(&pool_token_amount)?.checked_div(&pool_token_total_supply)?;
         let token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
-        let token_b_value = token_b_amount.checked_mul(&pool_ratio)?;
+        let token_b_value = token_b_amount.checked_mul(&pool_token_amount)?.checked_div(&pool_token_total_supply)?;
         match round_direction {
             RoundDirection::Floor => Some(TradingTokenResult {
                 token_a_amount: token_a_value.floor()?.to_imprecise()?,
@@ -320,18 +319,6 @@ mod tests {
         check_pool_token_rate(5, 501, 2, 10, 1, 101);
     }
 
-    #[test]
-    fn fail_trading_token_conversion() {
-        let amp = 1;
-        let calculator = StableCurve { amp };
-        let results =
-            calculator.pool_tokens_to_trading_tokens(5, 10, u128::MAX, 0, RoundDirection::Floor);
-        assert!(results.is_none());
-        let results =
-            calculator.pool_tokens_to_trading_tokens(5, 10, 0, u128::MAX, RoundDirection::Floor);
-        assert!(results.is_none());
-    }
-
     proptest! {
         #[test]
         fn constant_product_swap_no_fee(
@@ -392,34 +379,34 @@ mod tests {
         assert_eq!(curve, unpacked);
     }
 
-    // proptest! {
-    //     #[test]
-    //     fn curve_value_does_not_decrease_from_deposit(
-    //         pool_token_amount in 1..u64::MAX,
-    //         pool_token_supply in 1..u64::MAX,
-    //         swap_token_a_amount in 1..u64::MAX,
-    //         swap_token_b_amount in 1..u64::MAX,
-    //     ) {
-    //         let pool_token_amount = pool_token_amount as u128;
-    //         let pool_token_supply = pool_token_supply as u128;
-    //         let swap_token_a_amount = swap_token_a_amount as u128;
-    //         let swap_token_b_amount = swap_token_b_amount as u128;
-    //         // Make sure we will get at least one trading token out for each
-    //         // side, otherwise the calculation fails
-    //         prop_assume!(pool_token_amount * swap_token_a_amount / pool_token_supply >= 1);
-    //         prop_assume!(pool_token_amount * swap_token_b_amount / pool_token_supply >= 1);
-    //         let curve = StableCurve {
-    //             amp: 1
-    //         };
-    //         check_pool_value_from_deposit(
-    //             &curve,
-    //             pool_token_amount,
-    //             pool_token_supply,
-    //             swap_token_a_amount,
-    //             swap_token_b_amount,
-    //         );
-    //     }
-    // }
+    proptest! {
+        #[test]
+        fn curve_value_does_not_decrease_from_deposit(
+            pool_token_amount in 1..u64::MAX,
+            pool_token_supply in 1..u64::MAX,
+            swap_token_a_amount in 1..u64::MAX,
+            swap_token_b_amount in 1..u64::MAX,
+        ) {
+            let pool_token_amount = pool_token_amount as u128;
+            let pool_token_supply = pool_token_supply as u128;
+            let swap_token_a_amount = swap_token_a_amount as u128;
+            let swap_token_b_amount = swap_token_b_amount as u128;
+            // Make sure we will get at least one trading token out for each
+            // side, otherwise the calculation fails
+            prop_assume!(pool_token_amount * swap_token_a_amount / pool_token_supply >= 1);
+            prop_assume!(pool_token_amount * swap_token_b_amount / pool_token_supply >= 1);
+            let curve = StableCurve {
+                amp: 1
+            };
+            check_pool_value_from_deposit(
+                &curve,
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+            );
+        }
+    }
 
     proptest! {
         #[test]
