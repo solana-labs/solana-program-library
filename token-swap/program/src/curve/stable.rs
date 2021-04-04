@@ -170,22 +170,35 @@ impl CurveCalculator for StableCurve {
         swap_token_b_amount: u128,
         round_direction: RoundDirection,
     ) -> Option<TradingTokenResult> {
-        let pool_token_amount = PreciseNumber::new(pool_tokens)?;
-        let pool_token_total_supply = PreciseNumber::new(pool_token_supply)?;
-        let token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
-        let token_a_value = token_a_amount.checked_mul(&pool_token_amount)?.checked_div(&pool_token_total_supply)?;
-        let token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
-        let token_b_value = token_b_amount.checked_mul(&pool_token_amount)?.checked_div(&pool_token_total_supply)?;
-        match round_direction {
-            RoundDirection::Floor => Some(TradingTokenResult {
-                token_a_amount: token_a_value.floor()?.to_imprecise()?,
-                token_b_amount: token_b_value.floor()?.to_imprecise()?,
-            }),
-            RoundDirection::Ceiling => Some(TradingTokenResult {
-                token_a_amount: token_a_value.ceiling()?.to_imprecise()?,
-                token_b_amount: token_b_value.ceiling()?.to_imprecise()?,
-            }),
-        }
+        let mut token_a_amount = pool_tokens
+            .checked_mul(swap_token_a_amount)?
+            .checked_div(pool_token_supply)?;
+        let mut token_b_amount = pool_tokens
+            .checked_mul(swap_token_b_amount)?
+            .checked_div(pool_token_supply)?;
+        let (token_a_amount, token_b_amount) = match round_direction {
+            RoundDirection::Floor => (token_a_amount, token_b_amount),
+            RoundDirection::Ceiling => {
+                let token_a_remainder = pool_tokens
+                    .checked_mul(swap_token_a_amount)?
+                    .checked_rem(pool_token_supply)?;
+
+                if token_a_remainder > 0 && token_a_amount > 0 {
+                    token_a_amount += 1;
+                }
+                let token_b_remainder = pool_tokens
+                    .checked_mul(swap_token_b_amount)?
+                    .checked_rem(pool_token_supply)?;
+                if token_b_remainder > 0 && token_b_amount > 0 {
+                    token_b_amount += 1;
+                }
+                (token_a_amount, token_b_amount)
+            }
+        };
+        Some(TradingTokenResult {
+            token_a_amount,
+            token_b_amount,
+        })
     }
 
     /// Get the amount of pool tokens for the given amount of token A or B.
@@ -224,14 +237,25 @@ impl CurveCalculator for StableCurve {
         }
     }
 
+    // fn normalized_value(
+    //     &self,
+    //     swap_token_a_amount: u128,
+    //     swap_token_b_amount: u128,
+    // ) -> Option<PreciseNumber> {
+    //     let leverage = self.amp.checked_mul(N_COINS as u64)?;
+    //     let d = compute_d(leverage, swap_token_a_amount, swap_token_b_amount)?;
+    //     PreciseNumber::new(d)
+    // }
     fn normalized_value(
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
     ) -> Option<PreciseNumber> {
-        let leverage = self.amp.checked_mul(N_COINS as u64)?;
-        let d = compute_d(leverage, swap_token_a_amount, swap_token_b_amount)?;
-        PreciseNumber::new(d)
+        let swap_token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
+        let swap_token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
+        swap_token_a_amount
+            .checked_mul(&swap_token_b_amount)?
+            .sqrt()
     }
 
     fn validate(&self) -> Result<(), SwapError> {
