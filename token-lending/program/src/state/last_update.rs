@@ -3,7 +3,7 @@ use solana_program::{clock::Slot, program_error::ProgramError};
 use std::cmp::Ordering;
 
 /// Number of slots to consider stale after
-pub const STALE_AFTER_SLOTS: u64 = 0;
+pub const STALE_AFTER_SLOTS_ELAPSED: u64 = 1;
 
 /// Last update state
 #[derive(Clone, Debug, Default)]
@@ -39,9 +39,9 @@ impl LastUpdate {
         self.stale = true;
     }
 
-    /// Check if last update slot is too long ago
+    /// Check if marked stale or last update slot is too long ago
     pub fn is_stale(&self, slot: Slot) -> Result<bool, ProgramError> {
-        Ok(self.stale || self.slots_elapsed(slot)? > STALE_AFTER_SLOTS)
+        Ok(self.stale || self.slots_elapsed(slot)? >= STALE_AFTER_SLOTS_ELAPSED)
     }
 }
 
