@@ -5,8 +5,6 @@ use {
     std::cmp::Ordering,
 };
 
-const MAX_SQRT_ITERATIONS: u8 = 50;
-
 /// Calculate square root of the given number
 ///
 /// Code lovingly adapted from the excellent work at:
@@ -28,16 +26,15 @@ pub fn sqrt<T: PrimInt + CheckedShl + CheckedShr>(radicand: T) -> Option<T> {
 
     let mut n = radicand;
     let mut result = T::zero();
-    let mut num_iterations = 0;
-    while bit != T::zero() && num_iterations < MAX_SQRT_ITERATIONS {
-        if n >= result.checked_add(&bit)? {
-            n = n.checked_sub(&result.checked_add(&bit)?)?;
+    while bit != T::zero() {
+        let result_with_bit = result.checked_add(&bit)?;
+        if n >= result_with_bit {
+            n = n.checked_sub(&result_with_bit)?;
             result = result.checked_shr(1)?.checked_add(&bit)?;
         } else {
             result = result.checked_shr(1)?;
         }
         bit = bit.checked_shr(2)?;
-        num_iterations += 1;
     }
     Some(result)
 }
