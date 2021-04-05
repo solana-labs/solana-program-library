@@ -33,7 +33,7 @@ pub enum StakePoolInstruction {
     ///   1. `[s]` Manager
     ///   2. `[]` Staker
     ///   3. `[w]` Uninitialized validator stake list storage account
-    ///   4. `[]` Pool token mint. Must be non zero, owned by withdraw authority.
+    ///   4. `[]` Pool token mint. Must have zero supply, owned by withdraw authority.
     ///   5. `[]` Pool account to deposit the generated fee for manager.
     ///   6. `[]` Clock sysvar
     ///   7. `[]` Rent sysvar
