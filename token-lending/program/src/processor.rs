@@ -1306,7 +1306,7 @@ fn process_liquidate_obligation(
     }
 
     // @FIXME: LTV
-    let liquidation_threshold = Rate::from_percent(55);
+    let liquidation_threshold = Rate::from_percent(80);
     // let liquidation_threshold = Rate::from_percent(lending_market.liquidation_threshold);
     let loan_to_value = obligation.loan_to_value()?;
     if loan_to_value < liquidation_threshold {

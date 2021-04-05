@@ -233,53 +233,64 @@ impl Reserve {
     ) -> Result<LiquidateObligationResult, ProgramError> {
         let bonus_rate = Rate::from_percent(self.config.liquidation_bonus).try_add(Rate::one())?;
 
-        let liquidate_amount = if liquidity_amount == u64::max_value() {
+        let target_amount = if liquidity_amount == u64::max_value() {
             liquidity.borrowed_amount_wads
         } else {
             Decimal::from(liquidity_amount).min(liquidity.borrowed_amount_wads)
         };
 
-        let (settle_amount, settle_pct, repay_amount) =
-            if liquidity.borrowed_amount_wads < LIQUIDATION_CLOSE_AMOUNT.into() {
-                // Close out obligations that are too small to liquidate normally
-                let settle_amount = liquidity.borrowed_amount_wads;
-                let settle_value = liquidity
-                    .market_value
-                    .try_mul(bonus_rate)?
-                    .min(collateral.market_value);
-                let settle_pct = settle_value.try_div(collateral.market_value)?;
-                let repay_amount = liquidate_amount.min(settle_amount).try_ceil_u64()?;
+        let settle_amount;
+        let repay_amount;
+        let withdraw_amount;
 
-                (settle_amount, settle_pct, repay_amount)
+        // Close out obligations that are too small to liquidate normally
+        if liquidity.borrowed_amount_wads < LIQUIDATION_CLOSE_AMOUNT.into() {
+            // settle_amount is fixed, calculate withdraw_amount and repay_amount
+            settle_amount = liquidity.borrowed_amount_wads;
+
+            let liquidation_value = liquidity.market_value.try_mul(bonus_rate)?;
+            if liquidation_value > collateral.market_value {
+                let repay_pct = collateral.market_value.try_div(liquidation_value)?;
+                repay_amount = target_amount.try_mul(repay_pct)?.try_ceil_u64()?;
+                withdraw_amount = collateral.deposited_amount;
+            } else if liquidation_value == collateral.market_value {
+                repay_amount = target_amount.try_ceil_u64()?;
+                withdraw_amount = collateral.deposited_amount;
             } else {
-                let max_liquidation_amount = obligation.max_liquidation_amount(liquidity)?;
-                let liquidation_amount = liquidate_amount.min(max_liquidation_amount);
-                let liquidation_pct = liquidation_amount.try_div(liquidity.borrowed_amount_wads)?;
-
-                let settle_value = liquidity
-                    .market_value
-                    .try_mul(liquidation_pct)?
-                    .try_mul(bonus_rate)?
-                    .min(collateral.market_value);
-                let settle_pct = settle_value.try_div(collateral.market_value)?;
-                let settle_amount = liquidation_amount.try_mul(settle_pct)?;
-
-                let repay_amount = if settle_amount == max_liquidation_amount {
-                    settle_amount.try_ceil_u64()?
-                } else {
-                    settle_amount.try_floor_u64()?
-                };
-
-                (settle_amount, settle_pct, repay_amount)
-            };
-
-        let max_withdraw_amount = Decimal::from(collateral.deposited_amount);
-        let collateral_amount = max_withdraw_amount.try_mul(settle_pct)?;
-        let withdraw_amount = if collateral_amount == max_withdraw_amount {
-            collateral_amount.try_ceil_u64()?
+                let withdraw_pct = liquidation_value.try_div(collateral.market_value)?;
+                repay_amount = target_amount.try_ceil_u64()?;
+                withdraw_amount = Decimal::from(collateral.deposited_amount)
+                    .try_mul(withdraw_pct)?
+                    .try_ceil_u64()?;
+            }
         } else {
-            collateral_amount.try_floor_u64()?
-        };
+            // calculate settle_amount and withdraw_amount, repay_amount is settle_amount rounded up
+            let liquidation_amount = obligation
+                .max_liquidation_amount(liquidity)?
+                .min(target_amount);
+            let liquidation_pct = liquidation_amount.try_div(liquidity.borrowed_amount_wads)?;
+            let liquidation_value = liquidity
+                .market_value
+                .try_mul(liquidation_pct)?
+                .try_mul(bonus_rate)?;
+
+            if liquidation_value > collateral.market_value {
+                let repay_pct = collateral.market_value.try_div(liquidation_value)?;
+                settle_amount = liquidation_amount.try_mul(repay_pct)?;
+                withdraw_amount = collateral.deposited_amount;
+            } else if liquidation_value == collateral.market_value {
+                settle_amount = liquidation_amount;
+                withdraw_amount = collateral.deposited_amount;
+            } else {
+                let withdraw_pct = liquidation_value.try_div(collateral.market_value)?;
+                settle_amount = liquidation_amount;
+                withdraw_amount = Decimal::from(collateral.deposited_amount)
+                    .try_mul(withdraw_pct)?
+                    .try_ceil_u64()?;
+            }
+
+            repay_amount = settle_amount.try_ceil_u64()?;
+        }
 
         Ok(LiquidateObligationResult {
             settle_amount,
