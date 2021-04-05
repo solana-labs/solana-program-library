@@ -3946,7 +3946,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-swap"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "arbitrary",
  "arrayref",
