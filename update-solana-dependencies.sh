@@ -25,11 +25,15 @@ crates=(
   solana-client
   solana-core
   solana-logger
+  solana-notifier
   solana-program
   solana-program-test
   solana-remote-wallet
   solana-runtime
   solana-sdk
+  solana-stake-program
+  solana-transaction-status
+  solana-vote-program
 )
 
 set -x

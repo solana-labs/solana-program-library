@@ -117,6 +117,7 @@ async fn test_memo_signing() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_memo_compute_limits() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
 

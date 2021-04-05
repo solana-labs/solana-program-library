@@ -45,12 +45,14 @@ solana-cli-output = {path = "$solana_dir/cli-output" }
 solana-client = { path = "$solana_dir/client"}
 solana-core = { path = "$solana_dir/core"}
 solana-logger = {path = "$solana_dir/logger" }
+solana-notifier = { path = "$solana_dir/notifier" }
 solana-remote-wallet = {path = "$solana_dir/remote-wallet" }
 solana-program = { path = "$solana_dir/sdk/program" }
 solana-program-test = { path = "$solana_dir/program-test" }
 solana-runtime = { path = "$solana_dir/runtime" }
 solana-sdk = { path = "$solana_dir/sdk" }
 solana-stake-program = { path = "$solana_dir/programs/stake" }
+solana-transaction-status = { path = "$solana_dir/transaction-status" }
 solana-vote-program = { path = "$solana_dir/programs/vote" }
 PATCH
   fi

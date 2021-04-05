@@ -1,76 +1,109 @@
 //! State transition types
 
 use {
-    crate::{error::StakePoolError, instruction::Fee, processor::Processor},
-    solana_program::{
-        account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
-        pubkey::Pubkey,
-    },
-    std::convert::{TryFrom, TryInto},
-    std::mem::size_of,
+    crate::{error::StakePoolError, instruction::Fee},
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
+    spl_math::checked_ceil_div::CheckedCeilDiv,
+    std::convert::TryFrom,
 };
+
+/// Enum representing the account type managed by the program
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum AccountType {
+    /// If the account has not been initialized, the enum will be 0
+    Uninitialized,
+    /// Stake pool
+    StakePool,
+    /// Validator stake list
+    ValidatorList,
+}
+
+impl Default for AccountType {
+    fn default() -> Self {
+        AccountType::Uninitialized
+    }
+}
 
 /// Initialized program details.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct StakePool {
-    /// Pool version
-    pub version: u8,
-    /// Owner authority
-    /// allows for updating the staking authority
-    pub owner: Pubkey,
+    /// Account type, must be StakePool currently
+    pub account_type: AccountType,
+
+    /// Manager authority, allows for updating the staker, manager, and fee account
+    pub manager: Pubkey,
+
+    /// Staker authority, allows for adding and removing validators, and managing stake
+    /// distribution
+    pub staker: Pubkey,
+
     /// Deposit authority bump seed
     /// for `create_program_address(&[state::StakePool account, "deposit"])`
     pub deposit_bump_seed: u8,
+
     /// Withdrawal authority bump seed
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
     pub withdraw_bump_seed: u8,
+
     /// Validator stake list storage account
-    pub validator_stake_list: Pubkey,
+    pub validator_list: Pubkey,
+
     /// Pool Mint
     pub pool_mint: Pubkey,
-    /// Owner fee account
-    pub owner_fee_account: Pubkey,
+
+    /// Manager fee account
+    pub manager_fee_account: Pubkey,
+
     /// Pool token program id
     pub token_program_id: Pubkey,
-    /// total stake under management
-    pub stake_total: u64,
-    /// total pool
-    pub pool_total: u64,
-    /// Last epoch stake_total field was updated
+
+    /// Total stake under management.
+    /// Note that if `last_update_epoch` does not match the current epoch then this field may not
+    /// be accurate
+    pub total_stake_lamports: u64,
+
+    /// Total supply of pool tokens (should always match the supply in the Pool Mint)
+    pub pool_token_supply: u64,
+
+    /// Last epoch the `total_stake_lamports` field was updated
     pub last_update_epoch: u64,
+
     /// Fee applied to deposits
     pub fee: Fee,
 }
 impl StakePool {
-    /// Length of state data when serialized
-    pub const LEN: usize = size_of::<StakePool>();
-    /// calculate the pool tokens that should be minted
-    pub fn calc_pool_deposit_amount(&self, stake_lamports: u64) -> Option<u64> {
-        if self.stake_total == 0 {
+    /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
+    pub fn calc_pool_tokens_for_deposit(&self, stake_lamports: u64) -> Option<u64> {
+        if self.total_stake_lamports == 0 {
             return Some(stake_lamports);
         }
-        self.calc_pool_withdraw_amount(stake_lamports)
-    }
-    /// calculate the pool tokens that should be withdrawn
-    pub fn calc_pool_withdraw_amount(&self, stake_lamports: u64) -> Option<u64> {
         u64::try_from(
             (stake_lamports as u128)
-                .checked_mul(self.pool_total as u128)?
-                .checked_div(self.stake_total as u128)?,
+                .checked_mul(self.pool_token_supply as u128)?
+                .checked_div(self.total_stake_lamports as u128)?,
         )
         .ok()
     }
-    /// calculate lamports amount
-    pub fn calc_lamports_amount(&self, pool_tokens: u64) -> Option<u64> {
+    /// calculate the pool tokens that should be burned for a withdrawal of `stake_lamports`
+    pub fn calc_pool_tokens_for_withdraw(&self, stake_lamports: u64) -> Option<u64> {
+        let (quotient, _) = (stake_lamports as u128)
+            .checked_mul(self.pool_token_supply as u128)?
+            .checked_ceil_div(self.total_stake_lamports as u128)?;
+        u64::try_from(quotient).ok()
+    }
+
+    /// calculate lamports amount on withdrawal
+    pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
         u64::try_from(
             (pool_tokens as u128)
-                .checked_mul(self.stake_total as u128)?
-                .checked_div(self.pool_total as u128)?,
+                .checked_mul(self.total_stake_lamports as u128)?
+                .checked_div(self.pool_token_supply as u128)?,
         )
         .ok()
     }
-    /// calculate the fee in pool tokens that goes to the owner
+    /// calculate the fee in pool tokens that goes to the manager
     pub fn calc_fee_amount(&self, pool_amount: u64) -> Option<u64> {
         if self.fee.denominator == 0 {
             return Some(0);
@@ -83,274 +116,246 @@ impl StakePool {
         .ok()
     }
 
-    /// Checks withdraw authority
-    pub fn check_authority_withdraw(
-        &self,
-        authority_to_check: &Pubkey,
+    /// Checks that the withdraw or deposit authority is valid
+    fn check_authority(
+        authority_address: &Pubkey,
         program_id: &Pubkey,
-        stake_pool_key: &Pubkey,
+        stake_pool_address: &Pubkey,
+        authority_seed: &[u8],
+        bump_seed: u8,
     ) -> Result<(), ProgramError> {
-        Processor::check_authority(
-            authority_to_check,
+        if *authority_address
+            == Pubkey::create_program_address(
+                &[
+                    &stake_pool_address.to_bytes()[..32],
+                    authority_seed,
+                    &[bump_seed],
+                ],
+                program_id,
+            )?
+        {
+            Ok(())
+        } else {
+            Err(StakePoolError::InvalidProgramAddress.into())
+        }
+    }
+
+    /// Checks that the withdraw authority is valid
+    pub(crate) fn check_authority_withdraw(
+        &self,
+        withdraw_authority: &Pubkey,
+        program_id: &Pubkey,
+        stake_pool_address: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        Self::check_authority(
+            withdraw_authority,
             program_id,
-            stake_pool_key,
-            Processor::AUTHORITY_WITHDRAW,
+            stake_pool_address,
+            crate::AUTHORITY_WITHDRAW,
             self.withdraw_bump_seed,
         )
     }
-    /// Checks deposit authority
-    pub fn check_authority_deposit(
+    /// Checks that the deposit authority is valid
+    pub(crate) fn check_authority_deposit(
         &self,
-        authority_to_check: &Pubkey,
+        deposit_authority: &Pubkey,
         program_id: &Pubkey,
-        stake_pool_key: &Pubkey,
+        stake_pool_address: &Pubkey,
     ) -> Result<(), ProgramError> {
-        Processor::check_authority(
-            authority_to_check,
+        Self::check_authority(
+            deposit_authority,
             program_id,
-            stake_pool_key,
-            Processor::AUTHORITY_DEPOSIT,
+            stake_pool_address,
+            crate::AUTHORITY_DEPOSIT,
             self.deposit_bump_seed,
         )
     }
 
-    /// Check owner validity and signature
-    pub fn check_owner(&self, owner_info: &AccountInfo) -> Result<(), ProgramError> {
-        if *owner_info.key != self.owner {
-            return Err(StakePoolError::WrongOwner.into());
+    /// Check manager validity and signature
+    pub(crate) fn check_manager(&self, manager_info: &AccountInfo) -> Result<(), ProgramError> {
+        if *manager_info.key != self.manager {
+            return Err(StakePoolError::WrongManager.into());
         }
-        if !owner_info.is_signer {
+        if !manager_info.is_signer {
             return Err(StakePoolError::SignatureMissing.into());
         }
         Ok(())
     }
 
-    /// Check if StakePool is initialized
-    pub fn is_initialized(&self) -> bool {
-        self.version > 0
-    }
-
-    /// Deserializes a byte buffer into a [StakePool](struct.StakePool.html).
-    pub fn deserialize(input: &[u8]) -> Result<StakePool, ProgramError> {
-        if input.len() < size_of::<StakePool>() {
-            return Err(ProgramError::InvalidAccountData);
+    /// Check staker validity and signature
+    pub(crate) fn check_staker(&self, staker_info: &AccountInfo) -> Result<(), ProgramError> {
+        if *staker_info.key != self.staker {
+            return Err(StakePoolError::WrongStaker.into());
         }
-
-        let stake_pool: &StakePool = unsafe { &*(&input[0] as *const u8 as *const StakePool) };
-
-        Ok(*stake_pool)
-    }
-
-    /// Serializes [StakePool](struct.StakePool.html) into a byte buffer.
-    pub fn serialize(&self, output: &mut [u8]) -> ProgramResult {
-        if output.len() < size_of::<StakePool>() {
-            return Err(ProgramError::InvalidAccountData);
+        if !staker_info.is_signer {
+            return Err(StakePoolError::SignatureMissing.into());
         }
-        #[allow(clippy::cast_ptr_alignment)]
-        let value = unsafe { &mut *(&mut output[0] as *mut u8 as *mut StakePool) };
-        *value = *self;
-
         Ok(())
+    }
+
+    /// Check if StakePool is actually initialized as a stake pool
+    pub fn is_valid(&self) -> bool {
+        self.account_type == AccountType::StakePool
+    }
+
+    /// Check if StakePool is currently uninitialized
+    pub fn is_uninitialized(&self) -> bool {
+        self.account_type == AccountType::Uninitialized
     }
 }
 
-const MAX_VALIDATOR_STAKE_ACCOUNTS: usize = 1000;
-
 /// Storage list for all validator stake accounts in the pool.
 #[repr(C)]
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ValidatorStakeList {
-    /// Validator stake list version
-    pub version: u8,
-    /// List of all validator stake accounts and their info
+#[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct ValidatorList {
+    /// Account type, must be ValidatorList currently
+    pub account_type: AccountType,
+
+    /// Maximum allowable number of validators
+    pub max_validators: u32,
+
+    /// List of stake info for each validator in the pool
     pub validators: Vec<ValidatorStakeInfo>,
 }
 
 /// Information about the singe validator stake account
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
-    /// Validator account pubkey
-    pub validator_account: Pubkey,
+    /// Validator vote account address
+    pub vote_account: Pubkey,
 
-    /// Account balance in lamports
-    pub balance: u64,
+    /// Amount of stake delegated to this validator
+    /// Note that if `last_update_epoch` does not match the current epoch then this field may not
+    /// be accurate
+    pub stake_lamports: u64,
 
-    /// Last epoch balance field was updated
+    /// Last epoch the `stake_lamports` field was updated
     pub last_update_epoch: u64,
 }
 
-impl ValidatorStakeList {
-    /// Length of ValidatorStakeList data when serialized
-    pub const LEN: usize =
-        Self::HEADER_LEN + ValidatorStakeInfo::LEN * MAX_VALIDATOR_STAKE_ACCOUNTS;
+impl ValidatorList {
+    /// Create an empty instance containing space for `max_validators`
+    pub fn new(max_validators: u32) -> Self {
+        Self {
+            account_type: AccountType::ValidatorList,
+            max_validators,
+            validators: vec![ValidatorStakeInfo::default(); max_validators as usize],
+        }
+    }
 
-    /// Header length
-    pub const HEADER_LEN: usize = size_of::<u8>() + size_of::<u16>();
-
-    /// Version of validator stake list
-    pub const VALIDATOR_STAKE_LIST_VERSION: u8 = 1;
+    /// Calculate the number of validator entries that fit in the provided length
+    pub fn calculate_max_validators(buffer_length: usize) -> usize {
+        let header_size = 1 + 4 + 4;
+        buffer_length.saturating_sub(header_size) / 48
+    }
 
     /// Check if contains validator with particular pubkey
-    pub fn contains(&self, validator: &Pubkey) -> bool {
+    pub fn contains(&self, vote_account: &Pubkey) -> bool {
         self.validators
             .iter()
-            .any(|x| x.validator_account == *validator)
+            .any(|x| x.vote_account == *vote_account)
     }
 
-    /// Check if contains validator with particular pubkey (mutable)
-    pub fn find_mut(&mut self, validator: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
+    /// Check if contains validator with particular pubkey
+    pub fn find_mut(&mut self, vote_account: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
         self.validators
             .iter_mut()
-            .find(|x| x.validator_account == *validator)
+            .find(|x| x.vote_account == *vote_account)
     }
-    /// Check if contains validator with particular pubkey (immutable)
-    pub fn find(&self, validator: &Pubkey) -> Option<&ValidatorStakeInfo> {
+    /// Check if contains validator with particular pubkey
+    pub fn find(&self, vote_account: &Pubkey) -> Option<&ValidatorStakeInfo> {
         self.validators
             .iter()
-            .find(|x| x.validator_account == *validator)
+            .find(|x| x.vote_account == *vote_account)
     }
 
-    /// Check if validator stake list is initialized
-    pub fn is_initialized(&self) -> bool {
-        self.version > 0
+    /// Check if validator stake list is actually initialized as a validator stake list
+    pub fn is_valid(&self) -> bool {
+        self.account_type == AccountType::ValidatorList
     }
 
-    /// Deserializes a byte buffer into a ValidatorStakeList.
-    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < Self::LEN {
-            return Err(ProgramError::InvalidAccountData);
-        }
-
-        if input[0] == 0 {
-            return Ok(ValidatorStakeList {
-                version: 0,
-                validators: vec![],
-            });
-        }
-
-        let number_of_validators: usize = u16::from_le_bytes(
-            input[1..3]
-                .try_into()
-                .or(Err(ProgramError::InvalidAccountData))?,
-        ) as usize;
-        if number_of_validators > MAX_VALIDATOR_STAKE_ACCOUNTS {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let mut validators: Vec<ValidatorStakeInfo> = Vec::with_capacity(number_of_validators);
-
-        let mut from = Self::HEADER_LEN;
-        let mut to = from + ValidatorStakeInfo::LEN;
-        for _ in 0..number_of_validators {
-            validators.push(ValidatorStakeInfo::deserialize(&input[from..to])?);
-            from += ValidatorStakeInfo::LEN;
-            to += ValidatorStakeInfo::LEN;
-        }
-        Ok(ValidatorStakeList {
-            version: input[0],
-            validators,
-        })
-    }
-
-    /// Serializes ValidatorStakeList into a byte buffer.
-    pub fn serialize(&self, output: &mut [u8]) -> ProgramResult {
-        if output.len() < Self::LEN {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        if self.validators.len() > MAX_VALIDATOR_STAKE_ACCOUNTS {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        output[0] = self.version;
-        output[1..3].copy_from_slice(&u16::to_le_bytes(self.validators.len() as u16));
-        let mut from = Self::HEADER_LEN;
-        let mut to = from + ValidatorStakeInfo::LEN;
-        for validator in &self.validators {
-            validator.serialize(&mut output[from..to])?;
-            from += ValidatorStakeInfo::LEN;
-            to += ValidatorStakeInfo::LEN;
-        }
-        Ok(())
-    }
-}
-
-impl ValidatorStakeInfo {
-    /// Length of ValidatorStakeInfo data when serialized
-    pub const LEN: usize = size_of::<ValidatorStakeInfo>();
-
-    /// Deserializes a byte buffer into a ValidatorStakeInfo.
-    pub fn deserialize(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < Self::LEN {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        #[allow(clippy::cast_ptr_alignment)]
-        let stake_info: &ValidatorStakeInfo =
-            unsafe { &*(&input[0] as *const u8 as *const ValidatorStakeInfo) };
-        Ok(*stake_info)
-    }
-
-    /// Serializes ValidatorStakeInfo into a byte buffer.
-    pub fn serialize(&self, output: &mut [u8]) -> ProgramResult {
-        if output.len() < Self::LEN {
-            return Err(ProgramError::InvalidAccountData);
-        }
-
-        #[allow(clippy::cast_ptr_alignment)]
-        let value = unsafe { &mut *(&mut output[0] as *mut u8 as *mut ValidatorStakeInfo) };
-        *value = *self;
-        Ok(())
+    /// Check if the validator stake list is uninitialized
+    pub fn is_uninitialized(&self) -> bool {
+        self.account_type == AccountType::Uninitialized
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use {
+        super::*,
+        crate::borsh::{get_instance_packed_len, try_from_slice_unchecked},
+        proptest::prelude::*,
+        solana_program::borsh::get_packed_len,
+    };
 
     #[test]
     fn test_state_packing() {
+        let max_validators = 10_000;
+        let size = get_instance_packed_len(&ValidatorList::new(max_validators)).unwrap();
         // Not initialized
-        let stake_list = ValidatorStakeList {
-            version: 0,
+        let stake_list = ValidatorList {
+            account_type: AccountType::Uninitialized,
+            max_validators: 0,
             validators: vec![],
         };
-        let mut bytes: [u8; ValidatorStakeList::LEN] = [0; ValidatorStakeList::LEN];
+        let mut byte_vec = vec![0u8; size];
+        let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
-        let stake_list_unpacked = ValidatorStakeList::deserialize(&bytes).unwrap();
+        let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
 
         // Empty
-        let stake_list = ValidatorStakeList {
-            version: ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
+        let stake_list = ValidatorList {
+            account_type: AccountType::ValidatorList,
+            max_validators: 0,
             validators: vec![],
         };
-        let mut bytes: [u8; ValidatorStakeList::LEN] = [0; ValidatorStakeList::LEN];
+        let mut byte_vec = vec![0u8; size];
+        let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
-        let stake_list_unpacked = ValidatorStakeList::deserialize(&bytes).unwrap();
+        let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
 
         // With several accounts
-        let stake_list = ValidatorStakeList {
-            version: ValidatorStakeList::VALIDATOR_STAKE_LIST_VERSION,
+        let stake_list = ValidatorList {
+            account_type: AccountType::ValidatorList,
+            max_validators,
             validators: vec![
                 ValidatorStakeInfo {
-                    validator_account: Pubkey::new_from_array([1; 32]),
-                    balance: 123456789,
+                    vote_account: Pubkey::new_from_array([1; 32]),
+                    stake_lamports: 123456789,
                     last_update_epoch: 987654321,
                 },
                 ValidatorStakeInfo {
-                    validator_account: Pubkey::new_from_array([2; 32]),
-                    balance: 998877665544,
+                    vote_account: Pubkey::new_from_array([2; 32]),
+                    stake_lamports: 998877665544,
                     last_update_epoch: 11223445566,
                 },
                 ValidatorStakeInfo {
-                    validator_account: Pubkey::new_from_array([3; 32]),
-                    balance: 0,
+                    vote_account: Pubkey::new_from_array([3; 32]),
+                    stake_lamports: 0,
                     last_update_epoch: 999999999999999,
                 },
             ],
         };
-        let mut bytes: [u8; ValidatorStakeList::LEN] = [0; ValidatorStakeList::LEN];
+        let mut byte_vec = vec![0u8; size];
+        let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
-        let stake_list_unpacked = ValidatorStakeList::deserialize(&bytes).unwrap();
+        let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
+    }
+
+    proptest! {
+        #[test]
+        fn stake_list_size_calculation(test_amount in 0..=100_000_u32) {
+            let validators = ValidatorList::new(test_amount);
+            let size = get_instance_packed_len(&validators).unwrap();
+            assert_eq!(ValidatorList::calculate_max_validators(size), test_amount as usize);
+            assert_eq!(ValidatorList::calculate_max_validators(size.saturating_add(1)), test_amount as usize);
+            assert_eq!(ValidatorList::calculate_max_validators(size.saturating_add(get_packed_len::<ValidatorStakeInfo>())), (test_amount + 1)as usize);
+            assert_eq!(ValidatorList::calculate_max_validators(size.saturating_sub(1)), (test_amount.saturating_sub(1)) as usize);
+        }
     }
 }

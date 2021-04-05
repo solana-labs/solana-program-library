@@ -1,0 +1,16 @@
+name: Docs Pull Request
+
+on:
+  pull_request:
+    paths:
+    - 'docs/**'
+  push:
+    branches: [master]
+    paths:
+    - 'docs/**'
+
+jobs:
+  all_github_action_checks:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Done"

@@ -13,6 +13,10 @@ use std::str::FromStr;
 solana_program::declare_id!("Stake11111111111111111111111111111111111111");
 
 const STAKE_CONFIG: &str = "StakeConfig11111111111111111111111111111111";
+/// Id for stake config account
+pub fn config_id() -> Pubkey {
+    Pubkey::from_str(STAKE_CONFIG).unwrap()
+}
 
 /// FIXME copied from solana stake program
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -489,8 +493,18 @@ pub fn delegate_stake(
         AccountMeta::new_readonly(*vote_pubkey, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(Pubkey::from_str(STAKE_CONFIG).unwrap(), false),
+        AccountMeta::new_readonly(config_id(), false),
         AccountMeta::new_readonly(*authorized_pubkey, true),
     ];
     Instruction::new_with_bincode(id(), &StakeInstruction::DelegateStake, account_metas)
+}
+
+/// FIXME copied from stake program
+pub fn deactivate_stake(stake_pubkey: &Pubkey, authorized_pubkey: &Pubkey) -> Instruction {
+    let account_metas = vec![
+        AccountMeta::new(*stake_pubkey, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*authorized_pubkey, true),
+    ];
+    Instruction::new_with_bincode(id(), &StakeInstruction::Deactivate, account_metas)
 }
