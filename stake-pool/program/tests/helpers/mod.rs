@@ -126,6 +126,33 @@ pub async fn create_token_account(
     Ok(())
 }
 
+pub async fn mint_tokens(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    mint: &Pubkey,
+    account: &Pubkey,
+    mint_authority: &Keypair,
+    amount: u64,
+) -> Result<(), TransportError> {
+    let transaction = Transaction::new_signed_with_payer(
+        &[spl_token::instruction::mint_to(
+            &spl_token::id(),
+            mint,
+            account,
+            &mint_authority.pubkey(),
+            &[],
+            amount,
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+        &[payer, mint_authority],
+        *recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
+}
+
 pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -> u64 {
     let token_account = banks_client
         .get_account(token.clone())

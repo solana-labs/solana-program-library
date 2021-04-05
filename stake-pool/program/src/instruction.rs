@@ -35,7 +35,7 @@ pub enum StakePoolInstruction {
     ///   3. `[w]` Uninitialized validator stake list storage account
     ///   4. `[]` Reserve stake account must be initialized, have zero balance,
     ///       and staker / withdrawer authority set to pool withdraw authority.
-    ///   5. `[]` Pool token mint. Must be non zero, owned by withdraw authority.
+    ///   5. `[]` Pool token mint. Must have zero supply, owned by withdraw authority.
     ///   6. `[]` Pool account to deposit the generated fee for manager.
     ///   7. `[]` Clock sysvar
     ///   8. `[]` Rent sysvar

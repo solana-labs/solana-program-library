@@ -52,7 +52,7 @@ async fn create_mint_and_token_account(
 }
 
 #[tokio::test]
-async fn test_stake_pool_initialize() {
+async fn success_initialize() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -77,7 +77,7 @@ async fn test_stake_pool_initialize() {
 }
 
 #[tokio::test]
-async fn test_initialize_already_initialized_stake_pool() {
+async fn fail_double_initialize() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -108,7 +108,7 @@ async fn test_initialize_already_initialized_stake_pool() {
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_with_already_initialized_stake_list_storage() {
+async fn fail_initialize_with_already_initialized_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -139,7 +139,7 @@ async fn test_initialize_stake_pool_with_already_initialized_stake_list_storage(
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_with_high_fee() {
+async fn fail_initialize_with_high_fee() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts.fee = instruction::Fee {
@@ -165,7 +165,7 @@ async fn test_initialize_stake_pool_with_high_fee() {
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_with_wrong_max_validators() {
+async fn fail_initialize_with_wrong_max_validators() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
 
@@ -245,7 +245,7 @@ async fn test_initialize_stake_pool_with_wrong_max_validators() {
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_with_wrong_mint_authority() {
+async fn fail_initialize_with_wrong_mint_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     let wrong_mint = Keypair::new();
@@ -299,7 +299,7 @@ async fn test_initialize_stake_pool_with_wrong_mint_authority() {
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_with_wrong_token_program_id() {
+async fn fail_initialize_with_wrong_token_program_id() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
 
@@ -399,7 +399,7 @@ async fn test_initialize_stake_pool_with_wrong_token_program_id() {
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_with_wrong_fee_accounts_manager() {
+async fn fail_initialize_with_wrong_fee_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
 
@@ -446,24 +446,17 @@ async fn test_initialize_stake_pool_with_wrong_fee_accounts_manager() {
     )
     .await
     .err()
+    .unwrap()
     .unwrap();
 
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::InvalidFeeAccount as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!(
-            "Wrong error occurs while try to initialize stake pool with wrong fee account's manager"
-        ),
-    }
+    assert_eq!(
+        transaction_error,
+        TransactionError::InstructionError(2, InstructionError::IncorrectProgramId)
+    );
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_with_wrong_withdraw_authority() {
+async fn fail_initialize_with_wrong_withdraw_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
 
@@ -490,7 +483,7 @@ async fn test_initialize_stake_pool_with_wrong_withdraw_authority() {
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_with_not_rent_exempt_pool() {
+async fn fail_initialize_with_not_rent_exempt_pool() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
 
@@ -563,7 +556,7 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_pool() {
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_with_not_rent_exempt_validator_list() {
+async fn fail_initialize_with_not_rent_exempt_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
 
@@ -638,7 +631,7 @@ async fn test_initialize_stake_pool_with_not_rent_exempt_validator_list() {
 }
 
 #[tokio::test]
-async fn test_initialize_stake_pool_without_manager_signature() {
+async fn fail_initialize_without_manager_signature() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
 
@@ -725,5 +718,73 @@ async fn test_initialize_stake_pool_without_manager_signature() {
         _ => panic!(
             "Wrong error occurs while try to initialize stake pool without manager's signature"
         ),
+    }
+}
+
+#[tokio::test]
+async fn fail_initialize_with_pre_minted_pool_tokens() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+    let mint_authority = Keypair::new();
+
+    create_mint(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.pool_mint,
+        &mint_authority.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.pool_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.manager.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    mint_tokens(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &mint_authority,
+        1,
+    )
+    .await
+    .unwrap();
+
+    let transaction_error = create_stake_pool(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.stake_pool,
+        &stake_pool_accounts.validator_list,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.manager,
+        &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.fee,
+        stake_pool_accounts.max_validators,
+    )
+    .await
+    .err()
+    .unwrap();
+
+    match transaction_error {
+        TransportError::TransactionError(TransactionError::InstructionError(
+            _,
+            InstructionError::Custom(error_index),
+        )) => {
+            let program_error = error::StakePoolError::NonZeroPoolTokenSupply as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs while try to initialize stake pool with wrong mint authority of pool fee account"),
     }
 }
