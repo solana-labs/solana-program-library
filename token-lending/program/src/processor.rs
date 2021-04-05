@@ -1590,8 +1590,8 @@ fn process_flash_loan_start(
 
     let current_idx = load_current_index(&instruction_account.try_borrow_data()?);
 
-    if current_idx > flash_loan_end_idx as u16 {
-        msg!("Flash Loan End before Flash Loan Start");
+    if current_idx >= flash_loan_end_idx as u16 {
+        msg!("Flash Loan End must be after Flash Loan Start");
         return Err(LendingError::InvalidFlashLoanEndIndex.into());
     }
 
