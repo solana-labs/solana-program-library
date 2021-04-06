@@ -21,7 +21,8 @@ use solana_program::{
 };
 
 /// Collateral tokens are initially valued at a ratio of 5:1 (collateral:liquidity)
-pub const INITIAL_COLLATERAL_RATIO: u64 = 5;
+// @FIXME: restore to 5
+pub const INITIAL_COLLATERAL_RATIO: u64 = 1;
 const INITIAL_COLLATERAL_RATE: u64 = INITIAL_COLLATERAL_RATIO * WAD;
 
 /// Current version of the program and all new accounts created
