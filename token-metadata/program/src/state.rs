@@ -11,9 +11,13 @@ pub const MAX_SYMBOL_LENGTH: usize = 10;
 
 pub const MAX_URI_LENGTH: usize = 200;
 
-pub const MAX_METADATA_LEN: usize = 32 + MAX_NAME_LENGTH + MAX_SYMBOL_LENGTH + MAX_URI_LENGTH;
+pub const MAX_METADATA_LEN: usize = 1 + 32 + MAX_NAME_LENGTH + MAX_SYMBOL_LENGTH + MAX_URI_LENGTH;
 
-pub const MAX_OWNER_LEN: usize = 32 + 32;
+pub const MAX_OWNER_LEN: usize = 1 + 32 + 32;
+
+pub const METADATA_KEY: u8 = 0;
+
+pub const NAME_SYMBOL_TUPLE_KEY: u8 = 1;
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -30,6 +34,10 @@ pub struct Data {
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize)]
 pub struct Metadata {
+    /// Key for the front end denoting what type of struct this is -
+    /// helpful for filtering on getProgramAccounts
+    /// Always 0
+    pub key: u8,
     /// This key is only present when the Metadata is used for a name/symbol combo that
     /// can be duplicated. This means this name/symbol combo has no accompanying
     /// UpdateAuthority account, and so it's update_authority is stored here.
@@ -41,6 +49,10 @@ pub struct Metadata {
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize)]
 pub struct NameSymbolTuple {
+    /// Key for the front end denoting what type of struct this is -
+    /// helpful for filtering on getProgramAccounts.
+    /// Always 1
+    pub key: u8,
     /// The person who can make updates to the metadata after it's made
     pub update_authority: Pubkey,
     /// Address of the current active metadata account

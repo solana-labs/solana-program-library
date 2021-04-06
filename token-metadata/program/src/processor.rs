@@ -1,3 +1,5 @@
+use crate::state::{METADATA_KEY, NAME_SYMBOL_TUPLE_KEY};
+
 use {
     crate::{
         error::MetadataError,
@@ -130,6 +132,7 @@ pub fn process_create_metadata_accounts(
 
     let mut metadata: Metadata = try_from_slice_unchecked(&metadata_account_info.data.borrow())?;
     metadata.mint = *mint_info.key;
+    metadata.key = METADATA_KEY;
     metadata.data.name = name.to_owned();
     metadata.data.symbol = symbol.to_owned();
     metadata.data.uri = uri;
@@ -179,7 +182,6 @@ pub fn process_create_metadata_accounts(
                 name_symbol_authority_signer_seeds,
             )?;
         }
-
         let mut name_symbol: NameSymbolTuple =
             try_from_slice_unchecked(&name_symbol_account_info.data.borrow())?;
 
@@ -188,6 +190,7 @@ pub fn process_create_metadata_accounts(
         metadata.non_unique_specific_update_authority = None;
 
         name_symbol.update_authority = *update_authority_info.key;
+        name_symbol.key = NAME_SYMBOL_TUPLE_KEY;
         name_symbol.metadata = *metadata_account_info.key;
         name_symbol.serialize(&mut *name_symbol_account_info.data.borrow_mut())?;
     };
