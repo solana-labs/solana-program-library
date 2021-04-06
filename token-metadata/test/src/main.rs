@@ -19,7 +19,7 @@ use {
     std::str::FromStr,
 };
 
-const METADATA_PROGRAM_PUBKEY: &str = "meta75ZHbozdG3sYzM6PdN7PNK6w9PgsAEEjVYKoAKr";
+const METADATA_PROGRAM_PUBKEY: &str = "metaTA73sFPqA8whreUbBsbn3SLJH2vhrW9fP5dmfdC";
 const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
 fn main() {
