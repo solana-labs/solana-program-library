@@ -167,9 +167,11 @@ pub enum LendingInstruction {
     ///   5. `[writable]` Obligation token output account.
     ///   6. `[]` Lending market account.
     ///   7. `[]` Derived lending market authority.
-    ///   8. `[signer]` User transfer authority ($authority).
-    ///   9. `[]` Clock sysvar.
-    ///   10 `[]` Token program id.
+    ///   8. `[signer]` Obligation owner.
+    ///   9. `[signer]` User transfer authority ($authority).
+    ///   10 `[]` Clock sysvar.
+    ///   11 `[]` Rent sysvar.
+    ///   12 `[]` Token program id.
     DepositObligationCollateral {
         /// Amount of collateral to deposit
         collateral_amount: u64,
@@ -714,9 +716,10 @@ pub fn deposit_obligation_collateral(
     destination_collateral_pubkey: Pubkey,
     deposit_reserve_pubkey: Pubkey,
     obligation_pubkey: Pubkey,
-    obligation_mint_pubkey: Pubkey,
-    obligation_output_pubkey: Pubkey,
+    obligation_token_mint_pubkey: Pubkey,
+    obligation_token_output_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
+    obligation_owner_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
@@ -730,12 +733,14 @@ pub fn deposit_obligation_collateral(
             AccountMeta::new(destination_collateral_pubkey, false),
             AccountMeta::new_readonly(deposit_reserve_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
-            AccountMeta::new(obligation_mint_pubkey, false),
-            AccountMeta::new(obligation_output_pubkey, false),
+            AccountMeta::new(obligation_token_mint_pubkey, false),
+            AccountMeta::new(obligation_token_output_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(obligation_owner_pubkey, true),
             AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: LendingInstruction::DepositObligationCollateral { collateral_amount }.pack(),

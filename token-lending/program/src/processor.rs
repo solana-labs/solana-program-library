@@ -690,8 +690,10 @@ fn process_deposit_obligation_collateral(
     let obligation_token_output_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let obligation_owner_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let rent_info = next_account_info(account_info_iter)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
@@ -718,9 +720,6 @@ fn process_deposit_obligation_collateral(
         msg!("Invalid source collateral account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    // @TODO: is this necessary? we don't care about market price or interest here yet.
-    //        however, we will if we add the ability to deposit and borrow in one transaction.
-    //        it would also be important if deposit_reserve.config.collateral_enabled changes.
     if deposit_reserve.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ReserveStale.into());
     }
@@ -736,18 +735,46 @@ fn process_deposit_obligation_collateral(
         msg!("Invalid obligation lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-
-    unpack_mint(&obligation_token_mint_info.data.borrow())?;
-    if obligation_token_mint_info.owner != token_program_id.key {
-        return Err(LendingError::InvalidTokenOwner.into());
+    if &obligation.owner != obligation_owner_info.key {
+        return Err(LendingError::InvalidObligationOwner.into());
+    }
+    if !obligation_owner_info.is_signer {
+        return Err(LendingError::InvalidSigner.into());
     }
 
-    let obligation_token_output = Account::unpack(&obligation_token_output_info.data.borrow())?;
-    if obligation_token_output_info.owner != token_program_id.key {
-        return Err(LendingError::InvalidTokenOwner.into());
+    let obligation_token_mint = Mint::unpack_unchecked(&obligation_token_mint_info.data.borrow())?;
+    if obligation_token_mint.is_initialized() {
+        if obligation_token_mint_info.owner != token_program_id.key {
+            return Err(LendingError::InvalidTokenOwner.into());
+        }
     }
-    if &obligation_token_output.mint != obligation_token_mint_info.key {
-        return Err(LendingError::InvalidTokenMint.into());
+    else {
+        spl_token_init_mint(TokenInitializeMintParams {
+            mint: obligation_token_mint_info.clone(),
+            authority: lending_market_authority_info.key,
+            rent: rent_info.clone(),
+            decimals: deposit_reserve.liquidity.mint_decimals,
+            token_program: token_program_id.clone(),
+        })?;
+    }
+
+    let obligation_token_output = Account::unpack_unchecked(&obligation_token_output_info.data.borrow())?;
+    if obligation_token_output.is_initialized() {
+        if obligation_token_output_info.owner != token_program_id.key {
+            return Err(LendingError::InvalidTokenOwner.into());
+        }
+        if &obligation_token_output.mint != obligation_token_mint_info.key {
+            return Err(LendingError::InvalidTokenMint.into());
+        }
+    }
+    else {
+        spl_token_init_account(TokenInitializeAccountParams {
+            account: obligation_token_output_info.clone(),
+            mint: obligation_token_mint_info.clone(),
+            owner: obligation_owner_info.clone(),
+            rent: rent_info.clone(),
+            token_program: token_program_id.clone(),
+        })?;
     }
 
     let authority_signer_seeds = &[
