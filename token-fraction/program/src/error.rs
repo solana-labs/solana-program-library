@@ -124,6 +124,14 @@ pub enum FractionError {
     /// Redeem treasury provided does not match that on the token pool
     #[error("Redeem treasury provided does not match that on the token pool")]
     RedeemTreasuryNeedsToMatchPool,
+
+    /// Not allowed to combine at this time
+    #[error("Not allowed to combine at this time")]
+    NotAllowedToCombine,
+
+    /// You cannot afford to combine this pool
+    #[error("You cannot afford to combine this pool")]
+    CannotAffordToCombineThisPool,
 }
 
 impl PrintProgramError for FractionError {

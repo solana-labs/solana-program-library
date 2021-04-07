@@ -8,8 +8,8 @@ use {
         },
         utils::{
             assert_initialized, assert_owned_by, assert_rent_exempt,
-            create_or_allocate_account_raw, spl_token_mint_to, spl_token_transfer,
-            TokenMintToParams, TokenTransferParams,
+            create_or_allocate_account_raw, spl_token_burn, spl_token_mint_to, spl_token_transfer,
+            TokenBurnParams, TokenMintToParams, TokenTransferParams,
         },
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -78,7 +78,7 @@ pub fn process_combine_fractionalized_token_pool(
 
     let mut fractionalized_token_pool: FractionalizedTokenPool =
         try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
-
+    let fraction_mint: Mint = assert_initialized(fraction_mint_info)?;
     let your_payment_account: Account = assert_initialized(your_payment_info)?;
     let your_outstanding_shares: Account = assert_initialized(your_outstanding_shares_info)?;
     let external_pricing: ExternalPriceAccount =
@@ -103,6 +103,60 @@ pub fn process_combine_fractionalized_token_pool(
     if redeem_treasury_info.key != &fractionalized_token_pool.redeem_treasury {
         return Err(FractionError::RedeemTreasuryNeedsToMatchPool.into());
     }
+
+    if !external_pricing.allowed_to_combine {
+        return Err(FractionError::NotAllowedToCombine.into());
+    }
+
+    let market_cap = match fraction_mint
+        .supply
+        .checked_mul(external_pricing.price_per_share)
+    {
+        Some(val) => val,
+        None => return Err(FractionError::NumericalOverflowError.into()),
+    };
+
+    let your_share_value = match your_outstanding_shares
+        .amount
+        .checked_mul(external_pricing.price_per_share)
+    {
+        Some(val) => val,
+        None => return Err(FractionError::NumericalOverflowError.into()),
+    };
+
+    let what_you_owe = match market_cap.checked_sub(your_share_value) {
+        Some(val) => val,
+        None => return Err(FractionError::NumericalOverflowError.into()),
+    };
+
+    if your_payment_account.amount < what_you_owe {
+        return Err(FractionError::CannotAffordToCombineThisPool.into());
+    }
+
+    let (_, bump_seed) = Pubkey::find_program_address(&[program_id.as_ref()], program_id);
+    let authority_signer_seeds = &[program_id.as_ref(), &[bump_seed]];
+
+    spl_token_transfer(TokenTransferParams {
+        source: your_payment_info.clone(),
+        destination: redeem_treasury_info.clone(),
+        amount: what_you_owe,
+        authority: transfer_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    spl_token_burn(TokenBurnParams {
+        mint: fraction_mint_info.clone(),
+        amount: your_outstanding_shares.amount,
+        authority: burn_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+        source: your_outstanding_shares_info.clone(),
+    })?;
+
+    fractionalized_token_pool.state = PoolState::Combined;
+    fractionalized_token_pool.serialize(&mut *fractionalized_token_pool_info.data.borrow_mut())?;
+
     Ok(())
 }
 
