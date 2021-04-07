@@ -325,7 +325,8 @@ impl ObligationLiquidity {
     }
 }
 
-// @TODO: adjust padding. what's a reasonable number?
+// @TODO: Adjust padding, but what's a reasonable number?
+//        Or should there be no padding to save space, but we need account resizing implemented?
 const OBLIGATION_COLLATERAL_LEN: usize = 88; // 32 + 32 + 8 + 16
 const OBLIGATION_LIQUIDITY_LEN: usize = 80; // 32 + 16 + 16 + 16
 const OBLIGATION_LEN: usize = 932; // 1 + 8 + 1 + 32 + 32 + 16 + 16 + 8 + 8 + 1 + 1 + (88 * 1) + (80 * 9)

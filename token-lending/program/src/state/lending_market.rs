@@ -58,7 +58,8 @@ impl IsInitialized for LendingMarket {
     }
 }
 
-// @TODO: adjust padding. what's a reasonable number?
+// @TODO: Adjust padding, but what's a reasonable number?
+//        Or should there be no padding to save space, but we need account resizing implemented?
 const LENDING_MARKET_LEN: usize = 226; // 1 + 1 + 32 + 32 + 32 + 128
 impl Pack for LendingMarket {
     const LEN: usize = LENDING_MARKET_LEN;

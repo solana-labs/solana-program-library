@@ -12,6 +12,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
+use std::cmp::Ordering;
 use std::convert::{TryFrom, TryInto};
 
 /// Percentage of an obligation that can be repaid during each liquidation call
@@ -157,8 +158,8 @@ impl Reserve {
             .ok_or(LendingError::MathOverflow)?;
         if liquidity_amount == u64::max_value() {
             let borrow_amount = max_borrow_value
-                .try_div(self.liquidity.median_price)?
                 .try_mul(decimals)?
+                .try_div(self.liquidity.median_price)?
                 .min(self.liquidity.available_amount.into());
             let (origination_fee, host_fee) = self
                 .config
@@ -185,8 +186,8 @@ impl Reserve {
 
             let borrow_amount = borrow_amount.try_add(borrow_fee.into())?;
             let borrow_value = borrow_amount
-                .try_div(decimals)?
-                .try_mul(self.liquidity.median_price)?;
+                .try_mul(self.liquidity.median_price)?
+                .try_div(decimals)?;
             if borrow_value > max_borrow_value {
                 return Err(LendingError::BorrowTooLarge.into());
             }
@@ -249,19 +250,23 @@ impl Reserve {
             settle_amount = liquidity.borrowed_amount_wads;
 
             let liquidation_value = liquidity.market_value.try_mul(bonus_rate)?;
-            if liquidation_value > collateral.market_value {
-                let repay_pct = collateral.market_value.try_div(liquidation_value)?;
-                repay_amount = target_amount.try_mul(repay_pct)?.try_ceil_u64()?;
-                withdraw_amount = collateral.deposited_amount;
-            } else if liquidation_value == collateral.market_value {
-                repay_amount = target_amount.try_ceil_u64()?;
-                withdraw_amount = collateral.deposited_amount;
-            } else {
-                let withdraw_pct = liquidation_value.try_div(collateral.market_value)?;
-                repay_amount = target_amount.try_ceil_u64()?;
-                withdraw_amount = Decimal::from(collateral.deposited_amount)
-                    .try_mul(withdraw_pct)?
-                    .try_ceil_u64()?;
+            match liquidation_value.cmp(&collateral.market_value) {
+                Ordering::Greater => {
+                    let repay_pct = collateral.market_value.try_div(liquidation_value)?;
+                    repay_amount = target_amount.try_mul(repay_pct)?.try_ceil_u64()?;
+                    withdraw_amount = collateral.deposited_amount;
+                }
+                Ordering::Equal => {
+                    repay_amount = target_amount.try_ceil_u64()?;
+                    withdraw_amount = collateral.deposited_amount;
+                }
+                Ordering::Less => {
+                    let withdraw_pct = liquidation_value.try_div(collateral.market_value)?;
+                    repay_amount = target_amount.try_ceil_u64()?;
+                    withdraw_amount = Decimal::from(collateral.deposited_amount)
+                        .try_mul(withdraw_pct)?
+                        .try_ceil_u64()?;
+                }
             }
         } else {
             // calculate settle_amount and withdraw_amount, repay_amount is settle_amount rounded up
@@ -274,19 +279,23 @@ impl Reserve {
                 .try_mul(liquidation_pct)?
                 .try_mul(bonus_rate)?;
 
-            if liquidation_value > collateral.market_value {
-                let repay_pct = collateral.market_value.try_div(liquidation_value)?;
-                settle_amount = liquidation_amount.try_mul(repay_pct)?;
-                withdraw_amount = collateral.deposited_amount;
-            } else if liquidation_value == collateral.market_value {
-                settle_amount = liquidation_amount;
-                withdraw_amount = collateral.deposited_amount;
-            } else {
-                let withdraw_pct = liquidation_value.try_div(collateral.market_value)?;
-                settle_amount = liquidation_amount;
-                withdraw_amount = Decimal::from(collateral.deposited_amount)
-                    .try_mul(withdraw_pct)?
-                    .try_ceil_u64()?;
+            match liquidation_value.cmp(&collateral.market_value) {
+                Ordering::Greater => {
+                    let repay_pct = collateral.market_value.try_div(liquidation_value)?;
+                    settle_amount = liquidation_amount.try_mul(repay_pct)?;
+                    withdraw_amount = collateral.deposited_amount;
+                }
+                Ordering::Equal => {
+                    settle_amount = liquidation_amount;
+                    withdraw_amount = collateral.deposited_amount;
+                }
+                Ordering::Less => {
+                    let withdraw_pct = liquidation_value.try_div(collateral.market_value)?;
+                    settle_amount = liquidation_amount;
+                    withdraw_amount = Decimal::from(collateral.deposited_amount)
+                        .try_mul(withdraw_pct)?
+                        .try_ceil_u64()?;
+                }
             }
 
             repay_amount = settle_amount.try_ceil_u64()?;
@@ -577,7 +586,7 @@ impl From<CollateralExchangeRate> for Rate {
 /// Reserve configuration values
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ReserveConfig {
-    /// Optimal utilization rate as a percent
+    /// Optimal utilization rate, as a percentage
     pub optimal_utilization_rate: u8,
     /// Min borrow APY
     pub min_borrow_rate: u8,
@@ -585,11 +594,12 @@ pub struct ReserveConfig {
     pub optimal_borrow_rate: u8,
     /// Max borrow APY
     pub max_borrow_rate: u8,
-    /// Ratio of the value of borrows to deposits as a percent; 0 if use as collateral is disabled
+    /// Target ratio of the value of borrows to deposits, as a percentage
+    /// 0 if use as collateral is disabled
     pub loan_to_value_ratio: u8,
-    /// The percent at which an obligation is considered unhealthy
+    /// Loan to value ratio at which an obligation can be liquidated, as a percentage
     pub liquidation_threshold: u8,
-    /// The percent bonus the liquidator gets when repaying liquidity to an unhealthy obligation
+    /// Bonus a liquidator gets when repaying part of an unhealthy obligation, as a percentage
     pub liquidation_bonus: u8,
     /// Program owner fees assessed, separate from gains due to interest accrual
     pub fees: ReserveFees,
@@ -673,7 +683,8 @@ impl IsInitialized for Reserve {
     }
 }
 
-// @TODO: adjust padding. what's a reasonable number?
+// @TODO: Adjust padding, but what's a reasonable number?
+//        Or should there be no padding to save space, but we need account resizing implemented?
 const RESERVE_LEN: usize = 567; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + (4 + 32) + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 1 + 256
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;

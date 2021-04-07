@@ -774,17 +774,17 @@ fn process_deposit_obligation_collateral(
         return Err(LendingError::InvalidSigner.into());
     }
 
-    // @TODO: does there need to be a check to make sure obligation_token_mint_info is rent exempt?
+    // @TODO: Does there need to be a check to make sure obligation_token_mint_info is rent exempt?
     let obligation_token_mint = Mint::unpack_unchecked(&obligation_token_mint_info.data.borrow())?;
     if obligation_token_mint.is_initialized() {
         if obligation_token_mint_info.owner != token_program_id.key {
             return Err(LendingError::InvalidTokenOwner.into());
         }
-        if obligation_token_mint.mint_authority != COption::Some(*lending_market_authority_info.key) {
+        if obligation_token_mint.mint_authority != COption::Some(*lending_market_authority_info.key)
+        {
             return Err(LendingError::InvalidMarketAuthority.into());
         }
-    }
-    else {
+    } else {
         spl_token_init_mint(TokenInitializeMintParams {
             mint: obligation_token_mint_info.clone(),
             authority: lending_market_authority_info.key,
@@ -794,8 +794,9 @@ fn process_deposit_obligation_collateral(
         })?;
     }
 
-    // @TODO: does there need to be a check to make sure obligation_token_output_info is rent exempt?
-    let obligation_token_output = Account::unpack_unchecked(&obligation_token_output_info.data.borrow())?;
+    // @TODO: Does there need to be a check to make sure obligation_token_output_info is rent exempt?
+    let obligation_token_output =
+        Account::unpack_unchecked(&obligation_token_output_info.data.borrow())?;
     if obligation_token_output.is_initialized() {
         if obligation_token_output_info.owner != token_program_id.key {
             return Err(LendingError::InvalidTokenOwner.into());
@@ -806,8 +807,7 @@ fn process_deposit_obligation_collateral(
         if &obligation_token_output.owner != obligation_owner_info.key {
             return Err(LendingError::InvalidObligationOwner.into());
         }
-    }
-    else {
+    } else {
         spl_token_init_account(TokenInitializeAccountParams {
             account: obligation_token_output_info.clone(),
             mint: obligation_token_mint_info.clone(),
