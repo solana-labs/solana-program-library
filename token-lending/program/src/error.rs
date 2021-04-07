@@ -119,23 +119,34 @@ pub enum LendingError {
     /// Expected a different obligation owner
     #[error("Obligation owner is invalid")]
     InvalidObligationOwner,
+    /// Obligation deposits are empty
+    #[error("Obligation deposits are empty")]
+    ObligationDepositsEmpty,
+    /// Obligation borrows are empty
+    #[error("Obligation borrows are empty")]
+    ObligationBorrowsEmpty,
+
+    // 35
+    /// Obligation deposits have zero value
+    #[error("Obligation deposits have zero value")]
+    ObligationDepositsZero,
+    /// Obligation borrows have zero value
+    #[error("Obligation borrows have zero value")]
+    ObligationBorrowsZero,
     /// Invalid obligation collateral
     #[error("Invalid obligation collateral")]
     InvalidObligationCollateral,
     /// Invalid obligation liquidity
     #[error("Invalid obligation liquidity")]
     InvalidObligationLiquidity,
-
-    // 35
     /// Obligation collateral is empty
     #[error("Obligation collateral is empty")]
     ObligationCollateralEmpty,
+
+    // 40
     /// Obligation liquidity is empty
     #[error("Obligation liquidity is empty")]
     ObligationLiquidityEmpty,
-    /// Obligation loan to value limit exceeded
-    #[error("Obligation loan to value limit exceeded")]
-    ObligationLoanToValueLimit,
 }
 
 impl From<LendingError> for ProgramError {
