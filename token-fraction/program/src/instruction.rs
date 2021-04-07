@@ -1,4 +1,5 @@
 use {
+    crate::state::PricingLookupType,
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -8,27 +9,44 @@ use {
 };
 
 #[repr(C)]
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
-/// Args for update call
+#[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct InitFractionalizedTokenPoolArgs {
-    allow_share_redemption: bool,
+    pub allow_share_redemption: bool,
+    pub pricing_lookup_type: PricingLookupType,
 }
 
-/// Instructions supported by the Metadata program.
+#[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
-pub enum MetadataInstruction {
-    /// Initialize a fractionalized token pool from N token accounts. These token
-    ///   0. `[writable]`  NameSymbolTuple key (pda of ['metadata', program id, name, symbol])
-    ///   1. `[writable]`  Metadata key (pda of ['metadata', program id, mint id])
-    ///   2. `[]` Mint of token asset
-    ///   3. `[signer]` Mint authority
-    ///   4. `[signer]` payer
-    ///   5. `[signer]` update authority info (Signer is optional - only required if NameSymbolTuple exists)
-    ///   6. `[]` System program
+pub struct AddTokenToInactivatedFractionalizedTokenPoolArgs {
+    pub amount: u64,
+}
+
+/// Instructions supported by the Fraction program.
+#[derive(BorshSerialize, BorshDeserialize, Clone)]
+pub enum FractionInstruction {
+    /// Initialize a fractionalized token pool, starts deactivated. Add tokens in subsequent instructions, then activate.
+    ///   0. `[writable]` Initialized fractional share mint with 0 tokens in supply
+    ///   1. `[writable]` Initialized treasury token account with 0 tokens in supply
+    ///   2. `[writable]` Uninitialized fractionalized token ledger account
+    ///   4. `[]` Authority
+    ///   5. `[]` Pricing Lookup Address
     InitFractionalizedTokenPool(InitFractionalizedTokenPoolArgs),
+
+    /// Add a token to a deactivated fractionalized token pool
+    ///   0. `[writable]` Uninitialized Token Fractional Registry account address (will be created and allocated by this endpoint)
+    ///                   Address should be pda with seed of [PREFIX, fractional_token_ledger_address, token_mint_address]
+    ///   1. `[writable]` Initialized Token account
+    ///   2. `[writable]` Initialized Token vault account with authority of this program
+    ///   3. `[writable]` Initialized deactivated fractionalized token pool
+    ///   4. `[]` Payer
+    ///   5. `[]` Transfer Authority to move desired token amount from token account to vault
+    ///   6. `[]` Token program
+    ///   7. `[]` Rent sysvar
+    ///   8. `[]` System account sysvar
+    AddTokenToInactivatedFractionalizedTokenPool(AddTokenToInactivatedFractionalizedTokenPoolArgs),
 }
 /*
-/// Creates an CreateMetadataAccounts instruction
+/// Creates an CreateFractionAccounts instruction
 #[allow(clippy::too_many_arguments)]
 pub fn create_metadata_accounts(
     program_id: Pubkey,
@@ -56,7 +74,7 @@ pub fn create_metadata_accounts(
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
-        data: MetadataInstruction::CreateMetadataAccounts(CreateMetadataAccountArgs {
+        data: FractionInstruction::CreateFractionAccounts(CreateFractionAccountArgs {
             data: Data { name, symbol, uri },
             allow_duplication,
         })

@@ -12,7 +12,7 @@ document are available at:
 
 ## Source
 
-The Metadata Program's source is available on
+The Fraction Program's source is available on
 [github](https://github.com/solana-labs/solana-program-library)
 
 There is also an example Rust client located at
@@ -21,7 +21,7 @@ that can be perused for learning and run if desired with `cargo run --bin spl-to
 
 ## Interface
 
-The on-chain Token Metadata program is written in Rust and available on crates.io as
+The on-chain Token Fraction program is written in Rust and available on crates.io as
 [spl-metadata](https://crates.io/crates/spl-token-metadata) and
 [docs.rs](https://docs.rs/spl-token-metadata).
 

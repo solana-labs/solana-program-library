@@ -1,14 +1,17 @@
-use crate::state::{METADATA_KEY, NAME_SYMBOL_TUPLE_KEY};
+use spl_token::state::Account;
 
 use {
     crate::{
-        error::MetadataError,
-        instruction::MetadataInstruction,
+        error::FractionError,
+        instruction::FractionInstruction,
         state::{
-            Metadata, NameSymbolTuple, MAX_METADATA_LEN, MAX_NAME_LENGTH, MAX_OWNER_LEN,
-            MAX_SYMBOL_LENGTH, MAX_URI_LENGTH, PREFIX,
+            FractionalizedTokenPool, FractionalizedTokenRegistry, PricingLookupType, MAX_POOL_SIZE,
+            MAX_TOKEN_REGISTRY_SIZE, POOL_KEY, PREFIX, REGISTRY_KEY,
         },
-        utils::{assert_initialized, create_or_allocate_account_raw},
+        utils::{
+            assert_initialized, create_or_allocate_account_raw, spl_token_transfer,
+            TokenTransferParams,
+        },
     },
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
@@ -26,267 +29,197 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    let instruction = MetadataInstruction::try_from_slice(input)?;
+    let instruction = FractionInstruction::try_from_slice(input)?;
     match instruction {
-        MetadataInstruction::CreateMetadataAccounts(args) => {
-            msg!("Instruction: Create Metadata Accounts");
-            process_create_metadata_accounts(
+        FractionInstruction::InitFractionalizedTokenPool(args) => {
+            msg!("Instruction: Init Fractionalized Token Pool");
+            process_init_fractionalized_token_pool(
                 program_id,
                 accounts,
-                args.data.name,
-                args.data.symbol,
-                args.data.uri,
-                args.allow_duplication,
+                args.allow_share_redemption,
+                args.pricing_lookup_type,
             )
         }
-        MetadataInstruction::UpdateMetadataAccounts(args) => {
-            msg!("Instruction: Update Metadata Accounts");
-            process_update_metadata_accounts(
+        FractionInstruction::AddTokenToInactivatedFractionalizedTokenPool(args) => {
+            msg!("Instruction: Init Fractionalized Token Pool");
+            process_add_token_to_inactivated_fractionalized_token_pool(
                 program_id,
                 accounts,
-                args.uri,
-                args.non_unique_specific_update_authority,
+                args.amount,
             )
-        }
-        MetadataInstruction::TransferUpdateAuthority => {
-            msg!("Instruction: Transfer Update Authority");
-            process_transfer_update_authority(program_id, accounts)
         }
     }
 }
 
-/// Create a new account instruction
-pub fn process_create_metadata_accounts(
+pub fn process_activate_fractionalized_token_pool(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    name: String,
-    symbol: String,
-    uri: String,
-    allow_duplication: bool,
+    allow_share_redemption: bool,
+    pricing_lookup_type: PricingLookupType,
+    number_of_shares: u64,
+) -> ProgramResult {
+    Ok(())
+}
+
+pub fn process_add_token_to_inactivated_fractionalized_token_pool(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let name_symbol_account_info = next_account_info(account_info_iter)?;
-    let metadata_account_info = next_account_info(account_info_iter)?;
-    let mint_info = next_account_info(account_info_iter)?;
-    let mint_authority_info = next_account_info(account_info_iter)?;
-    let payer_account_info = next_account_info(account_info_iter)?;
-    let update_authority_info = next_account_info(account_info_iter)?;
-    let system_account_info = next_account_info(account_info_iter)?;
+    let registry_account_info = next_account_info(account_info_iter)?;
+    let token_account_info = next_account_info(account_info_iter)?;
+    let vault_info = next_account_info(account_info_iter)?;
+    let fractionalized_token_pool_info = next_account_info(account_info_iter)?;
+    let payer_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
+
+    let token_program_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
+    let system_account_info = next_account_info(account_info_iter)?;
 
-    if name.len() > MAX_NAME_LENGTH {
-        return Err(MetadataError::NameTooLong.into());
+    let token_account: Account = assert_initialized(token_account_info)?;
+    let vault: Account = assert_initialized(vault_info)?;
+
+    if token_account.amount == 0 {
+        return Err(FractionError::TokenAccountContainsNoTokens.into());
     }
 
-    if symbol.len() > MAX_SYMBOL_LENGTH {
-        return Err(MetadataError::SymbolTooLong.into());
+    if token_account.amount < amount {
+        return Err(FractionError::TokenAccountAmountLessThanAmountSpecified.into());
     }
 
-    if uri.len() > MAX_URI_LENGTH {
-        return Err(MetadataError::UriTooLong.into());
+    if vault.amount > 0 {
+        return Err(FractionError::VaultAccountIsNotEmpty.into());
     }
 
-    let mint: Mint = assert_initialized(mint_info)?;
-    match mint.mint_authority {
-        solana_program::program_option::COption::None => {
-            return Err(MetadataError::InvalidMintAuthority.into());
-        }
-        solana_program::program_option::COption::Some(key) => {
-            if *mint_authority_info.key != key {
-                return Err(MetadataError::InvalidMintAuthority.into());
-            }
-        }
+    if vault.owner != *program_id {
+        return Err(FractionError::VaultAccountIsNotOwnedByProgram.into());
     }
 
-    if !mint_authority_info.is_signer {
-        return Err(MetadataError::NotMintAuthority.into());
-    }
-
-    let metadata_seeds = &[
+    let seeds = &[
         PREFIX.as_bytes(),
-        program_id.as_ref(),
-        mint_info.key.as_ref(),
+        fractionalized_token_pool_info.key.as_ref(),
+        token_account.mint.as_ref(),
     ];
-    let (metadata_key, metadata_bump_seed) =
-        Pubkey::find_program_address(metadata_seeds, program_id);
-    let metadata_authority_signer_seeds = &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        mint_info.key.as_ref(),
-        &[metadata_bump_seed],
-    ];
+    let (registry_key, bump_seed) = Pubkey::find_program_address(seeds, program_id);
 
-    if metadata_account_info.key != &metadata_key {
-        return Err(MetadataError::InvalidMetadataKey.into());
+    if registry_key != *registry_account_info.key {
+        return Err(FractionError::RegistryAccountAddressInvalid.into());
     }
-
+    let authority_signer_seeds = &[
+        PREFIX.as_bytes(),
+        fractionalized_token_pool_info.key.as_ref(),
+        token_account.mint.as_ref(),
+        &[bump_seed],
+    ];
     create_or_allocate_account_raw(
         *program_id,
-        metadata_account_info,
+        registry_account_info,
         rent_info,
         system_account_info,
-        payer_account_info,
-        MAX_METADATA_LEN,
-        metadata_authority_signer_seeds,
+        payer_info,
+        MAX_TOKEN_REGISTRY_SIZE,
+        authority_signer_seeds,
     )?;
 
-    let mut metadata: Metadata = try_from_slice_unchecked(&metadata_account_info.data.borrow())?;
-    metadata.mint = *mint_info.key;
-    metadata.key = METADATA_KEY;
-    metadata.data.name = name.to_owned();
-    metadata.data.symbol = symbol.to_owned();
-    metadata.data.uri = uri;
-    metadata.non_unique_specific_update_authority = Some(*update_authority_info.key);
+    let mut fractionalized_token_pool: FractionalizedTokenPool =
+        try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
+    fractionalized_token_pool.token_type_count =
+        match fractionalized_token_pool.token_type_count.checked_add(1) {
+            Some(val) => val,
+            None => return Err(FractionError::NumericalOverflowError.into()),
+        };
+    fractionalized_token_pool.serialize(&mut *fractionalized_token_pool_info.data.borrow_mut())?;
 
-    if !allow_duplication {
-        let name_symbol_seeds = &[
-            PREFIX.as_bytes(),
-            program_id.as_ref(),
-            &name.as_bytes(),
-            &symbol.as_bytes(),
-        ];
-        let (name_symbol_key, name_symbol_bump_seed) =
-            Pubkey::find_program_address(name_symbol_seeds, program_id);
-        let name_symbol_authority_signer_seeds = &[
-            PREFIX.as_bytes(),
-            program_id.as_ref(),
-            &name.as_bytes(),
-            &symbol.as_bytes(),
-            &[name_symbol_bump_seed],
-        ];
+    let mut registry: FractionalizedTokenRegistry =
+        try_from_slice_unchecked(&registry_account_info.data.borrow_mut())?;
+    registry.key = REGISTRY_KEY;
+    registry.fractionalized_token_pool = *fractionalized_token_pool_info.key;
+    registry.token_mint = token_account.mint;
+    registry.vault = *vault_info.key;
 
-        if name_symbol_account_info.key != &name_symbol_key {
-            return Err(MetadataError::InvalidNameSymbolKey.into());
-        }
+    registry.serialize(&mut *registry_account_info.data.borrow_mut())?;
 
-        // If this is a brand new NameSymbol, we can simply allocate and be on our way.
-        // If it is an existing NameSymbol, we need to check that you are that authority and are the signer.
-        if !name_symbol_account_info.try_data_is_empty()? {
-            let name_symbol: NameSymbolTuple =
-                try_from_slice_unchecked(&name_symbol_account_info.data.borrow_mut())?;
-            if name_symbol.update_authority != *update_authority_info.key
-                || !update_authority_info.is_signer
-            {
-                return Err(
-                    MetadataError::UpdateAuthorityMustBeEqualToNameSymbolAuthorityAndSigner.into(),
-                );
-            }
-        } else {
-            create_or_allocate_account_raw(
-                *program_id,
-                name_symbol_account_info,
-                rent_info,
-                system_account_info,
-                payer_account_info,
-                MAX_OWNER_LEN,
-                name_symbol_authority_signer_seeds,
-            )?;
-        }
-        let mut name_symbol: NameSymbolTuple =
-            try_from_slice_unchecked(&name_symbol_account_info.data.borrow())?;
-
-        // Now this is 0'ed out, so it can be filtered on as a boolean filter for NFTs and other
-        // Unique types
-        metadata.non_unique_specific_update_authority = None;
-
-        name_symbol.update_authority = *update_authority_info.key;
-        name_symbol.key = NAME_SYMBOL_TUPLE_KEY;
-        name_symbol.metadata = *metadata_account_info.key;
-        name_symbol.serialize(&mut *name_symbol_account_info.data.borrow_mut())?;
-    };
-
-    metadata.serialize(&mut *metadata_account_info.data.borrow_mut())?;
+    spl_token_transfer(TokenTransferParams {
+        source: token_account_info.clone(),
+        destination: vault_info.clone(),
+        amount: amount,
+        authority: transfer_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
 
     Ok(())
 }
 
-/// Update existing account instruction
-pub fn process_update_metadata_accounts(
+pub fn process_init_fractionalized_token_pool(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    uri: String,
-    non_unique_specific_update_authority: Option<Pubkey>,
+    allow_share_redemption: bool,
+    pricing_lookup_type: PricingLookupType,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
+    let fraction_mint_info = next_account_info(account_info_iter)?;
+    let treasury_info = next_account_info(account_info_iter)?;
+    let fractionalized_token_pool_info = next_account_info(account_info_iter)?;
+    let authority_info = next_account_info(account_info_iter)?;
+    let pricing_lookup_address = next_account_info(account_info_iter)?;
 
-    let metadata_account_info = next_account_info(account_info_iter)?;
-    let update_authority_info = next_account_info(account_info_iter)?;
-    let name_symbol_account_info = next_account_info(account_info_iter)?;
+    let fraction_mint: Mint = assert_initialized(fraction_mint_info)?;
+    let treasury: Account = assert_initialized(treasury_info)?;
+    let mut fractionalized_token_pool: FractionalizedTokenPool =
+        try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow())?;
 
-    if uri.len() > MAX_URI_LENGTH {
-        return Err(MetadataError::UriTooLong.into());
-    }
-    let mut metadata: Metadata = try_from_slice_unchecked(&metadata_account_info.data.borrow())?;
-
-    // Even if you're a metadata that doesn't use this, you need to send it up with proper key.
-    let name_symbol_seeds = &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        &metadata.data.name.as_bytes(),
-        &metadata.data.symbol.as_bytes(),
-    ];
-    let (name_symbol_key, _) = Pubkey::find_program_address(name_symbol_seeds, program_id);
-
-    if name_symbol_key != *name_symbol_account_info.key {
-        return Err(MetadataError::InvalidNameSymbolKey.into());
+    if fraction_mint.supply != 0 {
+        return Err(FractionError::FractionMintNotEmpty.into());
     }
 
-    match metadata.non_unique_specific_update_authority {
-        Some(val) => {
-            if val != *update_authority_info.key {
-                return Err(MetadataError::UpdateAuthorityIncorrect.into());
+    match fraction_mint.mint_authority {
+        solana_program::program_option::COption::None => {
+            return Err(FractionError::FractionAuthorityNotProgram.into());
+        }
+        solana_program::program_option::COption::Some(val) => {
+            if val != *program_id {
+                return Err(FractionError::FractionAuthorityNotProgram.into());
             }
         }
-        None => {
-            let name_symbol: NameSymbolTuple =
-                try_from_slice_unchecked(&name_symbol_account_info.data.borrow())?;
-
-            if name_symbol.metadata != *metadata_account_info.key {
-                return Err(MetadataError::InvalidMetadataForNameSymbolTuple.into());
-            }
-
-            if name_symbol.update_authority != *update_authority_info.key {
-                return Err(MetadataError::UpdateAuthorityIncorrect.into());
+    }
+    match fraction_mint.freeze_authority {
+        solana_program::program_option::COption::None => {
+            return Err(FractionError::FractionAuthorityNotProgram.into());
+        }
+        solana_program::program_option::COption::Some(val) => {
+            if val != *program_id {
+                return Err(FractionError::FractionAuthorityNotProgram.into());
             }
         }
     }
 
-    if !update_authority_info.is_signer {
-        return Err(MetadataError::UpdateAuthorityIsNotSigner.into());
+    if treasury.amount != 0 {
+        return Err(FractionError::TreasuryNotEmpty.into());
     }
 
-    metadata.data.uri = uri;
-
-    // Only set it if it's specifically a duplicable metadata (not an NFT kind) which can be
-    // determined by the presence of this field already.
-    if metadata.non_unique_specific_update_authority.is_some() {
-        metadata.non_unique_specific_update_authority = non_unique_specific_update_authority
+    if treasury.owner != *program_id {
+        return Err(FractionError::TreasuryOwnerNotProgram.into());
     }
 
-    metadata.serialize(&mut *metadata_account_info.data.borrow_mut())?;
-    Ok(())
-}
+    fractionalized_token_pool.key = POOL_KEY;
+    fractionalized_token_pool.treasury = *treasury_info.key;
+    fractionalized_token_pool.fraction_mint = *fraction_mint_info.key;
+    fractionalized_token_pool.pricing_lookup_address = *pricing_lookup_address.key;
+    fractionalized_token_pool.pricing_lookup_type = pricing_lookup_type;
+    fractionalized_token_pool.allow_share_redemption = allow_share_redemption;
+    fractionalized_token_pool.authority = *authority_info.key;
+    fractionalized_token_pool.token_type_count = 0;
 
-/// Transfer update authority
-pub fn process_transfer_update_authority(_: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-
-    let name_symbol_account_info = next_account_info(account_info_iter)?;
-    let current_update_authority_info = next_account_info(account_info_iter)?;
-    let new_update_authority_info = next_account_info(account_info_iter)?;
-
-    let mut name_symbol: NameSymbolTuple =
-        try_from_slice_unchecked(&name_symbol_account_info.data.borrow())?;
-
-    if name_symbol.update_authority != *current_update_authority_info.key
-        || !current_update_authority_info.is_signer
-    {
-        return Err(MetadataError::UpdateAuthorityMustBeEqualToNameSymbolAuthorityAndSigner.into());
-    }
-
-    name_symbol.update_authority = *new_update_authority_info.key;
-
-    name_symbol.serialize(&mut *name_symbol_account_info.data.borrow_mut())?;
+    // This is how we determine inactive pool - all zeroes means no hashing done yet
+    // when activate called, the number of token_type_count addresses must be provided,
+    // they all must point to initiated accounts, which can only be made by this program since
+    // they are pdas, and they will be hashed and set on this field. Then shares distributed,
+    // and pool is active.
+    let arr_of_zeroes: [u8; 32] = [0; 32];
+    fractionalized_token_pool.hashed_fractionalized_token_registry = arr_of_zeroes;
 
     Ok(())
 }

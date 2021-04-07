@@ -1,5 +1,7 @@
+use solana_program::entrypoint::ProgramResult;
+
 use {
-    crate::error::MetadataError,
+    crate::error::FractionError,
     solana_program::{
         account_info::AccountInfo,
         msg,
@@ -19,7 +21,7 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(MetadataError::Uninitialized.into())
+        Err(FractionError::Uninitialized.into())
     } else {
         Ok(account)
     }
@@ -70,4 +72,127 @@ pub fn create_or_allocate_account_raw<'a>(
     )?;
 
     Ok(())
+}
+
+/// Issue a spl_token `Transfer` instruction.
+#[inline(always)]
+pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
+    let TokenTransferParams {
+        source,
+        destination,
+        authority,
+        token_program,
+        amount,
+        authority_signer_seeds,
+    } = params;
+    let result = invoke_signed(
+        &spl_token::instruction::transfer(
+            token_program.key,
+            source.key,
+            destination.key,
+            authority.key,
+            &[],
+            amount,
+        )?,
+        &[source, destination, authority, token_program],
+        &[authority_signer_seeds],
+    );
+    result.map_err(|_| FractionError::TokenTransferFailed.into())
+}
+
+/// Issue a spl_token `MintTo` instruction.
+pub fn spl_token_mint_to(params: TokenMintToParams<'_, '_>) -> ProgramResult {
+    let TokenMintToParams {
+        mint,
+        destination,
+        authority,
+        token_program,
+        amount,
+        authority_signer_seeds,
+    } = params;
+    let result = invoke_signed(
+        &spl_token::instruction::mint_to(
+            token_program.key,
+            mint.key,
+            destination.key,
+            authority.key,
+            &[],
+            amount,
+        )?,
+        &[mint, destination, authority, token_program],
+        &[authority_signer_seeds],
+    );
+    result.map_err(|_| FractionError::TokenMintToFailed.into())
+}
+
+/// Issue a spl_token `Burn` instruction.
+#[inline(always)]
+pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
+    let TokenBurnParams {
+        mint,
+        source,
+        authority,
+        token_program,
+        amount,
+        authority_signer_seeds,
+    } = params;
+    let result = invoke_signed(
+        &spl_token::instruction::burn(
+            token_program.key,
+            source.key,
+            mint.key,
+            authority.key,
+            &[],
+            amount,
+        )?,
+        &[source, mint, authority, token_program],
+        &[authority_signer_seeds],
+    );
+    result.map_err(|_| FractionError::TokenBurnFailed.into())
+}
+
+///TokenTransferParams
+pub struct TokenTransferParams<'a: 'b, 'b> {
+    /// source
+    pub source: AccountInfo<'a>,
+    /// destination
+    pub destination: AccountInfo<'a>,
+    /// amount
+    pub amount: u64,
+    /// authority
+    pub authority: AccountInfo<'a>,
+    /// authority_signer_seeds
+    pub authority_signer_seeds: &'b [&'b [u8]],
+    /// token_program
+    pub token_program: AccountInfo<'a>,
+}
+/// TokenMintToParams
+pub struct TokenMintToParams<'a: 'b, 'b> {
+    /// mint
+    pub mint: AccountInfo<'a>,
+    /// destination
+    pub destination: AccountInfo<'a>,
+    /// amount
+    pub amount: u64,
+    /// authority
+    pub authority: AccountInfo<'a>,
+    /// authority_signer_seeds
+    pub authority_signer_seeds: &'b [&'b [u8]],
+    /// token_program
+    pub token_program: AccountInfo<'a>,
+}
+/// TokenBurnParams
+pub struct TokenBurnParams<'a: 'b, 'b> {
+    /// mint
+    pub mint: AccountInfo<'a>,
+    /// source
+    pub source: AccountInfo<'a>,
+    /// amount
+    pub amount: u64,
+    /// authority
+    pub authority: AccountInfo<'a>,
+    /// authority_signer_seeds
+    pub authority_signer_seeds: &'b [&'b [u8]],
+    /// token_program
+    pub token_program: AccountInfo<'a>,
 }

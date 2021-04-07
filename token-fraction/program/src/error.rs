@@ -10,9 +10,9 @@ use {
     thiserror::Error,
 };
 
-/// Errors that may be returned by the Metadata program.
+/// Errors that may be returned by the Fraction program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
-pub enum MetadataError {
+pub enum FractionError {
     /// Invalid instruction data passed in.
     #[error("Failed to unpack instruction data")]
     InstructionUnpackError,
@@ -29,69 +29,73 @@ pub enum MetadataError {
     #[error("Uninitialized")]
     Uninitialized,
 
-    ///  Metadata's key must match seed of ['metadata', program id, mint] provided
-    #[error(" Metadata's key must match seed of ['metadata', program id, mint] provided")]
-    InvalidMetadataKey,
+    /// NumericalOverflowError
+    #[error("NumericalOverflowError")]
+    NumericalOverflowError,
 
-    ///  NameSymbolTuple's key must match seed of ['metadata', program id, name, symbol] provided
+    /// Provided token account contains no tokens
+    #[error("Provided token account contains no tokens")]
+    TokenAccountContainsNoTokens,
+
+    /// Provided token account cannot provide amount specified
+    #[error("Provided token account cannot provide amount specified")]
+    TokenAccountAmountLessThanAmountSpecified,
+
+    /// Provided vault account contains is not empty
+    #[error("Provided vault account contains is not empty")]
+    VaultAccountIsNotEmpty,
+
+    /// Provided vault account is not owned by program
+    #[error("Provided vault account is not owned by program")]
+    VaultAccountIsNotOwnedByProgram,
+
+    /// The provided registry account address does not match the expected program derived address
     #[error(
-        "NameSymbolTuple's key must match seed of ['metadata', program id, name, symbol] provided"
+        "The provided registry account address does not match the expected program derived address"
     )]
-    InvalidNameSymbolKey,
+    RegistryAccountAddressInvalid,
 
-    /// This NameSymbol does not own this metadata
-    #[error("This NameSymbol does not own this metadata")]
-    InvalidMetadataForNameSymbolTuple,
+    /// Token transfer failed
+    #[error("Token transfer failed")]
+    TokenTransferFailed,
+    /// Token mint to failed
+    #[error("Token mint to failed")]
+    TokenMintToFailed,
+    /// Token burn failed
+    #[error("Token burn failed")]
+    TokenBurnFailed,
 
-    /// Update Authority given does not match
-    #[error("Update Authority given does not match")]
-    UpdateAuthorityIncorrect,
+    /// Fraction mint not empty on int
+    #[error("Fraction mint not empty on init")]
+    FractionMintNotEmpty,
 
-    /// Update Authority needs to be signer to update  metadata
-    #[error("Update Authority needs to be signer to update metadata")]
-    UpdateAuthorityIsNotSigner,
+    /// Fraction mint's authority not set to program
+    #[error("Fraction mint's authority not set to program")]
+    FractionAuthorityNotProgram,
 
-    /// You must be the mint authority and signer on this transaction to create it's metadata
-    #[error(
-        "You must be the mint authority and signer on this transaction to create it's metadata"
-    )]
-    NotMintAuthority,
+    /// Fraction treasury not empty on init
+    #[error("Fraction treasury not empty on init")]
+    TreasuryNotEmpty,
 
-    /// Mint authority provided does not match the authority on the mint
-    #[error("Mint authority provided does not match the authority on the mint")]
-    InvalidMintAuthority,
-
-    /// Name too long
-    #[error("Name too long")]
-    NameTooLong,
-
-    /// Symbol too long
-    #[error("Symbol too long")]
-    SymbolTooLong,
-
-    /// URI too long
-    #[error("URI too long")]
-    UriTooLong,
-
-    /// Update authority must be equivalent to the name symbol tuple's authority and also signer of this transaction
-    #[error("Update authority must be equivalent to the name symbol tuple's authority and also signer of this transaction")]
-    UpdateAuthorityMustBeEqualToNameSymbolAuthorityAndSigner,
+    /// Fraction treasury's owner not set to program
+    #[error("Fraction treasury's owner not set to program")]
+    TreasuryOwnerNotProgram,
 }
 
-impl PrintProgramError for MetadataError {
+impl PrintProgramError for FractionError {
     fn print<E>(&self) {
         msg!(&self.to_string());
     }
 }
 
-impl From<MetadataError> for ProgramError {
-    fn from(e: MetadataError) -> Self {
+impl From<FractionError> for ProgramError {
+    fn from(e: FractionError) -> Self {
         ProgramError::Custom(e as u32)
     }
 }
 
-impl<T> DecodeError<T> for MetadataError {
+impl<T> DecodeError<T> for FractionError {
     fn type_of() -> &'static str {
-        "Metadata Error"
+        "Fraction Error"
     }
 }

@@ -14,7 +14,7 @@ use {
     spl_token::{instruction::initialize_mint, state::Mint},
     spl_token_metadata::{
         instruction::{create_metadata_accounts, update_metadata_accounts},
-        state::{Metadata, PREFIX},
+        state::{Fraction, PREFIX},
     },
     std::str::FromStr,
 };
@@ -234,7 +234,7 @@ fn main() {
     transaction.sign(&signers, recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
     let account = client.get_account(&metadata_key).unwrap();
-    let metadata: Metadata = try_from_slice_unchecked(&account.data).unwrap();
+    let metadata: Fraction = try_from_slice_unchecked(&account.data).unwrap();
     println!(
         "If this worked correctly, updated metadata should have {:?}: {:?} ",
         update_uri, metadata.data.uri
