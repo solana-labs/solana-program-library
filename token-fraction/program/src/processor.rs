@@ -53,9 +53,9 @@ pub fn process_instruction(
             msg!("Instruction: Activate Fractionalized Token Pool");
             process_activate_fractionalized_token_pool(program_id, accounts, args.number_of_shares)
         }
-        FractionInstruction::CombineFractionalizedTokenPool(args) => {
+        FractionInstruction::CombineFractionalizedTokenPool => {
             msg!("Instruction: Activate Fractionalized Token Pool");
-            process_activate_fractionalized_token_pool(program_id, accounts, args.number_of_shares)
+            process_combine_fractionalized_token_pool(program_id, accounts)
         }
     }
 }
@@ -75,11 +75,33 @@ pub fn process_combine_fractionalized_token_pool(
     let burn_authority_info = next_account_info(account_info_iter)?;
     let external_pricing_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
+
     let mut fractionalized_token_pool: FractionalizedTokenPool =
         try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
 
+    let your_payment_account: Account = assert_initialized(your_payment_info)?;
+    let your_outstanding_shares: Account = assert_initialized(your_outstanding_shares_info)?;
+    let external_pricing: ExternalPriceAccount =
+        try_from_slice_unchecked(&external_pricing_info.data.borrow_mut())?;
+
     if fractionalized_token_pool.state != PoolState::Active {
         return Err(FractionError::PoolShouldBeActive.into());
+    }
+
+    if your_payment_account.mint != external_pricing.price_mint {
+        return Err(FractionError::PaymentMintShouldMatchPricingMint.into());
+    }
+
+    if your_outstanding_shares.mint != *fraction_mint_info.key {
+        return Err(FractionError::ShareMintShouldMatchFractionalMint.into());
+    }
+
+    if fraction_mint_info.key != &fractionalized_token_pool.fraction_mint {
+        return Err(FractionError::FractionMintNeedsToMatchPool.into());
+    }
+
+    if redeem_treasury_info.key != &fractionalized_token_pool.redeem_treasury {
+        return Err(FractionError::RedeemTreasuryNeedsToMatchPool.into());
     }
     Ok(())
 }
@@ -155,7 +177,6 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
     if fractionalized_token_pool.state != PoolState::Inactive {
         return Err(FractionError::PoolShouldBeInactive.into());
     }
-    assert_inactive(&fractionalized_token_pool)?;
 
     if token_account.amount == 0 {
         return Err(FractionError::TokenAccountContainsNoTokens.into());

@@ -66,11 +66,11 @@ pub struct FractionalizedTokenRegistry {
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize)]
 pub struct ExternalPriceAccount {
-    key: u8,
-    price_per_share: u64,
+    pub key: u8,
+    pub price_per_share: u64,
     /// Mint of the currency we are pricing the shares against, should be same as redeem_treasury.
     /// Most likely will be USDC mint most of the time.
-    price_mint: Pubkey,
+    pub price_mint: Pubkey,
     /// Whether or not combination has been allowed for this pool.
-    allowed_to_combine: bool,
+    pub allowed_to_combine: bool,
 }

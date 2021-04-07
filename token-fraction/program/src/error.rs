@@ -108,6 +108,22 @@ pub enum FractionError {
     /// Redeem treasury mint must match lookup mint
     #[error("Redeem treasury mint must match lookup mint")]
     RedeemTreasuryMintMustMatchLookupMint,
+
+    /// You must pay with the same mint as the external pricing oracle
+    #[error("You must pay with the same mint as the external pricing oracle")]
+    PaymentMintShouldMatchPricingMint,
+
+    /// Your share account should match the mint of the fractional mint
+    #[error("Your share account should match the mint of the fractional mint")]
+    ShareMintShouldMatchFractionalMint,
+
+    /// Fraction mint provided does not match that on the token pool
+    #[error("Fraction mint provided does not match that on the token pool")]
+    FractionMintNeedsToMatchPool,
+
+    /// Redeem treasury provided does not match that on the token pool
+    #[error("Redeem treasury provided does not match that on the token pool")]
+    RedeemTreasuryNeedsToMatchPool,
 }
 
 impl PrintProgramError for FractionError {
