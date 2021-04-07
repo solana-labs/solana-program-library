@@ -933,6 +933,9 @@ fn process_withdraw_obligation_collateral(
     if obligation_token_mint_info.owner != token_program_id.key {
         return Err(LendingError::InvalidTokenOwner.into());
     }
+    if obligation_token_mint.mint_authority != COption::Some(*lending_market_authority_info.key) {
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
 
     let obligation_token_input = Account::unpack(&obligation_token_input_info.data.borrow())?;
     if obligation_token_input_info.owner != token_program_id.key {
