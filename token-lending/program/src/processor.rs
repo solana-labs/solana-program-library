@@ -3,7 +3,7 @@
 use crate::{
     error::LendingError,
     instruction::LendingInstruction,
-    math::{Decimal, Rate, TryDiv, TryMul, WAD},
+    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, WAD},
     state::{
         BorrowLiquidityResult, InitLendingMarketParams, InitObligationParams, InitReserveParams,
         LendingMarket, LiquidateObligationResult, NewReserveCollateralParams,
@@ -26,6 +26,7 @@ use solana_program::{
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 use spl_token::state::{Account, Mint};
+use std::convert::TryFrom;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -608,6 +609,11 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         return Err(LendingError::InvalidAccountOwner.into());
     }
 
+    let mut deposited_value = Decimal::zero();
+    let mut borrowed_value = Decimal::zero();
+    let mut loan_to_value_ratio = Decimal::zero();
+    let mut liquidation_threshold = Decimal::zero();
+
     for collateral in &mut obligation.deposits {
         let deposit_reserve_info = next_account_info(account_info_iter)?;
         if deposit_reserve_info.owner != program_id {
@@ -627,11 +633,22 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             .checked_pow(deposit_reserve.liquidity.mint_decimals as u32)
             .ok_or(LendingError::MathOverflow)?;
 
-        collateral.market_value = deposit_reserve
+        let market_value = deposit_reserve
             .collateral_exchange_rate()?
             .decimal_collateral_to_liquidity(collateral.deposited_amount.into())?
-            .try_div(decimals)?
-            .try_mul(deposit_reserve.liquidity.median_price)?;
+            .try_mul(deposit_reserve.liquidity.median_price)?
+            .try_div(decimals)?;
+        collateral.market_value = market_value;
+
+        let loan_to_value_rate = Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
+        let liquidation_threshold_rate =
+            Rate::from_percent(deposit_reserve.config.liquidation_threshold);
+
+        deposited_value = deposited_value.try_add(market_value)?;
+        loan_to_value_ratio =
+            loan_to_value_ratio.try_add(market_value.try_mul(loan_to_value_rate)?)?;
+        liquidation_threshold =
+            liquidation_threshold.try_add(market_value.try_mul(liquidation_threshold_rate)?)?;
     }
 
     for liquidity in &mut obligation.borrows {
@@ -654,15 +671,30 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             .ok_or(LendingError::MathOverflow)?;
 
         liquidity.accrue_interest(borrow_reserve.liquidity.cumulative_borrow_rate_wads)?;
-        liquidity.market_value = liquidity
+        let market_value = liquidity
             .borrowed_amount_wads
-            .try_div(decimals)?
-            .try_mul(borrow_reserve.liquidity.median_price)?;
+            .try_mul(borrow_reserve.liquidity.median_price)?
+            .try_div(decimals)?;
+        liquidity.market_value = market_value;
+        borrowed_value = borrowed_value.try_add(market_value)?;
     }
 
     if account_info_iter.peek().is_some() {
         msg!("Too many obligation collateral or liquidity accounts");
         return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    obligation.deposited_value = deposited_value;
+    obligation.borrowed_value = borrowed_value;
+
+    if deposited_value == Decimal::zero() {
+        obligation.loan_to_value_ratio = Rate::zero();
+        obligation.liquidation_threshold = Rate::zero();
+    } else {
+        obligation.loan_to_value_ratio =
+            Rate::try_from(loan_to_value_ratio.try_div(deposited_value)?)?;
+        obligation.liquidation_threshold =
+            Rate::try_from(liquidation_threshold.try_div(deposited_value)?)?;
     }
 
     obligation.last_update.update_slot(clock.slot);
@@ -923,35 +955,44 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    // @FIXME: LTV
-    let loan_to_value_ratio = Rate::from_percent(50);
-    // let loan_to_value_ratio = Rate::from_percent(lending_market.loan_to_value_ratio);
-    let loan_to_value = obligation.loan_to_value()?;
-    if loan_to_value >= loan_to_value_ratio {
-        return Err(LendingError::ObligationLoanToValueLimit.into());
-    }
-
-    let max_withdraw_value = obligation.max_withdraw_value(loan_to_value_ratio)?;
-
-    let withdraw_amount = if collateral_amount == u64::max_value() {
-        let withdraw_value = max_withdraw_value.min(collateral.market_value);
-        let withdraw_pct = withdraw_value.try_div(collateral.market_value)?;
-        withdraw_pct
-            .try_mul(collateral.deposited_amount)?
-            .try_floor_u64()?
-            .min(collateral.deposited_amount)
+    let withdraw_amount = if obligation.borrows.is_empty() {
+        // there are no borrows; they have been repaid, liquidated, or were never taken out
+        collateral.deposited_amount
+    } else if obligation.borrowed_value == Decimal::zero() {
+        // there are borrows, but they cannot be valued; they must be repaid to withdraw collateral
+        return Err(LendingError::ObligationBorrowsZero.into());
+    } else if obligation.deposited_value == Decimal::zero() {
+        // there are deposits, but they cannot be valued
+        return Err(LendingError::ObligationDepositsZero.into());
     } else {
-        let withdraw_amount = collateral_amount.min(collateral.deposited_amount);
-        let withdraw_pct = Decimal::from(withdraw_amount).try_div(collateral.deposited_amount)?;
-        let withdraw_value = collateral.market_value.try_mul(withdraw_pct)?;
-        if withdraw_value > max_withdraw_value {
+        // there are borrows and deposits, and they can both be valued
+        let max_withdraw_value = obligation.max_withdraw_value()?;
+        if max_withdraw_value == Decimal::zero() {
             return Err(LendingError::WithdrawTooLarge.into());
+        }
+
+        let withdraw_amount = if collateral_amount == u64::max_value() {
+            let withdraw_value = max_withdraw_value.min(collateral.market_value);
+            let withdraw_pct = withdraw_value.try_div(collateral.market_value)?;
+            withdraw_pct
+                .try_mul(collateral.deposited_amount)?
+                .try_floor_u64()?
+                .min(collateral.deposited_amount)
+        } else {
+            let withdraw_amount = collateral_amount.min(collateral.deposited_amount);
+            let withdraw_pct =
+                Decimal::from(withdraw_amount).try_div(collateral.deposited_amount)?;
+            let withdraw_value = collateral.market_value.try_mul(withdraw_pct)?;
+            if withdraw_value > max_withdraw_value {
+                return Err(LendingError::WithdrawTooLarge.into());
+            }
+            withdraw_amount
+        };
+        if withdraw_amount == 0 {
+            return Err(LendingError::WithdrawTooSmall.into());
         }
         withdraw_amount
     };
-    if withdraw_amount == 0 {
-        return Err(LendingError::WithdrawTooSmall.into());
-    }
 
     let obligation_token_amount = collateral
         .collateral_to_obligation_token_amount(withdraw_amount, obligation_token_mint.supply)?;
@@ -1058,6 +1099,12 @@ fn process_borrow_obligation_liquidity(
     if !obligation_owner_info.is_signer {
         return Err(LendingError::InvalidSigner.into());
     }
+    if obligation.deposits.is_empty() {
+        return Err(LendingError::ObligationDepositsEmpty.into());
+    }
+    if obligation.deposited_value == Decimal::zero() {
+        return Err(LendingError::ObligationDepositsZero.into());
+    }
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -1069,15 +1116,10 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    // @FIXME: LTV
-    let loan_to_value_ratio = Rate::from_percent(50);
-    // let loan_to_value_ratio = Rate::from_percent(lending_market.loan_to_value_ratio);
-    let loan_to_value = obligation.loan_to_value()?;
-    if loan_to_value >= loan_to_value_ratio {
-        return Err(LendingError::ObligationLoanToValueLimit.into());
+    let max_borrow_value = obligation.max_borrow_value()?;
+    if max_borrow_value == Decimal::zero() {
+        return Err(LendingError::BorrowTooLarge.into());
     }
-
-    let max_borrow_value = obligation.max_borrow_value(loan_to_value_ratio)?;
 
     let BorrowLiquidityResult {
         borrow_amount,
@@ -1205,6 +1247,9 @@ fn process_repay_obligation_liquidity(
 
     let (liquidity, liquidity_index) =
         obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
+    if liquidity.borrowed_amount_wads == Decimal::zero() {
+        return Err(LendingError::ObligationLiquidityEmpty.into());
+    }
 
     let RepayLiquidityResult {
         settle_amount,
@@ -1324,6 +1369,15 @@ fn process_liquidate_obligation(
     if obligation.last_update < withdraw_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
+    if obligation.deposited_value == Decimal::zero() {
+        return Err(LendingError::ObligationDepositsZero.into());
+    }
+    if obligation.borrowed_value == Decimal::zero() {
+        return Err(LendingError::ObligationBorrowsZero.into());
+    }
+    if obligation.loan_to_value()? < Decimal::from(obligation.liquidation_threshold) {
+        return Err(LendingError::ObligationHealthy.into());
+    }
 
     let (liquidity, liquidity_index) =
         obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
@@ -1338,14 +1392,6 @@ fn process_liquidate_obligation(
         Pubkey::create_program_address(authority_signer_seeds, program_id)?;
     if lending_market_authority_info.key != &lending_market_authority_pubkey {
         return Err(LendingError::InvalidMarketAuthority.into());
-    }
-
-    // @FIXME: LTV
-    let liquidation_threshold = Rate::from_percent(80);
-    // let liquidation_threshold = Rate::from_percent(lending_market.liquidation_threshold);
-    let loan_to_value = obligation.loan_to_value()?;
-    if loan_to_value < liquidation_threshold {
-        return Err(LendingError::ObligationHealthy.into());
     }
 
     let LiquidateObligationResult {

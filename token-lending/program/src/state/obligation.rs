@@ -31,6 +31,14 @@ pub struct Obligation {
     pub deposits: Vec<ObligationCollateral>,
     /// Borrowed liquidity for the obligation, unique by borrow reserve address
     pub borrows: Vec<ObligationLiquidity>,
+    /// Market value of deposits
+    pub deposited_value: Decimal,
+    /// Market value of borrows
+    pub borrowed_value: Decimal,
+    /// The target ratio of borrowed value to deposited value
+    pub loan_to_value_ratio: Rate,
+    /// The loan to value ratio at which the obligation can be liquidated
+    pub liquidation_threshold: Rate,
 }
 
 /// Initialize an obligation
@@ -87,50 +95,27 @@ impl Obligation {
         Ok(())
     }
 
-    // @TODO: this gets called a lot. we could persist the value on obligation refresh instead,
-    //        but that seems sloppy.
-    /// Calculate the deposited collateral market value
-    pub fn deposited_value(&self) -> Result<Decimal, ProgramError> {
-        let mut deposited_value = Decimal::zero();
-        for collateral in &self.deposits {
-            deposited_value = deposited_value.try_add(collateral.market_value)?;
-        }
-        Ok(deposited_value)
+    /// Calculate the current ratio of borrowed value to deposited value
+    pub fn loan_to_value(&self) -> Result<Decimal, ProgramError> {
+        self.borrowed_value.try_div(self.deposited_value)
     }
 
-    // @TODO: this gets called a lot. we could persist the value on obligation refresh instead,
-    //        but that seems sloppy.
-    /// Calculate the borrowed liquidity market value
-    pub fn borrowed_value(&self) -> Result<Decimal, ProgramError> {
-        let mut borrowed_value = Decimal::zero();
-        for liquidity in &self.borrows {
-            borrowed_value = borrowed_value.try_add(liquidity.market_value)?;
-        }
-        Ok(borrowed_value)
-    }
-
-    /// Calculate the ratio of liquidity market value to collateral market value
-    pub fn loan_to_value(&self) -> Result<Rate, ProgramError> {
-        let deposited_value = self.deposited_value()?;
-        if deposited_value == Decimal::zero() {
-            return Err(LendingError::ObligationCollateralEmpty.into());
-        }
-        Rate::try_from(self.borrowed_value()?.try_div(deposited_value)?)
-    }
-
-    // @FIXME: LTV
     /// Calculate the maximum collateral value that can be withdrawn for a given loan to value ratio
-    pub fn max_withdraw_value(&self, loan_to_value_ratio: Rate) -> Result<Decimal, ProgramError> {
-        let min_deposited_value = self.borrowed_value()?.try_div(loan_to_value_ratio)?;
-        self.deposited_value()?.try_sub(min_deposited_value)
+    pub fn max_withdraw_value(&self) -> Result<Decimal, ProgramError> {
+        let min_deposited_value = self.borrowed_value.try_div(self.loan_to_value_ratio)?;
+        if min_deposited_value >= self.deposited_value {
+            return Ok(Decimal::zero());
+        }
+        self.deposited_value.try_sub(min_deposited_value)
     }
 
-    // @FIXME: LTV
     /// Calculate the maximum liquidity value that can be borrowed for a given loan to value ratio
-    pub fn max_borrow_value(&self, loan_to_value_ratio: Rate) -> Result<Decimal, ProgramError> {
-        self.deposited_value()?
-            .try_mul(loan_to_value_ratio)?
-            .try_sub(self.borrowed_value()?)
+    pub fn max_borrow_value(&self) -> Result<Decimal, ProgramError> {
+        let max_borrowed_value = self.deposited_value.try_mul(self.loan_to_value_ratio)?;
+        if self.borrowed_value >= max_borrowed_value {
+            return Ok(Decimal::zero());
+        }
+        max_borrowed_value.try_sub(self.borrowed_value)
     }
 
     /// Calculate the maximum liquidation amount for a given liquidity
@@ -139,7 +124,7 @@ impl Obligation {
         liquidity: &ObligationLiquidity,
     ) -> Result<Decimal, ProgramError> {
         let max_liquidation_value = self
-            .borrowed_value()?
+            .borrowed_value
             .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
             .min(liquidity.market_value);
         let max_liquidation_pct = max_liquidation_value.try_div(liquidity.market_value)?;
@@ -152,7 +137,7 @@ impl Obligation {
         deposit_reserve: Pubkey,
     ) -> Result<(&ObligationCollateral, usize), ProgramError> {
         if self.deposits.is_empty() {
-            return Err(LendingError::ObligationCollateralEmpty.into());
+            return Err(LendingError::ObligationDepositsEmpty.into());
         }
         let collateral_index = self
             ._find_collateral_index_in_deposits(deposit_reserve)
@@ -192,7 +177,7 @@ impl Obligation {
         borrow_reserve: Pubkey,
     ) -> Result<(&ObligationLiquidity, usize), ProgramError> {
         if self.borrows.is_empty() {
-            return Err(LendingError::ObligationLiquidityEmpty.into());
+            return Err(LendingError::ObligationBorrowsEmpty.into());
         }
         let liquidity_index = self
             ._find_liquidity_index_in_borrows(borrow_reserve)
@@ -343,7 +328,7 @@ impl ObligationLiquidity {
 // @TODO: adjust padding. what's a reasonable number?
 const OBLIGATION_COLLATERAL_LEN: usize = 88; // 32 + 32 + 8 + 16
 const OBLIGATION_LIQUIDITY_LEN: usize = 80; // 32 + 16 + 16 + 16
-const OBLIGATION_LEN: usize = 884; // 1 + 8 + 1 + 32 + 32 + 1 + 1 + (88 * 1) + (80 * 9)
+const OBLIGATION_LEN: usize = 932; // 1 + 8 + 1 + 32 + 32 + 16 + 16 + 8 + 8 + 1 + 1 + (88 * 1) + (80 * 9)
 impl Pack for Obligation {
     const LEN: usize = OBLIGATION_LEN;
 
@@ -356,6 +341,10 @@ impl Pack for Obligation {
             last_update_stale,
             lending_market,
             owner,
+            deposited_value,
+            borrowed_value,
+            loan_to_value_ratio,
+            liquidation_threshold,
             deposits_len,
             borrows_len,
             data_flat,
@@ -366,6 +355,10 @@ impl Pack for Obligation {
             1,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
+            16,
+            16,
+            8,
+            8,
             1,
             1,
             OBLIGATION_COLLATERAL_LEN + (OBLIGATION_LIQUIDITY_LEN * (MAX_OBLIGATION_RESERVES - 1))
@@ -376,6 +369,10 @@ impl Pack for Obligation {
         pack_bool(self.last_update.stale, last_update_stale);
         lending_market.copy_from_slice(self.lending_market.as_ref());
         owner.copy_from_slice(self.owner.as_ref());
+        pack_decimal(self.deposited_value, deposited_value);
+        pack_decimal(self.borrowed_value, borrowed_value);
+        pack_rate(self.loan_to_value_ratio, loan_to_value_ratio);
+        pack_rate(self.liquidation_threshold, liquidation_threshold);
         *deposits_len = u8::try_from(self.deposits.len()).unwrap().to_le_bytes();
         *borrows_len = u8::try_from(self.borrows.len()).unwrap().to_le_bytes();
 
@@ -416,6 +413,10 @@ impl Pack for Obligation {
             last_update_stale,
             lending_market,
             owner,
+            deposited_value,
+            borrowed_value,
+            loan_to_value_ratio,
+            liquidation_threshold,
             deposits_len,
             borrows_len,
             data_flat,
@@ -426,6 +427,10 @@ impl Pack for Obligation {
             1,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
+            16,
+            16,
+            8,
+            8,
             1,
             1,
             OBLIGATION_COLLATERAL_LEN + (OBLIGATION_LIQUIDITY_LEN * (MAX_OBLIGATION_RESERVES - 1))
@@ -474,6 +479,10 @@ impl Pack for Obligation {
             owner: Pubkey::new_from_array(*owner),
             deposits,
             borrows,
+            deposited_value: unpack_decimal(deposited_value),
+            borrowed_value: unpack_decimal(borrowed_value),
+            loan_to_value_ratio: unpack_rate(loan_to_value_ratio),
+            liquidation_threshold: unpack_rate(liquidation_threshold),
         })
     }
 }
