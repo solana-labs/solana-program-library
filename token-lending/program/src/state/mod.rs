@@ -10,7 +10,7 @@ pub use lending_market::*;
 pub use obligation::*;
 pub use reserve::*;
 
-use crate::math::{Decimal, Rate, WAD};
+use crate::math::{Decimal, Rate, U128, WAD};
 use arrayref::{array_refs, mut_array_refs};
 use solana_program::{
     clock::{DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT, SECONDS_PER_DAY},
@@ -74,17 +74,12 @@ fn unpack_decimal(src: &[u8; 16]) -> Decimal {
     Decimal::from_scaled_val(u128::from_le_bytes(*src))
 }
 
-// @TODO: Rate::to_scaled_val doesn't work here because it requires 16 bytes.
-//        Is it a problem to round to u64?
-fn pack_rate(rate: Rate, dst: &mut [u8; 8]) {
-    *dst = rate
-        .try_round_u64()
-        .expect("Rate cannot be packed")
-        .to_le_bytes();
+fn pack_rate(rate: Rate, dst: &mut [u8; 16]) {
+    *dst = rate.to_scaled_val().to_le_bytes();
 }
 
-fn unpack_rate(src: &[u8; 8]) -> Rate {
-    Rate::from_scaled_val(u64::from_le_bytes(*src))
+fn unpack_rate(src: &[u8; 16]) -> Rate {
+    Rate(U128::from(u128::from_le_bytes(*src)))
 }
 
 fn pack_bool(boolean: bool, dst: &mut [u8; 1]) {
