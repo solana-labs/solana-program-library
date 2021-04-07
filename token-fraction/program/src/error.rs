@@ -80,6 +80,10 @@ pub enum FractionError {
     /// Fraction treasury's owner not set to program
     #[error("Fraction treasury's owner not set to program")]
     TreasuryOwnerNotProgram,
+
+    /// Pool should not be active
+    #[error("Pool should not be active")]
+    PoolShouldNotBeActive,
 }
 
 impl PrintProgramError for FractionError {

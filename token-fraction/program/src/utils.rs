@@ -1,5 +1,7 @@
 use solana_program::entrypoint::ProgramResult;
 
+use crate::state::FractionalizedTokenPool;
+
 use {
     crate::error::FractionError,
     solana_program::{
@@ -25,6 +27,16 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
     } else {
         Ok(account)
     }
+}
+
+pub fn assert_inactive(pool: &FractionalizedTokenPool) -> Result<(), ProgramError> {
+    for n in 0..32 {
+        if pool.hashed_fractionalized_token_registry[n] != 0 {
+            return Err(FractionError::PoolShouldNotBeActive.into());
+        }
+    }
+
+    Ok(())
 }
 
 /// Create account almost from scratch, lifted from

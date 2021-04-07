@@ -9,8 +9,8 @@ use {
             MAX_TOKEN_REGISTRY_SIZE, POOL_KEY, PREFIX, REGISTRY_KEY,
         },
         utils::{
-            assert_initialized, create_or_allocate_account_raw, spl_token_transfer,
-            TokenTransferParams,
+            assert_inactive, assert_initialized, create_or_allocate_account_raw,
+            spl_token_transfer, TokenTransferParams,
         },
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -80,6 +80,9 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
 
     let token_account: Account = assert_initialized(token_account_info)?;
     let vault: Account = assert_initialized(vault_info)?;
+    let mut fractionalized_token_pool: FractionalizedTokenPool =
+        try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
+    assert_inactive(&fractionalized_token_pool)?;
 
     if token_account.amount == 0 {
         return Err(FractionError::TokenAccountContainsNoTokens.into());
@@ -123,8 +126,6 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
         authority_signer_seeds,
     )?;
 
-    let mut fractionalized_token_pool: FractionalizedTokenPool =
-        try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
     fractionalized_token_pool.token_type_count =
         match fractionalized_token_pool.token_type_count.checked_add(1) {
             Some(val) => val,
