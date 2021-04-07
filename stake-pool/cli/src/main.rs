@@ -264,11 +264,7 @@ fn command_vsa_create(
     Ok(())
 }
 
-fn command_vsa_add(
-    config: &Config,
-    stake_pool_address: &Pubkey,
-    stake: &Pubkey,
-) -> CommandResult {
+fn command_vsa_add(config: &Config, stake_pool_address: &Pubkey, stake: &Pubkey) -> CommandResult {
     if config.rpc_client.get_stake_activation(*stake, None)?.state != StakeActivationState::Active {
         return Err("Stake account is not active.".into());
     }
@@ -320,10 +316,7 @@ fn command_vsa_add(
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(
-        config,
-        fee_calculator.calculate_fee(&transaction.message()),
-    )?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
     send_transaction(&config, transaction)?;
@@ -1387,22 +1380,13 @@ fn main() {
         ("add-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
-            command_vsa_add(
-                &config,
-                &stake_pool_address,
-                &stake_account,
-            )
+            command_vsa_add(&config, &stake_pool_address, &stake_account)
         }
         ("remove-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
             let new_authority: Option<Pubkey> = pubkey_of(arg_matches, "new_authority");
-            command_vsa_remove(
-                &config,
-                &stake_pool_address,
-                &stake_account,
-                &new_authority,
-            )
+            command_vsa_remove(&config, &stake_pool_address, &stake_account, &new_authority)
         }
         ("deposit", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
