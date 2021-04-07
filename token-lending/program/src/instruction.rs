@@ -6,6 +6,7 @@ use crate::{
 };
 use solana_program::{
     instruction::{AccountMeta, Instruction},
+    msg,
     program_error::ProgramError,
     pubkey::{Pubkey, PUBKEY_BYTES},
     sysvar,
@@ -347,46 +348,49 @@ impl LendingInstruction {
                 let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
                 Self::LiquidateObligation { liquidity_amount }
             }
-            _ => return Err(LendingError::InstructionUnpackError.into()),
+            _ => {
+                msg!("Instruction cannot be unpacked");
+                return Err(LendingError::InstructionUnpackError.into());
+            }
         })
     }
 
     fn unpack_u64(input: &[u8]) -> Result<(u64, &[u8]), ProgramError> {
-        if input.len() >= 8 {
-            let (amount, rest) = input.split_at(8);
-            let amount = amount
-                .get(..8)
-                .and_then(|slice| slice.try_into().ok())
-                .map(u64::from_le_bytes)
-                .ok_or(LendingError::InstructionUnpackError)?;
-            Ok((amount, rest))
-        } else {
-            Err(LendingError::InstructionUnpackError.into())
+        if input.len() < 8 {
+            msg!("u64 cannot be unpacked");
+            return Err(LendingError::InstructionUnpackError.into());
         }
+        let (amount, rest) = input.split_at(8);
+        let amount = amount
+            .get(..8)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u64::from_le_bytes)
+            .ok_or(LendingError::InstructionUnpackError)?;
+        Ok((amount, rest))
     }
 
     fn unpack_u8(input: &[u8]) -> Result<(u8, &[u8]), ProgramError> {
-        if !input.is_empty() {
-            let (amount, rest) = input.split_at(1);
-            let amount = amount
-                .get(..1)
-                .and_then(|slice| slice.try_into().ok())
-                .map(u8::from_le_bytes)
-                .ok_or(LendingError::InstructionUnpackError)?;
-            Ok((amount, rest))
-        } else {
-            Err(LendingError::InstructionUnpackError.into())
+        if input.is_empty() {
+            msg!("u8 cannot be unpacked");
+            return Err(LendingError::InstructionUnpackError.into());
         }
+        let (amount, rest) = input.split_at(1);
+        let amount = amount
+            .get(..1)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u8::from_le_bytes)
+            .ok_or(LendingError::InstructionUnpackError)?;
+        Ok((amount, rest))
     }
 
     fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
-        if input.len() >= PUBKEY_BYTES {
-            let (key, rest) = input.split_at(PUBKEY_BYTES);
-            let pk = Pubkey::new(key);
-            Ok((pk, rest))
-        } else {
-            Err(LendingError::InstructionUnpackError.into())
+        if input.len() < PUBKEY_BYTES {
+            msg!("Pubkey cannot be unpacked");
+            return Err(LendingError::InstructionUnpackError.into());
         }
+        let (key, rest) = input.split_at(PUBKEY_BYTES);
+        let pk = Pubkey::new(key);
+        Ok((pk, rest))
     }
 
     /// Packs a [LendingInstruction](enum.LendingInstruction.html) into a byte buffer.

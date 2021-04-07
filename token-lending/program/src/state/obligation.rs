@@ -7,6 +7,7 @@ use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     clock::Slot,
     entrypoint::ProgramResult,
+    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::{Pubkey, PUBKEY_BYTES},
@@ -137,6 +138,7 @@ impl Obligation {
         deposit_reserve: Pubkey,
     ) -> Result<(&ObligationCollateral, usize), ProgramError> {
         if self.deposits.is_empty() {
+            msg!("Obligation has no deposits");
             return Err(LendingError::ObligationDepositsEmpty.into());
         }
         let collateral_index = self
@@ -153,16 +155,21 @@ impl Obligation {
     ) -> Result<&mut ObligationCollateral, ProgramError> {
         if let Some(collateral_index) = self._find_collateral_index_in_deposits(deposit_reserve) {
             if self.deposits[collateral_index].token_mint != token_mint {
+                msg!("Token mint of obligation collateral {} does not match the obligation token mint provided", collateral_index);
                 return Err(LendingError::InvalidTokenMint.into());
             }
-            Ok(&mut self.deposits[collateral_index])
-        } else if self.deposits.len() + self.borrows.len() >= MAX_OBLIGATION_RESERVES {
-            Err(LendingError::ObligationReserveLimit.into())
-        } else {
-            let collateral = ObligationCollateral::new(deposit_reserve, token_mint);
-            self.deposits.push(collateral);
-            Ok(self.deposits.last_mut().unwrap())
+            return Ok(&mut self.deposits[collateral_index]);
         }
+        if self.deposits.len() + self.borrows.len() >= MAX_OBLIGATION_RESERVES {
+            msg!(
+                "Obligation cannot have more than {} deposits and borrows combined",
+                MAX_OBLIGATION_RESERVES
+            );
+            return Err(LendingError::ObligationReserveLimit.into());
+        }
+        let collateral = ObligationCollateral::new(deposit_reserve, token_mint);
+        self.deposits.push(collateral);
+        Ok(self.deposits.last_mut().unwrap())
     }
 
     fn _find_collateral_index_in_deposits(&self, deposit_reserve: Pubkey) -> Option<usize> {
@@ -177,6 +184,7 @@ impl Obligation {
         borrow_reserve: Pubkey,
     ) -> Result<(&ObligationLiquidity, usize), ProgramError> {
         if self.borrows.is_empty() {
+            msg!("Obligation has no borrows");
             return Err(LendingError::ObligationBorrowsEmpty.into());
         }
         let liquidity_index = self
@@ -191,14 +199,18 @@ impl Obligation {
         borrow_reserve: Pubkey,
     ) -> Result<&mut ObligationLiquidity, ProgramError> {
         if let Some(liquidity_index) = self._find_liquidity_index_in_borrows(borrow_reserve) {
-            Ok(&mut self.borrows[liquidity_index])
-        } else if self.deposits.len() + self.borrows.len() >= MAX_OBLIGATION_RESERVES {
-            Err(LendingError::ObligationReserveLimit.into())
-        } else {
-            let liquidity = ObligationLiquidity::new(borrow_reserve);
-            self.borrows.push(liquidity);
-            Ok(self.borrows.last_mut().unwrap())
+            return Ok(&mut self.borrows[liquidity_index]);
         }
+        if self.deposits.len() + self.borrows.len() >= MAX_OBLIGATION_RESERVES {
+            msg!(
+                "Obligation cannot have more than {} deposits and borrows combined",
+                MAX_OBLIGATION_RESERVES
+            );
+            return Err(LendingError::ObligationReserveLimit.into());
+        }
+        let liquidity = ObligationLiquidity::new(borrow_reserve);
+        self.borrows.push(liquidity);
+        Ok(self.borrows.last_mut().unwrap())
     }
 
     fn _find_liquidity_index_in_borrows(&self, borrow_reserve: Pubkey) -> Option<usize> {
@@ -309,6 +321,7 @@ impl ObligationLiquidity {
     /// Accrue interest
     pub fn accrue_interest(&mut self, cumulative_borrow_rate_wads: Decimal) -> ProgramResult {
         if cumulative_borrow_rate_wads < self.cumulative_borrow_rate_wads {
+            msg!("Interest rate cannot be negative");
             return Err(LendingError::NegativeInterestRate.into());
         }
 
@@ -436,6 +449,11 @@ impl Pack for Obligation {
             1,
             OBLIGATION_COLLATERAL_LEN + (OBLIGATION_LIQUIDITY_LEN * (MAX_OBLIGATION_RESERVES - 1))
         ];
+        let version = u8::from_le_bytes(*version);
+        if version > PROGRAM_VERSION {
+            msg!("Obligation version does not match lending program version");
+            return Err(ProgramError::InvalidAccountData);
+        }
 
         let deposits_len = u8::from_le_bytes(*deposits_len);
         let borrows_len = u8::from_le_bytes(*borrows_len);
@@ -471,7 +489,7 @@ impl Pack for Obligation {
         }
 
         Ok(Self {
-            version: u8::from_le_bytes(*version),
+            version,
             last_update: LastUpdate {
                 slot: u64::from_le_bytes(*last_update_slot),
                 stale: unpack_bool(last_update_stale)?,

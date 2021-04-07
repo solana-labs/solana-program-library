@@ -7,6 +7,7 @@ use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     clock::Slot,
     entrypoint::ProgramResult,
+    msg,
     program_error::ProgramError,
     program_option::COption,
     program_pack::{IsInitialized, Pack, Sealed},
@@ -189,6 +190,7 @@ impl Reserve {
                 .try_mul(self.liquidity.market_price)?
                 .try_div(decimals)?;
             if borrow_value > max_borrow_value {
+                msg!("Borrow value cannot exceed maximum borrow value");
                 return Err(LendingError::BorrowTooLarge.into());
             }
 
@@ -415,6 +417,7 @@ impl ReserveLiquidity {
     /// Remove liquidity from available amount
     pub fn withdraw(&mut self, liquidity_amount: u64) -> ProgramResult {
         if liquidity_amount > self.available_amount {
+            msg!("Withdraw amount cannot exceed available amount");
             return Err(LendingError::InsufficientLiquidity.into());
         }
         self.available_amount = self
@@ -428,6 +431,7 @@ impl ReserveLiquidity {
     pub fn borrow(&mut self, borrow_amount: Decimal) -> ProgramResult {
         let receive_amount = borrow_amount.try_floor_u64()?;
         if receive_amount > self.available_amount {
+            msg!("Borrow amount cannot exceed available amount");
             return Err(LendingError::InsufficientLiquidity.into());
         }
 
@@ -658,6 +662,10 @@ impl ReserveFees {
             };
 
             let borrow_fee = borrow_fee_amount.try_round_u64()?.max(minimum_fee);
+            if Decimal::from(borrow_fee) >= borrow_amount {
+                msg!("Borrow amount is too small to receive liquidity after fees");
+                return Err(LendingError::BorrowTooSmall.into());
+            }
 
             let host_fee = if need_to_assess_host_fee {
                 host_fee_rate.try_mul(borrow_fee)?.try_round_u64()?.max(1)
@@ -665,11 +673,7 @@ impl ReserveFees {
                 0
             };
 
-            if Decimal::from(borrow_fee) >= borrow_amount {
-                Err(LendingError::BorrowTooSmall.into())
-            } else {
-                Ok((borrow_fee, host_fee))
-            }
+            Ok((borrow_fee, host_fee))
         } else {
             Ok((0, 0))
         }
@@ -847,8 +851,13 @@ impl Pack for Reserve {
             1,
             256
         ];
+        let version = u8::from_le_bytes(*version);
+        if version > PROGRAM_VERSION {
+            msg!("Reserve version does not match lending program version");
+            return Err(ProgramError::InvalidAccountData);
+        }
         Ok(Self {
-            version: u8::from_le_bytes(*version),
+            version,
             last_update: LastUpdate {
                 slot: u64::from_le_bytes(*last_update_slot),
                 stale: unpack_bool(last_update_stale)?,

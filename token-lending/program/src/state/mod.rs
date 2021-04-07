@@ -14,6 +14,7 @@ use crate::math::{Decimal, Rate, WAD};
 use arrayref::{array_refs, mut_array_refs};
 use solana_program::{
     clock::{DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT, SECONDS_PER_DAY},
+    msg,
     program_error::ProgramError,
     program_option::COption,
     pubkey::{Pubkey, PUBKEY_BYTES},
@@ -55,14 +56,17 @@ fn unpack_coption_key(src: &[u8; 4 + PUBKEY_BYTES]) -> Result<COption<Pubkey>, P
     match *tag {
         [0, 0, 0, 0] => Ok(COption::None),
         [1, 0, 0, 0] => Ok(COption::Some(Pubkey::new_from_array(*body))),
-        _ => Err(ProgramError::InvalidAccountData),
+        _ => {
+            msg!("COption<Pubkey> cannot be unpacked");
+            Err(ProgramError::InvalidAccountData)
+        }
     }
 }
 
 fn pack_decimal(decimal: Decimal, dst: &mut [u8; 16]) {
     *dst = decimal
         .to_scaled_val()
-        .expect("could not pack decimal")
+        .expect("Decimal cannot be packed")
         .to_le_bytes();
 }
 
@@ -75,7 +79,7 @@ fn unpack_decimal(src: &[u8; 16]) -> Decimal {
 fn pack_rate(rate: Rate, dst: &mut [u8; 8]) {
     *dst = rate
         .try_round_u64()
-        .expect("could not pack rate")
+        .expect("Rate cannot be packed")
         .to_le_bytes();
 }
 
@@ -91,7 +95,10 @@ fn unpack_bool(src: &[u8; 1]) -> Result<bool, ProgramError> {
     match u8::from_le_bytes(*src) {
         0 => Ok(false),
         1 => Ok(true),
-        _ => Err(ProgramError::InvalidAccountData),
+        _ => {
+            msg!("Boolean cannot be unpacked");
+            Err(ProgramError::InvalidAccountData)
+        }
     }
 }
 

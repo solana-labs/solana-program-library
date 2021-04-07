@@ -1,6 +1,7 @@
 use super::*;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
+    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::{Pubkey, PUBKEY_BYTES},
@@ -84,6 +85,7 @@ impl Pack for LendingMarket {
             array_refs![input, 1, 1, PUBKEY_BYTES, PUBKEY_BYTES, PUBKEY_BYTES, 128];
         let version = u8::from_le_bytes(*version);
         if version > PROGRAM_VERSION {
+            msg!("Lending market version does not match lending program version");
             return Err(ProgramError::InvalidAccountData);
         }
 

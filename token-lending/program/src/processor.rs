@@ -107,9 +107,14 @@ fn process_init_lending_market(
 
     assert_rent_exempt(rent, lending_market_info)?;
     let mut lending_market = assert_uninitialized::<LendingMarket>(lending_market_info)?;
+    if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
 
     unpack_mint(&quote_token_mint_info.data.borrow())?;
     if quote_token_mint_info.owner != token_program_id.key {
+        msg!("Quote token mint provided is not owned by the token program provided");
         return Err(LendingError::InvalidTokenOwner.into());
     }
 
@@ -136,12 +141,15 @@ fn process_set_lending_market_owner(
 
     let mut lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.owner != lending_market_owner_info.key {
+        msg!("Lending market owner does not match the lending market owner provided");
         return Err(LendingError::InvalidMarketOwner.into());
     }
     if !lending_market_owner_info.is_signer {
+        msg!("Lending market owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
     }
 
@@ -216,6 +224,11 @@ fn process_init_reserve(
 
     assert_rent_exempt(rent, reserve_info)?;
     let mut reserve = assert_uninitialized::<Reserve>(reserve_info)?;
+    if reserve_info.owner != program_id {
+        msg!("Reserve provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
     assert_uninitialized::<Account>(reserve_liquidity_supply_info)?;
     assert_uninitialized::<Account>(reserve_liquidity_fee_receiver_info)?;
     assert_uninitialized::<Mint>(reserve_collateral_mint_info)?;
@@ -223,28 +236,32 @@ fn process_init_reserve(
     assert_uninitialized::<Account>(destination_collateral_info)?;
 
     if reserve_liquidity_supply_info.key == source_liquidity_info.key {
-        msg!("Invalid source liquidity account");
+        msg!("Reserve liquidity supply cannot be used as the source liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
     if &lending_market.owner != lending_market_owner_info.key {
+        msg!("Lending market owner does not match the lending market owner provided");
         return Err(LendingError::InvalidMarketOwner.into());
     }
     if !lending_market_owner_info.is_signer {
+        msg!("Lending market owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
     }
 
     let (reserve_liquidity_aggregator, reserve_liquidity_market_price) =
         if reserve_liquidity_mint_info.key == &lending_market.quote_token_mint {
             if account_info_iter.peek().is_some() {
-                msg!("Invalid reserve liquidity aggregator account");
+                msg!("Reserve liquidity aggregator cannot be provided when reserve liquidity is the quote currency");
                 return Err(LendingError::InvalidAccountInput.into());
             }
             // 1 because quote token price is equal to itself
@@ -264,12 +281,16 @@ fn process_init_reserve(
     ];
     let lending_market_authority_pubkey =
         Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
     let reserve_liquidity_mint = unpack_mint(&reserve_liquidity_mint_info.data.borrow())?;
     if reserve_liquidity_mint_info.owner != token_program_id.key {
+        msg!("Reserve liquidity mint is not owned by the token program provided");
         return Err(LendingError::InvalidTokenOwner.into());
     }
 
@@ -355,19 +376,22 @@ fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
 
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
     if reserve_info.owner != program_id {
+        msg!("Reserve provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
 
     if let COption::Some(reserve_liquidity_aggregator) = reserve.liquidity.aggregator {
         let reserve_liquidity_aggregator_info = next_account_info(account_info_iter)?;
         if &reserve_liquidity_aggregator != reserve_liquidity_aggregator_info.key {
-            msg!("Invalid reserve liquidity aggregator account");
+            msg!(
+                "Reserve liquidity aggregator does not match the reserve liquidity aggregator provided"
+            );
             return Err(LendingError::InvalidAccountInput.into());
         }
 
         reserve.liquidity.market_price = read_median(reserve_liquidity_aggregator_info)?.median;
     } else if account_info_iter.peek().is_some() {
-        msg!("Invalid reserve liquidity aggregator account");
+        msg!("Reserve liquidity aggregator cannot be provided when reserve liquidity is the quote currency");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -384,6 +408,7 @@ fn process_deposit_reserve_liquidity(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if liquidity_amount == 0 {
+        msg!("Liquidity amount provided cannot be zero");
         return Err(LendingError::InvalidAmount.into());
     }
 
@@ -401,37 +426,41 @@ fn process_deposit_reserve_liquidity(
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
     if reserve_info.owner != program_id {
+        msg!("Reserve provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
+        msg!("Reserve lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &reserve.liquidity.supply_pubkey != reserve_liquidity_supply_info.key {
-        msg!("Invalid reserve liquidity supply account");
+        msg!("Reserve liquidity supply does not match the reserve liquidity supply provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &reserve.collateral.mint_pubkey != reserve_collateral_mint_info.key {
-        msg!("Invalid reserve collateral mint account");
+        msg!("Reserve collateral mint does not match the reserve collateral mint provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &reserve.liquidity.supply_pubkey == source_liquidity_info.key {
-        msg!("Invalid source liquidity account");
+        msg!("Reserve liquidity supply cannot be used as the source liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &reserve.collateral.supply_pubkey == destination_collateral_info.key {
-        msg!("Invalid destination collateral account");
+        msg!("Reserve collateral supply cannot be used as the destination collateral provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if reserve.last_update.is_stale(clock.slot)? {
+        msg!("Reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
 
@@ -441,7 +470,10 @@ fn process_deposit_reserve_liquidity(
     ];
     let lending_market_authority_pubkey =
         Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
@@ -476,6 +508,7 @@ fn process_redeem_reserve_collateral(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if collateral_amount == 0 {
+        msg!("Collateral amount provided cannot be zero");
         return Err(LendingError::InvalidAmount.into());
     }
 
@@ -493,37 +526,41 @@ fn process_redeem_reserve_collateral(
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
     if reserve_info.owner != program_id {
+        msg!("Reserve provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &reserve.liquidity.supply_pubkey != reserve_liquidity_supply_info.key {
-        msg!("Invalid reserve liquidity supply account");
+        msg!("Reserve lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &reserve.collateral.mint_pubkey != reserve_collateral_mint_info.key {
-        msg!("Invalid reserve collateral mint account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
-        msg!("Invalid destination liquidity account");
+        msg!("Reserve collateral mint does not match the reserve collateral mint provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &reserve.collateral.supply_pubkey == source_collateral_info.key {
-        msg!("Invalid source collateral account");
+        msg!("Reserve collateral supply cannot be used as the source collateral provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &reserve.liquidity.supply_pubkey != reserve_liquidity_supply_info.key {
+        msg!("Reserve liquidity supply does not match the reserve liquidity supply provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
+        msg!("Reserve liquidity supply cannot be used as the destination liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if reserve.last_update.is_stale(clock.slot)? {
+        msg!("Reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
 
@@ -533,7 +570,10 @@ fn process_redeem_reserve_collateral(
     ];
     let lending_market_authority_pubkey =
         Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
@@ -574,16 +614,23 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
 
     assert_rent_exempt(rent, obligation_info)?;
     let mut obligation = assert_uninitialized::<Obligation>(obligation_info)?;
+    if obligation_info.owner != program_id {
+        msg!("Obligation provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
     if !obligation_owner_info.is_signer {
+        msg!("Obligation owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
     }
 
@@ -606,6 +653,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
+        msg!("Obligation provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
 
@@ -614,18 +662,29 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
     let mut loan_to_value_ratio = Decimal::zero();
     let mut liquidation_threshold = Decimal::zero();
 
-    for collateral in &mut obligation.deposits {
+    for (index, collateral) in obligation.deposits.iter_mut().enumerate() {
         let deposit_reserve_info = next_account_info(account_info_iter)?;
         if deposit_reserve_info.owner != program_id {
+            msg!(
+                "Deposit reserve provided for collateral {} is not owned by the lending program",
+                index
+            );
             return Err(LendingError::InvalidAccountOwner.into());
         }
         if collateral.deposit_reserve != *deposit_reserve_info.key {
-            msg!("Invalid deposit reserve");
+            msg!(
+                "Deposit reserve of collateral {} does not match the deposit reserve provided",
+                index
+            );
             return Err(LendingError::InvalidAccountInput.into());
         }
 
         let deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
         if deposit_reserve.last_update.is_stale(clock.slot)? {
+            msg!(
+                "Deposit reserve provided for collateral {} is stale and must be refreshed in the current slot",
+                index
+            );
             return Err(LendingError::ReserveStale.into());
         }
 
@@ -651,18 +710,29 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             liquidation_threshold.try_add(market_value.try_mul(liquidation_threshold_rate)?)?;
     }
 
-    for liquidity in &mut obligation.borrows {
+    for (index, liquidity) in obligation.borrows.iter_mut().enumerate() {
         let borrow_reserve_info = next_account_info(account_info_iter)?;
         if borrow_reserve_info.owner != program_id {
+            msg!(
+                "Borrow reserve provided for liquidity {} is not owned by the lending program",
+                index
+            );
             return Err(LendingError::InvalidAccountOwner.into());
         }
         if liquidity.borrow_reserve != *borrow_reserve_info.key {
-            msg!("Invalid borrow reserve");
+            msg!(
+                "Borrow reserve of liquidity {} does not match the borrow reserve provided",
+                index
+            );
             return Err(LendingError::InvalidAccountInput.into());
         }
 
         let borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
         if borrow_reserve.last_update.is_stale(clock.slot)? {
+            msg!(
+                "Borrow reserve provided for liquidity {} is stale and must be refreshed in the current slot",
+                index
+            );
             return Err(LendingError::ReserveStale.into());
         }
 
@@ -680,7 +750,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
     }
 
     if account_info_iter.peek().is_some() {
-        msg!("Too many obligation collateral or liquidity accounts");
+        msg!("Too many obligation deposit or borrow reserves provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -710,6 +780,7 @@ fn process_deposit_obligation_collateral(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if collateral_amount == 0 {
+        msg!("Collateral amount provided cannot be zero");
         return Err(LendingError::InvalidAmount.into());
     }
 
@@ -730,47 +801,57 @@ fn process_deposit_obligation_collateral(
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
     let deposit_reserve = Reserve::unpack(&deposit_reserve_info.data.borrow())?;
     if deposit_reserve_info.owner != program_id {
+        msg!("Deposit reserve provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &deposit_reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &deposit_reserve.collateral.supply_pubkey != destination_collateral_info.key {
-        msg!("Invalid destination collateral account");
+        msg!("Deposit reserve lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &deposit_reserve.collateral.supply_pubkey == source_collateral_info.key {
-        msg!("Invalid source collateral account");
+        msg!("Deposit reserve collateral supply cannot be used as the source collateral provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &deposit_reserve.collateral.supply_pubkey != destination_collateral_info.key {
+        msg!(
+            "Deposit reserve collateral supply must be used as the destination collateral provided"
+        );
         return Err(LendingError::InvalidAccountInput.into());
     }
     if deposit_reserve.last_update.is_stale(clock.slot)? {
+        msg!("Deposit reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
     if deposit_reserve.config.loan_to_value_ratio == 0 {
+        msg!("Deposit reserve has collateral disabled for borrowing");
         return Err(LendingError::ReserveCollateralDisabled.into());
     }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
+        msg!("Obligation provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &obligation.lending_market != lending_market_info.key {
-        msg!("Invalid obligation lending market account");
+        msg!("Obligation lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &obligation.owner != obligation_owner_info.key {
+        msg!("Obligation owner does not match the obligation owner provided");
         return Err(LendingError::InvalidObligationOwner.into());
     }
     if !obligation_owner_info.is_signer {
+        msg!("Obligation owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
     }
 
@@ -778,11 +859,13 @@ fn process_deposit_obligation_collateral(
     let obligation_token_mint = Mint::unpack_unchecked(&obligation_token_mint_info.data.borrow())?;
     if obligation_token_mint.is_initialized() {
         if obligation_token_mint_info.owner != token_program_id.key {
+            msg!("Obligation token mint provided is not owned by the token program provided");
             return Err(LendingError::InvalidTokenOwner.into());
         }
         if obligation_token_mint.mint_authority != COption::Some(*lending_market_authority_info.key)
         {
-            return Err(LendingError::InvalidMarketAuthority.into());
+            msg!("Obligation token mint authority does not match the lending market authority provided");
+            return Err(LendingError::InvalidAccountInput.into());
         }
     } else {
         spl_token_init_mint(TokenInitializeMintParams {
@@ -799,12 +882,15 @@ fn process_deposit_obligation_collateral(
         Account::unpack_unchecked(&obligation_token_output_info.data.borrow())?;
     if obligation_token_output.is_initialized() {
         if obligation_token_output_info.owner != token_program_id.key {
+            msg!("Obligation token output provided is not owned by the token program provided");
             return Err(LendingError::InvalidTokenOwner.into());
         }
         if &obligation_token_output.mint != obligation_token_mint_info.key {
+            msg!("Obligation token output mint does not match the obligation token mint provided");
             return Err(LendingError::InvalidTokenMint.into());
         }
         if &obligation_token_output.owner != obligation_owner_info.key {
+            msg!("Obligation token output owner does not match the obligation owner provided");
             return Err(LendingError::InvalidObligationOwner.into());
         }
     } else {
@@ -823,7 +909,10 @@ fn process_deposit_obligation_collateral(
     ];
     let lending_market_authority_pubkey =
         Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
@@ -864,6 +953,7 @@ fn process_withdraw_obligation_collateral(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if collateral_amount == 0 {
+        msg!("Collateral amount provided cannot be zero");
         return Err(LendingError::InvalidAmount.into());
     }
 
@@ -882,66 +972,80 @@ fn process_withdraw_obligation_collateral(
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
     let withdraw_reserve = Reserve::unpack(&withdraw_reserve_info.data.borrow())?;
     if withdraw_reserve_info.owner != program_id {
+        msg!("Withdraw reserve provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &withdraw_reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
+        msg!("Withdraw reserve lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &withdraw_reserve.collateral.supply_pubkey != source_collateral_info.key {
-        msg!("Invalid source collateral account");
+        msg!("Withdraw reserve collateral supply must be used as the source collateral provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
-        msg!("Invalid destination collateral account");
+        msg!("Withdraw reserve collateral supply cannot be used as the destination collateral provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if withdraw_reserve.last_update.is_stale(clock.slot)? {
+        msg!("Withdraw reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
+        msg!("Obligation provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &obligation.lending_market != lending_market_info.key {
-        msg!("Invalid obligation lending market account");
+        msg!("Obligation lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if obligation.last_update.is_stale(clock.slot)? {
+        msg!("Obligation is stale and must be refreshed in the current slot");
         return Err(LendingError::ObligationStale.into());
     }
 
     let (collateral, collateral_index) =
         obligation.find_collateral_in_deposits(*withdraw_reserve_info.key)?;
     if &collateral.token_mint != obligation_token_mint_info.key {
+        msg!("Collateral token mint does not match the obligation token mint provided");
         return Err(LendingError::InvalidTokenMint.into());
     }
     if collateral.deposited_amount == 0 {
+        msg!("Collateral deposited amount is zero");
         return Err(LendingError::ObligationCollateralEmpty.into());
     }
 
     let obligation_token_mint = unpack_mint(&obligation_token_mint_info.data.borrow())?;
     if obligation_token_mint_info.owner != token_program_id.key {
+        msg!("Obligation token mint provided is not owned by the token program provided");
         return Err(LendingError::InvalidTokenOwner.into());
     }
     if obligation_token_mint.mint_authority != COption::Some(*lending_market_authority_info.key) {
-        return Err(LendingError::InvalidMarketAuthority.into());
+        msg!(
+            "Obligation token mint authority does not match the lending market authority provided"
+        );
+        return Err(LendingError::InvalidAccountOwner.into());
     }
 
     let obligation_token_input = Account::unpack(&obligation_token_input_info.data.borrow())?;
     if obligation_token_input_info.owner != token_program_id.key {
+        msg!("Obligation token input provided is not owned by the token program provided");
         return Err(LendingError::InvalidTokenOwner.into());
     }
     if &obligation_token_input.mint != obligation_token_mint_info.key {
+        msg!("Obligation token input mint does not match the obligation token mint provided");
         return Err(LendingError::InvalidTokenMint.into());
     }
 
@@ -951,7 +1055,10 @@ fn process_withdraw_obligation_collateral(
     ];
     let lending_market_authority_pubkey =
         Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
@@ -960,14 +1067,17 @@ fn process_withdraw_obligation_collateral(
         collateral.deposited_amount
     } else if obligation.borrowed_value == Decimal::zero() {
         // there are borrows, but they cannot be valued; they must be repaid to withdraw collateral
+        msg!("Obligation borrowed value is zero");
         return Err(LendingError::ObligationBorrowsZero.into());
     } else if obligation.deposited_value == Decimal::zero() {
         // there are deposits, but they cannot be valued
+        msg!("Obligation deposited value is zero");
         return Err(LendingError::ObligationDepositsZero.into());
     } else {
         // there are borrows and deposits, and they can both be valued
         let max_withdraw_value = obligation.max_withdraw_value()?;
         if max_withdraw_value == Decimal::zero() {
+            msg!("Maximum withdraw value is zero");
             return Err(LendingError::WithdrawTooLarge.into());
         }
 
@@ -984,11 +1094,13 @@ fn process_withdraw_obligation_collateral(
                 Decimal::from(withdraw_amount).try_div(collateral.deposited_amount)?;
             let withdraw_value = collateral.market_value.try_mul(withdraw_pct)?;
             if withdraw_value > max_withdraw_value {
+                msg!("Withdraw value cannot exceed maximum withdraw value");
                 return Err(LendingError::WithdrawTooLarge.into());
             }
             withdraw_amount
         };
         if withdraw_amount == 0 {
+            msg!("Withdraw amount is too small to transfer collateral");
             return Err(LendingError::WithdrawTooSmall.into());
         }
         withdraw_amount
@@ -997,6 +1109,7 @@ fn process_withdraw_obligation_collateral(
     let obligation_token_amount = collateral
         .collateral_to_obligation_token_amount(withdraw_amount, obligation_token_mint.supply)?;
     if obligation_token_amount == 0 {
+        msg!("Withdraw amount is too small to burn obligation tokens");
         return Err(LendingError::WithdrawTooSmall.into());
     }
 
@@ -1032,6 +1145,7 @@ fn process_borrow_obligation_liquidity(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if liquidity_amount == 0 {
+        msg!("Liquidity amount provided cannot be zero");
         return Err(LendingError::InvalidAmount.into());
     }
 
@@ -1049,57 +1163,69 @@ fn process_borrow_obligation_liquidity(
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
     let mut borrow_reserve = Reserve::unpack(&borrow_reserve_info.data.borrow())?;
     if borrow_reserve_info.owner != program_id {
+        msg!("Borrow reserve provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &borrow_reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
+        msg!("Borrow reserve lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &borrow_reserve.liquidity.supply_pubkey != source_liquidity_info.key {
-        msg!("Invalid source liquidity account");
+        msg!("Borrow reserve liquidity supply must be used as the source liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &borrow_reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
-        msg!("Invalid destination liquidity account");
+        msg!(
+            "Borrow reserve liquidity supply cannot be used as the destination liquidity provided"
+        );
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &borrow_reserve.liquidity.fee_receiver != borrow_reserve_liquidity_fee_receiver_info.key {
-        msg!("Invalid borrow reserve liquidity fee receiver account");
+        msg!("Borrow reserve liquidity fee receiver does not match the borrow reserve liquidity fee receiver provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if borrow_reserve.last_update.is_stale(clock.slot)? {
+        msg!("Borrow reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
+        msg!("Obligation provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &obligation.lending_market != lending_market_info.key {
-        msg!("Invalid obligation lending market account");
+        msg!("Obligation lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if obligation.last_update.is_stale(clock.slot)? {
+        msg!("Obligation is stale and must be refreshed in the current slot");
         return Err(LendingError::ObligationStale.into());
     }
     if &obligation.owner != obligation_owner_info.key {
+        msg!("Obligation owner does not match the obligation owner provided");
         return Err(LendingError::InvalidObligationOwner.into());
     }
     if !obligation_owner_info.is_signer {
+        msg!("Obligation owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
     }
     if obligation.deposits.is_empty() {
+        msg!("Obligation has no deposits to borrow against");
         return Err(LendingError::ObligationDepositsEmpty.into());
     }
     if obligation.deposited_value == Decimal::zero() {
+        msg!("Obligation deposits have zero value");
         return Err(LendingError::ObligationDepositsZero.into());
     }
 
@@ -1109,12 +1235,16 @@ fn process_borrow_obligation_liquidity(
     ];
     let lending_market_authority_pubkey =
         Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
     let max_borrow_value = obligation.max_borrow_value()?;
     if max_borrow_value == Decimal::zero() {
+        msg!("Maximum borrow value is zero");
         return Err(LendingError::BorrowTooLarge.into());
     }
 
@@ -1126,6 +1256,7 @@ fn process_borrow_obligation_liquidity(
     } = borrow_reserve.borrow_liquidity(liquidity_amount, max_borrow_value)?;
 
     if receive_amount == 0 {
+        msg!("Borrow amount is too small to receive liquidity after fees");
         return Err(LendingError::BorrowTooSmall.into());
     }
 
@@ -1186,6 +1317,7 @@ fn process_repay_obligation_liquidity(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if liquidity_amount == 0 {
+        msg!("Liquidity amount provided cannot be zero");
         return Err(LendingError::InvalidAmount.into());
     }
 
@@ -1201,47 +1333,54 @@ fn process_repay_obligation_liquidity(
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
     let mut repay_reserve = Reserve::unpack(&repay_reserve_info.data.borrow())?;
     if repay_reserve_info.owner != program_id {
+        msg!("Repay reserve provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &repay_reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
+        msg!("Repay reserve lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &repay_reserve.liquidity.supply_pubkey == source_liquidity_info.key {
-        msg!("Invalid source liquidity account");
+        msg!("Repay reserve liquidity supply cannot be used as the source liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &repay_reserve.liquidity.supply_pubkey != destination_liquidity_info.key {
-        msg!("Invalid destination liquidity account");
+        msg!("Repay reserve liquidity supply must be used as the destination liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if repay_reserve.last_update.is_stale(clock.slot)? {
+        msg!("Repay reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
+        msg!("Obligation provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &obligation.lending_market != lending_market_info.key {
-        msg!("Invalid obligation lending market account");
+        msg!("Obligation lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if obligation.last_update.is_stale(clock.slot)? {
+        msg!("Obligation is stale and must be refreshed in the current slot");
         return Err(LendingError::ObligationStale.into());
     }
 
     let (liquidity, liquidity_index) =
         obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
     if liquidity.borrowed_amount_wads == Decimal::zero() {
+        msg!("Liquidity borrowed amount is zero");
         return Err(LendingError::ObligationLiquidityEmpty.into());
     }
 
@@ -1251,6 +1390,7 @@ fn process_repay_obligation_liquidity(
     } = repay_reserve.repay_liquidity(liquidity_amount, liquidity.borrowed_amount_wads)?;
 
     if repay_amount == 0 {
+        msg!("Repay amount is too small to transfer liquidity");
         return Err(LendingError::RepayTooSmall.into());
     }
 
@@ -1281,6 +1421,7 @@ fn process_liquidate_obligation(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if liquidity_amount == 0 {
+        msg!("Liquidity amount provided cannot be zero");
         return Err(LendingError::InvalidAmount.into());
     }
 
@@ -1300,70 +1441,91 @@ fn process_liquidate_obligation(
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
     let mut repay_reserve = Reserve::unpack(&repay_reserve_info.data.borrow())?;
     if repay_reserve_info.owner != program_id {
+        msg!("Repay reserve provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &repay_reserve.lending_market != lending_market_info.key {
-        msg!("Invalid repay reserve lending market account");
+        msg!("Repay reserve lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &repay_reserve.liquidity.supply_pubkey != repay_reserve_liquidity_supply_info.key {
-        msg!("Invalid repay reserve liquidity supply account");
+        msg!("Repay reserve liquidity supply does not match the repay reserve liquidity supply provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &repay_reserve.liquidity.supply_pubkey == source_liquidity_info.key {
-        msg!("Invalid source liquidity account");
+        msg!("Repay reserve liquidity supply cannot be used as the source liquidity provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &repay_reserve.collateral.supply_pubkey == destination_collateral_info.key {
+        msg!(
+            "Repay reserve collateral supply cannot be used as the destination collateral provided"
+        );
         return Err(LendingError::InvalidAccountInput.into());
     }
     if repay_reserve.last_update.is_stale(clock.slot)? {
+        msg!("Repay reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
 
     let withdraw_reserve = Reserve::unpack(&withdraw_reserve_info.data.borrow())?;
     if withdraw_reserve_info.owner != program_id {
+        msg!("Withdraw reserve provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &withdraw_reserve.lending_market != lending_market_info.key {
-        msg!("Invalid withdraw reserve lending market account");
+        msg!("Withdraw reserve lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &withdraw_reserve.collateral.supply_pubkey != withdraw_reserve_collateral_supply_info.key {
-        msg!("Invalid withdraw reserve collateral supply account");
+        msg!("Withdraw reserve collateral supply does not match the withdraw reserve collateral supply provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &withdraw_reserve.liquidity.supply_pubkey == source_liquidity_info.key {
+        msg!("Withdraw reserve liquidity supply cannot be used as the source liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if &withdraw_reserve.collateral.supply_pubkey == destination_collateral_info.key {
-        msg!("Invalid destination collateral account");
+        msg!("Withdraw reserve collateral supply cannot be used as the destination collateral provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if withdraw_reserve.last_update.is_stale(clock.slot)? {
+        msg!("Withdraw reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
+        msg!("Obligation provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &obligation.lending_market != lending_market_info.key {
-        msg!("Invalid obligation lending market account");
+        msg!("Obligation lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
     if obligation.last_update.is_stale(clock.slot)? {
+        msg!("Obligation is stale and must be refreshed in the current slot");
         return Err(LendingError::ObligationStale.into());
     }
     if obligation.deposited_value == Decimal::zero() {
+        msg!("Obligation deposited value is zero");
         return Err(LendingError::ObligationDepositsZero.into());
     }
     if obligation.borrowed_value == Decimal::zero() {
+        msg!("Obligation borrowed value is zero");
         return Err(LendingError::ObligationBorrowsZero.into());
     }
     if obligation.loan_to_value()? < Decimal::from(obligation.liquidation_threshold) {
+        msg!("Obligation is healthy and cannot be liquidated");
         return Err(LendingError::ObligationHealthy.into());
     }
 
@@ -1378,7 +1540,10 @@ fn process_liquidate_obligation(
     ];
     let lending_market_authority_pubkey =
         Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if lending_market_authority_info.key != &lending_market_authority_pubkey {
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
@@ -1393,7 +1558,12 @@ fn process_liquidate_obligation(
         &collateral,
     )?;
 
-    if repay_amount == 0 || withdraw_amount == 0 {
+    if repay_amount == 0 {
+        msg!("Liquidation is too small to transfer liquidity");
+        return Err(LendingError::LiquidationTooSmall.into());
+    }
+    if withdraw_amount == 0 {
+        msg!("Liquidation is too small to receive collateral");
         return Err(LendingError::LiquidationTooSmall.into());
     }
 
