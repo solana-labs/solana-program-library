@@ -19,7 +19,8 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error::StakePoolError, id, instruction, stake_program, state,
+        borsh::try_from_slice_unchecked, error::StakePoolError, id, instruction, stake_program,
+        state,
     },
 };
 
@@ -165,7 +166,13 @@ async fn fail_too_little_stake() {
         &stake_pool_accounts.deposit_authority,
         &stake_pool_accounts.stake_pool.pubkey(),
     );
-    create_vote(&mut banks_client, &payer, &recent_blockhash, &user_stake.vote).await;
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.vote,
+    )
+    .await;
 
     create_validator_stake_account(
         &mut banks_client,
@@ -180,31 +187,20 @@ async fn fail_too_little_stake() {
 
     // Create stake account to withdraw to
     let split = Keypair::new();
-    create_blank_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &split,
-    )
-    .await;
+    create_blank_stake_account(&mut banks_client, &payer, &recent_blockhash, &split).await;
     let transaction = Transaction::new_signed_with_payer(
-        &[
-            stake_program::split_only(
-                &user_stake.stake_account,
-                &stake_pool_accounts.staker.pubkey(),
-                1,
-                &split.pubkey(),
-            ),
-        ],
+        &[stake_program::split_only(
+            &user_stake.stake_account,
+            &stake_pool_accounts.staker.pubkey(),
+            1,
+            &split.pubkey(),
+        )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
         recent_blockhash,
     );
 
-    banks_client
-        .process_transaction(transaction)
-        .await
-        .unwrap();
+    banks_client.process_transaction(transaction).await.unwrap();
 
     authorize_stake_account(
         &mut banks_client,
@@ -240,7 +236,10 @@ async fn fail_too_little_stake() {
         .unwrap();
     assert_eq!(
         error,
-        TransactionError::InstructionError(0, InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
+        ),
     );
 }
 
@@ -272,7 +271,8 @@ async fn fail_too_much_stake() {
         &recent_blockhash,
         &user_stake.stake_account,
         1_000_001,
-    ).await;
+    )
+    .await;
 
     let error = stake_pool_accounts
         .add_validator_to_pool(
@@ -286,7 +286,10 @@ async fn fail_too_much_stake() {
         .unwrap();
     assert_eq!(
         error,
-        TransactionError::InstructionError(0, InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
+        ),
     );
 }
 

@@ -4,7 +4,6 @@ use {
     crate::{
         borsh::try_from_slice_unchecked,
         error::StakePoolError,
-        id,
         instruction::{Fee, StakePoolInstruction},
         minimum_stake_lamports, stake_program,
         state::{AccountType, StakePool, ValidatorList, ValidatorStakeInfo},
@@ -561,7 +560,7 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        if *stake_pool_info.owner != id() {
+        if stake_pool_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
         let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
@@ -725,12 +724,14 @@ impl Processor {
         }
 
         let previous_lamports = stake_pool.total_stake_lamports;
-        let mut total_stake_lamports = 0;
+        let mut total_stake_lamports: u64 = 0;
         for validator_stake_record in validator_list.validators {
             if validator_stake_record.last_update_epoch < clock.epoch {
                 return Err(StakePoolError::StakeListOutOfDate.into());
             }
-            total_stake_lamports += validator_stake_record.stake_lamports;
+            total_stake_lamports = total_stake_lamports
+                .checked_add(validator_stake_record.stake_lamports)
+                .ok_or(StakePoolError::CalculationFailure)?;
         }
 
         stake_pool.total_stake_lamports = total_stake_lamports;
@@ -909,14 +910,21 @@ impl Processor {
             new_pool_tokens,
         )?;
 
-        stake_pool.pool_token_supply += new_pool_tokens;
-        stake_pool.total_stake_lamports += stake_lamports;
+        stake_pool.pool_token_supply = stake_pool
+            .pool_token_supply
+            .checked_add(new_pool_tokens)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        stake_pool.total_stake_lamports = stake_pool
+            .total_stake_lamports
+            .checked_add(stake_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
         validator_list_item.stake_lamports = validator_stake_account_info
             .lamports
             .borrow()
-            .saturating_sub(minimum_stake_lamports(&meta));
+            .checked_sub(minimum_stake_lamports(&meta))
+            .ok_or(StakePoolError::CalculationFailure)?;
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         Ok(())
@@ -1042,11 +1050,20 @@ impl Processor {
             stake_program_info.clone(),
         )?;
 
-        stake_pool.pool_token_supply -= pool_tokens;
-        stake_pool.total_stake_lamports -= withdraw_lamports;
+        stake_pool.pool_token_supply = stake_pool
+            .pool_token_supply
+            .checked_sub(pool_tokens)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        stake_pool.total_stake_lamports = stake_pool
+            .total_stake_lamports
+            .checked_sub(withdraw_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
-        validator_list_item.stake_lamports -= withdraw_lamports;
+        validator_list_item.stake_lamports = validator_list_item
+            .stake_lamports
+            .checked_sub(withdraw_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         Ok(())

@@ -19,7 +19,8 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error::StakePoolError, id, instruction, stake_program, state,
+        borsh::try_from_slice_unchecked, error::StakePoolError, id, instruction, stake_program,
+        state,
     },
 };
 
@@ -211,7 +212,8 @@ async fn fail_not_at_minimum() {
         &recent_blockhash,
         &user_stake.stake_account,
         1_000_001,
-    ).await;
+    )
+    .await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
@@ -227,7 +229,10 @@ async fn fail_not_at_minimum() {
         .unwrap();
     assert_eq!(
         error,
-        TransactionError::InstructionError(0, InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
+        ),
     );
 }
 

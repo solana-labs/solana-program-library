@@ -19,8 +19,8 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error::StakePoolError, id, instruction, minimum_stake_lamports,
-        stake_program, state,
+        borsh::try_from_slice_unchecked, error::StakePoolError, id, instruction,
+        minimum_stake_lamports, stake_program, state,
     },
     spl_token::error::TokenError,
 };
@@ -785,6 +785,9 @@ async fn fail_overdraw_validator() {
         .unwrap();
     assert_eq!(
         error,
-        TransactionError::InstructionError(0, InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
+        ),
     );
 }
