@@ -919,9 +919,6 @@ fn process_withdraw_obligation_collateral(
     if obligation.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
-    if obligation.last_update < withdraw_reserve.last_update {
-        return Err(LendingError::ObligationStale.into());
-    }
 
     let (collateral, collateral_index) =
         obligation.find_collateral_in_deposits(*withdraw_reserve_info.key)?;
@@ -1090,9 +1087,6 @@ fn process_borrow_obligation_liquidity(
     if obligation.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
-    if obligation.last_update < borrow_reserve.last_update {
-        return Err(LendingError::ObligationStale.into());
-    }
     if &obligation.owner != obligation_owner_info.key {
         return Err(LendingError::InvalidObligationOwner.into());
     }
@@ -1241,9 +1235,6 @@ fn process_repay_obligation_liquidity(
     if obligation.last_update.is_stale(clock.slot)? {
         return Err(LendingError::ObligationStale.into());
     }
-    if obligation.last_update < repay_reserve.last_update {
-        return Err(LendingError::ObligationStale.into());
-    }
 
     let (liquidity, liquidity_index) =
         obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
@@ -1361,12 +1352,6 @@ fn process_liquidate_obligation(
         return Err(LendingError::InvalidAccountInput.into());
     }
     if obligation.last_update.is_stale(clock.slot)? {
-        return Err(LendingError::ObligationStale.into());
-    }
-    if obligation.last_update < repay_reserve.last_update {
-        return Err(LendingError::ObligationStale.into());
-    }
-    if obligation.last_update < withdraw_reserve.last_update {
         return Err(LendingError::ObligationStale.into());
     }
     if obligation.deposited_value == Decimal::zero() {
