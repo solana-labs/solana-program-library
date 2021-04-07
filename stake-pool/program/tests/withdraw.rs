@@ -3,6 +3,7 @@
 mod helpers;
 
 use {
+    bincode::deserialize,
     borsh::{BorshDeserialize, BorshSerialize},
     helpers::*,
     solana_program::{
@@ -18,7 +19,8 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error, id, instruction, stake_program, state,
+        borsh::try_from_slice_unchecked, error, id, instruction, minimum_stake_lamports,
+        stake_program, state,
     },
     spl_token::error::TokenError,
 };
@@ -82,7 +84,7 @@ async fn setup() -> (
 }
 
 #[tokio::test]
-async fn test_stake_pool_withdraw() {
+async fn success() {
     let (
         mut banks_client,
         payer,
@@ -179,8 +181,11 @@ async fn test_stake_pool_withdraw() {
     // Check validator stake account balance
     let validator_stake_account =
         get_account(&mut banks_client, &validator_stake_account.stake_account).await;
+    let stake_state =
+        deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
+    let meta = stake_state.meta().unwrap();
     assert_eq!(
-        validator_stake_account.lamports,
+        validator_stake_account.lamports - minimum_stake_lamports(&meta),
         validator_stake_item.stake_lamports
     );
 
@@ -194,7 +199,7 @@ async fn test_stake_pool_withdraw() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_withdraw_with_wrong_stake_program() {
+async fn fail_with_wrong_stake_program() {
     let (
         mut banks_client,
         payer,
@@ -249,7 +254,7 @@ async fn test_stake_pool_withdraw_with_wrong_stake_program() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_withdraw_with_wrong_withdraw_authority() {
+async fn fail_with_wrong_withdraw_authority() {
     let (
         mut banks_client,
         payer,
@@ -294,7 +299,7 @@ async fn test_stake_pool_withdraw_with_wrong_withdraw_authority() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_withdraw_with_wrong_token_program_id() {
+async fn fail_with_wrong_token_program_id() {
     let (
         mut banks_client,
         payer,
@@ -344,7 +349,7 @@ async fn test_stake_pool_withdraw_with_wrong_token_program_id() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_withdraw_with_wrong_validator_list() {
+async fn fail_with_wrong_validator_list() {
     let (
         mut banks_client,
         payer,
@@ -391,7 +396,7 @@ async fn test_stake_pool_withdraw_with_wrong_validator_list() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_withdraw_from_unknown_validator() {
+async fn fail_with_unknown_validator() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -518,7 +523,7 @@ async fn test_stake_pool_withdraw_from_unknown_validator() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_double_withdraw_to_the_same_account() {
+async fn fail_double_withdraw_to_the_same_account() {
     let (
         mut banks_client,
         payer,
@@ -556,6 +561,18 @@ async fn test_stake_pool_double_withdraw_to_the_same_account() {
 
     let latest_blockhash = banks_client.get_recent_blockhash().await.unwrap();
 
+    // Delegate tokens for burning
+    delegate_tokens(
+        &mut banks_client,
+        &payer,
+        &latest_blockhash,
+        &deposit_info.user_pool_account,
+        &deposit_info.user,
+        &stake_pool_accounts.withdraw_authority,
+        tokens_to_burn,
+    )
+    .await;
+
     let transaction_error = stake_pool_accounts
         .withdraw_stake(
             &mut banks_client,
@@ -580,7 +597,7 @@ async fn test_stake_pool_double_withdraw_to_the_same_account() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_withdraw_token_delegate_was_not_setup() {
+async fn fail_without_token_approval() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -648,7 +665,7 @@ async fn test_stake_pool_withdraw_token_delegate_was_not_setup() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_withdraw_with_low_delegation() {
+async fn fail_with_low_delegation() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts

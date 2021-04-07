@@ -64,7 +64,16 @@ pub enum StakePoolInstruction {
     CreateValidatorStakeAccount,
 
     ///   (Staker only) Adds stake account delegated to validator to the pool's
-    ///   list of managed validators
+    ///   list of managed validators.
+    ///
+    ///   The stake account must have the rent-exempt amount plus at least 1 SOL,
+    ///   and at most 1.001 SOL.
+    ///
+    ///   Once we delegate even 1 SOL, it will accrue rewards one epoch later,
+    ///   so we'll have more than 1 active SOL at this point.
+    ///   At 10% annualized rewards, 1 epoch of 2 days will accrue
+    ///   0.000547945 SOL, so we check that it is at least 1 SOL, and at most
+    ///   1.001 SOL.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Staker
@@ -72,15 +81,15 @@ pub enum StakePoolInstruction {
     ///   3. `[]` Stake pool withdraw authority
     ///   4. `[w]` Validator stake list storage account
     ///   5. `[w]` Stake account to add to the pool, its withdraw authority should be set to stake pool deposit
-    ///   6. `[w]` User account to receive pool tokens
-    ///   7. `[w]` Pool token mint account
-    ///   8. `[]` Clock sysvar (required)
-    ///   9. '[]' Sysvar stake history account
-    ///  10. `[]` Pool token program id,
-    ///  11. `[]` Stake program id,
+    ///   6. `[]` Clock sysvar
+    ///   7. '[]' Sysvar stake history account
+    ///   8. `[]` Stake program
     AddValidatorToPool,
 
     ///   (Staker only) Removes validator from the pool
+    ///
+    ///   Only succeeds if the validator stake account has the minimum of 1 SOL
+    ///   plus the rent-exempt amount.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Staker
@@ -88,10 +97,7 @@ pub enum StakePoolInstruction {
     ///   3. `[]` New withdraw/staker authority to set in the stake account
     ///   4. `[w]` Validator stake list storage account
     ///   5. `[w]` Stake account to remove from the pool
-    ///   6. `[w]` User account with pool tokens to burn from
-    ///   7. `[w]` Pool token mint account
-    ///   8. '[]' Sysvar clock account (required)
-    ///   9. `[]` Pool token program id
+    ///   8. '[]' Sysvar clock
     ///  10. `[]` Stake program id,
     RemoveValidatorFromPool,
 
@@ -197,7 +203,10 @@ pub enum StakePoolInstruction {
     Deposit,
 
     ///   Withdraw the token from the pool at the current ratio.
-    ///   The amount withdrawn is the MIN(u64, stake size)
+    ///
+    ///   Succeeds if the stake account has enough SOL to cover the desired amount
+    ///   of pool tokens, and if the withdrawal keeps the total staked amount
+    ///   above the minimum of rent-exempt amount + 1 SOL.
     ///
     ///   A validator stake account can be withdrawn from freely, and the reserve
     ///   can only be drawn from if there is no active stake left, where all
@@ -307,9 +316,6 @@ pub fn add_validator_to_pool(
     stake_pool_withdraw: &Pubkey,
     validator_list: &Pubkey,
     stake_account: &Pubkey,
-    pool_token_receiver: &Pubkey,
-    pool_mint: &Pubkey,
-    token_program_id: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -318,11 +324,8 @@ pub fn add_validator_to_pool(
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
-        AccountMeta::new(*pool_token_receiver, false),
-        AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
     Ok(Instruction {
@@ -341,9 +344,6 @@ pub fn remove_validator_from_pool(
     new_stake_authority: &Pubkey,
     validator_list: &Pubkey,
     stake_account: &Pubkey,
-    burn_from: &Pubkey,
-    pool_mint: &Pubkey,
-    token_program_id: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -352,10 +352,7 @@ pub fn remove_validator_from_pool(
         AccountMeta::new_readonly(*new_stake_authority, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
-        AccountMeta::new(*burn_from, false),
-        AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
     Ok(Instruction {

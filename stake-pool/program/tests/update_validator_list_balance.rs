@@ -3,9 +3,8 @@
 mod helpers;
 
 use {
-    crate::helpers::TEST_STAKE_AMOUNT,
     helpers::*,
-    solana_program::{native_token, pubkey::Pubkey},
+    solana_program::pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::signature::Signer,
     spl_stake_pool::stake_program,
@@ -67,6 +66,7 @@ async fn success() {
         .await;
     }
 
+<<<<<<< HEAD
     // Update epoch
     context.warp_to_slot(50_000).unwrap();
 
@@ -84,18 +84,33 @@ async fn success() {
         .await;
 
     // Check balance updated
+||||||| parent of d5547a3 (Rework remove)
+    let rent = banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>())
+        + native_token::sol_to_lamports(1.0);
+
+    // Check current balance in the list
+=======
+    // Check current balance in the list
+>>>>>>> d5547a3 (Rework remove)
     assert_eq!(
         get_validator_list_sum(
             &mut context.banks_client,
             &stake_pool_accounts.validator_list.pubkey()
         )
         .await,
+<<<<<<< HEAD
         STAKE_ACCOUNTS * (stake_rent + TEST_STAKE_AMOUNT + EXTRA_STAKE_AMOUNT)
+||||||| parent of d5547a3 (Rework remove)
+        STAKE_ACCOUNTS * (stake_rent + TEST_STAKE_AMOUNT)
+=======
+        0
+>>>>>>> d5547a3 (Rework remove)
     );
 }
 
 #[tokio::test]
-async fn test_update_validator_list_balance_with_uninitialized_validator_list() {} // TODO
+async fn fail_with_uninitialized_validator_list() {} // TODO
 
 #[tokio::test]
-async fn test_update_validator_list_balance_with_wrong_stake_state() {} // TODO
+async fn fail_with_wrong_stake_state() {} // TODO

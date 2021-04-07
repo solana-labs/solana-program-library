@@ -200,6 +200,14 @@ impl StakeState {
             _ => None,
         }
     }
+    /// Get meta
+    pub fn meta(&self) -> Option<&Meta> {
+        match self {
+            StakeState::Initialized(meta) => Some(meta),
+            StakeState::Stake(meta, _) => Some(meta),
+            _ => None,
+        }
+    }
 }
 
 /// FIXME copied from the stake program
