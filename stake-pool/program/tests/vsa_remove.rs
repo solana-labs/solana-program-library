@@ -19,7 +19,7 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error, id, instruction, stake_program, state,
+        borsh::try_from_slice_unchecked, error::StakePoolError, id, instruction, stake_program, state,
     },
 };
 
@@ -193,7 +193,7 @@ async fn fail_with_wrong_validator_list_account() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::InvalidValidatorStakeList as u32;
+            let program_error = StakePoolError::InvalidValidatorStakeList as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while try to remove validator stake address with wrong validator stake list account"),
@@ -201,7 +201,35 @@ async fn fail_with_wrong_validator_list_account() {
 }
 
 #[tokio::test]
-async fn fail_not_at_minimum() {}
+async fn fail_not_at_minimum() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, user_stake) =
+        setup().await;
+
+    transfer(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.stake_account,
+        1_000_001,
+    ).await;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake.stake_account,
+            &new_authority,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)),
+    );
+}
 
 #[tokio::test]
 async fn fail_double_remove() {
@@ -238,7 +266,7 @@ async fn fail_double_remove() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::ValidatorNotFound as u32;
+            let program_error = StakePoolError::ValidatorNotFound as u32;
             assert_eq!(error_index, program_error);
         }
         _ => {
@@ -280,7 +308,7 @@ async fn fail_wrong_staker() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::WrongStaker as u32;
+            let program_error = StakePoolError::WrongStaker as u32;
             assert_eq!(error_index, program_error);
         }
         _ => {
@@ -331,7 +359,7 @@ async fn fail_no_signature() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::SignatureMissing as u32;
+            let program_error = StakePoolError::SignatureMissing as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while malicious try to remove validator stake account without signing transaction"),

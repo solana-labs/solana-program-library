@@ -314,7 +314,7 @@ pub async fn create_blank_stake_account(
     let rent = banks_client.get_rent().await.unwrap();
     let lamports = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>()) + 1;
 
-    let mut transaction = Transaction::new_with_payer(
+    let transaction = Transaction::new_signed_with_payer(
         &[system_instruction::create_account(
             &payer.pubkey(),
             &stake.pubkey(),
@@ -323,8 +323,9 @@ pub async fn create_blank_stake_account(
             &stake_program::id(),
         )],
         Some(&payer.pubkey()),
+        &[payer, stake],
+        *recent_blockhash,
     );
-    transaction.sign(&[payer, stake], *recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 
     lamports
@@ -594,7 +595,7 @@ impl StakePoolAccounts {
         validator_stake_account: &Pubkey,
         recipient_new_authority: &Pubkey,
         amount: u64,
-    ) -> Result<(), TransportError> {
+    ) -> Option<TransportError> {
         let transaction = Transaction::new_signed_with_payer(
             &[instruction::withdraw(
                 &id(),
@@ -614,8 +615,7 @@ impl StakePoolAccounts {
             &[payer],
             *recent_blockhash,
         );
-        banks_client.process_transaction(transaction).await?;
-        Ok(())
+        banks_client.process_transaction(transaction).await.err()
     }
 
     pub async fn update_validator_list_balance(
@@ -669,7 +669,7 @@ impl StakePoolAccounts {
         recent_blockhash: &Hash,
         stake: &Pubkey,
     ) -> Option<TransportError> {
-        let mut transaction = Transaction::new_with_payer(
+        let transaction = Transaction::new_signed_with_payer(
             &[instruction::add_validator_to_pool(
                 &id(),
                 &self.stake_pool.pubkey(),
@@ -681,8 +681,9 @@ impl StakePoolAccounts {
             )
             .unwrap()],
             Some(&payer.pubkey()),
+            &[payer, &self.staker],
+            *recent_blockhash,
         );
-        transaction.sign(&[payer, &self.staker], *recent_blockhash);
         banks_client.process_transaction(transaction).await.err()
     }
 

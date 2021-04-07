@@ -10,7 +10,7 @@ use {
         hash::Hash,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
-        system_instruction, sysvar,
+        sysvar,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -19,7 +19,7 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error, id, instruction, stake_program, state,
+        borsh::try_from_slice_unchecked, error::StakePoolError, id, instruction, stake_program, state,
     },
 };
 
@@ -145,7 +145,7 @@ async fn fail_with_wrong_validator_list_account() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::InvalidValidatorStakeList as u32;
+            let program_error = StakePoolError::InvalidValidatorStakeList as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while try to add validator stake address with wrong validator stake list account"),
@@ -154,6 +154,98 @@ async fn fail_with_wrong_validator_list_account() {
 
 #[tokio::test]
 async fn fail_too_little_stake() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .await
+        .unwrap();
+
+    let user_stake = ValidatorStakeAccount::new_with_target_authority(
+        &stake_pool_accounts.deposit_authority,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
+    create_vote(&mut banks_client, &payer, &recent_blockhash, &user_stake.vote).await;
+
+    create_validator_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.stake_pool,
+        &stake_pool_accounts.staker,
+        &user_stake.stake_account,
+        &user_stake.vote.pubkey(),
+    )
+    .await;
+
+    // Create stake account to withdraw to
+    let split = Keypair::new();
+    create_blank_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &split,
+    )
+    .await;
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            stake_program::split_only(
+                &user_stake.stake_account,
+                &stake_pool_accounts.staker.pubkey(),
+                1,
+                &split.pubkey(),
+            ),
+        ],
+        Some(&payer.pubkey()),
+        &[&payer, &stake_pool_accounts.staker],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    authorize_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.stake_account,
+        &stake_pool_accounts.staker,
+        &user_stake.target_authority,
+        stake_program::StakeAuthorize::Staker,
+    )
+    .await;
+
+    authorize_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.stake_account,
+        &stake_pool_accounts.staker,
+        &user_stake.target_authority,
+        stake_program::StakeAuthorize::Withdrawer,
+    )
+    .await;
+
+    let error = stake_pool_accounts
+        .add_validator_to_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake.stake_account,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)),
+    );
+}
+
+#[tokio::test]
+async fn fail_too_much_stake() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -174,40 +266,29 @@ async fn fail_too_little_stake() {
         )
         .await;
 
-    let split = Keypair::new();
-    let transaction = Transaction::new_signed_with_payer(
-        &[
-            system_instruction::create_account(
-                &payer.pubkey(),
-                &split.pubkey(),
-                1_000_000,
-                std::mem::size_of::<stake_program::StakeState>() as u64,
-                &stake_program::id(),
-            ),
-            stake_program::split_only(
-                &user_stake.stake_account,
-                &stake_pool_accounts.staker.pubkey(),
-                1,
-                &split.pubkey(),
-            ),
-        ],
-        Some(&payer.pubkey()),
-        &[&payer, &split, &stake_pool_accounts.staker],
-        recent_blockhash,
-    );
+    transfer(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.stake_account,
+        1_000_001,
+    ).await;
 
-    stake_pool_accounts
+    let error = stake_pool_accounts
         .add_validator_to_pool(
             &mut banks_client,
             &payer,
             &recent_blockhash,
             &user_stake.stake_account,
         )
-        .await;
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)),
+    );
 }
-
-#[tokio::test]
-async fn fail_too_much_stake() {}
 
 #[tokio::test]
 async fn fail_double_add() {
@@ -240,7 +321,7 @@ async fn fail_double_add() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::ValidatorAlreadyAdded as u32;
+            let program_error = StakePoolError::ValidatorAlreadyAdded as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while try to add already added validator stake account"),
@@ -279,7 +360,7 @@ async fn fail_wrong_staker() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::WrongStaker as u32;
+            let program_error = StakePoolError::WrongStaker as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while malicious try to add validator stake account"),
@@ -323,7 +404,7 @@ async fn fail_without_signature() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::SignatureMissing as u32;
+            let program_error = StakePoolError::SignatureMissing as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while malicious try to add validator stake account without signing transaction"),
