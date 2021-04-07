@@ -241,7 +241,7 @@ fn process_init_reserve(
         return Err(LendingError::InvalidSigner.into());
     }
 
-    let (reserve_liquidity_aggregator, reserve_liquidity_median_price) =
+    let (reserve_liquidity_aggregator, reserve_liquidity_market_price) =
         if reserve_liquidity_mint_info.key == &lending_market.quote_token_mint {
             if account_info_iter.peek().is_some() {
                 msg!("Invalid reserve liquidity aggregator account");
@@ -283,7 +283,7 @@ fn process_init_reserve(
             supply_pubkey: *reserve_liquidity_supply_info.key,
             fee_receiver: *reserve_liquidity_fee_receiver_info.key,
             aggregator: reserve_liquidity_aggregator,
-            median_price: reserve_liquidity_median_price,
+            market_price: reserve_liquidity_market_price,
         }),
         collateral: ReserveCollateral::new(NewReserveCollateralParams {
             mint_pubkey: *reserve_collateral_mint_info.key,
@@ -365,7 +365,7 @@ fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
             return Err(LendingError::InvalidAccountInput.into());
         }
 
-        reserve.liquidity.median_price = read_median(reserve_liquidity_aggregator_info)?.median;
+        reserve.liquidity.market_price = read_median(reserve_liquidity_aggregator_info)?.median;
     } else if account_info_iter.peek().is_some() {
         msg!("Invalid reserve liquidity aggregator account");
         return Err(LendingError::InvalidAccountInput.into());
@@ -636,7 +636,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         let market_value = deposit_reserve
             .collateral_exchange_rate()?
             .decimal_collateral_to_liquidity(collateral.deposited_amount.into())?
-            .try_mul(deposit_reserve.liquidity.median_price)?
+            .try_mul(deposit_reserve.liquidity.market_price)?
             .try_div(decimals)?;
         collateral.market_value = market_value;
 
@@ -673,7 +673,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         liquidity.accrue_interest(borrow_reserve.liquidity.cumulative_borrow_rate_wads)?;
         let market_value = liquidity
             .borrowed_amount_wads
-            .try_mul(borrow_reserve.liquidity.median_price)?
+            .try_mul(borrow_reserve.liquidity.market_price)?
             .try_div(decimals)?;
         liquidity.market_value = market_value;
         borrowed_value = borrowed_value.try_add(market_value)?;

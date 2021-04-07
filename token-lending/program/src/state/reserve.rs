@@ -159,7 +159,7 @@ impl Reserve {
         if liquidity_amount == u64::max_value() {
             let borrow_amount = max_borrow_value
                 .try_mul(decimals)?
-                .try_div(self.liquidity.median_price)?
+                .try_div(self.liquidity.market_price)?
                 .min(self.liquidity.available_amount.into());
             let (origination_fee, host_fee) = self
                 .config
@@ -186,7 +186,7 @@ impl Reserve {
 
             let borrow_amount = borrow_amount.try_add(borrow_fee.into())?;
             let borrow_value = borrow_amount
-                .try_mul(self.liquidity.median_price)?
+                .try_mul(self.liquidity.market_price)?
                 .try_div(decimals)?;
             if borrow_value > max_borrow_value {
                 return Err(LendingError::BorrowTooLarge.into());
@@ -358,8 +358,8 @@ pub struct ReserveLiquidity {
     pub aggregator: COption<Pubkey>,
     /// Reserve liquidity cumulative borrow rate
     pub cumulative_borrow_rate_wads: Decimal,
-    /// Reserve liquidity median price in quote currency
-    pub median_price: u64,
+    /// Reserve liquidity market price in quote currency
+    pub market_price: u64,
     /// Reserve liquidity available
     pub available_amount: u64,
     /// Reserve liquidity borrowed
@@ -378,8 +378,8 @@ pub struct NewReserveLiquidityParams {
     pub fee_receiver: Pubkey,
     /// Optional reserve liquidity aggregator state account
     pub aggregator: COption<Pubkey>,
-    /// Reserve liquidity median price in quote currency
-    pub median_price: u64,
+    /// Reserve liquidity market price in quote currency
+    pub market_price: u64,
 }
 
 impl ReserveLiquidity {
@@ -392,7 +392,7 @@ impl ReserveLiquidity {
             fee_receiver: params.fee_receiver,
             aggregator: params.aggregator,
             cumulative_borrow_rate_wads: Decimal::one(),
-            median_price: params.median_price,
+            market_price: params.market_price,
             available_amount: 0,
             borrowed_amount_wads: Decimal::zero(),
         }
@@ -703,7 +703,7 @@ impl Pack for Reserve {
             liquidity_fee_receiver,
             liquidity_aggregator,
             liquidity_cumulative_borrow_rate_wads,
-            liquidity_median_price,
+            liquidity_market_price,
             liquidity_available_amount,
             liquidity_borrowed_amount_wads,
             collateral_mint,
@@ -763,7 +763,7 @@ impl Pack for Reserve {
             self.liquidity.cumulative_borrow_rate_wads,
             liquidity_cumulative_borrow_rate_wads,
         );
-        *liquidity_median_price = self.liquidity.median_price.to_le_bytes();
+        *liquidity_market_price = self.liquidity.market_price.to_le_bytes();
         *liquidity_available_amount = self.liquidity.available_amount.to_le_bytes();
         pack_decimal(
             self.liquidity.borrowed_amount_wads,
@@ -802,7 +802,7 @@ impl Pack for Reserve {
             liquidity_fee_receiver,
             liquidity_aggregator,
             liquidity_cumulative_borrow_rate_wads,
-            liquidity_median_price,
+            liquidity_market_price,
             liquidity_available_amount,
             liquidity_borrowed_amount_wads,
             collateral_mint,
@@ -861,7 +861,7 @@ impl Pack for Reserve {
                 fee_receiver: Pubkey::new_from_array(*liquidity_fee_receiver),
                 aggregator: unpack_coption_key(liquidity_aggregator)?,
                 cumulative_borrow_rate_wads: unpack_decimal(liquidity_cumulative_borrow_rate_wads),
-                median_price: u64::from_le_bytes(*liquidity_median_price),
+                market_price: u64::from_le_bytes(*liquidity_market_price),
                 available_amount: u64::from_le_bytes(*liquidity_available_amount),
                 borrowed_amount_wads: unpack_decimal(liquidity_borrowed_amount_wads),
             },
