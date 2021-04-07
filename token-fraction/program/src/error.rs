@@ -29,6 +29,10 @@ pub enum FractionError {
     #[error("Uninitialized")]
     Uninitialized,
 
+    /// Account does not have correct owner
+    #[error("Account does not have correct owner")]
+    IncorrectOwner,
+
     /// NumericalOverflowError
     #[error("NumericalOverflowError")]
     NumericalOverflowError,
@@ -81,9 +85,29 @@ pub enum FractionError {
     #[error("Fraction treasury's owner not set to program")]
     TreasuryOwnerNotProgram,
 
-    /// Pool should not be active
-    #[error("Pool should not be active")]
-    PoolShouldNotBeActive,
+    /// Pool should be inactive
+    #[error("Pool should be inactive")]
+    PoolShouldBeInactive,
+
+    /// Pool should be active
+    #[error("Pool should be active")]
+    PoolShouldBeActive,
+
+    /// Fraction treasury needs to match fraction mint
+    #[error("Fraction treasury needs to match fraction mint")]
+    FractionTreasuryMintDoesNotMatchFractionMint,
+
+    /// Redeem Treasury cannot be same mint as fraction
+    #[error("Redeem Treasury cannot be same mint as fraction")]
+    RedeemTreasuryCantShareSameMintAsFraction,
+
+    /// Invalid program authority provided
+    #[error("Invalid program authority provided")]
+    InvalidAuthority,
+
+    /// Redeem treasury mint must match lookup mint
+    #[error("Redeem treasury mint must match lookup mint")]
+    RedeemTreasuryMintMustMatchLookupMint,
 }
 
 impl PrintProgramError for FractionError {

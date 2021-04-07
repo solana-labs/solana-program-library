@@ -1,27 +1,29 @@
-use spl_token::state::Account;
-
 use {
     crate::{
         error::FractionError,
         instruction::FractionInstruction,
         state::{
-            FractionalizedTokenPool, FractionalizedTokenRegistry, PricingLookupType, MAX_POOL_SIZE,
-            MAX_TOKEN_REGISTRY_SIZE, POOL_KEY, PREFIX, REGISTRY_KEY,
+            ExternalPriceAccount, FractionalizedTokenPool, FractionalizedTokenRegistry, PoolState,
+            MAX_POOL_SIZE, MAX_TOKEN_REGISTRY_SIZE, POOL_KEY, PREFIX, REGISTRY_KEY,
         },
         utils::{
-            assert_inactive, assert_initialized, create_or_allocate_account_raw,
-            spl_token_transfer, TokenTransferParams,
+            assert_initialized, assert_owned_by, assert_rent_exempt,
+            create_or_allocate_account_raw, spl_token_mint_to, spl_token_transfer,
+            TokenMintToParams, TokenTransferParams,
         },
     },
     borsh::{BorshDeserialize, BorshSerialize},
+    sha2::{Digest, Sha256},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         borsh::try_from_slice_unchecked,
         entrypoint::ProgramResult,
         msg,
         pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
     },
-    spl_token::state::Mint,
+    spl_token::state::{Account, Mint},
 };
 
 pub fn process_instruction(
@@ -36,8 +38,7 @@ pub fn process_instruction(
             process_init_fractionalized_token_pool(
                 program_id,
                 accounts,
-                args.allow_share_redemption,
-                args.pricing_lookup_type,
+                args.allow_further_share_creation,
             )
         }
         FractionInstruction::AddTokenToInactivatedFractionalizedTokenPool(args) => {
@@ -48,16 +49,80 @@ pub fn process_instruction(
                 args.amount,
             )
         }
+        FractionInstruction::ActivateFractionalizedTokenPool(args) => {
+            msg!("Instruction: Activate Fractionalized Token Pool");
+            process_activate_fractionalized_token_pool(program_id, accounts, args.number_of_shares)
+        }
+        FractionInstruction::CombineFractionalizedTokenPool(args) => {
+            msg!("Instruction: Activate Fractionalized Token Pool");
+            process_activate_fractionalized_token_pool(program_id, accounts, args.number_of_shares)
+        }
     }
+}
+
+pub fn process_combine_fractionalized_token_pool(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+
+    let fractionalized_token_pool_info = next_account_info(account_info_iter)?;
+    let your_outstanding_shares_info = next_account_info(account_info_iter)?;
+    let your_payment_info = next_account_info(account_info_iter)?;
+    let fraction_mint_info = next_account_info(account_info_iter)?;
+    let redeem_treasury_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
+    let burn_authority_info = next_account_info(account_info_iter)?;
+    let external_pricing_info = next_account_info(account_info_iter)?;
+    let token_program_info = next_account_info(account_info_iter)?;
+    let mut fractionalized_token_pool: FractionalizedTokenPool =
+        try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
+
+    if fractionalized_token_pool.state != PoolState::Active {
+        return Err(FractionError::PoolShouldBeActive.into());
+    }
+    Ok(())
 }
 
 pub fn process_activate_fractionalized_token_pool(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    allow_share_redemption: bool,
-    pricing_lookup_type: PricingLookupType,
     number_of_shares: u64,
 ) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+
+    let fractionalized_token_pool_info = next_account_info(account_info_iter)?;
+    let fraction_mint_info = next_account_info(account_info_iter)?;
+    let fraction_treasury_info = next_account_info(account_info_iter)?;
+    let fractional_mint_authority_info = next_account_info(account_info_iter)?;
+    let token_program_info = next_account_info(account_info_iter)?;
+
+    let mut fractionalized_token_pool: FractionalizedTokenPool =
+        try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
+
+    if fractionalized_token_pool.state != PoolState::Inactive {
+        return Err(FractionError::PoolShouldBeInactive.into());
+    }
+
+    let (authority_key, bump_seed) =
+        Pubkey::find_program_address(&[program_id.as_ref()], program_id);
+    if fractional_mint_authority_info.key != &authority_key {
+        return Err(FractionError::InvalidAuthority.into());
+    }
+    let authority_signer_seeds = &[program_id.as_ref(), &[bump_seed]];
+
+    spl_token_mint_to(TokenMintToParams {
+        mint: fraction_mint_info.clone(),
+        destination: fraction_treasury_info.clone(),
+        amount: number_of_shares,
+        authority: fractional_mint_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    fractionalized_token_pool.state = PoolState::Active;
+    fractionalized_token_pool.serialize(&mut *fractionalized_token_pool_info.data.borrow_mut())?;
+
     Ok(())
 }
 
@@ -78,10 +143,18 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
     let rent_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
 
+    let rent = &Rent::from_account_info(rent_info)?;
+    assert_rent_exempt(rent, token_account_info)?;
+    assert_rent_exempt(rent, vault_info)?;
+
     let token_account: Account = assert_initialized(token_account_info)?;
     let vault: Account = assert_initialized(vault_info)?;
     let mut fractionalized_token_pool: FractionalizedTokenPool =
         try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
+
+    if fractionalized_token_pool.state != PoolState::Inactive {
+        return Err(FractionError::PoolShouldBeInactive.into());
+    }
     assert_inactive(&fractionalized_token_pool)?;
 
     if token_account.amount == 0 {
@@ -126,21 +199,42 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
         authority_signer_seeds,
     )?;
 
-    fractionalized_token_pool.token_type_count =
-        match fractionalized_token_pool.token_type_count.checked_add(1) {
-            Some(val) => val,
-            None => return Err(FractionError::NumericalOverflowError.into()),
-        };
-    fractionalized_token_pool.serialize(&mut *fractionalized_token_pool_info.data.borrow_mut())?;
-
     let mut registry: FractionalizedTokenRegistry =
         try_from_slice_unchecked(&registry_account_info.data.borrow_mut())?;
     registry.key = REGISTRY_KEY;
     registry.fractionalized_token_pool = *fractionalized_token_pool_info.key;
     registry.token_mint = token_account.mint;
     registry.vault = *vault_info.key;
+    registry.order = fractionalized_token_pool.token_type_count;
 
     registry.serialize(&mut *registry_account_info.data.borrow_mut())?;
+
+    fractionalized_token_pool.token_type_count =
+        match fractionalized_token_pool.token_type_count.checked_add(1) {
+            Some(val) => val,
+            None => return Err(FractionError::NumericalOverflowError.into()),
+        };
+    let mut hasher = Sha256::new();
+    let mut new_arr: [u8; 64] = [0; 64];
+    for n in 0..63 {
+        if n < 32 {
+            new_arr[n] = fractionalized_token_pool.hashed_fractionalized_token_registry[n];
+        } else {
+            new_arr[n] = registry_account_info.key.as_ref()[n - 32];
+        }
+    }
+    hasher.update(new_arr);
+    let result = hasher.finalize();
+
+    let mut hashed_arr: [u8; 32] = [0; 32];
+    let slice = result.as_slice();
+    for n in 0..31 {
+        hashed_arr[n] = slice[n];
+    }
+
+    fractionalized_token_pool.hashed_fractionalized_token_registry = hashed_arr;
+
+    fractionalized_token_pool.serialize(&mut *fractionalized_token_pool_info.data.borrow_mut())?;
 
     spl_token_transfer(TokenTransferParams {
         source: token_account_info.clone(),
@@ -157,20 +251,34 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
 pub fn process_init_fractionalized_token_pool(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    allow_share_redemption: bool,
-    pricing_lookup_type: PricingLookupType,
+    allow_further_share_creation: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let fraction_mint_info = next_account_info(account_info_iter)?;
-    let treasury_info = next_account_info(account_info_iter)?;
+    let redeem_treasury_info = next_account_info(account_info_iter)?;
+    let fraction_treasury_info = next_account_info(account_info_iter)?;
     let fractionalized_token_pool_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
     let pricing_lookup_address = next_account_info(account_info_iter)?;
+    let token_program_info = next_account_info(account_info_iter)?;
+    let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
 
     let fraction_mint: Mint = assert_initialized(fraction_mint_info)?;
-    let treasury: Account = assert_initialized(treasury_info)?;
+    let redeem_treasury: Account = assert_initialized(redeem_treasury_info)?;
+    let fraction_treasury: Account = assert_initialized(fraction_treasury_info)?;
     let mut fractionalized_token_pool: FractionalizedTokenPool =
         try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow())?;
+    let external_pricing_lookup: ExternalPriceAccount =
+        try_from_slice_unchecked(&pricing_lookup_address.data.borrow_mut())?;
+
+    assert_rent_exempt(rent, redeem_treasury_info)?;
+    assert_rent_exempt(rent, fraction_treasury_info)?;
+    assert_rent_exempt(rent, fraction_mint_info)?;
+    assert_rent_exempt(rent, fractionalized_token_pool_info)?;
+    assert_rent_exempt(rent, pricing_lookup_address)?;
+    assert_owned_by(fraction_mint_info, token_program_info.key)?;
+    assert_owned_by(fraction_treasury_info, token_program_info.key)?;
+    assert_owned_by(redeem_treasury_info, token_program_info.key)?;
 
     if fraction_mint.supply != 0 {
         return Err(FractionError::FractionMintNotEmpty.into());
@@ -197,30 +305,47 @@ pub fn process_init_fractionalized_token_pool(
         }
     }
 
-    if treasury.amount != 0 {
+    if redeem_treasury.amount != 0 {
         return Err(FractionError::TreasuryNotEmpty.into());
     }
 
-    if treasury.owner != *program_id {
+    if redeem_treasury.owner != *program_id {
         return Err(FractionError::TreasuryOwnerNotProgram.into());
     }
 
+    if redeem_treasury.mint == external_pricing_lookup.price_mint {
+        return Err(FractionError::RedeemTreasuryMintMustMatchLookupMint.into());
+    }
+
+    if redeem_treasury.mint != *fraction_mint_info.key {
+        return Err(FractionError::RedeemTreasuryCantShareSameMintAsFraction.into());
+    }
+
+    if fraction_treasury.amount != 0 {
+        return Err(FractionError::TreasuryNotEmpty.into());
+    }
+
+    if fraction_treasury.owner != *program_id {
+        return Err(FractionError::TreasuryOwnerNotProgram.into());
+    }
+
+    if fraction_treasury.mint != *fraction_mint_info.key {
+        return Err(FractionError::FractionTreasuryMintDoesNotMatchFractionMint.into());
+    }
+
     fractionalized_token_pool.key = POOL_KEY;
-    fractionalized_token_pool.treasury = *treasury_info.key;
+    fractionalized_token_pool.redeem_treasury = *redeem_treasury_info.key;
+    fractionalized_token_pool.fraction_treasury = *fraction_treasury_info.key;
     fractionalized_token_pool.fraction_mint = *fraction_mint_info.key;
     fractionalized_token_pool.pricing_lookup_address = *pricing_lookup_address.key;
-    fractionalized_token_pool.pricing_lookup_type = pricing_lookup_type;
-    fractionalized_token_pool.allow_share_redemption = allow_share_redemption;
+    fractionalized_token_pool.allow_further_share_creation = allow_further_share_creation;
     fractionalized_token_pool.authority = *authority_info.key;
     fractionalized_token_pool.token_type_count = 0;
+    fractionalized_token_pool.state = PoolState::Inactive;
 
-    // This is how we determine inactive pool - all zeroes means no hashing done yet
-    // when activate called, the number of token_type_count addresses must be provided,
-    // they all must point to initiated accounts, which can only be made by this program since
-    // they are pdas, and they will be hashed and set on this field. Then shares distributed,
-    // and pool is active.
     let arr_of_zeroes: [u8; 32] = [0; 32];
     fractionalized_token_pool.hashed_fractionalized_token_registry = arr_of_zeroes;
+    fractionalized_token_pool.serialize(&mut *fractionalized_token_pool_info.data.borrow_mut())?;
 
     Ok(())
 }

@@ -1,11 +1,8 @@
-use solana_program::entrypoint::ProgramResult;
-
-use crate::state::FractionalizedTokenPool;
-
 use {
-    crate::error::FractionError,
+    crate::{error::FractionError, state::FractionalizedTokenPool},
     solana_program::{
         account_info::AccountInfo,
+        entrypoint::ProgramResult,
         msg,
         program::{invoke, invoke_signed},
         program_error::ProgramError,
@@ -29,14 +26,20 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
     }
 }
 
-pub fn assert_inactive(pool: &FractionalizedTokenPool) -> Result<(), ProgramError> {
-    for n in 0..32 {
-        if pool.hashed_fractionalized_token_registry[n] != 0 {
-            return Err(FractionError::PoolShouldNotBeActive.into());
-        }
+pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
+    if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
+        Err(FractionError::NotRentExempt.into())
+    } else {
+        Ok(())
     }
+}
 
-    Ok(())
+pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
+    if account.owner != owner {
+        Err(FractionError::IncorrectOwner.into())
+    } else {
+        Ok(())
+    }
 }
 
 /// Create account almost from scratch, lifted from

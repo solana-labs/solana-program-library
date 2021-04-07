@@ -19,6 +19,7 @@ solana-program = "1.6.2"
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 borsh = "0.8.2"
+sha2="0.9.3"
 
 [lib]
 crate-type = ["cdylib", "lib"]
