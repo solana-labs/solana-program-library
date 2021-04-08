@@ -204,6 +204,10 @@ pub enum VaultError {
     /// There are not enough shares
     #[error("There are not enough shares")]
     NotEnoughShares,
+
+    /// External price account must be signer
+    #[error("External price account must be signer")]
+    ExternalPriceAccountMustBeSigner,
 }
 
 impl PrintProgramError for VaultError {

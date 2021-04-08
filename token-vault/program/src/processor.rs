@@ -73,7 +73,43 @@ pub fn process_instruction(
             msg!("Instruction: Add fractional shares to treasury");
             process_add_fractional_shares_to_treasury(program_id, accounts, args.number_of_shares)
         }
+
+        VaultInstruction::UpdateExternalPriceAccount(args) => {
+            msg!("Instruction: Update External Price Account");
+            process_update_external_price_account(
+                program_id,
+                accounts,
+                args.price_per_share,
+                args.price_mint,
+                args.allowed_to_combine,
+            )
+        }
     }
+}
+
+pub fn process_update_external_price_account(
+    _: &Pubkey,
+    accounts: &[AccountInfo],
+    price_per_share: u64,
+    price_mint: Pubkey,
+    allowed_to_combine: bool,
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let account = next_account_info(account_info_iter)?;
+    if !account.is_signer {
+        return Err(VaultError::ExternalPriceAccountMustBeSigner.into());
+    }
+
+    let mut external_price_account: ExternalPriceAccount =
+        try_from_slice_unchecked(&account.data.borrow_mut())?;
+
+    external_price_account.price_per_share = price_per_share;
+    external_price_account.price_mint = price_mint;
+    external_price_account.allowed_to_combine = allowed_to_combine;
+
+    external_price_account.serialize(&mut *account.data.borrow_mut())?;
+
+    Ok(())
 }
 
 pub fn process_add_fractional_shares_to_treasury(

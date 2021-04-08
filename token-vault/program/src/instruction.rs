@@ -1,4 +1,5 @@
 use {
+    crate::state::{ExternalPriceAccount, EXTERNAL_ACCOUNT_KEY},
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -133,18 +134,24 @@ pub enum VaultInstruction {
     ///   3. `[signer]` Authority of vault
     ///   4. `[]` Token program
     AddSharesToTreasury(NumberOfShareArgs),
+
+    /// Helpful method that isn't necessary to use for main users of the app, but allows one to create/update
+    /// existing external price account fields if they are signers of this account.
+    /// Useful for testing purposes, and the CLI makes use of it as well so that you can verify logic.
+    ///   0. `[writable]` External price account
+    UpdateExternalPriceAccount(ExternalPriceAccount),
 }
 
 /// Creates an InitVault instruction
 #[allow(clippy::too_many_arguments)]
-pub fn create_init_vault(
+pub fn create_init_vault_instruction(
     program_id: Pubkey,
     fraction_mint: Pubkey,
     redeem_treasury: Pubkey,
     fraction_treasury: Pubkey,
     vault: Pubkey,
     vault_authority: Pubkey,
-    pricing_lookup_address: Pubkey,
+    external_price_account: Pubkey,
     allow_further_share_creation: bool,
 ) -> Instruction {
     Instruction {
@@ -155,12 +162,35 @@ pub fn create_init_vault(
             AccountMeta::new(fraction_treasury, false),
             AccountMeta::new(vault, false),
             AccountMeta::new_readonly(vault_authority, false),
-            AccountMeta::new_readonly(pricing_lookup_address, false),
+            AccountMeta::new_readonly(external_price_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
         data: VaultInstruction::InitVault(InitVaultArgs {
             allow_further_share_creation,
+        })
+        .try_to_vec()
+        .unwrap(),
+    }
+}
+
+/// Creates an UpdateExternalPriceAccount instruction
+#[allow(clippy::too_many_arguments)]
+pub fn create_update_external_price_account_instruction(
+    program_id: Pubkey,
+    external_price_account: Pubkey,
+    price_per_share: u64,
+    price_mint: Pubkey,
+    allowed_to_combine: bool,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![AccountMeta::new(external_price_account, true)],
+        data: VaultInstruction::UpdateExternalPriceAccount(ExternalPriceAccount {
+            key: EXTERNAL_ACCOUNT_KEY,
+            price_per_share,
+            price_mint,
+            allowed_to_combine,
         })
         .try_to_vec()
         .unwrap(),

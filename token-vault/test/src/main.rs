@@ -19,7 +19,12 @@ use {
         instruction::{initialize_account, initialize_mint},
         state::{Account, Mint},
     },
-    spl_token_vault::{instruction::create_init_vault, state::PREFIX},
+    spl_token_vault::{
+        instruction::{
+            create_init_vault_instruction, create_update_external_price_account_instruction,
+        },
+        state::{MAX_EXTERNAL_ACCOUNT_SIZE, PREFIX},
+    },
     std::str::FromStr,
 };
 
@@ -115,7 +120,7 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
             &program_key,
         )
         .unwrap(),
-        create_init_vault(
+        create_init_vault_instruction(
             program_key,
             fraction_mint.pubkey(),
             redeem_treasury.pubkey(),
@@ -145,119 +150,47 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
 
 fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pubkey {
     let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
-    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
-    let vault_authority =
-        pubkey_of(app_matches, "vault_authority").unwrap_or_else(|| payer.pubkey());
-    let external_account = pubkey_of(app_matches, "external_price_account").unwrap();
-    let fraction_mint = Keypair::new();
-    let redeem_mint = Keypair::new();
-    let redeem_treasury = Keypair::new();
-    let fraction_treasury = Keypair::new();
-    let vault = Keypair::new();
-    let allow_further_share_creation = app_matches.is_present("allow_further_share_creation");
+    let external_account =
+        read_keypair_file(app_matches.value_of("external_price_account").unwrap()).unwrap();
+    let price_mint = pubkey_of(app_matches, "price_mint").unwrap_or_else(|| payer.pubkey());
+    let price_per_share: u64 = app_matches
+        .value_of("price_per_share")
+        .unwrap_or_else(|| "0")
+        .parse::<u64>()
+        .unwrap();
+    let allowed_to_combine = app_matches.is_present("allowed_to_combine");
+    let already_created = app_matches.is_present("already_created");
 
-    let instructions = [
-        create_account(
+    let mut instructions = vec![];
+
+    if !already_created {
+        instructions.push(create_account(
             &payer.pubkey(),
-            &fraction_mint.pubkey(),
+            &external_account.pubkey(),
             client
-                .get_minimum_balance_for_rent_exemption(Mint::LEN)
+                .get_minimum_balance_for_rent_exemption(MAX_EXTERNAL_ACCOUNT_SIZE)
                 .unwrap(),
-            Mint::LEN as u64,
-            &token_key,
-        ),
-        create_account(
+            MAX_EXTERNAL_ACCOUNT_SIZE as u64,
             &payer.pubkey(),
-            &redeem_mint.pubkey(),
-            client
-                .get_minimum_balance_for_rent_exemption(Mint::LEN)
-                .unwrap(),
-            Mint::LEN as u64,
-            &token_key,
-        ),
-        create_account(
-            &payer.pubkey(),
-            &redeem_treasury.pubkey(),
-            client
-                .get_minimum_balance_for_rent_exemption(Account::LEN)
-                .unwrap(),
-            Account::LEN as u64,
-            &token_key,
-        ),
-        create_account(
-            &payer.pubkey(),
-            &fraction_treasury.pubkey(),
-            client
-                .get_minimum_balance_for_rent_exemption(Account::LEN)
-                .unwrap(),
-            Account::LEN as u64,
-            &token_key,
-        ),
-        create_account(
-            &payer.pubkey(),
-            &vault.pubkey(),
-            client
-                .get_minimum_balance_for_rent_exemption(Account::LEN)
-                .unwrap(),
-            Account::LEN as u64,
-            &token_key,
-        ),
-        initialize_mint(
-            &token_key,
-            &redeem_mint.pubkey(),
-            &payer.pubkey(),
-            Some(&payer.pubkey()),
-            0,
-        )
-        .unwrap(),
-        initialize_mint(
-            &token_key,
-            &fraction_mint.pubkey(),
-            &payer.pubkey(),
-            Some(&payer.pubkey()),
-            0,
-        )
-        .unwrap(),
-        initialize_account(
-            &token_key,
-            &redeem_treasury.pubkey(),
-            &redeem_mint.pubkey(),
-            &program_key,
-        )
-        .unwrap(),
-        initialize_account(
-            &token_key,
-            &fraction_treasury.pubkey(),
-            &fraction_mint.pubkey(),
-            &program_key,
-        )
-        .unwrap(),
-        create_init_vault(
-            program_key,
-            fraction_mint.pubkey(),
-            redeem_treasury.pubkey(),
-            fraction_treasury.pubkey(),
-            vault.pubkey(),
-            vault_authority,
-            external_account,
-            allow_further_share_creation,
-        ),
-    ];
+        ));
+    }
+
+    instructions.push(create_update_external_price_account_instruction(
+        program_key,
+        external_account.pubkey(),
+        price_per_share,
+        price_mint,
+        allowed_to_combine,
+    ));
+
     let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
-    let signers = vec![
-        &payer,
-        &redeem_treasury,
-        &redeem_mint,
-        &fraction_treasury,
-        &fraction_mint,
-        &vault,
-    ];
+    let signers = vec![&payer, &external_account];
 
     transaction.sign(&signers, recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
-    let _account = client.get_account(&vault.pubkey()).unwrap();
-    vault.pubkey()
+    let _account = client.get_account(&external_account.pubkey()).unwrap();
+    external_account.pubkey()
 }
 
 fn main() {
@@ -338,7 +271,8 @@ fn main() {
                     Arg::with_name("price_mint")
                         .long("price_mint")
                         .value_name("PRICE_MINT")
-                        .takes_value(false)
+                        .takes_value(true)
+                        .validator(is_valid_pubkey)
                         .required(false)
                         .help("Price mint that price per share uses"),
                 )
@@ -346,7 +280,7 @@ fn main() {
                     Arg::with_name("price_per_share")
                         .long("price_per_share")
                         .value_name("PRICE_PER_SHARE")
-                        .takes_value(false)
+                        .takes_value(true)
                         .required(false)
                         .help("Price per share"),
                 )
@@ -357,6 +291,14 @@ fn main() {
                         .takes_value(false)
                         .required(false)
                         .help("Whether or not combination is allowed in the vault"),
+                )
+                .arg(
+                    Arg::with_name("already_created")
+                        .long("already_created")
+                        .value_name("ALREADY_CREATED")
+                        .takes_value(false)
+                        .required(false)
+                        .help("If we should skip creation because this account already exists"),
                 ),
         )
         .get_matches();
