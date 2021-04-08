@@ -1,10 +1,10 @@
 use {
     crate::{
-        error::FractionError,
-        instruction::FractionInstruction,
+        error::VaultError,
+        instruction::VaultInstruction,
         state::{
-            ExternalPriceAccount, FractionalizedTokenPool, FractionalizedTokenRegistry, PoolState,
-            MAX_POOL_SIZE, MAX_TOKEN_REGISTRY_SIZE, POOL_KEY, PREFIX, REGISTRY_KEY,
+            ExternalPriceAccount, FractionalizedTokenRegistry, Vault, VaultState,
+            MAX_TOKEN_REGISTRY_SIZE, MAX_VAULT_SIZE, PREFIX, REGISTRY_KEY, VAULT_KEY,
         },
         utils::{
             assert_initialized, assert_owned_by, assert_rent_exempt,
@@ -31,42 +31,31 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    let instruction = FractionInstruction::try_from_slice(input)?;
+    let instruction = VaultInstruction::try_from_slice(input)?;
     match instruction {
-        FractionInstruction::InitFractionalizedTokenPool(args) => {
-            msg!("Instruction: Init Fractionalized Token Pool");
-            process_init_fractionalized_token_pool(
-                program_id,
-                accounts,
-                args.allow_further_share_creation,
-            )
+        VaultInstruction::InitVault(args) => {
+            msg!("Instruction: Init VaultToken Pool");
+            process_init_vault(program_id, accounts, args.allow_further_share_creation)
         }
-        FractionInstruction::AddTokenToInactivatedFractionalizedTokenPool(args) => {
-            msg!("Instruction: Init Fractionalized Token Pool");
-            process_add_token_to_inactivated_fractionalized_token_pool(
-                program_id,
-                accounts,
-                args.amount,
-            )
+        VaultInstruction::AddTokenToInactiveVault(args) => {
+            msg!("Instruction: Init VaultToken Pool");
+            process_add_token_to_inactivated_vault(program_id, accounts, args.amount)
         }
-        FractionInstruction::ActivateFractionalizedTokenPool(args) => {
-            msg!("Instruction: Activate Fractionalized Token Pool");
-            process_activate_fractionalized_token_pool(program_id, accounts, args.number_of_shares)
+        VaultInstruction::ActivateVault(args) => {
+            msg!("Instruction: Activate Vault Token Pool");
+            process_activate_vault(program_id, accounts, args.number_of_shares)
         }
-        FractionInstruction::CombineFractionalizedTokenPool => {
-            msg!("Instruction: Activate Fractionalized Token Pool");
-            process_combine_fractionalized_token_pool(program_id, accounts)
+        VaultInstruction::CombineVault => {
+            msg!("Instruction: Combine Vault Token Pool");
+            process_combine_vault(program_id, accounts)
         }
     }
 }
 
-pub fn process_combine_fractionalized_token_pool(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
+pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let fractionalized_token_pool_info = next_account_info(account_info_iter)?;
+    let vault_info = next_account_info(account_info_iter)?;
     let your_outstanding_shares_info = next_account_info(account_info_iter)?;
     let your_payment_info = next_account_info(account_info_iter)?;
     let fraction_mint_info = next_account_info(account_info_iter)?;
@@ -76,36 +65,35 @@ pub fn process_combine_fractionalized_token_pool(
     let external_pricing_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
 
-    let mut fractionalized_token_pool: FractionalizedTokenPool =
-        try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
+    let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
     let fraction_mint: Mint = assert_initialized(fraction_mint_info)?;
     let your_payment_account: Account = assert_initialized(your_payment_info)?;
     let your_outstanding_shares: Account = assert_initialized(your_outstanding_shares_info)?;
     let external_pricing: ExternalPriceAccount =
         try_from_slice_unchecked(&external_pricing_info.data.borrow_mut())?;
 
-    if fractionalized_token_pool.state != PoolState::Active {
-        return Err(FractionError::PoolShouldBeActive.into());
+    if vault.state != VaultState::Active {
+        return Err(VaultError::PoolShouldBeActive.into());
     }
 
     if your_payment_account.mint != external_pricing.price_mint {
-        return Err(FractionError::PaymentMintShouldMatchPricingMint.into());
+        return Err(VaultError::PaymentMintShouldMatchPricingMint.into());
     }
 
     if your_outstanding_shares.mint != *fraction_mint_info.key {
-        return Err(FractionError::ShareMintShouldMatchFractionalMint.into());
+        return Err(VaultError::ShareMintShouldMatchVaultalMint.into());
     }
 
-    if fraction_mint_info.key != &fractionalized_token_pool.fraction_mint {
-        return Err(FractionError::FractionMintNeedsToMatchPool.into());
+    if fraction_mint_info.key != &vault.fraction_mint {
+        return Err(VaultError::VaultMintNeedsToMatchPool.into());
     }
 
-    if redeem_treasury_info.key != &fractionalized_token_pool.redeem_treasury {
-        return Err(FractionError::RedeemTreasuryNeedsToMatchPool.into());
+    if redeem_treasury_info.key != &vault.redeem_treasury {
+        return Err(VaultError::RedeemTreasuryNeedsToMatchPool.into());
     }
 
     if !external_pricing.allowed_to_combine {
-        return Err(FractionError::NotAllowedToCombine.into());
+        return Err(VaultError::NotAllowedToCombine.into());
     }
 
     let market_cap = match fraction_mint
@@ -113,7 +101,7 @@ pub fn process_combine_fractionalized_token_pool(
         .checked_mul(external_pricing.price_per_share)
     {
         Some(val) => val,
-        None => return Err(FractionError::NumericalOverflowError.into()),
+        None => return Err(VaultError::NumericalOverflowError.into()),
     };
 
     let your_share_value = match your_outstanding_shares
@@ -121,16 +109,16 @@ pub fn process_combine_fractionalized_token_pool(
         .checked_mul(external_pricing.price_per_share)
     {
         Some(val) => val,
-        None => return Err(FractionError::NumericalOverflowError.into()),
+        None => return Err(VaultError::NumericalOverflowError.into()),
     };
 
     let what_you_owe = match market_cap.checked_sub(your_share_value) {
         Some(val) => val,
-        None => return Err(FractionError::NumericalOverflowError.into()),
+        None => return Err(VaultError::NumericalOverflowError.into()),
     };
 
     if your_payment_account.amount < what_you_owe {
-        return Err(FractionError::CannotAffordToCombineThisPool.into());
+        return Err(VaultError::CannotAffordToCombineThisPool.into());
     }
 
     let (_, bump_seed) = Pubkey::find_program_address(&[program_id.as_ref()], program_id);
@@ -154,36 +142,35 @@ pub fn process_combine_fractionalized_token_pool(
         source: your_outstanding_shares_info.clone(),
     })?;
 
-    fractionalized_token_pool.state = PoolState::Combined;
-    fractionalized_token_pool.serialize(&mut *fractionalized_token_pool_info.data.borrow_mut())?;
+    vault.state = VaultState::Combined;
+    vault.serialize(&mut *vault_info.data.borrow_mut())?;
 
     Ok(())
 }
 
-pub fn process_activate_fractionalized_token_pool(
+pub fn process_activate_vault(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     number_of_shares: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let fractionalized_token_pool_info = next_account_info(account_info_iter)?;
+    let vault_info = next_account_info(account_info_iter)?;
     let fraction_mint_info = next_account_info(account_info_iter)?;
     let fraction_treasury_info = next_account_info(account_info_iter)?;
     let fractional_mint_authority_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
 
-    let mut fractionalized_token_pool: FractionalizedTokenPool =
-        try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
+    let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
 
-    if fractionalized_token_pool.state != PoolState::Inactive {
-        return Err(FractionError::PoolShouldBeInactive.into());
+    if vault.state != VaultState::Inactive {
+        return Err(VaultError::PoolShouldBeInactive.into());
     }
 
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[program_id.as_ref()], program_id);
     if fractional_mint_authority_info.key != &authority_key {
-        return Err(FractionError::InvalidAuthority.into());
+        return Err(VaultError::InvalidAuthority.into());
     }
     let authority_signer_seeds = &[program_id.as_ref(), &[bump_seed]];
 
@@ -196,13 +183,13 @@ pub fn process_activate_fractionalized_token_pool(
         token_program: token_program_info.clone(),
     })?;
 
-    fractionalized_token_pool.state = PoolState::Active;
-    fractionalized_token_pool.serialize(&mut *fractionalized_token_pool_info.data.borrow_mut())?;
+    vault.state = VaultState::Active;
+    vault.serialize(&mut *vault_info.data.borrow_mut())?;
 
     Ok(())
 }
 
-pub fn process_add_token_to_inactivated_fractionalized_token_pool(
+pub fn process_add_token_to_inactivated_vault(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     amount: u64,
@@ -210,8 +197,8 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
     let account_info_iter = &mut accounts.iter();
     let registry_account_info = next_account_info(account_info_iter)?;
     let token_account_info = next_account_info(account_info_iter)?;
+    let safety_deposit_info = next_account_info(account_info_iter)?;
     let vault_info = next_account_info(account_info_iter)?;
-    let fractionalized_token_pool_info = next_account_info(account_info_iter)?;
     let payer_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
 
@@ -222,45 +209,46 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
     let rent = &Rent::from_account_info(rent_info)?;
     assert_rent_exempt(rent, token_account_info)?;
     assert_rent_exempt(rent, vault_info)?;
+    assert_owned_by(safety_deposit_info, token_program_info.key)?;
+    assert_owned_by(token_account_info, token_program_info.key)?;
 
     let token_account: Account = assert_initialized(token_account_info)?;
-    let vault: Account = assert_initialized(vault_info)?;
-    let mut fractionalized_token_pool: FractionalizedTokenPool =
-        try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow_mut())?;
+    let safety_deposit: Account = assert_initialized(safety_deposit_info)?;
+    let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
 
-    if fractionalized_token_pool.state != PoolState::Inactive {
-        return Err(FractionError::PoolShouldBeInactive.into());
+    if vault.state != VaultState::Inactive {
+        return Err(VaultError::PoolShouldBeInactive.into());
     }
 
     if token_account.amount == 0 {
-        return Err(FractionError::TokenAccountContainsNoTokens.into());
+        return Err(VaultError::TokenAccountContainsNoTokens.into());
     }
 
     if token_account.amount < amount {
-        return Err(FractionError::TokenAccountAmountLessThanAmountSpecified.into());
+        return Err(VaultError::TokenAccountAmountLessThanAmountSpecified.into());
     }
 
-    if vault.amount > 0 {
-        return Err(FractionError::VaultAccountIsNotEmpty.into());
+    if safety_deposit.amount > 0 {
+        return Err(VaultError::VaultAccountIsNotEmpty.into());
     }
 
-    if vault.owner != *program_id {
-        return Err(FractionError::VaultAccountIsNotOwnedByProgram.into());
+    if safety_deposit.owner != *program_id {
+        return Err(VaultError::VaultAccountIsNotOwnedByProgram.into());
     }
 
     let seeds = &[
         PREFIX.as_bytes(),
-        fractionalized_token_pool_info.key.as_ref(),
+        vault_info.key.as_ref(),
         token_account.mint.as_ref(),
     ];
     let (registry_key, bump_seed) = Pubkey::find_program_address(seeds, program_id);
 
     if registry_key != *registry_account_info.key {
-        return Err(FractionError::RegistryAccountAddressInvalid.into());
+        return Err(VaultError::RegistryAccountAddressInvalid.into());
     }
     let authority_signer_seeds = &[
         PREFIX.as_bytes(),
-        fractionalized_token_pool_info.key.as_ref(),
+        vault_info.key.as_ref(),
         token_account.mint.as_ref(),
         &[bump_seed],
     ];
@@ -277,23 +265,22 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
     let mut registry: FractionalizedTokenRegistry =
         try_from_slice_unchecked(&registry_account_info.data.borrow_mut())?;
     registry.key = REGISTRY_KEY;
-    registry.fractionalized_token_pool = *fractionalized_token_pool_info.key;
-    registry.token_mint = token_account.mint;
     registry.vault = *vault_info.key;
-    registry.order = fractionalized_token_pool.token_type_count;
+    registry.token_mint = token_account.mint;
+    registry.safety_deposit_box = *safety_deposit_info.key;
+    registry.order = vault.token_type_count;
 
     registry.serialize(&mut *registry_account_info.data.borrow_mut())?;
 
-    fractionalized_token_pool.token_type_count =
-        match fractionalized_token_pool.token_type_count.checked_add(1) {
-            Some(val) => val,
-            None => return Err(FractionError::NumericalOverflowError.into()),
-        };
+    vault.token_type_count = match vault.token_type_count.checked_add(1) {
+        Some(val) => val,
+        None => return Err(VaultError::NumericalOverflowError.into()),
+    };
     let mut hasher = Sha256::new();
     let mut new_arr: [u8; 64] = [0; 64];
     for n in 0..63 {
         if n < 32 {
-            new_arr[n] = fractionalized_token_pool.hashed_fractionalized_token_registry[n];
+            new_arr[n] = vault.hashed_fractionalized_token_registry[n];
         } else {
             new_arr[n] = registry_account_info.key.as_ref()[n - 32];
         }
@@ -307,9 +294,9 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
         hashed_arr[n] = slice[n];
     }
 
-    fractionalized_token_pool.hashed_fractionalized_token_registry = hashed_arr;
+    vault.hashed_fractionalized_token_registry = hashed_arr;
 
-    fractionalized_token_pool.serialize(&mut *fractionalized_token_pool_info.data.borrow_mut())?;
+    vault.serialize(&mut *vault_info.data.borrow_mut())?;
 
     spl_token_transfer(TokenTransferParams {
         source: token_account_info.clone(),
@@ -323,7 +310,7 @@ pub fn process_add_token_to_inactivated_fractionalized_token_pool(
     Ok(())
 }
 
-pub fn process_init_fractionalized_token_pool(
+pub fn process_init_vault(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     allow_further_share_creation: bool,
@@ -332,7 +319,7 @@ pub fn process_init_fractionalized_token_pool(
     let fraction_mint_info = next_account_info(account_info_iter)?;
     let redeem_treasury_info = next_account_info(account_info_iter)?;
     let fraction_treasury_info = next_account_info(account_info_iter)?;
-    let fractionalized_token_pool_info = next_account_info(account_info_iter)?;
+    let vault_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
     let pricing_lookup_address = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
@@ -341,86 +328,85 @@ pub fn process_init_fractionalized_token_pool(
     let fraction_mint: Mint = assert_initialized(fraction_mint_info)?;
     let redeem_treasury: Account = assert_initialized(redeem_treasury_info)?;
     let fraction_treasury: Account = assert_initialized(fraction_treasury_info)?;
-    let mut fractionalized_token_pool: FractionalizedTokenPool =
-        try_from_slice_unchecked(&fractionalized_token_pool_info.data.borrow())?;
+    let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow())?;
     let external_pricing_lookup: ExternalPriceAccount =
         try_from_slice_unchecked(&pricing_lookup_address.data.borrow_mut())?;
 
     assert_rent_exempt(rent, redeem_treasury_info)?;
     assert_rent_exempt(rent, fraction_treasury_info)?;
     assert_rent_exempt(rent, fraction_mint_info)?;
-    assert_rent_exempt(rent, fractionalized_token_pool_info)?;
+    assert_rent_exempt(rent, vault_info)?;
     assert_rent_exempt(rent, pricing_lookup_address)?;
     assert_owned_by(fraction_mint_info, token_program_info.key)?;
     assert_owned_by(fraction_treasury_info, token_program_info.key)?;
     assert_owned_by(redeem_treasury_info, token_program_info.key)?;
 
     if fraction_mint.supply != 0 {
-        return Err(FractionError::FractionMintNotEmpty.into());
+        return Err(VaultError::VaultMintNotEmpty.into());
     }
 
     match fraction_mint.mint_authority {
         solana_program::program_option::COption::None => {
-            return Err(FractionError::FractionAuthorityNotProgram.into());
+            return Err(VaultError::VaultAuthorityNotProgram.into());
         }
         solana_program::program_option::COption::Some(val) => {
             if val != *program_id {
-                return Err(FractionError::FractionAuthorityNotProgram.into());
+                return Err(VaultError::VaultAuthorityNotProgram.into());
             }
         }
     }
     match fraction_mint.freeze_authority {
         solana_program::program_option::COption::None => {
-            return Err(FractionError::FractionAuthorityNotProgram.into());
+            return Err(VaultError::VaultAuthorityNotProgram.into());
         }
         solana_program::program_option::COption::Some(val) => {
             if val != *program_id {
-                return Err(FractionError::FractionAuthorityNotProgram.into());
+                return Err(VaultError::VaultAuthorityNotProgram.into());
             }
         }
     }
 
     if redeem_treasury.amount != 0 {
-        return Err(FractionError::TreasuryNotEmpty.into());
+        return Err(VaultError::TreasuryNotEmpty.into());
     }
 
     if redeem_treasury.owner != *program_id {
-        return Err(FractionError::TreasuryOwnerNotProgram.into());
+        return Err(VaultError::TreasuryOwnerNotProgram.into());
     }
 
     if redeem_treasury.mint == external_pricing_lookup.price_mint {
-        return Err(FractionError::RedeemTreasuryMintMustMatchLookupMint.into());
+        return Err(VaultError::RedeemTreasuryMintMustMatchLookupMint.into());
     }
 
     if redeem_treasury.mint != *fraction_mint_info.key {
-        return Err(FractionError::RedeemTreasuryCantShareSameMintAsFraction.into());
+        return Err(VaultError::RedeemTreasuryCantShareSameMintAsVault.into());
     }
 
     if fraction_treasury.amount != 0 {
-        return Err(FractionError::TreasuryNotEmpty.into());
+        return Err(VaultError::TreasuryNotEmpty.into());
     }
 
     if fraction_treasury.owner != *program_id {
-        return Err(FractionError::TreasuryOwnerNotProgram.into());
+        return Err(VaultError::TreasuryOwnerNotProgram.into());
     }
 
     if fraction_treasury.mint != *fraction_mint_info.key {
-        return Err(FractionError::FractionTreasuryMintDoesNotMatchFractionMint.into());
+        return Err(VaultError::VaultTreasuryMintDoesNotMatchVaultMint.into());
     }
 
-    fractionalized_token_pool.key = POOL_KEY;
-    fractionalized_token_pool.redeem_treasury = *redeem_treasury_info.key;
-    fractionalized_token_pool.fraction_treasury = *fraction_treasury_info.key;
-    fractionalized_token_pool.fraction_mint = *fraction_mint_info.key;
-    fractionalized_token_pool.pricing_lookup_address = *pricing_lookup_address.key;
-    fractionalized_token_pool.allow_further_share_creation = allow_further_share_creation;
-    fractionalized_token_pool.authority = *authority_info.key;
-    fractionalized_token_pool.token_type_count = 0;
-    fractionalized_token_pool.state = PoolState::Inactive;
+    vault.key = VAULT_KEY;
+    vault.redeem_treasury = *redeem_treasury_info.key;
+    vault.fraction_treasury = *fraction_treasury_info.key;
+    vault.fraction_mint = *fraction_mint_info.key;
+    vault.pricing_lookup_address = *pricing_lookup_address.key;
+    vault.allow_further_share_creation = allow_further_share_creation;
+    vault.authority = *authority_info.key;
+    vault.token_type_count = 0;
+    vault.state = VaultState::Inactive;
 
     let arr_of_zeroes: [u8; 32] = [0; 32];
-    fractionalized_token_pool.hashed_fractionalized_token_registry = arr_of_zeroes;
-    fractionalized_token_pool.serialize(&mut *fractionalized_token_pool_info.data.borrow_mut())?;
+    vault.hashed_fractionalized_token_registry = arr_of_zeroes;
+    vault.serialize(&mut *vault_info.data.borrow_mut())?;
 
     Ok(())
 }

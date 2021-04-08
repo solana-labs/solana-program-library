@@ -1,5 +1,5 @@
 use {
-    crate::{error::FractionError, state::FractionalizedTokenPool},
+    crate::error::VaultError,
     solana_program::{
         account_info::AccountInfo,
         entrypoint::ProgramResult,
@@ -20,7 +20,7 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(FractionError::Uninitialized.into())
+        Err(VaultError::Uninitialized.into())
     } else {
         Ok(account)
     }
@@ -28,7 +28,7 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
-        Err(FractionError::NotRentExempt.into())
+        Err(VaultError::NotRentExempt.into())
     } else {
         Ok(())
     }
@@ -36,7 +36,7 @@ pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramRes
 
 pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
     if account.owner != owner {
-        Err(FractionError::IncorrectOwner.into())
+        Err(VaultError::IncorrectOwner.into())
     } else {
         Ok(())
     }
@@ -112,7 +112,7 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult 
         &[source, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_err(|_| FractionError::TokenTransferFailed.into())
+    result.map_err(|_| VaultError::TokenTransferFailed.into())
 }
 
 /// Issue a spl_token `MintTo` instruction.
@@ -137,7 +137,7 @@ pub fn spl_token_mint_to(params: TokenMintToParams<'_, '_>) -> ProgramResult {
         &[mint, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_err(|_| FractionError::TokenMintToFailed.into())
+    result.map_err(|_| VaultError::TokenMintToFailed.into())
 }
 
 /// Issue a spl_token `Burn` instruction.
@@ -163,7 +163,7 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
         &[source, mint, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_err(|_| FractionError::TokenBurnFailed.into())
+    result.map_err(|_| VaultError::TokenBurnFailed.into())
 }
 
 ///TokenTransferParams

@@ -10,9 +10,9 @@ use {
     thiserror::Error,
 };
 
-/// Errors that may be returned by the Fraction program.
+/// Errors that may be returned by the Vault program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
-pub enum FractionError {
+pub enum VaultError {
     /// Invalid instruction data passed in.
     #[error("Failed to unpack instruction data")]
     InstructionUnpackError,
@@ -69,20 +69,20 @@ pub enum FractionError {
     #[error("Token burn failed")]
     TokenBurnFailed,
 
-    /// Fraction mint not empty on int
-    #[error("Fraction mint not empty on init")]
-    FractionMintNotEmpty,
+    /// Vault mint not empty on int
+    #[error("Vault mint not empty on init")]
+    VaultMintNotEmpty,
 
-    /// Fraction mint's authority not set to program
-    #[error("Fraction mint's authority not set to program")]
-    FractionAuthorityNotProgram,
+    /// Vault mint's authority not set to program
+    #[error("Vault mint's authority not set to program")]
+    VaultAuthorityNotProgram,
 
-    /// Fraction treasury not empty on init
-    #[error("Fraction treasury not empty on init")]
+    /// Vault treasury not empty on init
+    #[error("Vault treasury not empty on init")]
     TreasuryNotEmpty,
 
-    /// Fraction treasury's owner not set to program
-    #[error("Fraction treasury's owner not set to program")]
+    /// Vault treasury's owner not set to program
+    #[error("Vault treasury's owner not set to program")]
     TreasuryOwnerNotProgram,
 
     /// Pool should be inactive
@@ -93,13 +93,13 @@ pub enum FractionError {
     #[error("Pool should be active")]
     PoolShouldBeActive,
 
-    /// Fraction treasury needs to match fraction mint
-    #[error("Fraction treasury needs to match fraction mint")]
-    FractionTreasuryMintDoesNotMatchFractionMint,
+    /// Vault treasury needs to match fraction mint
+    #[error("Vault treasury needs to match fraction mint")]
+    VaultTreasuryMintDoesNotMatchVaultMint,
 
     /// Redeem Treasury cannot be same mint as fraction
     #[error("Redeem Treasury cannot be same mint as fraction")]
-    RedeemTreasuryCantShareSameMintAsFraction,
+    RedeemTreasuryCantShareSameMintAsVault,
 
     /// Invalid program authority provided
     #[error("Invalid program authority provided")]
@@ -115,11 +115,11 @@ pub enum FractionError {
 
     /// Your share account should match the mint of the fractional mint
     #[error("Your share account should match the mint of the fractional mint")]
-    ShareMintShouldMatchFractionalMint,
+    ShareMintShouldMatchVaultalMint,
 
-    /// Fraction mint provided does not match that on the token pool
-    #[error("Fraction mint provided does not match that on the token pool")]
-    FractionMintNeedsToMatchPool,
+    /// Vault mint provided does not match that on the token pool
+    #[error("Vault mint provided does not match that on the token pool")]
+    VaultMintNeedsToMatchPool,
 
     /// Redeem treasury provided does not match that on the token pool
     #[error("Redeem treasury provided does not match that on the token pool")]
@@ -134,20 +134,20 @@ pub enum FractionError {
     CannotAffordToCombineThisPool,
 }
 
-impl PrintProgramError for FractionError {
+impl PrintProgramError for VaultError {
     fn print<E>(&self) {
         msg!(&self.to_string());
     }
 }
 
-impl From<FractionError> for ProgramError {
-    fn from(e: FractionError) -> Self {
+impl From<VaultError> for ProgramError {
+    fn from(e: VaultError) -> Self {
         ProgramError::Custom(e as u32)
     }
 }
 
-impl<T> DecodeError<T> for FractionError {
+impl<T> DecodeError<T> for VaultError {
     fn type_of() -> &'static str {
-        "Fraction Error"
+        "Vault Error"
     }
 }

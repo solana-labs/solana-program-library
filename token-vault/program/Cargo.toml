@@ -1,7 +1,7 @@
 [package]
-name = "spl-token-fraction"
+name = "spl-token-vault"
 version = "0.0.1"
-description = "Solana Program Token Fractionalization"
+description = "Solana Program Token Vault"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"

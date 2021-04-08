@@ -19,7 +19,7 @@ members = [
   "token-lending/client",
   "token-swap/program",
   "token-swap/program/fuzz",
-  "token-fraction/program",
+  "token-vault/program",
   "token/cli",
   "token/program",
   "utils/cgen",

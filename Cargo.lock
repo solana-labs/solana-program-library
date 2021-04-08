@@ -3908,19 +3908,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-token-fraction"
-version = "0.0.1"
-dependencies = [
- "borsh 0.8.2",
- "num-derive",
- "num-traits",
- "sha2 0.9.3",
- "solana-program",
- "spl-token 3.1.0",
- "thiserror",
-]
-
-[[package]]
 name = "spl-token-lending"
 version = "0.1.0"
 dependencies = [
@@ -3981,6 +3968,19 @@ dependencies = [
  "spl-math",
  "spl-token 3.1.0",
  "spl-token-swap",
+]
+
+[[package]]
+name = "spl-token-vault"
+version = "0.0.1"
+dependencies = [
+ "borsh 0.8.2",
+ "num-derive",
+ "num-traits",
+ "sha2 0.9.3",
+ "solana-program",
+ "spl-token 3.1.0",
+ "thiserror",
 ]
 
 [[package]]
