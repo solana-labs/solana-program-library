@@ -456,6 +456,7 @@ async fn fail_with_unknown_validator() {
         &user_stake,
         &authorized,
         &lockup,
+        TEST_STAKE_AMOUNT,
     )
     .await;
     // make pool token account

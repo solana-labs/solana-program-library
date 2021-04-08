@@ -63,8 +63,8 @@ pub struct StakePool {
     pub token_program_id: Pubkey,
 
     /// Total stake under management.
-    /// Note that if `last_update_epoch` does not match the current epoch then this field may not
-    /// be accurate
+    /// Note that if `last_update_epoch` does not match the current epoch then
+    /// this field may not be accurate
     pub total_stake_lamports: u64,
 
     /// Total supply of pool tokens (should always match the supply in the Pool Mint)

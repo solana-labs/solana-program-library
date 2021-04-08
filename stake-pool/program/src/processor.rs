@@ -231,6 +231,7 @@ impl Processor {
         let manager_info = next_account_info(account_info_iter)?;
         let staker_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
+        let reserve_stake_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let manager_fee_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
@@ -240,23 +241,31 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         if !manager_info.is_signer {
+            msg!("Manager did not sign initialization");
             return Err(StakePoolError::SignatureMissing.into());
         }
 
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_uninitialized() {
+            msg!("Provided stake pool already in use");
             return Err(StakePoolError::AlreadyInUse.into());
         }
 
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_uninitialized() {
+            msg!("Provided validator list already in use");
             return Err(StakePoolError::AlreadyInUse.into());
         }
 
         let data_length = validator_list_info.data_len();
         let expected_max_validators = ValidatorList::calculate_max_validators(data_length);
         if expected_max_validators != max_validators as usize || max_validators == 0 {
+            msg!(
+                "Incorrect validator list size provided, expected {}, provided {}",
+                expected_max_validators,
+                max_validators
+            );
             return Err(StakePoolError::UnexpectedValidatorListAccountSize.into());
         }
         validator_list.account_type = AccountType::ValidatorList;
@@ -310,14 +319,46 @@ impl Processor {
             return Err(StakePoolError::WrongMintingAuthority.into());
         }
 
-        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
+        if *reserve_stake_info.owner != stake_program::id() {
+            msg!("Reserve stake account not owned by stake program");
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        let stake_state: stake_program::StakeState = deserialize(&reserve_stake_info.data.borrow())
+            .or(Err(ProgramError::InvalidAccountData))?;
+        if let stake_program::StakeState::Initialized(meta) = stake_state {
+            if meta.lockup != stake_program::Lockup::default() {
+                msg!("Reserve stake account has some lockup");
+                return Err(StakePoolError::WrongStakeState.into());
+            }
 
-        msg!("Clock data: {:?}", clock_info.data.borrow());
-        msg!("Epoch: {}", clock.epoch);
+            if meta.authorized.staker != withdraw_authority_key {
+                msg!(
+                    "Reserve stake account has incorrect staker {}, should be {}",
+                    meta.authorized.staker,
+                    withdraw_authority_key
+                );
+                return Err(StakePoolError::WrongStakeState.into());
+            }
+
+            if meta.authorized.withdrawer != withdraw_authority_key {
+                msg!(
+                    "Reserve stake account has incorrect withdrawer {}, should be {}",
+                    meta.authorized.staker,
+                    withdraw_authority_key
+                );
+                return Err(StakePoolError::WrongStakeState.into());
+            }
+        } else {
+            msg!("Reserve stake account not in intialized state");
+            return Err(StakePoolError::WrongStakeState.into());
+        }
+
+        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         stake_pool.account_type = AccountType::StakePool;
         stake_pool.manager = *manager_info.key;
         stake_pool.staker = *staker_info.key;
+        stake_pool.reserve_stake = *reserve_stake_info.key;
         stake_pool.deposit_bump_seed = deposit_bump_seed;
         stake_pool.withdraw_bump_seed = withdraw_bump_seed;
         stake_pool.validator_list = *validator_list_info.key;

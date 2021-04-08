@@ -95,6 +95,9 @@ fn send_transaction(
 }
 
 fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> CommandResult {
+    let reserve_stake = Keypair::new();
+    println!("Creating reserve stake {}", reserve_stake.pubkey());
+
     let mint_account = Keypair::new();
     println!("Creating mint {}", mint_account.pubkey());
 
@@ -109,6 +112,10 @@ fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> Comman
 
     let validator_list = Keypair::new();
 
+    let reserve_stake_balance = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
+        + 1;
     let mint_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(spl_token::state::Mint::LEN)?;
@@ -123,7 +130,8 @@ fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> Comman
     let validator_list_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(validator_list_size)?;
-    let total_rent_free_balances = mint_account_balance
+    let total_rent_free_balances = reserve_stake_balance
+        + mint_account_balance
         + pool_fee_account_balance
         + stake_pool_account_lamports
         + validator_list_balance;
@@ -142,6 +150,22 @@ fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> Comman
 
     let mut transaction = Transaction::new_with_payer(
         &[
+            // Account for the stake pool reserve
+            system_instruction::create_account(
+                &config.fee_payer.pubkey(),
+                &reserve_stake.pubkey(),
+                reserve_stake_balance,
+                STAKE_STATE_LEN as u64,
+                &stake_program::id(),
+            ),
+            stake_program::initialize(
+                &reserve_stake.pubkey(),
+                &stake_program::Authorized {
+                    staker: withdraw_authority,
+                    withdrawer: withdraw_authority,
+                },
+                &stake_program::Lockup::default(),
+            ),
             // Account for the stake pool mint
             system_instruction::create_account(
                 &config.fee_payer.pubkey(),
@@ -196,6 +220,7 @@ fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> Comman
                 &config.manager.pubkey(),
                 &config.staker.pubkey(),
                 &validator_list.pubkey(),
+                &reserve_stake.pubkey(),
                 &mint_account.pubkey(),
                 &pool_fee_account.pubkey(),
                 &spl_token::id(),
