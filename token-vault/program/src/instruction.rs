@@ -21,6 +21,12 @@ pub struct AddTokenToInactiveVaultArgs {
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
+pub struct MintFractionalSharesArgs {
+    pub amount: u64,
+}
+
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct ActivateVaultArgs {
     pub number_of_shares: u64,
 }
@@ -96,6 +102,14 @@ pub enum VaultInstruction {
     ///   7. `[]` Token program
     ///   8. `[]` Rent sysvar
     WithdrawTokenFromSafetyDepositBox,
+
+    ///   0. `[writable]` Fraction treasury
+    ///   1. `[writable]` Fraction mint
+    ///   2. `[writable]` The initialized active token vault
+    ///   3. `[]` PDA-based Mint authority to mint tokens to treasury[PREFIX, program_id]
+    ///   4. `[signer]` Authority of vault
+    ///   5. `[]` Token program
+    MintFractionalShares(MintFractionalSharesArgs),
 }
 /*
 /// Creates an CreateFractionAccounts instruction

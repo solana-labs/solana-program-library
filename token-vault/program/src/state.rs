@@ -7,7 +7,7 @@ pub const PREFIX: &str = "vault";
 
 /// Used to tell front end clients that this struct is a ledger struct
 pub const VAULT_KEY: u8 = 0;
-pub const REGISTRY_KEY: u8 = 1;
+pub const SAFETY_DEPOSIT_KEY: u8 = 1;
 pub const EXTERNAL_ACCOUNT_KEY: u8 = 2;
 
 pub const MAX_TOKEN_REGISTRY_SIZE: usize = 1 + 32 + 32 + 32 + 100 + 1;

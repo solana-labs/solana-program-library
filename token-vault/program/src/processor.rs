@@ -4,7 +4,7 @@ use {
         instruction::VaultInstruction,
         state::{
             ExternalPriceAccount, SafetyDepositBox, Vault, VaultState, MAX_TOKEN_REGISTRY_SIZE,
-            MAX_VAULT_SIZE, PREFIX, REGISTRY_KEY, VAULT_KEY,
+            PREFIX, SAFETY_DEPOSIT_KEY, VAULT_KEY,
         },
         utils::{
             assert_initialized, assert_owned_by, assert_rent_exempt, assert_token_matching,
@@ -57,7 +57,62 @@ pub fn process_instruction(
             msg!("Instruction: Withdraw Token from Safety Deposit Box");
             process_withdraw_token_from_safety_deposit_box(program_id, accounts)
         }
+        VaultInstruction::MintFractionalShares(args) => {
+            msg!("Instruction: Mint new fractional shares");
+            process_mint_fractional_shares(program_id, accounts, args.amount)
+        }
     }
+}
+
+pub fn process_mint_fractional_shares(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    amount: u64,
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let fraction_treasury_info = next_account_info(account_info_iter)?;
+    let fraction_mint_info = next_account_info(account_info_iter)?;
+    let vault_info = next_account_info(account_info_iter)?;
+    let mint_authority_info = next_account_info(account_info_iter)?;
+    let vault_authority_info = next_account_info(account_info_iter)?;
+    let token_program_info = next_account_info(account_info_iter)?;
+
+    let vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
+
+    assert_token_matching(&vault, token_program_info)?;
+    assert_owned_by(vault_info, program_id)?;
+    assert_vault_authority_correct(&vault, vault_authority_info)?;
+
+    if *fraction_treasury_info.key != vault.fraction_treasury {
+        return Err(VaultError::FractionTreasuryNeedsToMatchVault.into());
+    }
+
+    if fraction_mint_info.key != &vault.fraction_mint {
+        return Err(VaultError::VaultMintNeedsToMatchVault.into());
+    }
+
+    if !vault.allow_further_share_creation {
+        return Err(VaultError::VaultDoesNotAllowNewShareMinting.into());
+    }
+
+    let (authority, bump_seed) =
+        Pubkey::find_program_address(&[PREFIX.as_bytes(), program_id.as_ref()], program_id);
+    let authority_signer_seeds = &[PREFIX.as_bytes(), program_id.as_ref(), &[bump_seed]];
+
+    if authority != *mint_authority_info.key {
+        return Err(VaultError::InvalidAuthority.into());
+    }
+
+    spl_token_mint_to(TokenMintToParams {
+        mint: fraction_mint_info.clone(),
+        destination: fraction_treasury_info.clone(),
+        amount: amount,
+        authority: mint_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    Ok(())
 }
 
 pub fn process_withdraw_token_from_safety_deposit_box(
@@ -90,8 +145,8 @@ pub fn process_withdraw_token_from_safety_deposit_box(
     assert_token_matching(&vault, token_program_info)?;
     assert_vault_authority_correct(&vault, vault_authority_info)?;
 
-    if vault.state != VaultState::Combined {
-        return Err(VaultError::VaultShouldBeCombined.into());
+    if vault.state != VaultState::Combined && vault.state != VaultState::Inactive {
+        return Err(VaultError::VaultShouldBeCombinedOrInactive.into());
     }
 
     if safety_deposit.vault != *vault_info.key {
@@ -136,7 +191,10 @@ pub fn process_withdraw_token_from_safety_deposit_box(
         None => return Err(VaultError::NumericalOverflowError.into()),
     };
 
-    if fraction_mint.supply == 0 && vault.token_type_count == 0 {
+    if fraction_mint.supply == 0
+        && vault.token_type_count == 0
+        && vault.state == VaultState::Combined
+    {
         vault.state = VaultState::Deactivated;
         vault.serialize(&mut *vault_info.data.borrow_mut())?;
     }
@@ -496,7 +554,7 @@ pub fn process_add_token_to_inactivated_vault(
 
     let mut safety_deposit_account: SafetyDepositBox =
         try_from_slice_unchecked(&safety_deposit_account_info.data.borrow_mut())?;
-    safety_deposit_account.key = REGISTRY_KEY;
+    safety_deposit_account.key = SAFETY_DEPOSIT_KEY;
     safety_deposit_account.vault = *vault_info.key;
     safety_deposit_account.token_mint = token_account.mint;
     safety_deposit_account.store = *store_info.key;

@@ -129,6 +129,10 @@ pub enum VaultError {
     #[error("Redeem treasury provided does not match that on the token vault")]
     RedeemTreasuryNeedsToMatchVault,
 
+    /// Fraction treasury provided does not match that on the token vault
+    #[error("Fraction treasury provided does not match that on the token vault")]
+    FractionTreasuryNeedsToMatchVault,
+
     /// Not allowed to combine at this time
     #[error("Not allowed to combine at this time")]
     NotAllowedToCombine,
@@ -180,6 +184,14 @@ pub enum VaultError {
     /// The destination account to receive your token needs to be the same mint as the token's mint
     #[error("The destination account to receive your token needs to be the same mint as the token's mint")]
     DestinationAccountNeedsToMatchTokenMint,
+
+    /// Vault must be in combined or inactive state to perform withdrawals
+    #[error("Vault must be in combined or inactive state to perform withdrawals")]
+    VaultShouldBeCombinedOrInactive,
+
+    /// This vault does not allow the minting of new shares!
+    #[error("This vault does not allow the minting of new shares!")]
+    VaultDoesNotAllowNewShareMinting,
 }
 
 impl PrintProgramError for VaultError {
