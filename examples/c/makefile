@@ -1,2 +1,6 @@
 OUT_DIR := ../../target/deploy
-include ~/.local/share/solana/install/active_release/bin/sdk/bpf/c/bpf.mk
+SOLANA_PATH := $(solana_path)
+ifeq ($(SOLANA_PATH),)
+SOLANA_PATH := ~/.local/share/solana/install
+endif
+include $(SOLANA_PATH)/active_release/bin/sdk/bpf/c/bpf.mk
