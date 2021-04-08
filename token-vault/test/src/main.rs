@@ -16,14 +16,15 @@ use {
         transaction::Transaction,
     },
     spl_token::{
-        instruction::{initialize_account, initialize_mint},
+        instruction::{approve, initialize_account, initialize_mint, mint_to},
         state::{Account, Mint},
     },
     spl_token_vault::{
         instruction::{
-            create_init_vault_instruction, create_update_external_price_account_instruction,
+            create_add_token_to_inactive_vault_instruction, create_init_vault_instruction,
+            create_update_external_price_account_instruction,
         },
-        state::{MAX_EXTERNAL_ACCOUNT_SIZE, PREFIX},
+        state::{Vault, MAX_EXTERNAL_ACCOUNT_SIZE, PREFIX},
     },
     std::str::FromStr,
 };
@@ -193,6 +194,124 @@ fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcCl
     external_account.pubkey()
 }
 
+fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pubkey {
+    let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
+    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
+    let vault_authority =
+        pubkey_of(app_matches, "vault_authority").unwrap_or_else(|| payer.pubkey());
+
+    let vault_key = pubkey_of(app_matches, "vault_authority").unwrap();
+    let amount: u64 = app_matches
+        .value_of("amount")
+        .unwrap_or_else(|| "1")
+        .parse::<u64>()
+        .unwrap();
+
+    let token_mint = Keypair::new();
+    let token_account = Keypair::new();
+    let store = Keypair::new();
+
+    let transfer_authority = Keypair::new();
+
+    let clone_of_key = token_mint.pubkey().clone();
+    let seeds = &[
+        PREFIX.as_bytes(),
+        &vault_key.as_ref(),
+        &clone_of_key.as_ref(),
+    ];
+    let (safety_deposit_box, _) = Pubkey::find_program_address(seeds, &program_key);
+
+    let instructions = [
+        create_account(
+            &payer.pubkey(),
+            &token_mint.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Mint::LEN)
+                .unwrap(),
+            Mint::LEN as u64,
+            &token_key,
+        ),
+        create_account(
+            &payer.pubkey(),
+            &token_account.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ),
+        create_account(
+            &payer.pubkey(),
+            &store.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ),
+        initialize_mint(
+            &token_key,
+            &token_mint.pubkey(),
+            &payer.pubkey(),
+            Some(&payer.pubkey()),
+            0,
+        )
+        .unwrap(),
+        initialize_account(
+            &token_key,
+            &token_account.pubkey(),
+            &token_mint.pubkey(),
+            &program_key,
+        )
+        .unwrap(),
+        initialize_account(
+            &token_key,
+            &store.pubkey(),
+            &token_mint.pubkey(),
+            &program_key,
+        )
+        .unwrap(),
+        mint_to(
+            &token_key,
+            &token_mint.pubkey(),
+            &token_account.pubkey(),
+            &payer.pubkey(),
+            &[&payer.pubkey()],
+            amount,
+        )
+        .unwrap(),
+        approve(
+            &token_key,
+            &token_account.pubkey(),
+            &transfer_authority.pubkey(),
+            &payer.pubkey(),
+            &[&payer.pubkey()],
+            amount,
+        )
+        .unwrap(),
+        create_add_token_to_inactive_vault_instruction(
+            program_key,
+            safety_deposit_box,
+            token_account.pubkey(),
+            store.pubkey(),
+            vault_key,
+            vault_authority,
+            payer.pubkey(),
+            transfer_authority.pubkey(),
+            amount,
+        ),
+    ];
+
+    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
+    let signers = vec![&payer, &token_mint, &token_account, &store];
+
+    transaction.sign(&signers, recent_blockhash);
+    client.send_and_confirm_transaction(&transaction).unwrap();
+    let _account = client.get_account(&safety_deposit_box).unwrap();
+    safety_deposit_box
+}
+
 fn main() {
     let app_matches = App::new(crate_name!())
         .about(crate_description!())
@@ -250,22 +369,13 @@ fn main() {
             SubCommand::with_name("external_price_account_rewrite")
                 .about("Rewrite (or create) an External Price Account")
                 .arg(
-                    Arg::with_name("Authority")
-                        .long("authority")
-                        .value_name("AUTHORITY")
-                        .required(false)
-                        .validator(is_valid_pubkey)
-                        .takes_value(true)
-                        .help("Pubkey of authority, defaults to you otherwise"),
-                )
-                .arg(
                     Arg::with_name("external_price_account")
                         .long("external_price_account")
                         .value_name("EXTERNAL_PRICE_ACCOUNT")
                         .required(true)
-                        .validator(is_valid_pubkey)
+                        .validator(is_valid_signer)
                         .takes_value(true)
-                        .help("Pubkey of external price account"),
+                        .help("Filepath or URL to a keypair"),
                 )
                 .arg(
                     Arg::with_name("price_mint")
@@ -301,6 +411,36 @@ fn main() {
                         .help("If we should skip creation because this account already exists"),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("add_token_to_vault")
+                .about("Add Token of X amount (default 1) to Inactive Vault")
+                .arg(
+                    Arg::with_name("vault_authority")
+                        .long("vault_authority")
+                        .value_name("VAULT_AUTHORITY")
+                        .required(false)
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help("Filepath or URL to a keypair, defaults to you otherwise"),
+                )
+                .arg(
+                    Arg::with_name("vault_address")
+                        .long("vault_address")
+                        .value_name("VAULT_ADDRESS")
+                        .required(true)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of vault"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .long("amount")
+                        .value_name("AMOUNT")
+                        .required(false)
+                        .takes_value(true)
+                        .help("Amount of this new token type to add to the vault"),
+                ),
+        )
         .get_matches();
 
     let client = RpcClient::new(
@@ -325,6 +465,13 @@ fn main() {
             println!(
                 "Rewrote price account {:?}",
                 rewrite_price_account(arg_matches, payer, client)
+            );
+        }
+        ("add_token_to_vault", Some(arg_matches)) => {
+            println!(
+                "Added token to safety deposit account {:?} to vault {:?}",
+                add_token_to_vault(arg_matches, payer, client),
+                arg_matches.value_of("vault_address")
             );
         }
         _ => unreachable!(),

@@ -41,10 +41,10 @@ pub enum VaultInstruction {
     InitVault(InitVaultArgs),
 
     /// Add a token to a inactive token vault
-    ///   0. `[writable]` Uninitialized Token Fractional Registry account address (will be created and allocated by this endpoint)
-    ///                   Address should be pda with seed of [PREFIX, fractional_token_ledger_address, token_mint_address]
+    ///   0. `[writable]` Uninitialized safety deposit box account address (will be created and allocated by this endpoint)
+    ///                   Address should be pda with seed of [PREFIX, vault_address, token_mint_address]
     ///   1. `[writable]` Initialized Token account
-    ///   2. `[writable]` Initialized Token safety deposit box account with authority of this program
+    ///   2. `[writable]` Initialized Token store account with authority of this program, this will get set on the safety deposit box
     ///   3. `[writable]` Initialized inactive fractionalized token vault
     ///   4. `[signer]` Authority on the vault
     ///   5. `[signer]` Payer
@@ -194,5 +194,38 @@ pub fn create_update_external_price_account_instruction(
         })
         .try_to_vec()
         .unwrap(),
+    }
+}
+
+/// Creates an AddTokenToInactiveVault instruction
+#[allow(clippy::too_many_arguments)]
+pub fn create_add_token_to_inactive_vault_instruction(
+    program_id: Pubkey,
+    safety_deposit_box: Pubkey,
+    token_account: Pubkey,
+    store: Pubkey,
+    vault: Pubkey,
+    vault_authority: Pubkey,
+    payer: Pubkey,
+    transfer_authority: Pubkey,
+    amount: u64,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(safety_deposit_box, false),
+            AccountMeta::new(token_account, false),
+            AccountMeta::new(store, false),
+            AccountMeta::new(vault, false),
+            AccountMeta::new_readonly(vault_authority, true),
+            AccountMeta::new_readonly(payer, true),
+            AccountMeta::new_readonly(transfer_authority, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+        ],
+        data: VaultInstruction::AddTokenToInactiveVault(AddTokenToInactiveVaultArgs { amount })
+            .try_to_vec()
+            .unwrap(),
     }
 }
