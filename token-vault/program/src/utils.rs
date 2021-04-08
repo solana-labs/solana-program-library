@@ -49,6 +49,20 @@ pub fn assert_token_matching(vault: &Vault, token: &AccountInfo) -> ProgramResul
     Ok(())
 }
 
+pub fn assert_vault_authority_correct(
+    vault: &Vault,
+    vault_authority_info: &AccountInfo,
+) -> ProgramResult {
+    if !vault_authority_info.is_signer {
+        return Err(VaultError::AuthorityIsNotSigner.into());
+    }
+
+    if *vault_authority_info.key != vault.authority {
+        return Err(VaultError::AuthorityDoesNotMatch.into());
+    }
+    Ok(())
+}
+
 /// Create account almost from scratch, lifted from
 /// https://github.com/solana-labs/solana-program-library/blob/7d4873c61721aca25464d42cc5ef651a7923ca79/associated-token-account/program/src/processor.rs#L51-L98
 #[inline(always)]

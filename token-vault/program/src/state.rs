@@ -38,11 +38,6 @@ pub struct Vault {
     pub redeem_treasury: Pubkey,
     /// Can authority mint more shares from fraction_mint after activation
     pub allow_further_share_creation: bool,
-    /// Hashed safety deposit boxes - after each addition of a token, we hash that token key
-    /// combined with the current hash on the vault, making a 64 byte array out of [current_hashed, new_box]
-    /// and hashing it with sha256 down to a new 32 byte array of u8s and saving it.
-    /// We use this to guarantee you withdraw all your tokens later.
-    pub hashed_safety_deposit_boxes: [u8; 32],
 
     /// Must point at an ExternalPriceAccount, which gives permission and price for buyout.
     pub pricing_lookup_address: Pubkey,
@@ -71,7 +66,7 @@ pub struct SafetyDepositBox {
     /// This particular token's mint
     pub token_mint: Pubkey,
     /// Account that stores the tokens under management
-    pub safety_deposit_box: Pubkey,
+    pub store: Pubkey,
     /// the order in the array of registries
     pub order: u8,
 }

@@ -156,6 +156,30 @@ pub enum VaultError {
     /// Token Program Provided Needs To Match Vault
     #[error("Token Program Provided Needs To Match Vault")]
     TokenProgramProvidedDoesNotMatchVault,
+
+    /// Authority of vault needs to be signer for this action
+    #[error("Authority of vault needs to be signer for this action")]
+    AuthorityIsNotSigner,
+
+    /// Authority of vault does not match authority provided
+    #[error("Authority of vault does not match authority provided")]
+    AuthorityDoesNotMatch,
+
+    /// This safety deposit box does not belong to this vault!
+    #[error("This safety deposit box does not belong to this vault!")]
+    SafetyDepositBoxVaultMismatch,
+
+    /// The store provided does not match the store key on the safety deposit box!
+    #[error("The store provided does not match the store key on the safety deposit box!")]
+    StoreDoesNotMatchSafetyDepositBox,
+
+    /// This safety deposit box is empty!
+    #[error("This safety deposit box is empty!")]
+    StoreEmpty,
+
+    /// The destination account to receive your token needs to be the same mint as the token's mint
+    #[error("The destination account to receive your token needs to be the same mint as the token's mint")]
+    DestinationAccountNeedsToMatchTokenMint,
 }
 
 impl PrintProgramError for VaultError {

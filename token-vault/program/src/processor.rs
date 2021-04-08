@@ -8,12 +8,12 @@ use {
         },
         utils::{
             assert_initialized, assert_owned_by, assert_rent_exempt, assert_token_matching,
-            create_or_allocate_account_raw, spl_token_burn, spl_token_mint_to, spl_token_transfer,
-            TokenBurnParams, TokenMintToParams, TokenTransferParams,
+            assert_vault_authority_correct, create_or_allocate_account_raw, spl_token_burn,
+            spl_token_mint_to, spl_token_transfer, TokenBurnParams, TokenMintToParams,
+            TokenTransferParams,
         },
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    sha2::{Digest, Sha256},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         borsh::try_from_slice_unchecked,
@@ -53,7 +53,94 @@ pub fn process_instruction(
             msg!("Instruction: Redeem Shares");
             process_redeem_shares(program_id, accounts)
         }
+        VaultInstruction::WithdrawTokenFromSafetyDepositBox => {
+            msg!("Instruction: Withdraw Token from Safety Deposit Box");
+            process_withdraw_token_from_safety_deposit_box(program_id, accounts)
+        }
     }
+}
+
+pub fn process_withdraw_token_from_safety_deposit_box(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let destination_info = next_account_info(account_info_iter)?;
+    let safety_deposit_info = next_account_info(account_info_iter)?;
+    let store_info = next_account_info(account_info_iter)?;
+    let vault_info = next_account_info(account_info_iter)?;
+    let fraction_mint_info = next_account_info(account_info_iter)?;
+    let vault_authority_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
+    let token_program_info = next_account_info(account_info_iter)?;
+    let rent_info = next_account_info(account_info_iter)?;
+
+    let rent = &Rent::from_account_info(rent_info)?;
+    let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
+    let safety_deposit: SafetyDepositBox = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
+    let fraction_mint: Mint = assert_initialized(fraction_mint_info)?;
+    let destination: Account = assert_initialized(destination_info)?;
+    let store: Account = assert_initialized(store_info)?;
+
+    // We watch out for you!
+    assert_rent_exempt(rent, destination_info)?;
+    assert_owned_by(destination_info, token_program_info.key)?;
+    assert_owned_by(safety_deposit_info, program_id)?;
+    assert_owned_by(vault_info, program_id)?;
+    assert_token_matching(&vault, token_program_info)?;
+    assert_vault_authority_correct(&vault, vault_authority_info)?;
+
+    if vault.state != VaultState::Combined {
+        return Err(VaultError::VaultShouldBeCombined.into());
+    }
+
+    if safety_deposit.vault != *vault_info.key {
+        return Err(VaultError::SafetyDepositBoxVaultMismatch.into());
+    }
+
+    if fraction_mint_info.key != &vault.fraction_mint {
+        return Err(VaultError::VaultMintNeedsToMatchVault.into());
+    }
+
+    if *store_info.key != safety_deposit.store {
+        return Err(VaultError::StoreDoesNotMatchSafetyDepositBox.into());
+    }
+
+    if store.amount == 0 {
+        return Err(VaultError::StoreEmpty.into());
+    }
+
+    if destination.mint != safety_deposit.token_mint {
+        return Err(VaultError::DestinationAccountNeedsToMatchTokenMint.into());
+    }
+
+    let (authority, bump_seed) =
+        Pubkey::find_program_address(&[PREFIX.as_bytes(), program_id.as_ref()], program_id);
+    let authority_signer_seeds = &[PREFIX.as_bytes(), program_id.as_ref(), &[bump_seed]];
+
+    if authority != *transfer_authority_info.key {
+        return Err(VaultError::InvalidAuthority.into());
+    }
+
+    spl_token_transfer(TokenTransferParams {
+        source: store_info.clone(),
+        destination: destination_info.clone(),
+        amount: store.amount,
+        authority: transfer_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    vault.token_type_count = match vault.token_type_count.checked_sub(1) {
+        Some(val) => val,
+        None => return Err(VaultError::NumericalOverflowError.into()),
+    };
+
+    if fraction_mint.supply == 0 && vault.token_type_count == 0 {
+        vault.state = VaultState::Deactivated;
+        vault.serialize(&mut *vault_info.data.borrow_mut())?;
+    }
+    Ok(())
 }
 
 pub fn process_redeem_shares(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
@@ -78,6 +165,7 @@ pub fn process_redeem_shares(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     // We watch out for you!
     assert_rent_exempt(rent, destination_info)?;
     assert_owned_by(destination_info, token_program_info.key)?;
+    assert_owned_by(vault_info, program_id)?;
     assert_owned_by(outstanding_shares_info, token_program_info.key)?;
     assert_token_matching(&vault, token_program_info)?;
 
@@ -160,8 +248,9 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let your_outstanding_shares_info = next_account_info(account_info_iter)?;
     let your_payment_info = next_account_info(account_info_iter)?;
     let fraction_mint_info = next_account_info(account_info_iter)?;
-    let redeem_treasury_info = next_account_info(account_info_iter)?;
     let fraction_treasury_info = next_account_info(account_info_iter)?;
+    let redeem_treasury_info = next_account_info(account_info_iter)?;
+    let vault_authority_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let burn_authority_info = next_account_info(account_info_iter)?;
     let fraction_burn_authority_info = next_account_info(account_info_iter)?;
@@ -177,6 +266,8 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         try_from_slice_unchecked(&external_pricing_info.data.borrow_mut())?;
 
     assert_token_matching(&vault, token_program_info)?;
+    assert_owned_by(vault_info, program_id)?;
+    assert_vault_authority_correct(&vault, vault_authority_info)?;
 
     if vault.state != VaultState::Active {
         return Err(VaultError::VaultShouldBeActive.into());
@@ -293,10 +384,13 @@ pub fn process_activate_vault(
     let fraction_mint_info = next_account_info(account_info_iter)?;
     let fraction_treasury_info = next_account_info(account_info_iter)?;
     let fractional_mint_authority_info = next_account_info(account_info_iter)?;
+    let vault_authority_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
 
     let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
+    assert_owned_by(vault_info, program_id)?;
     assert_token_matching(&vault, token_program_info)?;
+    assert_vault_authority_correct(&vault, vault_authority_info)?;
 
     if vault.state != VaultState::Inactive {
         return Err(VaultError::VaultShouldBeInactive.into());
@@ -332,8 +426,9 @@ pub fn process_add_token_to_inactivated_vault(
     let account_info_iter = &mut accounts.iter();
     let safety_deposit_account_info = next_account_info(account_info_iter)?;
     let token_account_info = next_account_info(account_info_iter)?;
-    let safety_deposit_box_info = next_account_info(account_info_iter)?;
+    let store_info = next_account_info(account_info_iter)?;
     let vault_info = next_account_info(account_info_iter)?;
+    let vault_authority_info = next_account_info(account_info_iter)?;
     let payer_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
@@ -341,15 +436,17 @@ pub fn process_add_token_to_inactivated_vault(
     let system_account_info = next_account_info(account_info_iter)?;
 
     let rent = &Rent::from_account_info(rent_info)?;
+    assert_owned_by(vault_info, program_id)?;
     assert_rent_exempt(rent, token_account_info)?;
     assert_rent_exempt(rent, vault_info)?;
-    assert_owned_by(safety_deposit_box_info, token_program_info.key)?;
+    assert_owned_by(store_info, token_program_info.key)?;
     assert_owned_by(token_account_info, token_program_info.key)?;
 
     let token_account: Account = assert_initialized(token_account_info)?;
-    let safety_deposit_box: Account = assert_initialized(safety_deposit_box_info)?;
+    let store: Account = assert_initialized(store_info)?;
     let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
     assert_token_matching(&vault, token_program_info)?;
+    assert_vault_authority_correct(&vault, vault_authority_info)?;
 
     if vault.state != VaultState::Inactive {
         return Err(VaultError::VaultShouldBeInactive.into());
@@ -363,11 +460,11 @@ pub fn process_add_token_to_inactivated_vault(
         return Err(VaultError::TokenAccountAmountLessThanAmountSpecified.into());
     }
 
-    if safety_deposit_box.amount > 0 {
+    if store.amount > 0 {
         return Err(VaultError::VaultAccountIsNotEmpty.into());
     }
 
-    if safety_deposit_box.owner != *program_id {
+    if store.owner != *program_id {
         return Err(VaultError::VaultAccountIsNotOwnedByProgram.into());
     }
 
@@ -402,7 +499,7 @@ pub fn process_add_token_to_inactivated_vault(
     safety_deposit_account.key = REGISTRY_KEY;
     safety_deposit_account.vault = *vault_info.key;
     safety_deposit_account.token_mint = token_account.mint;
-    safety_deposit_account.safety_deposit_box = *safety_deposit_box_info.key;
+    safety_deposit_account.store = *store_info.key;
     safety_deposit_account.order = vault.token_type_count;
 
     safety_deposit_account.serialize(&mut *safety_deposit_account_info.data.borrow_mut())?;
@@ -411,25 +508,6 @@ pub fn process_add_token_to_inactivated_vault(
         Some(val) => val,
         None => return Err(VaultError::NumericalOverflowError.into()),
     };
-    let mut hasher = Sha256::new();
-    let mut new_arr: [u8; 64] = [0; 64];
-    for n in 0..63 {
-        if n < 32 {
-            new_arr[n] = vault.hashed_safety_deposit_boxes[n];
-        } else {
-            new_arr[n] = safety_deposit_account_info.key.as_ref()[n - 32];
-        }
-    }
-    hasher.update(new_arr);
-    let result = hasher.finalize();
-
-    let mut hashed_arr: [u8; 32] = [0; 32];
-    let slice = result.as_slice();
-    for n in 0..31 {
-        hashed_arr[n] = slice[n];
-    }
-
-    vault.hashed_safety_deposit_boxes = hashed_arr;
 
     vault.serialize(&mut *vault_info.data.borrow_mut())?;
 
@@ -540,8 +618,6 @@ pub fn process_init_vault(
     vault.token_type_count = 0;
     vault.state = VaultState::Inactive;
 
-    let arr_of_zeroes: [u8; 32] = [0; 32];
-    vault.hashed_safety_deposit_boxes = arr_of_zeroes;
     vault.serialize(&mut *vault_info.data.borrow_mut())?;
 
     Ok(())
