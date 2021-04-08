@@ -1,5 +1,5 @@
 [package]
-name = "spl-token-fraction-test-client"
+name = "spl-token-vault-test-client"
 version = "0.1.0"
 description = "Solana Program Library Fraction Test Client"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
@@ -17,5 +17,5 @@ borsh = "0.8.2"
 clap = "2.33.3"
 solana-clap-utils = "1.6"
 solana-cli-config = "1.6"
-spl-token-fraction = { path = "../program", features = [ "no-entrypoint" ] }
+spl-token-vault = { path = "../program", features = [ "no-entrypoint" ] }
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }

@@ -32,7 +32,7 @@ pub enum VaultInstruction {
     ///   0. `[writable]` Initialized fractional share mint with 0 tokens in supply
     ///   1. `[writable]` Initialized redeem treasury token account with 0 tokens in supply
     ///   2. `[writable]` Initialized fraction treasury token account with 0 tokens in supply
-    ///   3. `[writable]` Uninitialized fractionalized token ledger account
+    ///   3. `[writable]` Uninitialized vault account
     ///   4. `[]` Authority on the vault
     ///   5. `[]` Pricing Lookup Address
     ///   6. `[]` Token program
@@ -135,41 +135,34 @@ pub enum VaultInstruction {
     AddSharesToTreasury(NumberOfShareArgs),
 }
 
-/*
-/// Creates an CreateFractionAccounts instruction
+/// Creates an InitVault instruction
 #[allow(clippy::too_many_arguments)]
-pub fn create_metadata_accounts(
+pub fn create_init_vault(
     program_id: Pubkey,
-    name_symbol_account: Pubkey,
-    metadata_account: Pubkey,
-    mint: Pubkey,
-    mint_authority: Pubkey,
-    payer: Pubkey,
-    update_authority: Pubkey,
-    name: String,
-    symbol: String,
-    uri: String,
-    allow_duplication: bool,
-    update_authority_is_signer: bool,
+    fraction_mint: Pubkey,
+    redeem_treasury: Pubkey,
+    fraction_treasury: Pubkey,
+    vault: Pubkey,
+    vault_authority: Pubkey,
+    pricing_lookup_address: Pubkey,
+    allow_further_share_creation: bool,
 ) -> Instruction {
     Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(name_symbol_account, false),
-            AccountMeta::new(metadata_account, false),
-            AccountMeta::new_readonly(mint, false),
-            AccountMeta::new_readonly(mint_authority, true),
-            AccountMeta::new_readonly(payer, true),
-            AccountMeta::new_readonly(update_authority, update_authority_is_signer),
-            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new(fraction_mint, false),
+            AccountMeta::new(redeem_treasury, false),
+            AccountMeta::new(fraction_treasury, false),
+            AccountMeta::new(vault, false),
+            AccountMeta::new_readonly(vault_authority, false),
+            AccountMeta::new_readonly(pricing_lookup_address, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
-        data: FractionInstruction::CreateFractionAccounts(CreateFractionAccountArgs {
-            data: Data { name, symbol, uri },
-            allow_duplication,
+        data: VaultInstruction::InitVault(InitVaultArgs {
+            allow_further_share_creation,
         })
         .try_to_vec()
         .unwrap(),
     }
 }
-*/

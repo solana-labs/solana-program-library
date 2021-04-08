@@ -1,8 +1,12 @@
-use spl_token_metadata::instruction::transfer_update_authority;
+use solana_program::entrypoint::ProgramResult;
+use solana_sdk::signature::Keypair;
 
 use {
-    clap::{crate_description, crate_name, crate_version, App, Arg},
-    solana_clap_utils::input_validators::{is_url, is_valid_signer},
+    clap::{crate_description, crate_name, crate_version, App, Arg, ArgMatches, SubCommand},
+    solana_clap_utils::{
+        input_parsers::pubkey_of,
+        input_validators::{is_url, is_valid_pubkey, is_valid_signer},
+    },
     solana_client::rpc_client::RpcClient,
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack},
     solana_sdk::{
@@ -11,16 +15,250 @@ use {
         system_instruction::create_account,
         transaction::Transaction,
     },
-    spl_token::{instruction::initialize_mint, state::Mint},
-    spl_token_metadata::{
-        instruction::{create_metadata_accounts, update_metadata_accounts},
-        state::{Fraction, PREFIX},
+    spl_token::{
+        instruction::{initialize_account, initialize_mint},
+        state::{Account, Mint},
     },
+    spl_token_vault::{instruction::create_init_vault, state::PREFIX},
     std::str::FromStr,
 };
 
-const METADATA_PROGRAM_PUBKEY: &str = "metaTA73sFPqA8whreUbBsbn3SLJH2vhrW9fP5dmfdC";
+const PROGRAM_PUBKEY: &str = "metaTA73sFPqA8whreUbBsbn3SLJH2vhrW9fP5dmfdC";
 const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+
+fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pubkey {
+    let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
+    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
+    let vault_authority =
+        pubkey_of(app_matches, "vault_authority").unwrap_or_else(|| payer.pubkey());
+    let external_account = pubkey_of(app_matches, "external_price_account").unwrap();
+    let fraction_mint = Keypair::new();
+    let redeem_mint = Keypair::new();
+    let redeem_treasury = Keypair::new();
+    let fraction_treasury = Keypair::new();
+    let vault = Keypair::new();
+    let allow_further_share_creation = app_matches.is_present("allow_further_share_creation");
+
+    let instructions = [
+        create_account(
+            &payer.pubkey(),
+            &fraction_mint.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Mint::LEN)
+                .unwrap(),
+            Mint::LEN as u64,
+            &token_key,
+        ),
+        create_account(
+            &payer.pubkey(),
+            &redeem_mint.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Mint::LEN)
+                .unwrap(),
+            Mint::LEN as u64,
+            &token_key,
+        ),
+        create_account(
+            &payer.pubkey(),
+            &redeem_treasury.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ),
+        create_account(
+            &payer.pubkey(),
+            &fraction_treasury.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ),
+        create_account(
+            &payer.pubkey(),
+            &vault.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ),
+        initialize_mint(
+            &token_key,
+            &redeem_mint.pubkey(),
+            &payer.pubkey(),
+            Some(&payer.pubkey()),
+            0,
+        )
+        .unwrap(),
+        initialize_mint(
+            &token_key,
+            &fraction_mint.pubkey(),
+            &payer.pubkey(),
+            Some(&payer.pubkey()),
+            0,
+        )
+        .unwrap(),
+        initialize_account(
+            &token_key,
+            &redeem_treasury.pubkey(),
+            &redeem_mint.pubkey(),
+            &program_key,
+        )
+        .unwrap(),
+        initialize_account(
+            &token_key,
+            &fraction_treasury.pubkey(),
+            &fraction_mint.pubkey(),
+            &program_key,
+        )
+        .unwrap(),
+        create_init_vault(
+            program_key,
+            fraction_mint.pubkey(),
+            redeem_treasury.pubkey(),
+            fraction_treasury.pubkey(),
+            vault.pubkey(),
+            vault_authority,
+            external_account,
+            allow_further_share_creation,
+        ),
+    ];
+    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
+    let signers = vec![
+        &payer,
+        &redeem_treasury,
+        &redeem_mint,
+        &fraction_treasury,
+        &fraction_mint,
+        &vault,
+    ];
+
+    transaction.sign(&signers, recent_blockhash);
+    client.send_and_confirm_transaction(&transaction).unwrap();
+    let _account = client.get_account(&vault.pubkey()).unwrap();
+    vault.pubkey()
+}
+
+fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pubkey {
+    let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
+    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
+    let vault_authority =
+        pubkey_of(app_matches, "vault_authority").unwrap_or_else(|| payer.pubkey());
+    let external_account = pubkey_of(app_matches, "external_price_account").unwrap();
+    let fraction_mint = Keypair::new();
+    let redeem_mint = Keypair::new();
+    let redeem_treasury = Keypair::new();
+    let fraction_treasury = Keypair::new();
+    let vault = Keypair::new();
+    let allow_further_share_creation = app_matches.is_present("allow_further_share_creation");
+
+    let instructions = [
+        create_account(
+            &payer.pubkey(),
+            &fraction_mint.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Mint::LEN)
+                .unwrap(),
+            Mint::LEN as u64,
+            &token_key,
+        ),
+        create_account(
+            &payer.pubkey(),
+            &redeem_mint.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Mint::LEN)
+                .unwrap(),
+            Mint::LEN as u64,
+            &token_key,
+        ),
+        create_account(
+            &payer.pubkey(),
+            &redeem_treasury.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ),
+        create_account(
+            &payer.pubkey(),
+            &fraction_treasury.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ),
+        create_account(
+            &payer.pubkey(),
+            &vault.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ),
+        initialize_mint(
+            &token_key,
+            &redeem_mint.pubkey(),
+            &payer.pubkey(),
+            Some(&payer.pubkey()),
+            0,
+        )
+        .unwrap(),
+        initialize_mint(
+            &token_key,
+            &fraction_mint.pubkey(),
+            &payer.pubkey(),
+            Some(&payer.pubkey()),
+            0,
+        )
+        .unwrap(),
+        initialize_account(
+            &token_key,
+            &redeem_treasury.pubkey(),
+            &redeem_mint.pubkey(),
+            &program_key,
+        )
+        .unwrap(),
+        initialize_account(
+            &token_key,
+            &fraction_treasury.pubkey(),
+            &fraction_mint.pubkey(),
+            &program_key,
+        )
+        .unwrap(),
+        create_init_vault(
+            program_key,
+            fraction_mint.pubkey(),
+            redeem_treasury.pubkey(),
+            fraction_treasury.pubkey(),
+            vault.pubkey(),
+            vault_authority,
+            external_account,
+            allow_further_share_creation,
+        ),
+    ];
+    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
+    let signers = vec![
+        &payer,
+        &redeem_treasury,
+        &redeem_mint,
+        &fraction_treasury,
+        &fraction_mint,
+        &vault,
+    ];
+
+    transaction.sign(&signers, recent_blockhash);
+    client.send_and_confirm_transaction(&transaction).unwrap();
+    let _account = client.get_account(&vault.pubkey()).unwrap();
+    vault.pubkey()
+}
 
 fn main() {
     let app_matches = App::new(crate_name!())
@@ -33,15 +271,7 @@ fn main() {
                 .required(true)
                 .validator(is_valid_signer)
                 .takes_value(true)
-                .help("Filepath or URL to a keypair"),
-        )
-        .arg(
-            Arg::with_name("mint_keypair")
-                .long("mint_keypair")
-                .required(true)
-                .value_name("MINT_KEYPAIR")
-                .validator(is_valid_signer)
-                .takes_value(true)
+                .global(true)
                 .help("Filepath or URL to a keypair"),
         )
         .arg(
@@ -53,68 +283,81 @@ fn main() {
                 .validator(is_url)
                 .help("JSON RPC URL for the cluster [default: devnet]"),
         )
-        .arg(
-            Arg::with_name("name")
-                .long("name")
-                .required(true)
-                .value_name("NAME")
-                .takes_value(true)
-                .help("name for the Mint"),
+        .subcommand(
+            SubCommand::with_name("init")
+                .about("Initialize a Vault")
+                .arg(
+                    Arg::with_name("vault_authority")
+                        .long("vault_authority")
+                        .value_name("VAULT_AUTHORITY")
+                        .required(false)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of authority, defaults to you otherwise"),
+                )
+                .arg(
+                    Arg::with_name("external_price_account")
+                        .long("external_price_account")
+                        .value_name("EXTERNAL_PRICE_ACCOUNT")
+                        .required(true)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of external price account"),
+                )
+                .arg(
+                    Arg::with_name("allow_further_share_creation")
+                        .long("allow_further_share_creation")
+                        .value_name("ALLOW_FURTHER_SHARE_CREATION")
+                        .takes_value(false)
+                        .required(false)
+                        .help("Allows further share creation after activation of vault"),
+                ),
         )
-        .arg(
-            Arg::with_name("symbol")
-                .long("symbol")
-                .value_name("SYMBOL")
-                .takes_value(true)
-                .required(true)
-                .help("symbol for the Mint"),
-        )
-        .arg(
-            Arg::with_name("uri")
-                .long("uri")
-                .value_name("URI")
-                .takes_value(true)
-                .required(true)
-                .help("URI for the Mint"),
-        )
-        .arg(
-            Arg::with_name("update_uri")
-                .long("update_uri")
-                .value_name("UPDATE_URI")
-                .takes_value(true)
-                .required(true)
-                .help("URI for the Mint to be updated with after creation to test update call"),
-        )
-        .arg(
-            Arg::with_name("allow_duplicates")
-                .long("allow_duplicates")
-                .value_name("ALLOW_DUPLICATES")
-                .takes_value(false)
-                .required(false)
-                .help("Allow duplicates"),
-        )
-        .arg(
-            Arg::with_name("update_authority")
-                .long("update_authority")
-                .value_name("UPDATE_AUTHORITY")
-                .takes_value(true)
-                .required(false)
-                .help("Update authority filepath or url to keypair besides yourself, defaults to normal keypair"),
-        )
-        .arg(
-            Arg::with_name("skip_create")
-                .long("skip_create")
-                .value_name("SKIP_CREATE")
-                .takes_value(false)
-                .required(false)
-                .help("Skip the create call and only do an update"),
-        ).arg(
-            Arg::with_name("transfer_authority")
-                .long("transfer_authority")
-                .value_name("TRANSFER_AUTHORITY")
-                .takes_value(true)
-                .required(false)
-                .help("Transfer the authority to a different key"),
+        .subcommand(
+            SubCommand::with_name("external_price_account_rewrite")
+                .about("Rewrite (or create) an External Price Account")
+                .arg(
+                    Arg::with_name("Authority")
+                        .long("authority")
+                        .value_name("AUTHORITY")
+                        .required(false)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of authority, defaults to you otherwise"),
+                )
+                .arg(
+                    Arg::with_name("external_price_account")
+                        .long("external_price_account")
+                        .value_name("EXTERNAL_PRICE_ACCOUNT")
+                        .required(true)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of external price account"),
+                )
+                .arg(
+                    Arg::with_name("price_mint")
+                        .long("price_mint")
+                        .value_name("PRICE_MINT")
+                        .takes_value(false)
+                        .required(false)
+                        .help("Price mint that price per share uses"),
+                )
+                .arg(
+                    Arg::with_name("price_per_share")
+                        .long("price_per_share")
+                        .value_name("PRICE_PER_SHARE")
+                        .takes_value(false)
+                        .required(false)
+                        .help("Price per share"),
+                )
+                .arg(
+                    Arg::with_name("allowed_to_combine")
+                        .long("allowed_to_combine")
+                        .value_name("ALLOWED_TO_COMBINE")
+                        .takes_value(false)
+                        .required(false)
+                        .help("Whether or not combination is allowed in the vault"),
+                ),
         )
         .get_matches();
 
@@ -124,119 +367,24 @@ fn main() {
             .unwrap_or(&"https://devnet.solana.com".to_owned())
             .to_owned(),
     );
-    let allow_duplicates = app_matches.is_present("allow_duplicates");
+
+    let (sub_command, sub_matches) = app_matches.subcommand();
+
     let payer = read_keypair_file(app_matches.value_of("keypair").unwrap()).unwrap();
-    let update_authority = read_keypair_file(
-        app_matches
-            .value_of("update_authority")
-            .unwrap_or_else(|| app_matches.value_of("keypair").unwrap()),
-    )
-    .unwrap();
-    let transfer_authority = read_keypair_file(
-        app_matches
-            .value_of("transfer_authority")
-            .unwrap_or_else(|| app_matches.value_of("keypair").unwrap()),
-    )
-    .unwrap();
-    let add_transfer_authority = app_matches.is_present("transfer_authority");
 
-    let program_key = Pubkey::from_str(METADATA_PROGRAM_PUBKEY).unwrap();
-    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
-    let new_mint = read_keypair_file(app_matches.value_of("mint_keypair").unwrap()).unwrap();
-    let name = app_matches.value_of("name").unwrap().to_owned();
-    let symbol = app_matches.value_of("symbol").unwrap().to_owned();
-    let uri = app_matches.value_of("uri").unwrap().to_owned();
-    let update_uri = app_matches.value_of("update_uri").unwrap().to_owned();
-    let new_mint_key = new_mint.pubkey();
-    let skip_create = app_matches.is_present("skip_create");
-    let metadata_seeds = &[
-        PREFIX.as_bytes(),
-        &program_key.as_ref(),
-        new_mint_key.as_ref(),
-    ];
-    let (metadata_key, _) = Pubkey::find_program_address(metadata_seeds, &program_key);
-
-    let name_symbol_seeds = &[
-        PREFIX.as_bytes(),
-        &program_key.as_ref(),
-        &name.as_bytes(),
-        &symbol.as_bytes(),
-    ];
-    let (name_symbol_key, _) = Pubkey::find_program_address(name_symbol_seeds, &program_key);
-
-    let mut instructions = vec![];
-
-    if !skip_create {
-        instructions.push(create_account(
-            &payer.pubkey(),
-            &new_mint.pubkey(),
-            client
-                .get_minimum_balance_for_rent_exemption(Mint::LEN)
-                .unwrap(),
-            Mint::LEN as u64,
-            &token_key,
-        ));
-        instructions.push(
-            initialize_mint(
-                &token_key,
-                &new_mint.pubkey(),
-                &payer.pubkey(),
-                Some(&payer.pubkey()),
-                0,
-            )
-            .unwrap(),
-        );
-        instructions.push(create_metadata_accounts(
-            program_key,
-            name_symbol_key,
-            metadata_key,
-            new_mint.pubkey(),
-            payer.pubkey(),
-            payer.pubkey(),
-            update_authority.pubkey(),
-            name,
-            symbol,
-            uri,
-            allow_duplicates,
-            update_authority.pubkey() != payer.pubkey(),
-        ));
+    match (sub_command, sub_matches) {
+        ("init", Some(arg_matches)) => {
+            println!(
+                "Created vault with address {:?}",
+                initialize_vault(arg_matches, payer, client)
+            );
+        }
+        ("external_price_account_rewrite", Some(arg_matches)) => {
+            println!(
+                "Rewrote price account {:?}",
+                rewrite_price_account(arg_matches, payer, client)
+            );
+        }
+        _ => unreachable!(),
     }
-
-    instructions.push(update_metadata_accounts(
-        program_key,
-        metadata_key,
-        name_symbol_key,
-        update_authority.pubkey(),
-        Some(update_authority.pubkey()),
-        update_uri.to_owned(),
-    ));
-
-    if add_transfer_authority {
-        instructions.push(transfer_update_authority(
-            program_key,
-            name_symbol_key,
-            update_authority.pubkey(),
-            transfer_authority.pubkey(),
-        ))
-    }
-
-    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
-    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
-    let mut signers = vec![&payer];
-    if !skip_create {
-        signers.push(&new_mint);
-    }
-
-    if update_authority.pubkey() != payer.pubkey() {
-        signers.push(&update_authority)
-    }
-
-    transaction.sign(&signers, recent_blockhash);
-    client.send_and_confirm_transaction(&transaction).unwrap();
-    let account = client.get_account(&metadata_key).unwrap();
-    let metadata: Fraction = try_from_slice_unchecked(&account.data).unwrap();
-    println!(
-        "If this worked correctly, updated metadata should have {:?}: {:?} ",
-        update_uri, metadata.data.uri
-    );
 }
