@@ -59,15 +59,142 @@ pub fn process_instruction(
         }
         VaultInstruction::MintFractionalShares(args) => {
             msg!("Instruction: Mint new fractional shares");
-            process_mint_fractional_shares(program_id, accounts, args.amount)
+            process_mint_fractional_shares(program_id, accounts, args.number_of_shares)
+        }
+        VaultInstruction::WithdrawSharesFromTreasury(args) => {
+            msg!("Instruction: Withdraw fractional shares");
+            process_withdraw_fractional_shares_from_treasury(
+                program_id,
+                accounts,
+                args.number_of_shares,
+            )
+        }
+        VaultInstruction::AddSharesToTreasury(args) => {
+            msg!("Instruction: Add fractional shares to treasury");
+            process_add_fractional_shares_to_treasury(program_id, accounts, args.number_of_shares)
         }
     }
+}
+
+pub fn process_add_fractional_shares_to_treasury(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    number_of_shares: u64,
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let source_info = next_account_info(account_info_iter)?;
+    let fraction_treasury_info = next_account_info(account_info_iter)?;
+    let vault_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
+    let vault_authority_info = next_account_info(account_info_iter)?;
+    let token_program_info = next_account_info(account_info_iter)?;
+
+    let vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
+    let source: Account = assert_initialized(source_info)?;
+
+    assert_owned_by(source_info, token_program_info.key)?;
+    assert_token_matching(&vault, token_program_info)?;
+    assert_owned_by(vault_info, program_id)?;
+    assert_vault_authority_correct(&vault, vault_authority_info)?;
+
+    if vault.state != VaultState::Active {
+        return Err(VaultError::VaultShouldBeActive.into());
+    }
+
+    if *fraction_treasury_info.key != vault.fraction_treasury {
+        return Err(VaultError::FractionTreasuryNeedsToMatchVault.into());
+    }
+
+    if source.mint != vault.fraction_mint {
+        return Err(VaultError::SourceAccountNeedsToMatchFractionMint.into());
+    }
+
+    if source.amount < number_of_shares {
+        return Err(VaultError::NotEnoughShares.into());
+    }
+
+    let (_, bump_seed) =
+        Pubkey::find_program_address(&[PREFIX.as_bytes(), program_id.as_ref()], program_id);
+    let authority_signer_seeds = &[PREFIX.as_bytes(), program_id.as_ref(), &[bump_seed]];
+
+    spl_token_transfer(TokenTransferParams {
+        source: source_info.clone(),
+        destination: fraction_treasury_info.clone(),
+        amount: number_of_shares,
+        authority: transfer_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    Ok(())
+}
+
+pub fn process_withdraw_fractional_shares_from_treasury(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    number_of_shares: u64,
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let destination_info = next_account_info(account_info_iter)?;
+    let fraction_treasury_info = next_account_info(account_info_iter)?;
+    let vault_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
+    let vault_authority_info = next_account_info(account_info_iter)?;
+    let token_program_info = next_account_info(account_info_iter)?;
+    let rent_info = next_account_info(account_info_iter)?;
+
+    let rent = &Rent::from_account_info(rent_info)?;
+    let vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
+    let destination: Account = assert_initialized(destination_info)?;
+    let fraction_treasury: Account = assert_initialized(fraction_treasury_info)?;
+
+    // We watch out for you!
+    assert_rent_exempt(rent, destination_info)?;
+    assert_owned_by(destination_info, token_program_info.key)?;
+    assert_token_matching(&vault, token_program_info)?;
+    assert_owned_by(vault_info, program_id)?;
+    assert_vault_authority_correct(&vault, vault_authority_info)?;
+
+    if vault.state != VaultState::Active {
+        return Err(VaultError::VaultShouldBeActive.into());
+    }
+
+    if *fraction_treasury_info.key != vault.fraction_treasury {
+        return Err(VaultError::FractionTreasuryNeedsToMatchVault.into());
+    }
+
+    if destination.mint != vault.fraction_mint {
+        return Err(VaultError::DestinationAccountNeedsToMatchFractionMint.into());
+    }
+
+    if fraction_treasury.amount < number_of_shares {
+        return Err(VaultError::NotEnoughShares.into());
+    }
+
+    let (authority, bump_seed) =
+        Pubkey::find_program_address(&[PREFIX.as_bytes(), program_id.as_ref()], program_id);
+    let authority_signer_seeds = &[PREFIX.as_bytes(), program_id.as_ref(), &[bump_seed]];
+
+    if authority != *transfer_authority_info.key {
+        return Err(VaultError::InvalidAuthority.into());
+    }
+
+    spl_token_transfer(TokenTransferParams {
+        source: fraction_treasury_info.clone(),
+        destination: destination_info.clone(),
+        amount: number_of_shares,
+        authority: transfer_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    Ok(())
 }
 
 pub fn process_mint_fractional_shares(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    amount: u64,
+    number_of_shares: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let fraction_treasury_info = next_account_info(account_info_iter)?;
@@ -82,6 +209,10 @@ pub fn process_mint_fractional_shares(
     assert_token_matching(&vault, token_program_info)?;
     assert_owned_by(vault_info, program_id)?;
     assert_vault_authority_correct(&vault, vault_authority_info)?;
+
+    if vault.state != VaultState::Active {
+        return Err(VaultError::VaultShouldBeActive.into());
+    }
 
     if *fraction_treasury_info.key != vault.fraction_treasury {
         return Err(VaultError::FractionTreasuryNeedsToMatchVault.into());
@@ -106,7 +237,7 @@ pub fn process_mint_fractional_shares(
     spl_token_mint_to(TokenMintToParams {
         mint: fraction_mint_info.clone(),
         destination: fraction_treasury_info.clone(),
-        amount: amount,
+        amount: number_of_shares,
         authority: mint_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_info.clone(),

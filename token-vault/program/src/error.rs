@@ -185,6 +185,14 @@ pub enum VaultError {
     #[error("The destination account to receive your token needs to be the same mint as the token's mint")]
     DestinationAccountNeedsToMatchTokenMint,
 
+    /// The destination account to receive your shares needs to be the same mint as the vault's fraction mint
+    #[error("The destination account to receive your shares needs to be the same mint as the vault's fraction mint")]
+    DestinationAccountNeedsToMatchFractionMint,
+
+    /// The source account to send your shares from needs to be the same mint as the vault's fraction mint
+    #[error("The source account to send your shares from needs to be the same mint as the vault's fraction mint")]
+    SourceAccountNeedsToMatchFractionMint,
+
     /// Vault must be in combined or inactive state to perform withdrawals
     #[error("Vault must be in combined or inactive state to perform withdrawals")]
     VaultShouldBeCombinedOrInactive,
@@ -192,6 +200,10 @@ pub enum VaultError {
     /// This vault does not allow the minting of new shares!
     #[error("This vault does not allow the minting of new shares!")]
     VaultDoesNotAllowNewShareMinting,
+
+    /// There are not enough shares
+    #[error("There are not enough shares")]
+    NotEnoughShares,
 }
 
 impl PrintProgramError for VaultError {
