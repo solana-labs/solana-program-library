@@ -21,10 +21,10 @@ use {
     },
     spl_token_vault::{
         instruction::{
-            create_add_token_to_inactive_vault_instruction, create_init_vault_instruction,
-            create_update_external_price_account_instruction,
+            create_activate_vault_instruction, create_add_token_to_inactive_vault_instruction,
+            create_init_vault_instruction, create_update_external_price_account_instruction,
         },
-        state::{Vault, MAX_EXTERNAL_ACCOUNT_SIZE, PREFIX},
+        state::{Vault, VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, PREFIX},
     },
     std::str::FromStr,
 };
@@ -197,9 +197,13 @@ fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcCl
 fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pubkey {
     let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
     let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
-    let vault_authority =
-        pubkey_of(app_matches, "vault_authority").unwrap_or_else(|| payer.pubkey());
 
+    let vault_authority = read_keypair_file(
+        app_matches
+            .value_of("vault_authority")
+            .unwrap_or_else(|| app_matches.value_of("keypair").unwrap()),
+    )
+    .unwrap();
     let vault_key = pubkey_of(app_matches, "vault_authority").unwrap();
     let amount: u64 = app_matches
         .value_of("amount")
@@ -295,7 +299,7 @@ fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClien
             token_account.pubkey(),
             store.pubkey(),
             vault_key,
-            vault_authority,
+            vault_authority.pubkey(),
             payer.pubkey(),
             transfer_authority.pubkey(),
             amount,
@@ -304,12 +308,67 @@ fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClien
 
     let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
-    let signers = vec![&payer, &token_mint, &token_account, &store];
+    let signers = vec![
+        &payer,
+        &token_mint,
+        &token_account,
+        &store,
+        &vault_authority,
+    ];
 
     transaction.sign(&signers, recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
     let _account = client.get_account(&safety_deposit_box).unwrap();
     safety_deposit_box
+}
+
+fn activate_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Option<Pubkey> {
+    let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
+    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
+
+    let vault_authority = read_keypair_file(
+        app_matches
+            .value_of("vault_authority")
+            .unwrap_or_else(|| app_matches.value_of("keypair").unwrap()),
+    )
+    .unwrap();
+    let number_of_shares: u64 = app_matches
+        .value_of("number_of_shares")
+        .unwrap_or_else(|| "100")
+        .parse::<u64>()
+        .unwrap();
+    let vault_key = pubkey_of(app_matches, "vault_authority").unwrap();
+    let vault_account = client.get_account(&vault_key).unwrap();
+    let vault: Vault = try_from_slice_unchecked(&vault_account.data).unwrap();
+
+    let seeds = &[PREFIX.as_bytes(), &program_key.as_ref()];
+    let (mint_authority, _) = Pubkey::find_program_address(seeds, &program_key);
+
+    let instructions = [create_activate_vault_instruction(
+        program_key,
+        vault_key,
+        vault.fraction_mint,
+        vault.fraction_treasury,
+        vault_authority.pubkey(),
+        mint_authority,
+        number_of_shares,
+    )];
+
+    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
+    let signers = vec![&payer, &vault_authority];
+
+    transaction.sign(&signers, recent_blockhash);
+    client.send_and_confirm_transaction(&transaction).unwrap();
+    let updated_vault_data = client.get_account(&vault_key).unwrap();
+    let updated_vault: Vault = try_from_slice_unchecked(&updated_vault_data.data).unwrap();
+    if updated_vault.state == VaultState::Active {
+        println!("Activated vault.");
+        Some(vault_key)
+    } else {
+        println!("Failed to update vault.");
+        None
+    }
 }
 
 fn main() {
@@ -441,6 +500,36 @@ fn main() {
                         .help("Amount of this new token type to add to the vault"),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("activate_vault")
+                .about("Activate Vault")
+                .arg(
+                    Arg::with_name("vault_authority")
+                        .long("vault_authority")
+                        .value_name("VAULT_AUTHORITY")
+                        .required(false)
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help("Filepath or URL to a keypair, defaults to you otherwise"),
+                )
+                .arg(
+                    Arg::with_name("vault_address")
+                        .long("vault_address")
+                        .value_name("VAULT_ADDRESS")
+                        .required(true)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of vault"),
+                )
+                .arg(
+                    Arg::with_name("number_of_shares")
+                        .long("number_of_shares")
+                        .value_name("NUMBER_OF_SHARES")
+                        .required(false)
+                        .takes_value(true)
+                        .help("Initial number of shares to produce, defaults to 100"),
+                ),
+        )
         .get_matches();
 
     let client = RpcClient::new(
@@ -474,6 +563,7 @@ fn main() {
                 arg_matches.value_of("vault_address")
             );
         }
+        ("activate_vault", Some(arg_matches)) => activate_vault(arg_matches, payer, client),
         _ => unreachable!(),
     }
 }

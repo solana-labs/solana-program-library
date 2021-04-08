@@ -60,7 +60,7 @@ pub enum VaultInstruction {
     ///   1. `[writable]` Fraction mint
     ///   2. `[writable]` Fraction treasury
     ///   3. `[signer]` Authority on the vault
-    ///   4. `[]` Fraction mint authority for the program
+    ///   4. `[]` Fraction mint authority for the program - seed of [PREFIX, program_id]
     ///   5. `[]` Token program
     ActivateVault(NumberOfShareArgs),
 
@@ -225,6 +225,33 @@ pub fn create_add_token_to_inactive_vault_instruction(
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
         ],
         data: VaultInstruction::AddTokenToInactiveVault(AddTokenToInactiveVaultArgs { amount })
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Creates an ActivateVault instruction
+#[allow(clippy::too_many_arguments)]
+pub fn create_activate_vault_instruction(
+    program_id: Pubkey,
+    vault: Pubkey,
+    fraction_mint: Pubkey,
+    fraction_treasury: Pubkey,
+    vault_authority: Pubkey,
+    fraction_mint_authority: Pubkey,
+    number_of_shares: u64,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(vault, false),
+            AccountMeta::new(fraction_mint, false),
+            AccountMeta::new(fraction_treasury, false),
+            AccountMeta::new_readonly(vault_authority, true),
+            AccountMeta::new_readonly(fraction_mint_authority, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: VaultInstruction::ActivateVault(NumberOfShareArgs { number_of_shares })
             .try_to_vec()
             .unwrap(),
     }
