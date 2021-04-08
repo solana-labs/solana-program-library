@@ -12,6 +12,7 @@ use crate::curve::calculator::{
 use arrayref::{array_mut_ref, array_ref};
 use spl_math::{precise_number::PreciseNumber, uint::U256};
 use std::convert::TryFrom;
+use roots::{Roots, find_roots_cubic_normalized};
 
 const N_COINS: u8 = 2;
 const N_COINS_SQUARED: u8 = 4;
@@ -237,25 +238,28 @@ impl CurveCalculator for StableCurve {
         }
     }
 
-    // fn normalized_value(
-    //     &self,
-    //     swap_token_a_amount: u128,
-    //     swap_token_b_amount: u128,
-    // ) -> Option<PreciseNumber> {
-    //     let leverage = self.amp.checked_mul(N_COINS as u64)?;
-    //     let d = compute_d(leverage, swap_token_a_amount, swap_token_b_amount)?;
-    //     PreciseNumber::new(d)
-    // }
     fn normalized_value(
         &self,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
     ) -> Option<PreciseNumber> {
-        let swap_token_a_amount = PreciseNumber::new(swap_token_a_amount)?;
-        let swap_token_b_amount = PreciseNumber::new(swap_token_b_amount)?;
-        swap_token_a_amount
-            .checked_mul(&swap_token_b_amount)?
-            .sqrt()
+        let leverage = self.amp.checked_mul(N_COINS as u64)?;
+        let invariant = compute_d(leverage, swap_token_a_amount, swap_token_b_amount)?;
+        let a = self.amp.checked_mul(8)? as f64;
+        let b = (invariant.checked_sub(invariant.checked_mul(self.amp.into())?.checked_mul(4)?)? as f64) / a;
+        let c = 0 as f64;
+        let d = (invariant.checked_pow(3)? as f64) / ((4 as f64) * a);
+        let roots = find_roots_cubic_normalized(b, c, d);
+        let x0 = match roots {
+            Roots::No(_) => panic!("No roots found for cubic equation"),
+            Roots::One(x) => x[0],
+            Roots::Two(_) => panic!("Two roots found for cubic, mathematically impossible"),
+            Roots::Three(x) => x[1],
+            Roots::Four(_) => panic!("Four roots found for cubic, mathematically impossible")
+        };
+        let root_uint = (x0 * (10 as f64).powf(11 as f64)) as u128;
+        let precision = PreciseNumber::new(10)?.checked_pow(11)?;
+        PreciseNumber::new(root_uint)?.checked_div(&precision)
     }
 
     fn validate(&self) -> Result<(), SwapError> {
