@@ -1,5 +1,5 @@
 use {
-    crate::error::VaultError,
+    crate::{error::VaultError, state::Vault},
     solana_program::{
         account_info::AccountInfo,
         entrypoint::ProgramResult,
@@ -40,6 +40,13 @@ pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
     } else {
         Ok(())
     }
+}
+
+pub fn assert_token_matching(vault: &Vault, token: &AccountInfo) -> ProgramResult {
+    if vault.token_program != *token.key {
+        return Err(VaultError::TokenProgramProvidedDoesNotMatchVault.into());
+    }
+    Ok(())
 }
 
 /// Create account almost from scratch, lifted from

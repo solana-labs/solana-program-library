@@ -7,7 +7,7 @@ use {
             MAX_VAULT_SIZE, PREFIX, REGISTRY_KEY, VAULT_KEY,
         },
         utils::{
-            assert_initialized, assert_owned_by, assert_rent_exempt,
+            assert_initialized, assert_owned_by, assert_rent_exempt, assert_token_matching,
             create_or_allocate_account_raw, spl_token_burn, spl_token_mint_to, spl_token_transfer,
             TokenBurnParams, TokenMintToParams, TokenTransferParams,
         },
@@ -57,6 +57,99 @@ pub fn process_instruction(
 }
 
 pub fn process_redeem_shares(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+
+    let outstanding_shares_info = next_account_info(account_info_iter)?;
+    let destination_info = next_account_info(account_info_iter)?;
+    let fraction_mint_info = next_account_info(account_info_iter)?;
+    let redeem_treasury_info = next_account_info(account_info_iter)?;
+    let transfer_authority_info = next_account_info(account_info_iter)?;
+    let burn_authority_info = next_account_info(account_info_iter)?;
+    let vault_info = next_account_info(account_info_iter)?;
+    let token_program_info = next_account_info(account_info_iter)?;
+    let rent_info = next_account_info(account_info_iter)?;
+
+    let rent = &Rent::from_account_info(rent_info)?;
+    let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
+    let fraction_mint: Mint = assert_initialized(fraction_mint_info)?;
+    let outstanding_shares: Account = assert_initialized(outstanding_shares_info)?;
+    let destination: Account = assert_initialized(destination_info)?;
+    let redeem_treasury: Account = assert_initialized(redeem_treasury_info)?;
+    // We watch out for you!
+    assert_rent_exempt(rent, destination_info)?;
+    assert_owned_by(destination_info, token_program_info.key)?;
+    assert_owned_by(outstanding_shares_info, token_program_info.key)?;
+    assert_token_matching(&vault, token_program_info)?;
+
+    if outstanding_shares.amount == 0 {
+        return Err(VaultError::NoShares.into());
+    }
+
+    if outstanding_shares.mint != *fraction_mint_info.key {
+        return Err(VaultError::OutstandingShareAccountNeedsToMatchFractionalMint.into());
+    }
+
+    if destination.mint != redeem_treasury.mint {
+        return Err(VaultError::DestinationAccountNeedsToMatchRedeemMint.into());
+    }
+
+    if vault.state != VaultState::Combined {
+        return Err(VaultError::VaultShouldBeCombined.into());
+    }
+
+    if fraction_mint_info.key != &vault.fraction_mint {
+        return Err(VaultError::VaultMintNeedsToMatchVault.into());
+    }
+
+    if redeem_treasury_info.key != &vault.redeem_treasury {
+        return Err(VaultError::RedeemTreasuryNeedsToMatchVault.into());
+    }
+
+    if fraction_mint.supply == 0 {
+        // Basically impossible but I want to be safe
+        return Err(VaultError::FractionSupplyEmpty.into());
+    }
+
+    let we_owe_you = match vault
+        .locked_price_per_share
+        .checked_mul(outstanding_shares.amount)
+    {
+        Some(val) => val,
+        None => return Err(VaultError::NumericalOverflowError.into()),
+    };
+
+    let (_, bump_seed) =
+        Pubkey::find_program_address(&[PREFIX.as_bytes(), program_id.as_ref()], program_id);
+    let authority_signer_seeds = &[PREFIX.as_bytes(), program_id.as_ref(), &[bump_seed]];
+
+    spl_token_transfer(TokenTransferParams {
+        source: redeem_treasury_info.clone(),
+        destination: destination_info.clone(),
+        amount: we_owe_you,
+        authority: transfer_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+    })?;
+
+    spl_token_burn(TokenBurnParams {
+        mint: fraction_mint_info.clone(),
+        amount: outstanding_shares.amount,
+        authority: burn_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+        source: outstanding_shares_info.clone(),
+    })?;
+
+    let fractional_remaining = match fraction_mint.supply.checked_sub(outstanding_shares.amount) {
+        Some(val) => val,
+        None => return Err(VaultError::NumericalOverflowError.into()),
+    };
+
+    if fractional_remaining == 0 && vault.token_type_count == 0 {
+        vault.state = VaultState::Deactivated;
+        vault.serialize(&mut *vault_info.data.borrow_mut())?;
+    }
+
     Ok(())
 }
 
@@ -68,20 +161,25 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let your_payment_info = next_account_info(account_info_iter)?;
     let fraction_mint_info = next_account_info(account_info_iter)?;
     let redeem_treasury_info = next_account_info(account_info_iter)?;
+    let fraction_treasury_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let burn_authority_info = next_account_info(account_info_iter)?;
+    let fraction_burn_authority_info = next_account_info(account_info_iter)?;
     let external_pricing_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
 
     let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
     let fraction_mint: Mint = assert_initialized(fraction_mint_info)?;
+    let fraction_treasury: Account = assert_initialized(fraction_treasury_info)?;
     let your_payment_account: Account = assert_initialized(your_payment_info)?;
     let your_outstanding_shares: Account = assert_initialized(your_outstanding_shares_info)?;
     let external_pricing: ExternalPriceAccount =
         try_from_slice_unchecked(&external_pricing_info.data.borrow_mut())?;
 
+    assert_token_matching(&vault, token_program_info)?;
+
     if vault.state != VaultState::Active {
-        return Err(VaultError::PoolShouldBeActive.into());
+        return Err(VaultError::VaultShouldBeActive.into());
     }
 
     if your_payment_account.mint != external_pricing.price_mint {
@@ -89,25 +187,38 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     }
 
     if your_outstanding_shares.mint != *fraction_mint_info.key {
-        return Err(VaultError::ShareMintShouldMatchVaultalMint.into());
+        return Err(VaultError::ShareMintShouldMatchFractionalMint.into());
     }
 
     if fraction_mint_info.key != &vault.fraction_mint {
-        return Err(VaultError::VaultMintNeedsToMatchPool.into());
+        return Err(VaultError::VaultMintNeedsToMatchVault.into());
     }
 
     if redeem_treasury_info.key != &vault.redeem_treasury {
-        return Err(VaultError::RedeemTreasuryNeedsToMatchPool.into());
+        return Err(VaultError::RedeemTreasuryNeedsToMatchVault.into());
     }
 
     if !external_pricing.allowed_to_combine {
         return Err(VaultError::NotAllowedToCombine.into());
     }
 
-    let market_cap = match fraction_mint
+    let total_market_cap = match fraction_mint
         .supply
         .checked_mul(external_pricing.price_per_share)
     {
+        Some(val) => val,
+        None => return Err(VaultError::NumericalOverflowError.into()),
+    };
+
+    let stored_market_cap = match fraction_treasury
+        .amount
+        .checked_mul(external_pricing.price_per_share)
+    {
+        Some(val) => val,
+        None => return Err(VaultError::NumericalOverflowError.into()),
+    };
+
+    let circulating_market_cap = match total_market_cap.checked_sub(stored_market_cap) {
         Some(val) => val,
         None => return Err(VaultError::NumericalOverflowError.into()),
     };
@@ -120,17 +231,22 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         None => return Err(VaultError::NumericalOverflowError.into()),
     };
 
-    let what_you_owe = match market_cap.checked_sub(your_share_value) {
+    let what_you_owe = match circulating_market_cap.checked_sub(your_share_value) {
         Some(val) => val,
         None => return Err(VaultError::NumericalOverflowError.into()),
     };
 
     if your_payment_account.amount < what_you_owe {
-        return Err(VaultError::CannotAffordToCombineThisPool.into());
+        return Err(VaultError::CannotAffordToCombineThisVault.into());
     }
 
-    let (_, bump_seed) = Pubkey::find_program_address(&[program_id.as_ref()], program_id);
-    let authority_signer_seeds = &[program_id.as_ref(), &[bump_seed]];
+    let (authority, bump_seed) =
+        Pubkey::find_program_address(&[PREFIX.as_bytes(), program_id.as_ref()], program_id);
+    let authority_signer_seeds = &[PREFIX.as_bytes(), program_id.as_ref(), &[bump_seed]];
+
+    if authority != *fraction_burn_authority_info.key {
+        return Err(VaultError::InvalidAuthority.into());
+    }
 
     spl_token_transfer(TokenTransferParams {
         source: your_payment_info.clone(),
@@ -150,7 +266,17 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         source: your_outstanding_shares_info.clone(),
     })?;
 
+    spl_token_burn(TokenBurnParams {
+        mint: fraction_mint_info.clone(),
+        amount: fraction_treasury.amount,
+        authority: fraction_burn_authority_info.clone(),
+        authority_signer_seeds: authority_signer_seeds,
+        token_program: token_program_info.clone(),
+        source: fraction_treasury_info.clone(),
+    })?;
+
     vault.state = VaultState::Combined;
+    vault.locked_price_per_share = external_pricing.price_per_share;
     vault.serialize(&mut *vault_info.data.borrow_mut())?;
 
     Ok(())
@@ -170,17 +296,18 @@ pub fn process_activate_vault(
     let token_program_info = next_account_info(account_info_iter)?;
 
     let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
+    assert_token_matching(&vault, token_program_info)?;
 
     if vault.state != VaultState::Inactive {
-        return Err(VaultError::PoolShouldBeInactive.into());
+        return Err(VaultError::VaultShouldBeInactive.into());
     }
 
     let (authority_key, bump_seed) =
-        Pubkey::find_program_address(&[program_id.as_ref()], program_id);
+        Pubkey::find_program_address(&[PREFIX.as_bytes(), program_id.as_ref()], program_id);
     if fractional_mint_authority_info.key != &authority_key {
         return Err(VaultError::InvalidAuthority.into());
     }
-    let authority_signer_seeds = &[program_id.as_ref(), &[bump_seed]];
+    let authority_signer_seeds = &[PREFIX.as_bytes(), program_id.as_ref(), &[bump_seed]];
 
     spl_token_mint_to(TokenMintToParams {
         mint: fraction_mint_info.clone(),
@@ -209,7 +336,6 @@ pub fn process_add_token_to_inactivated_vault(
     let vault_info = next_account_info(account_info_iter)?;
     let payer_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
-
     let token_program_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
@@ -223,9 +349,10 @@ pub fn process_add_token_to_inactivated_vault(
     let token_account: Account = assert_initialized(token_account_info)?;
     let safety_deposit_box: Account = assert_initialized(safety_deposit_box_info)?;
     let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
+    assert_token_matching(&vault, token_program_info)?;
 
     if vault.state != VaultState::Inactive {
-        return Err(VaultError::PoolShouldBeInactive.into());
+        return Err(VaultError::VaultShouldBeInactive.into());
     }
 
     if token_account.amount == 0 {
@@ -403,6 +530,7 @@ pub fn process_init_vault(
     }
 
     vault.key = VAULT_KEY;
+    vault.token_program = *token_program_info.key;
     vault.redeem_treasury = *redeem_treasury_info.key;
     vault.fraction_treasury = *fraction_treasury_info.key;
     vault.fraction_mint = *fraction_mint_info.key;

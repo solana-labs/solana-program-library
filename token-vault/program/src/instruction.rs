@@ -61,21 +61,26 @@ pub enum VaultInstruction {
 
     ///   0. `[writable]` Initialized activated token vault
     ///   1. `[writable]` Token account containing your portion of the outstanding fraction shares
-    ///   1. `[writable]` Token account of the redeem_treasury mint type that you will pay with
-    ///   1. `[writable]` Fraction mint
-    ///   1. `[writable]` Redeem treasury account
-    ///   1. `[]` Transfer authority for the  token account that you will pay with
-    ///   1. `[]` Burn authority for the fraction token account containing your outstanding fraction shares
-    ///   1. `[]` External pricing lookup address
-    ///   4. `[]` Token program
+    ///   2. `[writable]` Token account of the redeem_treasury mint type that you will pay with
+    ///   3. `[writable]` Fraction mint
+    ///   4. `[writable]` Fraction treasury account
+    ///   5. `[writable]` Redeem treasury account
+    ///   6. `[]` Transfer authority for the  token account that you will pay with
+    ///   7. `[]` Burn authority for the fraction token account containing your outstanding fraction shares
+    ///   8. `[]` PDA-based Burn authority for the fraction treasury account containing the uncirculated shares
+    ///   9. `[]` External pricing lookup address
+    ///   10. `[]` Token program
     CombineVault,
 
     ///   0. `[writable]` Initialized Token account containing your fractional shares
     ///   1. `[writable]` Initialized Destination token account where you wish your proceeds to arrive
+    ///   1. `[writable]` Fraction mint
+    ///   1. `[writable]` Redeem treasury account
     ///   2. `[]` Transfer authority for the transfer of proceeds from redeem treasury to destination
     ///   3. `[]` Burn authority for the burning of all your fractional shares
     ///   4. `[]`  Combined token vault
     ///   5. `[]` Token program
+    ///   6. `[]` Rent sysvar
     RedeemShares,
 }
 /*

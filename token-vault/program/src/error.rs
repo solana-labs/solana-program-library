@@ -85,13 +85,17 @@ pub enum VaultError {
     #[error("Vault treasury's owner not set to program")]
     TreasuryOwnerNotProgram,
 
-    /// Pool should be inactive
-    #[error("Pool should be inactive")]
-    PoolShouldBeInactive,
+    /// Vault should be inactive
+    #[error("Vault should be inactive")]
+    VaultShouldBeInactive,
 
-    /// Pool should be active
+    /// Vault should be active
     #[error("Pool should be active")]
-    PoolShouldBeActive,
+    VaultShouldBeActive,
+
+    /// Vault should be combined
+    #[error("Pool should be combined")]
+    VaultShouldBeCombined,
 
     /// Vault treasury needs to match fraction mint
     #[error("Vault treasury needs to match fraction mint")]
@@ -115,23 +119,43 @@ pub enum VaultError {
 
     /// Your share account should match the mint of the fractional mint
     #[error("Your share account should match the mint of the fractional mint")]
-    ShareMintShouldMatchVaultalMint,
+    ShareMintShouldMatchFractionalMint,
 
-    /// Vault mint provided does not match that on the token pool
-    #[error("Vault mint provided does not match that on the token pool")]
-    VaultMintNeedsToMatchPool,
+    /// Vault mint provided does not match that on the token vault
+    #[error("Vault mint provided does not match that on the token vault")]
+    VaultMintNeedsToMatchVault,
 
-    /// Redeem treasury provided does not match that on the token pool
-    #[error("Redeem treasury provided does not match that on the token pool")]
-    RedeemTreasuryNeedsToMatchPool,
+    /// Redeem treasury provided does not match that on the token vault
+    #[error("Redeem treasury provided does not match that on the token vault")]
+    RedeemTreasuryNeedsToMatchVault,
 
     /// Not allowed to combine at this time
     #[error("Not allowed to combine at this time")]
     NotAllowedToCombine,
 
     /// You cannot afford to combine this pool
-    #[error("You cannot afford to combine this pool")]
-    CannotAffordToCombineThisPool,
+    #[error("You cannot afford to combine this vault")]
+    CannotAffordToCombineThisVault,
+
+    /// You have no shares to redeem
+    #[error("You have no shares to redeem")]
+    NoShares,
+
+    /// Your outstanding share account is the incorrect mint
+    #[error("Your outstanding share account is the incorrect mint")]
+    OutstandingShareAccountNeedsToMatchFractionalMint,
+
+    /// Your destination account is the incorrect mint
+    #[error("Your destination account is the incorrect mint")]
+    DestinationAccountNeedsToMatchRedeemMint,
+
+    /// Fractional mint is empty
+    #[error("Fractional mint is empty")]
+    FractionSupplyEmpty,
+
+    /// Token Program Provided Needs To Match Vault
+    #[error("Token Program Provided Needs To Match Vault")]
+    TokenProgramProvidedDoesNotMatchVault,
 }
 
 impl PrintProgramError for VaultError {

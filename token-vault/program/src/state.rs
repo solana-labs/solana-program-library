@@ -11,7 +11,7 @@ pub const REGISTRY_KEY: u8 = 1;
 pub const EXTERNAL_ACCOUNT_KEY: u8 = 2;
 
 pub const MAX_TOKEN_REGISTRY_SIZE: usize = 1 + 32 + 32 + 32 + 100 + 1;
-pub const MAX_VAULT_SIZE: usize = 1 + 32 + 32 + 32 + 1 + 32 + 1 + 32 + 1 + 1;
+pub const MAX_VAULT_SIZE: usize = 1 + 32 + 32 + 32 + 32 + 1 + 32 + 1 + 32 + 1 + 1 + 8;
 
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
@@ -26,6 +26,8 @@ pub enum VaultState {
 #[derive(Clone, BorshSerialize, BorshDeserialize)]
 pub struct Vault {
     pub key: u8,
+    /// Store token program used
+    pub token_program: Pubkey,
     /// Mint that produces the fractional shares
     pub fraction_mint: Pubkey,
     /// Authority who can make changes to the vault
@@ -44,8 +46,19 @@ pub struct Vault {
 
     /// Must point at an ExternalPriceAccount, which gives permission and price for buyout.
     pub pricing_lookup_address: Pubkey,
+    /// In inactive state, we use this to set the order key on Safety Deposit Boxes being added so
+    /// the users know how to reconstruct the hashed_safety_deposit_boxes sha256 in the right order, and
+    /// then we increment it and save so the next safety deposit box gets the next number.
+    /// In the Combined state during token redemption by authority, we use it as a decrementing counter each time
+    /// The authority of the vault withdrawals a Safety Deposit contents to count down how many
+    /// are left to be opened and closed down. Once this hits zero, and the fraction mint has zero shares,
+    /// then we can deactivate the vault.
     pub token_type_count: u8,
     pub state: VaultState,
+
+    /// Once combination happens, we copy price per share to vault so that if something nefarious happens
+    /// to external price account, like price change, we still have the math 'saved' for use in our calcs
+    pub locked_price_per_share: u64,
 }
 
 #[repr(C)]
