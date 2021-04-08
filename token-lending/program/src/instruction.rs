@@ -283,6 +283,22 @@ pub enum LendingInstruction {
         /// The new owner
         new_owner: Pubkey,
     },
+    // 12
+    /// Make a flash loan.
+    ///
+    ///   0. `[writable]` Destination liquidity token account, minted by reserve liquidity mint.
+    ///   1. `[writable]` Reserve account.
+    ///   2. `[]` Lending market account.
+    ///   3. `[]` Derived lending market authority.
+    ///   4. `[]` Temporary memory
+    ///   5. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
+    ///   call it `ExecuteOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
+    ///   6. `[]` Flash Loan Receiver Program Derived Account
+    ///   7. `[]` Token program id
+    /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`, starting from the 8th account.
+    FlashLoan {
+        amount: u64,
+    }
 }
 
 impl LendingInstruction {
@@ -363,6 +379,10 @@ impl LendingInstruction {
             11 => {
                 let (new_owner, _rest) = Self::unpack_pubkey(rest)?;
                 Self::SetLendingMarketOwner { new_owner }
+            }
+            12 => {
+                let (amount, _rest) = Self::unpack_u64(rest)?;
+                Self::FlashLoan {amount}
             }
             _ => return Err(LendingError::InstructionUnpackError.into()),
         })
@@ -485,6 +505,10 @@ impl LendingInstruction {
             Self::SetLendingMarketOwner { new_owner } => {
                 buf.push(11);
                 buf.extend_from_slice(new_owner.as_ref());
+            }
+            Self::FlashLoan { amount } => {
+                buf.push(12);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
         }
         buf
@@ -912,5 +936,37 @@ pub fn set_lending_market_owner(
             AccountMeta::new_readonly(lending_market_owner, true),
         ],
         data: LendingInstruction::SetLendingMarketOwner { new_owner }.pack(),
+    }
+}
+
+// Creates a `FlashLoan` instruction.
+pub fn flash_loan(
+    program_id: Pubkey,
+    destination_liquidity_pubkey: Pubkey,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    derived_lending_market_authority: Pubkey,
+    flash_loan_recevier_pubkey: Pubkey,
+    flash_loan_receiver_program_derived_account,
+    amount: u64,
+    additional_params: Vec<Pubkey>
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(destination_liquidity_pubkey, false),
+        AccountMeta::new_readonly(reserve_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(derived_lending_market_authority, false),
+        AccountMeta::new_readonly(flash_loan_recevier_pubkey, false),
+        AccountMeta::new_readonly(flash_loan_receiver_program_derived_account, false),
+    ];
+    accounts.extend(
+        additional_params
+            .into_iter()
+            .map(|additional_param| AccountMeta::new(additional_param, false)),
+    );
+    Instruction {
+        program_id,
+        accounts: accounts,
+        data: LendingInstruction::FlashLoan { amount }.pack(),
     }
 }

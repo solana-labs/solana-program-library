@@ -88,6 +88,10 @@ pub fn process_instruction(
             msg!("Instruction: Set Lending Market Owner");
             process_set_lending_market_owner(program_id, new_owner, accounts)
         }
+        LendingInstruction::FlashLoan { amount } => {
+            msg!("Instruction: Flash loan");
+            process_flash_loan(program_id, amount, accounts)
+        }
     }
 }
 
@@ -1524,6 +1528,30 @@ fn process_set_lending_market_owner(
 
     lending_market.owner = new_owner;
     LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
+
+    Ok(())
+}
+
+#[inline(never)] // avoid stack frame limit
+fn process_flash_loan(
+    program_id: &Pubkey,
+    new_owner: Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let destination_liquidity_info = next_account_info(account_info_iter)?;
+    let reserve_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let derived_lending_market_authority = next_account_info(account_info_iter)?;
+    let flash_loan_receiver_authority = next_account_info(account_info_iter)?;
+    let token_program = next_account_info(account_info_iter)?;
+
+    let mut lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
+
 
     Ok(())
 }
