@@ -3,7 +3,7 @@ use {
     solana_program::pubkey::Pubkey,
 };
 /// prefix used for PDAs to avoid certain collision attacks (https://en.wikipedia.org/wiki/Collision_attack#Chosen-prefix_collision_attack)
-pub const PREFIX: &str = "fraction";
+pub const PREFIX: &str = "vault";
 
 /// Used to tell front end clients that this struct is a ledger struct
 pub const VAULT_KEY: u8 = 0;
@@ -36,11 +36,11 @@ pub struct Vault {
     pub redeem_treasury: Pubkey,
     /// Can authority mint more shares from fraction_mint after activation
     pub allow_further_share_creation: bool,
-    /// Hashed fractionalized token registry lookup - after each addition of a token, we hash that token key
-    /// combined with the current hash on the vault, making a 64 byte array out of [current_hashed, new_registry_key]
+    /// Hashed safety deposit boxes - after each addition of a token, we hash that token key
+    /// combined with the current hash on the vault, making a 64 byte array out of [current_hashed, new_box]
     /// and hashing it with sha256 down to a new 32 byte array of u8s and saving it.
     /// We use this to guarantee you withdraw all your tokens later.
-    pub hashed_fractionalized_token_registry: [u8; 32],
+    pub hashed_safety_deposit_boxes: [u8; 32],
 
     /// Must point at an ExternalPriceAccount, which gives permission and price for buyout.
     pub pricing_lookup_address: Pubkey,
@@ -50,8 +50,8 @@ pub struct Vault {
 
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize)]
-pub struct FractionalizedTokenRegistry {
-    /// Each token type in a holding account has it's own ledger that contains it's mint and a look-back
+pub struct SafetyDepositBox {
+    /// Each token type in a vault has it's own box that contains it's mint and a look-back
     pub key: u8,
     /// Key pointing to the parent vault
     pub vault: Pubkey,

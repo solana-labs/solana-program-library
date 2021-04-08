@@ -69,6 +69,14 @@ pub enum VaultInstruction {
     ///   1. `[]` External pricing lookup address
     ///   4. `[]` Token program
     CombineVault,
+
+    ///   0. `[writable]` Initialized Token account containing your fractional shares
+    ///   1. `[writable]` Initialized Destination token account where you wish your proceeds to arrive
+    ///   2. `[]` Transfer authority for the transfer of proceeds from redeem treasury to destination
+    ///   3. `[]` Burn authority for the burning of all your fractional shares
+    ///   4. `[]`  Combined token vault
+    ///   5. `[]` Token program
+    RedeemShares,
 }
 /*
 /// Creates an CreateFractionAccounts instruction

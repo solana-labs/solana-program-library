@@ -3,8 +3,8 @@ use {
         error::VaultError,
         instruction::VaultInstruction,
         state::{
-            ExternalPriceAccount, FractionalizedTokenRegistry, Vault, VaultState,
-            MAX_TOKEN_REGISTRY_SIZE, MAX_VAULT_SIZE, PREFIX, REGISTRY_KEY, VAULT_KEY,
+            ExternalPriceAccount, SafetyDepositBox, Vault, VaultState, MAX_TOKEN_REGISTRY_SIZE,
+            MAX_VAULT_SIZE, PREFIX, REGISTRY_KEY, VAULT_KEY,
         },
         utils::{
             assert_initialized, assert_owned_by, assert_rent_exempt,
@@ -49,7 +49,15 @@ pub fn process_instruction(
             msg!("Instruction: Combine Vault Token Pool");
             process_combine_vault(program_id, accounts)
         }
+        VaultInstruction::RedeemShares => {
+            msg!("Instruction: Redeem Shares");
+            process_redeem_shares(program_id, accounts)
+        }
     }
+}
+
+pub fn process_redeem_shares(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    Ok(())
 }
 
 pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
@@ -195,9 +203,9 @@ pub fn process_add_token_to_inactivated_vault(
     amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let registry_account_info = next_account_info(account_info_iter)?;
+    let safety_deposit_account_info = next_account_info(account_info_iter)?;
     let token_account_info = next_account_info(account_info_iter)?;
-    let safety_deposit_info = next_account_info(account_info_iter)?;
+    let safety_deposit_box_info = next_account_info(account_info_iter)?;
     let vault_info = next_account_info(account_info_iter)?;
     let payer_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
@@ -209,11 +217,11 @@ pub fn process_add_token_to_inactivated_vault(
     let rent = &Rent::from_account_info(rent_info)?;
     assert_rent_exempt(rent, token_account_info)?;
     assert_rent_exempt(rent, vault_info)?;
-    assert_owned_by(safety_deposit_info, token_program_info.key)?;
+    assert_owned_by(safety_deposit_box_info, token_program_info.key)?;
     assert_owned_by(token_account_info, token_program_info.key)?;
 
     let token_account: Account = assert_initialized(token_account_info)?;
-    let safety_deposit: Account = assert_initialized(safety_deposit_info)?;
+    let safety_deposit_box: Account = assert_initialized(safety_deposit_box_info)?;
     let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
 
     if vault.state != VaultState::Inactive {
@@ -228,11 +236,11 @@ pub fn process_add_token_to_inactivated_vault(
         return Err(VaultError::TokenAccountAmountLessThanAmountSpecified.into());
     }
 
-    if safety_deposit.amount > 0 {
+    if safety_deposit_box.amount > 0 {
         return Err(VaultError::VaultAccountIsNotEmpty.into());
     }
 
-    if safety_deposit.owner != *program_id {
+    if safety_deposit_box.owner != *program_id {
         return Err(VaultError::VaultAccountIsNotOwnedByProgram.into());
     }
 
@@ -241,9 +249,9 @@ pub fn process_add_token_to_inactivated_vault(
         vault_info.key.as_ref(),
         token_account.mint.as_ref(),
     ];
-    let (registry_key, bump_seed) = Pubkey::find_program_address(seeds, program_id);
+    let (safety_deposit_account_key, bump_seed) = Pubkey::find_program_address(seeds, program_id);
 
-    if registry_key != *registry_account_info.key {
+    if safety_deposit_account_key != *safety_deposit_account_info.key {
         return Err(VaultError::RegistryAccountAddressInvalid.into());
     }
     let authority_signer_seeds = &[
@@ -254,7 +262,7 @@ pub fn process_add_token_to_inactivated_vault(
     ];
     create_or_allocate_account_raw(
         *program_id,
-        registry_account_info,
+        safety_deposit_account_info,
         rent_info,
         system_account_info,
         payer_info,
@@ -262,15 +270,15 @@ pub fn process_add_token_to_inactivated_vault(
         authority_signer_seeds,
     )?;
 
-    let mut registry: FractionalizedTokenRegistry =
-        try_from_slice_unchecked(&registry_account_info.data.borrow_mut())?;
-    registry.key = REGISTRY_KEY;
-    registry.vault = *vault_info.key;
-    registry.token_mint = token_account.mint;
-    registry.safety_deposit_box = *safety_deposit_info.key;
-    registry.order = vault.token_type_count;
+    let mut safety_deposit_account: SafetyDepositBox =
+        try_from_slice_unchecked(&safety_deposit_account_info.data.borrow_mut())?;
+    safety_deposit_account.key = REGISTRY_KEY;
+    safety_deposit_account.vault = *vault_info.key;
+    safety_deposit_account.token_mint = token_account.mint;
+    safety_deposit_account.safety_deposit_box = *safety_deposit_box_info.key;
+    safety_deposit_account.order = vault.token_type_count;
 
-    registry.serialize(&mut *registry_account_info.data.borrow_mut())?;
+    safety_deposit_account.serialize(&mut *safety_deposit_account_info.data.borrow_mut())?;
 
     vault.token_type_count = match vault.token_type_count.checked_add(1) {
         Some(val) => val,
@@ -280,9 +288,9 @@ pub fn process_add_token_to_inactivated_vault(
     let mut new_arr: [u8; 64] = [0; 64];
     for n in 0..63 {
         if n < 32 {
-            new_arr[n] = vault.hashed_fractionalized_token_registry[n];
+            new_arr[n] = vault.hashed_safety_deposit_boxes[n];
         } else {
-            new_arr[n] = registry_account_info.key.as_ref()[n - 32];
+            new_arr[n] = safety_deposit_account_info.key.as_ref()[n - 32];
         }
     }
     hasher.update(new_arr);
@@ -294,7 +302,7 @@ pub fn process_add_token_to_inactivated_vault(
         hashed_arr[n] = slice[n];
     }
 
-    vault.hashed_fractionalized_token_registry = hashed_arr;
+    vault.hashed_safety_deposit_boxes = hashed_arr;
 
     vault.serialize(&mut *vault_info.data.borrow_mut())?;
 
@@ -405,7 +413,7 @@ pub fn process_init_vault(
     vault.state = VaultState::Inactive;
 
     let arr_of_zeroes: [u8; 32] = [0; 32];
-    vault.hashed_fractionalized_token_registry = arr_of_zeroes;
+    vault.hashed_safety_deposit_boxes = arr_of_zeroes;
     vault.serialize(&mut *vault_info.data.borrow_mut())?;
 
     Ok(())
