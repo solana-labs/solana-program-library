@@ -96,8 +96,8 @@ pub enum VaultInstruction {
     /// If in combine state, authority on vault can hit this to withdrawal all of a token type from a safety deposit box.
     /// Once fractional supply is zero and all tokens have been removed this action will take vault to Deactivated
     ///   0. `[writable]` Initialized Destination account for the tokens being withdrawn
-    ///   1. `[writable]` The security deposit box account key for the tokens
-    ///   2. `[writable]` The store key on the security deposit box account
+    ///   1. `[writable]` The safety deposit box account key for the tokens
+    ///   2. `[writable]` The store key on the safety deposit box account
     ///   3. `[writable]` The initialized combined token vault
     ///   4. `[]` Fraction mint
     ///   5. `[signer]` Authority of vault
@@ -316,5 +316,61 @@ pub fn create_redeem_shares_instruction(
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
         data: VaultInstruction::RedeemShares.try_to_vec().unwrap(),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn create_withdraw_tokens_instruction(
+    program_id: Pubkey,
+    destination: Pubkey,
+    safety_deposit_box: Pubkey,
+    store: Pubkey,
+    vault: Pubkey,
+    fraction_mint: Pubkey,
+    vault_authority: Pubkey,
+    transfer_authority: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(destination, false),
+            AccountMeta::new(safety_deposit_box, false),
+            AccountMeta::new(store, false),
+            AccountMeta::new(vault, false),
+            AccountMeta::new_readonly(fraction_mint, false),
+            AccountMeta::new_readonly(vault_authority, true),
+            AccountMeta::new_readonly(transfer_authority, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+        ],
+        data: VaultInstruction::WithdrawTokenFromSafetyDepositBox
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn create_mint_shares_instruction(
+    program_id: Pubkey,
+    fraction_treasury: Pubkey,
+    fraction_mint: Pubkey,
+    vault: Pubkey,
+    fraction_mint_authority: Pubkey,
+    vault_authority: Pubkey,
+    number_of_shares: u64,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(fraction_treasury, false),
+            AccountMeta::new(fraction_mint, false),
+            AccountMeta::new_readonly(vault, false),
+            AccountMeta::new_readonly(fraction_mint_authority, false),
+            AccountMeta::new_readonly(vault_authority, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: VaultInstruction::MintFractionalShares(NumberOfShareArgs { number_of_shares })
+            .try_to_vec()
+            .unwrap(),
     }
 }
