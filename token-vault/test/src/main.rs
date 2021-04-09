@@ -1,6 +1,3 @@
-use solana_program::entrypoint::ProgramResult;
-use solana_sdk::signature::Keypair;
-
 use {
     clap::{crate_description, crate_name, crate_version, App, Arg, ArgMatches, SubCommand},
     solana_clap_utils::{
@@ -11,7 +8,7 @@ use {
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack},
     solana_sdk::{
         pubkey::Pubkey,
-        signature::{read_keypair_file, Signer},
+        signature::{read_keypair_file, Keypair, Signer},
         system_instruction::create_account,
         transaction::Transaction,
     },
@@ -22,9 +19,10 @@ use {
     spl_token_vault::{
         instruction::{
             create_activate_vault_instruction, create_add_token_to_inactive_vault_instruction,
-            create_init_vault_instruction, create_update_external_price_account_instruction,
+            create_combine_vault_instruction, create_init_vault_instruction,
+            create_update_external_price_account_instruction,
         },
-        state::{Vault, VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, PREFIX},
+        state::{ExternalPriceAccount, Vault, VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, PREFIX},
     },
     std::str::FromStr,
 };
@@ -371,6 +369,153 @@ fn activate_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -
     }
 }
 
+fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Option<Pubkey> {
+    let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
+    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
+
+    let vault_authority = read_keypair_file(
+        app_matches
+            .value_of("vault_authority")
+            .unwrap_or_else(|| app_matches.value_of("keypair").unwrap()),
+    )
+    .unwrap();
+
+    let amount_of_money: u64 = app_matches
+        .value_of("amount_of_money")
+        .unwrap_or_else(|| "10000")
+        .parse::<u64>()
+        .unwrap();
+
+    let vault_key = pubkey_of(app_matches, "vault_authority").unwrap();
+    let vault_account = client.get_account(&vault_key).unwrap();
+    let vault: Vault = try_from_slice_unchecked(&vault_account.data).unwrap();
+    let external_price_account = client.get_account(&vault.pricing_lookup_address).unwrap();
+    let external: ExternalPriceAccount =
+        try_from_slice_unchecked(&external_price_account.data).unwrap();
+    let payment_account = Keypair::new();
+    let mut signers = vec![&payer, &vault_authority, &payment_account];
+
+    let seeds = &[PREFIX.as_bytes(), &program_key.as_ref()];
+    let (uncirculated_burn_authority, _) = Pubkey::find_program_address(seeds, &program_key);
+
+    let transfer_authority = Keypair::new();
+    let burn_authority = Keypair::new();
+
+    let mut instructions = vec![
+        create_account(
+            &payer.pubkey(),
+            &payment_account.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ),
+        initialize_account(
+            &token_key,
+            &payment_account.pubkey(),
+            &external.price_mint,
+            &program_key,
+        )
+        .unwrap(),
+        mint_to(
+            &token_key,
+            &external.price_mint,
+            &payment_account.pubkey(),
+            &payer.pubkey(),
+            &[&payer.pubkey()],
+            amount_of_money,
+        )
+        .unwrap(),
+        approve(
+            &token_key,
+            &payment_account.pubkey(),
+            &transfer_authority.pubkey(),
+            &payer.pubkey(),
+            &[&payer.pubkey()],
+            amount_of_money,
+        )
+        .unwrap(),
+    ];
+
+    let mut shares_outstanding: u64 = 0;
+    let key = Keypair::new();
+    let outstanding_shares_account = match pubkey_of(app_matches, "outstanding_shares_account") {
+        Some(val) => {
+            let info = client.get_account(&val).unwrap();
+            let account: Account = Account::unpack_unchecked(&info.data).unwrap();
+            shares_outstanding = account.amount;
+            val
+        }
+        None => {
+            // We make an empty oustanding share account if one is not provided.
+            instructions.push(create_account(
+                &payer.pubkey(),
+                &key.pubkey(),
+                client
+                    .get_minimum_balance_for_rent_exemption(Account::LEN)
+                    .unwrap(),
+                Account::LEN as u64,
+                &token_key,
+            ));
+            instructions.push(
+                initialize_account(
+                    &token_key,
+                    &key.pubkey(),
+                    &vault.fraction_mint,
+                    &program_key,
+                )
+                .unwrap(),
+            );
+
+            signers.push(&key);
+            key.pubkey()
+        }
+    };
+
+    instructions.push(
+        approve(
+            &token_key,
+            &outstanding_shares_account,
+            &burn_authority.pubkey(),
+            &payer.pubkey(),
+            &[&payer.pubkey()],
+            shares_outstanding,
+        )
+        .unwrap(),
+    );
+
+    instructions.push(create_combine_vault_instruction(
+        program_key,
+        vault_key,
+        outstanding_shares_account,
+        payment_account.pubkey(),
+        vault.fraction_mint,
+        vault.fraction_treasury,
+        vault.redeem_treasury,
+        vault_authority.pubkey(),
+        transfer_authority.pubkey(),
+        burn_authority.pubkey(),
+        uncirculated_burn_authority,
+        vault.pricing_lookup_address,
+    ));
+
+    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
+
+    transaction.sign(&signers, recent_blockhash);
+    client.send_and_confirm_transaction(&transaction).unwrap();
+    let updated_vault_data = client.get_account(&vault_key).unwrap();
+    let updated_vault: Vault = try_from_slice_unchecked(&updated_vault_data.data).unwrap();
+    if updated_vault.state == VaultState::Combined {
+        println!("Combined vault.");
+        Some(vault_key)
+    } else {
+        println!("Failed to combined vault.");
+        None
+    }
+}
+
 fn main() {
     let app_matches = App::new(crate_name!())
         .about(crate_description!())
@@ -530,6 +675,43 @@ fn main() {
                         .help("Initial number of shares to produce, defaults to 100"),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("combine_vault")
+                .about("Combine Vault")
+                .arg(
+                    Arg::with_name("vault_authority")
+                        .long("vault_authority")
+                        .value_name("VAULT_AUTHORITY")
+                        .required(false)
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help("Filepath or URL to a keypair, defaults to you otherwise"),
+                )
+                .arg(
+                    Arg::with_name("vault_address")
+                        .long("vault_address")
+                        .value_name("VAULT_ADDRESS")
+                        .required(true)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of vault"),
+                ).arg(
+                    Arg::with_name("outstanding_shares_account")
+                        .long("outstanding_shares_account")
+                        .value_name("OUSTANDING_SHARES_ACCOUNT")
+                        .required(true)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of oustanding shares account, an empty will be made if not provided"),
+                ).arg(
+                    Arg::with_name("amount_of_money")
+                        .long("amount_of_money")
+                        .value_name("AMOUNT_OF_MONEY")
+                        .required(false)
+                        .takes_value(true)
+                        .help("Initial amount of money to provide to pay for buy out, defaults to 10000. You need to provide enough for a buy out!"),
+                ),
+        )
         .get_matches();
 
     let client = RpcClient::new(
@@ -563,7 +745,14 @@ fn main() {
                 arg_matches.value_of("vault_address")
             );
         }
-        ("activate_vault", Some(arg_matches)) => activate_vault(arg_matches, payer, client),
+        ("activate_vault", Some(arg_matches)) => {
+            activate_vault(arg_matches, payer, client);
+            println!("Completed command.");
+        }
+        ("combine_vault", Some(arg_matches)) => {
+            combine_vault(arg_matches, payer, client);
+            println!("Completed command.");
+        }
         _ => unreachable!(),
     }
 }

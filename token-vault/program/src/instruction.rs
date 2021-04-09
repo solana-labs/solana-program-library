@@ -256,3 +256,39 @@ pub fn create_activate_vault_instruction(
             .unwrap(),
     }
 }
+
+/// Creates an CombineVault instruction
+#[allow(clippy::too_many_arguments)]
+pub fn create_combine_vault_instruction(
+    program_id: Pubkey,
+    vault: Pubkey,
+    outstanding_share_token_account: Pubkey,
+    paying_token_account: Pubkey,
+    fraction_mint: Pubkey,
+    fraction_treasury: Pubkey,
+    redeem_treasury: Pubkey,
+    vault_authority: Pubkey,
+    paying_transfer_authority: Pubkey,
+    burn_authority: Pubkey,
+    uncirculated_burn_authority: Pubkey,
+    external_pricing_account: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(vault, false),
+            AccountMeta::new(outstanding_share_token_account, false),
+            AccountMeta::new(paying_token_account, false),
+            AccountMeta::new(fraction_mint, false),
+            AccountMeta::new(fraction_treasury, false),
+            AccountMeta::new(redeem_treasury, false),
+            AccountMeta::new_readonly(vault_authority, true),
+            AccountMeta::new_readonly(paying_transfer_authority, true),
+            AccountMeta::new_readonly(burn_authority, true),
+            AccountMeta::new_readonly(uncirculated_burn_authority, true),
+            AccountMeta::new_readonly(external_pricing_account, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: VaultInstruction::CombineVault.try_to_vec().unwrap(),
+    }
+}
