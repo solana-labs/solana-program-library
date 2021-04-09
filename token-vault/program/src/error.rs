@@ -74,7 +74,7 @@ pub enum VaultError {
     VaultMintNotEmpty,
 
     /// Vault mint's authority not set to program
-    #[error("Vault mint's authority not set to program")]
+    #[error("Vault mint's authority not set to program PDA with seed of program id and prefix")]
     VaultAuthorityNotProgram,
 
     /// Vault treasury not empty on init

@@ -50,6 +50,9 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
     let vault = Keypair::new();
     let allow_further_share_creation = app_matches.is_present("allow_further_share_creation");
 
+    let seeds = &[PREFIX.as_bytes(), &program_key.as_ref()];
+    let (mint_authority, _) = Pubkey::find_program_address(seeds, &program_key);
+
     let instructions = [
         create_account(
             &payer.pubkey(),
@@ -90,8 +93,8 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
         initialize_mint(
             &token_key,
             &fraction_mint.pubkey(),
-            &program_key,
-            Some(&program_key),
+            &mint_authority,
+            Some(&mint_authority),
             0,
         )
         .unwrap(),
@@ -354,7 +357,7 @@ fn activate_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -
         .unwrap_or_else(|| "100")
         .parse::<u64>()
         .unwrap();
-    let vault_key = pubkey_of(app_matches, "vault_authority").unwrap();
+    let vault_key = pubkey_of(app_matches, "vault_address").unwrap();
     let vault_account = client.get_account(&vault_key).unwrap();
     let vault: Vault = try_from_slice_unchecked(&vault_account.data).unwrap();
 
@@ -366,8 +369,8 @@ fn activate_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -
         vault_key,
         vault.fraction_mint,
         vault.fraction_treasury,
-        vault_authority.pubkey(),
         mint_authority,
+        vault_authority.pubkey(),
         number_of_shares,
     )];
 
@@ -1274,7 +1277,7 @@ fn main() {
             println!(
                 "Added token to safety deposit account {:?} to vault {:?}",
                 add_token_to_vault(arg_matches, payer, client),
-                arg_matches.value_of("vault_address")
+                arg_matches.value_of("vault_address").unwrap()
             );
         }
         ("activate_vault", Some(arg_matches)) => {

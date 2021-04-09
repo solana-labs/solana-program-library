@@ -30,7 +30,7 @@ pub struct NumberOfShareArgs {
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub enum VaultInstruction {
     /// Initialize a token vault, starts inactivate. Add tokens in subsequent instructions, then activate.
-    ///   0. `[writable]` Initialized fractional share mint with 0 tokens in supply
+    ///   0. `[writable]` Initialized fractional share mint with 0 tokens in supply, authority on mint must be pda of program with seed [prefix, programid]
     ///   1. `[writable]` Initialized redeem treasury token account with 0 tokens in supply
     ///   2. `[writable]` Initialized fraction treasury token account with 0 tokens in supply
     ///   3. `[writable]` Uninitialized vault account
@@ -59,8 +59,8 @@ pub enum VaultInstruction {
     ///   0. `[writable]` Initialized inactivated fractionalized token vault
     ///   1. `[writable]` Fraction mint
     ///   2. `[writable]` Fraction treasury
-    ///   3. `[signer]` Authority on the vault
-    ///   4. `[]` Fraction mint authority for the program - seed of [PREFIX, program_id]
+    ///   3. `[]` Fraction mint authority for the program - seed of [PREFIX, program_id]
+    ///   4. `[signer]` Authority on the vault
     ///   5. `[]` Token program
     ActivateVault(NumberOfShareArgs),
 
@@ -236,8 +236,8 @@ pub fn create_activate_vault_instruction(
     vault: Pubkey,
     fraction_mint: Pubkey,
     fraction_treasury: Pubkey,
-    vault_authority: Pubkey,
     fraction_mint_authority: Pubkey,
+    vault_authority: Pubkey,
     number_of_shares: u64,
 ) -> Instruction {
     Instruction {
@@ -246,8 +246,8 @@ pub fn create_activate_vault_instruction(
             AccountMeta::new(vault, false),
             AccountMeta::new(fraction_mint, false),
             AccountMeta::new(fraction_treasury, false),
-            AccountMeta::new_readonly(vault_authority, true),
             AccountMeta::new_readonly(fraction_mint_authority, false),
+            AccountMeta::new_readonly(vault_authority, true),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: VaultInstruction::ActivateVault(NumberOfShareArgs { number_of_shares })

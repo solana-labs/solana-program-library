@@ -782,12 +782,15 @@ pub fn process_init_vault(
         return Err(VaultError::VaultMintNotEmpty.into());
     }
 
+    let seeds = &[PREFIX.as_bytes(), &program_id.as_ref()];
+    let (mint_authority, _) = Pubkey::find_program_address(seeds, &program_id);
+
     match fraction_mint.mint_authority {
         solana_program::program_option::COption::None => {
             return Err(VaultError::VaultAuthorityNotProgram.into());
         }
         solana_program::program_option::COption::Some(val) => {
-            if val != *program_id {
+            if val != mint_authority {
                 return Err(VaultError::VaultAuthorityNotProgram.into());
             }
         }
@@ -797,7 +800,7 @@ pub fn process_init_vault(
             return Err(VaultError::VaultAuthorityNotProgram.into());
         }
         solana_program::program_option::COption::Some(val) => {
-            if val != *program_id {
+            if val != mint_authority {
                 return Err(VaultError::VaultAuthorityNotProgram.into());
             }
         }
