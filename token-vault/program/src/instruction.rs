@@ -75,10 +75,9 @@ pub enum VaultInstruction {
     ///   5. `[writable]` Redeem treasury account
     ///   6. `[signer]` Authority on the vault
     ///   7. `[]` Transfer authority for the  token account that you will pay with
-    ///   8. `[]` Burn authority for the fraction token account containing your outstanding fraction shares
-    ///   9. `[]` PDA-based Burn authority for the fraction treasury account containing the uncirculated shares seed [PREFIX, program_id]
-    ///   10. `[]` External pricing lookup address
-    ///   11. `[]` Token program
+    ///   8. `[]` PDA-based Burn authority for the fraction treasury account containing the uncirculated shares seed [PREFIX, program_id]
+    ///   9. `[]` External pricing lookup address
+    ///   10. `[]` Token program
     CombineVault,
 
     /// If in the combine state, shareholders can hit this endpoint to burn shares in exchange for monies from the treasury.
@@ -87,8 +86,8 @@ pub enum VaultInstruction {
     ///   1. `[writable]` Initialized Destination token account where you wish your proceeds to arrive
     ///   2. `[writable]` Fraction mint
     ///   3. `[writable]` Redeem treasury account
-    ///   4. `[]` Transfer authority for the transfer of proceeds from redeem treasury to destination
-    ///   5. `[]` Burn authority for the burning of all your fractional shares
+    ///   4. `[]` PDA-based Transfer authority for the transfer of proceeds from redeem treasury to destination seed [PREFIX, program_id]
+    ///   5. `[]` Burn authority for the burning of your shares
     ///   6. `[]` Combined token vault
     ///   7. `[]` Token program
     ///   8. `[]` Rent sysvar
@@ -269,7 +268,6 @@ pub fn create_combine_vault_instruction(
     redeem_treasury: Pubkey,
     vault_authority: Pubkey,
     paying_transfer_authority: Pubkey,
-    burn_authority: Pubkey,
     uncirculated_burn_authority: Pubkey,
     external_pricing_account: Pubkey,
 ) -> Instruction {
@@ -284,11 +282,39 @@ pub fn create_combine_vault_instruction(
             AccountMeta::new(redeem_treasury, false),
             AccountMeta::new_readonly(vault_authority, true),
             AccountMeta::new_readonly(paying_transfer_authority, true),
-            AccountMeta::new_readonly(burn_authority, true),
             AccountMeta::new_readonly(uncirculated_burn_authority, true),
             AccountMeta::new_readonly(external_pricing_account, true),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: VaultInstruction::CombineVault.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates an RedeemShares instruction
+#[allow(clippy::too_many_arguments)]
+pub fn create_redeem_shares_instruction(
+    program_id: Pubkey,
+    outstanding_shares_account: Pubkey,
+    proceeds_account: Pubkey,
+    fraction_mint: Pubkey,
+    redeem_treasury: Pubkey,
+    transfer_authority: Pubkey,
+    burn_authority: Pubkey,
+    vault: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(outstanding_shares_account, false),
+            AccountMeta::new(proceeds_account, false),
+            AccountMeta::new(fraction_mint, false),
+            AccountMeta::new(redeem_treasury, false),
+            AccountMeta::new_readonly(transfer_authority, false),
+            AccountMeta::new_readonly(burn_authority, false),
+            AccountMeta::new_readonly(vault, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+        ],
+        data: VaultInstruction::RedeemShares.try_to_vec().unwrap(),
     }
 }

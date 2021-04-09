@@ -20,7 +20,7 @@ use {
         instruction::{
             create_activate_vault_instruction, create_add_token_to_inactive_vault_instruction,
             create_combine_vault_instruction, create_init_vault_instruction,
-            create_update_external_price_account_instruction,
+            create_redeem_shares_instruction, create_update_external_price_account_instruction,
         },
         state::{ExternalPriceAccount, Vault, VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, PREFIX},
     },
@@ -399,7 +399,6 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
     let (uncirculated_burn_authority, _) = Pubkey::find_program_address(seeds, &program_key);
 
     let transfer_authority = Keypair::new();
-    let burn_authority = Keypair::new();
 
     let mut instructions = vec![
         create_account(
@@ -477,7 +476,7 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
         approve(
             &token_key,
             &outstanding_shares_account,
-            &burn_authority.pubkey(),
+            &transfer_authority.pubkey(),
             &payer.pubkey(),
             &[&payer.pubkey()],
             shares_outstanding,
@@ -495,7 +494,6 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
         vault.redeem_treasury,
         vault_authority.pubkey(),
         transfer_authority.pubkey(),
-        burn_authority.pubkey(),
         uncirculated_burn_authority,
         vault.pricing_lookup_address,
     ));
@@ -516,6 +514,94 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
     }
 }
 
+fn redeem_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pubkey {
+    let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
+    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
+
+    let vault_authority = read_keypair_file(
+        app_matches
+            .value_of("vault_authority")
+            .unwrap_or_else(|| app_matches.value_of("keypair").unwrap()),
+    )
+    .unwrap();
+
+    let vault_key = pubkey_of(app_matches, "vault_authority").unwrap();
+    let outstanding_shares_key = pubkey_of(app_matches, "outstanding_shares_account").unwrap();
+    let outstanding_shares_account = client.get_account(&outstanding_shares_key).unwrap();
+    let outstanding_shares: Account =
+        Account::unpack_unchecked(&outstanding_shares_account.data).unwrap();
+    let vault_account = client.get_account(&vault_key).unwrap();
+    let vault: Vault = try_from_slice_unchecked(&vault_account.data).unwrap();
+    let redeem_treasury_info = client.get_account(&vault.redeem_treasury).unwrap();
+    let redeem_treasury: Account = Account::unpack_unchecked(&redeem_treasury_info.data).unwrap();
+
+    let proceeds_account = Keypair::new();
+    let burn_authority = Keypair::new();
+    let mut signers = vec![&payer, &vault_authority, &burn_authority];
+
+    let seeds = &[PREFIX.as_bytes(), &program_key.as_ref()];
+    let (transfer_authority, _) = Pubkey::find_program_address(seeds, &program_key);
+
+    let mut instructions = vec![];
+
+    let key = Keypair::new();
+    let proceeds_account: Pubkey = match pubkey_of(app_matches, "proceeds_account") {
+        Some(val) => val,
+        None => {
+            instructions.push(create_account(
+                &payer.pubkey(),
+                &key.pubkey(),
+                client
+                    .get_minimum_balance_for_rent_exemption(Account::LEN)
+                    .unwrap(),
+                Account::LEN as u64,
+                &token_key,
+            ));
+            instructions.push(
+                initialize_account(
+                    &token_key,
+                    &key.pubkey(),
+                    &redeem_treasury.mint,
+                    &program_key,
+                )
+                .unwrap(),
+            );
+            signers.push(&key);
+            key.pubkey()
+        }
+    };
+
+    instructions.push(
+        approve(
+            &token_key,
+            &proceeds_account,
+            &burn_authority.pubkey(),
+            &payer.pubkey(),
+            &[&payer.pubkey()],
+            outstanding_shares.amount,
+        )
+        .unwrap(),
+    );
+
+    instructions.push(create_redeem_shares_instruction(
+        program_key,
+        outstanding_shares_key,
+        proceeds_account,
+        vault.fraction_mint,
+        vault.redeem_treasury,
+        transfer_authority,
+        burn_authority.pubkey(),
+        vault_key,
+    ));
+
+    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
+
+    transaction.sign(&signers, recent_blockhash);
+    client.send_and_confirm_transaction(&transaction).unwrap();
+    let _new_proceeds = client.get_account(&proceeds_account).unwrap();
+    proceeds_account
+}
 fn main() {
     let app_matches = App::new(crate_name!())
         .about(crate_description!())
@@ -699,7 +785,7 @@ fn main() {
                     Arg::with_name("outstanding_shares_account")
                         .long("outstanding_shares_account")
                         .value_name("OUSTANDING_SHARES_ACCOUNT")
-                        .required(true)
+                        .required(false)
                         .validator(is_valid_pubkey)
                         .takes_value(true)
                         .help("Pubkey of oustanding shares account, an empty will be made if not provided"),
@@ -711,7 +797,44 @@ fn main() {
                         .takes_value(true)
                         .help("Initial amount of money to provide to pay for buy out, defaults to 10000. You need to provide enough for a buy out!"),
                 ),
-        )
+        ).subcommand(
+            SubCommand::with_name("redeem_shares")
+                .about("Redeem Shares from a Combined Vault as a Shareholder")
+                .arg(
+                    Arg::with_name("vault_authority")
+                        .long("vault_authority")
+                        .value_name("VAULT_AUTHORITY")
+                        .required(false)
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help("Filepath or URL to a keypair, defaults to you otherwise"),
+                )
+                .arg(
+                    Arg::with_name("vault_address")
+                        .long("vault_address")
+                        .value_name("VAULT_ADDRESS")
+                        .required(true)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of vault"),
+                ).arg(
+                    Arg::with_name("outstanding_shares_account")
+                        .long("outstanding_shares_account")
+                        .value_name("OUSTANDING_SHARES_ACCOUNT")
+                        .required(true)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of oustanding shares account"),
+                ).arg(
+                    Arg::with_name("proceeds_account")
+                        .long("proceeds_account")
+                        .value_name("PROCEEDS_ACCOUNT")
+                        .required(false)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of proceeds account, an empty will be made if not provided"),
+                )
+            )
         .get_matches();
 
     let client = RpcClient::new(
@@ -752,6 +875,12 @@ fn main() {
         ("combine_vault", Some(arg_matches)) => {
             combine_vault(arg_matches, payer, client);
             println!("Completed command.");
+        }
+        ("redeem_shares", Some(arg_matches)) => {
+            println!(
+                "Redeemed shares and put monies in account {:?}",
+                redeem_shares(arg_matches, payer, client)
+            );
         }
         _ => unreachable!(),
     }
