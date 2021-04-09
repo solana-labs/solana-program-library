@@ -48,7 +48,7 @@ pub enum VaultInstruction {
     ///   3. `[writable]` Initialized inactive fractionalized token vault
     ///   4. `[signer]` Authority on the vault
     ///   5. `[signer]` Payer
-    ///   6. `[]` Transfer Authority to move desired token amount from token account to safety deposit
+    ///   6. `[signer]` Transfer Authority to move desired token amount from token account to safety deposit
     ///   7. `[]` Token program
     ///   8. `[]` Rent sysvar
     ///   9. `[]` System account sysvar
@@ -74,7 +74,7 @@ pub enum VaultInstruction {
     ///   4. `[writable]` Fraction treasury account
     ///   5. `[writable]` Redeem treasury account
     ///   6. `[signer]` Authority on the vault
-    ///   7. `[]` Transfer authority for the  token account that you will pay with
+    ///   7. `[signer]` Transfer authority for the  token account that you will pay with
     ///   8. `[]` PDA-based Burn authority for the fraction treasury account containing the uncirculated shares seed [PREFIX, program_id]
     ///   9. `[]` External pricing lookup address
     ///   10. `[]` Token program
@@ -87,7 +87,7 @@ pub enum VaultInstruction {
     ///   2. `[writable]` Fraction mint
     ///   3. `[writable]` Redeem treasury account
     ///   4. `[]` PDA-based Transfer authority for the transfer of proceeds from redeem treasury to destination seed [PREFIX, program_id]
-    ///   5. `[]` Burn authority for the burning of your shares
+    ///   5. `[signer]` Burn authority for the burning of your shares
     ///   6. `[]` Combined token vault
     ///   7. `[]` Token program
     ///   8. `[]` Rent sysvar
@@ -129,7 +129,7 @@ pub enum VaultInstruction {
     ///   0. `[writable]` Initialized account from which shares will be withdrawn
     ///   1. `[writable]` Fraction treasury
     ///   2. `[]` The initialized active token vault
-    ///   3. `[]` Transfer authority to move tokens from your account to treasury
+    ///   3. `[signer]` Transfer authority to move tokens from your account to treasury
     ///   3. `[signer]` Authority of vault
     ///   4. `[]` Token program
     AddSharesToTreasury(NumberOfShareArgs),
@@ -218,7 +218,7 @@ pub fn create_add_token_to_inactive_vault_instruction(
             AccountMeta::new(vault, false),
             AccountMeta::new_readonly(vault_authority, true),
             AccountMeta::new_readonly(payer, true),
-            AccountMeta::new_readonly(transfer_authority, false),
+            AccountMeta::new_readonly(transfer_authority, true),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
@@ -282,8 +282,8 @@ pub fn create_combine_vault_instruction(
             AccountMeta::new(redeem_treasury, false),
             AccountMeta::new_readonly(vault_authority, true),
             AccountMeta::new_readonly(paying_transfer_authority, true),
-            AccountMeta::new_readonly(uncirculated_burn_authority, true),
-            AccountMeta::new_readonly(external_pricing_account, true),
+            AccountMeta::new_readonly(uncirculated_burn_authority, false),
+            AccountMeta::new_readonly(external_pricing_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: VaultInstruction::CombineVault.try_to_vec().unwrap(),
@@ -310,7 +310,7 @@ pub fn create_redeem_shares_instruction(
             AccountMeta::new(fraction_mint, false),
             AccountMeta::new(redeem_treasury, false),
             AccountMeta::new_readonly(transfer_authority, false),
-            AccountMeta::new_readonly(burn_authority, false),
+            AccountMeta::new_readonly(burn_authority, true),
             AccountMeta::new_readonly(vault, false),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -417,7 +417,7 @@ pub fn create_add_shares_instruction(
             AccountMeta::new(source, false),
             AccountMeta::new(fraction_treasury, false),
             AccountMeta::new_readonly(vault, false),
-            AccountMeta::new_readonly(transfer_authority, false),
+            AccountMeta::new_readonly(transfer_authority, true),
             AccountMeta::new_readonly(vault_authority, true),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],

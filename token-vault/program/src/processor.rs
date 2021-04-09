@@ -34,19 +34,19 @@ pub fn process_instruction(
     let instruction = VaultInstruction::try_from_slice(input)?;
     match instruction {
         VaultInstruction::InitVault(args) => {
-            msg!("Instruction: Init VaultToken Pool");
+            msg!("Instruction: Init Vault");
             process_init_vault(program_id, accounts, args.allow_further_share_creation)
         }
         VaultInstruction::AddTokenToInactiveVault(args) => {
-            msg!("Instruction: Init VaultToken Pool");
+            msg!("Instruction: Add token to vault");
             process_add_token_to_inactivated_vault(program_id, accounts, args.amount)
         }
         VaultInstruction::ActivateVault(args) => {
-            msg!("Instruction: Activate Vault Token Pool");
+            msg!("Instruction: Activate Vault ");
             process_activate_vault(program_id, accounts, args.number_of_shares)
         }
         VaultInstruction::CombineVault => {
-            msg!("Instruction: Combine Vault Token Pool");
+            msg!("Instruction: Combine Vault");
             process_combine_vault(program_id, accounts)
         }
         VaultInstruction::RedeemShares => {
@@ -737,7 +737,7 @@ pub fn process_add_token_to_inactivated_vault(
 
     spl_token_transfer(TokenTransferParams {
         source: token_account_info.clone(),
-        destination: vault_info.clone(),
+        destination: store_info.clone(),
         amount: amount,
         authority: transfer_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,

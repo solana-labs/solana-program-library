@@ -282,7 +282,7 @@ fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClien
             &token_key,
             &token_account.pubkey(),
             &token_mint.pubkey(),
-            &program_key,
+            &payer.pubkey(),
         )
         .unwrap(),
         initialize_account(
@@ -331,6 +331,7 @@ fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClien
         &token_account,
         &store,
         &vault_authority,
+        &transfer_authority,
     ];
 
     transaction.sign(&signers, recent_blockhash);
@@ -411,12 +412,17 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
     let external: ExternalPriceAccount =
         try_from_slice_unchecked(&external_price_account.data).unwrap();
     let payment_account = Keypair::new();
-    let mut signers = vec![&payer, &vault_authority, &payment_account];
 
     let seeds = &[PREFIX.as_bytes(), &program_key.as_ref()];
     let (uncirculated_burn_authority, _) = Pubkey::find_program_address(seeds, &program_key);
 
     let transfer_authority = Keypair::new();
+    let mut signers = vec![
+        &payer,
+        &vault_authority,
+        &payment_account,
+        &transfer_authority,
+    ];
 
     let mut instructions = vec![
         create_account(
