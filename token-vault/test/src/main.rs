@@ -21,7 +21,8 @@ use {
             create_activate_vault_instruction, create_add_token_to_inactive_vault_instruction,
             create_combine_vault_instruction, create_init_vault_instruction,
             create_mint_shares_instruction, create_redeem_shares_instruction,
-            create_update_external_price_account_instruction, create_withdraw_tokens_instruction,
+            create_update_external_price_account_instruction, create_withdraw_shares_instruction,
+            create_withdraw_tokens_instruction,
         },
         state::{
             ExternalPriceAccount, SafetyDepositBox, Vault, VaultState, MAX_EXTERNAL_ACCOUNT_SIZE,
@@ -716,6 +717,79 @@ fn mint_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> P
     let _new_proceeds = client.get_account(&vault.fraction_treasury).unwrap();
     vault.fraction_treasury
 }
+
+fn withdraw_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pubkey {
+    let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
+    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
+
+    let vault_authority = read_keypair_file(
+        app_matches
+            .value_of("vault_authority")
+            .unwrap_or_else(|| app_matches.value_of("keypair").unwrap()),
+    )
+    .unwrap();
+
+    let vault_key = pubkey_of(app_matches, "vault_address").unwrap();
+    let vault_account = client.get_account(&vault_key).unwrap();
+    let vault: Vault = try_from_slice_unchecked(&vault_account.data).unwrap();
+    let number_of_shares: u64 = app_matches
+        .value_of("number_of_shares")
+        .unwrap_or_else(|| "100")
+        .parse::<u64>()
+        .unwrap();
+
+    let mut signers = vec![&payer, &vault_authority];
+    let seeds = &[PREFIX.as_bytes(), &program_key.as_ref()];
+    let (transfer_authority, _) = Pubkey::find_program_address(seeds, &program_key);
+
+    let mut instructions = vec![];
+
+    let key = Keypair::new();
+    let destination_account: Pubkey = match pubkey_of(app_matches, "destination_account") {
+        Some(val) => val,
+        None => {
+            instructions.push(create_account(
+                &payer.pubkey(),
+                &key.pubkey(),
+                client
+                    .get_minimum_balance_for_rent_exemption(Account::LEN)
+                    .unwrap(),
+                Account::LEN as u64,
+                &token_key,
+            ));
+            instructions.push(
+                initialize_account(
+                    &token_key,
+                    &key.pubkey(),
+                    &vault.fraction_mint,
+                    &program_key,
+                )
+                .unwrap(),
+            );
+            signers.push(&key);
+            key.pubkey()
+        }
+    };
+
+    instructions.push(create_withdraw_shares_instruction(
+        program_key,
+        destination_account,
+        vault.fraction_treasury,
+        vault_key,
+        transfer_authority,
+        vault_authority,
+        number_of_shares,
+    ));
+
+    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
+
+    transaction.sign(&signers, recent_blockhash);
+    client.send_and_confirm_transaction(&transaction).unwrap();
+    let _new_proceeds = client.get_account(&destination_account).unwrap();
+    destination_account
+}
+
 fn main() {
     let app_matches = App::new(crate_name!())
         .about(crate_description!())
@@ -1008,6 +1082,43 @@ fn main() {
                         .takes_value(true)
                         .help("Initial number of shares to produce, defaults to 100"),
                 ))
+        .subcommand(
+            SubCommand::with_name("withdraw_shares")
+                .about("Withdraw shares from the fractional treasury")
+                .arg(
+                    Arg::with_name("vault_authority")
+                        .long("vault_authority")
+                        .value_name("VAULT_AUTHORITY")
+                        .required(false)
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help("Filepath or URL to a keypair, defaults to you otherwise"),
+                )
+                .arg(
+                    Arg::with_name("vault_address")
+                        .long("vault_address")
+                        .value_name("VAULT_ADDRESS")
+                        .required(true)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of the vault"),
+                )
+                .arg(
+                    Arg::with_name("number_of_shares")
+                        .long("number_of_shares")
+                        .value_name("NUMBER_OF_SHARES")
+                        .required(false)
+                        .takes_value(true)
+                        .help("Initial number of shares to produce, defaults to 100"),
+                ).arg(
+                    Arg::with_name("destination_account")
+                        .long("destination_account")
+                        .value_name("DESTINATION_ACCOUNT")
+                        .required(false)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Pubkey of destination shares account, an empty will be made if not provided"),
+                ))
         .get_matches();
 
     let client = RpcClient::new(
@@ -1065,6 +1176,12 @@ fn main() {
             println!(
                 "Minted shares to fractional treasury {:?}",
                 mint_shares(arg_matches, payer, client)
+            );
+        }
+        ("withdraw_shares", Some(arg_matches)) => {
+            println!(
+                "Withdrew shares(s) to account {:?}",
+                withdraw_shares(arg_matches, payer, client)
             );
         }
         _ => unreachable!(),
