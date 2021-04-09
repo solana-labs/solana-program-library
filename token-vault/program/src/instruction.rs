@@ -400,3 +400,29 @@ pub fn create_withdraw_shares_instruction(
             .unwrap(),
     }
 }
+
+#[allow(clippy::too_many_arguments)]
+pub fn create_add_shares_instruction(
+    program_id: Pubkey,
+    source: Pubkey,
+    fraction_treasury: Pubkey,
+    vault: Pubkey,
+    transfer_authority: Pubkey,
+    vault_authority: Pubkey,
+    number_of_shares: u64,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(source, false),
+            AccountMeta::new(fraction_treasury, false),
+            AccountMeta::new_readonly(vault, false),
+            AccountMeta::new_readonly(transfer_authority, false),
+            AccountMeta::new_readonly(vault_authority, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: VaultInstruction::AddSharesToTreasury(NumberOfShareArgs { number_of_shares })
+            .try_to_vec()
+            .unwrap(),
+    }
+}
