@@ -1101,6 +1101,14 @@ impl Processor {
                 msg!("Instruction: RemoveValidatorFromPool");
                 Self::process_remove_validator_from_pool(program_id, accounts)
             }
+            StakePoolInstruction::DecreaseValidatorStake(_amount) => {
+                msg!("Instruction: DecreaseValidatorStake");
+                Ok(())
+            }
+            StakePoolInstruction::IncreaseValidatorStake(_amount) => {
+                msg!("Instruction: IncreaseValidatorStake");
+                Ok(())
+            }
             StakePoolInstruction::UpdateValidatorListBalance => {
                 msg!("Instruction: UpdateValidatorListBalance");
                 Self::process_update_validator_list_balance(program_id, accounts)
