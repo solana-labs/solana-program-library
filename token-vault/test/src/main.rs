@@ -26,13 +26,13 @@ use {
         },
         state::{
             ExternalPriceAccount, SafetyDepositBox, Vault, VaultState, MAX_EXTERNAL_ACCOUNT_SIZE,
-            PREFIX,
+            MAX_VAULT_SIZE, PREFIX,
         },
     },
     std::str::FromStr,
 };
 
-const PROGRAM_PUBKEY: &str = "metaTA73sFPqA8whreUbBsbn3SLJH2vhrW9fP5dmfdC";
+const PROGRAM_PUBKEY: &str = "94wRaYAQdC2gYF76AUTYSugNJ3rAC4EimjAMPwM7uYry";
 const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
 fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pubkey {
@@ -40,9 +40,11 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
     let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
     let vault_authority =
         pubkey_of(app_matches, "vault_authority").unwrap_or_else(|| payer.pubkey());
-    let external_account = pubkey_of(app_matches, "external_price_account").unwrap();
+    let external_key = pubkey_of(app_matches, "external_price_account").unwrap();
+    let external_account = client.get_account(&external_key).unwrap();
+    let external: ExternalPriceAccount = try_from_slice_unchecked(&external_account.data).unwrap();
     let fraction_mint = Keypair::new();
-    let redeem_mint = Keypair::new();
+    let redeem_mint = external.price_mint;
     let redeem_treasury = Keypair::new();
     let fraction_treasury = Keypair::new();
     let vault = Keypair::new();
@@ -52,15 +54,6 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
         create_account(
             &payer.pubkey(),
             &fraction_mint.pubkey(),
-            client
-                .get_minimum_balance_for_rent_exemption(Mint::LEN)
-                .unwrap(),
-            Mint::LEN as u64,
-            &token_key,
-        ),
-        create_account(
-            &payer.pubkey(),
-            &redeem_mint.pubkey(),
             client
                 .get_minimum_balance_for_rent_exemption(Mint::LEN)
                 .unwrap(),
@@ -89,31 +82,23 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
             &payer.pubkey(),
             &vault.pubkey(),
             client
-                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .get_minimum_balance_for_rent_exemption(MAX_VAULT_SIZE)
                 .unwrap(),
-            Account::LEN as u64,
-            &token_key,
+            MAX_VAULT_SIZE as u64,
+            &program_key,
         ),
         initialize_mint(
             &token_key,
-            &redeem_mint.pubkey(),
-            &payer.pubkey(),
-            Some(&payer.pubkey()),
-            0,
-        )
-        .unwrap(),
-        initialize_mint(
-            &token_key,
             &fraction_mint.pubkey(),
-            &payer.pubkey(),
-            Some(&payer.pubkey()),
+            &program_key,
+            Some(&program_key),
             0,
         )
         .unwrap(),
         initialize_account(
             &token_key,
             &redeem_treasury.pubkey(),
-            &redeem_mint.pubkey(),
+            &redeem_mint,
             &program_key,
         )
         .unwrap(),
@@ -131,7 +116,7 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
             fraction_treasury.pubkey(),
             vault.pubkey(),
             vault_authority,
-            external_account,
+            external_key,
             allow_further_share_creation,
         ),
     ];
@@ -140,7 +125,6 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
     let signers = vec![
         &payer,
         &redeem_treasury,
-        &redeem_mint,
         &fraction_treasury,
         &fraction_mint,
         &vault,
@@ -154,9 +138,9 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
 
 fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pubkey {
     let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
+    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
     let external_account =
         read_keypair_file(app_matches.value_of("external_price_account").unwrap()).unwrap();
-    let price_mint = pubkey_of(app_matches, "price_mint").unwrap_or_else(|| payer.pubkey());
     let price_per_share: u64 = app_matches
         .value_of("price_per_share")
         .unwrap_or_else(|| "0")
@@ -164,8 +148,39 @@ fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcCl
         .unwrap();
     let allowed_to_combine = app_matches.is_present("allowed_to_combine");
     let already_created = app_matches.is_present("already_created");
+    let mut signers = vec![&payer, &external_account];
 
     let mut instructions = vec![];
+
+    let key = Keypair::new();
+    let price_mint = match pubkey_of(app_matches, "price_mint") {
+        Some(val) => val,
+        None => {
+            // We make an empty oustanding share account if one is not provided.
+            instructions.push(create_account(
+                &payer.pubkey(),
+                &key.pubkey(),
+                client
+                    .get_minimum_balance_for_rent_exemption(Mint::LEN)
+                    .unwrap(),
+                Mint::LEN as u64,
+                &token_key,
+            ));
+            instructions.push(
+                initialize_mint(
+                    &token_key,
+                    &key.pubkey(),
+                    &program_key,
+                    Some(&program_key),
+                    0,
+                )
+                .unwrap(),
+            );
+
+            signers.push(&key);
+            key.pubkey()
+        }
+    };
 
     if !already_created {
         instructions.push(create_account(
@@ -175,7 +190,7 @@ fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcCl
                 .get_minimum_balance_for_rent_exemption(MAX_EXTERNAL_ACCOUNT_SIZE)
                 .unwrap(),
             MAX_EXTERNAL_ACCOUNT_SIZE as u64,
-            &payer.pubkey(),
+            &program_key,
         ));
     }
 
@@ -189,7 +204,6 @@ fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcCl
 
     let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
-    let signers = vec![&payer, &external_account];
 
     transaction.sign(&signers, recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
@@ -207,7 +221,7 @@ fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClien
             .unwrap_or_else(|| app_matches.value_of("keypair").unwrap()),
     )
     .unwrap();
-    let vault_key = pubkey_of(app_matches, "vault_authority").unwrap();
+    let vault_key = pubkey_of(app_matches, "vault_address").unwrap();
     let amount: u64 = app_matches
         .value_of("amount")
         .unwrap_or_else(|| "1")
@@ -327,7 +341,6 @@ fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClien
 
 fn activate_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Option<Pubkey> {
     let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
-    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
 
     let vault_authority = read_keypair_file(
         app_matches
@@ -540,7 +553,6 @@ fn redeem_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
     let redeem_treasury_info = client.get_account(&vault.redeem_treasury).unwrap();
     let redeem_treasury: Account = Account::unpack_unchecked(&redeem_treasury_info.data).unwrap();
 
-    let proceeds_account = Keypair::new();
     let burn_authority = Keypair::new();
     let mut signers = vec![&payer, &vault_authority, &burn_authority];
 
@@ -843,7 +855,7 @@ fn add_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pu
         }
     };
 
-    instructions.push(create_withdraw_shares_instruction(
+    instructions.push(create_add_shares_instruction(
         program_key,
         source_account,
         vault.fraction_treasury,
@@ -870,7 +882,6 @@ fn main() {
             Arg::with_name("keypair")
                 .long("keypair")
                 .value_name("KEYPAIR")
-                .required(true)
                 .validator(is_valid_signer)
                 .takes_value(true)
                 .global(true)

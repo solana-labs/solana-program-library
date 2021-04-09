@@ -103,7 +103,7 @@ pub enum VaultError {
 
     /// Redeem Treasury cannot be same mint as fraction
     #[error("Redeem Treasury cannot be same mint as fraction")]
-    RedeemTreasuryCantShareSameMintAsVault,
+    RedeemTreasuryCantShareSameMintAsFraction,
 
     /// Invalid program authority provided
     #[error("Invalid program authority provided")]

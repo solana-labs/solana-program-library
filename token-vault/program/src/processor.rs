@@ -811,12 +811,12 @@ pub fn process_init_vault(
         return Err(VaultError::TreasuryOwnerNotProgram.into());
     }
 
-    if redeem_treasury.mint == external_pricing_lookup.price_mint {
+    if redeem_treasury.mint != external_pricing_lookup.price_mint {
         return Err(VaultError::RedeemTreasuryMintMustMatchLookupMint.into());
     }
 
-    if redeem_treasury.mint != *fraction_mint_info.key {
-        return Err(VaultError::RedeemTreasuryCantShareSameMintAsVault.into());
+    if redeem_treasury.mint == *fraction_mint_info.key {
+        return Err(VaultError::RedeemTreasuryCantShareSameMintAsFraction.into());
     }
 
     if fraction_treasury.amount != 0 {
