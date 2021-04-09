@@ -376,6 +376,7 @@ pub fn process_redeem_shares(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let fraction_mint_info = next_account_info(account_info_iter)?;
     let redeem_treasury_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
+    let burn_authority_info = next_account_info(account_info_iter)?;
     let vault_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
@@ -446,7 +447,7 @@ pub fn process_redeem_shares(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     spl_token_burn(TokenBurnParams {
         mint: fraction_mint_info.clone(),
         amount: outstanding_shares.amount,
-        authority: transfer_authority_info.clone(),
+        authority: burn_authority_info.clone(),
         authority_signer_seeds: authority_signer_seeds,
         token_program: token_program_info.clone(),
         source: outstanding_shares_info.clone(),
