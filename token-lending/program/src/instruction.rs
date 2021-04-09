@@ -297,6 +297,7 @@ pub enum LendingInstruction {
     ///   7. `[]` Token program id
     /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`, starting from the 8th account.
     FlashLoan {
+        /// The amount that is to be borrowed
         amount: u64,
     }
 }
@@ -939,21 +940,24 @@ pub fn set_lending_market_owner(
     }
 }
 
-// Creates a `FlashLoan` instruction.
+/// Creates a `FlashLoan` instruction.
+#[allow(clippy::too_many_arguments)]
 pub fn flash_loan(
     program_id: Pubkey,
     destination_liquidity_pubkey: Pubkey,
     reserve_pubkey: Pubkey,
+    reserve_liquidity_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     derived_lending_market_authority: Pubkey,
     flash_loan_recevier_pubkey: Pubkey,
-    flash_loan_receiver_program_derived_account,
+    flash_loan_receiver_program_derived_account: Pubkey,
     amount: u64,
     additional_params: Vec<Pubkey>
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(destination_liquidity_pubkey, false),
         AccountMeta::new_readonly(reserve_pubkey, false),
+        AccountMeta::new(reserve_liquidity_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(derived_lending_market_authority, false),
         AccountMeta::new_readonly(flash_loan_recevier_pubkey, false),
@@ -966,7 +970,7 @@ pub fn flash_loan(
     );
     Instruction {
         program_id,
-        accounts: accounts,
+        accounts,
         data: LendingInstruction::FlashLoan { amount }.pack(),
     }
 }

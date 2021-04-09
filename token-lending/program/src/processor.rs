@@ -16,6 +16,7 @@ use solana_program::{
     clock::Slot,
     decode_error::DecodeError,
     entrypoint::ProgramResult,
+    instruction::Instruction,
     msg,
     program::{invoke, invoke_signed},
     program_error::{PrintProgramError, ProgramError},
@@ -24,7 +25,8 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
-use spl_token::state::Account as Token;
+use spl_token::state::{Account as Token, Account};
+use spl_token::solana_program::instruction::AccountMeta;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -1535,23 +1537,101 @@ fn process_set_lending_market_owner(
 #[inline(never)] // avoid stack frame limit
 fn process_flash_loan(
     program_id: &Pubkey,
-    new_owner: Pubkey,
+    amount: u64,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let destination_liquidity_info = next_account_info(account_info_iter)?;
-    let reserve_info = next_account_info(account_info_iter)?;
+    let reserve_account_info = next_account_info(account_info_iter)?;
+    let reserve_liquidity_account_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
-    let derived_lending_market_authority = next_account_info(account_info_iter)?;
-    let flash_loan_receiver_authority = next_account_info(account_info_iter)?;
-    let token_program = next_account_info(account_info_iter)?;
+    let derived_lending_market_account_info = next_account_info(account_info_iter)?;
+    let flash_loan_receiver_info = next_account_info(account_info_iter)?;
+    let flash_loan_receiver_derived_info = next_account_info(account_info_iter)?;
+    let token_program_id = next_account_info(account_info_iter)?;
 
-    let mut lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
 
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
 
+    if derived_lending_market_account_info.key != &lending_market_authority_pubkey {
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    let reserve = Reserve::unpack(&reserve_account_info.data.borrow())?;
+    if &reserve.lending_market != lending_market_info.key {
+        msg!("Invalid reserve lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    if &reserve.liquidity.supply_pubkey != reserve_liquidity_account_info.key {
+        msg!("Invalid reserve liquidity supply account input");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    if reserve.liquidity.available_amount < amount {
+        msg!("Not enough liquidity for flash loan");
+        return Err(LendingError::InsufficientLiquidity.into());
+    }
+
+    let before_liquidity_supply_token_account =
+        Account::unpack_from_slice(&reserve_liquidity_account_info.try_borrow_data()?)?;
+    spl_token_transfer(TokenTransferParams {
+        source: reserve_liquidity_account_info.clone(),
+        destination: destination_liquidity_info.clone(),
+        amount,
+        authority: derived_lending_market_account_info.clone(),
+        authority_signer_seeds,
+        token_program: token_program_id.clone(),
+    })?;
+
+    let mut data = Vec::with_capacity(9);
+    data.push(0u8);
+    data.extend_from_slice(&amount.to_le_bytes());
+    let mut calling_account = vec![
+        AccountMeta::new(*destination_liquidity_info.key, false),
+        AccountMeta::new_readonly(*flash_loan_receiver_derived_info.key, false),
+        AccountMeta::new(*reserve_liquidity_account_info.key, false),
+        AccountMeta::new(*token_program_id.key, false)
+    ];
+    calling_account.extend(
+        account_info_iter
+            .into_iter()
+            .map(|additional_param| AccountMeta::new(*additional_param.key, false)),
+    );
+    let ix = Instruction {
+        program_id: *flash_loan_receiver_info.key,
+        accounts: calling_account,
+        data
+    };
+
+    let result = invoke(
+        &ix,
+        &accounts);
+    if result.is_err() {
+        // TODO: change to a more sensible error.
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
+
+    let after_liquidity_supply_token_account =
+        Account::unpack_from_slice(&reserve_liquidity_account_info.try_borrow_data()?)?;
+
+    if after_liquidity_supply_token_account.amount < before_liquidity_supply_token_account.amount {
+        msg!(
+            "Insufficient returned liquidity for reserve after flash loan: {}, it requires: {}",
+            after_liquidity_supply_token_account.amount,
+            before_liquidity_supply_token_account.amount
+        );
+        return Err(LendingError::InsufficientLiquidity.into());
+    }
 
     Ok(())
 }
