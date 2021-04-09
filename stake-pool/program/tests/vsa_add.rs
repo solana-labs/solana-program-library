@@ -89,7 +89,7 @@ async fn success() {
             account_type: state::AccountType::ValidatorList,
             max_validators: stake_pool_accounts.max_validators,
             validators: vec![state::ValidatorStakeInfo {
-                voter_pubkey: user_stake.vote.pubkey(),
+                vote_account_address: user_stake.vote.pubkey(),
                 last_update_epoch: 0,
                 stake_lamports: 0,
             }]

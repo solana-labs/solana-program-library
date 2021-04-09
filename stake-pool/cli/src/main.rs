@@ -530,7 +530,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     for validator in validator_list.validators {
         println!(
             "Validator Vote Account: {}\tBalance: {}\tLast Update Epoch: {}{}",
-            validator.voter_pubkey,
+            validator.vote_account_address,
             Sol(validator.stake_lamports),
             validator.last_update_epoch,
             if validator.last_update_epoch != epoch_info.epoch {
@@ -610,7 +610,7 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
             } else {
                 let (stake_account, _) = find_stake_program_address(
                     &spl_stake_pool::id(),
-                    &item.voter_pubkey,
+                    &item.vote_account_address,
                     &stake_pool_address,
                 );
                 Some(stake_account)

@@ -236,7 +236,7 @@ pub struct ValidatorList {
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
     /// Validator vote account address
-    pub voter_pubkey: Pubkey,
+    pub vote_account_address: Pubkey,
 
     /// Amount of stake delegated to this validator
     /// Note that if `last_update_epoch` does not match the current epoch then this field may not
@@ -264,23 +264,23 @@ impl ValidatorList {
     }
 
     /// Check if contains validator with particular pubkey
-    pub fn contains(&self, voter_pubkey: &Pubkey) -> bool {
+    pub fn contains(&self, vote_account_address: &Pubkey) -> bool {
         self.validators
             .iter()
-            .any(|x| x.voter_pubkey == *voter_pubkey)
+            .any(|x| x.vote_account_address == *vote_account_address)
     }
 
     /// Check if contains validator with particular pubkey
-    pub fn find_mut(&mut self, voter_pubkey: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
+    pub fn find_mut(&mut self, vote_account_address: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
         self.validators
             .iter_mut()
-            .find(|x| x.voter_pubkey == *voter_pubkey)
+            .find(|x| x.vote_account_address == *vote_account_address)
     }
     /// Check if contains validator with particular pubkey
-    pub fn find(&self, voter_pubkey: &Pubkey) -> Option<&ValidatorStakeInfo> {
+    pub fn find(&self, vote_account_address: &Pubkey) -> Option<&ValidatorStakeInfo> {
         self.validators
             .iter()
-            .find(|x| x.voter_pubkey == *voter_pubkey)
+            .find(|x| x.vote_account_address == *vote_account_address)
     }
 
     /// Check if validator stake list is actually initialized as a validator stake list
@@ -337,17 +337,17 @@ mod test {
             max_validators,
             validators: vec![
                 ValidatorStakeInfo {
-                    voter_pubkey: Pubkey::new_from_array([1; 32]),
+                    vote_account_address: Pubkey::new_from_array([1; 32]),
                     stake_lamports: 123456789,
                     last_update_epoch: 987654321,
                 },
                 ValidatorStakeInfo {
-                    voter_pubkey: Pubkey::new_from_array([2; 32]),
+                    vote_account_address: Pubkey::new_from_array([2; 32]),
                     stake_lamports: 998877665544,
                     last_update_epoch: 11223445566,
                 },
                 ValidatorStakeInfo {
-                    voter_pubkey: Pubkey::new_from_array([3; 32]),
+                    vote_account_address: Pubkey::new_from_array([3; 32]),
                     stake_lamports: 0,
                     last_update_epoch: 999999999999999,
                 },

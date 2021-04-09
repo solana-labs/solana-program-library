@@ -488,15 +488,15 @@ impl Processor {
         }
 
         let (meta, stake) = get_stake_state(stake_account_info)?;
-        let voter_pubkey = stake.delegation.voter_pubkey;
+        let vote_account_address = stake.delegation.voter_pubkey;
         check_validator_stake_address(
             program_id,
             stake_pool_info.key,
             stake_account_info.key,
-            &voter_pubkey,
+            &vote_account_address,
         )?;
 
-        if validator_list.contains(&voter_pubkey) {
+        if validator_list.contains(&vote_account_address) {
             return Err(StakePoolError::ValidatorAlreadyAdded.into());
         }
 
@@ -531,7 +531,7 @@ impl Processor {
         }
 
         validator_list.validators.push(ValidatorStakeInfo {
-            voter_pubkey,
+            vote_account_address,
             stake_lamports: stake_lamports.saturating_sub(minimum_lamport_amount),
             last_update_epoch: clock.epoch,
         });
@@ -586,15 +586,15 @@ impl Processor {
         }
 
         let (meta, stake) = get_stake_state(stake_account_info)?;
-        let voter_pubkey = stake.delegation.voter_pubkey;
+        let vote_account_address = stake.delegation.voter_pubkey;
         check_validator_stake_address(
             program_id,
             stake_pool_info.key,
             stake_account_info.key,
-            &voter_pubkey,
+            &vote_account_address,
         )?;
 
-        if !validator_list.contains(&voter_pubkey) {
+        if !validator_list.contains(&vote_account_address) {
             return Err(StakePoolError::ValidatorNotFound.into());
         }
 
@@ -628,7 +628,7 @@ impl Processor {
 
         validator_list
             .validators
-            .retain(|item| item.voter_pubkey != voter_pubkey);
+            .retain(|item| item.vote_account_address != vote_account_address);
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         Ok(())
@@ -666,7 +666,7 @@ impl Processor {
             for (validator_stake_account, (meta, stake)) in
                 validator_stake_accounts.iter().zip(stake_states.iter())
             {
-                if validator_stake_record.voter_pubkey != stake.delegation.voter_pubkey {
+                if validator_stake_record.vote_account_address != stake.delegation.voter_pubkey {
                     continue;
                 }
                 validator_stake_record.last_update_epoch = clock.epoch;
@@ -846,16 +846,16 @@ impl Processor {
         }
 
         let (meta, stake) = get_stake_state(validator_stake_account_info)?;
-        let voter_pubkey = stake.delegation.voter_pubkey;
+        let vote_account_address = stake.delegation.voter_pubkey;
         check_validator_stake_address(
             program_id,
             stake_pool_info.key,
             validator_stake_account_info.key,
-            &voter_pubkey,
+            &vote_account_address,
         )?;
 
         let validator_list_item = validator_list
-            .find_mut(&voter_pubkey)
+            .find_mut(&vote_account_address)
             .ok_or(StakePoolError::ValidatorNotFound)?;
 
         let stake_lamports = **stake_info.lamports.borrow();
@@ -981,16 +981,16 @@ impl Processor {
         }
 
         let (meta, stake) = get_stake_state(stake_split_from)?;
-        let voter_pubkey = stake.delegation.voter_pubkey;
+        let vote_account_address = stake.delegation.voter_pubkey;
         check_validator_stake_address(
             program_id,
             stake_pool_info.key,
             stake_split_from.key,
-            &voter_pubkey,
+            &vote_account_address,
         )?;
 
         let validator_list_item = validator_list
-            .find_mut(&voter_pubkey)
+            .find_mut(&vote_account_address)
             .ok_or(StakePoolError::ValidatorNotFound)?;
 
         let withdraw_lamports = stake_pool
