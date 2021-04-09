@@ -50,7 +50,7 @@ pub enum VaultError {
     VaultAccountIsNotEmpty,
 
     /// Provided vault account is not owned by program
-    #[error("Provided vault account is not owned by program")]
+    #[error("Provided vault account is not owned by program derived address with seed of prefix and program id")]
     VaultAccountIsNotOwnedByProgram,
 
     /// The provided registry account address does not match the expected program derived address
@@ -74,7 +74,7 @@ pub enum VaultError {
     VaultMintNotEmpty,
 
     /// Vault mint's authority not set to program
-    #[error("Vault mint's authority not set to program PDA with seed of program id and prefix")]
+    #[error("Vault mint's authority not set to program PDA with seed of prefix and program id")]
     VaultAuthorityNotProgram,
 
     /// Vault treasury not empty on init
@@ -82,7 +82,7 @@ pub enum VaultError {
     TreasuryNotEmpty,
 
     /// Vault treasury's owner not set to program
-    #[error("Vault treasury's owner not set to program")]
+    #[error("Vault treasury's owner not set to program pda with seed of prefix and program id")]
     TreasuryOwnerNotProgram,
 
     /// Vault should be inactive
@@ -208,6 +208,10 @@ pub enum VaultError {
     /// External price account must be signer
     #[error("External price account must be signer")]
     ExternalPriceAccountMustBeSigner,
+
+    ///Very bad, someone changed external account's price mint after vault creation!
+    #[error("Very bad, someone changed external account's price mint after vault creation!")]
+    RedeemTreasuryMintShouldMatchPricingMint,
 }
 
 impl PrintProgramError for VaultError {

@@ -31,8 +31,8 @@ pub struct NumberOfShareArgs {
 pub enum VaultInstruction {
     /// Initialize a token vault, starts inactivate. Add tokens in subsequent instructions, then activate.
     ///   0. `[writable]` Initialized fractional share mint with 0 tokens in supply, authority on mint must be pda of program with seed [prefix, programid]
-    ///   1. `[writable]` Initialized redeem treasury token account with 0 tokens in supply
-    ///   2. `[writable]` Initialized fraction treasury token account with 0 tokens in supply
+    ///   1. `[writable]` Initialized redeem treasury token account with 0 tokens in supply, owner of account must be pda of program like above
+    ///   2. `[writable]` Initialized fraction treasury token account with 0 tokens in supply, owner of account must be pda of program like above
     ///   3. `[writable]` Uninitialized vault account
     ///   4. `[]` Authority on the vault
     ///   5. `[]` Pricing Lookup Address

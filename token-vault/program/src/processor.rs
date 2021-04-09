@@ -299,7 +299,8 @@ pub fn process_withdraw_token_from_safety_deposit_box(
 
     let rent = &Rent::from_account_info(rent_info)?;
     let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
-    let safety_deposit: SafetyDepositBox = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
+    let safety_deposit: SafetyDepositBox =
+        try_from_slice_unchecked(&safety_deposit_info.data.borrow_mut())?;
     let fraction_mint: Mint = assert_initialized(fraction_mint_info)?;
     let destination: Account = assert_initialized(destination_info)?;
     let store: Account = assert_initialized(store_info)?;
@@ -484,6 +485,7 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let mut vault: Vault = try_from_slice_unchecked(&vault_info.data.borrow_mut())?;
     let fraction_mint: Mint = assert_initialized(fraction_mint_info)?;
     let fraction_treasury: Account = assert_initialized(fraction_treasury_info)?;
+    let redeem_treasury: Account = assert_initialized(redeem_treasury_info)?;
     let your_payment_account: Account = assert_initialized(your_payment_info)?;
     let your_outstanding_shares: Account = assert_initialized(your_outstanding_shares_info)?;
     let external_pricing: ExternalPriceAccount =
@@ -499,6 +501,11 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
 
     if your_payment_account.mint != external_pricing.price_mint {
         return Err(VaultError::PaymentMintShouldMatchPricingMint.into());
+    }
+
+    if redeem_treasury.mint != external_pricing.price_mint {
+        // Did someone mess with our oracle?
+        return Err(VaultError::RedeemTreasuryMintShouldMatchPricingMint.into());
     }
 
     if your_outstanding_shares.mint != *fraction_mint_info.key {
@@ -688,7 +695,10 @@ pub fn process_add_token_to_inactivated_vault(
         return Err(VaultError::VaultAccountIsNotEmpty.into());
     }
 
-    if store.owner != *program_id {
+    let seeds = &[PREFIX.as_bytes(), &program_id.as_ref()];
+    let (authority, _) = Pubkey::find_program_address(seeds, program_id);
+
+    if store.owner != authority {
         return Err(VaultError::VaultAccountIsNotOwnedByProgram.into());
     }
 
@@ -783,14 +793,14 @@ pub fn process_init_vault(
     }
 
     let seeds = &[PREFIX.as_bytes(), &program_id.as_ref()];
-    let (mint_authority, _) = Pubkey::find_program_address(seeds, &program_id);
+    let (authority, _) = Pubkey::find_program_address(seeds, &program_id);
 
     match fraction_mint.mint_authority {
         solana_program::program_option::COption::None => {
             return Err(VaultError::VaultAuthorityNotProgram.into());
         }
         solana_program::program_option::COption::Some(val) => {
-            if val != mint_authority {
+            if val != authority {
                 return Err(VaultError::VaultAuthorityNotProgram.into());
             }
         }
@@ -800,7 +810,7 @@ pub fn process_init_vault(
             return Err(VaultError::VaultAuthorityNotProgram.into());
         }
         solana_program::program_option::COption::Some(val) => {
-            if val != mint_authority {
+            if val != authority {
                 return Err(VaultError::VaultAuthorityNotProgram.into());
             }
         }
@@ -810,7 +820,7 @@ pub fn process_init_vault(
         return Err(VaultError::TreasuryNotEmpty.into());
     }
 
-    if redeem_treasury.owner != *program_id {
+    if redeem_treasury.owner != authority {
         return Err(VaultError::TreasuryOwnerNotProgram.into());
     }
 
@@ -826,7 +836,7 @@ pub fn process_init_vault(
         return Err(VaultError::TreasuryNotEmpty.into());
     }
 
-    if fraction_treasury.owner != *program_id {
+    if fraction_treasury.owner != authority {
         return Err(VaultError::TreasuryOwnerNotProgram.into());
     }
 

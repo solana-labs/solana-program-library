@@ -51,7 +51,7 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
     let allow_further_share_creation = app_matches.is_present("allow_further_share_creation");
 
     let seeds = &[PREFIX.as_bytes(), &program_key.as_ref()];
-    let (mint_authority, _) = Pubkey::find_program_address(seeds, &program_key);
+    let (authority, _) = Pubkey::find_program_address(seeds, &program_key);
 
     let instructions = [
         create_account(
@@ -93,8 +93,8 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
         initialize_mint(
             &token_key,
             &fraction_mint.pubkey(),
-            &mint_authority,
-            Some(&mint_authority),
+            &authority,
+            Some(&authority),
             0,
         )
         .unwrap(),
@@ -102,14 +102,14 @@ fn initialize_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient)
             &token_key,
             &redeem_treasury.pubkey(),
             &redeem_mint,
-            &program_key,
+            &authority,
         )
         .unwrap(),
         initialize_account(
             &token_key,
             &fraction_treasury.pubkey(),
             &fraction_mint.pubkey(),
-            &program_key,
+            &authority,
         )
         .unwrap(),
         create_init_vault_instruction(
@@ -173,8 +173,8 @@ fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcCl
                 initialize_mint(
                     &token_key,
                     &key.pubkey(),
-                    &program_key,
-                    Some(&program_key),
+                    &payer.pubkey(),
+                    Some(&payer.pubkey()),
                     0,
                 )
                 .unwrap(),
@@ -244,6 +244,8 @@ fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClien
         &clone_of_key.as_ref(),
     ];
     let (safety_deposit_box, _) = Pubkey::find_program_address(seeds, &program_key);
+    let seeds = &[PREFIX.as_bytes(), &program_key.as_ref()];
+    let (authority, _) = Pubkey::find_program_address(seeds, &program_key);
 
     let instructions = [
         create_account(
@@ -292,7 +294,7 @@ fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClien
             &token_key,
             &store.pubkey(),
             &token_mint.pubkey(),
-            &program_key,
+            &authority,
         )
         .unwrap(),
         mint_to(
@@ -408,7 +410,7 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
         .parse::<u64>()
         .unwrap();
 
-    let vault_key = pubkey_of(app_matches, "vault_authority").unwrap();
+    let vault_key = pubkey_of(app_matches, "vault_address").unwrap();
     let vault_account = client.get_account(&vault_key).unwrap();
     let vault: Vault = try_from_slice_unchecked(&vault_account.data).unwrap();
     let external_price_account = client.get_account(&vault.pricing_lookup_address).unwrap();
@@ -441,7 +443,7 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
             &token_key,
             &payment_account.pubkey(),
             &external.price_mint,
-            &program_key,
+            &payer.pubkey(),
         )
         .unwrap(),
         mint_to(
@@ -489,7 +491,7 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
                     &token_key,
                     &key.pubkey(),
                     &vault.fraction_mint,
-                    &program_key,
+                    &payer.pubkey(),
                 )
                 .unwrap(),
             );
@@ -640,7 +642,7 @@ fn withdraw_tokens(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) 
     )
     .unwrap();
 
-    let safety_deposit_key = pubkey_of(app_matches, "safety_deposit_box").unwrap();
+    let safety_deposit_key = pubkey_of(app_matches, "safety_deposit_address").unwrap();
     let safety_deposit_account = client.get_account(&safety_deposit_key).unwrap();
     let safety_deposit: SafetyDepositBox =
         try_from_slice_unchecked(&safety_deposit_account.data).unwrap();
@@ -669,7 +671,8 @@ fn withdraw_tokens(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) 
                 &token_key,
             ));
             instructions.push(
-                initialize_account(&token_key, &key.pubkey(), &store.mint, &program_key).unwrap(),
+                initialize_account(&token_key, &key.pubkey(), &store.mint, &payer.pubkey())
+                    .unwrap(),
             );
             signers.push(&key);
             key.pubkey()
