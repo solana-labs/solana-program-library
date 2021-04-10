@@ -12,11 +12,12 @@ import {
   SYSVAR_RENT_PUBKEY,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import * as BufferLayout from "buffer-layout";
 import * as Layout from "./layout";
 
-const TOKEN_PROGRAM_ID = new PublicKey(
-  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+export const LENDING_PROGRAM_ID = new PublicKey(
+  "LendZqTs7gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi"
 );
 
 /**

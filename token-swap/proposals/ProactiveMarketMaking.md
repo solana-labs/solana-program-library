@@ -9,7 +9,7 @@ As a part of PR please implement as described in [[1](https://dodoex.github.io/d
 
 For reference pricing formula is: 
 
-<img src="https://render.githubusercontent.com/render/math?math=P_{margin}=iRP">
+<img src="https://render.githubusercontent.com/render/math?math=P_{margin}=iR">
 
 Where <img src="https://render.githubusercontent.com/render/math?math=R"> is defined to be the piecewise function below:
 
@@ -23,7 +23,7 @@ Where <img src="https://render.githubusercontent.com/render/math?math=R"> is def
 
 The funding pool of PMM is described by four parameters:
 
-<img src="https://render.githubusercontent.com/render/math?math=B_0">: base token regression target - total number of base tokens deposited by liquidity providers
-<img src="https://render.githubusercontent.com/render/math?math=Q_0">: quote token regression target - total number of quote tokens deposited by liquidity providers
-<img src="https://render.githubusercontent.com/render/math?math=B">: base token balance - number of base tokens currently in the pool
-<img src="https://render.githubusercontent.com/render/math?math=Q">: quote token balance - number of quote tokens currently in the pool
+- <img src="https://render.githubusercontent.com/render/math?math=B_0">: base token regression target - total number of base tokens deposited by liquidity providers
+- <img src="https://render.githubusercontent.com/render/math?math=Q_0">: quote token regression target - total number of quote tokens deposited by liquidity providers
+- <img src="https://render.githubusercontent.com/render/math?math=B">: base token balance - number of base tokens currently in the pool
+- <img src="https://render.githubusercontent.com/render/math?math=Q">: quote token balance - number of quote tokens currently in the pool

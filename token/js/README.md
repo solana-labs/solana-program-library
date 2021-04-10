@@ -63,3 +63,12 @@ To point back to the local cluster:
 ```bash
 $ npm run cluster:localnet
 ```
+
+## Releasing
+
+1. (first-time only) Create your account on npmjs.com (with 2FA enabled!) and ask @mvines about granting the publish right and run `npm login`
+3. Bump version in `package.json` and `npm install` (to update `package-lock.json`)
+4. Create a PR for the version bump
+5. Merge the PR and push new git tag on master branch
+6. Create release on github.com from the pushed tag
+7. Run `npm run build` and `npm publish`

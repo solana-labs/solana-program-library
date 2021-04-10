@@ -3590,7 +3590,7 @@ dependencies = [
  "solana-stake-program",
  "solana-vote-program",
  "spl-memo 2.0.1",
- "spl-memo 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-memo 3.0.0",
  "spl-token 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
 ]
@@ -3782,19 +3782,19 @@ dependencies = [
 [[package]]
 name = "spl-memo"
 version = "3.0.0"
-dependencies = [
- "solana-program",
- "solana-program-test",
- "solana-sdk",
-]
-
-[[package]]
-name = "spl-memo"
-version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e76b60c6f58279b5469beb1705744e9778ee94d643c8e3e2ff91874c59bb3c63"
 dependencies = [
  "solana-program",
+]
+
+[[package]]
+name = "spl-memo"
+version = "3.0.1"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
 ]
 
 [[package]]
@@ -3828,15 +3828,18 @@ version = "0.1.0"
 dependencies = [
  "arrayref",
  "bincode",
+ "borsh 0.8.2",
  "num-derive",
  "num-traits",
  "num_enum",
+ "proptest",
  "serde",
  "serde_derive",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "solana-vote-program",
+ "spl-math",
  "spl-token 3.1.0",
  "thiserror",
 ]
@@ -3846,6 +3849,7 @@ name = "spl-stake-pool-cli"
 version = "2.0.1"
 dependencies = [
  "bincode",
+ "borsh 0.8.2",
  "bs58 0.4.0",
  "clap",
  "lazy_static",
@@ -3890,7 +3894,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-cli"
-version = "2.0.9"
+version = "2.0.10"
 dependencies = [
  "clap",
  "console 0.14.0",
@@ -3942,7 +3946,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-swap"
-version = "0.1.0"
+version = "2.1.0"
 dependencies = [
  "arbitrary",
  "arrayref",
@@ -4159,7 +4163,7 @@ name = "test-client"
 version = "0.1.0"
 dependencies = [
  "solana-sdk",
- "spl-memo 3.0.0",
+ "spl-memo 3.0.1",
  "spl-token 3.1.0",
  "spl-token-swap",
 ]
@@ -4836,6 +4840,7 @@ name = "webpki-roots"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aabe153544e473b775453675851ecc86863d2a81d786d741f6b76778f2a48940"
+
 dependencies = [
  "webpki",
 ]

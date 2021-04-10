@@ -2,16 +2,18 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError, signature::Keypair, signature::Signer, transaction::Transaction,
-    transaction::TransactionError, transport::TransportError,
+use {
+    helpers::*,
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError, signature::Keypair, signature::Signer,
+        transaction::Transaction, transaction::TransactionError, transport::TransportError,
+    },
+    spl_stake_pool::*,
 };
-use spl_stake_pool::*;
 
 #[tokio::test]
-async fn test_update_pool_balance() {
+async fn test_update_stake_pool_balance() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -23,7 +25,7 @@ async fn test_update_pool_balance() {
 }
 
 #[tokio::test]
-async fn test_update_pool_balance_with_wrong_validator_stake_list() {
+async fn test_update_stake_pool_balance_with_wrong_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -33,7 +35,7 @@ async fn test_update_pool_balance_with_wrong_validator_stake_list() {
 
     let wrong_stake_list_storage = Keypair::new();
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::update_pool_balance(
+        &[instruction::update_stake_pool_balance(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &wrong_stake_list_storage.pubkey(),
@@ -62,7 +64,7 @@ async fn test_update_pool_balance_with_wrong_validator_stake_list() {
 }
 
 #[tokio::test]
-async fn test_update_pool_balance_with_uninitialized_validator_stake_list() {} // TODO
+async fn test_update_stake_pool_balance_with_uninitialized_validator_list() {} // TODO
 
 #[tokio::test]
-async fn test_update_pool_balance_with_out_of_dated_validators_balances() {} // TODO
+async fn test_update_stake_pool_balance_with_out_of_dated_validators_balances() {} // TODO
