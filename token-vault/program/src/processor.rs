@@ -3,7 +3,7 @@ use {
         error::VaultError,
         instruction::VaultInstruction,
         state::{
-            ExternalPriceAccount, SafetyDepositBox, Vault, VaultState, MAX_TOKEN_REGISTRY_SIZE,
+            ExternalPriceAccount, SafetyDepositBox, Vault, VaultState, MAX_SAFETY_DEPOSIT_SIZE,
             PREFIX, SAFETY_DEPOSIT_KEY, VAULT_KEY,
         },
         utils::{
@@ -724,7 +724,7 @@ pub fn process_add_token_to_inactivated_vault(
         rent_info,
         system_account_info,
         payer_info,
-        MAX_TOKEN_REGISTRY_SIZE,
+        MAX_SAFETY_DEPOSIT_SIZE,
         authority_signer_seeds,
     )?;
 

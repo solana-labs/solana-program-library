@@ -10,7 +10,7 @@ pub const VAULT_KEY: u8 = 0;
 pub const SAFETY_DEPOSIT_KEY: u8 = 1;
 pub const EXTERNAL_ACCOUNT_KEY: u8 = 2;
 
-pub const MAX_TOKEN_REGISTRY_SIZE: usize = 1 + 32 + 32 + 32 + 1;
+pub const MAX_SAFETY_DEPOSIT_SIZE: usize = 1 + 32 + 32 + 32 + 1;
 pub const MAX_VAULT_SIZE: usize = 1 + 32 + 32 + 32 + 32 + 1 + 32 + 1 + 32 + 1 + 1 + 8;
 pub const MAX_EXTERNAL_ACCOUNT_SIZE: usize = 1 + 8 + 32 + 1;
 #[repr(C)]

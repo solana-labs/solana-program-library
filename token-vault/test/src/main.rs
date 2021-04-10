@@ -146,7 +146,7 @@ fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcCl
         read_keypair_file(app_matches.value_of("external_price_account").unwrap()).unwrap();
     let price_per_share: u64 = app_matches
         .value_of("price_per_share")
-        .unwrap_or_else(|| "0")
+        .unwrap_or("0")
         .parse::<u64>()
         .unwrap();
     let allowed_to_combine = app_matches.is_present("allowed_to_combine");
@@ -214,6 +214,7 @@ fn rewrite_price_account(app_matches: &ArgMatches, payer: Keypair, client: RpcCl
     external_account.pubkey()
 }
 
+#[allow(clippy::clone_on_copy)]
 fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pubkey {
     let program_key = Pubkey::from_str(PROGRAM_PUBKEY).unwrap();
     let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
@@ -227,7 +228,7 @@ fn add_token_to_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClien
     let vault_key = pubkey_of(app_matches, "vault_address").unwrap();
     let amount: u64 = app_matches
         .value_of("amount")
-        .unwrap_or_else(|| "1")
+        .unwrap_or("1")
         .parse::<u64>()
         .unwrap();
 
@@ -356,7 +357,7 @@ fn activate_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -
     .unwrap();
     let number_of_shares: u64 = app_matches
         .value_of("number_of_shares")
-        .unwrap_or_else(|| "100")
+        .unwrap_or("100")
         .parse::<u64>()
         .unwrap();
     let vault_key = pubkey_of(app_matches, "vault_address").unwrap();
@@ -406,7 +407,7 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
 
     let amount_of_money: u64 = app_matches
         .value_of("amount_of_money")
-        .unwrap_or_else(|| "10000")
+        .unwrap_or("10000")
         .parse::<u64>()
         .unwrap();
 
@@ -719,7 +720,7 @@ fn mint_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> P
 
     let number_of_shares: u64 = app_matches
         .value_of("number_of_shares")
-        .unwrap_or_else(|| "100")
+        .unwrap_or("100")
         .parse::<u64>()
         .unwrap();
 
@@ -758,7 +759,7 @@ fn withdraw_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) 
     let vault: Vault = try_from_slice_unchecked(&vault_account.data).unwrap();
     let number_of_shares: u64 = app_matches
         .value_of("number_of_shares")
-        .unwrap_or_else(|| "100")
+        .unwrap_or("100")
         .parse::<u64>()
         .unwrap();
 
@@ -830,7 +831,7 @@ fn add_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pu
     let vault: Vault = try_from_slice_unchecked(&vault_account.data).unwrap();
     let number_of_shares: u64 = app_matches
         .value_of("number_of_shares")
-        .unwrap_or_else(|| "100")
+        .unwrap_or("100")
         .parse::<u64>()
         .unwrap();
 
