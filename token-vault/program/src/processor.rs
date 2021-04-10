@@ -158,7 +158,7 @@ pub fn process_add_fractional_shares_to_treasury(
         destination: fraction_treasury_info.clone(),
         amount: number_of_shares,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
@@ -220,7 +220,7 @@ pub fn process_withdraw_fractional_shares_from_treasury(
         destination: destination_info.clone(),
         amount: number_of_shares,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
@@ -275,7 +275,7 @@ pub fn process_mint_fractional_shares(
         destination: fraction_treasury_info.clone(),
         amount: number_of_shares,
         authority: mint_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
@@ -350,7 +350,7 @@ pub fn process_withdraw_token_from_safety_deposit_box(
         destination: destination_info.clone(),
         amount: store.amount,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
@@ -441,7 +441,7 @@ pub fn process_redeem_shares(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         destination: destination_info.clone(),
         amount: we_owe_you,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
@@ -449,7 +449,7 @@ pub fn process_redeem_shares(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         mint: fraction_mint_info.clone(),
         amount: outstanding_shares.amount,
         authority: burn_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
         source: outstanding_shares_info.clone(),
     })?;
@@ -575,7 +575,7 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         destination: redeem_treasury_info.clone(),
         amount: what_you_owe,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
@@ -583,7 +583,7 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         mint: fraction_mint_info.clone(),
         amount: your_outstanding_shares.amount,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
         source: your_outstanding_shares_info.clone(),
     })?;
@@ -592,7 +592,7 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         mint: fraction_mint_info.clone(),
         amount: fraction_treasury.amount,
         authority: fraction_burn_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
         source: fraction_treasury_info.clone(),
     })?;
@@ -639,7 +639,7 @@ pub fn process_activate_vault(
         destination: fraction_treasury_info.clone(),
         amount: number_of_shares,
         authority: fractional_mint_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
@@ -748,9 +748,9 @@ pub fn process_add_token_to_inactivated_vault(
     spl_token_transfer(TokenTransferParams {
         source: token_account_info.clone(),
         destination: store_info.clone(),
-        amount: amount,
+        amount,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
