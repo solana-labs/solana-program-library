@@ -1,14 +1,18 @@
 use solana_program::{
-    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
+    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey, msg
 };
 
-use crate::processor::Processor;
 use spl_token::solana_program::account_info::next_account_info;
 use spl_token::solana_program::program_error::ProgramError;
 use spl_token::solana_program::program::invoke_signed;
-use core::mem;
+use crate::helpers::flash_loan_receiver::FlashLoanReceiverError::InvalidInstruction;
+use std::convert::TryInto;
+use spl_token::state::Account as TokenAccount;
+use thiserror::Error;
+use spl_token::solana_program::program_pack::Pack;
 
-solana_program::declare_id!("FlashLoan1111111111111111111111111111111111");
+//
+// solana_program::declare_id!("FlashLoan1111111111111111111111111111111111");
 
 
 entrypoint!(process_instruction);
@@ -37,6 +41,8 @@ impl Processor {
         }
     }
 
+
+
     fn process_execute_operation(
         accounts: &[AccountInfo],
         amount: u64,
@@ -48,7 +54,6 @@ impl Processor {
         let pda_account_info = next_account_info(account_info_iter)?;
         let repay_token_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
-        let value_account_info = next_account_info(account_info_iter)?;
 
         // I don't understand why we need the & here...
         let token_account = TokenAccount::unpack_from_slice(&destination_liquidity_account_info.try_borrow_mut_data()?)?;
@@ -61,29 +66,14 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-
-        if value_account_info.owner != program_id {
-            msg!("Value account is not owned by the program.");
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
-        // The data must be large enough to hold a u64 count
-        if value_account_info.try_data_len()? < mem::size_of::<u64>() {
-            msg!("Greeted account data length too small for u64");
-            return Err(ProgramError::InvalidAccountData);
-        }
-
-
-        let mut data = value_account_info.try_borrow_mut_data()?;
-        LittleEndian::write_u64(&mut data[0..], token_account.amount);
-
         let transfer_ix = spl_token::instruction::transfer(
             token_program_info.key,
             destination_liquidity_account_info.key,
             repay_token_account_info.key,
             &pda,
-            &[&pda],
-            amount)?;
+            &[],
+            amount
+        )?;
 
 
         msg!("Calling the token program to transfer the token back...");
@@ -97,9 +87,50 @@ impl Processor {
             ],
             &[&[&b"flashloan"[..], &[nonce]]],
         )?;
+        msg!("transfer it back!!!");
 
 
         Ok(())
+    }
+}
+
+pub enum FlashLoanReceiverInstruction {
+    /// Execute the operation that is needed after flash loan
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[writable]` The destination liquidity token account.
+    /// 1. `[]` program derived account.
+    /// 2. `[writable]` The repay token account.
+    /// 3. `[]` The token program
+    /// 4. `[writable]` the account that the FlashLoanReceiver needs to write to.
+    ExecuteOperation {
+        /// The amount that is loaned
+        amount: u64,
+    },
+
+}
+
+impl FlashLoanReceiverInstruction {
+    /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+        let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
+
+        Ok(match tag {
+            0 => Self::ExecuteOperation {
+                amount: Self::unpack_amount(rest)?,
+            },
+            _ => return Err(InvalidInstruction.into()),
+        })
+    }
+
+    fn unpack_amount(input: &[u8]) -> Result<u64, ProgramError> {
+        let amount = input
+            .get(..8)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u64::from_le_bytes)
+            .ok_or(InvalidInstruction)?;
+        Ok(amount)
     }
 }
 

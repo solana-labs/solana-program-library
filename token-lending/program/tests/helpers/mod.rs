@@ -435,7 +435,7 @@ pub fn add_token_account_for_flash_loan_receiver(
     let program_owned_token_account = Keypair::new();
     test.add_packable_account(
         program_owned_token_account.pubkey(),
-        amount,
+        u32::MAX as u64,
         &Token {
             mint: *mint_pubkey,
             owner: *program_derived_account,

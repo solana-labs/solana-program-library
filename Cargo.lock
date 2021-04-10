@@ -374,9 +374,9 @@ checksum = "5a4bad0c5981acc24bc09e532f35160f952e35422603f0563cd7a73c2c2e65a0"
 
 [[package]]
 name = "byteorder"
-version = "1.4.2"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae44d1a3d5a19df61dd0c8beb138458ac2a53a7ac09eba97d55592540004306b"
+checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "bytes"
@@ -3918,6 +3918,7 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "base64 0.13.0",
+ "byteorder",
  "log",
  "num-derive",
  "num-traits",

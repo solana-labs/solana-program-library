@@ -7,10 +7,8 @@ use solana_program_test::*;
 use solana_sdk::signature::Signer;
 use solana_sdk::transaction::Transaction;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
-use spl_token::instruction::approve;
 use spl_token_lending::instruction::flash_loan;
 use spl_token_lending::processor::process_instruction;
-use spl_token::state::AccountState;
 
 #[tokio::test]
 async fn test_flash_loan_success() {
@@ -20,9 +18,11 @@ async fn test_flash_loan_success() {
         processor!(process_instruction),
     );
 
+    let receiver_program_account = Keypair::new();
+    let receiver_program_id = receiver_program_account.pubkey();
     test.add_program(
         "flash_loan_receiver",
-        helpers::flash_loan_receiver::id(),
+        receiver_program_id.clone(),
         processor!(helpers::flash_loan_receiver::process_instruction)
     );
 
@@ -36,6 +36,7 @@ async fn test_flash_loan_success() {
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.loan_to_value_ratio = 80;
     let flash_loan_amount = 1_000u64;
+    let flash_loan_fee = 10; // TODO: update this
 
     let usdc_reserve = add_reserve(
         &mut test,
@@ -50,33 +51,33 @@ async fn test_flash_loan_success() {
             ..AddReserveArgs::default()
         },
     );
+    let (receiver_authority_pubkey, _) = Pubkey::find_program_address(
+        &[b"flashloan"], &receiver_program_id);
+    let program_owned_token_account = add_token_account_for_flash_loan_receiver(
+        &mut test,
+        &receiver_authority_pubkey,
+        flash_loan_fee,
+        &usdc_mint.pubkey,
+    );
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
 
     let current_token_amount =
-        get_token_balance(&mut banks_client, usdc_reserve.user_liquidity_account).await;
+        get_token_balance(&mut banks_client, program_owned_token_account).await;
     // There should be enough token at the beginning to pay back the flash loan fee.
     assert_eq!(current_token_amount, flash_loan_fee);
 
-    let receiver_authority_pubkey = Pubkey::create_program_address(
-        &[b"flashloan"], helpers::flash_loan_receiver::id())?;
-    let program_owned_token_account = add_token_account_for_flash_loan_receiver(
-        & mut test,
-        &receiver_authority_pubkey,
-        0,
-        &usdc_mint.pubkey,
-    );
     let mut transaction = Transaction::new_with_payer(
         &[
             flash_loan(
                 spl_token_lending::id(),
-                usdc_reserve.user_liquidity_account,
+                program_owned_token_account,
                 usdc_reserve.pubkey,
                 usdc_reserve.liquidity_supply,
                 lending_market.pubkey,
-                usdc_reserve.liquidity_supply,
-                lending_market.pubkey,
-                spl_token::id(),
+                lending_market.authority,
+                receiver_program_id.clone(),
+                receiver_authority_pubkey.clone(),
                 flash_loan_amount,
                 Vec::new(),
             )

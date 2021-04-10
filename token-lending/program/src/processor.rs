@@ -1592,30 +1592,41 @@ fn process_flash_loan(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
-
+    msg!("transfer completed");
     let mut data = Vec::with_capacity(9);
     data.push(0u8);
+    // TODO: think about if I should keep this argument....
     data.extend_from_slice(&amount.to_le_bytes());
     let mut calling_account = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),
         AccountMeta::new_readonly(*flash_loan_receiver_derived_info.key, false),
         AccountMeta::new(*reserve_liquidity_account_info.key, false),
-        AccountMeta::new(*token_program_id.key, false)
+        AccountMeta::new_readonly(*token_program_id.key, false)
     ];
-    calling_account.extend(
-        account_info_iter
-            .into_iter()
-            .map(|additional_param| AccountMeta::new(*additional_param.key, false)),
-    );
+    let mut calling_accounts = &[
+        destination_liquidity_info.clone(),
+        flash_loan_receiver_info.clone(),
+        flash_loan_receiver_derived_info.clone(),
+        reserve_liquidity_account_info.clone(),
+        token_program_id.clone(),
+    ];
+    msg!("keys!");
+    for acc in account_info_iter {
+        // calling_accounts.push(acc.clone()); // TODO: add to slice
+        calling_account.push(AccountMeta::new(*acc.key, acc.is_signer))
+    }
+    msg!("keys2!");
+
     let ix = Instruction {
         program_id: *flash_loan_receiver_info.key,
         accounts: calling_account,
         data
     };
-
+    msg!("invoke");
     let result = invoke(
         &ix,
-        &accounts);
+        calling_accounts);
+    msg!("invoke completed");
     if result.is_err() {
         // TODO: change to a more sensible error.
         return Err(LendingError::InvalidTokenProgram.into());
