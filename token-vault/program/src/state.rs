@@ -41,8 +41,7 @@ pub struct Vault {
 
     /// Must point at an ExternalPriceAccount, which gives permission and price for buyout.
     pub pricing_lookup_address: Pubkey,
-    /// In inactive state, we use this to set the order key on Safety Deposit Boxes being added so
-    /// the users know how to reconstruct the hashed_safety_deposit_boxes sha256 in the right order, and
+    /// In inactive state, we use this to set the order key on Safety Deposit Boxes being added and
     /// then we increment it and save so the next safety deposit box gets the next number.
     /// In the Combined state during token redemption by authority, we use it as a decrementing counter each time
     /// The authority of the vault withdrawals a Safety Deposit contents to count down how many
