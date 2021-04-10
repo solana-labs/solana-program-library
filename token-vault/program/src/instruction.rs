@@ -394,6 +394,7 @@ pub fn create_withdraw_shares_instruction(
             AccountMeta::new_readonly(transfer_authority, false),
             AccountMeta::new_readonly(vault_authority, true),
             AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
         data: VaultInstruction::WithdrawSharesFromTreasury(NumberOfShareArgs { number_of_shares })
             .try_to_vec()
@@ -420,6 +421,7 @@ pub fn create_add_shares_instruction(
             AccountMeta::new_readonly(transfer_authority, true),
             AccountMeta::new_readonly(vault_authority, true),
             AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
         data: VaultInstruction::AddSharesToTreasury(NumberOfShareArgs { number_of_shares })
             .try_to_vec()

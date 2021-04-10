@@ -554,7 +554,7 @@ fn redeem_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
     )
     .unwrap();
 
-    let vault_key = pubkey_of(app_matches, "vault_authority").unwrap();
+    let vault_key = pubkey_of(app_matches, "vault_address").unwrap();
     let outstanding_shares_key = pubkey_of(app_matches, "outstanding_shares_account").unwrap();
     let outstanding_shares_account = client.get_account(&outstanding_shares_key).unwrap();
     let outstanding_shares: Account =
@@ -590,7 +590,7 @@ fn redeem_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
                     &token_key,
                     &key.pubkey(),
                     &redeem_treasury.mint,
-                    &program_key,
+                    &payer.pubkey(),
                 )
                 .unwrap(),
             );
@@ -602,7 +602,7 @@ fn redeem_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
     instructions.push(
         approve(
             &token_key,
-            &proceeds_account,
+            &outstanding_shares_key,
             &burn_authority.pubkey(),
             &payer.pubkey(),
             &[&payer.pubkey()],
@@ -786,7 +786,7 @@ fn withdraw_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) 
                     &token_key,
                     &key.pubkey(),
                     &vault.fraction_mint,
-                    &program_key,
+                    &payer.pubkey(),
                 )
                 .unwrap(),
             );
@@ -834,56 +834,38 @@ fn add_shares(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) -> Pu
         .parse::<u64>()
         .unwrap();
 
-    let mut signers = vec![&payer, &vault_authority];
-    let seeds = &[PREFIX.as_bytes(), &program_key.as_ref()];
-    let (transfer_authority, _) = Pubkey::find_program_address(seeds, &program_key);
+    let transfer_authority = Keypair::new();
+    let signers = [&payer, &vault_authority, &transfer_authority];
 
-    let mut instructions = vec![];
+    let source_account: Pubkey = pubkey_of(app_matches, "source").unwrap();
 
-    let key = Keypair::new();
-    let source_account: Pubkey = match pubkey_of(app_matches, "source_account") {
-        Some(val) => val,
-        None => {
-            instructions.push(create_account(
-                &payer.pubkey(),
-                &key.pubkey(),
-                client
-                    .get_minimum_balance_for_rent_exemption(Account::LEN)
-                    .unwrap(),
-                Account::LEN as u64,
-                &token_key,
-            ));
-            instructions.push(
-                initialize_account(
-                    &token_key,
-                    &key.pubkey(),
-                    &vault.fraction_mint,
-                    &program_key,
-                )
-                .unwrap(),
-            );
-            signers.push(&key);
-            key.pubkey()
-        }
-    };
-
-    instructions.push(create_add_shares_instruction(
-        program_key,
-        source_account,
-        vault.fraction_treasury,
-        vault_key,
-        transfer_authority,
-        vault_authority.pubkey(),
-        number_of_shares,
-    ));
+    let instructions = [
+        approve(
+            &token_key,
+            &source_account,
+            &transfer_authority.pubkey(),
+            &payer.pubkey(),
+            &[&payer.pubkey()],
+            number_of_shares,
+        )
+        .unwrap(),
+        create_add_shares_instruction(
+            program_key,
+            source_account,
+            vault.fraction_treasury,
+            vault_key,
+            transfer_authority.pubkey(),
+            vault_authority.pubkey(),
+            number_of_shares,
+        ),
+    ];
 
     let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
 
     transaction.sign(&signers, recent_blockhash);
     client.send_and_confirm_transaction(&transaction).unwrap();
-    let _new_proceeds = client.get_account(&source_account).unwrap();
-    source_account
+    vault.fraction_treasury
 }
 
 fn main() {
@@ -1293,7 +1275,7 @@ fn main() {
         }
         ("redeem_shares", Some(arg_matches)) => {
             println!(
-                "Redeemed shares and put monies in account {:?}",
+                "Redeemed share(s) and put monies in account {:?}",
                 redeem_shares(arg_matches, payer, client)
             );
         }
@@ -1305,19 +1287,19 @@ fn main() {
         }
         ("mint_shares", Some(arg_matches)) => {
             println!(
-                "Minted shares to fractional treasury {:?}",
+                "Minted share(s) to fractional treasury {:?}",
                 mint_shares(arg_matches, payer, client)
             );
         }
         ("withdraw_shares", Some(arg_matches)) => {
             println!(
-                "Withdrew shares(s) to account {:?}",
+                "Withdrew share(s) to account {:?}",
                 withdraw_shares(arg_matches, payer, client)
             );
         }
         ("add_shares", Some(arg_matches)) => {
             println!(
-                "Added shares(s) to fractional treasury account {:?}",
+                "Added share(s) to fractional treasury account {:?}",
                 add_shares(arg_matches, payer, client)
             );
         }
