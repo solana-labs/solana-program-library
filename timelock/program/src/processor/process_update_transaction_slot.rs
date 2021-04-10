@@ -1,6 +1,5 @@
 //! Program state processor
 use crate::{
-    state::timelock_program::TimelockProgram,
     state::timelock_set::TimelockSet,
     state::timelock_state::TimelockState,
     utils::{
@@ -29,13 +28,11 @@ pub fn process_update_transaction_slot(
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_authority_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
-    let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
-    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
+    assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_account_equiv(
         signatory_validation_account_info,
@@ -47,7 +44,7 @@ pub fn process_update_transaction_slot(
         program_id,
         signatory_account_info,
         signatory_validation_account_info,
-        timelock_program_account_info,
+        timelock_set_account_info,
         token_program_account_info,
         transfer_authority_info,
         timelock_authority_account_info,

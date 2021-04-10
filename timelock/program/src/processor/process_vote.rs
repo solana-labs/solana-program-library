@@ -41,7 +41,6 @@ pub fn process_vote(
     let timelock_config_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
-    let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
     let clock_info = next_account_info(account_info_iter)?;
 
@@ -60,11 +59,11 @@ pub fn process_vote(
     assert_voting(&timelock_state)?;
 
     let (authority_key, bump_seed) =
-        Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
+        Pubkey::find_program_address(&[timelock_set_account_info.key.as_ref()], program_id);
     if timelock_program_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
-    let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
+    let authority_signer_seeds = &[timelock_set_account_info.key.as_ref(), &[bump_seed]];
 
     // We dont initialize the mints because it's too expensive on the stack size.
     let source_mint_supply: u64 = pull_mint_supply(source_mint_account_info)?;
@@ -148,7 +147,7 @@ pub fn process_vote(
     }
     let (voting_record_key, _) = Pubkey::find_program_address(
         &[
-            timelock_program_account_info.key.as_ref(),
+            program_id.as_ref(),
             timelock_set_account_info.key.as_ref(),
             voting_account_info.key.as_ref(),
         ],

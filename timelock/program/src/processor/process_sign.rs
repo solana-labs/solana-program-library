@@ -1,7 +1,6 @@
 //! Program state processor
 use crate::{
     error::TimelockError,
-    state::timelock_program::TimelockProgram,
     state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
@@ -27,26 +26,24 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
-    let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
     let clock_info = next_account_info(account_info_iter)?;
 
     let clock = Clock::from_account_info(clock_info)?;
     let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
-    let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
     let sig_mint: Mint = assert_initialized(signatory_mint_info)?;
-    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
+    assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
     assert_account_equiv(signatory_mint_info, &timelock_set.signatory_mint)?;
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_draft(&timelock_state)?;
 
     let (authority_key, bump_seed) =
-        Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
+        Pubkey::find_program_address(&[timelock_set_account_info.key.as_ref()], program_id);
     if timelock_program_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
-    let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
+    let authority_signer_seeds = &[timelock_set_account_info.key.as_ref(), &[bump_seed]];
     // the act of burning / signing is itself an assertion of permission...
     // if you lack the ability to do this, you lack permission to do it. no need to assert permission before
     // trying here.

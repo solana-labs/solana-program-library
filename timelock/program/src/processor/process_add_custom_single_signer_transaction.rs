@@ -1,7 +1,6 @@
 //! Program state processor
 use crate::{
     error::TimelockError,
-    state::timelock_program::TimelockProgram,
     state::{
         custom_single_signer_timelock_transaction::{
             CustomSingleSignerTimelockTransaction,
@@ -41,13 +40,11 @@ pub fn process_add_custom_single_signer_transaction(
     let timelock_config_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_mint_authority_info = next_account_info(account_info_iter)?;
-    let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
     let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
-    let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
 
     let mut timelock_txn: CustomSingleSignerTimelockTransaction =
         assert_uninitialized(timelock_txn_account_info)?;
@@ -66,12 +63,12 @@ pub fn process_add_custom_single_signer_transaction(
     )?;
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_draft(&timelock_state)?;
-    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
+    assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
     assert_is_permissioned(
         program_id,
         signatory_account_info,
         signatory_validation_account_info,
-        timelock_program_account_info,
+        timelock_set_account_info,
         token_program_account_info,
         transfer_authority_info,
         timelock_mint_authority_info,

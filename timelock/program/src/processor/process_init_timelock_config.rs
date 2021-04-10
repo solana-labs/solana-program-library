@@ -1,12 +1,9 @@
 //! Program state processor
 use crate::{
     error::TimelockError,
+    state::enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule},
     state::timelock_config::{TimelockConfig, CONFIG_NAME_LENGTH, TIMELOCK_CONFIG_VERSION},
-    state::{
-        enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule},
-        timelock_program::TimelockProgram,
-    },
-    utils::{assert_initialized, assert_token_program_is_correct, assert_uninitialized},
+    utils::assert_uninitialized,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -32,14 +29,9 @@ pub fn process_init_timelock_config(
     let program_to_tie_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
     let council_mint_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_account_info = next_account_info(account_info_iter)?;
-    let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
-
-    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     let seeds = &[
-        timelock_program_account_info.key.as_ref(),
+        program_id.as_ref(),
         governance_mint_account_info.key.as_ref(),
         council_mint_account_info.key.as_ref(),
         program_to_tie_account_info.key.as_ref(),

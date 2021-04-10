@@ -4,15 +4,14 @@ use crate::{
     error::TimelockError,
     state::{
         timelock_config::TimelockConfig,
-        timelock_program::TimelockProgram,
         timelock_set::{TimelockSet, TIMELOCK_SET_VERSION},
         timelock_state::{TimelockState, TIMELOCK_STATE_VERSION},
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
         assert_cheap_mint_initialized, assert_initialized, assert_mint_matching,
-        assert_rent_exempt, assert_token_program_is_correct, assert_uninitialized,
-        get_mint_from_account, spl_token_mint_to, TokenMintToParams,
+        assert_rent_exempt, assert_uninitialized, get_mint_from_account, spl_token_mint_to,
+        TokenMintToParams,
     },
 };
 use solana_program::{
@@ -49,17 +48,16 @@ pub fn process_init_timelock_set(
     let source_holding_account_info = next_account_info(account_info_iter)?;
     let source_mint_account_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
-    let timelock_program_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
-    let timelock_program: TimelockProgram = assert_initialized(timelock_program_info)?;
     let mut timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
 
     let mut new_timelock_state: TimelockState = assert_uninitialized(timelock_state_account_info)?;
     let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
     new_timelock_set.version = TIMELOCK_SET_VERSION;
     new_timelock_set.config = *timelock_config_account_info.key;
+    new_timelock_set.token_program_id = *token_program_info.key;
     new_timelock_set.state = *timelock_state_account_info.key;
     new_timelock_set.admin_mint = *admin_mint_account_info.key;
     new_timelock_set.voting_mint = *voting_mint_account_info.key;
@@ -84,8 +82,6 @@ pub fn process_init_timelock_set(
         Some(val) => val,
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
-
-    assert_token_program_is_correct(&timelock_program, token_program_info)?;
 
     assert_rent_exempt(rent, timelock_set_account_info)?;
     assert_rent_exempt(rent, source_holding_account_info)?;
@@ -139,11 +135,11 @@ pub fn process_init_timelock_set(
     )?;
 
     let (authority_key, bump_seed) =
-        Pubkey::find_program_address(&[timelock_program_info.key.as_ref()], program_id);
+        Pubkey::find_program_address(&[timelock_set_account_info.key.as_ref()], program_id);
     if timelock_program_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
-    let authority_signer_seeds = &[timelock_program_info.key.as_ref(), &[bump_seed]];
+    let authority_signer_seeds = &[timelock_set_account_info.key.as_ref(), &[bump_seed]];
 
     spl_token_mint_to(TokenMintToParams {
         mint: admin_mint_account_info.clone(),

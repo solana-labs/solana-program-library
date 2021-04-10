@@ -14,6 +14,9 @@ pub struct TimelockSet {
     /// configuration values
     pub config: Pubkey,
 
+    /// Token program used
+    pub token_program_id: Pubkey,
+
     /// state values
     pub state: Pubkey,
 
@@ -66,9 +69,9 @@ impl IsInitialized for TimelockSet {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 1 + 32 * 14 + 300;
+const TIMELOCK_SET_LEN: usize = 1 + 32 * 15 + 300;
 impl Pack for TimelockSet {
-    const LEN: usize = 1 + 32 * 14 + 300;
+    const LEN: usize = 1 + 32 * 15 + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, TIMELOCK_SET_LEN];
@@ -76,6 +79,7 @@ impl Pack for TimelockSet {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             config,
+            token_program_id,
             state,
             version,
             signatory_mint,
@@ -91,11 +95,12 @@ impl Pack for TimelockSet {
             yes_voting_dump,
             no_voting_dump,
             _padding,
-        ) = array_refs![input, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
+        ) = array_refs![input, 32, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
         let version = u8::from_le_bytes(*version);
         match version {
             TIMELOCK_SET_VERSION | UNINITIALIZED_VERSION => Ok(Self {
                 config: Pubkey::new_from_array(*config),
+                token_program_id: Pubkey::new_from_array(*token_program_id),
                 state: Pubkey::new_from_array(*state),
                 version,
                 signatory_mint: Pubkey::new_from_array(*signatory_mint),
@@ -120,6 +125,7 @@ impl Pack for TimelockSet {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             config,
+            token_program_id,
             state,
             version,
             signatory_mint,
@@ -135,8 +141,11 @@ impl Pack for TimelockSet {
             yes_voting_dump,
             no_voting_dump,
             _padding,
-        ) = mut_array_refs![output, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
+        ) = mut_array_refs![
+            output, 32, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300
+        ];
         config.copy_from_slice(self.config.as_ref());
+        token_program_id.copy_from_slice(self.token_program_id.as_ref());
         state.copy_from_slice(self.state.as_ref());
         *version = self.version.to_le_bytes();
         signatory_mint.copy_from_slice(self.signatory_mint.as_ref());

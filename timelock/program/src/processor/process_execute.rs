@@ -36,7 +36,6 @@ pub fn process_execute(
     let program_to_invoke_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_config_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_account_info = next_account_info(account_info_iter)?;
     let clock_info = next_account_info(account_info_iter)?;
 
     let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
@@ -60,7 +59,7 @@ pub fn process_execute(
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
     let seeds = &[
-        timelock_program_account_info.key.as_ref(),
+        program_id.as_ref(),
         timelock_config.governance_mint.as_ref(),
         timelock_config.council_mint.as_ref(),
         timelock_config.program.as_ref(),
@@ -108,7 +107,7 @@ pub fn process_execute(
         Ok(val) => val,
         Err(_) => return Err(TimelockError::InstructionUnpackError.into()),
     };
-    let serialized_instructions = message.serialize_instructions();
+    let serialized_instructions = message.serialize_instructions(false);
     let instruction: Instruction =
         match Message::deserialize_instruction(0, &serialized_instructions) {
             Ok(val) => val,
@@ -118,7 +117,7 @@ pub fn process_execute(
     execute(ExecuteParams {
         instruction,
         authority_signer_seeds: &[
-            timelock_program_account_info.key.as_ref(),
+            program_id.as_ref(),
             timelock_config.governance_mint.as_ref(),
             timelock_config.council_mint.as_ref(),
             timelock_config.program.as_ref(),

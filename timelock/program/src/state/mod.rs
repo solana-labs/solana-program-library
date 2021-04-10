@@ -8,8 +8,6 @@ pub mod custom_single_signer_timelock_transaction;
 
 /// Timelock config
 pub mod timelock_config;
-/// Timelock program
-pub mod timelock_program;
 /// Timelock set
 pub mod timelock_set;
 /// Timelock state

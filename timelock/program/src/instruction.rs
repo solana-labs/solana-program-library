@@ -1,11 +1,6 @@
 use std::{convert::TryInto, mem::size_of};
 
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    sysvar,
-};
+use solana_program::program_error::ProgramError;
 
 use crate::{
     error::TimelockError,
@@ -33,13 +28,6 @@ impl Default for Format {
 /// Instructions supported by the Timelock program.
 #[derive(Clone)]
 pub enum TimelockInstruction {
-    /// Initializes a new Timelock Program.
-    ///
-    ///   0. `[writable]` Timelock program account pub key.
-    ///   1. `[]` Token program id
-    ///   2. `[]` Rent sysvar
-    InitTimelockProgram,
-
     /// Initializes a new empty Timelocked set of Instructions that will be executed at various slots in the future in draft mode.
     /// Grants Admin token to caller.
     ///
@@ -60,8 +48,7 @@ pub enum TimelockInstruction {
     ///   14. `[writable]` Initialized No voting dump account
     ///   15. `[writable]` Initialized source holding account
     ///   16. `[]` Source mint
-    ///   17. `[]` Timelock minting authority
-    ///   18. `[]` Timelock Program
+    ///   17. `[]` Timelock minting authority (pda with seed of timelock set key)
     ///   19. '[]` Token program id
     ///   20. `[]` Rent sysvar
     InitTimelockSet {
@@ -83,9 +70,8 @@ pub enum TimelockInstruction {
     ///   5. `[writable]` Timelock state account.
     ///   6. `[]` Timelock set account.
     ///   7. `[]` Transfer authority
-    ///   8. `[]` Timelock program mint authority
-    ///   9. `[]` Timelock program account.
-    ///   10. '[]` Token program id.
+    ///   8. `[]` Timelock program mint authority (pda of seed with timelock set)
+    ///   9. '[]` Token program id.
     AddSigner,
 
     /// [Requires Admin token]
@@ -98,9 +84,8 @@ pub enum TimelockInstruction {
     ///   4. `[writable]` Timelock state account.
     ///   5. `[]` Timelock set account.
     ///   6. `[]` Transfer authority
-    ///   7. `[]` Timelock program mint authority
-    ///   8. `[]` Timelock program account.
-    ///   9. '[]` Token program id.
+    ///   7. `[]` Timelock program mint authority (pda of seed with timelock set key)
+    ///   8. '[]` Token program id.
     RemoveSigner,
 
     /// [Requires Signatory token]
@@ -138,8 +123,7 @@ pub enum TimelockInstruction {
     ///   3. `[writable]` Signatory validation account.
     ///   5. `[]` Timelock set.
     ///   6. `[]` Transfer Authority.
-    ///   7. `[]` Timelock mint authority
-    ///   8. `[]` Timelock program account pub key.
+    ///   7. `[]` Timelock mint authority (pda of seed timelock set key)
     ///   9. `[]` Token program account.
     RemoveTransaction,
 
@@ -152,9 +136,8 @@ pub enum TimelockInstruction {
     ///   4. `[]` Timelock state account.
     ///   5. `[]` Timelock set account.
     ///   6. `[]` Transfer authority.
-    ///   7. `[]` Timelock mint authority
-    ///   8. `[]` Timelock program account pub key.
-    ///   9. `[]` Token program account.
+    ///   7. `[]` Timelock mint authority (pda with seed of timelock set key)
+    ///   8. `[]` Token program account.
     UpdateTransactionSlot {
         /// On what slot this transaction slot will now run
         slot: u64,
@@ -168,9 +151,8 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` Admin validation account.
     ///   3. `[]` Timelock set account pub key.
     ///   4. `[]` Transfer authority.
-    ///   5. `[]` Timelock mint authority
-    ///   6. `[]` Timelock program account pub key.
-    ///   7. `[]` Token program account.
+    ///   5. `[]` Timelock mint authority (pda with seed of timelock set key)
+    ///   6. `[]` Token program account.
     DeleteTimelockSet,
 
     /// [Requires Signatory token]
@@ -182,8 +164,7 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` Signatory mint account.
     ///   3. `[]` Timelock set account pub key.
     ///   4. `[]` Transfer authority
-    ///   5. `[]` Timelock mint authority
-    ///   6. `[]` Timelock program account pub key.
+    ///   5. `[]` Timelock mint authority (pda of seed timelock set key)
     ///   7. `[]` Token program account.
     ///   8. `[]` Clock sysvar.
     Sign,
@@ -206,10 +187,9 @@ pub enum TimelockInstruction {
     ///   9. `[]` Timelock set account.
     ///   10. `[]` Timelock config account.
     ///   12. `[]` Transfer authority
-    ///   13. `[]` Timelock program mint authority
-    ///   14. `[]` Timelock program account pub key.
-    ///   15. `[]` Token program account.
-    ///   16. `[]` Clock sysvar.
+    ///   13. `[]` Timelock program mint authority (pda of seed timelock set key)
+    ///   14. `[]` Token program account.
+    ///   15. `[]` Clock sysvar.
     Vote {
         /// How many voting tokens to burn yes
         yes_voting_token_amount: u64,
@@ -247,9 +227,8 @@ pub enum TimelockInstruction {
     ///   4. `[writable]` Voting mint account.
     ///   5. `[]` Timelock set account.
     ///   6. `[]` Transfer authority
-    ///   7. `[]` Timelock program mint authority
-    ///   8. `[]` Timelock program account pub key.
-    ///   9. `[]` Token program account.
+    ///   7. `[]` Timelock program mint authority (pda with seed of timelock set key)
+    ///   8. `[]` Token program account.
     DepositSourceTokens {
         /// How many voting tokens to deposit
         voting_token_amount: u64,
@@ -274,9 +253,8 @@ pub enum TimelockInstruction {
     ///   13. `[]` Transfer authority
     ///   14. `[]` Yes Transfer authority
     ///   15. `[]` No Transfer authority
-    ///   16. `[]` Timelock program mint authority
-    ///   17. `[]` Timelock program account pub key.
-    ///   18. `[]` Token program account.
+    ///   16. `[]` Timelock program mint authority (pda of seed timelock set key)
+    ///   17. `[]` Token program account.
     WithdrawVotingTokens {
         /// How many voting tokens to withdrawal
         voting_token_amount: u64,
@@ -287,8 +265,6 @@ pub enum TimelockInstruction {
     ///   1. `[]` Program account that this config uses
     ///   2. `[]` Governance mint that this config uses
     ///   3. `[]` Council mint that this config uses [Optional] [Pass in 0s otherwise]
-    ///   4. `[]` Timelock program account pub key.
-    ///   5. `[]` Token program account.
     InitTimelockConfig {
         /// Consensus Algorithm
         consensus_algorithm: u8,
@@ -312,10 +288,7 @@ pub enum TimelockInstruction {
     ///   2. `[]` Governance mint to tie this config to
     ///   3. `[]` Council mint [optional] to tie this config to [Pass in 0s otherwise]
     ///   4. `[]` Payer
-    ///   5. `[]` Timelock program account pub key.
-    ///   6. `[]` Timelock program pub key. Different from program account - is the actual id of the executable.
-    ///   7. `[]` Token program account.
-    ///   8. `[]` System account.
+    ///   5. `[]` System account.
     CreateEmptyTimelockConfig,
 
     ///   0. `[]` Governance voting record key. Needs to be set with pubkey set to PDA with seeds of the
@@ -323,9 +296,8 @@ pub enum TimelockInstruction {
     ///   1. `[]` Proposal key
     ///   2. `[]` Your voting account
     ///   3. `[]` Payer
-    ///   4. `[]` Timelock program account pub key.
-    ///   5. `[]` Timelock program pub key. Different from program account - is the actual id of the executable.
-    ///   6. `[]` System account.
+    ///   4. `[]` Timelock program pub key
+    ///   5. `[]` System account.
     CreateEmptyGovernanceVotingRecord,
 }
 
@@ -336,7 +308,6 @@ impl TimelockInstruction {
             .split_first()
             .ok_or(TimelockError::InstructionUnpackError)?;
         Ok(match tag {
-            0 => Self::InitTimelockProgram,
             1 => {
                 let (input_desc_link, input_name) = rest.split_at(DESC_SIZE);
                 let mut desc_link: [u8; DESC_SIZE] = [0; DESC_SIZE];
@@ -491,9 +462,6 @@ impl TimelockInstruction {
         let mut buf = Vec::with_capacity(size_of::<Self>());
 
         match self {
-            Self::InitTimelockProgram => {
-                buf.push(0);
-            }
             Self::InitTimelockSet { desc_link, name } => {
                 buf.push(1);
                 buf.extend_from_slice(desc_link);
@@ -569,22 +537,5 @@ impl TimelockInstruction {
             Self::CreateEmptyGovernanceVotingRecord => buf.push(16),
         }
         buf
-    }
-}
-
-/// Creates an 'InitTimelockProgram' instruction.
-pub fn init_timelock_program(
-    program_id: Pubkey,
-    timelock_pubkey: Pubkey,
-    token_program: Pubkey,
-) -> Instruction {
-    Instruction {
-        program_id,
-        accounts: vec![
-            AccountMeta::new(timelock_pubkey, true),
-            AccountMeta::new_readonly(token_program, false),
-            AccountMeta::new_readonly(sysvar::rent::id(), false),
-        ],
-        data: TimelockInstruction::InitTimelockProgram.pack(),
     }
 }

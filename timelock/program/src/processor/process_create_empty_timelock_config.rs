@@ -1,10 +1,6 @@
 //! Program state processor
 
-use crate::{
-    state::timelock_config::TimelockConfig,
-    state::timelock_program::TimelockProgram,
-    utils::{assert_initialized, assert_token_program_is_correct, create_account_raw},
-};
+use crate::{state::timelock_config::TimelockConfig, utils::create_account_raw};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -23,12 +19,8 @@ pub fn process_create_empty_timelock_config(
     let council_mint_account_info = next_account_info(account_info_iter)?;
     let payer_account_info = next_account_info(account_info_iter)?;
     let timelock_program_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_info = next_account_info(account_info_iter)?;
-    let token_program_account_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
 
-    let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
-    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
     let seeds = &[
         timelock_program_account_info.key.as_ref(),
         governance_mint_account_info.key.as_ref(),
@@ -47,7 +39,7 @@ pub fn process_create_empty_timelock_config(
     create_account_raw::<TimelockConfig>(
         &[
             payer_account_info.clone(),
-            timelock_program_info.clone(),
+            timelock_program_account_info.clone(),
             timelock_config_account_info.clone(),
             system_account_info.clone(),
         ],

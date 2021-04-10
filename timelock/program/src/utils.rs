@@ -1,9 +1,6 @@
 use crate::{
     error::TimelockError,
-    state::{
-        enums::TimelockStateStatus, timelock_program::TimelockProgram, timelock_set::TimelockSet,
-        timelock_state::TimelockState,
-    },
+    state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
 };
 use arrayref::array_ref;
 use solana_program::{
@@ -42,7 +39,7 @@ pub fn assert_is_permissioned<'a>(
     program_id: &Pubkey,
     perm_account_info: &AccountInfo<'a>,
     perm_validation_account_info: &AccountInfo<'a>,
-    timelock_program_info: &AccountInfo<'a>,
+    timelock_set_info: &AccountInfo<'a>,
     token_program_info: &AccountInfo<'a>,
     transfer_authority_info: &AccountInfo<'a>,
     timelock_authority_info: &AccountInfo<'a>,
@@ -50,11 +47,11 @@ pub fn assert_is_permissioned<'a>(
     let _perm_account: Account = assert_initialized(perm_account_info)?;
     let _perm_validation: Account = assert_initialized(perm_validation_account_info)?;
     let (authority_key, bump_seed) =
-        Pubkey::find_program_address(&[timelock_program_info.key.as_ref()], program_id);
+        Pubkey::find_program_address(&[timelock_set_info.key.as_ref()], program_id);
     if timelock_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
-    let authority_signer_seeds = &[timelock_program_info.key.as_ref(), &[bump_seed]];
+    let authority_signer_seeds = &[timelock_set_info.key.as_ref(), &[bump_seed]];
     // If both accounts arent correct mint type, it explodes
     // If token amount is <1, it explodes. Perfect check.
     // If authority isnt right, it explodes.
@@ -125,7 +122,7 @@ pub fn assert_proper_signatory_mint(
 
 /// Asserts token_program is correct program
 pub fn assert_token_program_is_correct(
-    timelock_program: &TimelockProgram,
+    timelock_program: &TimelockSet,
     token_program_info: &AccountInfo,
 ) -> ProgramResult {
     if &timelock_program.token_program_id != token_program_info.key {

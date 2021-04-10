@@ -37,7 +37,6 @@ use std::{
     time::Duration,
 };
 
-use spl_timelock::{instruction::init_timelock_program, state::timelock_program::TimelockProgram};
 use spl_token;
 use std::{error, str::FromStr, time::Instant};
 // -------- UPDATE START -------
@@ -49,7 +48,6 @@ const BUFFER_PATH: &str = "/Users/jprince/.config/solana/bpf_place.json";
 const DEPLOY_PATH: &str =
     "/Users/jprince/Documents/other/solana-program-library/target/deploy/spl_hello_world_escrow.so";
 const TIMELOCK_PROGRAM_ID: &str = "kJC6ipYWmLrGgnXCNJMpqgbFDSqjBpsKLzdqcifi8Tj";
-const TIMELOCK_PROGRAM_ACCOUNT_ID: &str = "2XrpU3Xj6yCqBFGKb1Z46jdWPv49vNJHcCLX6PmjFp9v";
 const GOVERNANCE_MINT_ID: &str = "kg4VmAyWebKQ7Aimgnv4xmFkA7yBGL3TCWKE7cXLQzC";
 const COUNCIL_MINT_ID: &str = "2NSitSXJdhw7Fyw7xcD6DbjvxDR6fgXsLoPAfen8LoVi";
 const PROGRAM_ID: &str = "5o45iw6s89iGPAg25yGTT8RFFJnbGcLyvxhSXLsqF4Cf";
@@ -62,7 +60,6 @@ pub fn main() {
     let buffer_key = read_keypair_file(BUFFER_PATH).unwrap();
     let bytes = std::fs::read(DEPLOY_PATH).unwrap();
 
-    let timelock_program_account_key = Pubkey::from_str(TIMELOCK_PROGRAM_ACCOUNT_ID).unwrap();
     let timelock_program_id = Pubkey::from_str(TIMELOCK_PROGRAM_ID).unwrap();
     let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
     let governance_mint_id = Pubkey::from_str(GOVERNANCE_MINT_ID).unwrap();
@@ -70,7 +67,7 @@ pub fn main() {
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(
         &[
-            timelock_program_account_key.as_ref(),
+            timelock_program_id.as_ref(),
             governance_mint_id.as_ref(),
             council_mint_id.as_ref(),
             program_id.as_ref(),

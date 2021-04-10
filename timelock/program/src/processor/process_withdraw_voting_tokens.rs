@@ -3,7 +3,6 @@
 use crate::{
     error::TimelockError,
     state::governance_voting_record::GovernanceVotingRecord,
-    state::timelock_program::TimelockProgram,
     state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
     utils::{
         assert_account_equiv, assert_initialized, assert_token_program_is_correct, spl_token_burn,
@@ -44,13 +43,11 @@ pub fn process_withdraw_voting_tokens(
     let yes_transfer_authority_info = next_account_info(account_info_iter)?;
     let no_transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
-    let timelock_program_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
-    let timelock_program: TimelockProgram = assert_initialized(timelock_program_account_info)?;
-    assert_token_program_is_correct(&timelock_program, token_program_account_info)?;
+    assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
     // Using assert_account_equiv not workable here due to cost of stack size on this method.
 
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
@@ -66,14 +63,14 @@ pub fn process_withdraw_voting_tokens(
     let no_voting_account: Account = assert_initialized(no_voting_account_info)?;
 
     let (authority_key, bump_seed) =
-        Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
+        Pubkey::find_program_address(&[timelock_set_account_info.key.as_ref()], program_id);
     if timelock_program_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
-    let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
+    let authority_signer_seeds = &[timelock_set_account_info.key.as_ref(), &[bump_seed]];
     let (voting_record_key, _) = Pubkey::find_program_address(
         &[
-            timelock_program_account_info.key.as_ref(),
+            program_id.as_ref(),
             timelock_set_account_info.key.as_ref(),
             voting_account_info.key.as_ref(),
         ],
