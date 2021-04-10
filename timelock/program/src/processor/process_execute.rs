@@ -107,7 +107,7 @@ pub fn process_execute(
         Ok(val) => val,
         Err(_) => return Err(TimelockError::InstructionUnpackError.into()),
     };
-    let serialized_instructions = message.serialize_instructions(false);
+    let serialized_instructions = message.serialize_instructions();
     let instruction: Instruction =
         match Message::deserialize_instruction(0, &serialized_instructions) {
             Ok(val) => val,

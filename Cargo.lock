@@ -163,11 +163,10 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "bincode"
-version = "1.3.1"
+version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f30d3a39baa26f9651f17b375061f3233dde33424a8b72b0dbe93a68a0bc896d"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
 dependencies = [
- "byteorder",
  "serde",
 ]
 
@@ -3862,6 +3861,38 @@ dependencies = [
  "solana-program",
  "solana-sdk",
  "spl-stake-pool",
+ "spl-token 3.1.0",
+]
+
+[[package]]
+name = "spl-timelock"
+version = "0.0.1"
+dependencies = [
+ "arrayref",
+ "assert_matches",
+ "bincode",
+ "log",
+ "num-derive",
+ "num-traits",
+ "proptest",
+ "serde",
+ "serde_yaml",
+ "solana-program",
+ "spl-token 3.1.0",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-timelock-proposal-loader-client"
+version = "0.1.0"
+dependencies = [
+ "base64 0.13.0",
+ "bincode",
+ "solana-client",
+ "solana-program",
+ "solana-sdk",
+ "solana-transaction-status",
+ "spl-timelock",
  "spl-token 3.1.0",
 ]
 
