@@ -251,10 +251,8 @@ pub enum TimelockInstruction {
     ///   11. `[]` Timelock state account.
     ///   12. `[]` Timelock set account.
     ///   13. `[]` Transfer authority
-    ///   14. `[]` Yes Transfer authority
-    ///   15. `[]` No Transfer authority
-    ///   16. `[]` Timelock program mint authority (pda of seed timelock set key)
-    ///   17. `[]` Token program account.
+    ///   14. `[]` Timelock program mint authority (pda of seed timelock set key)
+    ///   15. `[]` Token program account.
     WithdrawVotingTokens {
         /// How many voting tokens to withdrawal
         voting_token_amount: u64,

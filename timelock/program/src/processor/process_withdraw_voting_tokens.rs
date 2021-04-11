@@ -40,8 +40,6 @@ pub fn process_withdraw_voting_tokens(
     let timelock_set_account_info = next_account_info(account_info_iter)?;
 
     let transfer_authority_info = next_account_info(account_info_iter)?;
-    let yes_transfer_authority_info = next_account_info(account_info_iter)?;
-    let no_transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
@@ -153,7 +151,7 @@ pub fn process_withdraw_voting_tokens(
                 spl_token_burn(TokenBurnParams {
                     mint: yes_voting_mint_account_info.clone(),
                     amount: amount_to_transfer,
-                    authority: yes_transfer_authority_info.clone(),
+                    authority: transfer_authority_info.clone(),
                     authority_signer_seeds: authority_signer_seeds,
                     token_program: token_program_account_info.clone(),
                     source: yes_voting_account_info.clone(),
@@ -163,7 +161,7 @@ pub fn process_withdraw_voting_tokens(
                     source: yes_voting_account_info.clone(),
                     destination: yes_voting_dump_account_info.clone(),
                     amount: amount_to_transfer,
-                    authority: yes_transfer_authority_info.clone(),
+                    authority: transfer_authority_info.clone(),
                     authority_signer_seeds: authority_signer_seeds,
                     token_program: token_program_account_info.clone(),
                 })?;
@@ -182,7 +180,7 @@ pub fn process_withdraw_voting_tokens(
             spl_token_burn(TokenBurnParams {
                 mint: no_voting_mint_account_info.clone(),
                 amount: voting_fuel_tank,
-                authority: no_transfer_authority_info.clone(),
+                authority: transfer_authority_info.clone(),
                 authority_signer_seeds: authority_signer_seeds,
                 token_program: token_program_account_info.clone(),
                 source: no_voting_account_info.clone(),
@@ -192,7 +190,7 @@ pub fn process_withdraw_voting_tokens(
                 source: no_voting_account_info.clone(),
                 destination: no_voting_dump_account_info.clone(),
                 amount: voting_fuel_tank,
-                authority: no_transfer_authority_info.clone(),
+                authority: transfer_authority_info.clone(),
                 authority_signer_seeds: authority_signer_seeds,
                 token_program: token_program_account_info.clone(),
             })?;
