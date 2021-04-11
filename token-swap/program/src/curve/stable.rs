@@ -243,23 +243,23 @@ impl CurveCalculator for StableCurve {
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
     ) -> Option<PreciseNumber> {
-        let leverage = self.amp.checked_mul(N_COINS as u64)?;
-        let invariant = compute_d(leverage, swap_token_a_amount, swap_token_b_amount)? as f64;
-        let a = self.amp.checked_mul(8)? as f64;
-        let b = (invariant - ((self.amp as f64) * 4.0 * invariant)) / a;
-        let c = 0 as f64;
-        let d = (-1.0 * invariant).powf(3.0) / (4.0 * a);
-        let roots = find_roots_cubic_normalized(b, c, d);
+        let x = swap_token_a_amount as f64;
+        let y = swap_token_b_amount as f64;
+        let c = (4.0 * (self.amp as f64)) - 1.0;
+        let d = 16.0 * (self.amp as f64) * x * y * (x + y);
+        let roots = find_roots_cubic_normalized(0.0, c, d);
         let x0 = match roots {
-            Roots::No(_) => panic!("No roots found for cubic equation"),
+            Roots::No(_) => panic!("No roots found for cubic equations"),
             Roots::One(x) => x[0],
             Roots::Two(_) => panic!("Two roots found for cubic, mathematically impossible"),
             Roots::Three(x) => x[1],
             Roots::Four(_) => panic!("Four roots found for cubic, mathematically impossible")
         };
-        let root_uint = (x0 * ((10 as f64).powf(11.0))) as u128;
+
+        let root_uint = (x0 * ((10 as f64).powf(11.0))).round() as u128;
         let precision = PreciseNumber::new(10)?.checked_pow(11)?;
-        PreciseNumber::new(root_uint)?.checked_div(&precision)
+        let two = PreciseNumber::new(2)?;
+        PreciseNumber::new(root_uint)?.checked_div(&precision)?.checked_div(&two)
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -443,6 +443,7 @@ mod tests {
             (pool_token_supply, pool_token_amount) in total_and_intermediate(),
             swap_token_a_amount in 1..u64::MAX,
             swap_token_b_amount in 1..u64::MAX,
+            amp in 1..100,
         ) {
             let pool_token_amount = pool_token_amount as u128;
             let pool_token_supply = pool_token_supply as u128;
@@ -453,7 +454,7 @@ mod tests {
             prop_assume!(pool_token_amount * swap_token_a_amount / pool_token_supply >= 1);
             prop_assume!(pool_token_amount * swap_token_b_amount / pool_token_supply >= 1);
             let curve = StableCurve {
-                amp: 1
+                amp: amp as u64
             };
             check_pool_value_from_withdraw(
                 &curve,
@@ -464,6 +465,5 @@ mod tests {
             );
         }
     }
-
 
 }
