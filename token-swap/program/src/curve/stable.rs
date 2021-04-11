@@ -244,11 +244,11 @@ impl CurveCalculator for StableCurve {
         swap_token_b_amount: u128,
     ) -> Option<PreciseNumber> {
         let leverage = self.amp.checked_mul(N_COINS as u64)?;
-        let invariant = compute_d(leverage, swap_token_a_amount, swap_token_b_amount)?;
+        let invariant = compute_d(leverage, swap_token_a_amount, swap_token_b_amount)? as f64;
         let a = self.amp.checked_mul(8)? as f64;
-        let b = (invariant.checked_sub(invariant.checked_mul(self.amp.into())?.checked_mul(4)?)? as f64) / a;
+        let b = (invariant - ((self.amp as f64) * 4.0 * invariant)) / a;
         let c = 0 as f64;
-        let d = (invariant.checked_pow(3)? as f64) / ((4 as f64) * a);
+        let d = (-1.0 * invariant).powf(3.0) / (4.0 * a);
         let roots = find_roots_cubic_normalized(b, c, d);
         let x0 = match roots {
             Roots::No(_) => panic!("No roots found for cubic equation"),
@@ -257,7 +257,7 @@ impl CurveCalculator for StableCurve {
             Roots::Three(x) => x[1],
             Roots::Four(_) => panic!("Four roots found for cubic, mathematically impossible")
         };
-        let root_uint = (x0 * (10 as f64).powf(11 as f64)) as u128;
+        let root_uint = (x0 * ((10 as f64).powf(11.0))) as u128;
         let precision = PreciseNumber::new(10)?.checked_pow(11)?;
         PreciseNumber::new(root_uint)?.checked_div(&precision)
     }
@@ -464,4 +464,6 @@ mod tests {
             );
         }
     }
+
+
 }
