@@ -22,7 +22,6 @@ members = [
   "token/cli",
   "token/program",
   "timelock/program",
-  "timelock/proposal-loader-cli",
   "utils/cgen",
   "utils/test-client"
 ]
