@@ -3,7 +3,7 @@
 use {
     crate::error::StakePoolError,
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
+    solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey},
     spl_math::checked_ceil_div::CheckedCeilDiv,
     std::convert::TryFrom,
 };
@@ -128,18 +128,23 @@ impl StakePool {
         authority_seed: &[u8],
         bump_seed: u8,
     ) -> Result<(), ProgramError> {
-        if *authority_address
-            == Pubkey::create_program_address(
-                &[
-                    &stake_pool_address.to_bytes()[..32],
-                    authority_seed,
-                    &[bump_seed],
-                ],
-                program_id,
-            )?
-        {
+        let expected_address = Pubkey::create_program_address(
+            &[
+                &stake_pool_address.to_bytes()[..32],
+                authority_seed,
+                &[bump_seed],
+            ],
+            program_id,
+        )?;
+
+        if *authority_address == expected_address {
             Ok(())
         } else {
+            msg!(
+                "Incorrect authority provided, expected {}, received {}",
+                expected_address,
+                authority_address
+            );
             Err(StakePoolError::InvalidProgramAddress.into())
         }
     }
@@ -187,9 +192,15 @@ impl StakePool {
     /// Check manager validity and signature
     pub(crate) fn check_manager(&self, manager_info: &AccountInfo) -> Result<(), ProgramError> {
         if *manager_info.key != self.manager {
+            msg!(
+                "Incorrect manager provided, expected {}, received {}",
+                self.manager,
+                manager_info.key
+            );
             return Err(StakePoolError::WrongManager.into());
         }
         if !manager_info.is_signer {
+            msg!("Manager signature missing");
             return Err(StakePoolError::SignatureMissing.into());
         }
         Ok(())
@@ -198,9 +209,15 @@ impl StakePool {
     /// Check staker validity and signature
     pub(crate) fn check_staker(&self, staker_info: &AccountInfo) -> Result<(), ProgramError> {
         if *staker_info.key != self.staker {
+            msg!(
+                "Incorrect staker provided, expected {}, received {}",
+                self.staker,
+                staker_info.key
+            );
             return Err(StakePoolError::WrongStaker.into());
         }
         if !staker_info.is_signer {
+            msg!("Staker signature missing");
             return Err(StakePoolError::SignatureMissing.into());
         }
         Ok(())

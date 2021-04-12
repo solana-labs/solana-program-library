@@ -48,6 +48,7 @@ async fn setup() -> (
             &context.last_blockhash,
             &stake_pool_accounts,
             &validator_stake_account,
+            TEST_STAKE_AMOUNT,
         )
         .await;
 

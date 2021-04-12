@@ -13,12 +13,12 @@ use {
     },
     solana_vote_program::{self, vote_state::VoteState},
     spl_stake_pool::{
-        borsh::{get_instance_packed_len, try_from_slice_unchecked},
-        find_stake_program_address, id, instruction, processor, stake_program, state,
+        borsh::{get_instance_packed_len, try_from_slice_unchecked}, find_stake_program_address,
+        find_transient_stake_program_address, id, instruction, processor, stake_program, state,
     },
 };
 
-pub const TEST_STAKE_AMOUNT: u64 = 100;
+pub const TEST_STAKE_AMOUNT: u64 = 1_000_000;
 pub const MAX_TEST_VALIDATORS: u32 = 10_000;
 
 pub fn program_test() -> ProgramTest {
@@ -290,7 +290,6 @@ pub async fn create_independent_stake_account(
     let rent = banks_client.get_rent().await.unwrap();
     let lamports =
         rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>()) + stake_amount;
-    println!("lamports {}", lamports);
 
     let transaction = Transaction::new_signed_with_payer(
         &stake_program::create_account(
@@ -405,6 +404,7 @@ pub async fn authorize_stake_account(
 
 pub struct ValidatorStakeAccount {
     pub stake_account: Pubkey,
+    pub transient_stake_account: Pubkey,
     pub target_authority: Pubkey,
     pub vote: Keypair,
     pub stake_pool: Pubkey,
@@ -414,8 +414,11 @@ impl ValidatorStakeAccount {
     pub fn new_with_target_authority(authority: &Pubkey, stake_pool: &Pubkey) -> Self {
         let validator = Keypair::new();
         let (stake_account, _) = find_stake_program_address(&id(), &validator.pubkey(), stake_pool);
+        let (transient_stake_account, _) =
+            find_transient_stake_program_address(&id(), &validator.pubkey(), stake_pool);
         ValidatorStakeAccount {
             stake_account,
+            transient_stake_account,
             target_authority: *authority,
             vote: validator,
             stake_pool: *stake_pool,
@@ -716,7 +719,7 @@ impl StakePoolAccounts {
         stake: &Pubkey,
         new_authority: &Pubkey,
     ) -> Option<TransportError> {
-        let mut transaction = Transaction::new_with_payer(
+        let transaction = Transaction::new_signed_with_payer(
             &[instruction::remove_validator_from_pool(
                 &id(),
                 &self.stake_pool.pubkey(),
@@ -728,8 +731,37 @@ impl StakePoolAccounts {
             )
             .unwrap()],
             Some(&payer.pubkey()),
+            &[payer, &self.staker],
+            *recent_blockhash,
         );
-        transaction.sign(&[payer, &self.staker], *recent_blockhash);
+        banks_client.process_transaction(transaction).await.err()
+    }
+
+    pub async fn decrease_validator_stake(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        validator_stake: &Pubkey,
+        transient_stake: &Pubkey,
+        lamports: u64,
+    ) -> Option<TransportError> {
+        let transaction = Transaction::new_signed_with_payer(
+            &[instruction::decrease_validator_stake(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.staker.pubkey(),
+                &self.withdraw_authority,
+                &self.validator_list.pubkey(),
+                validator_stake,
+                transient_stake,
+                lamports,
+            )
+            .unwrap()],
+            Some(&payer.pubkey()),
+            &[payer, &self.staker],
+            *recent_blockhash,
+        );
         banks_client.process_transaction(transaction).await.err()
     }
 }
@@ -780,6 +812,7 @@ pub async fn simple_deposit(
     recent_blockhash: &Hash,
     stake_pool_accounts: &StakePoolAccounts,
     validator_stake_account: &ValidatorStakeAccount,
+    stake_lamports: u64,
 ) -> DepositInfo {
     let user = Keypair::new();
     // make stake account
@@ -789,7 +822,6 @@ pub async fn simple_deposit(
         staker: stake_pool_accounts.deposit_authority,
         withdrawer: stake_pool_accounts.deposit_authority,
     };
-    let stake_lamports = TEST_STAKE_AMOUNT;
     create_independent_stake_account(
         banks_client,
         payer,

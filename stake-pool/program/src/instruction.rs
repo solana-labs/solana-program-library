@@ -98,13 +98,7 @@ pub enum StakePoolInstruction {
     /// In order to rebalance the pool without taking custody, the staker needs
     /// a way of reducing the stake on a stake account. This instruction splits
     /// some amount of stake, up to the total activated stake, from the canonical
-    /// validator stake account, into its "transient" stake account, defined by:
-    ///
-    /// ```ignore
-    /// Pubkey::find_program_address(
-    ///     &[&stake_account_address.to_bytes()[..32],], program_id,
-    /// )
-    /// ```
+    /// validator stake account, into its "transient" stake account.
     ///
     /// The instruction only succeeds if the transient stake account does not
     /// exist. The amount of lamports to move must be at least rent-exemption
@@ -112,8 +106,8 @@ pub enum StakePoolInstruction {
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
-    ///  2. `[]` Validator list
-    ///  3. `[]` Stake pool withdraw authority
+    ///  2. `[]` Stake pool withdraw authority
+    ///  3. `[]` Validator list
     ///  5. `[w]` Canonical stake account to split from
     ///  5. `[w]` Transient stake account to receive split
     ///  6. `[]` Clock sysvar
@@ -135,13 +129,15 @@ pub enum StakePoolInstruction {
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
-    ///  2. `[]` Validator list
-    ///  3. `[]` Stake pool withdraw authority
+    ///  2. `[]` Stake pool withdraw authority
+    ///  3. `[]` Validator list
     ///  4. `[w]` Stake pool reserve stake
     ///  5. `[w]` Transient stake account
     ///  6. `[]` Canonical stake account
     ///  7. '[]' Clock sysvar
-    ///  8. `[]` Stake program
+    ///  8. '[]' Rent sysvar
+    ///  9. `[]` System program
+    /// 10. `[]` Stake program
     IncreaseValidatorStake(u64),
 
     ///  Updates balances of validator and transient stake accounts in the pool
@@ -366,14 +362,66 @@ pub fn remove_validator_from_pool(
 
 /// Creates `DecreaseValidatorStake` instruction (rebalance from validator account to
 /// transient account)
-pub fn decrease_validator_stake() -> Result<Instruction, ProgramError> {
-    Err(ProgramError::IncorrectProgramId)
+pub fn decrease_validator_stake(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    staker: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list: &Pubkey,
+    validator_stake: &Pubkey,
+    transient_stake: &Pubkey,
+    lamports: u64,
+) -> Result<Instruction, ProgramError> {
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*staker, true),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new_readonly(*validator_list, false),
+        AccountMeta::new(*validator_stake, false),
+        AccountMeta::new(*transient_stake, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(stake_program::id(), false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::DecreaseValidatorStake(lamports).try_to_vec()?,
+    })
 }
 
 /// Creates `IncreaseValidatorStake` instruction (rebalance from reserve account to
 /// transient account)
-pub fn increase_validator_stake() -> Result<Instruction, ProgramError> {
-    Err(ProgramError::IncorrectProgramId)
+pub fn increase_validator_stake(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    staker: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list: &Pubkey,
+    reserve_stake: &Pubkey,
+    transient_stake: &Pubkey,
+    validator_stake: &Pubkey,
+    lamports: u64,
+) -> Result<Instruction, ProgramError> {
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*staker, true),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new_readonly(*validator_list, false),
+        AccountMeta::new(*reserve_stake, false),
+        AccountMeta::new(*transient_stake, false),
+        AccountMeta::new(*validator_stake, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(stake_program::id(), false),
+    ];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::IncreaseValidatorStake(lamports).try_to_vec()?,
+    })
 }
 
 /// Creates `UpdateValidatorListBalance` instruction (update validator stake account balances)

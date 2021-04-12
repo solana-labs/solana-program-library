@@ -55,6 +55,7 @@ async fn setup() -> (
         &recent_blockhash,
         &stake_pool_accounts,
         &validator_stake_account,
+        TEST_STAKE_AMOUNT,
     )
     .await;
 
@@ -616,6 +617,7 @@ async fn fail_without_token_approval() {
         &recent_blockhash,
         &stake_pool_accounts,
         &validator_stake_account,
+        TEST_STAKE_AMOUNT,
     )
     .await;
 
@@ -683,6 +685,7 @@ async fn fail_with_low_delegation() {
         &recent_blockhash,
         &stake_pool_accounts,
         &validator_stake_account,
+        TEST_STAKE_AMOUNT,
     )
     .await;
 
