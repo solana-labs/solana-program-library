@@ -6,7 +6,7 @@ use {
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         borsh::try_from_slice_unchecked,
-        clock::Epoch,
+        clock::{UnixTimestamp},
         entrypoint,
         entrypoint::ProgramResult,
         msg,
@@ -15,7 +15,7 @@ use {
         program_pack::{IsInitialized, Pack},
         pubkey::Pubkey,
         system_instruction,
-        sysvar::{rent::Rent, Sysvar},
+        sysvar::{clock::Clock, rent::Rent, Sysvar},
     },
     std::convert::TryInto,
 };
@@ -63,13 +63,13 @@ struct AuctionData {
     /// Auction Bids, each user may have one bid open at a time.
     bids: BidState,
     /// The time the last bid was placed, use to time auction ending.
-    last_bid: Option<usize>,
+    last_bid: Option<UnixTimestamp>,
     /// Maximum amount of accounts that may win this bid.
     max_winners: usize,
     /// Pubkey of the resource being bid on.
     resource: Pubkey,
     /// Time the auction starts at, this may be changed only if the auction hasn't started.
-    start_time: usize,
+    start_time: UnixTimestamp,
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -79,7 +79,7 @@ struct AuctionData {
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
 pub struct CreateAuctionArgs {
     /// The start time requested for this auction. See AuctionData.
-    start_time: usize,
+    start_time: UnixTimestamp,
     /// How many winners are allowed for this auction. See AuctionData.
     max_winners: usize,
     /// The resource being auctioned. See AuctionData.
@@ -151,7 +151,7 @@ fn create_auction(
 
     // Derive the address we'll store the auction in, and confirm it matches what we expected the
     // user to provide.
-    let (auction_key, auction_key_bump) = Pubkey::find_program_address(&auction_path, program_id);
+    let (auction_key, _) = Pubkey::find_program_address(&auction_path, program_id);
     if auction_key != *auction_act.key {
         return Ok(());
     }
@@ -197,6 +197,10 @@ fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidArgs) 
     let bidder_act = next_account_info(account_iter)?;
     let auction_act = next_account_info(account_iter)?;
     let bidder_pot = next_account_info(account_iter)?;
+    let clock_sysvar = next_account_info(account_iter)?;
+
+    // Use the clock sysvar for timing the auction.
+    let clock = Clock::from_account_info(clock_sysvar)?;
 
     // This  path references an account to store the users bid SOL in, if the user wins the auction
     // this is claimed by the auction authority, otherwise the user can request to have the SOL
@@ -219,11 +223,20 @@ fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidArgs) 
         return Ok(());
     }
 
+    // Pot path including the bump for seeds.
+    let pot_seeds = [
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        auction_act.key.as_ref(),
+        bidder_act.key.as_ref(),
+        &[bump],
+    ];
+
     // Transfer SOL from the bidder's SOL account into their pot.
     invoke_signed(
         &system_instruction::transfer(bidder_act.key, &pot_key, args.amount),
         &[bidder_act.clone(), bidder_pot.clone()],
-        &[&pot_path],
+        &[&pot_seeds],
     );
 
     // Load the auction and verify this bid is valid.
@@ -231,7 +244,7 @@ fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidArgs) 
 
     // Make sure the auction hasn't ended. Hardcoded to 10 minutes.
     // TODO: Come back and make this configurable.
-    let now = 0;
+    let now = clock.unix_timestamp;
     auction.last_bid = match auction.last_bid {
         // Allow updating the time if 10 minutes has not passed.
         Some(time) if time - now < 10 * 60 => Some(now),
