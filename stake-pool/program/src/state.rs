@@ -223,6 +223,34 @@ impl StakePool {
         Ok(())
     }
 
+    /// Check the validator list is valid
+    pub fn check_validator_list(&self, validator_list_info: &AccountInfo) -> Result<(), ProgramError> {
+        if *validator_list_info.key != self.validator_list {
+            msg!(
+                "Invalid validator list provided, expected {}, received {}",
+                self.validator_list,
+                validator_list_info.key
+            );
+            Err(StakePoolError::InvalidValidatorStakeList.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Check the validator list is valid
+    pub fn check_reserve_stake(&self, reserve_stake_info: &AccountInfo) -> Result<(), ProgramError> {
+        if *reserve_stake_info.key != self.reserve_stake {
+            msg!(
+                "Invalid reserve stake provided, expected {}, received {}",
+                self.reserve_stake,
+                reserve_stake_info.key
+            );
+            Err(StakePoolError::InvalidProgramAddress.into())
+        } else {
+            Ok(())
+        }
+    }
+
     /// Check if StakePool is actually initialized as a stake pool
     pub fn is_valid(&self) -> bool {
         self.account_type == AccountType::StakePool

@@ -71,7 +71,7 @@ async fn success() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -96,7 +96,7 @@ async fn fail_double_initialize() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -106,7 +106,7 @@ async fn fail_double_initialize() {
     second_stake_pool_accounts.stake_pool = stake_pool_accounts.stake_pool;
 
     let transaction_error = second_stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &latest_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &latest_blockhash, 1)
         .await
         .err()
         .unwrap();
@@ -127,7 +127,7 @@ async fn fail_with_already_initialized_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -137,7 +137,7 @@ async fn fail_with_already_initialized_validator_list() {
     second_stake_pool_accounts.validator_list = stake_pool_accounts.validator_list;
 
     let transaction_error = second_stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &latest_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &latest_blockhash, 1)
         .await
         .err()
         .unwrap();
@@ -163,7 +163,7 @@ async fn fail_with_high_fee() {
     };
 
     let transaction_error = stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .err()
         .unwrap();
@@ -482,7 +482,7 @@ async fn fail_with_wrong_withdraw_authority() {
     stake_pool_accounts.withdraw_authority = Keypair::new().pubkey();
 
     let transaction_error = stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .err()
         .unwrap();

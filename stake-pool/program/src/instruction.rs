@@ -48,8 +48,10 @@ pub enum StakePoolInstruction {
     ///   3. `[w]` Stake account to be created
     ///   4. `[]` Validator this stake account will vote for
     ///   5. `[]` Rent sysvar
-    ///   6. `[]` System program
-    ///   7. `[]` Stake program
+    ///   6. `[]` Stake History sysvar
+    ///   7. `[]` Stake Config sysvar
+    ///   8. `[]` System program
+    ///   9. `[]` Stake program
     CreateValidatorStakeAccount,
 
     ///   (Staker only) Adds stake account delegated to validator to the pool's
@@ -114,7 +116,7 @@ pub enum StakePoolInstruction {
     ///  7. `[]` Rent sysvar
     ///  8. `[]` System program
     ///  9. `[]` Stake program
-    ///  userdata: amount of lamports to split
+    ///  userdata: amount of lamports to split into the transient stake account
     DecreaseValidatorStake(u64),
 
     /// (Staker only) Increase stake on a validator from the reserve account
@@ -133,11 +135,14 @@ pub enum StakePoolInstruction {
     ///  3. `[]` Validator list
     ///  4. `[w]` Stake pool reserve stake
     ///  5. `[w]` Transient stake account
-    ///  6. `[]` Canonical stake account
+    ///  6. `[]` Validator vote account to delegate to
     ///  7. '[]' Clock sysvar
     ///  8. '[]' Rent sysvar
-    ///  9. `[]` System program
-    /// 10. `[]` Stake program
+    ///  9. `[]` Stake History sysvar
+    /// 10. `[]` Stake Config sysvar
+    /// 11. `[]` System program
+    /// 12. `[]` Stake program
+    ///  userdata: amount of lamports to split into the transient stake account
     IncreaseValidatorStake(u64),
 
     ///  Updates balances of validator and transient stake accounts in the pool
@@ -401,7 +406,7 @@ pub fn increase_validator_stake(
     validator_list: &Pubkey,
     reserve_stake: &Pubkey,
     transient_stake: &Pubkey,
-    validator_stake: &Pubkey,
+    validator: &Pubkey,
     lamports: u64,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
@@ -411,9 +416,11 @@ pub fn increase_validator_stake(
         AccountMeta::new_readonly(*validator_list, false),
         AccountMeta::new(*reserve_stake, false),
         AccountMeta::new(*transient_stake, false),
-        AccountMeta::new(*validator_stake, false),
+        AccountMeta::new_readonly(*validator, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake_program::config_id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];

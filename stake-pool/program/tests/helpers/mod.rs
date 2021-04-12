@@ -530,6 +530,7 @@ impl StakePoolAccounts {
         mut banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
+        reserve_lamports: u64,
     ) -> Result<(), TransportError> {
         create_mint(
             &mut banks_client,
@@ -558,7 +559,7 @@ impl StakePoolAccounts {
                 withdrawer: self.withdraw_authority,
             },
             &stake_program::Lockup::default(),
-            1,
+            reserve_lamports,
         )
         .await;
         create_stake_pool(
@@ -756,6 +757,35 @@ impl StakePoolAccounts {
                 &self.validator_list.pubkey(),
                 validator_stake,
                 transient_stake,
+                lamports,
+            )
+            .unwrap()],
+            Some(&payer.pubkey()),
+            &[payer, &self.staker],
+            *recent_blockhash,
+        );
+        banks_client.process_transaction(transaction).await.err()
+    }
+
+    pub async fn increase_validator_stake(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        transient_stake: &Pubkey,
+        validator: &Pubkey,
+        lamports: u64,
+    ) -> Option<TransportError> {
+        let transaction = Transaction::new_signed_with_payer(
+            &[instruction::increase_validator_stake(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.staker.pubkey(),
+                &self.withdraw_authority,
+                &self.validator_list.pubkey(),
+                &self.reserve_stake.pubkey(),
+                transient_stake,
+                validator,
                 lamports,
             )
             .unwrap()],
