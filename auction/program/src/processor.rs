@@ -1,24 +1,22 @@
+use crate::{errors::AuctionError, utils::assert_owned_by};
+use borsh::{BorshDeserialize, BorshSerialize};
 use byteorder::{ByteOrder, LittleEndian};
-use std::mem;
-use {
-    crate::utils::assert_owned_by,
-    borsh::{BorshDeserialize, BorshSerialize},
-    solana_program::{
-        account_info::{next_account_info, AccountInfo},
-        borsh::try_from_slice_unchecked,
-        clock::{UnixTimestamp},
-        entrypoint,
-        entrypoint::ProgramResult,
-        msg,
-        program::{invoke, invoke_signed},
-        program_error::ProgramError,
-        program_pack::{IsInitialized, Pack},
-        pubkey::Pubkey,
-        system_instruction,
-        sysvar::{clock::Clock, rent::Rent, Sysvar},
-    },
-    std::convert::TryInto,
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    borsh::try_from_slice_unchecked,
+    clock::UnixTimestamp,
+    entrypoint,
+    entrypoint::ProgramResult,
+    msg,
+    program::{invoke, invoke_signed},
+    program_error::ProgramError,
+    program_pack::{IsInitialized, Pack},
+    pubkey::Pubkey,
+    system_instruction,
+    sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
+use std::convert::TryInto;
+use std::mem;
 
 /// Prefix used in PDA derivations to avoid collisions.
 const PREFIX: &str = "auction";
@@ -46,11 +44,7 @@ impl BidState {
 
     fn cancel_bid(&mut self, key: Pubkey) -> Result<(), ProgramError> {
         self.bids
-            .retain(|maybe_bid| {
-                maybe_bid
-                    .as_ref()
-                    .map_or(false, |bid| bid.0 != key)
-            });
+            .retain(|maybe_bid| maybe_bid.as_ref().map_or(false, |bid| bid.0 != key));
         Ok(())
     }
 }
@@ -153,7 +147,7 @@ fn create_auction(
     // user to provide.
     let (auction_key, _) = Pubkey::find_program_address(&auction_path, program_id);
     if auction_key != *auction_act.key {
-        return Ok(());
+        return Err(AuctionError::InvalidAuctionAccount.into());
     }
 
     // Assert all states are valid.
@@ -215,12 +209,12 @@ fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidArgs) 
     // Derive pot key, confirm it matches the users sent pot address.
     let (pot_key, bump) = Pubkey::find_program_address(&pot_path, program_id);
     if pot_key != *bidder_pot.key {
-        return Ok(());
+        return Err(AuctionError::InvalidBidAccount.into());
     }
 
     // TODO: deal with rent and balance correctly, do this properly.
     if bidder_act.lamports() - args.amount <= 0 {
-        return Ok(());
+        return Err(AuctionError::BalanceTooLow.into());
     }
 
     // Pot path including the bump for seeds.
@@ -251,7 +245,7 @@ fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidArgs) 
         // Allow the first bid when the auction has started.
         None if now < auction.start_time => Some(now),
         // Otherwise fail.
-        _ => return Ok(()),
+        _ => return Err(AuctionError::InvalidState.into())
     };
 
     auction.bids.bid(Bid(pot_key, args.amount));
@@ -284,7 +278,7 @@ fn cancel_bid(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     // Derive pot key, confirm it matches the users sent pot address.
     let (pot_key, bump) = Pubkey::find_program_address(&pot_path, program_id);
     if pot_key != *bidder_pot.key {
-        return Ok(());
+        return Err(AuctionError::InvalidBidAccount.into());
     }
 
     // Scan and remove the bid (Expensive, need a better datastructure).
