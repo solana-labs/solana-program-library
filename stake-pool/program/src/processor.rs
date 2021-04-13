@@ -116,7 +116,10 @@ fn check_stake_program(program_id: &Pubkey) -> Result<(), ProgramError> {
 }
 
 /// Check account owner is the given program
-fn check_account_owner(account_info: &AccountInfo, program_id: &Pubkey) -> Result<(), ProgramError> {
+fn check_account_owner(
+    account_info: &AccountInfo,
+    program_id: &Pubkey,
+) -> Result<(), ProgramError> {
     if *program_id != *account_info.owner {
         msg!(
             "Expected account to be owned by program {}, received {}",
@@ -133,6 +136,7 @@ fn check_account_owner(account_info: &AccountInfo, program_id: &Pubkey) -> Resul
 pub struct Processor {}
 impl Processor {
     /// Issue a stake_deactivate instruction.
+    #[allow(clippy::too_many_arguments)]
     fn stake_delegate<'a>(
         stake_info: AccountInfo<'a>,
         vote_account_info: AccountInfo<'a>,
@@ -148,9 +152,24 @@ impl Processor {
             [&stake_pool.to_bytes()[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = stake_program::delegate_stake(stake_info.key, authority_info.key, vote_account_info.key);
+        let ix = stake_program::delegate_stake(
+            stake_info.key,
+            authority_info.key,
+            vote_account_info.key,
+        );
 
-        invoke_signed(&ix, &[stake_info, vote_account_info, clock_info, stake_history_info, stake_config_info, authority_info], signers)
+        invoke_signed(
+            &ix,
+            &[
+                stake_info,
+                vote_account_info,
+                clock_info,
+                stake_history_info,
+                stake_config_info,
+                authority_info,
+            ],
+            signers,
+        )
     }
 
     /// Issue a stake_deactivate instruction.

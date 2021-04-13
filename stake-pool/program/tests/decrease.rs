@@ -3,7 +3,10 @@ mod helpers;
 use {
     bincode::deserialize,
     helpers::*,
-    solana_program::{clock::Epoch, hash::Hash, instruction::InstructionError, pubkey::Pubkey},
+    solana_program::{
+        clock::Epoch, hash::Hash, instruction::InstructionError, pubkey::Pubkey,
+        system_instruction::SystemError,
+    },
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
@@ -42,7 +45,7 @@ async fn setup() -> (
         &recent_blockhash,
         &stake_pool_accounts,
         &validator_stake_account,
-        5_000_000,
+        100_000_000,
     )
     .await;
 
@@ -271,12 +274,12 @@ async fn fail_with_unknown_validator() {
             let program_error = StakePoolError::ValidatorNotFound as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while decreasiing from unknown validator"),
+        _ => panic!("Wrong error occurs while decreasing stake from unknown validator"),
     }
 }
 
 #[tokio::test]
-async fn success_decrease_twice() {
+async fn fail_decrease_twice() {
     let (
         mut banks_client,
         payer,
@@ -294,7 +297,7 @@ async fn success_decrease_twice() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            decrease_lamports,
+            decrease_lamports / 3,
         )
         .await;
     assert!(error.is_none());
@@ -306,10 +309,18 @@ async fn success_decrease_twice() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            decrease_lamports,
+            decrease_lamports / 2,
         )
-        .await;
-    assert!(error.is_none());
+        .await
+        .unwrap()
+        .unwrap();
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = SystemError::AccountAlreadyInUse as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error"),
+    }
 }
 
 #[tokio::test]
@@ -342,9 +353,7 @@ async fn fail_with_small_lamport_amount() {
 
     match error {
         TransactionError::InstructionError(_, InstructionError::InvalidError) => {}
-        _ => panic!(
-            "Wrong error occurs while try to do withdraw with not enough delegated tokens to burn"
-        ),
+        _ => panic!("Wrong error occurs while try to decrease small stake"),
     }
 }
 
@@ -375,6 +384,6 @@ async fn fail_overdraw_validator() {
 
     match error {
         TransactionError::InstructionError(_, InstructionError::InsufficientFunds) => {}
-        _ => panic!("Wrong error occurs while decreasing too much SOL"),
+        _ => panic!("Wrong error occurs while overdrawing stake account on decrease"),
     }
 }

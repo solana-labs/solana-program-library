@@ -224,7 +224,10 @@ impl StakePool {
     }
 
     /// Check the validator list is valid
-    pub fn check_validator_list(&self, validator_list_info: &AccountInfo) -> Result<(), ProgramError> {
+    pub fn check_validator_list(
+        &self,
+        validator_list_info: &AccountInfo,
+    ) -> Result<(), ProgramError> {
         if *validator_list_info.key != self.validator_list {
             msg!(
                 "Invalid validator list provided, expected {}, received {}",
@@ -238,7 +241,10 @@ impl StakePool {
     }
 
     /// Check the validator list is valid
-    pub fn check_reserve_stake(&self, reserve_stake_info: &AccountInfo) -> Result<(), ProgramError> {
+    pub fn check_reserve_stake(
+        &self,
+        reserve_stake_info: &AccountInfo,
+    ) -> Result<(), ProgramError> {
         if *reserve_stake_info.key != self.reserve_stake {
             msg!(
                 "Invalid reserve stake provided, expected {}, received {}",
