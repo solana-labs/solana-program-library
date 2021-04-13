@@ -303,13 +303,15 @@ fn command_create_account(
         )
     };
 
-    if let Some(account_data) = config
-        .rpc_client
-        .get_account_with_commitment(&account, config.rpc_client.commitment())?
-        .value
-    {
-        if !(account_data.owner == system_program::id() && system_account_ok) {
-            return Err(format!("Error: Account already exists: {}", account).into());
+    if !config.sign_only {
+        if let Some(account_data) = config
+            .rpc_client
+            .get_account_with_commitment(&account, config.rpc_client.commitment())?
+            .value
+        {
+            if !(account_data.owner == system_program::id() && system_account_ok) {
+                return Err(format!("Error: Account already exists: {}", account).into());
+            }
         }
     }
 
