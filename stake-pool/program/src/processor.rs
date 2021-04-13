@@ -465,6 +465,7 @@ impl Processor {
         stake_pool.check_authority_deposit(deposit_info.key, program_id, stake_pool_info.key)?;
 
         stake_pool.check_staker(staker_info)?;
+        stake_pool.check_mint(pool_mint_info)?;
 
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
@@ -472,9 +473,6 @@ impl Processor {
 
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
-        }
-        if stake_pool.pool_mint != *pool_mint_info.key {
-            return Err(StakePoolError::WrongPoolMint.into());
         }
 
         if *validator_list_info.key != stake_pool.validator_list {
@@ -586,9 +584,7 @@ impl Processor {
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
-        if stake_pool.pool_mint != *pool_mint_info.key {
-            return Err(StakePoolError::WrongPoolMint.into());
-        }
+        stake_pool.check_mint(pool_mint_info)?;
 
         if *validator_list_info.key != stake_pool.validator_list {
             return Err(StakePoolError::InvalidValidatorStakeList.into());
@@ -703,22 +699,34 @@ impl Processor {
 
     /// Processes `UpdateStakePoolBalance` instruction.
     fn process_update_stake_pool_balance(
-        _program_id: &Pubkey,
+        program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
+        let withdraw_info = next_account_info(account_info_iter)?;
+        let manager_fee_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
+        let token_program_info = next_account_info(account_info_iter)?;
 
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
+        stake_pool.check_mint(pool_mint_info)?;
+        stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
+        if stake_pool.manager_fee_account != *manager_fee_info.key {
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
 
         if *validator_list_info.key != stake_pool.validator_list {
             return Err(StakePoolError::InvalidValidatorStakeList.into());
+        }
+        if stake_pool.token_program_id != *token_program_info.key {
+            return Err(ProgramError::IncorrectProgramId);
         }
 
         let validator_list =
@@ -727,7 +735,8 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let mut total_stake_lamports: u64 = 0;
+        let previous_lamports = stake_pool.total_stake_lamports;
+        let mut total_stake_lamports = 0;
         for validator_stake_record in validator_list.validators {
             if validator_stake_record.last_update_epoch < clock.epoch {
                 return Err(StakePoolError::StakeListOutOfDate.into());
@@ -736,6 +745,29 @@ impl Processor {
         }
 
         stake_pool.total_stake_lamports = total_stake_lamports;
+
+        let reward_lamports = total_stake_lamports.saturating_sub(previous_lamports);
+        let fee = stake_pool
+            .calc_fee_amount(reward_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+
+        if fee > 0 {
+            Self::token_mint_to(
+                stake_pool_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                manager_fee_info.clone(),
+                withdraw_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.withdraw_bump_seed,
+                fee,
+            )?;
+
+            stake_pool.pool_token_supply = stake_pool
+                .pool_token_supply
+                .checked_add(fee)
+                .ok_or(StakePoolError::CalculationFailure)?;
+        }
         stake_pool.last_update_epoch = clock.epoch;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
@@ -782,7 +814,6 @@ impl Processor {
         let stake_info = next_account_info(account_info_iter)?;
         let validator_stake_account_info = next_account_info(account_info_iter)?;
         let dest_user_info = next_account_info(account_info_iter)?;
-        let manager_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
@@ -804,10 +835,8 @@ impl Processor {
 
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
         stake_pool.check_authority_deposit(deposit_info.key, program_id, stake_pool_info.key)?;
+        stake_pool.check_mint(pool_mint_info)?;
 
-        if stake_pool.manager_fee_account != *manager_fee_info.key {
-            return Err(StakePoolError::InvalidFeeAccount.into());
-        }
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -836,14 +865,6 @@ impl Processor {
         let stake_lamports = **stake_info.lamports.borrow();
         let new_pool_tokens = stake_pool
             .calc_pool_tokens_for_deposit(stake_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
-
-        let fee_pool_tokens = stake_pool
-            .calc_fee_amount(new_pool_tokens)
-            .ok_or(StakePoolError::CalculationFailure)?;
-
-        let user_pool_tokens = new_pool_tokens
-            .checked_sub(fee_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         Self::stake_authorize(
@@ -890,19 +911,9 @@ impl Processor {
             withdraw_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            user_pool_tokens,
+            new_pool_tokens,
         )?;
 
-        Self::token_mint_to(
-            stake_pool_info.key,
-            token_program_info.clone(),
-            pool_mint_info.clone(),
-            manager_fee_info.clone(),
-            withdraw_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.withdraw_bump_seed,
-            fee_pool_tokens,
-        )?;
         stake_pool.pool_token_supply += new_pool_tokens;
         stake_pool.total_stake_lamports += stake_lamports;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
@@ -943,6 +954,7 @@ impl Processor {
         }
 
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
+        stake_pool.check_mint(pool_mint_info)?;
 
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);

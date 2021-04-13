@@ -559,7 +559,7 @@ impl StakePoolAccounts {
         pool_account: &Pubkey,
         validator_stake_account: &Pubkey,
     ) -> Result<(), TransportError> {
-        let mut transaction = Transaction::new_with_payer(
+        let transaction = Transaction::new_signed_with_payer(
             &[instruction::deposit(
                 &id(),
                 &self.stake_pool.pubkey(),
@@ -569,14 +569,14 @@ impl StakePoolAccounts {
                 stake,
                 validator_stake_account,
                 pool_account,
-                &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
             )
             .unwrap()],
             Some(&payer.pubkey()),
+            &[payer],
+            *recent_blockhash,
         );
-        transaction.sign(&[payer], *recent_blockhash);
         banks_client.process_transaction(transaction).await?;
         Ok(())
     }
@@ -612,6 +612,29 @@ impl StakePoolAccounts {
         transaction.sign(&[payer], *recent_blockhash);
         banks_client.process_transaction(transaction).await?;
         Ok(())
+    }
+
+    pub async fn update_stake_pool_balance(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+    ) -> Option<TransportError> {
+        let transaction = Transaction::new_signed_with_payer(
+            &[instruction::update_stake_pool_balance(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.validator_list.pubkey(),
+                &self.withdraw_authority,
+                &self.pool_fee_account.pubkey(),
+                &self.pool_mint.pubkey(),
+            )
+            .unwrap()],
+            Some(&payer.pubkey()),
+            &[payer],
+            *recent_blockhash,
+        );
+        banks_client.process_transaction(transaction).await.err()
     }
 
     pub async fn add_validator_to_pool(

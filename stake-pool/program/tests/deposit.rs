@@ -171,7 +171,6 @@ async fn test_stake_pool_deposit() {
         .is_none());
 
     let tokens_issued = stake_lamports; // For now tokens are 1:1 to stake
-    let fee = stake_pool_accounts.calculate_fee(tokens_issued);
 
     // Stake pool should add its balance to the pool balance
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
@@ -188,13 +187,7 @@ async fn test_stake_pool_deposit() {
     // Check minted tokens
     let user_token_balance =
         get_token_balance(&mut banks_client, &user_pool_account.pubkey()).await;
-    assert_eq!(user_token_balance, tokens_issued - fee);
-    let pool_fee_token_balance = get_token_balance(
-        &mut banks_client,
-        &stake_pool_accounts.pool_fee_account.pubkey(),
-    )
-    .await;
-    assert_eq!(pool_fee_token_balance, fee);
+    assert_eq!(user_token_balance, tokens_issued);
 
     // Check balances in validator stake account list storage
     let validator_list = get_account(
@@ -253,7 +246,6 @@ async fn test_stake_pool_deposit_with_wrong_stake_program_id() {
         AccountMeta::new(user_stake.pubkey(), false),
         AccountMeta::new(validator_stake_account.stake_account, false),
         AccountMeta::new(user_pool_account.pubkey(), false),
-        AccountMeta::new(stake_pool_accounts.pool_fee_account.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
@@ -281,75 +273,6 @@ async fn test_stake_pool_deposit_with_wrong_stake_program_id() {
             assert_eq!(error, InstructionError::IncorrectProgramId);
         }
         _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),
-    }
-}
-
-#[tokio::test]
-async fn test_stake_pool_deposit_with_wrong_pool_fee_account() {
-    let (
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        mut stake_pool_accounts,
-        validator_stake_account,
-    ) = setup().await;
-
-    let user = Keypair::new();
-    // make stake account
-    let user_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
-    let authorized = stake_program::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
-    };
-    create_independent_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_stake,
-        &authorized,
-        &lockup,
-    )
-    .await;
-
-    // make pool token account
-    let user_pool_account = Keypair::new();
-    create_token_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_pool_account,
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    let wrong_pool_fee_acc = Keypair::new();
-    stake_pool_accounts.pool_fee_account = wrong_pool_fee_acc;
-
-    let transaction_error = stake_pool_accounts
-        .deposit_stake(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &user_stake.pubkey(),
-            &user_pool_account.pubkey(),
-            &validator_stake_account.stake_account,
-        )
-        .await
-        .err()
-        .unwrap();
-
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::InvalidFeeAccount as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error occurs while try to make a deposit with wrong pool fee account"),
     }
 }
 
@@ -401,7 +324,6 @@ async fn test_stake_pool_deposit_with_wrong_token_program_id() {
             &user_stake.pubkey(),
             &validator_stake_account.stake_account,
             &user_pool_account.pubkey(),
-            &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
         )
