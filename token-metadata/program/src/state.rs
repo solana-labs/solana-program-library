@@ -58,3 +58,27 @@ pub struct NameSymbolTuple {
     /// Address of the current active metadata account
     pub metadata: Pubkey,
 }
+
+#[repr(C)]
+#[derive(Clone, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize)]
+pub struct Edition {
+    /// All Editions should never have a supply greater than 1.
+    /// To enforce this, a transfer mint authority instruction will happen when
+    /// a normal token is turned into an Edition, and in order for a Metadata update authority
+    /// to do this transaction they will also need to sign the transaction as the Mint authority.
+    ///
+    /// If this is a master record, this is None, if this is not the master record,
+    /// this will point back at the master record (Edition).
+    master_record: Option<Pubkey>,
+
+    /// Starting at 0 for master record, this is incremented for each edition minted.
+    edition_count: u64,
+
+    /// A new mint with supply of 1 is made for each edition. The mint on the master is the "master mint."
+    mint: Pubkey,
+
+    /// All editions point at the same Metadata, which presumably is owned by the Artist.
+    /// This means if the Artists updates their Metadata or Royalty configs, all Limited or Open Edition holders
+    /// Immediately inherit it.
+    pub metadata: Pubkey,
+}
