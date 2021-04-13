@@ -9,9 +9,9 @@ use crate::{
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
-        assert_cheap_mint_initialized, assert_initialized, assert_mint_matching,
-        assert_rent_exempt, assert_uninitialized, get_mint_from_account, spl_token_mint_to,
-        TokenMintToParams,
+        assert_cheap_mint_initialized, assert_initialized, assert_mint_decimals,
+        assert_mint_matching, assert_rent_exempt, assert_uninitialized, get_mint_from_account,
+        pull_mint_decimals, spl_token_mint_to, TokenMintToParams,
     },
 };
 use solana_program::{
@@ -30,6 +30,7 @@ pub fn process_init_timelock_set(
     desc_link: [u8; DESC_SIZE],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
+
     let timelock_state_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
     let timelock_config_account_info = next_account_info(account_info_iter)?;
@@ -51,10 +52,11 @@ pub fn process_init_timelock_set(
     let token_program_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
-    let mut timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
 
+    let mut timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
     let mut new_timelock_state: TimelockState = assert_uninitialized(timelock_state_account_info)?;
     let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
+
     new_timelock_set.version = TIMELOCK_SET_VERSION;
     new_timelock_set.config = *timelock_config_account_info.key;
     new_timelock_set.token_program_id = *token_program_info.key;
@@ -115,6 +117,12 @@ pub fn process_init_timelock_set(
     assert_mint_matching(yes_voting_dump_account_info, yes_voting_mint_account_info)?;
     assert_mint_matching(no_voting_dump_account_info, no_voting_mint_account_info)?;
     assert_mint_matching(source_holding_account_info, source_mint_account_info)?;
+
+    let source_mint_decimals = pull_mint_decimals(source_mint_account_info)?;
+    assert_mint_decimals(voting_mint_account_info, source_mint_decimals)?;
+    assert_mint_decimals(yes_voting_mint_account_info, source_mint_decimals)?;
+    assert_mint_decimals(no_voting_mint_account_info, source_mint_decimals)?;
+
     if source_holding_mint != timelock_config.governance_mint
         && source_holding_mint != timelock_config.council_mint
     {

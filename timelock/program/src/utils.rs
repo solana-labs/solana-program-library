@@ -174,6 +174,16 @@ pub fn assert_mint_matching(acct: &AccountInfo, mint: &AccountInfo) -> ProgramRe
     Ok(())
 }
 
+/// Cheaper Assertion the account has a matching mint decimals - if you don't plan to use Mint for anything else
+#[inline(always)]
+pub fn assert_mint_decimals(mint: &AccountInfo, mint_decimals: u8) -> ProgramResult {
+    if pull_mint_decimals(mint).unwrap() != mint_decimals {
+        return Err(TimelockError::MintsDecimalsShouldMatch.into());
+    }
+
+    Ok(())
+}
+
 /// assert rent exempt
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
@@ -216,6 +226,17 @@ pub fn pull_mint_supply(account_info: &AccountInfo) -> Result<u64, ProgramError>
     let bytes = array_ref![data, 36, 8];
 
     Ok(u64::from_le_bytes(*bytes))
+}
+
+/// cheap method to just pull decimals off a mint
+#[inline(always)]
+pub fn pull_mint_decimals(account_info: &AccountInfo) -> Result<u8, ProgramError> {
+    // In token program, 36, 8, 1, 1 is the Mint layout, where the first 1 is decimals u8.
+    // so we start at 44.
+    let data = account_info.try_borrow_data().unwrap();
+    let bytes = array_ref![data, 44, 1];
+
+    Ok(bytes[0])
 }
 
 /// Cheap method to just grab mint Pubkey off token account, instead of deserializing entire thing
@@ -408,4 +429,47 @@ pub struct ExecuteParams<'a: 'b, 'b> {
     pub authority_signer_seeds: &'b [&'b [u8]],
     /// Account infos
     pub account_infos: Vec<AccountInfo<'a>>,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use solana_program::{
+        account_info::AccountInfo, clock::Epoch, program_option::COption, pubkey::Pubkey,
+    };
+
+    use spl_token::state::Mint;
+
+    #[test]
+    pub fn test_assert_mint_decimals() {
+        let mut data = vec![0; Mint::get_packed_len()];
+
+        let mint = Mint {
+            mint_authority: COption::None,
+            supply: 100,
+            decimals: 5,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+
+        Mint::pack(mint, &mut data).unwrap();
+
+        let mut lamports = 0;
+
+        let program_id = Pubkey::new_unique();
+        let owner_key = Pubkey::new_unique();
+        let mint_account_info = AccountInfo::new(
+            &owner_key,
+            false,
+            false,
+            &mut lamports,
+            &mut data,
+            &program_id,
+            false,
+            Epoch::default(),
+        );
+
+        assert_eq!(assert_mint_decimals(&mint_account_info, 5), Ok(()));
+    }
 }

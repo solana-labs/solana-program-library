@@ -115,6 +115,10 @@ pub enum TimelockError {
     #[error("Provided wrong mint type for a token holding account on timelock set")]
     MintsShouldMatch,
 
+    /// Provided source mint decimals don't match voting mint decimals
+    #[error("Provided source mint decimals don't match voting mint decimals")]
+    MintsDecimalsShouldMatch,
+
     /// Waiting period must be greater than or equal to minimum waiting period
     #[error("Waiting period must be greater than or equal to minimum waiting period")]
     MustBeAboveMinimumWaitingPeriod,
