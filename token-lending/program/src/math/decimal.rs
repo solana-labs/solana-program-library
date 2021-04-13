@@ -1,5 +1,5 @@
 //! Math for preserving precision of token amounts which are limited
-//! by the SPL Token program to be at most u64::max_value().
+//! by the SPL Token program to be at most u64::MAX.
 //!
 //! Decimals are internally scaled by a WAD (10^18) to preserve
 //! precision up to 18 decimal places. Decimals are sized to support

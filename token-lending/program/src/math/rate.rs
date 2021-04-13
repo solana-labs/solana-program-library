@@ -23,7 +23,11 @@ use crate::{
     math::{common::*, decimal::Decimal},
 };
 use solana_program::program_error::ProgramError;
-use std::{convert::TryFrom, fmt};
+use std::{
+    convert::TryFrom,
+    fmt,
+    u64
+};
 use uint::construct_uint;
 
 // U128 with 128 bits consisting of 2 x 64-bit words
@@ -193,6 +197,6 @@ mod test {
 
     #[test]
     fn checked_pow() {
-        assert_eq!(Rate::one(), Rate::one().try_pow(u64::max_value()).unwrap());
+        assert_eq!(Rate::one(), Rate::one().try_pow(u64::MAX).unwrap());
     }
 }

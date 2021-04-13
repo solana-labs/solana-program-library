@@ -13,8 +13,11 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
-use std::cmp::Ordering;
-use std::convert::{TryFrom, TryInto};
+use std::{
+    cmp::Ordering,
+    convert::{TryFrom, TryInto},
+    u64
+};
 
 /// Percentage of an obligation that can be repaid during each liquidation call
 pub const LIQUIDATION_CLOSE_FACTOR: u8 = 50;
@@ -135,15 +138,15 @@ impl Reserve {
     }
 
     /// Borrow liquidity up to a maximum market value
-    pub fn borrow_liquidity(
+    pub fn calculate_borrow(
         &self,
-        liquidity_amount: u64,
+        amount_to_borrow: u64,
         max_borrow_value: Decimal,
-    ) -> Result<BorrowLiquidityResult, ProgramError> {
+    ) -> Result<CalculateBorrowResult, ProgramError> {
         let decimals = 10u64
             .checked_pow(self.liquidity.mint_decimals as u32)
             .ok_or(LendingError::MathOverflow)?;
-        if liquidity_amount == u64::max_value() {
+        if amount_to_borrow == u64::MAX {
             let borrow_amount = max_borrow_value
                 .try_mul(decimals)?
                 .try_div(self.liquidity.market_price)?
@@ -157,14 +160,14 @@ impl Reserve {
                 .checked_sub(origination_fee)
                 .ok_or(LendingError::MathOverflow)?;
 
-            Ok(BorrowLiquidityResult {
+            Ok(CalculateBorrowResult {
                 borrow_amount,
                 receive_amount,
                 borrow_fee: origination_fee,
                 host_fee,
             })
         } else {
-            let receive_amount = liquidity_amount;
+            let receive_amount = amount_to_borrow;
             let borrow_amount = Decimal::from(receive_amount);
             let (borrow_fee, host_fee) = self
                 .config
@@ -180,7 +183,7 @@ impl Reserve {
                 return Err(LendingError::BorrowTooLarge.into());
             }
 
-            Ok(BorrowLiquidityResult {
+            Ok(CalculateBorrowResult {
                 borrow_amount,
                 receive_amount,
                 borrow_fee,
@@ -190,42 +193,38 @@ impl Reserve {
     }
 
     /// Repay liquidity up to the borrowed amount
-    pub fn repay_liquidity(
+    pub fn calculate_repay(
         &self,
-        liquidity_amount: u64,
-        borrow_amount: Decimal,
-    ) -> Result<RepayLiquidityResult, ProgramError> {
-        let settle_amount = if liquidity_amount == u64::max_value() {
-            borrow_amount
+        amount_to_repay: u64,
+        borrowed_amount: Decimal,
+    ) -> Result<CalculateRepayResult, ProgramError> {
+        let settle_amount = if amount_to_repay == u64::MAX {
+            borrowed_amount
         } else {
-            Decimal::from(liquidity_amount).min(borrow_amount)
+            Decimal::from(amount_to_repay).min(borrowed_amount)
         };
-        let repay_amount = if settle_amount == borrow_amount {
-            settle_amount.try_ceil_u64()?
-        } else {
-            settle_amount.try_floor_u64()?
-        };
+        let repay_amount = settle_amount.try_ceil_u64()?;
 
-        Ok(RepayLiquidityResult {
+        Ok(CalculateRepayResult {
             settle_amount,
             repay_amount,
         })
     }
 
     /// Liquidate some or all of an unhealthy obligation
-    pub fn liquidate_obligation(
+    pub fn calculate_liquidation(
         &self,
-        liquidity_amount: u64,
+        amount_to_liquidate: u64,
         obligation: &Obligation,
         liquidity: &ObligationLiquidity,
         collateral: &ObligationCollateral,
-    ) -> Result<LiquidateObligationResult, ProgramError> {
+    ) -> Result<CalculateLiquidationResult, ProgramError> {
         let bonus_rate = Rate::from_percent(self.config.liquidation_bonus).try_add(Rate::one())?;
 
-        let target_amount = if liquidity_amount == u64::max_value() {
+        let max_amount = if amount_to_liquidate == u64::MAX {
             liquidity.borrowed_amount_wads
         } else {
-            Decimal::from(liquidity_amount).min(liquidity.borrowed_amount_wads)
+            Decimal::from(amount_to_liquidate).min(liquidity.borrowed_amount_wads)
         };
 
         let settle_amount;
@@ -241,26 +240,26 @@ impl Reserve {
             match liquidation_value.cmp(&collateral.market_value) {
                 Ordering::Greater => {
                     let repay_pct = collateral.market_value.try_div(liquidation_value)?;
-                    repay_amount = target_amount.try_mul(repay_pct)?.try_ceil_u64()?;
+                    repay_amount = max_amount.try_mul(repay_pct)?.try_ceil_u64()?;
                     withdraw_amount = collateral.deposited_amount;
                 }
                 Ordering::Equal => {
-                    repay_amount = target_amount.try_ceil_u64()?;
+                    repay_amount = max_amount.try_ceil_u64()?;
                     withdraw_amount = collateral.deposited_amount;
                 }
                 Ordering::Less => {
                     let withdraw_pct = liquidation_value.try_div(collateral.market_value)?;
-                    repay_amount = target_amount.try_ceil_u64()?;
+                    repay_amount = max_amount.try_floor_u64()?;
                     withdraw_amount = Decimal::from(collateral.deposited_amount)
                         .try_mul(withdraw_pct)?
-                        .try_ceil_u64()?;
+                        .try_floor_u64()?;
                 }
             }
         } else {
             // calculate settle_amount and withdraw_amount, repay_amount is settle_amount rounded up
             let liquidation_amount = obligation
                 .max_liquidation_amount(liquidity)?
-                .min(target_amount);
+                .min(max_amount);
             let liquidation_pct = liquidation_amount.try_div(liquidity.borrowed_amount_wads)?;
             let liquidation_value = liquidity
                 .market_value
@@ -271,25 +270,26 @@ impl Reserve {
                 Ordering::Greater => {
                     let repay_pct = collateral.market_value.try_div(liquidation_value)?;
                     settle_amount = liquidation_amount.try_mul(repay_pct)?;
+                    repay_amount = settle_amount.try_ceil_u64()?;
                     withdraw_amount = collateral.deposited_amount;
                 }
                 Ordering::Equal => {
                     settle_amount = liquidation_amount;
+                    repay_amount = settle_amount.try_ceil_u64()?;
                     withdraw_amount = collateral.deposited_amount;
                 }
                 Ordering::Less => {
                     let withdraw_pct = liquidation_value.try_div(collateral.market_value)?;
                     settle_amount = liquidation_amount;
+                    repay_amount = settle_amount.try_floor_u64()?;
                     withdraw_amount = Decimal::from(collateral.deposited_amount)
                         .try_mul(withdraw_pct)?
-                        .try_ceil_u64()?;
+                        .try_floor_u64()?;
                 }
             }
-
-            repay_amount = settle_amount.try_ceil_u64()?;
         }
 
-        Ok(LiquidateObligationResult {
+        Ok(CalculateLiquidationResult {
             settle_amount,
             repay_amount,
             withdraw_amount,
@@ -311,9 +311,9 @@ pub struct InitReserveParams {
     pub config: ReserveConfig,
 }
 
-/// Borrow liquidity result
+/// Calculate borrow result
 #[derive(Debug)]
-pub struct BorrowLiquidityResult {
+pub struct CalculateBorrowResult {
     /// Total amount of borrow including fees
     pub borrow_amount: Decimal,
     /// Borrow amount portion of total amount
@@ -324,18 +324,18 @@ pub struct BorrowLiquidityResult {
     pub host_fee: u64,
 }
 
-/// Repay liquidity result
+/// Calculate repay result
 #[derive(Debug)]
-pub struct RepayLiquidityResult {
+pub struct CalculateRepayResult {
     /// Amount of liquidity that is settled from the obligation.
     pub settle_amount: Decimal,
     /// Amount that will be repaid as u64
     pub repay_amount: u64,
 }
 
-/// Liquidate obligation result
+/// Calculate liquidation result
 #[derive(Debug)]
-pub struct LiquidateObligationResult {
+pub struct CalculateLiquidationResult {
     /// Amount of liquidity that is settled from the obligation. It includes
     /// the amount of loan that was defaulted if collateral is depleted.
     pub settle_amount: Decimal,
@@ -412,8 +412,7 @@ impl ReserveLiquidity {
     }
 
     /// Subtract borrow amount from available liquidity and add to borrows
-    pub fn borrow(&mut self, borrow_amount: Decimal) -> ProgramResult {
-        let receive_amount = borrow_amount.try_floor_u64()?;
+    pub fn borrow(&mut self, borrow_amount: Decimal, receive_amount: u64) -> ProgramResult {
         if receive_amount > self.available_amount {
             msg!("Borrow amount cannot exceed available amount");
             return Err(LendingError::InsufficientLiquidity.into());
@@ -687,8 +686,6 @@ impl IsInitialized for Reserve {
     }
 }
 
-// @TODO: Adjust padding, but what's a reasonable number?
-//        Or should there be no padding to save space, but we need account resizing implemented?
 const RESERVE_LEN: usize = 567; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + (4 + 32) + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 1 + 256
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
@@ -797,6 +794,7 @@ impl Pack for Reserve {
         })
     }
 
+    // @TODO: break this up by reserve / liquidity / collateral / config
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, RESERVE_LEN];
         #[allow(clippy::ptr_offset_with_cast)]

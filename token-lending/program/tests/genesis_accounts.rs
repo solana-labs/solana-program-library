@@ -182,7 +182,7 @@
 //             &payer,
 //             BorrowArgs {
 //                 borrow_reserve: &usdc_test_reserve,
-//                 // @FIXME: handle u64::max_value()
+//                 // @FIXME: handle u64::MAX
 //                 liquidity_amount: INITIAL_COLLATERAL_RATIO * USER_SOL_COLLATERAL_LAMPORTS,
 //                 user_accounts_owner: &user_accounts_owner,
 //                 obligation: &usdc_obligation,
@@ -197,7 +197,7 @@
 //             &payer,
 //             BorrowArgs {
 //                 borrow_reserve: &usdc_test_reserve,
-//                 // @FIXME: handle u64::max_value()
+//                 // @FIXME: handle u64::MAX
 //                 liquidity_amount: lamports_to_usdc_fractional(
 //                     usdc_test_reserve.config.loan_to_value_ratio as u64 * USER_SOL_COLLATERAL_LAMPORTS
 //                         / 100,

@@ -430,7 +430,7 @@ pub fn add_reserve(
         config,
     });
     reserve.deposit_liquidity(liquidity_amount).unwrap();
-    reserve.liquidity.borrow(borrow_amount.into()).unwrap();
+    reserve.liquidity.borrow(borrow_amount.into(), borrow_amount).unwrap();
     let borrow_rate_multiplier = Rate::one()
         .try_add(Rate::from_percent(initial_borrow_rate))
         .unwrap();

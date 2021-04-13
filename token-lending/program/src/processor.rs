@@ -5,9 +5,9 @@ use crate::{
     instruction::LendingInstruction,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, WAD},
     state::{
-        BorrowLiquidityResult, InitLendingMarketParams, InitObligationParams, InitReserveParams,
-        LendingMarket, LiquidateObligationResult, NewReserveCollateralParams,
-        NewReserveLiquidityParams, Obligation, RepayLiquidityResult, Reserve, ReserveCollateral,
+        CalculateBorrowResult, InitLendingMarketParams, InitObligationParams, InitReserveParams,
+        LendingMarket, CalculateLiquidationResult, NewReserveCollateralParams,
+        NewReserveLiquidityParams, Obligation, CalculateRepayResult, Reserve, ReserveCollateral,
         ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
     },
 };
@@ -26,7 +26,10 @@ use solana_program::{
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 use spl_token::state::{Account, Mint};
-use std::convert::TryFrom;
+use std::{
+    convert::TryFrom,
+    u64
+};
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -693,19 +696,19 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::BorrowTooLarge.into());
     }
 
-    let BorrowLiquidityResult {
+    let CalculateBorrowResult {
         borrow_amount,
         receive_amount,
         borrow_fee,
         host_fee,
-    } = borrow_reserve.borrow_liquidity(liquidity_amount, max_borrow_value)?;
+    } = borrow_reserve.calculate_borrow(liquidity_amount, max_borrow_value)?;
 
     if receive_amount == 0 {
         msg!("Borrow amount is too small to receive liquidity after fees");
         return Err(LendingError::BorrowTooSmall.into());
     }
 
-    borrow_reserve.liquidity.borrow(borrow_amount)?;
+    borrow_reserve.liquidity.borrow(borrow_amount, receive_amount)?;
     borrow_reserve.last_update.mark_stale();
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
@@ -829,10 +832,10 @@ fn process_repay_obligation_liquidity(
         return Err(LendingError::ObligationLiquidityEmpty.into());
     }
 
-    let RepayLiquidityResult {
+    let CalculateRepayResult {
         settle_amount,
         repay_amount,
-    } = repay_reserve.repay_liquidity(liquidity_amount, liquidity.borrowed_amount_wads)?;
+    } = repay_reserve.calculate_repay(liquidity_amount, liquidity.borrowed_amount_wads)?;
 
     if repay_amount == 0 {
         msg!("Repay amount is too small to transfer liquidity");
@@ -992,11 +995,11 @@ fn process_liquidate_obligation(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let LiquidateObligationResult {
+    let CalculateLiquidationResult {
         settle_amount,
         repay_amount,
         withdraw_amount,
-    } = withdraw_reserve.liquidate_obligation(
+    } = withdraw_reserve.calculate_liquidation(
         liquidity_amount,
         &obligation,
         &liquidity,
@@ -1383,7 +1386,7 @@ fn process_withdraw_obligation_collateral(
             return Err(LendingError::WithdrawTooLarge.into());
         }
 
-        let withdraw_amount = if collateral_amount == u64::max_value() {
+        let withdraw_amount = if collateral_amount == u64::MAX {
             let withdraw_value = max_withdraw_value.min(collateral.market_value);
             let withdraw_pct = withdraw_value.try_div(collateral.market_value)?;
             withdraw_pct

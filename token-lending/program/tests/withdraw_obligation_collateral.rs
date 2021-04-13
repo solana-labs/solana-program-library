@@ -1,5 +1,8 @@
 #![cfg(feature = "test-bpf")]
 
+mod helpers;
+
+use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError,
@@ -7,8 +10,6 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
-
-use helpers::*;
 use spl_token::instruction::approve;
 use spl_token_lending::{
     error::LendingError,
@@ -16,8 +17,7 @@ use spl_token_lending::{
     processor::process_instruction,
     state::INITIAL_COLLATERAL_RATIO,
 };
-
-mod helpers;
+use std::u64;
 
 #[tokio::test]
 async fn test_withdraw_base_currency_fixed_amount() {
@@ -190,7 +190,7 @@ async fn test_withdraw_quote_currency_all() {
     const USDC_DEPOSIT_AMOUNT_FRACTIONAL: u64 =
         1_000 * FRACTIONAL_TO_USDC * INITIAL_COLLATERAL_RATIO;
     const USDC_RESERVE_COLLATERAL_FRACTIONAL: u64 = 2 * USDC_DEPOSIT_AMOUNT_FRACTIONAL;
-    const WITHDRAW_AMOUNT: u64 = u64::max_value();
+    const WITHDRAW_AMOUNT: u64 = u64::MAX;
 
     let user_accounts_owner = Keypair::new();
     let user_transfer_authority = Keypair::new();

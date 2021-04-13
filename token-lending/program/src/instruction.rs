@@ -92,7 +92,7 @@ pub enum LendingInstruction {
     ///   8. `[]` Clock sysvar.
     ///   9. `[]` Token program id.
     DepositReserveLiquidity {
-        /// Amount of liquidity to deposit in exchange for collateral
+        /// Amount of liquidity to deposit in exchange for collateral tokens
         liquidity_amount: u64,
     },
 
@@ -112,10 +112,11 @@ pub enum LendingInstruction {
     ///   7. `[signer]` User transfer authority ($authority).
     ///   8. `[]` Token program id.
     RedeemReserveCollateral {
-        /// Amount of collateral to redeem in exchange for liquidity
+        /// Amount of collateral tokens to redeem in exchange for liquidity
         collateral_amount: u64,
     },
 
+    // @TODO: rename cf. https://git.io/JOOE6
     // 10
     /// Borrow liquidity from a reserve by depositing collateral tokens. Requires a refreshed
     /// obligation and reserve.
@@ -136,7 +137,7 @@ pub enum LendingInstruction {
     ///   9. `[]` Token program id.
     ///   10. `[optional, writable]` Host fee receiver account.
     BorrowObligationLiquidity {
-        /// Amount of liquidity to borrow - u64::max_value() for 100% of borrowing power
+        /// Amount of liquidity to borrow - u64::MAX for 100% of borrowing power
         liquidity_amount: u64,
         // @TODO: slippage constraint - https://git.io/JmV67
     },
@@ -158,7 +159,7 @@ pub enum LendingInstruction {
     ///   7. `[]` Clock sysvar.
     ///   8. `[]` Token program id.
     RepayObligationLiquidity {
-        /// Amount of liquidity to repay - u64::max_value() for 100% of borrowed amount
+        /// Amount of liquidity to repay - u64::MAX for 100% of borrowed amount
         liquidity_amount: u64,
     },
 
@@ -184,7 +185,7 @@ pub enum LendingInstruction {
     ///   10 `[]` Clock sysvar.
     ///   11 `[]` Token program id.
     LiquidateObligation {
-        /// Amount of liquidity to repay - u64::max_value() for up to 100% of borrowed amount
+        /// Amount of liquidity to repay - u64::MAX for up to 100% of borrowed amount
         liquidity_amount: u64,
     },
 
@@ -221,7 +222,7 @@ pub enum LendingInstruction {
     ///   11 `[]` Rent sysvar.
     ///   12 `[]` Token program id.
     DepositObligationCollateral {
-        /// Amount of collateral to deposit
+        /// Amount of collateral tokens to deposit
         collateral_amount: u64,
     },
 
@@ -244,7 +245,7 @@ pub enum LendingInstruction {
     ///   9. `[]` Clock sysvar.
     ///   10 `[]` Token program id.
     WithdrawObligationCollateral {
-        /// Amount of collateral to withdraw - u64::max_value() for up to 100% of deposited amount
+        /// Amount of collateral tokens to withdraw - u64::MAX for up to 100% of deposited amount
         collateral_amount: u64,
     },
 

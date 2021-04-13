@@ -343,6 +343,7 @@ impl ObligationLiquidity {
 const OBLIGATION_COLLATERAL_LEN: usize = 88; // 32 + 32 + 8 + 16
 const OBLIGATION_LIQUIDITY_LEN: usize = 80; // 32 + 16 + 16 + 16
 const OBLIGATION_LEN: usize = 948; // 1 + 8 + 1 + 32 + 32 + 16 + 16 + 16 + 16 + 1 + 1 + (88 * 1) + (80 * 9)
+// @TODO: break this up by obligation / collateral / liquidity
 impl Pack for Obligation {
     const LEN: usize = OBLIGATION_LEN;
 

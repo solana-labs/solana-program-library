@@ -17,6 +17,7 @@ use spl_token_lending::{
     processor::process_instruction,
     state::{FeeCalculation, INITIAL_COLLATERAL_RATIO},
 };
+use std::u64;
 
 #[tokio::test]
 async fn test_borrow_quote_currency() {
@@ -242,7 +243,7 @@ async fn test_borrow_max_base_currency() {
             ),
             borrow_obligation_liquidity(
                 spl_token_lending::id(),
-                u64::max_value(),
+                u64::MAX,
                 sol_test_reserve.liquidity_supply_pubkey,
                 sol_test_reserve.user_liquidity_pubkey,
                 sol_test_reserve.pubkey,
