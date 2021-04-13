@@ -3798,6 +3798,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-metaplex"
+version = "0.0.1"
+dependencies = [
+ "borsh 0.8.2",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "spl-token 3.1.0",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-record"
 version = "0.1.0"
 dependencies = [
