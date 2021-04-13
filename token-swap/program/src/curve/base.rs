@@ -9,6 +9,7 @@ use crate::curve::{
     calculator::{CurveCalculator, RoundDirection, SwapWithoutFeesResult, TradeDirection},
     constant_price::ConstantPriceCurve,
     constant_product::ConstantProductCurve,
+    pmm::PMMCurve,
     fees::Fees,
     offset::OffsetCurve,
     stable::StableCurve,
@@ -25,6 +26,8 @@ pub enum CurveType {
     ConstantProduct,
     /// Flat line, always providing 1:1 from one token to another
     ConstantPrice,
+/*    /// Proactive market making curve
+    PMM, // */
     /// Stable, like uniswap, but with wide zone of 1:1 instead of one point
     Stable,
     /// Offset curve, like Uniswap, but the token B side has a faked offset
@@ -192,6 +195,9 @@ impl Pack for SwapCurve {
                 CurveType::ConstantPrice => {
                     Box::new(ConstantPriceCurve::unpack_from_slice(calculator)?)
                 }
+/*                CurveType::PMM => {
+                    Box::new(ConstantPriceCurve::unpack_from_slice(calculator)?)
+                } // */ 
                 CurveType::Stable => Box::new(StableCurve::unpack_from_slice(calculator)?),
                 CurveType::Offset => Box::new(OffsetCurve::unpack_from_slice(calculator)?),
             },

@@ -85,9 +85,9 @@ pub trait CurveCalculator: Debug + DynPack {
     /// of source token.
     fn swap_without_fees(
         &self,
-        source_amount: u128,
-        swap_source_amount: u128,
-        swap_destination_amount: u128,
+        source_amount: u128, // how much a trader is putting in of token A
+        swap_source_amount: u128, // how much the contract has in token A
+        swap_destination_amount: u128, // how much the contract has in token B
         trade_direction: TradeDirection,
     ) -> Option<SwapWithoutFeesResult>;
 
