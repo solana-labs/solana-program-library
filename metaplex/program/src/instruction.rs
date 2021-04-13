@@ -7,25 +7,17 @@ use {
     },
 };
 
-#[repr(C)]
-#[derive(BorshSerialize, BorshDeserialize, Clone)]
-pub struct InitMetaplexArgs {
-    pub allow_further_share_creation: bool,
-}
-
 /// Instructions supported by the Fraction program.
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub enum MetaplexInstruction {
-    /// Initialize a token vault, starts inactivate. Add tokens in subsequent instructions, then activate.
-    ///   0. `[writable]` Initialized fractional share mint with 0 tokens in supply, authority on mint must be pda of program with seed [prefix, programid]
-    ///   1. `[writable]` Initialized redeem treasury token account with 0 tokens in supply, owner of account must be pda of program like above
-    ///   2. `[writable]` Initialized fraction treasury token account with 0 tokens in supply, owner of account must be pda of program like above
-    ///   3. `[writable]` Uninitialized vault account
-    ///   4. `[]` Authority on the vault
-    ///   5. `[]` Pricing Lookup Address
-    ///   6. `[]` Token program
+    /// Initializes an Auction Manager
+    ///   0. `[writable]` Uninitialized auction manager account
+    ///   0. `[]` Activated vault account with authority set to auction manager account (this will be checked)
+    ///           Note in addition that this vault account should
+    ///   0. `[]` Auction with auctioned item being set to the vault given
+    ///   5. `[]` External Pricing Account
     ///   7. `[]` Rent sysvar
-    InitMetaplex(InitMetaplexArgs),
+    InitAuctionManager,
 }
 /*
 /// Creates an InitMetaplex instruction

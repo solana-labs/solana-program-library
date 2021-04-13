@@ -23,7 +23,7 @@ const PREFIX: &str = "auction";
 
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
-struct Bid(Pubkey, u64);
+pub struct Bid(Pubkey, u64);
 
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
@@ -245,7 +245,7 @@ fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidArgs) 
         // Allow the first bid when the auction has started.
         None if now < auction.start_time => Some(now),
         // Otherwise fail.
-        _ => return Err(AuctionError::InvalidState.into())
+        _ => return Err(AuctionError::InvalidState.into()),
     };
 
     auction.bids.bid(Bid(pot_key, args.amount));

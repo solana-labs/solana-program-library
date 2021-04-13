@@ -1,4 +1,4 @@
 mod entrypoint;
 mod errors;
-mod processor;
+pub mod processor;
 mod utils;

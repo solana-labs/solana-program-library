@@ -3667,6 +3667,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-auction"
+version = "0.0.1"
+dependencies = [
+ "borsh 0.8.2",
+ "byteorder",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-binary-oracle-pair"
 version = "0.1.0"
 dependencies = [
@@ -3805,7 +3819,9 @@ dependencies = [
  "num-derive",
  "num-traits",
  "solana-program",
+ "spl-auction",
  "spl-token 3.1.0",
+ "spl-token-vault",
  "thiserror",
 ]
 

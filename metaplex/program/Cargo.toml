@@ -18,6 +18,7 @@ num-traits = "0.2"
 solana-program = "1.6.2"
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
 spl-token-vault = { path = "../../token-vault/program", features = [ "no-entrypoint" ] }
+spl-auction = { path = "../../auction/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 borsh = "0.8.2"
 

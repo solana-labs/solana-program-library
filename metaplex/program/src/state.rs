@@ -1,6 +1,7 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::pubkey::Pubkey,
+    spl_auction::processor::Bid,
 };
 /// prefix used for PDAs to avoid certain collision attacks (https://en.wikipedia.org/wiki/Collision_attack#Chosen-prefix_collision_attack)
 pub const PREFIX: &str = "metaplex";
@@ -29,6 +30,7 @@ pub struct AuctionManager {
     pub winners_eligible_for_open_edition: bool,
 
     /// The safety deposit box index in the vault containing the winning items, in order of place
+    /// The same index can appear multiple times if that index contains n tokens for n appearances (this will be checked)
     pub winning_keys: Vec<u8>,
 
     /// The safety deposit box index in the vault containing the template for the limited edition
@@ -67,4 +69,6 @@ pub struct AuctionResult {
     pub key: Key,
 
     pub auction_manager: Pubkey,
+
+    pub winners: Vec<Bid>,
 }
