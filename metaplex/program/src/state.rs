@@ -1,7 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::pubkey::Pubkey,
-    spl_auction::processor::Bid,
 };
 /// prefix used for PDAs to avoid certain collision attacks (https://en.wikipedia.org/wiki/Collision_attack#Chosen-prefix_collision_attack)
 pub const PREFIX: &str = "metaplex";
@@ -11,7 +10,6 @@ pub const MAX_AUCTION_MANAGER_SIZE: usize = 1 + 32 + 32 + 32 + 1;
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
 pub enum Key {
     AuctionManagerV1,
-    AuctionResultV1,
 }
 
 /// An Auction Manager can support an auction that is an English auction and limited edition and open edition
@@ -61,14 +59,4 @@ pub struct AuctionManager {
     /// as a token of appreciation for coming. This means different people will pay different amounts for the open edition based
     /// on what their bid ticket says, always above this reserve price, and this reserve price is separated from the main reserve price.
     pub open_edition_reserve_price: Option<u64>,
-}
-
-#[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize)]
-pub struct AuctionResult {
-    pub key: Key,
-
-    pub auction_manager: Pubkey,
-
-    pub winners: Vec<Bid>,
 }
