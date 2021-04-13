@@ -698,15 +698,14 @@ impl Processor {
         let new_stake_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
         let stake_account_info = next_account_info(account_info_iter)?;
+        let transient_stake_account_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
         check_stake_program(stake_program_info.key)?;
+        check_account_owner(stake_pool_info, program_id)?;
 
-        if stake_pool_info.owner != program_id {
-            return Err(ProgramError::IncorrectProgramId);
-        }
         let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
@@ -719,9 +718,7 @@ impl Processor {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
-        if *validator_list_info.key != stake_pool.validator_list {
-            return Err(StakePoolError::InvalidValidatorStakeList.into());
-        }
+        stake_pool.check_validator_list(validator_list_info)?;
 
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
@@ -737,6 +734,24 @@ impl Processor {
             stake_account_info.key,
             &vote_account_address,
         )?;
+        check_transient_stake_address(
+            program_id,
+            stake_pool_info.key,
+            transient_stake_account_info.key,
+            &vote_account_address,
+        )?;
+        // check that the transient stake account isn't activating
+        if let Ok((_, transient_stake)) = get_stake_state(transient_stake_account_info) {
+            if transient_stake.delegation.activation_epoch == clock.epoch {
+                msg!(
+                    "Transient stake {} is activating, can't remove stake {} on validator {}",
+                    transient_stake_account_info.key,
+                    stake_account_info.key,
+                    vote_account_address
+                );
+                return Err(StakePoolError::WrongStakeState.into());
+            }
+        }
 
         if !validator_list.contains(&vote_account_address) {
             return Err(StakePoolError::ValidatorNotFound.into());

@@ -88,8 +88,9 @@ pub enum StakePoolInstruction {
     ///   3. `[]` New withdraw/staker authority to set in the stake account
     ///   4. `[w]` Validator stake list storage account
     ///   5. `[w]` Stake account to remove from the pool
-    ///   8. '[]' Sysvar clock
-    ///  10. `[]` Stake program id,
+    ///   6. `[]` Transient stake account, to check that that we're not trying to activate
+    ///   7. '[]' Sysvar clock
+    ///   8. `[]` Stake program id,
     RemoveValidatorFromPool,
 
     /// (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
@@ -347,6 +348,7 @@ pub fn remove_validator_from_pool(
     new_stake_authority: &Pubkey,
     validator_list: &Pubkey,
     stake_account: &Pubkey,
+    transient_stake_account: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -355,6 +357,7 @@ pub fn remove_validator_from_pool(
         AccountMeta::new_readonly(*new_stake_authority, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
+        AccountMeta::new_readonly(*transient_stake_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];

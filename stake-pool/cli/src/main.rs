@@ -29,7 +29,7 @@ use {
         self,
         borsh::get_instance_packed_len,
         find_deposit_authority_program_address, find_stake_program_address,
-        find_withdraw_authority_program_address,
+        find_transient_stake_program_address, find_withdraw_authority_program_address,
         stake_program::{self, StakeAuthorize, StakeState},
         state::{Fee, StakePool, ValidatorList},
     },
@@ -347,7 +347,7 @@ fn command_vsa_add(config: &Config, stake_pool_address: &Pubkey, stake: &Pubkey)
 fn command_vsa_remove(
     config: &Config,
     stake_pool_address: &Pubkey,
-    stake: &Pubkey,
+    vote_account: &Pubkey,
     new_authority: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
@@ -357,6 +357,13 @@ fn command_vsa_remove(
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
+    let (validator_stake_account, _) =
+        find_stake_program_address(&spl_stake_pool::id(), &vote_account, stake_pool_address);
+    let (transient_stake_account, _) = find_transient_stake_program_address(
+        &spl_stake_pool::id(),
+        &vote_account,
+        stake_pool_address,
+    );
 
     let staker_pubkey = config.staker.pubkey();
     let new_authority = new_authority.as_ref().unwrap_or(&staker_pubkey);
@@ -371,7 +378,8 @@ fn command_vsa_remove(
                 &pool_withdraw_authority,
                 &new_authority,
                 &stake_pool.validator_list,
-                &stake,
+                &validator_stake_account,
+                &transient_stake_account,
             )?,
         ],
         Some(&config.fee_payer.pubkey()),
@@ -1135,15 +1143,6 @@ fn main() {
                     .required(true)
                     .help("Stake account to add to the pool"),
             )
-            .arg(
-                Arg::with_name("token_receiver")
-                    .long("token-receiver")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
-                    .takes_value(true)
-                    .help("Account to receive pool token. Must be initialized account of the stake pool token. \
-                          Defaults to the new pool token account."),
-            )
         )
         .subcommand(SubCommand::with_name("remove-validator")
             .about("Remove validator account from the stake pool. Must be signed by the pool staker.")
@@ -1157,23 +1156,13 @@ fn main() {
                     .help("Stake pool address"),
             )
             .arg(
-                Arg::with_name("stake_account")
+                Arg::with_name("vote_account")
                     .index(2)
                     .validator(is_pubkey)
-                    .value_name("STAKE_ACCOUNT_ADDRESS")
+                    .value_name("VOTE_ACCOUNT_ADDRESS")
                     .takes_value(true)
                     .required(true)
-                    .help("Stake account to remove from the pool"),
-            )
-            .arg(
-                Arg::with_name("withdraw_from")
-                    .long("withdraw-from")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
-                    .takes_value(true)
-                    .required(true)
-                    .help("Token account to withdraw pool token from. \
-                          Must have enough tokens for the full stake address balance."),
+                    .help("Vote account for the validator to remove from the pool"),
             )
             .arg(
                 Arg::with_name("new_authority")
@@ -1455,9 +1444,9 @@ fn main() {
         }
         ("remove-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
+            let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
             let new_authority: Option<Pubkey> = pubkey_of(arg_matches, "new_authority");
-            command_vsa_remove(&config, &stake_pool_address, &stake_account, &new_authority)
+            command_vsa_remove(&config, &stake_pool_address, &vote_account, &new_authority)
         }
         ("deposit", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();

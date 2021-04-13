@@ -719,8 +719,9 @@ impl StakePoolAccounts {
         banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
-        stake: &Pubkey,
         new_authority: &Pubkey,
+        validator_stake: &Pubkey,
+        transient_stake: &Pubkey,
     ) -> Option<TransportError> {
         let transaction = Transaction::new_signed_with_payer(
             &[instruction::remove_validator_from_pool(
@@ -730,7 +731,8 @@ impl StakePoolAccounts {
                 &self.withdraw_authority,
                 &new_authority,
                 &self.validator_list.pubkey(),
-                stake,
+                validator_stake,
+                transient_stake,
             )
             .unwrap()],
             Some(&payer.pubkey()),

@@ -34,7 +34,7 @@ async fn setup() -> (
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 10_000_000)
         .await
         .unwrap();
 
@@ -81,8 +81,9 @@ async fn success() {
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            &user_stake.stake_account,
             &new_authority,
+            &user_stake.stake_account,
+            &user_stake.transient_stake_account,
         )
         .await;
     assert!(error.is_none());
@@ -131,6 +132,7 @@ async fn fail_with_wrong_stake_program_id() {
         AccountMeta::new_readonly(new_authority, false),
         AccountMeta::new(stake_pool_accounts.validator_list.pubkey(), false),
         AccountMeta::new(user_stake.stake_account, false),
+        AccountMeta::new_readonly(user_stake.transient_stake_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(wrong_stake_program, false),
     ];
@@ -178,6 +180,7 @@ async fn fail_with_wrong_validator_list_account() {
             &new_authority,
             &wrong_validator_list.pubkey(),
             &user_stake.stake_account,
+            &user_stake.transient_stake_account,
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -221,8 +224,9 @@ async fn fail_not_at_minimum() {
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            &user_stake.stake_account,
             &new_authority,
+            &user_stake.stake_account,
+            &user_stake.transient_stake_account,
         )
         .await
         .unwrap()
@@ -247,8 +251,9 @@ async fn fail_double_remove() {
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            &user_stake.stake_account,
             &new_authority,
+            &user_stake.stake_account,
+            &user_stake.transient_stake_account,
         )
         .await;
     assert!(error.is_none());
@@ -260,8 +265,9 @@ async fn fail_double_remove() {
             &mut banks_client,
             &payer,
             &latest_blockhash,
-            &user_stake.stake_account,
             &new_authority,
+            &user_stake.stake_account,
+            &user_stake.transient_stake_account,
         )
         .await
         .unwrap();
@@ -297,6 +303,7 @@ async fn fail_wrong_staker() {
             &new_authority,
             &stake_pool_accounts.validator_list.pubkey(),
             &user_stake.stake_account,
+            &user_stake.transient_stake_account,
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -336,6 +343,7 @@ async fn fail_no_signature() {
         AccountMeta::new_readonly(new_authority, false),
         AccountMeta::new(stake_pool_accounts.validator_list.pubkey(), false),
         AccountMeta::new(user_stake.stake_account, false),
+        AccountMeta::new_readonly(user_stake.transient_stake_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
@@ -368,6 +376,49 @@ async fn fail_no_signature() {
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while malicious try to remove validator stake account without signing transaction"),
+    }
+}
+
+#[tokio::test]
+async fn fail_with_activating_transient_stake() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, user_stake) =
+        setup().await;
+
+    // increase the validator stake
+    let error = stake_pool_accounts
+        .increase_validator_stake(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake.transient_stake_account,
+            &user_stake.vote.pubkey(),
+            5_000_000,
+        )
+        .await;
+    assert!(error.is_none());
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &new_authority,
+            &user_stake.stake_account,
+            &user_stake.transient_stake_account,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    match error {
+        TransactionError::InstructionError(
+            _,
+            InstructionError::Custom(error_index),
+        ) => {
+            let program_error = StakePoolError::WrongStakeState as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs while removing validator stake account while transient stake is activating"),
     }
 }
 
