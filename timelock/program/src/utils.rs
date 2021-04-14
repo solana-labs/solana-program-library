@@ -60,7 +60,7 @@ pub fn assert_is_permissioned<'a>(
         destination: perm_validation_account_info.clone(),
         amount: 1,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
     // Now give it back
@@ -69,7 +69,7 @@ pub fn assert_is_permissioned<'a>(
         destination: perm_account_info.clone(),
         amount: 1,
         authority: timelock_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
     Ok(())

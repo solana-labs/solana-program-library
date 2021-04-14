@@ -51,7 +51,7 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
         mint: signatory_mint_info.clone(),
         amount: 1,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_account_info.clone(),
         source: signatory_account_info.clone(),
     })?;

@@ -154,7 +154,7 @@ pub fn process_init_timelock_set(
         destination: destination_admin_account_info.clone(),
         amount: 1,
         authority: timelock_program_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
@@ -163,7 +163,7 @@ pub fn process_init_timelock_set(
         destination: destination_sig_account_info.clone(),
         amount: 1,
         authority: timelock_program_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
     Ok(())

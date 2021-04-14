@@ -91,7 +91,7 @@ pub fn process_vote(
         mint: voting_mint_account_info.clone(),
         amount: yes_voting_token_amount + no_voting_token_amount,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_account_info.clone(),
         source: voting_account_info.clone(),
     })?;
@@ -101,7 +101,7 @@ pub fn process_vote(
         destination: yes_voting_account_info.clone(),
         amount: yes_voting_token_amount,
         authority: timelock_program_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;
 
@@ -110,7 +110,7 @@ pub fn process_vote(
         destination: no_voting_account_info.clone(),
         amount: no_voting_token_amount,
         authority: timelock_program_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;
 

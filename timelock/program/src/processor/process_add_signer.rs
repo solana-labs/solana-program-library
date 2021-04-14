@@ -61,7 +61,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
         destination: new_signatory_account_info.clone(),
         amount: 1,
         authority: timelock_program_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;
 

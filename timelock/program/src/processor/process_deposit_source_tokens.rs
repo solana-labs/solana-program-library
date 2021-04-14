@@ -52,7 +52,7 @@ pub fn process_deposit_source_tokens(
         destination: voting_account_info.clone(),
         amount: voting_token_amount,
         authority: timelock_program_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;
 
@@ -61,7 +61,7 @@ pub fn process_deposit_source_tokens(
         destination: source_holding_account_info.clone(),
         amount: voting_token_amount,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;
 
