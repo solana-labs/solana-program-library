@@ -34,6 +34,22 @@ pub enum AuctionError {
     /// Auction is not currently running.
     #[error("Auction is not currently running.")]
     InvalidState,
+
+    /// Bid is too small.
+    #[error("Bid is too small.")]
+    BidTooSmall,
+
+    /// Token transfer failed
+    #[error("Token transfer failed")]
+    TokenTransferFailed,
+
+    /// Token mint to failed
+    #[error("Token mint to failed")]
+    TokenMintToFailed,
+
+    /// Token burn failed
+    #[error("Token burn failed")]
+    TokenBurnFailed,
 }
 
 impl PrintProgramError for AuctionError {
