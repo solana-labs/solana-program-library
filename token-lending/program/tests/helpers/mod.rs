@@ -1032,7 +1032,7 @@ impl TestReserve {
         );
         assert_eq!(reserve.liquidity.borrowed_amount_wads, Decimal::zero());
         assert!(reserve.liquidity.available_amount > 0);
-        assert!(reserve.collateral.mint_total_supply > 0);
+        assert!(reserve.collateral.mint_amount > 0);
     }
 }
 

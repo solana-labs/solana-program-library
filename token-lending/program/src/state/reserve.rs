@@ -489,7 +489,7 @@ pub struct ReserveCollateral {
     /// Reserve collateral mint address
     pub mint_pubkey: Pubkey,
     /// Reserve collateral mint supply, used for exchange rate
-    pub mint_total_supply: u64,
+    pub mint_amount: u64,
     /// Reserve collateral supply address
     pub supply_pubkey: Pubkey,
 }
@@ -499,15 +499,15 @@ impl ReserveCollateral {
     pub fn new(params: NewReserveCollateralParams) -> Self {
         Self {
             mint_pubkey: params.mint_pubkey,
-            mint_total_supply: 0,
+            mint_amount: 0,
             supply_pubkey: params.supply_pubkey,
         }
     }
 
     /// Add collateral to total supply
     pub fn mint(&mut self, collateral_amount: u64) -> ProgramResult {
-        self.mint_total_supply = self
-            .mint_total_supply
+        self.mint_amount = self
+            .mint_amount
             .checked_add(collateral_amount)
             .ok_or(LendingError::MathOverflow)?;
         Ok(())
@@ -515,8 +515,8 @@ impl ReserveCollateral {
 
     /// Remove collateral from total supply
     pub fn burn(&mut self, collateral_amount: u64) -> ProgramResult {
-        self.mint_total_supply = self
-            .mint_total_supply
+        self.mint_amount = self
+            .mint_amount
             .checked_sub(collateral_amount)
             .ok_or(LendingError::MathOverflow)?;
         Ok(())
@@ -527,11 +527,11 @@ impl ReserveCollateral {
         &self,
         total_liquidity: Decimal,
     ) -> Result<CollateralExchangeRate, ProgramError> {
-        let rate = if self.mint_total_supply == 0 || total_liquidity == Decimal::zero() {
+        let rate = if self.mint_amount == 0 || total_liquidity == Decimal::zero() {
             Rate::from_scaled_val(INITIAL_COLLATERAL_RATE)
         } else {
-            let collateral_supply = Decimal::from(self.mint_total_supply);
-            Rate::try_from(collateral_supply.try_div(total_liquidity)?)?
+            let mint_amount = Decimal::from(self.mint_amount);
+            Rate::try_from(mint_amount.try_div(total_liquidity)?)?
         };
 
         Ok(CollateralExchangeRate(rate))
@@ -718,7 +718,7 @@ impl Pack for Reserve {
             liquidity_cumulative_borrow_rate_wads,
             liquidity_borrowed_amount_wads,
             liquidity_available_amount,
-            collateral_mint_supply,
+            collateral_mint_amount,
             liquidity_market_price,
             _padding,
         ) = array_refs![
@@ -775,7 +775,7 @@ impl Pack for Reserve {
             },
             collateral: ReserveCollateral {
                 mint_pubkey: Pubkey::new_from_array(*collateral_mint),
-                mint_total_supply: u64::from_le_bytes(*collateral_mint_supply),
+                mint_amount: u64::from_le_bytes(*collateral_mint_amount),
                 supply_pubkey: Pubkey::new_from_array(*collateral_supply),
             },
             config: ReserveConfig {
@@ -822,7 +822,7 @@ impl Pack for Reserve {
             liquidity_cumulative_borrow_rate_wads,
             liquidity_borrowed_amount_wads,
             liquidity_available_amount,
-            collateral_mint_supply,
+            collateral_mint_amount,
             liquidity_market_price,
             _padding,
         ) = mut_array_refs![
@@ -877,7 +877,7 @@ impl Pack for Reserve {
 
         // collateral info
         collateral_mint.copy_from_slice(self.collateral.mint_pubkey.as_ref());
-        *collateral_mint_supply = self.collateral.mint_total_supply.to_le_bytes();
+        *collateral_mint_amount = self.collateral.mint_amount.to_le_bytes();
         collateral_supply.copy_from_slice(self.collateral.supply_pubkey.as_ref());
         liquidity_fee_receiver.copy_from_slice(self.liquidity.fee_receiver.as_ref());
 
