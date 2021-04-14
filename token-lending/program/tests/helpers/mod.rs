@@ -178,8 +178,7 @@ pub fn add_obligation(
     let (obligation_deposits, test_deposits) = deposits
         .iter()
         .map(|(deposit_reserve, collateral_amount)| {
-            let mut collateral =
-                ObligationCollateral::new(deposit_reserve.pubkey);
+            let mut collateral = ObligationCollateral::new(deposit_reserve.pubkey);
             collateral.deposited_amount = *collateral_amount;
 
             (
@@ -400,7 +399,10 @@ pub fn add_reserve(
         config,
     });
     reserve.deposit_liquidity(liquidity_amount).unwrap();
-    reserve.liquidity.borrow(borrow_amount.into(), borrow_amount).unwrap();
+    reserve
+        .liquidity
+        .borrow(borrow_amount.into(), borrow_amount)
+        .unwrap();
     let borrow_rate_multiplier = Rate::one()
         .try_add(Rate::from_percent(initial_borrow_rate))
         .unwrap();

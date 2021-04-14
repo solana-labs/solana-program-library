@@ -5,10 +5,10 @@ use crate::{
     instruction::LendingInstruction,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, WAD},
     state::{
-        CalculateBorrowResult, InitLendingMarketParams, InitObligationParams, InitReserveParams,
-        LendingMarket, CalculateLiquidationResult, NewReserveCollateralParams,
-        NewReserveLiquidityParams, Obligation, CalculateRepayResult, Reserve, ReserveCollateral,
-        ReserveConfig, ReserveLiquidity, PROGRAM_VERSION,
+        CalculateBorrowResult, CalculateLiquidationResult, CalculateRepayResult,
+        InitLendingMarketParams, InitObligationParams, InitReserveParams, LendingMarket,
+        NewReserveCollateralParams, NewReserveLiquidityParams, Obligation, Reserve,
+        ReserveCollateral, ReserveConfig, ReserveLiquidity,
     },
 };
 use flux_aggregator::read_median;
@@ -26,10 +26,7 @@ use solana_program::{
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 use spl_token::state::{Account, Mint};
-use std::{
-    convert::TryFrom,
-    u64
-};
+use std::{convert::TryFrom, u64};
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -712,7 +709,9 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::BorrowTooSmall.into());
     }
 
-    borrow_reserve.liquidity.borrow(borrow_amount, receive_amount)?;
+    borrow_reserve
+        .liquidity
+        .borrow(borrow_amount, receive_amount)?;
     borrow_reserve.last_update.mark_stale();
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
@@ -1292,8 +1291,7 @@ fn process_withdraw_obligation_collateral(
         // there are no borrows; they have been repaid, liquidated, or were never taken out
         if collateral_amount == u64::MAX {
             collateral.deposited_amount
-        }
-        else {
+        } else {
             collateral.deposited_amount.min(collateral_amount)
         }
     } else if obligation.deposited_value == Decimal::zero() {

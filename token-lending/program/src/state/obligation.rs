@@ -14,7 +14,7 @@ use solana_program::{
 };
 use std::{
     cmp::Ordering,
-    convert::{TryFrom, TryInto}
+    convert::{TryFrom, TryInto},
 };
 
 /// Max number of collateral and liquidity reserve accounts combined for an obligation
@@ -308,8 +308,7 @@ impl ObligationLiquidity {
                 msg!("Interest rate cannot be negative");
                 return Err(LendingError::NegativeInterestRate.into());
             }
-            Ordering::Equal => {
-            }
+            Ordering::Equal => {}
             Ordering::Greater => {
                 let compounded_interest_rate: Rate = cumulative_borrow_rate_wads
                     .try_div(self.cumulative_borrow_rate_wads)?
