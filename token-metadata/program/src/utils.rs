@@ -1,7 +1,12 @@
 use {
-    crate::error::MetadataError,
+    crate::{
+        error::MetadataError,
+        state::{Metadata, NameSymbolTuple, EDITION, PREFIX},
+    },
     solana_program::{
         account_info::AccountInfo,
+        borsh::try_from_slice_unchecked,
+        entrypoint::ProgramResult,
         msg,
         program::{invoke, invoke_signed},
         program_error::ProgramError,
@@ -9,6 +14,10 @@ use {
         pubkey::Pubkey,
         system_instruction,
         sysvar::{rent::Rent, Sysvar},
+    },
+    spl_token::{
+        instruction::{set_authority, AuthorityType},
+        state::Mint,
     },
     std::convert::TryInto,
 };
@@ -36,7 +45,7 @@ pub fn create_or_allocate_account_raw<'a>(
     payer_info: &AccountInfo<'a>,
     size: usize,
     signer_seeds: &[&[u8]],
-) -> Result<(), ProgramError> {
+) -> ProgramResult {
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
     let required_lamports = rent
         .minimum_balance(size)
@@ -70,4 +79,178 @@ pub fn create_or_allocate_account_raw<'a>(
     )?;
 
     Ok(())
+}
+
+pub fn assert_update_authority_is_correct(
+    metadata: &Metadata,
+    metadata_account_info: &AccountInfo,
+    ns_info: Option<&AccountInfo>,
+    update_authority_info: &AccountInfo,
+) -> ProgramResult {
+    match metadata.non_unique_specific_update_authority {
+        Some(val) => {
+            if val != *update_authority_info.key {
+                return Err(MetadataError::UpdateAuthorityIncorrect.into());
+            }
+        }
+        None => {
+            if let Some(name_symbol_account_info) = ns_info {
+                let name_symbol: NameSymbolTuple =
+                    try_from_slice_unchecked(&name_symbol_account_info.data.borrow())?;
+
+                if name_symbol.metadata != *metadata_account_info.key {
+                    return Err(MetadataError::InvalidMetadataForNameSymbolTuple.into());
+                }
+
+                if name_symbol.update_authority != *update_authority_info.key {
+                    return Err(MetadataError::UpdateAuthorityIncorrect.into());
+                }
+            }
+        }
+    }
+
+    if !update_authority_info.is_signer {
+        return Err(MetadataError::UpdateAuthorityIsNotSigner.into());
+    }
+
+    Ok(())
+}
+
+pub fn assert_mint_authority_matches_mint(
+    mint: &Mint,
+    mint_authority_info: &AccountInfo,
+) -> ProgramResult {
+    match mint.mint_authority {
+        solana_program::program_option::COption::None => {
+            return Err(MetadataError::InvalidMintAuthority.into());
+        }
+        solana_program::program_option::COption::Some(key) => {
+            if *mint_authority_info.key != key {
+                return Err(MetadataError::InvalidMintAuthority.into());
+            }
+        }
+    }
+
+    if !mint_authority_info.is_signer {
+        return Err(MetadataError::NotMintAuthority.into());
+    }
+
+    Ok(())
+}
+
+pub fn transfer_mint_authority<'a>(
+    edition_seeds: &[&[u8]],
+    edition_key: &Pubkey,
+    edition_account_info: &AccountInfo<'a>,
+    mint_info: &AccountInfo<'a>,
+    mint_authority_info: &AccountInfo<'a>,
+    token_program_info: &AccountInfo<'a>,
+) -> ProgramResult {
+    msg!("Setting mint authority");
+    invoke_signed(
+        &set_authority(
+            token_program_info.key,
+            mint_info.key,
+            Some(edition_key),
+            AuthorityType::MintTokens,
+            mint_authority_info.key,
+            &[&mint_authority_info.key],
+        )
+        .unwrap(),
+        &[
+            mint_authority_info.clone(),
+            mint_info.clone(),
+            token_program_info.clone(),
+            edition_account_info.clone(),
+        ],
+        &[edition_seeds],
+    )?;
+    msg!("Setting freeze authority");
+    invoke_signed(
+        &set_authority(
+            token_program_info.key,
+            mint_info.key,
+            Some(&edition_key),
+            AuthorityType::FreezeAccount,
+            mint_authority_info.key,
+            &[&mint_authority_info.key],
+        )
+        .unwrap(),
+        &[
+            mint_authority_info.clone(),
+            mint_info.clone(),
+            token_program_info.clone(),
+            edition_account_info.clone(),
+        ],
+        &[edition_seeds],
+    )?;
+
+    Ok(())
+}
+
+pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
+    if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
+        Err(MetadataError::NotRentExempt.into())
+    } else {
+        Ok(())
+    }
+}
+
+pub fn assert_edition_valid(
+    program_id: &Pubkey,
+    mint: &Pubkey,
+    edition_account_info: &AccountInfo,
+) -> ProgramResult {
+    let edition_seeds = &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        &mint.as_ref(),
+        EDITION.as_bytes(),
+    ];
+    let (edition_key, _) = Pubkey::find_program_address(edition_seeds, program_id);
+    if edition_key != *edition_account_info.key {
+        return Err(MetadataError::InvalidEditionKey.into());
+    }
+
+    Ok(())
+}
+
+/// Issue a spl_token `MintTo` instruction.
+pub fn spl_token_mint_to(params: TokenMintToParams<'_, '_>) -> ProgramResult {
+    let TokenMintToParams {
+        mint,
+        destination,
+        authority,
+        token_program,
+        amount,
+        authority_signer_seeds,
+    } = params;
+    let result = invoke_signed(
+        &spl_token::instruction::mint_to(
+            token_program.key,
+            mint.key,
+            destination.key,
+            authority.key,
+            &[],
+            amount,
+        )?,
+        &[mint, destination, authority, token_program],
+        &[authority_signer_seeds],
+    );
+    result.map_err(|_| MetadataError::TokenMintToFailed.into())
+}
+/// TokenMintToParams
+pub struct TokenMintToParams<'a: 'b, 'b> {
+    /// mint
+    pub mint: AccountInfo<'a>,
+    /// destination
+    pub destination: AccountInfo<'a>,
+    /// amount
+    pub amount: u64,
+    /// authority
+    pub authority: AccountInfo<'a>,
+    /// authority_signer_seeds
+    pub authority_signer_seeds: &'b [&'b [u8]],
+    /// token_program
+    pub token_program: AccountInfo<'a>,
 }

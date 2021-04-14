@@ -39,6 +39,10 @@ pub enum MetadataError {
     )]
     InvalidNameSymbolKey,
 
+    ///  Edition's key must match seed of ['metadata', program id, name, 'edition'] provided
+    #[error("Edition's key must match seed of ['metadata', program id, name, 'edition'] provided")]
+    InvalidEditionKey,
+
     /// This NameSymbol does not own this metadata
     #[error("This NameSymbol does not own this metadata")]
     InvalidMetadataForNameSymbolTuple,
@@ -51,10 +55,8 @@ pub enum MetadataError {
     #[error("Update Authority needs to be signer to update metadata")]
     UpdateAuthorityIsNotSigner,
 
-    /// You must be the mint authority and signer on this transaction to create it's metadata
-    #[error(
-        "You must be the mint authority and signer on this transaction to create it's metadata"
-    )]
+    /// You must be the mint authority and signer on this transaction
+    #[error("You must be the mint authority and signer on this transaction")]
     NotMintAuthority,
 
     /// Mint authority provided does not match the authority on the mint
@@ -76,6 +78,42 @@ pub enum MetadataError {
     /// Update authority must be equivalent to the name symbol tuple's authority and also signer of this transaction
     #[error("Update authority must be equivalent to the name symbol tuple's authority and also signer of this transaction")]
     UpdateAuthorityMustBeEqualToNameSymbolAuthorityAndSigner,
+
+    /// Update authority must be equivalent to the metadata's authority and also signer of this transaction
+    #[error("Update authority must be equivalent to the metadata's authority and also signer of this transaction")]
+    UpdateAuthorityMustBeEqualToMetadataAuthorityAndSigner,
+
+    /// Mint given does not match mint on Metadata
+    #[error("Mint given does not match mint on Metadata")]
+    MintMismatch,
+
+    /// Master Records must have exactly one token
+    #[error("Master Records must have exactly one token")]
+    MasterRecordsMustHaveExactlyOneToken,
+
+    /// Maximum editions printed already
+    #[error("Maximum editions printed already")]
+    MaxEditionsMintedAlready,
+
+    /// Newly minted editions must have zero tokens
+    #[error("Newly minted editions must have zero tokens")]
+    NewlyMintedEditionsMustHaveZeroTokens,
+
+    /// Token mint to failed
+    #[error("Token mint to failed")]
+    TokenMintToFailed,
+
+    /// The master edition record passed must match the master record on the edition given
+    #[error("The master edition record passed must match the master record on the edition given")]
+    MasterRecordMismatch,
+
+    /// The destination account for your new edition token does not have the right mint
+    #[error("The destination account for your new edition token does not have the right mint")]
+    DestinationMintMismatch,
+
+    /// An edition can only mint one of its kind!
+    #[error("An edition can only mint one of its kind!")]
+    EditionAlreadyMinted,
 }
 
 impl PrintProgramError for MetadataError {

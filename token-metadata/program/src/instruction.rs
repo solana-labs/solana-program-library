@@ -25,6 +25,13 @@ pub struct CreateMetadataAccountArgs {
     pub data: Data,
 }
 
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct CreateMasterRecordArgs {
+    /// If set, means that no more than this number of editions can ever be minted. This is immutable.
+    pub max_editions: Option<u64>,
+}
+
 /// Instructions supported by the Metadata program.
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub enum MetadataInstruction {
@@ -36,6 +43,7 @@ pub enum MetadataInstruction {
     ///   4. `[signer]` payer
     ///   5. `[signer]` update authority info (Signer is optional - only required if NameSymbolTuple exists)
     ///   6. `[]` System program
+    ///   7. `[]` Rent info
     CreateMetadataAccounts(CreateMetadataAccountArgs),
 
     /// Update an  Metadata (name/symbol are unchangeable)
@@ -46,10 +54,51 @@ pub enum MetadataInstruction {
     UpdateMetadataAccounts(UpdateMetadataAccountArgs),
 
     /// Transfer Update Authority
-    ///   0. `[writable]`  NameSymbolTuple account
+    ///   0. `[writable]`  NameSymbolTuple account or Metadata account (if duplicatable)
     ///   1. `[signer]` Current Update authority key
     ///   2. `[]`  New Update authority account key
     TransferUpdateAuthority,
+
+    /// Register a Metadata as a Master Record, which means Editions can be minted.
+    /// Henceforth, no further tokens will be mintable from this primary mint. Will throw an error if more than one
+    /// token exists, and will throw an error if less than one token exists in this primary mint.
+    ///   0. `[writable]` Unallocated edition account with address as pda of ['metadata', program id, mint, 'edition']
+    ///   1. `[writable]` Metadata mint
+    ///   2. `[signer]` Current Update authority key on metadata
+    ///   3. `[signer]` Mint authority on the metadata's mint - THIS WILL TRANSFER AUTHORITY AWAY FROM THIS KEY
+    ///   4. `[]` Metadata account
+    ///   5. `[]` Name symbol account (optional), will be used if update authority on metadata is None
+    ///   6. `[signer]` payer
+    ///   7. `[]` Token program
+    ///   8. `[]` System program
+    ///   9. `[]` Rent info
+    CreateMasterRecord(CreateMasterRecordArgs),
+
+    /// Given a master record, mint a new edition from it, if max_editions not already maxed out. Owner set to owner of original.
+    /// If you want to move it, transfer it yourself. Note that Edition coins cannot be unique, by definition, since they have same name/symbols.
+    ///   0. `[writable]` New Metadata key (pda of ['metadata', program id, mint id])
+    ///   1. `[writable]` New Edition (pda of ['metadata', program id, mint id, 'edition'])
+    ///   2. `[writable]` Master Record Edition (pda of ['metadata', program id, master mint id, 'edition'])
+    ///   3. `[writable]` Mint of new token - THIS WILL TRANSFER AUTHORITY AWAY FROM THIS KEY
+    ///   4. `[signer]` Mint authority
+    ///   5. `[signer]` payer
+    ///   6. `[signer]` update authority info of master metadata account
+    ///   7. `[]` Master record metadata account
+    ///   8. `[]` System program
+    ///   9. `[]` Token program
+    ///   10. `[]` Rent info
+    MintNewEditionFromMasterRecord,
+
+    /// Mints a single token for an edition. Can only be called once per edition.
+    ///   0. `[writable]` Mint of Metadata account
+    ///   1. `[writable]` Initialized destination account
+    ///   2. `[signer]` update authority info of master metadata account, update authority of this metadata IS NOT required here
+    ///   3. `[]` Edition of Metadata (pda of ['metadata', program id, mint id, 'edition'])
+    ///   4. `[]` Master Edition of Master Metadata (pda of ['metadata', program id, mint id, 'edition'])
+    ///   5. `[]` Master metadata account
+    ///   7. `[]` Token program
+    ///   8. `[]` Rent info
+    MintTokenForEdition,
 }
 
 /// Creates an CreateMetadataAccounts instruction
