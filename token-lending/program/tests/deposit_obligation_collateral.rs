@@ -36,8 +36,6 @@ async fn test_success() {
 
     let user_accounts_owner = Keypair::new();
     let user_transfer_authority = Keypair::new();
-    let obligation_token_mint_keypair = Keypair::new();
-    let obligation_token_account_keypair = Keypair::new();
 
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
@@ -77,20 +75,6 @@ async fn test_success() {
 
     let mut transaction = Transaction::new_with_payer(
         &[
-            create_account(
-                &payer.pubkey(),
-                &obligation_token_mint_keypair.pubkey(),
-                rent.minimum_balance(Mint::LEN),
-                Mint::LEN as u64,
-                &spl_token::id(),
-            ),
-            create_account(
-                &payer.pubkey(),
-                &obligation_token_account_keypair.pubkey(),
-                rent.minimum_balance(Token::LEN),
-                Token::LEN as u64,
-                &spl_token::id(),
-            ),
             approve(
                 &spl_token::id(),
                 &sol_test_reserve.user_collateral_pubkey,
@@ -107,8 +91,6 @@ async fn test_success() {
                 sol_test_reserve.collateral_supply_pubkey,
                 sol_test_reserve.pubkey,
                 test_obligation.pubkey,
-                obligation_token_mint_keypair.pubkey(),
-                obligation_token_account_keypair.pubkey(),
                 lending_market.pubkey,
                 test_obligation.owner,
                 user_transfer_authority.pubkey(),
@@ -120,8 +102,6 @@ async fn test_success() {
     transaction.sign(
         &vec![
             &payer,
-            &obligation_token_mint_keypair,
-            &obligation_token_account_keypair,
             &user_accounts_owner,
             &user_transfer_authority,
         ],
@@ -142,9 +122,4 @@ async fn test_success() {
         user_collateral_balance,
         initial_user_collateral_balance - SOL_DEPOSIT_AMOUNT_LAMPORTS
     );
-
-    // check that obligation tokens were minted
-    let obligation_token_balance =
-        get_token_balance(&mut banks_client, obligation_token_account_keypair.pubkey()).await;
-    assert_eq!(obligation_token_balance, SOL_DEPOSIT_AMOUNT_LAMPORTS);
 }

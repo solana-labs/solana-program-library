@@ -178,36 +178,8 @@ pub fn add_obligation(
     let (obligation_deposits, test_deposits) = deposits
         .iter()
         .map(|(deposit_reserve, collateral_amount)| {
-            let token_mint_pubkey = Pubkey::new_unique();
-            test.add_packable_account(
-                token_mint_pubkey,
-                u32::MAX as u64,
-                &Mint {
-                    is_initialized: true,
-                    decimals: deposit_reserve.liquidity_mint_decimals,
-                    mint_authority: COption::Some(lending_market.authority),
-                    supply: *collateral_amount,
-                    ..Mint::default()
-                },
-                &spl_token::id(),
-            );
-
-            let token_account_pubkey = Pubkey::new_unique();
-            test.add_packable_account(
-                token_account_pubkey,
-                u32::MAX as u64,
-                &Token {
-                    mint: token_mint_pubkey,
-                    owner: user_accounts_owner.pubkey(),
-                    state: AccountState::Initialized,
-                    amount: *collateral_amount,
-                    ..Token::default()
-                },
-                &spl_token::id(),
-            );
-
             let mut collateral =
-                ObligationCollateral::new(deposit_reserve.pubkey, token_mint_pubkey);
+                ObligationCollateral::new(deposit_reserve.pubkey);
             collateral.deposited_amount = *collateral_amount;
 
             (
@@ -215,8 +187,6 @@ pub fn add_obligation(
                 TestObligationCollateral {
                     obligation_pubkey,
                     deposit_reserve: deposit_reserve.pubkey,
-                    token_mint: token_mint_pubkey,
-                    token_account: token_account_pubkey,
                     deposited_amount: *collateral_amount,
                 },
             )
@@ -1117,8 +1087,6 @@ impl TestObligation {
 pub struct TestObligationCollateral {
     pub obligation_pubkey: Pubkey,
     pub deposit_reserve: Pubkey,
-    pub token_mint: Pubkey,
-    pub token_account: Pubkey,
     pub deposited_amount: u64,
 }
 
@@ -1139,7 +1107,6 @@ impl TestObligationCollateral {
         let (collateral, _) = obligation
             .find_collateral_in_deposits(self.deposit_reserve)
             .unwrap();
-        assert_eq!(collateral.token_mint, self.token_mint);
         assert_eq!(collateral.deposited_amount, self.deposited_amount);
     }
 }

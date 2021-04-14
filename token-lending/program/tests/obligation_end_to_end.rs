@@ -59,12 +59,6 @@ async fn test_success() {
     let obligation_keypair = Keypair::new();
     let obligation_pubkey = obligation_keypair.pubkey();
 
-    let obligation_token_mint_keypair = Keypair::new();
-    let obligation_token_mint_pubkey = obligation_token_mint_keypair.pubkey();
-
-    let obligation_token_account_keypair = Keypair::new();
-    let obligation_token_account_pubkey = obligation_token_account_keypair.pubkey();
-
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
@@ -131,28 +125,12 @@ async fn test_success() {
                 user_accounts_owner_pubkey,
             ),
             // 2
-            create_account(
-                &payer_pubkey,
-                &obligation_token_mint_pubkey,
-                rent.minimum_balance(Mint::LEN),
-                Mint::LEN as u64,
-                &spl_token::id(),
-            ),
-            // 3
-            create_account(
-                &payer_pubkey,
-                &obligation_token_account_pubkey,
-                rent.minimum_balance(Token::LEN),
-                Token::LEN as u64,
-                &spl_token::id(),
-            ),
-            // 4
             refresh_reserve(
                 spl_token_lending::id(),
                 sol_test_reserve.pubkey,
                 sol_test_reserve.liquidity_aggregator_pubkey,
             ),
-            // 5
+            // 3
             approve(
                 &spl_token::id(),
                 &sol_test_reserve.user_collateral_pubkey,
@@ -162,7 +140,7 @@ async fn test_success() {
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,
             )
             .unwrap(),
-            // 6
+            // 4
             deposit_obligation_collateral(
                 spl_token_lending::id(),
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,
@@ -170,21 +148,19 @@ async fn test_success() {
                 sol_test_reserve.collateral_supply_pubkey,
                 sol_test_reserve.pubkey,
                 obligation_pubkey,
-                obligation_token_mint_pubkey,
-                obligation_token_account_pubkey,
                 lending_market.pubkey,
                 user_accounts_owner_pubkey,
                 user_transfer_authority_pubkey,
             ),
-            // 7
+            // 5
             refresh_obligation(
                 spl_token_lending::id(),
                 obligation_pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
-            // 8
+            // 6
             refresh_reserve(spl_token_lending::id(), usdc_test_reserve.pubkey, None),
-            // 9
+            // 7
             borrow_obligation_liquidity(
                 spl_token_lending::id(),
                 USDC_BORROW_AMOUNT_FRACTIONAL,
@@ -197,15 +173,15 @@ async fn test_success() {
                 user_accounts_owner_pubkey,
                 Some(usdc_test_reserve.liquidity_host_pubkey),
             ),
-            // 10
+            // 8
             refresh_reserve(spl_token_lending::id(), usdc_test_reserve.pubkey, None),
-            // 11
+            // 9
             refresh_obligation(
                 spl_token_lending::id(),
                 obligation_pubkey,
                 vec![sol_test_reserve.pubkey, usdc_test_reserve.pubkey],
             ),
-            // 12
+            // 10
             approve(
                 &spl_token::id(),
                 &usdc_test_reserve.user_liquidity_pubkey,
@@ -215,7 +191,7 @@ async fn test_success() {
                 USDC_REPAY_AMOUNT_FRACTIONAL,
             )
             .unwrap(),
-            // 13
+            // 11
             repay_obligation_liquidity(
                 spl_token_lending::id(),
                 USDC_REPAY_AMOUNT_FRACTIONAL,
@@ -226,23 +202,13 @@ async fn test_success() {
                 lending_market.pubkey,
                 user_transfer_authority_pubkey,
             ),
-            // 14
+            // 12
             refresh_obligation(
                 spl_token_lending::id(),
                 obligation_pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
-            // 15
-            approve(
-                &spl_token::id(),
-                &obligation_token_account_pubkey,
-                &user_transfer_authority_pubkey,
-                &user_accounts_owner_pubkey,
-                &[],
-                SOL_DEPOSIT_AMOUNT_LAMPORTS,
-            )
-            .unwrap(),
-            // 16
+            // 13
             withdraw_obligation_collateral(
                 spl_token_lending::id(),
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,
@@ -250,8 +216,6 @@ async fn test_success() {
                 sol_test_reserve.user_collateral_pubkey,
                 sol_test_reserve.pubkey,
                 obligation_pubkey,
-                obligation_token_mint_pubkey,
-                obligation_token_account_pubkey,
                 lending_market.pubkey,
                 user_transfer_authority_pubkey,
             ),
@@ -264,8 +228,6 @@ async fn test_success() {
             &payer,
             &obligation_keypair,
             &user_accounts_owner,
-            &obligation_token_mint_keypair,
-            &obligation_token_account_keypair,
             &user_transfer_authority,
         ],
         recent_blockhash,
@@ -306,9 +268,6 @@ async fn test_success() {
         initial_liquidity_supply
     );
 
-    let obligation_token_balance =
-        get_token_balance(&mut banks_client, obligation_token_account_pubkey).await;
-    assert_eq!(obligation_token_balance, 0);
     assert_eq!(obligation.deposits.len(), 0);
     assert_eq!(obligation.borrows.len(), 0);
 

@@ -660,10 +660,6 @@ fn process_borrow_obligation_liquidity(
         msg!("Obligation lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if obligation.last_update.is_stale(clock.slot)? {
-        msg!("Obligation is stale and must be refreshed in the current slot");
-        return Err(LendingError::ObligationStale.into());
-    }
     if &obligation.owner != obligation_owner_info.key {
         msg!("Obligation owner does not match the obligation owner provided");
         return Err(LendingError::InvalidObligationOwner.into());
@@ -671,6 +667,10 @@ fn process_borrow_obligation_liquidity(
     if !obligation_owner_info.is_signer {
         msg!("Obligation owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
+    }
+    if obligation.last_update.is_stale(clock.slot)? {
+        msg!("Obligation is stale and must be refreshed in the current slot");
+        return Err(LendingError::ObligationStale.into());
     }
     if obligation.deposits.is_empty() {
         msg!("Obligation has no deposits to borrow against");
@@ -1098,14 +1098,11 @@ fn process_deposit_obligation_collateral(
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let deposit_reserve_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_token_mint_info = next_account_info(account_info_iter)?;
-    let obligation_token_output_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
-    let rent_info = next_account_info(account_info_iter)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
@@ -1164,54 +1161,6 @@ fn process_deposit_obligation_collateral(
         return Err(LendingError::InvalidSigner.into());
     }
 
-    // @TODO: Does there need to be a check to make sure obligation_token_mint_info is rent exempt?
-    let obligation_token_mint = Mint::unpack_unchecked(&obligation_token_mint_info.data.borrow())?;
-    if obligation_token_mint.is_initialized() {
-        if obligation_token_mint_info.owner != token_program_id.key {
-            msg!("Obligation token mint provided is not owned by the token program provided");
-            return Err(LendingError::InvalidTokenOwner.into());
-        }
-        if obligation_token_mint.mint_authority != COption::Some(*lending_market_authority_info.key)
-        {
-            msg!("Obligation token mint authority does not match the lending market authority provided");
-            return Err(LendingError::InvalidAccountInput.into());
-        }
-    } else {
-        spl_token_init_mint(TokenInitializeMintParams {
-            mint: obligation_token_mint_info.clone(),
-            authority: lending_market_authority_info.key,
-            rent: rent_info.clone(),
-            decimals: deposit_reserve.liquidity.mint_decimals,
-            token_program: token_program_id.clone(),
-        })?;
-    }
-
-    // @TODO: Does there need to be a check to make sure obligation_token_output_info is rent exempt?
-    let obligation_token_output =
-        Account::unpack_unchecked(&obligation_token_output_info.data.borrow())?;
-    if obligation_token_output.is_initialized() {
-        if obligation_token_output_info.owner != token_program_id.key {
-            msg!("Obligation token output provided is not owned by the token program provided");
-            return Err(LendingError::InvalidTokenOwner.into());
-        }
-        if &obligation_token_output.mint != obligation_token_mint_info.key {
-            msg!("Obligation token output mint does not match the obligation token mint provided");
-            return Err(LendingError::InvalidTokenMint.into());
-        }
-        if &obligation_token_output.owner != obligation_owner_info.key {
-            msg!("Obligation token output owner does not match the obligation owner provided");
-            return Err(LendingError::InvalidObligationOwner.into());
-        }
-    } else {
-        spl_token_init_account(TokenInitializeAccountParams {
-            account: obligation_token_output_info.clone(),
-            mint: obligation_token_mint_info.clone(),
-            owner: obligation_owner_info.clone(),
-            rent: rent_info.clone(),
-            token_program: token_program_id.clone(),
-        })?;
-    }
-
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
         &[lending_market.bump_seed],
@@ -1226,10 +1175,7 @@ fn process_deposit_obligation_collateral(
     }
 
     obligation
-        .find_or_add_collateral_to_deposits(
-            *deposit_reserve_info.key,
-            *obligation_token_mint_info.key,
-        )?
+        .find_or_add_collateral_to_deposits(*deposit_reserve_info.key)?
         .deposit(collateral_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
@@ -1240,15 +1186,6 @@ fn process_deposit_obligation_collateral(
         amount: collateral_amount,
         authority: user_transfer_authority_info.clone(),
         authority_signer_seeds: &[],
-        token_program: token_program_id.clone(),
-    })?;
-
-    spl_token_mint_to(TokenMintToParams {
-        mint: obligation_token_mint_info.clone(),
-        destination: obligation_token_output_info.clone(),
-        amount: collateral_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
 
@@ -1271,11 +1208,9 @@ fn process_withdraw_obligation_collateral(
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
-    let obligation_token_mint_info = next_account_info(account_info_iter)?;
-    let obligation_token_input_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
-    let user_transfer_authority_info = next_account_info(account_info_iter)?;
+    let obligation_owner_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -1320,6 +1255,14 @@ fn process_withdraw_obligation_collateral(
         msg!("Obligation lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    if &obligation.owner != obligation_owner_info.key {
+        msg!("Obligation owner does not match the obligation owner provided");
+        return Err(LendingError::InvalidObligationOwner.into());
+    }
+    if !obligation_owner_info.is_signer {
+        msg!("Obligation owner provided must be a signer");
+        return Err(LendingError::InvalidSigner.into());
+    }
     if obligation.last_update.is_stale(clock.slot)? {
         msg!("Obligation is stale and must be refreshed in the current slot");
         return Err(LendingError::ObligationStale.into());
@@ -1327,35 +1270,9 @@ fn process_withdraw_obligation_collateral(
 
     let (collateral, collateral_index) =
         obligation.find_collateral_in_deposits(*withdraw_reserve_info.key)?;
-    if &collateral.token_mint != obligation_token_mint_info.key {
-        msg!("Collateral token mint does not match the obligation token mint provided");
-        return Err(LendingError::InvalidTokenMint.into());
-    }
     if collateral.deposited_amount == 0 {
         msg!("Collateral deposited amount is zero");
         return Err(LendingError::ObligationCollateralEmpty.into());
-    }
-
-    let obligation_token_mint = unpack_mint(&obligation_token_mint_info.data.borrow())?;
-    if obligation_token_mint_info.owner != token_program_id.key {
-        msg!("Obligation token mint provided is not owned by the token program provided");
-        return Err(LendingError::InvalidTokenOwner.into());
-    }
-    if obligation_token_mint.mint_authority != COption::Some(*lending_market_authority_info.key) {
-        msg!(
-            "Obligation token mint authority does not match the lending market authority provided"
-        );
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-
-    let obligation_token_input = Account::unpack(&obligation_token_input_info.data.borrow())?;
-    if obligation_token_input_info.owner != token_program_id.key {
-        msg!("Obligation token input provided is not owned by the token program provided");
-        return Err(LendingError::InvalidTokenOwner.into());
-    }
-    if &obligation_token_input.mint != obligation_token_mint_info.key {
-        msg!("Obligation token input mint does not match the obligation token mint provided");
-        return Err(LendingError::InvalidTokenMint.into());
     }
 
     let authority_signer_seeds = &[
@@ -1416,25 +1333,9 @@ fn process_withdraw_obligation_collateral(
         withdraw_amount
     };
 
-    let obligation_token_amount = collateral
-        .collateral_to_obligation_token_amount(withdraw_amount, obligation_token_mint.supply)?;
-    if obligation_token_amount == 0 {
-        msg!("Withdraw amount is too small to burn obligation tokens");
-        return Err(LendingError::WithdrawTooSmall.into());
-    }
-
     obligation.withdraw(withdraw_amount, collateral_index)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
-
-    spl_token_burn(TokenBurnParams {
-        mint: obligation_token_mint_info.clone(),
-        source: obligation_token_input_info.clone(),
-        amount: obligation_token_amount,
-        authority: user_transfer_authority_info.clone(),
-        authority_signer_seeds: &[],
-        token_program: token_program_id.clone(),
-    })?;
 
     spl_token_transfer(TokenTransferParams {
         source: source_collateral_info.clone(),

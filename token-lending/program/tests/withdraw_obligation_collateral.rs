@@ -96,23 +96,12 @@ async fn test_withdraw_base_currency_fixed_amount() {
         get_token_balance(&mut banks_client, sol_test_reserve.collateral_supply_pubkey).await;
     let initial_user_collateral_balance =
         get_token_balance(&mut banks_client, sol_test_reserve.user_collateral_pubkey).await;
-    let initial_obligation_token_balance =
-        get_token_balance(&mut banks_client, test_collateral.token_account).await;
 
     let mut transaction = Transaction::new_with_payer(
         &[
             approve(
                 &spl_token::id(),
                 &sol_test_reserve.user_collateral_pubkey,
-                &user_transfer_authority.pubkey(),
-                &user_accounts_owner.pubkey(),
-                &[],
-                WITHDRAW_AMOUNT,
-            )
-            .unwrap(),
-            approve(
-                &spl_token::id(),
-                &test_collateral.token_account,
                 &user_transfer_authority.pubkey(),
                 &user_accounts_owner.pubkey(),
                 &[],
@@ -131,8 +120,6 @@ async fn test_withdraw_base_currency_fixed_amount() {
                 sol_test_reserve.user_collateral_pubkey,
                 sol_test_reserve.pubkey,
                 test_obligation.pubkey,
-                test_collateral.token_mint,
-                test_collateral.token_account,
                 lending_market.pubkey,
                 user_transfer_authority.pubkey(),
             ),
@@ -158,14 +145,6 @@ async fn test_withdraw_base_currency_fixed_amount() {
     assert_eq!(
         user_collateral_balance,
         initial_user_collateral_balance + WITHDRAW_AMOUNT
-    );
-
-    // check that obligation tokens were burned
-    let obligation_token_balance =
-        get_token_balance(&mut banks_client, test_collateral.token_account).await;
-    assert_eq!(
-        obligation_token_balance,
-        initial_obligation_token_balance - WITHDRAW_AMOUNT
     );
 
     let obligation = test_obligation.get_state(&mut banks_client).await;
@@ -238,23 +217,12 @@ async fn test_withdraw_quote_currency_all() {
     .await;
     let initial_user_collateral_balance =
         get_token_balance(&mut banks_client, usdc_test_reserve.user_collateral_pubkey).await;
-    let initial_obligation_token_balance =
-        get_token_balance(&mut banks_client, test_collateral.token_account).await;
 
     let mut transaction = Transaction::new_with_payer(
         &[
             approve(
                 &spl_token::id(),
                 &usdc_test_reserve.user_collateral_pubkey,
-                &user_transfer_authority.pubkey(),
-                &user_accounts_owner.pubkey(),
-                &[],
-                WITHDRAW_AMOUNT,
-            )
-            .unwrap(),
-            approve(
-                &spl_token::id(),
-                &test_collateral.token_account,
                 &user_transfer_authority.pubkey(),
                 &user_accounts_owner.pubkey(),
                 &[],
@@ -273,8 +241,6 @@ async fn test_withdraw_quote_currency_all() {
                 usdc_test_reserve.user_collateral_pubkey,
                 usdc_test_reserve.pubkey,
                 test_obligation.pubkey,
-                test_collateral.token_mint,
-                test_collateral.token_account,
                 lending_market.pubkey,
                 user_transfer_authority.pubkey(),
             ),
@@ -303,14 +269,6 @@ async fn test_withdraw_quote_currency_all() {
     assert_eq!(
         user_collateral_balance,
         initial_user_collateral_balance + USDC_DEPOSIT_AMOUNT_FRACTIONAL
-    );
-
-    // check that obligation tokens were burned
-    let obligation_token_balance =
-        get_token_balance(&mut banks_client, test_collateral.token_account).await;
-    assert_eq!(
-        obligation_token_balance,
-        initial_obligation_token_balance - USDC_DEPOSIT_AMOUNT_FRACTIONAL
     );
 
     let obligation = test_obligation.get_state(&mut banks_client).await;
@@ -393,15 +351,6 @@ async fn test_withdraw_too_large() {
                 WITHDRAW_AMOUNT,
             )
             .unwrap(),
-            approve(
-                &spl_token::id(),
-                &test_collateral.token_account,
-                &user_transfer_authority.pubkey(),
-                &user_accounts_owner.pubkey(),
-                &[],
-                WITHDRAW_AMOUNT,
-            )
-            .unwrap(),
             refresh_obligation(
                 spl_token_lending::id(),
                 test_obligation.pubkey,
@@ -414,8 +363,6 @@ async fn test_withdraw_too_large() {
                 sol_test_reserve.user_collateral_pubkey,
                 sol_test_reserve.pubkey,
                 test_obligation.pubkey,
-                test_collateral.token_mint,
-                test_collateral.token_account,
                 lending_market.pubkey,
                 user_transfer_authority.pubkey(),
             ),
