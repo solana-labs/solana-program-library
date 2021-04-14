@@ -312,8 +312,8 @@ impl TimelockInstruction {
                 let mut desc_link = [0u8; DESC_SIZE];
                 let mut name = [0u8; NAME_SIZE];
 
-                desc_link.clone_from_slice(&input_desc_link);
-                name.clone_from_slice(&input_name[..(NAME_SIZE - 1)]);
+                desc_link[..(DESC_SIZE - 1)].clone_from_slice(&input_desc_link[..(DESC_SIZE - 1)]);
+                name[..(NAME_SIZE - 1)].clone_from_slice(&input_name[..(NAME_SIZE - 1)]);
                 Self::InitTimelockSet { desc_link, name }
             }
             2 => Self::AddSigner,
@@ -354,8 +354,10 @@ impl TimelockInstruction {
                 let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
                 let (minimum_slot_waiting_period, rest) = Self::unpack_u64(rest)?;
                 let (time_limit, rest) = Self::unpack_u64(rest)?;
+
                 let mut name = [0u8; CONFIG_NAME_LENGTH];
-                name.clone_from_slice(&rest[..(CONFIG_NAME_LENGTH - 1)]);
+                name[..(CONFIG_NAME_LENGTH - 1)]
+                    .clone_from_slice(&rest[..(CONFIG_NAME_LENGTH - 1)]);
                 Self::InitTimelockConfig {
                     consensus_algorithm,
                     execution_type,
@@ -427,7 +429,8 @@ impl TimelockInstruction {
 
             let (input_instruction, rest) = input.split_at(INSTRUCTION_LIMIT);
             let mut instruction = [0u8; INSTRUCTION_LIMIT];
-            instruction.clone_from_slice(&input_instruction);
+            instruction[..(INSTRUCTION_LIMIT - 1)]
+                .clone_from_slice(&input_instruction[..(INSTRUCTION_LIMIT - 1)]);
             Ok((instruction, rest))
         } else {
             Err(TimelockError::InstructionUnpackError.into())
