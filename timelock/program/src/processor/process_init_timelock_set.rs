@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::utils::assert_mint_authority;
+use crate::utils::{assert_account_owner, assert_mint_authority};
 use crate::{
     error::TimelockError,
     state::{
@@ -11,7 +11,7 @@ use crate::{
     },
     utils::{
         assert_account_mint, assert_initialized, assert_mint_decimals, assert_mint_initialized,
-        assert_rent_exempt, assert_uninitialized, get_mint_decimals, get_mint_from_account,
+        assert_rent_exempt, assert_uninitialized, get_mint_decimals, get_mint_from_token_account,
         spl_token_mint_to, TokenMintToParams,
     },
 };
@@ -105,7 +105,7 @@ pub fn process_init_timelock_set(
     assert_mint_initialized(signatory_mint_account_info)?;
     assert_mint_initialized(source_mint_account_info)?;
 
-    let source_holding_mint: Pubkey = get_mint_from_account(source_holding_account_info)?;
+    let source_holding_mint: Pubkey = get_mint_from_token_account(source_holding_account_info)?;
 
     assert_account_mint(destination_sig_account_info, signatory_mint_account_info)?;
     assert_account_mint(destination_admin_account_info, admin_mint_account_info)?;
@@ -118,6 +118,31 @@ pub fn process_init_timelock_set(
     assert_account_mint(yes_voting_dump_account_info, yes_voting_mint_account_info)?;
     assert_account_mint(no_voting_dump_account_info, no_voting_mint_account_info)?;
     assert_account_mint(source_holding_account_info, source_mint_account_info)?;
+
+    assert_account_owner(
+        signatory_validation_account_info,
+        timelock_program_authority_info.key,
+    )?;
+    assert_account_owner(
+        admin_validation_account_info,
+        timelock_program_authority_info.key,
+    )?;
+    assert_account_owner(
+        voting_validation_account_info,
+        timelock_program_authority_info.key,
+    )?;
+    assert_account_owner(
+        yes_voting_dump_account_info,
+        timelock_program_authority_info.key,
+    )?;
+    assert_account_owner(
+        no_voting_dump_account_info,
+        timelock_program_authority_info.key,
+    )?;
+    assert_account_owner(
+        source_holding_account_info,
+        timelock_program_authority_info.key,
+    )?;
 
     let source_mint_decimals = get_mint_decimals(source_mint_account_info)?;
     assert_mint_decimals(voting_mint_account_info, source_mint_decimals)?;

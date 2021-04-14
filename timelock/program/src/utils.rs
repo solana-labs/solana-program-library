@@ -165,10 +165,20 @@ pub fn assert_account_equiv(acct: &AccountInfo, key: &Pubkey) -> ProgramResult {
 }
 
 /// Cheaper Assertion the account belongs to the given mint - if you don't plan to use Mint for anything else
-pub fn assert_account_mint(acct: &AccountInfo, mint: &AccountInfo) -> ProgramResult {
-    let mint_key: Pubkey = get_mint_from_account(acct)?;
+pub fn assert_account_mint(token_account_info: &AccountInfo, mint: &AccountInfo) -> ProgramResult {
+    let mint_key = get_mint_from_token_account(token_account_info)?;
     if &mint_key != mint.key {
         return Err(TimelockError::MintsShouldMatch.into());
+    }
+
+    Ok(())
+}
+
+/// Cheap assertion the account belongs to the given owner
+pub fn assert_account_owner(token_account_info: &AccountInfo, owner: &Pubkey) -> ProgramResult {
+    let account_owner = get_owner_from_token_account(token_account_info)?;
+    if account_owner != *owner {
+        return Err(TimelockError::InvalidAccountOwnerError.into());
     }
 
     Ok(())
@@ -259,11 +269,23 @@ pub fn get_mint_decimals(account_info: &AccountInfo) -> Result<u8, ProgramError>
 }
 
 /// Cheap method to just grab mint Pubkey off token account, instead of deserializing entire thing
-pub fn get_mint_from_account(account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {
+pub fn get_mint_from_token_account(
+    token_account_info: &AccountInfo,
+) -> Result<Pubkey, ProgramError> {
     // Accounts have mint in first 32 bits.
-    let data = account_info.try_borrow_data().unwrap();
-    let key_data = array_ref![data, 0, 32];
-    Ok(Pubkey::new_from_array(*key_data))
+    let data = token_account_info.try_borrow_data().unwrap();
+    let mint_data = array_ref![data, 0, 32];
+    Ok(Pubkey::new_from_array(*mint_data))
+}
+
+/// Cheap method to just grab owner Pubkey from token account, instead of deserializing entire thing
+pub fn get_owner_from_token_account(
+    token_account_info: &AccountInfo,
+) -> Result<Pubkey, ProgramError> {
+    // TokeAccount layout:   mint(32), owner(32), ...
+    let data = token_account_info.try_borrow_data()?;
+    let owner_data = array_ref![data, 32, 32];
+    Ok(Pubkey::new_from_array(*owner_data))
 }
 
 /// assert initialized account
@@ -467,18 +489,15 @@ mod test {
         account_info::AccountInfo, clock::Epoch, program_option::COption, pubkey::Pubkey,
     };
 
-    use spl_token::state::Mint;
+    use spl_token::state::{Account as TokenAccount, Mint};
 
     #[test]
     pub fn test_assert_mint_decimals() {
         let decimals = 5;
 
         let mint = Mint {
-            mint_authority: COption::None,
-            supply: 100,
             decimals,
-            is_initialized: true,
-            freeze_authority: COption::None,
+            ..Default::default()
         };
 
         let mut data = vec![0; Mint::get_packed_len()];
@@ -508,10 +527,7 @@ mod test {
 
         let mint = Mint {
             mint_authority: COption::Some(mint_authority),
-            supply: 100,
-            decimals: 5,
-            is_initialized: true,
-            freeze_authority: COption::None,
+            ..Default::default()
         };
 
         let mut data = vec![0; Mint::get_packed_len()];
@@ -536,5 +552,34 @@ mod test {
             assert_mint_authority(&mint_account_info, &mint_authority),
             Ok(())
         );
+    }
+    #[test]
+    pub fn test_assert_account_owner() {
+        let owner = Pubkey::new_unique();
+
+        let account = TokenAccount {
+            owner: owner,
+            ..Default::default()
+        };
+
+        let mut data = vec![0; TokenAccount::get_packed_len()];
+        TokenAccount::pack(account, &mut data).unwrap();
+
+        let mut lamports = 0;
+
+        let program_id = Pubkey::new_unique();
+        let owner_key = Pubkey::new_unique();
+        let mint_account_info = AccountInfo::new(
+            &owner_key,
+            false,
+            false,
+            &mut lamports,
+            &mut data,
+            &program_id,
+            false,
+            Epoch::default(),
+        );
+
+        assert_eq!(assert_account_owner(&mint_account_info, &owner), Ok(()));
     }
 }

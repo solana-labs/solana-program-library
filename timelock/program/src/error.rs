@@ -47,6 +47,10 @@ pub enum TimelockError {
     #[error("Wrong mint authority was provided for mint")]
     InvalidMintAuthorityError,
 
+    /// Invalid account owner
+    #[error("Invalid account owner")]
+    InvalidAccountOwnerError,
+
     /// The wrong signatory mint was given for this timelock set
     #[error("The wrong signatory mint was given for this timelock set")]
     InvalidSignatoryMintError,
