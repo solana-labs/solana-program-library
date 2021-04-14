@@ -89,12 +89,12 @@ pub fn process_add_custom_single_signer_transaction(
     };
 
     TimelockState::pack(
-        timelock_state.clone(),
+        timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;
 
     CustomSingleSignerTimelockTransaction::pack(
-        timelock_txn.clone(),
+        timelock_txn,
         &mut timelock_txn_account_info.data.borrow_mut(),
     )?;
 

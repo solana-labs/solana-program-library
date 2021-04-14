@@ -3883,20 +3883,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-timelock-proposal-loader-client"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "bincode",
- "solana-client",
- "solana-program",
- "solana-sdk",
- "solana-transaction-status",
- "spl-timelock",
- "spl-token 3.1.0",
-]
-
-[[package]]
 name = "spl-token"
 version = "3.1.0"
 dependencies = [

@@ -121,7 +121,7 @@ pub fn process_withdraw_voting_tokens(
                 mint: voting_mint_account_info.clone(),
                 amount: amount_to_burn,
                 authority: transfer_authority_info.clone(),
-                authority_signer_seeds: authority_signer_seeds,
+                authority_signer_seeds,
                 token_program: token_program_account_info.clone(),
                 source: voting_account_info.clone(),
             })?;
@@ -152,7 +152,7 @@ pub fn process_withdraw_voting_tokens(
                     mint: yes_voting_mint_account_info.clone(),
                     amount: amount_to_transfer,
                     authority: transfer_authority_info.clone(),
-                    authority_signer_seeds: authority_signer_seeds,
+                    authority_signer_seeds,
                     token_program: token_program_account_info.clone(),
                     source: yes_voting_account_info.clone(),
                 })?;
@@ -162,7 +162,7 @@ pub fn process_withdraw_voting_tokens(
                     destination: yes_voting_dump_account_info.clone(),
                     amount: amount_to_transfer,
                     authority: transfer_authority_info.clone(),
-                    authority_signer_seeds: authority_signer_seeds,
+                    authority_signer_seeds,
                     token_program: token_program_account_info.clone(),
                 })?;
             }
@@ -181,7 +181,7 @@ pub fn process_withdraw_voting_tokens(
                 mint: no_voting_mint_account_info.clone(),
                 amount: voting_fuel_tank,
                 authority: transfer_authority_info.clone(),
-                authority_signer_seeds: authority_signer_seeds,
+                authority_signer_seeds,
                 token_program: token_program_account_info.clone(),
                 source: no_voting_account_info.clone(),
             })?;
@@ -191,7 +191,7 @@ pub fn process_withdraw_voting_tokens(
                 destination: no_voting_dump_account_info.clone(),
                 amount: voting_fuel_tank,
                 authority: transfer_authority_info.clone(),
-                authority_signer_seeds: authority_signer_seeds,
+                authority_signer_seeds,
                 token_program: token_program_account_info.clone(),
             })?;
         }
@@ -206,12 +206,12 @@ pub fn process_withdraw_voting_tokens(
         destination: user_account_info.clone(),
         amount: voting_token_amount,
         authority: timelock_program_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;
 
     GovernanceVotingRecord::pack(
-        voting_record.clone(),
+        voting_record,
         &mut voting_record_account_info.data.borrow_mut(),
     )?;
     Ok(())

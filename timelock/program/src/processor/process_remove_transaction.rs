@@ -68,7 +68,7 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
     };
 
     TimelockState::pack(
-        timelock_state.clone(),
+        timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;
 

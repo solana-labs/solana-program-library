@@ -61,14 +61,14 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         mint: signatory_mint_info.clone(),
         amount: 1,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_account_info.clone(),
         source: remove_signatory_account_info.clone(),
     })?;
     timelock_state.total_signing_tokens_minted -= 1;
 
     TimelockState::pack(
-        timelock_state.clone(),
+        timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;
     Ok(())

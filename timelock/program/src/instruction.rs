@@ -11,22 +11,9 @@ use crate::{
     },
 };
 
-/// Used for telling caller what type of format you want back
-#[derive(Clone, PartialEq)]
-pub enum Format {
-    /// JSON format
-    JSON,
-    /// MsgPack format
-    MsgPack,
-}
-impl Default for Format {
-    fn default() -> Self {
-        Format::JSON
-    }
-}
-
 /// Instructions supported by the Timelock program.
 #[derive(Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum TimelockInstruction {
     /// Initializes a new empty Timelocked set of Instructions that will be executed at various slots in the future in draft mode.
     /// Grants Admin token to caller.
@@ -49,8 +36,8 @@ pub enum TimelockInstruction {
     ///   15. `[writable]` Initialized source holding account
     ///   16. `[]` Source mint
     ///   17. `[]` Timelock minting authority (pda with seed of timelock set key)
-    ///   19. '[]` Token program id
-    ///   20. `[]` Rent sysvar
+    ///   18. '[]` Token program id
+    ///   19. `[]` Rent sysvar
     InitTimelockSet {
         /// Link to gist explaining proposal
         desc_link: [u8; DESC_SIZE],
@@ -308,15 +295,11 @@ impl TimelockInstruction {
         Ok(match tag {
             1 => {
                 let (input_desc_link, input_name) = rest.split_at(DESC_SIZE);
-                let mut desc_link: [u8; DESC_SIZE] = [0; DESC_SIZE];
-                let mut name: [u8; NAME_SIZE] = [0; NAME_SIZE];
-                for n in 0..(DESC_SIZE - 1) {
-                    desc_link[n] = input_desc_link[n];
-                }
+                let mut desc_link = [0u8; DESC_SIZE];
+                let mut name = [0u8; NAME_SIZE];
 
-                for n in 0..(NAME_SIZE - 1) {
-                    name[n] = input_name[n];
-                }
+                desc_link[..(DESC_SIZE - 1)].clone_from_slice(&input_desc_link[..(DESC_SIZE - 1)]);
+                name[..(NAME_SIZE - 1)].clone_from_slice(&input_name[..(NAME_SIZE - 1)]);
                 Self::InitTimelockSet { desc_link, name }
             }
             2 => Self::AddSigner,
@@ -357,10 +340,10 @@ impl TimelockInstruction {
                 let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
                 let (minimum_slot_waiting_period, rest) = Self::unpack_u64(rest)?;
                 let (time_limit, rest) = Self::unpack_u64(rest)?;
-                let mut name: [u8; CONFIG_NAME_LENGTH] = [0; CONFIG_NAME_LENGTH];
-                for n in 0..(CONFIG_NAME_LENGTH - 1) {
-                    name[n] = rest[n];
-                }
+
+                let mut name = [0u8; CONFIG_NAME_LENGTH];
+                name[..(CONFIG_NAME_LENGTH - 1)]
+                    .clone_from_slice(&rest[..(CONFIG_NAME_LENGTH - 1)]);
                 Self::InitTimelockConfig {
                     consensus_algorithm,
                     execution_type,
@@ -431,10 +414,9 @@ impl TimelockInstruction {
             }
 
             let (input_instruction, rest) = input.split_at(INSTRUCTION_LIMIT);
-            let mut instruction: [u8; INSTRUCTION_LIMIT] = [0; INSTRUCTION_LIMIT];
-            for n in 0..(INSTRUCTION_LIMIT - 1) {
-                instruction[n] = input_instruction[n];
-            }
+            let mut instruction = [0u8; INSTRUCTION_LIMIT];
+            instruction[..(INSTRUCTION_LIMIT - 1)]
+                .clone_from_slice(&input_instruction[..(INSTRUCTION_LIMIT - 1)]);
             Ok((instruction, rest))
         } else {
             Err(TimelockError::InstructionUnpackError.into())

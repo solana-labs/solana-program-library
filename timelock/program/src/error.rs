@@ -39,6 +39,22 @@ pub enum TimelockError {
     #[error("Timelock Transaction not found on the Timelock Set")]
     TimelockTransactionNotFoundError,
 
+    /// Mint authority can't be deserialized
+    #[error("Mint authority can't be deserialized")]
+    MintAuthorityUnpackError,
+
+    /// Wrong mint authority was provided for mint
+    #[error("Wrong mint authority was provided for mint")]
+    InvalidMintAuthorityError,
+
+    /// Invalid mint owner program"
+    #[error("Invalid mint owner program")]
+    InvalidMintOwnerProgramError,
+
+    /// Invalid account owner
+    #[error("Invalid account owner")]
+    InvalidAccountOwnerError,
+
     /// The wrong signatory mint was given for this timelock set
     #[error("The wrong signatory mint was given for this timelock set")]
     InvalidSignatoryMintError,
@@ -114,6 +130,10 @@ pub enum TimelockError {
     /// Provided wrong mint type for a token holding account on timelock set
     #[error("Provided wrong mint type for a token holding account on timelock set")]
     MintsShouldMatch,
+
+    /// Provided source mint decimals don't match voting mint decimals
+    #[error("Provided source mint decimals don't match voting mint decimals")]
+    MintsDecimalsShouldMatch,
 
     /// Waiting period must be greater than or equal to minimum waiting period
     #[error("Waiting period must be greater than or equal to minimum waiting period")]

@@ -129,7 +129,7 @@ pub fn process_execute(
     transaction.executed = 1;
 
     CustomSingleSignerTimelockTransaction::pack(
-        transaction.clone(),
+        transaction,
         &mut transaction_account_info.data.borrow_mut(),
     )?;
 

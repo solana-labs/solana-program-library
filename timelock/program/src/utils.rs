@@ -2,13 +2,14 @@ use crate::{
     error::TimelockError,
     state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
 };
-use arrayref::array_ref;
+use arrayref::{array_ref, array_refs};
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
     instruction::Instruction,
     program::invoke_signed,
     program_error::ProgramError,
+    program_option::COption,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
     system_instruction::create_account,
@@ -60,7 +61,7 @@ pub fn assert_is_permissioned<'a>(
         destination: perm_validation_account_info.clone(),
         amount: 1,
         authority: transfer_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
     // Now give it back
@@ -69,7 +70,7 @@ pub fn assert_is_permissioned<'a>(
         destination: perm_account_info.clone(),
         amount: 1,
         authority: timelock_authority_info.clone(),
-        authority_signer_seeds: authority_signer_seeds,
+        authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
     Ok(())
@@ -163,14 +164,51 @@ pub fn assert_account_equiv(acct: &AccountInfo, key: &Pubkey) -> ProgramResult {
     Ok(())
 }
 
-/// Cheaper Assertion the account has a matching mint - if you dont plan to use Mint for anything else
-#[inline(always)]
-pub fn assert_mint_matching(acct: &AccountInfo, mint: &AccountInfo) -> ProgramResult {
-    let mint_key: Pubkey = get_mint_from_account(acct)?;
+/// Cheaper Assertion the account belongs to the given mint - if you don't plan to use Mint for anything else
+pub fn assert_account_mint(token_account_info: &AccountInfo, mint: &AccountInfo) -> ProgramResult {
+    let mint_key = get_mint_from_token_account(token_account_info)?;
     if &mint_key != mint.key {
         return Err(TimelockError::MintsShouldMatch.into());
     }
 
+    Ok(())
+}
+
+/// Cheap assertion the account belongs to the given owner
+pub fn assert_account_owner(token_account_info: &AccountInfo, owner: &Pubkey) -> ProgramResult {
+    let account_owner = get_owner_from_token_account(token_account_info)?;
+    if account_owner != *owner {
+        return Err(TimelockError::InvalidAccountOwnerError.into());
+    }
+
+    Ok(())
+}
+
+/// Cheaper Assertion the account has a matching mint decimals - if you don't plan to use Mint for anything else
+pub fn assert_mint_decimals(mint: &AccountInfo, mint_decimals: u8) -> ProgramResult {
+    if get_mint_decimals(mint).unwrap() != mint_decimals {
+        return Err(TimelockError::MintsDecimalsShouldMatch.into());
+    }
+
+    Ok(())
+}
+
+/// Cheaper Assertion the account has a matching mint_authority- if you don't plan to use Mint for anything else
+pub fn assert_mint_authority(mint: &AccountInfo, mint_authority: &Pubkey) -> ProgramResult {
+    if get_mint_authority(mint).unwrap() != *mint_authority {
+        return Err(TimelockError::InvalidMintAuthorityError.into());
+    }
+    Ok(())
+}
+
+/// Asserts given mint is owned by the provided token program
+pub fn assert_mint_owner_program(
+    mint: &AccountInfo,
+    owner_token_program: &Pubkey,
+) -> ProgramResult {
+    if mint.owner != owner_token_program {
+        return Err(TimelockError::InvalidMintOwnerProgramError.into());
+    }
     Ok(())
 }
 
@@ -182,7 +220,7 @@ pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramRes
         Ok(())
     }
 }
-/// assert ununitialized account
+/// assert uninitialized account
 pub fn assert_uninitialized<T: Pack + IsInitialized>(
     account_info: &AccountInfo,
 ) -> Result<T, ProgramError> {
@@ -194,9 +232,8 @@ pub fn assert_uninitialized<T: Pack + IsInitialized>(
     }
 }
 
-/// cheap assertion of mint serialization
-#[inline(always)]
-pub fn assert_cheap_mint_initialized(account_info: &AccountInfo) -> Result<(), ProgramError> {
+/// cheap assertion of mint is_initialized without unpacking whole object
+pub fn assert_mint_initialized(account_info: &AccountInfo) -> Result<(), ProgramError> {
     // In token program, 36, 8, 1, 1 is the layout, where the last 1 is initialized bit.
     // Not my favorite hack, but necessary to avoid stack size limitations caused by serializing entire Mint
     // to get at initialization check
@@ -207,9 +244,8 @@ pub fn assert_cheap_mint_initialized(account_info: &AccountInfo) -> Result<(), P
     Ok(())
 }
 
-/// cheap method to just pull supply off a mint
-#[inline(always)]
-pub fn pull_mint_supply(account_info: &AccountInfo) -> Result<u64, ProgramError> {
+/// cheap method to just get supply off a mint without unpacking whole object
+pub fn get_mint_supply(account_info: &AccountInfo) -> Result<u64, ProgramError> {
     // In token program, 36, 8, 1, 1 is the layout, where the first 8 is supply u64.
     // so we start at 36.
     let data = account_info.try_borrow_data().unwrap();
@@ -218,13 +254,49 @@ pub fn pull_mint_supply(account_info: &AccountInfo) -> Result<u64, ProgramError>
     Ok(u64::from_le_bytes(*bytes))
 }
 
-/// Cheap method to just grab mint Pubkey off token account, instead of deserializing entire thing
-#[inline(always)]
-pub fn get_mint_from_account(account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {
-    // Accounts have mint in first 32 bits.
+/// cheap method to just get supply off a mint without unpacking whole object
+pub fn get_mint_authority(account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {
+    // In token program, 36, 8, 1, 1 is the layout, where the first 36 is mint_authority
+    // so we start at 0.
     let data = account_info.try_borrow_data().unwrap();
-    let key_data = array_ref![data, 0, 32];
-    Ok(Pubkey::new_from_array(*key_data))
+    let authority_bytes = array_ref![data, 0, 36];
+
+    let authority = unpack_coption_key(&authority_bytes)?;
+
+    match authority {
+        COption::Some(pk) => Ok(pk),
+        COption::None => Err(TimelockError::MintAuthorityUnpackError.into()),
+    }
+}
+
+/// cheap method to just get decimals off a mint without unpacking whole object
+pub fn get_mint_decimals(account_info: &AccountInfo) -> Result<u8, ProgramError> {
+    // In token program, 36, 8, 1, 1 is the Mint layout, where the first 1 is decimals u8.
+    // so we start at 44.
+    let data = account_info.try_borrow_data().unwrap();
+    let bytes = array_ref![data, 44, 1];
+
+    Ok(bytes[0])
+}
+
+/// Cheap method to just grab mint Pubkey off token account, instead of deserializing entire thing
+pub fn get_mint_from_token_account(
+    token_account_info: &AccountInfo,
+) -> Result<Pubkey, ProgramError> {
+    // Accounts have mint in first 32 bits.
+    let data = token_account_info.try_borrow_data().unwrap();
+    let mint_data = array_ref![data, 0, 32];
+    Ok(Pubkey::new_from_array(*mint_data))
+}
+
+/// Cheap method to just grab owner Pubkey from token account, instead of deserializing entire thing
+pub fn get_owner_from_token_account(
+    token_account_info: &AccountInfo,
+) -> Result<Pubkey, ProgramError> {
+    // TokeAccount layout:   mint(32), owner(32), ...
+    let data = token_account_info.try_borrow_data()?;
+    let owner_data = array_ref![data, 32, 32];
+    Ok(Pubkey::new_from_array(*owner_data))
 }
 
 /// assert initialized account
@@ -333,6 +405,16 @@ pub fn execute(params: ExecuteParams<'_, '_>) -> ProgramResult {
     result.map_err(|_| TimelockError::ExecutionFailed.into())
 }
 
+/// Unpacks COption from a slice, taken from token program
+fn unpack_coption_key(src: &[u8; 36]) -> Result<COption<Pubkey>, ProgramError> {
+    let (tag, body) = array_refs![src, 4, 32];
+    match *tag {
+        [0, 0, 0, 0] => Ok(COption::None),
+        [1, 0, 0, 0] => Ok(COption::Some(Pubkey::new_from_array(*body))),
+        _ => Err(ProgramError::InvalidAccountData),
+    }
+}
+
 /// Create account from scratch, stolen from Wormhole, slightly altered for my purposes
 /// https://github.com/bartosz-lipinski/wormhole/blob/8478735ea7525043635524a62db2751e59d2bc38/solana/bridge/src/processor.rs#L1335
 #[inline(always)]
@@ -408,4 +490,107 @@ pub struct ExecuteParams<'a: 'b, 'b> {
     pub authority_signer_seeds: &'b [&'b [u8]],
     /// Account infos
     pub account_infos: Vec<AccountInfo<'a>>,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use solana_program::{
+        account_info::AccountInfo, clock::Epoch, program_option::COption, pubkey::Pubkey,
+    };
+
+    use spl_token::state::{Account as TokenAccount, Mint};
+
+    #[test]
+    pub fn test_assert_mint_decimals() {
+        let decimals = 5;
+
+        let mint = Mint {
+            decimals,
+            ..Default::default()
+        };
+
+        let mut data = vec![0; Mint::get_packed_len()];
+        Mint::pack(mint, &mut data).unwrap();
+
+        let mut lamports = 0;
+
+        let program_id = Pubkey::new_unique();
+        let owner_key = Pubkey::new_unique();
+        let mint_account_info = AccountInfo::new(
+            &owner_key,
+            false,
+            false,
+            &mut lamports,
+            &mut data,
+            &program_id,
+            false,
+            Epoch::default(),
+        );
+
+        assert_eq!(assert_mint_decimals(&mint_account_info, decimals), Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_mint_authority() {
+        let mint_authority = Pubkey::new_unique();
+
+        let mint = Mint {
+            mint_authority: COption::Some(mint_authority),
+            ..Default::default()
+        };
+
+        let mut data = vec![0; Mint::get_packed_len()];
+        Mint::pack(mint, &mut data).unwrap();
+
+        let mut lamports = 0;
+
+        let program_id = Pubkey::new_unique();
+        let owner_key = Pubkey::new_unique();
+        let mint_account_info = AccountInfo::new(
+            &owner_key,
+            false,
+            false,
+            &mut lamports,
+            &mut data,
+            &program_id,
+            false,
+            Epoch::default(),
+        );
+
+        assert_eq!(
+            assert_mint_authority(&mint_account_info, &mint_authority),
+            Ok(())
+        );
+    }
+    #[test]
+    pub fn test_assert_account_owner() {
+        let owner = Pubkey::new_unique();
+
+        let account = TokenAccount {
+            owner,
+            ..Default::default()
+        };
+
+        let mut data = vec![0; TokenAccount::get_packed_len()];
+        TokenAccount::pack(account, &mut data).unwrap();
+
+        let mut lamports = 0;
+
+        let program_id = Pubkey::new_unique();
+        let owner_key = Pubkey::new_unique();
+        let mint_account_info = AccountInfo::new(
+            &owner_key,
+            false,
+            false,
+            &mut lamports,
+            &mut data,
+            &program_id,
+            false,
+            Epoch::default(),
+        );
+
+        assert_eq!(assert_account_owner(&mint_account_info, &owner), Ok(()));
+    }
 }
