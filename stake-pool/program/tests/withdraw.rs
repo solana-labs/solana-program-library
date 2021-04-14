@@ -403,10 +403,8 @@ async fn fail_with_unknown_validator() {
         .await
         .unwrap();
 
-    let validator_stake_account = ValidatorStakeAccount::new_with_target_authority(
-        &stake_pool_accounts.deposit_authority,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let validator_stake_account =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
     validator_stake_account
         .create_and_delegate(
             &mut banks_client,
@@ -416,10 +414,7 @@ async fn fail_with_unknown_validator() {
         )
         .await;
 
-    let user_stake = ValidatorStakeAccount::new_with_target_authority(
-        &stake_pool_accounts.deposit_authority,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
     user_stake
         .create_and_delegate(
             &mut banks_client,

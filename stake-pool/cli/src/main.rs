@@ -14,7 +14,7 @@ use {
         input_validators::{is_amount, is_keypair, is_parsable, is_pubkey, is_url},
         keypair::signer_from_path,
     },
-    solana_client::{rpc_client::RpcClient, rpc_response::StakeActivationState},
+    solana_client::rpc_client::RpcClient,
     solana_program::{
         borsh::get_packed_len, instruction::Instruction, program_pack::Pack, pubkey::Pubkey,
     },
@@ -30,7 +30,7 @@ use {
         borsh::get_instance_packed_len,
         find_deposit_authority_program_address, find_stake_program_address,
         find_transient_stake_program_address, find_withdraw_authority_program_address,
-        stake_program::{self, StakeAuthorize, StakeState},
+        stake_program::{self, StakeState},
         state::{Fee, StakePool, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,
     },
@@ -42,6 +42,7 @@ struct Config {
     verbose: bool,
     manager: Box<dyn Signer>,
     staker: Box<dyn Signer>,
+    depositor: Option<Box<dyn Signer>>,
     token_owner: Box<dyn Signer>,
     fee_payer: Box<dyn Signer>,
     dry_run: bool,
@@ -94,10 +95,21 @@ fn send_transaction(
     Ok(())
 }
 
+<<<<<<< HEAD
 fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> CommandResult {
     let reserve_stake = Keypair::new();
     println!("Creating reserve stake {}", reserve_stake.pubkey());
 
+||||||| parent of fa0e193 (stake-pool: Add depositor key on init, required on deposit)
+fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> CommandResult {
+=======
+fn command_create_pool(
+    config: &Config,
+    deposit_authority: Option<Pubkey>,
+    fee: Fee,
+    max_validators: u32,
+) -> CommandResult {
+>>>>>>> fa0e193 (stake-pool: Add depositor key on init, required on deposit)
     let mint_account = Keypair::new();
     println!("Creating mint {}", mint_account.pubkey());
 
@@ -224,6 +236,7 @@ fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> Comman
                 &mint_account.pubkey(),
                 &pool_fee_account.pubkey(),
                 &spl_token::id(),
+                deposit_authority,
                 fee,
                 max_validators,
             )?,
@@ -286,7 +299,17 @@ fn command_vsa_create(
 }
 
 fn command_vsa_add(config: &Config, stake_pool_address: &Pubkey, stake: &Pubkey) -> CommandResult {
-    if config.rpc_client.get_stake_activation(*stake, None)?.state != StakeActivationState::Active {
+    let stake_state = get_stake_state(&config.rpc_client, &stake)?;
+    if let stake_program::StakeState::Stake(meta, _stake) = stake_state {
+        if meta.authorized.withdrawer != config.staker.pubkey() {
+            let error = format!(
+                "Stake account withdraw authority must be the staker {}, actual {}",
+                config.staker.pubkey(),
+                meta.authorized.withdrawer
+            );
+            return Err(error.into());
+        }
+    } else {
         return Err("Stake account is not active.".into());
     }
 
@@ -299,34 +322,16 @@ fn command_vsa_add(config: &Config, stake_pool_address: &Pubkey, stake: &Pubkey)
     let mut instructions: Vec<Instruction> = vec![];
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
 
-    // Calculate Deposit and Withdraw stake pool authorities
-    let pool_deposit_authority =
-        find_deposit_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
-
+    // Calculate Withdraw stake pool authorities
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
     instructions.extend(vec![
-        // Set Withdrawer on stake account to Deposit authority of the stake pool
-        stake_program::authorize(
-            &stake,
-            &config.staker.pubkey(),
-            &pool_deposit_authority,
-            StakeAuthorize::Withdrawer,
-        ),
-        // Set Staker on stake account to Deposit authority of the stake pool
-        stake_program::authorize(
-            &stake,
-            &config.staker.pubkey(),
-            &pool_deposit_authority,
-            StakeAuthorize::Staker,
-        ),
         // Add validator stake account to the pool
         spl_stake_pool::instruction::add_validator_to_pool(
             &spl_stake_pool::id(),
             &stake_pool_address,
             &config.staker.pubkey(),
-            &pool_deposit_authority,
             &pool_withdraw_authority,
             &stake_pool.validator_list,
             &stake,
@@ -588,42 +593,47 @@ fn command_deposit(
         },
     )?;
 
-    // Calculate Deposit and Withdraw stake pool authorities
-    let pool_deposit_authority =
-        find_deposit_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
+    // Check Deposit authority
+    let (deposit_authority, deposit_authority_must_sign) =
+        if let Some(depositor) = config.depositor.as_ref() {
+            signers.push(depositor.as_ref());
+            (depositor.pubkey(), true)
+        } else {
+            (
+                find_deposit_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0,
+                false,
+            )
+        };
 
+    if deposit_authority != stake_pool.deposit_authority {
+        let error = format!(
+            "Invalid deposit authority specified, expected {}, received {}",
+            stake_pool.deposit_authority, deposit_authority
+        );
+        return Err(error.into());
+    }
+
+    // Check withdraw authority
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
-    instructions.extend(vec![
-        // Set Withdrawer on stake account to Deposit authority of the stake pool
-        stake_program::authorize(
-            &stake,
-            &config.staker.pubkey(),
-            &pool_deposit_authority,
-            StakeAuthorize::Withdrawer,
-        ),
-        // Set Staker on stake account to Deposit authority of the stake pool
-        stake_program::authorize(
-            &stake,
-            &config.staker.pubkey(),
-            &pool_deposit_authority,
-            StakeAuthorize::Staker,
-        ),
+    instructions.extend(
         // Add stake account to the pool
         spl_stake_pool::instruction::deposit(
             &spl_stake_pool::id(),
             &stake_pool_address,
             &stake_pool.validator_list,
-            &pool_deposit_authority,
+            &deposit_authority,
             &pool_withdraw_authority,
             &stake,
             &validator_stake_account,
             &token_receiver,
             &stake_pool.pool_mint,
             &spl_token::id(),
-        )?,
-    ]);
+            &config.staker.pubkey(),
+            deposit_authority_must_sign,
+        ),
+    );
 
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
@@ -1131,6 +1141,17 @@ fn main() {
                 ),
         )
         .arg(
+            Arg::with_name("depositor")
+                .long("depositor")
+                .value_name("KEYPAIR")
+                .validator(is_keypair)
+                .takes_value(true)
+                .help(
+                    "Specify the stake pool depositor. \
+                     This may be a keypair file, the ASK keyword.",
+                ),
+        )
+        .arg(
             Arg::with_name("token_owner")
                 .long("token-owner")
                 .value_name("KEYPAIR")
@@ -1185,6 +1206,15 @@ fn main() {
                     .takes_value(true)
                     .required(true)
                     .help("Max number of validators included in the stake pool"),
+            )
+            .arg(
+                Arg::with_name("deposit_authority")
+                    .long("deposit-authority")
+                    .short("a")
+                    .validator(is_pubkey)
+                    .value_name("DEPOSIT_AUTHORITY_ADDRESS")
+                    .takes_value(true)
+                    .help("Deposit authority required to sign all deposits into the stake pool"),
             )
         )
         .subcommand(SubCommand::with_name("create-validator-stake")
@@ -1515,6 +1545,22 @@ fn main() {
             eprintln!("error: {}", e);
             exit(1);
         });
+        let depositor = if matches.is_present("depositor") {
+            Some(
+                signer_from_path(
+                    &matches,
+                    &cli_config.keypair_path,
+                    "depositor",
+                    &mut wallet_manager,
+                )
+                .unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    exit(1);
+                }),
+            )
+        } else {
+            None
+        };
         let manager = signer_from_path(
             &matches,
             &cli_config.keypair_path,
@@ -1554,6 +1600,7 @@ fn main() {
             verbose,
             manager,
             staker,
+            depositor,
             token_owner,
             fee_payer,
             dry_run,
@@ -1563,11 +1610,13 @@ fn main() {
 
     let _ = match matches.subcommand() {
         ("create-pool", Some(arg_matches)) => {
+            let deposit_authority = pubkey_of(arg_matches, "deposit_authority");
             let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             command_create_pool(
                 &config,
+                deposit_authority,
                 Fee {
                     denominator,
                     numerator,
