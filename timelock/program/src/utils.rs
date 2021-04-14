@@ -569,7 +569,7 @@ mod test {
         let owner = Pubkey::new_unique();
 
         let account = TokenAccount {
-            owner: owner,
+            owner,
             ..Default::default()
         };
 
