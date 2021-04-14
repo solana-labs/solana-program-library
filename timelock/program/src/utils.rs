@@ -164,7 +164,6 @@ pub fn assert_account_equiv(acct: &AccountInfo, key: &Pubkey) -> ProgramResult {
 }
 
 /// Cheaper Assertion the account has a matching mint - if you dont plan to use Mint for anything else
-#[inline(always)]
 pub fn assert_mint_matching(acct: &AccountInfo, mint: &AccountInfo) -> ProgramResult {
     let mint_key: Pubkey = get_mint_from_account(acct)?;
     if &mint_key != mint.key {
@@ -175,7 +174,6 @@ pub fn assert_mint_matching(acct: &AccountInfo, mint: &AccountInfo) -> ProgramRe
 }
 
 /// Cheaper Assertion the account has a matching mint decimals - if you don't plan to use Mint for anything else
-#[inline(always)]
 pub fn assert_mint_decimals(mint: &AccountInfo, mint_decimals: u8) -> ProgramResult {
     if pull_mint_decimals(mint).unwrap() != mint_decimals {
         return Err(TimelockError::MintsDecimalsShouldMatch.into());
@@ -205,7 +203,6 @@ pub fn assert_uninitialized<T: Pack + IsInitialized>(
 }
 
 /// cheap assertion of mint serialization
-#[inline(always)]
 pub fn assert_cheap_mint_initialized(account_info: &AccountInfo) -> Result<(), ProgramError> {
     // In token program, 36, 8, 1, 1 is the layout, where the last 1 is initialized bit.
     // Not my favorite hack, but necessary to avoid stack size limitations caused by serializing entire Mint
@@ -218,7 +215,6 @@ pub fn assert_cheap_mint_initialized(account_info: &AccountInfo) -> Result<(), P
 }
 
 /// cheap method to just pull supply off a mint
-#[inline(always)]
 pub fn pull_mint_supply(account_info: &AccountInfo) -> Result<u64, ProgramError> {
     // In token program, 36, 8, 1, 1 is the layout, where the first 8 is supply u64.
     // so we start at 36.
@@ -229,7 +225,6 @@ pub fn pull_mint_supply(account_info: &AccountInfo) -> Result<u64, ProgramError>
 }
 
 /// cheap method to just pull decimals off a mint
-#[inline(always)]
 pub fn pull_mint_decimals(account_info: &AccountInfo) -> Result<u8, ProgramError> {
     // In token program, 36, 8, 1, 1 is the Mint layout, where the first 1 is decimals u8.
     // so we start at 44.
@@ -240,7 +235,6 @@ pub fn pull_mint_decimals(account_info: &AccountInfo) -> Result<u8, ProgramError
 }
 
 /// Cheap method to just grab mint Pubkey off token account, instead of deserializing entire thing
-#[inline(always)]
 pub fn get_mint_from_account(account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {
     // Accounts have mint in first 32 bits.
     let data = account_info.try_borrow_data().unwrap();
