@@ -200,12 +200,12 @@ impl Pack for TimelockState {
         timelock_set.copy_from_slice(self.timelock_set.as_ref());
 
         *timelock_state_status = match self.status {
-            TimelockStateStatus::Draft => 0 as u8,
-            TimelockStateStatus::Voting => 1 as u8,
-            TimelockStateStatus::Executing => 2 as u8,
-            TimelockStateStatus::Completed => 3 as u8,
-            TimelockStateStatus::Deleted => 4 as u8,
-            TimelockStateStatus::Defeated => 5 as u8,
+            TimelockStateStatus::Draft => 0_u8,
+            TimelockStateStatus::Voting => 1_u8,
+            TimelockStateStatus::Executing => 2_u8,
+            TimelockStateStatus::Completed => 3_u8,
+            TimelockStateStatus::Deleted => 4_u8,
+            TimelockStateStatus::Defeated => 5_u8,
         }
         .to_le_bytes();
         *total_signing_tokens_minted = self.total_signing_tokens_minted.to_le_bytes();

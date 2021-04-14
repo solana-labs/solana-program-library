@@ -164,21 +164,21 @@ impl Pack for TimelockConfig {
         ];
         *version = self.version.to_le_bytes();
         *consensus_algorithm = match self.consensus_algorithm {
-            ConsensusAlgorithm::Majority => 0 as u8,
-            ConsensusAlgorithm::SuperMajority => 1 as u8,
-            ConsensusAlgorithm::FullConsensus => 2 as u8,
+            ConsensusAlgorithm::Majority => 0_u8,
+            ConsensusAlgorithm::SuperMajority => 1_u8,
+            ConsensusAlgorithm::FullConsensus => 2_u8,
         }
         .to_le_bytes();
         *execution_type = match self.execution_type {
-            ExecutionType::Independent => 0 as u8,
+            ExecutionType::Independent => 0_u8,
         }
         .to_le_bytes();
         *timelock_type = match self.timelock_type {
-            TimelockType::Governance => 0 as u8,
+            TimelockType::Governance => 0_u8,
         }
         .to_le_bytes();
         *voting_entry_rule = match self.voting_entry_rule {
-            VotingEntryRule::Anytime => 0 as u8,
+            VotingEntryRule::Anytime => 0_u8,
         }
         .to_le_bytes();
         *minimum_slot_waiting_period = self.minimum_slot_waiting_period.to_le_bytes();
