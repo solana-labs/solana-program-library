@@ -36,8 +36,8 @@ pub enum TimelockInstruction {
     ///   15. `[writable]` Initialized source holding account
     ///   16. `[]` Source mint
     ///   17. `[]` Timelock minting authority (pda with seed of timelock set key)
-    ///   19. '[]` Token program id
-    ///   20. `[]` Rent sysvar
+    ///   18. '[]` Token program id
+    ///   19. `[]` Rent sysvar
     InitTimelockSet {
         /// Link to gist explaining proposal
         desc_link: [u8; DESC_SIZE],

@@ -39,6 +39,14 @@ pub enum TimelockError {
     #[error("Timelock Transaction not found on the Timelock Set")]
     TimelockTransactionNotFoundError,
 
+    /// Mint authority can't be deserialized
+    #[error("Mint authority can't be deserialized")]
+    MintAuthorityUnpackError,
+
+    /// Wrong mint authority was provided for mint
+    #[error("Wrong mint authority was provided for mint")]
+    InvalidMintAuthorityError,
+
     /// The wrong signatory mint was given for this timelock set
     #[error("The wrong signatory mint was given for this timelock set")]
     InvalidSignatoryMintError,

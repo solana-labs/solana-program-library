@@ -1,5 +1,6 @@
 //! Program state processor
 
+use crate::utils::assert_mint_authority;
 use crate::{
     error::TimelockError,
     state::{
@@ -9,9 +10,9 @@ use crate::{
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
-        assert_cheap_mint_initialized, assert_initialized, assert_mint_decimals,
-        assert_mint_matching, assert_rent_exempt, assert_uninitialized, get_mint_from_account,
-        pull_mint_decimals, spl_token_mint_to, TokenMintToParams,
+        assert_initialized, assert_mint_decimals, assert_mint_initialized, assert_mint_matching,
+        assert_rent_exempt, assert_uninitialized, get_mint_decimals, get_mint_from_account,
+        spl_token_mint_to, TokenMintToParams,
     },
 };
 use solana_program::{
@@ -31,31 +32,31 @@ pub fn process_init_timelock_set(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let timelock_state_account_info = next_account_info(account_info_iter)?;
-    let timelock_set_account_info = next_account_info(account_info_iter)?;
-    let timelock_config_account_info = next_account_info(account_info_iter)?;
-    let signatory_mint_account_info = next_account_info(account_info_iter)?;
-    let admin_mint_account_info = next_account_info(account_info_iter)?;
-    let voting_mint_account_info = next_account_info(account_info_iter)?;
-    let yes_voting_mint_account_info = next_account_info(account_info_iter)?;
-    let no_voting_mint_account_info = next_account_info(account_info_iter)?;
-    let signatory_validation_account_info = next_account_info(account_info_iter)?;
-    let admin_validation_account_info = next_account_info(account_info_iter)?;
-    let voting_validation_account_info = next_account_info(account_info_iter)?;
-    let destination_admin_account_info = next_account_info(account_info_iter)?;
-    let destination_sig_account_info = next_account_info(account_info_iter)?;
-    let yes_voting_dump_account_info = next_account_info(account_info_iter)?;
-    let no_voting_dump_account_info = next_account_info(account_info_iter)?;
-    let source_holding_account_info = next_account_info(account_info_iter)?;
-    let source_mint_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_authority_info = next_account_info(account_info_iter)?;
-    let token_program_info = next_account_info(account_info_iter)?;
-    let rent_info = next_account_info(account_info_iter)?;
+    let timelock_state_account_info = next_account_info(account_info_iter)?; //0
+    let timelock_set_account_info = next_account_info(account_info_iter)?; //1
+    let timelock_config_account_info = next_account_info(account_info_iter)?; //2
+    let signatory_mint_account_info = next_account_info(account_info_iter)?; //3
+    let admin_mint_account_info = next_account_info(account_info_iter)?; //4
+    let voting_mint_account_info = next_account_info(account_info_iter)?; //5
+    let yes_voting_mint_account_info = next_account_info(account_info_iter)?; //6
+    let no_voting_mint_account_info = next_account_info(account_info_iter)?; //7
+    let signatory_validation_account_info = next_account_info(account_info_iter)?; //8
+    let admin_validation_account_info = next_account_info(account_info_iter)?; //9
+    let voting_validation_account_info = next_account_info(account_info_iter)?; //10
+    let destination_admin_account_info = next_account_info(account_info_iter)?; //11
+    let destination_sig_account_info = next_account_info(account_info_iter)?; //12
+    let yes_voting_dump_account_info = next_account_info(account_info_iter)?; //13
+    let no_voting_dump_account_info = next_account_info(account_info_iter)?; //14
+    let source_holding_account_info = next_account_info(account_info_iter)?; //15
+    let source_mint_account_info = next_account_info(account_info_iter)?; //16
+    let timelock_program_authority_info = next_account_info(account_info_iter)?; //17
+    let token_program_info = next_account_info(account_info_iter)?; //18
+    let rent_info = next_account_info(account_info_iter)?; //19
     let rent = &Rent::from_account_info(rent_info)?;
 
-    let mut timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
     let mut new_timelock_state: TimelockState = assert_uninitialized(timelock_state_account_info)?;
     let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
+    let mut timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
 
     new_timelock_set.version = TIMELOCK_SET_VERSION;
     new_timelock_set.config = *timelock_config_account_info.key;
@@ -96,13 +97,13 @@ pub fn process_init_timelock_set(
     assert_rent_exempt(rent, signatory_validation_account_info)?;
     assert_rent_exempt(rent, voting_validation_account_info)?;
 
-    // Cheap computational and stack-wise calls for initialization checks, no deserialization req'd
-    assert_cheap_mint_initialized(admin_mint_account_info)?;
-    assert_cheap_mint_initialized(voting_mint_account_info)?;
-    assert_cheap_mint_initialized(yes_voting_mint_account_info)?;
-    assert_cheap_mint_initialized(no_voting_mint_account_info)?;
-    assert_cheap_mint_initialized(signatory_mint_account_info)?;
-    assert_cheap_mint_initialized(source_mint_account_info)?;
+    // Cheap computational and stack-wise calls for initialization checks, no deserialization required
+    assert_mint_initialized(admin_mint_account_info)?;
+    assert_mint_initialized(voting_mint_account_info)?;
+    assert_mint_initialized(yes_voting_mint_account_info)?;
+    assert_mint_initialized(no_voting_mint_account_info)?;
+    assert_mint_initialized(signatory_mint_account_info)?;
+    assert_mint_initialized(source_mint_account_info)?;
 
     let source_holding_mint: Pubkey = get_mint_from_account(source_holding_account_info)?;
 
@@ -118,10 +119,28 @@ pub fn process_init_timelock_set(
     assert_mint_matching(no_voting_dump_account_info, no_voting_mint_account_info)?;
     assert_mint_matching(source_holding_account_info, source_mint_account_info)?;
 
-    let source_mint_decimals = pull_mint_decimals(source_mint_account_info)?;
+    let source_mint_decimals = get_mint_decimals(source_mint_account_info)?;
     assert_mint_decimals(voting_mint_account_info, source_mint_decimals)?;
     assert_mint_decimals(yes_voting_mint_account_info, source_mint_decimals)?;
     assert_mint_decimals(no_voting_mint_account_info, source_mint_decimals)?;
+
+    assert_mint_authority(admin_mint_account_info, timelock_program_authority_info.key)?;
+    assert_mint_authority(
+        signatory_mint_account_info,
+        timelock_program_authority_info.key,
+    )?;
+    assert_mint_authority(
+        voting_mint_account_info,
+        timelock_program_authority_info.key,
+    )?;
+    assert_mint_authority(
+        yes_voting_mint_account_info,
+        timelock_program_authority_info.key,
+    )?;
+    assert_mint_authority(
+        no_voting_mint_account_info,
+        timelock_program_authority_info.key,
+    )?;
 
     if source_holding_mint != timelock_config.governance_mint
         && source_holding_mint != timelock_config.council_mint

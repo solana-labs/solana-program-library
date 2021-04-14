@@ -6,7 +6,7 @@ use crate::{
         timelock_config::TimelockConfig, timelock_set::TimelockSet, timelock_state::TimelockState,
     },
     utils::{
-        assert_account_equiv, assert_initialized, assert_voting, pull_mint_supply, spl_token_burn,
+        assert_account_equiv, assert_initialized, assert_voting, get_mint_supply, spl_token_burn,
         spl_token_mint_to, TokenBurnParams, TokenMintToParams,
     },
 };
@@ -28,21 +28,21 @@ pub fn process_vote(
     no_voting_token_amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let voting_record_account_info = next_account_info(account_info_iter)?;
-    let timelock_state_account_info = next_account_info(account_info_iter)?;
-    let voting_account_info = next_account_info(account_info_iter)?;
-    let yes_voting_account_info = next_account_info(account_info_iter)?;
-    let no_voting_account_info = next_account_info(account_info_iter)?;
-    let voting_mint_account_info = next_account_info(account_info_iter)?;
-    let yes_voting_mint_account_info = next_account_info(account_info_iter)?;
-    let no_voting_mint_account_info = next_account_info(account_info_iter)?;
-    let source_mint_account_info = next_account_info(account_info_iter)?;
-    let timelock_set_account_info = next_account_info(account_info_iter)?;
-    let timelock_config_account_info = next_account_info(account_info_iter)?;
-    let transfer_authority_info = next_account_info(account_info_iter)?;
-    let timelock_program_authority_info = next_account_info(account_info_iter)?;
-    let token_program_account_info = next_account_info(account_info_iter)?;
-    let clock_info = next_account_info(account_info_iter)?;
+    let voting_record_account_info = next_account_info(account_info_iter)?; // 0
+    let timelock_state_account_info = next_account_info(account_info_iter)?; // 1
+    let voting_account_info = next_account_info(account_info_iter)?; //2
+    let yes_voting_account_info = next_account_info(account_info_iter)?; //3
+    let no_voting_account_info = next_account_info(account_info_iter)?; //4
+    let voting_mint_account_info = next_account_info(account_info_iter)?; //5
+    let yes_voting_mint_account_info = next_account_info(account_info_iter)?; //6
+    let no_voting_mint_account_info = next_account_info(account_info_iter)?; //7
+    let source_mint_account_info = next_account_info(account_info_iter)?; //8
+    let timelock_set_account_info = next_account_info(account_info_iter)?; //9
+    let timelock_config_account_info = next_account_info(account_info_iter)?; //10
+    let transfer_authority_info = next_account_info(account_info_iter)?; //11
+    let timelock_program_authority_info = next_account_info(account_info_iter)?; //12
+    let token_program_account_info = next_account_info(account_info_iter)?; //13
+    let clock_info = next_account_info(account_info_iter)?; //14
 
     let clock = Clock::from_account_info(clock_info)?;
     let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
@@ -65,9 +65,9 @@ pub fn process_vote(
     }
     let authority_signer_seeds = &[timelock_set_account_info.key.as_ref(), &[bump_seed]];
 
-    // We dont initialize the mints because it's too expensive on the stack size.
-    let source_mint_supply: u64 = pull_mint_supply(source_mint_account_info)?;
-    let yes_mint_supply: u64 = pull_mint_supply(yes_voting_mint_account_info)?;
+    // We don't initialize the mints because it's too expensive on the stack size.
+    let source_mint_supply: u64 = get_mint_supply(source_mint_account_info)?;
+    let yes_mint_supply: u64 = get_mint_supply(yes_voting_mint_account_info)?;
 
     let total_ever_existed = source_mint_supply;
 
