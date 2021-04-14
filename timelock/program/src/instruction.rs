@@ -27,6 +27,7 @@ impl Default for Format {
 
 /// Instructions supported by the Timelock program.
 #[derive(Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum TimelockInstruction {
     /// Initializes a new empty Timelocked set of Instructions that will be executed at various slots in the future in draft mode.
     /// Grants Admin token to caller.
@@ -308,15 +309,11 @@ impl TimelockInstruction {
         Ok(match tag {
             1 => {
                 let (input_desc_link, input_name) = rest.split_at(DESC_SIZE);
-                let mut desc_link: [u8; DESC_SIZE] = [0; DESC_SIZE];
-                let mut name: [u8; NAME_SIZE] = [0; NAME_SIZE];
-                for n in 0..(DESC_SIZE - 1) {
-                    desc_link[n] = input_desc_link[n];
-                }
+                let mut desc_link = [0u8; DESC_SIZE];
+                let mut name = [0u8; NAME_SIZE];
 
-                for n in 0..(NAME_SIZE - 1) {
-                    name[n] = input_name[n];
-                }
+                desc_link.clone_from_slice(&input_desc_link);
+                name.clone_from_slice(&input_name[..(NAME_SIZE - 1)]);
                 Self::InitTimelockSet { desc_link, name }
             }
             2 => Self::AddSigner,
@@ -357,10 +354,8 @@ impl TimelockInstruction {
                 let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
                 let (minimum_slot_waiting_period, rest) = Self::unpack_u64(rest)?;
                 let (time_limit, rest) = Self::unpack_u64(rest)?;
-                let mut name: [u8; CONFIG_NAME_LENGTH] = [0; CONFIG_NAME_LENGTH];
-                for n in 0..(CONFIG_NAME_LENGTH - 1) {
-                    name[n] = rest[n];
-                }
+                let mut name = [0u8; CONFIG_NAME_LENGTH];
+                name.clone_from_slice(&rest[..(CONFIG_NAME_LENGTH - 1)]);
                 Self::InitTimelockConfig {
                     consensus_algorithm,
                     execution_type,
@@ -431,10 +426,8 @@ impl TimelockInstruction {
             }
 
             let (input_instruction, rest) = input.split_at(INSTRUCTION_LIMIT);
-            let mut instruction: [u8; INSTRUCTION_LIMIT] = [0; INSTRUCTION_LIMIT];
-            for n in 0..(INSTRUCTION_LIMIT - 1) {
-                instruction[n] = input_instruction[n];
-            }
+            let mut instruction = [0u8; INSTRUCTION_LIMIT];
+            instruction.clone_from_slice(&input_instruction);
             Ok((instruction, rest))
         } else {
             Err(TimelockError::InstructionUnpackError.into())
