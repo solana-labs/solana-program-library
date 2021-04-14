@@ -272,7 +272,6 @@ fn process_init_reserve(
         return Err(LendingError::InvalidTokenOwner.into());
     }
 
-    reserve.version = PROGRAM_VERSION;
     reserve.init(InitReserveParams {
         current_slot: clock.slot,
         lending_market: *lending_market_info.key,
@@ -383,8 +382,8 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
         current_slot: clock.slot,
         lending_market: *lending_market_info.key,
         owner: *obligation_owner_info.key,
-        deposits: Vec::with_capacity(0),
-        borrows: Vec::with_capacity(0),
+        deposits: vec![],
+        borrows: vec![],
     });
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
@@ -695,9 +694,9 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let max_borrow_value = obligation.max_borrow_value()?;
-    if max_borrow_value == Decimal::zero() {
-        msg!("Maximum borrow value is zero");
+    let remaining_borrow_value = obligation.max_borrow_value()?;
+    if remaining_borrow_value == Decimal::zero() {
+        msg!("Remaining borrow value is zero");
         return Err(LendingError::BorrowTooLarge.into());
     }
 
@@ -706,7 +705,7 @@ fn process_borrow_obligation_liquidity(
         receive_amount,
         borrow_fee,
         host_fee,
-    } = borrow_reserve.calculate_borrow(liquidity_amount, max_borrow_value)?;
+    } = borrow_reserve.calculate_borrow(liquidity_amount, remaining_borrow_value)?;
 
     if receive_amount == 0 {
         msg!("Borrow amount is too small to receive liquidity after fees");
@@ -1374,11 +1373,12 @@ fn process_withdraw_obligation_collateral(
 
     let withdraw_amount = if obligation.borrows.is_empty() {
         // there are no borrows; they have been repaid, liquidated, or were never taken out
-        collateral.deposited_amount
-    } else if obligation.borrowed_value == Decimal::zero() {
-        // there are borrows, but they cannot be valued; they must be repaid to withdraw collateral
-        msg!("Obligation borrowed value is zero");
-        return Err(LendingError::ObligationBorrowsZero.into());
+        if collateral_amount == u64::MAX {
+            collateral.deposited_amount
+        }
+        else {
+            collateral.deposited_amount.min(collateral_amount)
+        }
     } else if obligation.deposited_value == Decimal::zero() {
         // there are deposits, but they cannot be valued
         msg!("Obligation deposited value is zero");

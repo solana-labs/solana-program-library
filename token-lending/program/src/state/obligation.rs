@@ -12,7 +12,10 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
-use std::convert::{TryFrom, TryInto};
+use std::{
+    cmp::Ordering,
+    convert::{TryFrom, TryInto}
+};
 
 /// Max number of collateral and liquidity reserve accounts combined for an obligation
 pub const MAX_OBLIGATION_RESERVES: usize = 10;
@@ -60,19 +63,6 @@ impl Obligation {
         self.borrows = params.borrows;
     }
 
-    /// Calculate the maximum liquidation amount for a given liquidity
-    pub fn max_liquidation_amount(
-        &self,
-        liquidity: &ObligationLiquidity,
-    ) -> Result<Decimal, ProgramError> {
-        let max_liquidation_value = self
-            .borrowed_value
-            .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
-            .min(liquidity.market_value);
-        let max_liquidation_pct = max_liquidation_value.try_div(liquidity.market_value)?;
-        liquidity.borrowed_amount_wads.try_mul(max_liquidation_pct)
-    }
-
     /// Calculate the current ratio of borrowed value to deposited value
     pub fn loan_to_value(&self) -> Result<Decimal, ProgramError> {
         self.borrowed_value.try_div(self.deposited_value)
@@ -116,6 +106,19 @@ impl Obligation {
             return Ok(Decimal::zero());
         }
         max_borrowed_value.try_sub(self.borrowed_value)
+    }
+
+    /// Calculate the maximum liquidation amount for a given liquidity
+    pub fn max_liquidation_amount(
+        &self,
+        liquidity: &ObligationLiquidity,
+    ) -> Result<Decimal, ProgramError> {
+        let max_liquidation_value = self
+            .borrowed_value
+            .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
+            .min(liquidity.market_value);
+        let max_liquidation_pct = max_liquidation_value.try_div(liquidity.market_value)?;
+        liquidity.borrowed_amount_wads.try_mul(max_liquidation_pct)
     }
 
     /// Find collateral by deposit reserve
@@ -320,19 +323,24 @@ impl ObligationLiquidity {
 
     /// Accrue interest
     pub fn accrue_interest(&mut self, cumulative_borrow_rate_wads: Decimal) -> ProgramResult {
-        if cumulative_borrow_rate_wads < self.cumulative_borrow_rate_wads {
-            msg!("Interest rate cannot be negative");
-            return Err(LendingError::NegativeInterestRate.into());
+        match cumulative_borrow_rate_wads.cmp(&self.cumulative_borrow_rate_wads) {
+            Ordering::Less => {
+                msg!("Interest rate cannot be negative");
+                return Err(LendingError::NegativeInterestRate.into());
+            }
+            Ordering::Equal => {
+            }
+            Ordering::Greater => {
+                let compounded_interest_rate: Rate = cumulative_borrow_rate_wads
+                    .try_div(self.cumulative_borrow_rate_wads)?
+                    .try_into()?;
+
+                self.borrowed_amount_wads = self
+                    .borrowed_amount_wads
+                    .try_mul(compounded_interest_rate)?;
+                self.cumulative_borrow_rate_wads = cumulative_borrow_rate_wads;
+            }
         }
-
-        let compounded_interest_rate: Rate = cumulative_borrow_rate_wads
-            .try_div(self.cumulative_borrow_rate_wads)?
-            .try_into()?;
-
-        self.borrowed_amount_wads = self
-            .borrowed_amount_wads
-            .try_mul(compounded_interest_rate)?;
-        self.cumulative_borrow_rate_wads = cumulative_borrow_rate_wads;
 
         Ok(())
     }
