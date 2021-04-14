@@ -47,6 +47,10 @@ pub enum TimelockError {
     #[error("Wrong mint authority was provided for mint")]
     InvalidMintAuthorityError,
 
+    /// Invalid mint owner program"
+    #[error("Invalid mint owner program")]
+    InvalidMintOwnerProgramError,
+
     /// Invalid account owner
     #[error("Invalid account owner")]
     InvalidAccountOwnerError,

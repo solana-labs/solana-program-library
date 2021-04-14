@@ -201,6 +201,17 @@ pub fn assert_mint_authority(mint: &AccountInfo, mint_authority: &Pubkey) -> Pro
     Ok(())
 }
 
+/// Asserts given mint is owned by the provided token program
+pub fn assert_mint_owner_program(
+    mint: &AccountInfo,
+    owner_token_program: &Pubkey,
+) -> ProgramResult {
+    if mint.owner != owner_token_program {
+        return Err(TimelockError::InvalidMintOwnerProgramError.into());
+    }
+    Ok(())
+}
+
 /// assert rent exempt
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
@@ -209,7 +220,7 @@ pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramRes
         Ok(())
     }
 }
-/// assert ununitialized account
+/// assert uninitialized account
 pub fn assert_uninitialized<T: Pack + IsInitialized>(
     account_info: &AccountInfo,
 ) -> Result<T, ProgramError> {

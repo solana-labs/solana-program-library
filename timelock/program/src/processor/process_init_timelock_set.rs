@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::utils::{assert_account_owner, assert_mint_authority};
+use crate::utils::{assert_account_owner, assert_mint_authority, assert_mint_owner_program};
 use crate::{
     error::TimelockError,
     state::{
@@ -98,12 +98,19 @@ pub fn process_init_timelock_set(
     assert_rent_exempt(rent, voting_validation_account_info)?;
 
     // Cheap computational and stack-wise calls for initialization checks, no deserialization required
+    assert_mint_initialized(signatory_mint_account_info)?;
     assert_mint_initialized(admin_mint_account_info)?;
     assert_mint_initialized(voting_mint_account_info)?;
     assert_mint_initialized(yes_voting_mint_account_info)?;
     assert_mint_initialized(no_voting_mint_account_info)?;
-    assert_mint_initialized(signatory_mint_account_info)?;
     assert_mint_initialized(source_mint_account_info)?;
+
+    assert_mint_owner_program(signatory_mint_account_info, token_program_info.key)?;
+    assert_mint_owner_program(admin_mint_account_info, token_program_info.key)?;
+    assert_mint_owner_program(voting_mint_account_info, token_program_info.key)?;
+    assert_mint_owner_program(yes_voting_mint_account_info, token_program_info.key)?;
+    assert_mint_owner_program(no_voting_mint_account_info, token_program_info.key)?;
+    assert_mint_owner_program(source_mint_account_info, token_program_info.key)?;
 
     let source_holding_mint: Pubkey = get_mint_from_token_account(source_holding_account_info)?;
 
@@ -149,11 +156,11 @@ pub fn process_init_timelock_set(
     assert_mint_decimals(yes_voting_mint_account_info, source_mint_decimals)?;
     assert_mint_decimals(no_voting_mint_account_info, source_mint_decimals)?;
 
-    assert_mint_authority(admin_mint_account_info, timelock_program_authority_info.key)?;
     assert_mint_authority(
         signatory_mint_account_info,
         timelock_program_authority_info.key,
     )?;
+    assert_mint_authority(admin_mint_account_info, timelock_program_authority_info.key)?;
     assert_mint_authority(
         voting_mint_account_info,
         timelock_program_authority_info.key,
