@@ -540,20 +540,20 @@ fn command_transfer(
     let mut recipient_token_account = recipient;
     let mut minimum_balance_for_rent_exemption = 0;
 
-    let recipient_account_owner = config
+    let recipient_is_token_account = config
         .rpc_client
         .get_account_with_commitment(&recipient, config.rpc_client.commitment())?
         .value
-        .map(|account_data| account_data.owner);
+        .map(|account| account.owner == spl_token::id() && account.data.len() == Account::LEN);
 
-    if recipient_account_owner.is_none() && !allow_unfunded_recipient {
+    if recipient_is_token_account.is_none() && !allow_unfunded_recipient {
         return Err("Error: The recipient address is not funded. \
                             Add `--allow-unfunded-recipient` to complete the transfer \
                            "
         .into());
     }
 
-    if Some(spl_token::id()) != recipient_account_owner {
+    if Some(true) != recipient_is_token_account {
         recipient_token_account = get_associated_token_address(&recipient, &mint_pubkey);
         println!(
             "  Recipient associated token account: {}",
