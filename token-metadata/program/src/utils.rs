@@ -188,14 +188,6 @@ pub fn transfer_mint_authority<'a>(
     Ok(())
 }
 
-pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
-    if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
-        Err(MetadataError::NotRentExempt.into())
-    } else {
-        Ok(())
-    }
-}
-
 pub fn assert_edition_valid(
     program_id: &Pubkey,
     mint: &Pubkey,
@@ -213,44 +205,4 @@ pub fn assert_edition_valid(
     }
 
     Ok(())
-}
-
-/// Issue a spl_token `MintTo` instruction.
-pub fn spl_token_mint_to(params: TokenMintToParams<'_, '_>) -> ProgramResult {
-    let TokenMintToParams {
-        mint,
-        destination,
-        authority,
-        token_program,
-        amount,
-        authority_signer_seeds,
-    } = params;
-    let result = invoke_signed(
-        &spl_token::instruction::mint_to(
-            token_program.key,
-            mint.key,
-            destination.key,
-            authority.key,
-            &[],
-            amount,
-        )?,
-        &[mint, destination, authority, token_program],
-        &[authority_signer_seeds],
-    );
-    result.map_err(|_| MetadataError::TokenMintToFailed.into())
-}
-/// TokenMintToParams
-pub struct TokenMintToParams<'a: 'b, 'b> {
-    /// mint
-    pub mint: AccountInfo<'a>,
-    /// destination
-    pub destination: AccountInfo<'a>,
-    /// amount
-    pub amount: u64,
-    /// authority
-    pub authority: AccountInfo<'a>,
-    /// authority_signer_seeds
-    pub authority_signer_seeds: &'b [&'b [u8]],
-    /// token_program
-    pub token_program: AccountInfo<'a>,
 }

@@ -29,7 +29,7 @@ pub struct CreateMetadataAccountArgs {
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct CreateMasterRecordArgs {
     /// If set, means that no more than this number of editions can ever be minted. This is immutable.
-    pub max_editions: Option<u64>,
+    pub max_supply: Option<u64>,
 }
 
 /// Instructions supported by the Metadata program.
@@ -88,17 +88,6 @@ pub enum MetadataInstruction {
     ///   9. `[]` Token program
     ///   10. `[]` Rent info
     MintNewEditionFromMasterRecord,
-
-    /// Mints a single token for an edition. Can only be called once per edition.
-    ///   0. `[writable]` Mint of Metadata account
-    ///   1. `[writable]` Initialized destination account
-    ///   2. `[signer]` update authority info of master metadata account, update authority of this metadata IS NOT required here
-    ///   3. `[]` Edition of Metadata (pda of ['metadata', program id, mint id, 'edition'])
-    ///   4. `[]` Master Edition of Master Metadata (pda of ['metadata', program id, mint id, 'edition'])
-    ///   5. `[]` Master metadata account
-    ///   7. `[]` Token program
-    ///   8. `[]` Rent info
-    MintTokenForEdition,
 }
 
 /// Creates an CreateMetadataAccounts instruction

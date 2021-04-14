@@ -18,7 +18,9 @@ pub const MAX_METADATA_LEN: usize = 1 + 32 + MAX_NAME_LENGTH + MAX_SYMBOL_LENGTH
 
 pub const MAX_NAME_SYMBOL_LEN: usize = 1 + 32 + 32;
 
-pub const MAX_EDITION_LEN: usize = 1 + 32 + 8 + 8 + 8;
+pub const MAX_EDITION_LEN: usize = 1 + 32 + 8;
+
+pub const MAX_MASTER_EDITION_LEN: usize = 1 + 8 + 8;
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -26,6 +28,7 @@ pub enum Key {
     MetadataV1,
     NameSymbolTupleV1,
     EditionV1,
+    MasterEditionV1,
 }
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -60,25 +63,32 @@ pub struct NameSymbolTuple {
     pub metadata: Pubkey,
 }
 
+/// Make a master struct
+/// total_supply and supply
+/// single action
+
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
+pub struct MasterEdition {
+    pub key: Key,
+
+    pub supply: u64,
+
+    pub max_supply: Option<u64>,
+}
+
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
+/// All Editions should never have a supply greater than 1.
+/// To enforce this, a transfer mint authority instruction will happen when
+/// a normal token is turned into an Edition, and in order for a Metadata update authority
+/// to do this transaction they will also need to sign the transaction as the Mint authority.
 pub struct Edition {
     pub key: Key,
-    /// All Editions should never have a supply greater than 1.
-    /// To enforce this, a transfer mint authority instruction will happen when
-    /// a normal token is turned into an Edition, and in order for a Metadata update authority
-    /// to do this transaction they will also need to sign the transaction as the Mint authority.
-    ///
-    /// If this is a master record, this is None, if this is not the master record,
-    /// this will point back at the master record (Edition).
-    pub master_record: Option<Pubkey>,
+
+    /// Points at MasterEdition struct
+    pub parent: Pubkey,
 
     /// Starting at 0 for master record, this is incremented for each edition minted.
     pub edition: u64,
-
-    /// Incremented by one only on the master record for each edition minted.
-    pub edition_count: u64,
-
-    /// Max editions ever mintable, optional
-    pub max_editions: Option<u64>,
 }

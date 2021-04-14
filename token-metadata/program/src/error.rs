@@ -87,17 +87,13 @@ pub enum MetadataError {
     #[error("Mint given does not match mint on Metadata")]
     MintMismatch,
 
-    /// Master Records must have exactly one token
-    #[error("Master Records must have exactly one token")]
-    MasterRecordsMustHaveExactlyOneToken,
+    /// Editions must have exactly one token
+    #[error("Editions must have exactly one token")]
+    EditionsMustHaveExactlyOneToken,
 
     /// Maximum editions printed already
     #[error("Maximum editions printed already")]
     MaxEditionsMintedAlready,
-
-    /// Newly minted editions must have zero tokens
-    #[error("Newly minted editions must have zero tokens")]
-    NewlyMintedEditionsMustHaveZeroTokens,
 
     /// Token mint to failed
     #[error("Token mint to failed")]

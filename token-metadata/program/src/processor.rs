@@ -1,17 +1,16 @@
-use crate::utils::TokenMintToParams;
-
 use {
     crate::{
         error::MetadataError,
         instruction::MetadataInstruction,
         state::{
-            Edition, Key, Metadata, NameSymbolTuple, EDITION, MAX_EDITION_LEN, MAX_METADATA_LEN,
-            MAX_NAME_LENGTH, MAX_NAME_SYMBOL_LEN, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH, PREFIX,
+            Edition, Key, MasterEdition, Metadata, NameSymbolTuple, EDITION, MAX_EDITION_LEN,
+            MAX_MASTER_EDITION_LEN, MAX_METADATA_LEN, MAX_NAME_LENGTH, MAX_NAME_SYMBOL_LEN,
+            MAX_SYMBOL_LENGTH, MAX_URI_LENGTH, PREFIX,
         },
         utils::{
             assert_edition_valid, assert_initialized, assert_mint_authority_matches_mint,
-            assert_rent_exempt, assert_update_authority_is_correct, create_or_allocate_account_raw,
-            spl_token_mint_to, transfer_mint_authority,
+            assert_update_authority_is_correct, create_or_allocate_account_raw,
+            transfer_mint_authority,
         },
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -21,10 +20,8 @@ use {
         entrypoint::ProgramResult,
         msg,
         pubkey::Pubkey,
-        rent::Rent,
-        sysvar::Sysvar,
     },
-    spl_token::state::{Account, Mint},
+    spl_token::state::Mint,
 };
 
 pub fn process_instruction(
@@ -60,15 +57,11 @@ pub fn process_instruction(
         }
         MetadataInstruction::CreateMasterRecord(args) => {
             msg!("Instruction: Create Master Record");
-            process_create_master_record(program_id, accounts, args.max_editions)
+            process_create_master_record(program_id, accounts, args.max_supply)
         }
         MetadataInstruction::MintNewEditionFromMasterRecord => {
             msg!("Instruction: Mint New Edition from Master Record");
             process_mint_new_edition_from_master_record(program_id, accounts)
-        }
-        MetadataInstruction::MintTokenForEdition => {
-            msg!("Instruction: Mint Token for Edition");
-            process_mint_token_for_edition(program_id, accounts)
         }
     }
 }
@@ -301,7 +294,7 @@ pub fn process_transfer_update_authority(_: &Pubkey, accounts: &[AccountInfo]) -
 pub fn process_create_master_record(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    max_editions: Option<u64>,
+    max_supply: Option<u64>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -345,7 +338,7 @@ pub fn process_create_master_record(
     )?;
 
     if mint.supply != 1 {
-        return Err(MetadataError::MasterRecordsMustHaveExactlyOneToken.into());
+        return Err(MetadataError::EditionsMustHaveExactlyOneToken.into());
     }
 
     create_or_allocate_account_raw(
@@ -354,17 +347,15 @@ pub fn process_create_master_record(
         rent_info,
         system_account_info,
         payer_account_info,
-        MAX_EDITION_LEN,
+        MAX_MASTER_EDITION_LEN,
         edition_seeds,
     )?;
 
-    let mut edition: Edition = try_from_slice_unchecked(&edition_account_info.data.borrow())?;
+    let mut edition: MasterEdition = try_from_slice_unchecked(&edition_account_info.data.borrow())?;
 
-    edition.key = Key::EditionV1;
-    edition.master_record = None;
-    edition.edition = 0;
-    edition.edition_count = 0;
-    edition.max_editions = max_editions;
+    edition.key = Key::MasterEditionV1;
+    edition.supply = 0;
+    edition.max_supply = max_supply;
     edition.serialize(&mut *edition_account_info.data.borrow_mut())?;
 
     transfer_mint_authority(
@@ -398,7 +389,7 @@ pub fn process_mint_new_edition_from_master_record(
 
     let master_metadata: Metadata =
         try_from_slice_unchecked(&master_metadata_account_info.data.borrow())?;
-    let mut master_edition: Edition =
+    let mut master_edition: MasterEdition =
         try_from_slice_unchecked(&master_edition_account_info.data.borrow())?;
     let mint: Mint = assert_initialized(mint_info)?;
 
@@ -428,17 +419,17 @@ pub fn process_mint_new_edition_from_master_record(
         return Err(MetadataError::InvalidEditionKey.into());
     }
 
-    if let Some(max) = master_edition.max_editions {
-        if master_edition.edition_count >= max {
+    if let Some(max) = master_edition.max_supply {
+        if master_edition.supply >= max {
             return Err(MetadataError::MaxEditionsMintedAlready.into());
         }
     }
 
-    master_edition.edition_count += 1;
+    master_edition.supply += 1;
     master_edition.serialize(&mut *master_edition_account_info.data.borrow_mut())?;
 
-    if mint.supply != 0 {
-        return Err(MetadataError::NewlyMintedEditionsMustHaveZeroTokens.into());
+    if mint.supply != 1 {
+        return Err(MetadataError::EditionsMustHaveExactlyOneToken.into());
     }
 
     // create the metadata the normal way...
@@ -473,8 +464,8 @@ pub fn process_mint_new_edition_from_master_record(
     let mut new_edition: Edition =
         try_from_slice_unchecked(&new_edition_account_info.data.borrow())?;
     new_edition.key = Key::EditionV1;
-    new_edition.master_record = Some(*master_edition_account_info.key);
-    new_edition.edition = master_edition.edition_count;
+    new_edition.parent = *master_edition_account_info.key;
+    new_edition.edition = master_edition.supply;
     new_edition.serialize(&mut *new_edition_account_info.data.borrow_mut())?;
 
     // Now make sure this mint can never be used by anybody else.
@@ -486,81 +477,6 @@ pub fn process_mint_new_edition_from_master_record(
         mint_authority_info,
         token_program_account_info,
     )?;
-
-    Ok(())
-}
-
-pub fn process_mint_token_for_edition(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-    let mint_info = next_account_info(account_info_iter)?;
-    let destination_info = next_account_info(account_info_iter)?;
-    let update_authority_info = next_account_info(account_info_iter)?;
-    let edition_account_info = next_account_info(account_info_iter)?;
-    let master_edition_account_info = next_account_info(account_info_iter)?;
-    let master_metadata_account_info = next_account_info(account_info_iter)?;
-    let token_program_account_info = next_account_info(account_info_iter)?;
-    let rent_info = next_account_info(account_info_iter)?;
-    let rent = &Rent::from_account_info(rent_info)?;
-
-    let master_metadata: Metadata =
-        try_from_slice_unchecked(&master_metadata_account_info.data.borrow())?;
-    let mint: Mint = assert_initialized(mint_info)?;
-    let edition: Edition = try_from_slice_unchecked(&edition_account_info.data.borrow())?;
-
-    if mint.supply >= 1 {
-        return Err(MetadataError::EditionAlreadyMinted.into());
-    }
-
-    assert_update_authority_is_correct(
-        &master_metadata,
-        master_metadata_account_info,
-        None,
-        update_authority_info,
-    )?;
-
-    assert_edition_valid(
-        program_id,
-        &master_metadata.mint,
-        master_edition_account_info,
-    )?;
-
-    if let Some(record) = edition.master_record {
-        if record != *master_edition_account_info.key {
-            return Err(MetadataError::MasterRecordMismatch.into());
-        }
-    }
-
-    // We look out for you here, make sure your account is safe and won't brick your token.
-    assert_rent_exempt(rent, destination_info)?;
-
-    let destination: Account = assert_initialized(destination_info)?;
-
-    if destination.mint != *mint_info.key {
-        return Err(MetadataError::DestinationMintMismatch.into());
-    }
-
-    let edition_seeds = &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        &mint_info.key.as_ref(),
-        EDITION.as_bytes(),
-    ];
-    let (edition_key, _) = Pubkey::find_program_address(edition_seeds, program_id);
-    if edition_key != *edition_account_info.key {
-        return Err(MetadataError::InvalidEditionKey.into());
-    }
-
-    spl_token_mint_to(TokenMintToParams {
-        mint: mint_info.clone(),
-        destination: destination_info.clone(),
-        authority: edition_account_info.clone(),
-        token_program: token_program_account_info.clone(),
-        amount: 1,
-        authority_signer_seeds: edition_seeds,
-    })?;
 
     Ok(())
 }
