@@ -13,7 +13,8 @@ use {
     },
 };
 
-/// Fee rate as a ratio, minted on deposit
+/// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
+/// the rewards
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct Fee {

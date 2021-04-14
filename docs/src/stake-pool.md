@@ -54,8 +54,8 @@ active, the stake pool manager adds it to the stake pool.
 At this point, users can participate with deposits. They must delegate a stake
 account to the one of the validators in the stake pool. Once it's active, the
 user can deposit their stake into the pool in exchange for SPL staking derivatives
-representing their fractional ownership in pool. A percentage of the user's
-deposit goes to the pool manager as a fee.
+representing their fractional ownership in pool. A percentage of the rewards
+earned by the pool goes to the pool manager as a fee.
 
 Over time, as the stake pool accrues staking rewards, the user's fractional
 ownership will be worth more than their initial deposit. Whenever the user chooses,
@@ -153,9 +153,9 @@ The identifier for the SPL token for staking derivatives is
 over the mint.
 
 The pool creator's fee account identifier is
-`3xvXPfQi2SaTkqPV9A7BQwh4GyTe2ZPasfoaCBCnTAJ5`. When users deposit warmed up
-stake accounts into the stake pool, the program will transfer 3% of their
-contribution into this account in the form of SPL token staking derivatives.
+`3xvXPfQi2SaTkqPV9A7BQwh4GyTe2ZPasfoaCBCnTAJ5`. Every epoch, as stake accounts
+in the stake pool earn rewards, the program will mint SPL token staking derivatives
+equal to 3% of the gains on that epoch into this account.
 
 #### Create a validator stake account
 
