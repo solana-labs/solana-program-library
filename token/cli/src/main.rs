@@ -498,6 +498,7 @@ fn command_transfer(
     allow_unfunded_recipient: bool,
     fund_recipient: bool,
     mint_decimals: Option<u8>,
+    recipient_is_ata_owner: bool,
 ) -> CommandResult {
     let sender = if let Some(sender) = sender {
         sender
@@ -505,102 +506,120 @@ fn command_transfer(
         get_associated_token_address(&config.owner, &token)
     };
     let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, Some(token), mint_decimals)?;
-    let sender_token_amount = config
-        .rpc_client
-        .get_token_account_balance(&sender)
-        .map_err(|err| {
+    let maybe_transfer_balance =
+        ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, decimals));
+    let transfer_balance = if !config.sign_only {
+        let sender_token_amount = config
+            .rpc_client
+            .get_token_account_balance(&sender)
+            .map_err(|err| {
+                format!(
+                    "Error: Failed to get token balance of sender address {}: {}",
+                    sender, err
+                )
+            })?;
+        let sender_balance = sender_token_amount.amount.parse::<u64>().map_err(|err| {
             format!(
-                "Error: Failed to get token balance of sender address {}: {}",
+                "Token account {} balance could not be parsed: {}",
                 sender, err
             )
         })?;
-    let sender_balance = sender_token_amount.amount.parse::<u64>().map_err(|err| {
-        format!(
-            "Token account {} balance could not be parsed: {}",
-            sender, err
-        )
-    })?;
-    let transfer_balance = ui_amount
-        .map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, decimals))
-        .unwrap_or(sender_balance);
 
-    println!(
-        "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
-        spl_token::amount_to_ui_amount(transfer_balance, decimals),
-        sender,
-        recipient
-    );
+        let transfer_balance = maybe_transfer_balance.unwrap_or(sender_balance);
+        println!(
+            "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
+            spl_token::amount_to_ui_amount(transfer_balance, decimals),
+            sender,
+            recipient
+        );
 
-    if transfer_balance > sender_balance {
-        return Err(format!(
-            "Error: Sender has insufficient funds, current balance is {}",
-            sender_token_amount.real_number_string_trimmed()
-        )
-        .into());
-    }
+        if transfer_balance > sender_balance {
+            return Err(format!(
+                "Error: Sender has insufficient funds, current balance is {}",
+                sender_token_amount.real_number_string_trimmed()
+            )
+            .into());
+        }
+        transfer_balance
+    } else {
+        maybe_transfer_balance.unwrap()
+    };
 
     let mut instructions = vec![];
 
     let mut recipient_token_account = recipient;
     let mut minimum_balance_for_rent_exemption = 0;
 
-    let recipient_is_token_account = config
-        .rpc_client
-        .get_account_with_commitment(&recipient, config.rpc_client.commitment())?
-        .value
-        .map(|account| account.owner == spl_token::id() && account.data.len() == Account::LEN);
+    let recipient_is_token_account = if !config.sign_only {
+        let recipient_account_info = config
+            .rpc_client
+            .get_account_with_commitment(&recipient, config.rpc_client.commitment())?
+            .value
+            .map(|account| account.owner == spl_token::id() && account.data.len() == Account::LEN);
 
-    if recipient_is_token_account.is_none() && !allow_unfunded_recipient {
-        return Err("Error: The recipient address is not funded. \
-                            Add `--allow-unfunded-recipient` to complete the transfer \
-                           "
-        .into());
-    }
+        if recipient_account_info.is_none() && !allow_unfunded_recipient {
+            return Err("Error: The recipient address is not funded. \
+                                    Add `--allow-unfunded-recipient` to complete the transfer \
+                                   "
+            .into());
+        }
 
-    if Some(true) != recipient_is_token_account {
+        recipient_account_info.unwrap_or(false)
+    } else {
+        !recipient_is_ata_owner
+    };
+
+    if !recipient_is_token_account {
         recipient_token_account = get_associated_token_address(&recipient, &mint_pubkey);
         println!(
             "  Recipient associated token account: {}",
             recipient_token_account
         );
 
-        let needs_funding = if let Some(recipient_token_account_data) = config
-            .rpc_client
-            .get_account_with_commitment(&recipient_token_account, config.rpc_client.commitment())?
-            .value
-        {
-            if recipient_token_account_data.owner == system_program::id() {
+        if !config.sign_only {
+            let needs_funding = if let Some(recipient_token_account_data) = config
+                .rpc_client
+                .get_account_with_commitment(
+                    &recipient_token_account,
+                    config.rpc_client.commitment(),
+                )?
+                .value
+            {
+                if recipient_token_account_data.owner == system_program::id() {
+                    true
+                } else if recipient_token_account_data.owner == spl_token::id() {
+                    false
+                } else {
+                    return Err(
+                        format!("Error: Unsupported recipient address: {}", recipient).into(),
+                    );
+                }
+            } else {
                 true
-            } else if recipient_token_account_data.owner == spl_token::id() {
-                false
-            } else {
-                return Err(format!("Error: Unsupported recipient address: {}", recipient).into());
-            }
-        } else {
-            true
-        };
+            };
 
-        if needs_funding {
-            if fund_recipient {
-                minimum_balance_for_rent_exemption += config
-                    .rpc_client
-                    .get_minimum_balance_for_rent_exemption(Account::LEN)?;
-                println!(
-                    "  Funding recipient: {} ({} SOL)",
-                    recipient_token_account,
-                    lamports_to_sol(minimum_balance_for_rent_exemption)
-                );
-                instructions.push(create_associated_token_account(
-                    &config.fee_payer,
-                    &recipient,
-                    &mint_pubkey,
-                ));
-            } else {
-                return Err(
-                    "Error: Recipient's associated token account does not exist. \
-                                    Add `--fund-recipient` to fund their account"
-                        .into(),
-                );
+            if needs_funding {
+                if fund_recipient {
+                    minimum_balance_for_rent_exemption += config
+                        .rpc_client
+                        .get_minimum_balance_for_rent_exemption(Account::LEN)?;
+                    println!(
+                        "  Funding recipient: {} ({} SOL)",
+                        recipient_token_account,
+                        lamports_to_sol(minimum_balance_for_rent_exemption)
+                    );
+                    instructions.push(create_associated_token_account(
+                        &config.fee_payer,
+                        &recipient,
+                        &mint_pubkey,
+                    ));
+                } else {
+                    return Err(
+                        "Error: Recipient's associated token account does not exist. \
+                                        Add `--fund-recipient` to fund their account"
+                            .into(),
+                    );
+                }
             }
         }
     }
@@ -1568,6 +1587,13 @@ fn main() {
                         .takes_value(false)
                         .help("Return signature immediately after submitting the transaction, instead of waiting for confirmations"),
                 )
+                .arg(
+                    Arg::with_name("recipient_is_ata_owner")
+                        .long("recipient-is-ata-owner")
+                        .takes_value(false)
+                        .requires("sign_only")
+                        .help("In sign-only mode, specifies that the recipient is the owner of the associated token account rather than an actual token account"),
+                )
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
                 .nonce_args(true)
@@ -2133,6 +2159,8 @@ fn main() {
             let allow_unfunded_recipient = matches.is_present("allow_empty_recipient")
                 || matches.is_present("allow_unfunded_recipient");
             no_wait = matches.is_present("no_wait");
+            let recipient_is_ata_owner = matches.is_present("recipient_is_ata_owner");
+
             command_transfer(
                 &config,
                 token,
@@ -2142,6 +2170,7 @@ fn main() {
                 allow_unfunded_recipient,
                 fund_recipient,
                 mint_decimals,
+                recipient_is_ata_owner,
             )
         }
         ("burn", Some(arg_matches)) => {
