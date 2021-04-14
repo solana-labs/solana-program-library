@@ -164,8 +164,8 @@ pub fn assert_account_equiv(acct: &AccountInfo, key: &Pubkey) -> ProgramResult {
     Ok(())
 }
 
-/// Cheaper Assertion the account has a matching mint - if you don't plan to use Mint for anything else
-pub fn assert_mint_matching(acct: &AccountInfo, mint: &AccountInfo) -> ProgramResult {
+/// Cheaper Assertion the account belongs to the given mint - if you don't plan to use Mint for anything else
+pub fn assert_account_mint(acct: &AccountInfo, mint: &AccountInfo) -> ProgramResult {
     let mint_key: Pubkey = get_mint_from_account(acct)?;
     if &mint_key != mint.key {
         return Err(TimelockError::MintsShouldMatch.into());

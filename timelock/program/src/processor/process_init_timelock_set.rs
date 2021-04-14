@@ -10,7 +10,7 @@ use crate::{
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
-        assert_initialized, assert_mint_decimals, assert_mint_initialized, assert_mint_matching,
+        assert_account_mint, assert_initialized, assert_mint_decimals, assert_mint_initialized,
         assert_rent_exempt, assert_uninitialized, get_mint_decimals, get_mint_from_account,
         spl_token_mint_to, TokenMintToParams,
     },
@@ -107,17 +107,17 @@ pub fn process_init_timelock_set(
 
     let source_holding_mint: Pubkey = get_mint_from_account(source_holding_account_info)?;
 
-    assert_mint_matching(destination_sig_account_info, signatory_mint_account_info)?;
-    assert_mint_matching(destination_admin_account_info, admin_mint_account_info)?;
-    assert_mint_matching(
+    assert_account_mint(destination_sig_account_info, signatory_mint_account_info)?;
+    assert_account_mint(destination_admin_account_info, admin_mint_account_info)?;
+    assert_account_mint(
         signatory_validation_account_info,
         signatory_mint_account_info,
     )?;
-    assert_mint_matching(admin_validation_account_info, admin_mint_account_info)?;
-    assert_mint_matching(voting_validation_account_info, voting_mint_account_info)?;
-    assert_mint_matching(yes_voting_dump_account_info, yes_voting_mint_account_info)?;
-    assert_mint_matching(no_voting_dump_account_info, no_voting_mint_account_info)?;
-    assert_mint_matching(source_holding_account_info, source_mint_account_info)?;
+    assert_account_mint(admin_validation_account_info, admin_mint_account_info)?;
+    assert_account_mint(voting_validation_account_info, voting_mint_account_info)?;
+    assert_account_mint(yes_voting_dump_account_info, yes_voting_mint_account_info)?;
+    assert_account_mint(no_voting_dump_account_info, no_voting_mint_account_info)?;
+    assert_account_mint(source_holding_account_info, source_mint_account_info)?;
 
     let source_mint_decimals = get_mint_decimals(source_mint_account_info)?;
     assert_mint_decimals(voting_mint_account_info, source_mint_decimals)?;
