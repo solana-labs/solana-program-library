@@ -376,52 +376,56 @@ fn command_authorize(
         AuthorityType::AccountOwner => "owner",
         AuthorityType::CloseAccount => "close authority",
     };
-    let target_account = config.rpc_client.get_account(&account)?;
-    let previous_authority = if let Ok(mint) = Mint::unpack(&target_account.data) {
-        match authority_type {
-            AuthorityType::AccountOwner | AuthorityType::CloseAccount => Err(format!(
-                "Authority type `{}` not supported for SPL Token mints",
-                auth_str
-            )),
-            AuthorityType::MintTokens => Ok(mint.mint_authority),
-            AuthorityType::FreezeAccount => Ok(mint.freeze_authority),
-        }
-    } else if let Ok(token_account) = Account::unpack(&target_account.data) {
-        let check_associated_token_account = || -> Result<(), Error> {
-            let maybe_associated_token_account =
-                get_associated_token_address(&config.owner, &token_account.mint);
-            if account == maybe_associated_token_account
-                && !force_authorize
-                && Some(config.owner) != new_owner
-            {
-                Err(
-                    format!("Error: attempting to change the `{}` of an associated token account of `--owner`", auth_str)
-                        .into(),
-                )
-            } else {
-                Ok(())
+    let previous_authority = if !config.sign_only {
+        let target_account = config.rpc_client.get_account(&account)?;
+        if let Ok(mint) = Mint::unpack(&target_account.data) {
+            match authority_type {
+                AuthorityType::AccountOwner | AuthorityType::CloseAccount => Err(format!(
+                    "Authority type `{}` not supported for SPL Token mints",
+                    auth_str
+                )),
+                AuthorityType::MintTokens => Ok(mint.mint_authority),
+                AuthorityType::FreezeAccount => Ok(mint.freeze_authority),
             }
-        };
+        } else if let Ok(token_account) = Account::unpack(&target_account.data) {
+            let check_associated_token_account = || -> Result<(), Error> {
+                let maybe_associated_token_account =
+                    get_associated_token_address(&config.owner, &token_account.mint);
+                if account == maybe_associated_token_account
+                    && !force_authorize
+                    && Some(config.owner) != new_owner
+                {
+                    Err(
+                        format!("Error: attempting to change the `{}` of an associated token account of `--owner`", auth_str)
+                            .into(),
+                    )
+                } else {
+                    Ok(())
+                }
+            };
 
-        match authority_type {
-            AuthorityType::MintTokens | AuthorityType::FreezeAccount => Err(format!(
-                "Authority type `{}` not supported for SPL Token accounts",
-                auth_str
-            )),
-            AuthorityType::AccountOwner => {
-                check_associated_token_account()?;
-                Ok(COption::Some(token_account.owner))
+            match authority_type {
+                AuthorityType::MintTokens | AuthorityType::FreezeAccount => Err(format!(
+                    "Authority type `{}` not supported for SPL Token accounts",
+                    auth_str
+                )),
+                AuthorityType::AccountOwner => {
+                    check_associated_token_account()?;
+                    Ok(COption::Some(token_account.owner))
+                }
+                AuthorityType::CloseAccount => {
+                    check_associated_token_account()?;
+                    Ok(COption::Some(
+                        token_account.close_authority.unwrap_or(token_account.owner),
+                    ))
+                }
             }
-            AuthorityType::CloseAccount => {
-                check_associated_token_account()?;
-                Ok(COption::Some(
-                    token_account.close_authority.unwrap_or(token_account.owner),
-                ))
-            }
-        }
+        } else {
+            Err("Unsupported account data format".to_string())
+        }?
     } else {
-        Err("Unsupported account data format".to_string())
-    }?;
+        COption::None
+    };
     println!(
         "Updating {}\n  Current {}: {}\n  New {}: {}",
         account,
