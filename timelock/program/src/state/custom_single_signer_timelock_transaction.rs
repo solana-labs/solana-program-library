@@ -111,7 +111,7 @@ impl Pack for CustomSingleSignerTimelockTransaction {
         if input.len() != Self::LEN {
             return Err(ProgramError::InvalidAccountData);
         }
-        Ok(Self::unpack_from_slice(input)?)
+        Self::unpack_from_slice(input)
     }
 
     fn pack(src: Self, dst: &mut [u8]) -> Result<(), ProgramError> {
