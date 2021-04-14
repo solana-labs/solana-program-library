@@ -11,20 +11,6 @@ use crate::{
     },
 };
 
-/// Used for telling caller what type of format you want back
-#[derive(Clone, PartialEq)]
-pub enum Format {
-    /// JSON format
-    JSON,
-    /// MsgPack format
-    MsgPack,
-}
-impl Default for Format {
-    fn default() -> Self {
-        Format::JSON
-    }
-}
-
 /// Instructions supported by the Timelock program.
 #[derive(Clone)]
 #[allow(clippy::large_enum_variant)]
