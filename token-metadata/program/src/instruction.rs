@@ -155,14 +155,14 @@ pub fn update_metadata_accounts(
 /// transfer update authority instruction
 pub fn transfer_update_authority(
     program_id: Pubkey,
-    name_symbol_account: Pubkey,
+    object: Pubkey,
     update_authority: Pubkey,
     new_update_authority: Pubkey,
 ) -> Instruction {
     Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(name_symbol_account, false),
+            AccountMeta::new(object, false),
             AccountMeta::new_readonly(update_authority, true),
             AccountMeta::new_readonly(new_update_authority, false),
         ],
