@@ -187,6 +187,7 @@ fn process_init_reserve(
     let reserve_collateral_mint_info = next_account_info(account_info_iter)?;
     let reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
+    // @FIXME: lending market owner is only required because of the trusted aggregator
     let lending_market_owner_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
@@ -203,6 +204,7 @@ fn process_init_reserve(
     }
 
     assert_uninitialized::<Account>(reserve_liquidity_supply_info)?;
+    // @TODO: why does the liquidity fee receiver need to be uninitialized?
     assert_uninitialized::<Account>(reserve_liquidity_fee_receiver_info)?;
     assert_uninitialized::<Mint>(reserve_collateral_mint_info)?;
     assert_uninitialized::<Account>(reserve_collateral_supply_info)?;
@@ -222,6 +224,7 @@ fn process_init_reserve(
         msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
+    // @FIXME: lending market owner is only required because of the trusted aggregator
     if &lending_market.owner != lending_market_owner_info.key {
         msg!("Lending market owner does not match the lending market owner provided");
         return Err(LendingError::InvalidMarketOwner.into());
@@ -231,6 +234,8 @@ fn process_init_reserve(
         return Err(LendingError::InvalidSigner.into());
     }
 
+    // @FIXME: only the lending market owner can create a reserve because there is no way to
+    //         verify that the aggregator represents the price of any particular token
     let (reserve_liquidity_aggregator, reserve_liquidity_market_price) =
         if reserve_liquidity_mint_info.key == &lending_market.quote_token_mint {
             if account_info_iter.peek().is_some() {

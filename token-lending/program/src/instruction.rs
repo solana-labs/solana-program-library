@@ -21,10 +21,10 @@ pub enum LendingInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[writable]` Lending market account - uninitialized
-    ///   1. `[]` Quote currency SPL Token mint
-    ///   2. `[]` Rent sysvar
-    ///   3. `[]` Token program id
+    ///   0. `[writable]` Lending market account - uninitialized.
+    ///   1. `[]` Quote currency SPL Token mint.
+    ///   2. `[]` Rent sysvar.
+    ///   3. `[]` Token program id.
     InitLendingMarket {
         /// Owner authority which can add new reserves
         owner: Pubkey,
@@ -45,10 +45,11 @@ pub enum LendingInstruction {
     ///   6. `[writable]` Reserve collateral SPL Token mint - uninitialized.
     ///   7. `[writable]` Reserve collateral token supply - uninitialized.
     ///   8. `[]` Lending market account.
-    ///   9. `[signer]` Lending market owner.
     ///   10 `[]` Derived lending market authority.
     ///   11 `[]` User transfer authority ($authority).
-    ///   12 `[]` Clock sysvar.
+    // @FIXME: lending market owner is only required because of the trusted aggregator
+    ///   12 `[signer]` Lending market owner.
+    ///   13 `[]` Clock sysvar.
     ///   13 `[]` Rent sysvar.
     ///   14 `[]` Token program id.
     ///   15 `[optional]` Reserve liquidity aggregator account.
@@ -110,7 +111,8 @@ pub enum LendingInstruction {
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
     ///   7. `[signer]` User transfer authority ($authority).
-    ///   8. `[]` Token program id.
+    ///   8. `[]` Clock sysvar.
+    ///   9. `[]` Token program id.
     RedeemReserveCollateral {
         /// Amount of collateral tokens to redeem in exchange for liquidity
         collateral_amount: u64,
@@ -190,7 +192,7 @@ pub enum LendingInstruction {
     },
 
     // 3
-    /// Accrue interest and update median quote token price on a reserve.
+    /// Accrue interest and update market price of liquidity on a reserve.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -254,8 +256,8 @@ pub enum LendingInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[writable]` Lending market account
-    ///   1. `[signer]` Current owner
+    ///   0. `[writable]` Lending market account.
+    ///   1. `[signer]` Current owner.
     SetLendingMarketOwner {
         /// The new owner
         new_owner: Pubkey,
