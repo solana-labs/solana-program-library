@@ -68,7 +68,7 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     timelock_state.total_signing_tokens_minted -= 1;
 
     TimelockState::pack(
-        timelock_state.clone(),
+        timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;
     Ok(())

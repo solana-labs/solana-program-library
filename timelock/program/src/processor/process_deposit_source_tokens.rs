@@ -97,7 +97,7 @@ pub fn process_deposit_source_tokens(
         };
     }
     GovernanceVotingRecord::pack(
-        voting_record.clone(),
+        voting_record,
         &mut voting_record_account_info.data.borrow_mut(),
     )?;
     Ok(())

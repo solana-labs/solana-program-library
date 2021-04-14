@@ -141,7 +141,7 @@ pub fn process_vote(
         timelock_state.voting_ended_at = clock.slot;
 
         TimelockState::pack(
-            timelock_state.clone(),
+            timelock_state,
             &mut timelock_state_account_info.data.borrow_mut(),
         )?;
     }
@@ -177,7 +177,7 @@ pub fn process_vote(
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
     GovernanceVotingRecord::pack(
-        voting_record.clone(),
+        voting_record,
         &mut voting_record_account_info.data.borrow_mut(),
     )?;
 

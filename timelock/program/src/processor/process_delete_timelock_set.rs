@@ -46,7 +46,7 @@ pub fn process_delete_timelock_set(program_id: &Pubkey, accounts: &[AccountInfo]
     )?;
     timelock_state.status = TimelockStateStatus::Deleted;
     TimelockState::pack(
-        timelock_state.clone(),
+        timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;
     Ok(())

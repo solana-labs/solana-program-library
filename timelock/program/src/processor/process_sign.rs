@@ -67,7 +67,7 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
         timelock_state.voting_began_at = clock.slot;
 
         TimelockState::pack(
-            timelock_state.clone(),
+            timelock_state,
             &mut timelock_state_account_info.data.borrow_mut(),
         )?;
     }

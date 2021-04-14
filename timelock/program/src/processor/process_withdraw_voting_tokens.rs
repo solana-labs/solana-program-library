@@ -211,7 +211,7 @@ pub fn process_withdraw_voting_tokens(
     })?;
 
     GovernanceVotingRecord::pack(
-        voting_record.clone(),
+        voting_record,
         &mut voting_record_account_info.data.borrow_mut(),
     )?;
     Ok(())
