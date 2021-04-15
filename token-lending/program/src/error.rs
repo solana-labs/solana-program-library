@@ -31,17 +31,20 @@ pub enum LendingError {
     /// The owner of the account input isn't set to the correct token program id.
     #[error("Input token account is not owned by the correct token program id")]
     InvalidTokenOwner,
+    /// Expected an SPL Token account
+    #[error("Input token account is not valid")]
+    InvalidTokenAccount,
     /// Expected an SPL Token mint
     #[error("Input token mint account is not valid")]
     InvalidTokenMint,
     /// Expected a different SPL Token program
     #[error("Input token program account is not valid")]
     InvalidTokenProgram,
+
+    // 10
     /// Invalid amount, must be greater than zero
     #[error("Input amount is invalid")]
     InvalidAmount,
-
-    // 10
     /// Invalid config value
     #[error("Input config value is invalid")]
     InvalidConfig,
@@ -54,9 +57,6 @@ pub enum LendingError {
     /// Math operation overflow
     #[error("Math operation overflow")]
     MathOverflow,
-    /// Negative interest rate
-    #[error("Interest rate is negative")]
-    NegativeInterestRate,
 
     // 15
     /// Token initialize mint failed
@@ -147,6 +147,9 @@ pub enum LendingError {
     /// Obligation liquidity is empty
     #[error("Obligation liquidity is empty")]
     ObligationLiquidityEmpty,
+    /// Negative interest rate
+    #[error("Interest rate is negative")]
+    NegativeInterestRate,
     /// Aggregator config is invalid
     #[error("Input aggregator config is invalid")]
     InvalidAggregatorConfig,

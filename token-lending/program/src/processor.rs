@@ -239,6 +239,16 @@ fn process_init_reserve(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
+    let reserve_liquidity_fee_receiver = unpack_account(&reserve_liquidity_fee_receiver_info.data.borrow_mut())?;
+    if reserve_liquidity_fee_receiver_info.owner != token_program_id.key {
+        msg!("Reserve liquidity fee reserve provided is not owned by the token program provided");
+        return Err(LendingError::InvalidTokenOwner.into());
+    }
+    if &reserve_liquidity_fee_receiver.mint != reserve_liquidity_mint_info.key {
+        msg!("Reserve liquidity fee reserve mint does not match the reserve liquidity mint provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
     let quote_token_mint = unpack_mint(&quote_token_mint_info.data.borrow())?;
     if quote_token_mint_info.owner != token_program_id.key {
         msg!("Quote token mint provided is not owned by the token program provided");
@@ -1535,9 +1545,34 @@ fn assert_uninitialized<T: Pack + IsInitialized>(
     }
 }
 
+/// Unpacks a spl_token `Account`.
+fn unpack_account(data: &[u8]) -> Result<Account, LendingError> {
+    Account::unpack(data).map_err(|_| LendingError::InvalidTokenAccount)
+}
+
 /// Unpacks a spl_token `Mint`.
-fn unpack_mint(data: &[u8]) -> Result<spl_token::state::Mint, LendingError> {
-    spl_token::state::Mint::unpack(data).map_err(|_| LendingError::InvalidTokenMint)
+fn unpack_mint(data: &[u8]) -> Result<Mint, LendingError> {
+    Mint::unpack(data).map_err(|_| LendingError::InvalidTokenMint)
+}
+
+/// Issue a spl_token `InitializeAccount` instruction.
+#[inline(always)]
+fn spl_token_init_account(params: TokenInitializeAccountParams<'_>) -> ProgramResult {
+    let TokenInitializeAccountParams {
+        account,
+        mint,
+        owner,
+        rent,
+        token_program,
+    } = params;
+    let ix = spl_token::instruction::initialize_account(
+        token_program.key,
+        account.key,
+        mint.key,
+        owner.key,
+    )?;
+    let result = invoke(&ix, &[account, mint, owner, rent, token_program]);
+    result.map_err(|_| LendingError::TokenInitializeAccountFailed.into())
 }
 
 /// Issue a spl_token `InitializeMint` instruction.
@@ -1559,26 +1594,6 @@ fn spl_token_init_mint(params: TokenInitializeMintParams<'_, '_>) -> ProgramResu
     )?;
     let result = invoke(&ix, &[mint, rent, token_program]);
     result.map_err(|_| LendingError::TokenInitializeMintFailed.into())
-}
-
-/// Issue a spl_token `InitializeAccount` instruction.
-#[inline(always)]
-fn spl_token_init_account(params: TokenInitializeAccountParams<'_>) -> ProgramResult {
-    let TokenInitializeAccountParams {
-        account,
-        mint,
-        owner,
-        rent,
-        token_program,
-    } = params;
-    let ix = spl_token::instruction::initialize_account(
-        token_program.key,
-        account.key,
-        mint.key,
-        owner.key,
-    )?;
-    let result = invoke(&ix, &[account, mint, owner, rent, token_program]);
-    result.map_err(|_| LendingError::TokenInitializeAccountFailed.into())
 }
 
 /// Issue a spl_token `Transfer` instruction.
