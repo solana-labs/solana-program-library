@@ -2,7 +2,7 @@ use crate::{
     error::TimelockError,
     state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
 };
-use arrayref::{array_ref, array_refs};
+use arrayref::{array_ref, array_refs, mut_array_refs};
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
@@ -15,6 +15,7 @@ use solana_program::{
     system_instruction::create_account,
     sysvar::rent::Rent,
 };
+
 use spl_token::state::Account;
 
 /* TODO come back to this conundrum later..
@@ -412,6 +413,32 @@ fn unpack_coption_key(src: &[u8; 36]) -> Result<COption<Pubkey>, ProgramError> {
         [0, 0, 0, 0] => Ok(COption::None),
         [1, 0, 0, 0] => Ok(COption::Some(Pubkey::new_from_array(*body))),
         _ => Err(ProgramError::InvalidAccountData),
+    }
+}
+
+/// Unpacks option key from [tag,key] slice
+pub fn unpack_option_key(src: &[u8; 33]) -> Result<Option<Pubkey>, ProgramError> {
+    let (tag, body) = array_refs![src, 1, 32];
+
+    match tag {
+        [1] => Ok(Some(Pubkey::new_from_array(*body))),
+        [0] => Ok(None),
+        _ => Err(ProgramError::InvalidAccountData),
+    }
+}
+
+/// Packs option into [tag,key] slice
+pub fn pack_option_key(src: Option<Pubkey>, dst: &mut [u8; 33]) {
+    let (tag, body) = mut_array_refs![dst, 1, 32];
+
+    match src {
+        Some(key) => {
+            *tag = [1];
+            body.copy_from_slice(key.as_ref());
+        }
+        None => {
+            *tag = [0];
+        }
     }
 }
 
