@@ -19,7 +19,6 @@ use {
         decode_error::DecodeError,
         entrypoint::ProgramResult,
         msg,
-        native_token::LAMPORTS_PER_SOL,
         program::{invoke, invoke_signed},
         program_error::PrintProgramError,
         program_error::ProgramError,
@@ -32,8 +31,6 @@ use {
     },
     spl_token::state::Mint,
 };
-
-const MAXIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL / 1_000;
 
 /// Deserialize the stake state from AccountInfo
 fn get_stake_state(
@@ -503,9 +500,12 @@ impl Processor {
         // Check amount of lamports
         let stake_lamports = **stake_account_info.lamports.borrow();
         let minimum_lamport_amount = minimum_stake_lamports(&meta);
-        let maximum_lamport_amount = minimum_lamport_amount.saturating_add(MAXIMUM_ACTIVE_STAKE);
-        if stake_lamports < minimum_lamport_amount || stake_lamports > maximum_lamport_amount {
-            msg!("Error: attempting to add stake with {} lamports, must have between {} and {} lamports", stake_lamports, minimum_lamport_amount, maximum_lamport_amount);
+        if stake_lamports != minimum_lamport_amount {
+            msg!(
+                "Error: attempting to add stake with {} lamports, must have {} lamports",
+                stake_lamports,
+                minimum_lamport_amount
+            );
             return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
 

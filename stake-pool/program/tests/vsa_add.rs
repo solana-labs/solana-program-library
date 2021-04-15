@@ -270,7 +270,7 @@ async fn fail_too_much_stake() {
         &payer,
         &recent_blockhash,
         &user_stake.stake_account,
-        1_000_001,
+        1,
     )
     .await;
 
