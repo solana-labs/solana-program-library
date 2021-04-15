@@ -13,7 +13,8 @@ use {
     },
 };
 
-/// Fee rate as a ratio, minted on deposit
+/// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
+/// the rewards
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct Fee {
@@ -41,7 +42,7 @@ pub enum StakePoolInstruction {
     ///   8. `[]` Rent sysvar
     ///   9. `[]` Token program id
     Initialize {
-        /// Deposit fee assessed
+        /// Fee assessed as percentage of perceived rewards
         #[allow(dead_code)] // but it's not
         fee: Fee,
         /// Maximum expected number of validators
@@ -171,7 +172,11 @@ pub enum StakePoolInstruction {
     ///   0. `[w]` Stake pool
     ///   1. `[]` Validator stake list storage account
     ///   2. `[]` Reserve stake account
-    ///   3. `[]` Sysvar clock account
+    ///   3. `[]` Stake pool withdraw authority
+    ///   4. `[w]` Account to receive pool fee tokens
+    ///   5. `[w]` Pool mint account
+    ///   6. `[]` Sysvar clock account
+    ///   7. `[]` Pool token program
     UpdateStakePoolBalance,
 
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
@@ -184,7 +189,6 @@ pub enum StakePoolInstruction {
     ///   4. `[w]` Stake account to join the pool (withdraw should be set to stake pool deposit)
     ///   5. `[w]` Validator stake account for the stake account to be merged with
     ///   6. `[w]` User account to receive pool tokens
-    ///   7. `[w]` Account to receive pool fee tokens
     ///   8. `[w]` Pool token mint account
     ///   9. '[]' Sysvar clock account (required)
     ///   10. '[]' Sysvar stake history account
@@ -397,11 +401,18 @@ pub fn update_stake_pool_balance(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     validator_list_storage: &Pubkey,
+    withdraw_authority: &Pubkey,
+    manager_fee_account: &Pubkey,
+    stake_pool_mint: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new(*validator_list_storage, false),
+        AccountMeta::new_readonly(*withdraw_authority, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*stake_pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(spl_token::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
@@ -420,7 +431,6 @@ pub fn deposit(
     stake_to_join: &Pubkey,
     validator_stake_accont: &Pubkey,
     pool_tokens_to: &Pubkey,
-    pool_fee_to: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
@@ -432,7 +442,6 @@ pub fn deposit(
         AccountMeta::new(*stake_to_join, false),
         AccountMeta::new(*validator_stake_accont, false),
         AccountMeta::new(*pool_tokens_to, false),
-        AccountMeta::new(*pool_fee_to, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),

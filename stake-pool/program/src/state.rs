@@ -107,10 +107,11 @@ impl StakePool {
         .ok()
     }
     /// calculate the fee in pool tokens that goes to the manager
-    pub fn calc_fee_amount(&self, pool_amount: u64) -> Option<u64> {
+    pub fn calc_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
         if self.fee.denominator == 0 {
             return Some(0);
         }
+        let pool_amount = self.calc_pool_tokens_for_deposit(reward_lamports)?;
         u64::try_from(
             (pool_amount as u128)
                 .checked_mul(self.fee.numerator as u128)?
@@ -172,6 +173,15 @@ impl StakePool {
             crate::AUTHORITY_DEPOSIT,
             self.deposit_bump_seed,
         )
+    }
+
+    /// Check staker validity and signature
+    pub(crate) fn check_mint(&self, mint_info: &AccountInfo) -> Result<(), ProgramError> {
+        if *mint_info.key != self.pool_mint {
+            Err(StakePoolError::WrongPoolMint.into())
+        } else {
+            Ok(())
+        }
     }
 
     /// Check manager validity and signature

@@ -561,7 +561,6 @@ fn command_deposit(
             &stake,
             &validator_stake_account,
             &token_receiver,
-            &stake_pool.manager_fee_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
         )?,
@@ -689,10 +688,16 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
         )?);
     }
 
+    let (withdraw_authority, _) =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), &stake_pool_address);
+
     instructions.push(spl_stake_pool::instruction::update_stake_pool_balance(
         &spl_stake_pool::id(),
         stake_pool_address,
         &stake_pool.validator_list,
+        &withdraw_authority,
+        &stake_pool.manager_fee_account,
+        &stake_pool.pool_mint,
     )?);
 
     // TODO: A faster solution would be to send all the `update_validator_list_balance` instructions concurrently
