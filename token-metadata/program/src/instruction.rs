@@ -173,6 +173,7 @@ pub fn transfer_update_authority(
 }
 
 /// creates a create_master_edition instruction
+#[allow(clippy:too_many_arguments)]
 pub fn create_master_edition(
     program_id: Pubkey,
     edition: Pubkey,
@@ -205,6 +206,7 @@ pub fn create_master_edition(
 }
 
 /// creates a mint_new_edition_from_master_edition instruction
+#[allow(clippy:too_many_arguments)]
 pub fn mint_new_edition_from_master_edition(
     program_id: Pubkey,
     metadata: Pubkey,
