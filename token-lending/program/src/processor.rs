@@ -234,13 +234,6 @@ fn process_init_reserve(
         return Err(LendingError::InvalidAccountOwner.into());
     }
 
-    assert_uninitialized::<Account>(reserve_liquidity_supply_info)?;
-    // @TODO: why does the liquidity fee receiver need to be uninitialized?
-    assert_uninitialized::<Account>(reserve_liquidity_fee_receiver_info)?;
-    assert_uninitialized::<Mint>(reserve_collateral_mint_info)?;
-    assert_uninitialized::<Account>(reserve_collateral_supply_info)?;
-    assert_uninitialized::<Account>(destination_collateral_info)?;
-
     if reserve_liquidity_supply_info.key == source_liquidity_info.key {
         msg!("Reserve liquidity supply cannot be used as the source liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
