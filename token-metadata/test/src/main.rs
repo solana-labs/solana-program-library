@@ -350,7 +350,7 @@ fn update_metadata_account_call(
         name_symbol_key,
         update_authority.pubkey(),
         Some(update_authority.pubkey()),
-        uri.to_owned(),
+        uri,
     )];
 
     let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
