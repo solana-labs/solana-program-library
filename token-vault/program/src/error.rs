@@ -193,10 +193,6 @@ pub enum VaultError {
     #[error("The source account to send your shares from needs to be the same mint as the vault's fraction mint")]
     SourceAccountNeedsToMatchFractionMint,
 
-    /// Vault must be in combined or inactive state to perform withdrawals
-    #[error("Vault must be in combined or inactive state to perform withdrawals")]
-    VaultShouldBeCombinedOrInactive,
-
     /// This vault does not allow the minting of new shares!
     #[error("This vault does not allow the minting of new shares!")]
     VaultDoesNotAllowNewShareMinting,

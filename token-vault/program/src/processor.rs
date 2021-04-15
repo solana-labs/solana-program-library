@@ -313,8 +313,11 @@ pub fn process_withdraw_token_from_safety_deposit_box(
     assert_token_matching(&vault, token_program_info)?;
     assert_vault_authority_correct(&vault, vault_authority_info)?;
 
-    if vault.state != VaultState::Combined && vault.state != VaultState::Inactive {
-        return Err(VaultError::VaultShouldBeCombinedOrInactive.into());
+    if vault.state != VaultState::Combined {
+        // if we allow withdrawals in inactive state, could possibly have two safety deposits with the same
+        // order key. Instead require user to take vault through combined -> deactivated cycle and restart
+        // if they make mistake.
+        return Err(VaultError::VaultShouldBeCombined.into());
     }
 
     if safety_deposit.vault != *vault_info.key {
@@ -359,10 +362,7 @@ pub fn process_withdraw_token_from_safety_deposit_box(
         None => return Err(VaultError::NumericalOverflowError.into()),
     };
 
-    if fraction_mint.supply == 0
-        && vault.token_type_count == 0
-        && vault.state == VaultState::Combined
-    {
+    if fraction_mint.supply == 0 && vault.token_type_count == 0 {
         vault.state = VaultState::Deactivated;
         vault.serialize(&mut *vault_info.data.borrow_mut())?;
     }
