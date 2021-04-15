@@ -734,8 +734,6 @@ impl Processor {
                 .ok_or(StakePoolError::CalculationFailure)?;
         }
 
-        stake_pool.total_stake_lamports = total_stake_lamports;
-
         let reward_lamports = total_stake_lamports.saturating_sub(previous_lamports);
         let fee = stake_pool
             .calc_fee_amount(reward_lamports)
@@ -758,6 +756,7 @@ impl Processor {
                 .checked_add(fee)
                 .ok_or(StakePoolError::CalculationFailure)?;
         }
+        stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.last_update_epoch = clock.epoch;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
