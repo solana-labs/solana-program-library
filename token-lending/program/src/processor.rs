@@ -11,7 +11,11 @@ use crate::{
         ReserveCollateral, ReserveConfig, ReserveLiquidity,
     },
 };
-use flux_aggregator::read_median;
+use flux_aggregator::{
+    borsh_state::InitBorshState,
+    read_median,
+    state::Aggregator
+};
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -213,10 +217,10 @@ fn process_init_reserve(
     let reserve_liquidity_fee_receiver_info = next_account_info(account_info_iter)?;
     let reserve_collateral_mint_info = next_account_info(account_info_iter)?;
     let reserve_collateral_supply_info = next_account_info(account_info_iter)?;
+    let quote_token_mint_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
-    // @FIXME: lending market owner is only required because of the trusted aggregator
-    let lending_market_owner_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let lending_market_owner_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let rent_info = next_account_info(account_info_iter)?;
@@ -242,6 +246,12 @@ fn process_init_reserve(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
+    let quote_token_mint = unpack_mint(&quote_token_mint_info.data.borrow())?;
+    if quote_token_mint_info.owner != token_program_id.key {
+        msg!("Quote token mint provided is not owned by the token program provided");
+        return Err(LendingError::InvalidTokenOwner.into());
+    }
+
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
         msg!("Lending market provided is not owned by the lending program");
@@ -251,7 +261,6 @@ fn process_init_reserve(
         msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
-    // @FIXME: lending market owner is only required because of the trusted aggregator
     if &lending_market.owner != lending_market_owner_info.key {
         msg!("Lending market owner does not match the lending market owner provided");
         return Err(LendingError::InvalidMarketOwner.into());
@@ -260,11 +269,13 @@ fn process_init_reserve(
         msg!("Lending market owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
     }
+    if &lending_market.quote_token_mint != quote_token_mint_info.key {
+        msg!("Lending market quote token mint does not match the quote token mint provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
 
-    // @FIXME: only the lending market owner can create a reserve because there is no way to
-    //         verify that the aggregator represents the price of any particular token
     let (reserve_liquidity_aggregator, reserve_liquidity_market_price) =
-        if reserve_liquidity_mint_info.key == &lending_market.quote_token_mint {
+        if &lending_market.quote_token_mint == reserve_liquidity_mint_info.key {
             if account_info_iter.peek().is_some() {
                 msg!("Reserve liquidity aggregator cannot be provided when reserve liquidity is the quote currency");
                 return Err(LendingError::InvalidAccountInput.into());
@@ -273,8 +284,14 @@ fn process_init_reserve(
             (COption::None, 1)
         } else {
             let aggregator_info = next_account_info(account_info_iter)?;
-            // @FIXME: check aggregator decimals to match lending_market.quote_token_mint decimals
             assert_rent_exempt(rent, aggregator_info)?;
+
+            let aggregator = Aggregator::load_initialized(aggregator_info)?;
+            if aggregator.config.decimals != quote_token_mint.decimals {
+                msg!("Quote token mint decimals does not match the aggregator config decimals provided");
+                return Err(LendingError::InvalidAggregatorConfig.into());
+            }
+
             (
                 COption::Some(*aggregator_info.key),
                 read_median(aggregator_info)?.median,

@@ -147,6 +147,9 @@ pub enum LendingError {
     /// Obligation liquidity is empty
     #[error("Obligation liquidity is empty")]
     ObligationLiquidityEmpty,
+    /// Aggregator config is invalid
+    #[error("Input aggregator config is invalid")]
+    InvalidAggregatorConfig,
 }
 
 impl From<LendingError> for ProgramError {

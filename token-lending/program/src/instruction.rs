@@ -56,17 +56,17 @@ pub enum LendingInstruction {
     ///   5. `[writable]` Reserve liquidity fee receiver - uninitialized.
     ///   6. `[writable]` Reserve collateral SPL Token mint - uninitialized.
     ///   7. `[writable]` Reserve collateral token supply - uninitialized.
-    ///   8. `[]` Lending market account.
+    ///   8. `[]` Quote currency SPL Token mint.
+    ///   9. `[]` Lending market account.
     ///   10 `[]` Derived lending market authority.
-    ///   11 `[]` User transfer authority ($authority).
-    // @FIXME: lending market owner is only required because of the trusted aggregator
-    ///   12 `[signer]` Lending market owner.
+    ///   11 `[signer]` Lending market owner.
+    ///   12 `[]` User transfer authority ($authority).
     ///   13 `[]` Clock sysvar.
     ///   13 `[]` Rent sysvar.
     ///   14 `[]` Token program id.
     ///   15 `[optional]` Reserve liquidity aggregator account.
     ///                     Not required for quote currency reserves.
-    ///                     Must match quote and base currency.
+    ///                     Must match base and quote currency mint, and quote currency decimals.
     InitReserve {
         /// Initial amount of liquidity to deposit into the new reserve
         liquidity_amount: u64,
@@ -527,6 +527,7 @@ pub fn init_reserve(
     reserve_liquidity_fee_receiver_pubkey: Pubkey,
     reserve_collateral_mint_pubkey: Pubkey,
     reserve_collateral_supply_pubkey: Pubkey,
+    quote_token_mint_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_owner_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
@@ -545,9 +546,10 @@ pub fn init_reserve(
         AccountMeta::new(reserve_liquidity_fee_receiver_pubkey, false),
         AccountMeta::new(reserve_collateral_mint_pubkey, false),
         AccountMeta::new(reserve_collateral_supply_pubkey, false),
+        AccountMeta::new_readonly(quote_token_mint_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
-        AccountMeta::new_readonly(lending_market_owner_pubkey, true),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(lending_market_owner_pubkey, true),
         AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
