@@ -204,7 +204,7 @@ pub async fn create_stake_pool(
     pool_token_account: &Pubkey,
     manager: &Keypair,
     staker: &Pubkey,
-    fee: &instruction::Fee,
+    fee: &state::Fee,
     max_validators: u32,
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
@@ -471,7 +471,7 @@ pub struct StakePoolAccounts {
     pub staker: Keypair,
     pub withdraw_authority: Pubkey,
     pub deposit_authority: Pubkey,
-    pub fee: instruction::Fee,
+    pub fee: state::Fee,
     pub max_validators: u32,
 }
 
@@ -502,7 +502,7 @@ impl StakePoolAccounts {
             staker,
             withdraw_authority,
             deposit_authority,
-            fee: instruction::Fee {
+            fee: state::Fee {
                 numerator: 1,
                 denominator: 100,
             },

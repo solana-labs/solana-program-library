@@ -142,7 +142,7 @@ async fn fail_initialize_with_already_initialized_validator_list() {
 async fn fail_initialize_with_high_fee() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.fee = instruction::Fee {
+    stake_pool_accounts.fee = state::Fee {
         numerator: 100001,
         denominator: 100000,
     };

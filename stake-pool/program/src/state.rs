@@ -1,7 +1,7 @@
 //! State transition types
 
 use {
-    crate::{error::StakePoolError, instruction::Fee},
+    crate::error::StakePoolError,
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     spl_math::checked_ceil_div::CheckedCeilDiv,
@@ -292,6 +292,17 @@ impl ValidatorList {
     pub fn is_uninitialized(&self) -> bool {
         self.account_type == AccountType::Uninitialized
     }
+}
+
+/// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
+/// the rewards
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
+pub struct Fee {
+    /// denominator of the fee ratio
+    pub denominator: u64,
+    /// numerator of the fee ratio
+    pub numerator: u64,
 }
 
 #[cfg(test)]
