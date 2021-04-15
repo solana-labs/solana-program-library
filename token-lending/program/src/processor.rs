@@ -243,6 +243,7 @@ fn process_init_reserve(
             (COption::None, 1)
         } else {
             let aggregator_info = next_account_info(account_info_iter)?;
+            // @FIXME: check aggregator decimals to match lending_market.quote_token_mint decimals
             assert_rent_exempt(rent, aggregator_info)?;
             (
                 COption::Some(*aggregator_info.key),

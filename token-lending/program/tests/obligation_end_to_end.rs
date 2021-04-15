@@ -217,7 +217,7 @@ async fn test_success() {
                 sol_test_reserve.pubkey,
                 obligation_pubkey,
                 lending_market.pubkey,
-                user_transfer_authority_pubkey,
+                user_accounts_owner_pubkey,
             ),
         ],
         Some(&payer_pubkey),
@@ -263,6 +263,10 @@ async fn test_success() {
         initial_user_liquidity_balance - FEE_AMOUNT
     );
     assert_eq!(usdc_reserve.liquidity.borrowed_amount_wads, Decimal::zero());
+    // @FIXME:
+    // thread 'test_success' panicked at 'assertion failed: `(left == right)`
+    // left: `2000000000`,
+    // right: `1999999900`', token-lending/program/tests/obligation_end_to_end.rs:266:5
     assert_eq!(
         usdc_reserve.liquidity.available_amount,
         initial_liquidity_supply
