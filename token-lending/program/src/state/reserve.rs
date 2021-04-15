@@ -644,7 +644,9 @@ impl ReserveFees {
             };
 
             let borrow_fee_amount = match fee_calculation {
+                // Calculate fee to be added to borrow: fee = amount * rate
                 FeeCalculation::Exclusive => borrow_amount.try_mul(borrow_fee_rate)?,
+                // Calculate fee to be subtracted from borrow: fee = amount * (rate / (rate + 1))
                 FeeCalculation::Inclusive => {
                     let borrow_fee_rate =
                         borrow_fee_rate.try_div(borrow_fee_rate.try_add(Rate::one())?)?;
