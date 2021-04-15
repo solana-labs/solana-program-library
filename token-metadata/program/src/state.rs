@@ -20,7 +20,7 @@ pub const MAX_NAME_SYMBOL_LEN: usize = 1 + 32 + 32;
 
 pub const MAX_EDITION_LEN: usize = 1 + 32 + 8;
 
-pub const MAX_MASTER_EDITION_LEN: usize = 1 + 8 + 8;
+pub const MAX_MASTER_EDITION_LEN: usize = 1 + 9 + 8;
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]

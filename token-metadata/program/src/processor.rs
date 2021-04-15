@@ -55,13 +55,13 @@ pub fn process_instruction(
             msg!("Instruction: Transfer Update Authority");
             process_transfer_update_authority(program_id, accounts)
         }
-        MetadataInstruction::CreateMasterRecord(args) => {
-            msg!("Instruction: Create Master Record");
-            process_create_master_record(program_id, accounts, args.max_supply)
+        MetadataInstruction::CreateMasterEdition(args) => {
+            msg!("Instruction: Create Master Edition");
+            process_create_master_edition(program_id, accounts, args.max_supply)
         }
-        MetadataInstruction::MintNewEditionFromMasterRecord => {
-            msg!("Instruction: Mint New Edition from Master Record");
-            process_mint_new_edition_from_master_record(program_id, accounts)
+        MetadataInstruction::MintNewEditionFromMasterEdition => {
+            msg!("Instruction: Mint New Edition from Master Edition");
+            process_mint_new_edition_from_master_edition(program_id, accounts)
         }
     }
 }
@@ -290,8 +290,8 @@ pub fn process_transfer_update_authority(_: &Pubkey, accounts: &[AccountInfo]) -
     Ok(())
 }
 
-/// Create master record
-pub fn process_create_master_record(
+/// Create master edition
+pub fn process_create_master_edition(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     max_supply: Option<u64>,
@@ -318,7 +318,7 @@ pub fn process_create_master_record(
         &mint_info.key.as_ref(),
         EDITION.as_bytes(),
     ];
-    let (edition_key, _) = Pubkey::find_program_address(edition_seeds, program_id);
+    let (edition_key, bump_seed) = Pubkey::find_program_address(edition_seeds, program_id);
 
     if edition_key != *edition_account_info.key {
         return Err(MetadataError::InvalidEditionKey.into());
@@ -341,6 +341,14 @@ pub fn process_create_master_record(
         return Err(MetadataError::EditionsMustHaveExactlyOneToken.into());
     }
 
+    let edition_authority_seeds = &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        &mint_info.key.as_ref(),
+        EDITION.as_bytes(),
+        &[bump_seed],
+    ];
+
     create_or_allocate_account_raw(
         *program_id,
         edition_account_info,
@@ -348,7 +356,7 @@ pub fn process_create_master_record(
         system_account_info,
         payer_account_info,
         MAX_MASTER_EDITION_LEN,
-        edition_seeds,
+        edition_authority_seeds,
     )?;
 
     let mut edition: MasterEdition = try_from_slice_unchecked(&edition_account_info.data.borrow())?;
@@ -359,7 +367,7 @@ pub fn process_create_master_record(
     edition.serialize(&mut *edition_account_info.data.borrow_mut())?;
 
     transfer_mint_authority(
-        edition_seeds,
+        edition_authority_seeds,
         &edition_key,
         edition_account_info,
         mint_info,
@@ -369,7 +377,7 @@ pub fn process_create_master_record(
     Ok(())
 }
 
-pub fn process_mint_new_edition_from_master_record(
+pub fn process_mint_new_edition_from_master_edition(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
@@ -383,8 +391,8 @@ pub fn process_mint_new_edition_from_master_record(
     let payer_account_info = next_account_info(account_info_iter)?;
     let update_authority_info = next_account_info(account_info_iter)?;
     let master_metadata_account_info = next_account_info(account_info_iter)?;
-    let system_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
+    let system_account_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
 
     let master_metadata: Metadata =
@@ -414,7 +422,7 @@ pub fn process_mint_new_edition_from_master_record(
         &mint_info.key.as_ref(),
         EDITION.as_bytes(),
     ];
-    let (edition_key, _) = Pubkey::find_program_address(edition_seeds, program_id);
+    let (edition_key, bump_seed) = Pubkey::find_program_address(edition_seeds, program_id);
     if edition_key != *new_edition_account_info.key {
         return Err(MetadataError::InvalidEditionKey.into());
     }
@@ -448,8 +456,16 @@ pub fn process_mint_new_edition_from_master_record(
         master_metadata.data.name,
         master_metadata.data.symbol,
         master_metadata.data.uri,
-        false,
+        true,
     )?;
+
+    let edition_authority_seeds = &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        &mint_info.key.as_ref(),
+        EDITION.as_bytes(),
+        &[bump_seed],
+    ];
 
     create_or_allocate_account_raw(
         *program_id,
@@ -458,7 +474,7 @@ pub fn process_mint_new_edition_from_master_record(
         system_account_info,
         payer_account_info,
         MAX_EDITION_LEN,
-        edition_seeds,
+        edition_authority_seeds,
     )?;
 
     let mut new_edition: Edition =
@@ -470,7 +486,7 @@ pub fn process_mint_new_edition_from_master_record(
 
     // Now make sure this mint can never be used by anybody else.
     transfer_mint_authority(
-        edition_seeds,
+        edition_authority_seeds,
         &edition_key,
         new_edition_account_info,
         mint_info,
