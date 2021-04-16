@@ -81,7 +81,7 @@ pub fn process_init_timelock_set(
     new_timelock_state.name = name;
     new_timelock_state.total_signing_tokens_minted = 1;
     new_timelock_state.executions = 0;
-    new_timelock_state.used_txn_slots = 0;
+    new_timelock_state.number_of_transactions = 0;
     timelock_config.count = match timelock_config.count.checked_add(1) {
         Some(val) => val,
         None => return Err(TimelockError::NumericalOverflow.into()),

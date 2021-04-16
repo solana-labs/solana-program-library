@@ -54,8 +54,8 @@ pub struct TimelockState {
     /// Executions
     pub executions: u8,
 
-    /// Used slots
-    pub used_txn_slots: u8,
+    /// The number of transactions in Proposals
+    pub number_of_transactions: u8,
 
     /// Array of pubkeys pointing at TimelockTransactions, up to 5
     pub timelock_transactions: [Pubkey; MAX_TRANSACTIONS],
@@ -116,7 +116,7 @@ impl Pack for TimelockState {
             completed_at,
             deleted_at,
             executions,
-            used_txn_slots,
+            number_of_transactions,
             timelock_txn_1,
             timelock_txn_2,
             timelock_txn_3,
@@ -135,7 +135,7 @@ impl Pack for TimelockState {
         let completed_at = u64::from_le_bytes(*completed_at);
         let deleted_at = u64::from_le_bytes(*deleted_at);
         let executions = u8::from_le_bytes(*executions);
-        let used_txn_slots = u8::from_le_bytes(*used_txn_slots);
+        let number_of_transactions = u8::from_le_bytes(*number_of_transactions);
         match version {
             TIMELOCK_STATE_VERSION | UNINITIALIZED_VERSION => Ok(Self {
                 version,
@@ -164,7 +164,7 @@ impl Pack for TimelockState {
                 completed_at,
                 deleted_at,
                 executions,
-                used_txn_slots,
+                number_of_transactions,
             }),
             _ => Err(ProgramError::InvalidAccountData),
         }
@@ -186,7 +186,7 @@ impl Pack for TimelockState {
             completed_at,
             deleted_at,
             executions,
-            used_txn_slots,
+            number_of_transactions,
             timelock_txn_1,
             timelock_txn_2,
             timelock_txn_3,
@@ -217,7 +217,7 @@ impl Pack for TimelockState {
         *completed_at = self.completed_at.to_le_bytes();
         *deleted_at = self.deleted_at.to_le_bytes();
         *executions = self.executions.to_le_bytes();
-        *used_txn_slots = self.used_txn_slots.to_le_bytes();
+        *number_of_transactions = self.number_of_transactions.to_le_bytes();
         timelock_txn_1.copy_from_slice(self.timelock_transactions[0].as_ref());
         timelock_txn_2.copy_from_slice(self.timelock_transactions[1].as_ref());
         timelock_txn_3.copy_from_slice(self.timelock_transactions[2].as_ref());

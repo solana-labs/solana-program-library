@@ -146,7 +146,7 @@ pub fn process_execute(
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
 
-    if timelock_state.executions == timelock_state.used_txn_slots {
+    if timelock_state.executions == timelock_state.number_of_transactions {
         timelock_state.status = TimelockStateStatus::Completed
     }
 
