@@ -1,4 +1,4 @@
-use super::{enums, UNINITIALIZED_VERSION};
+use crate::state::{enums, UNINITIALIZED_VERSION};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use enums::TimelockStateStatus;
 use solana_program::{

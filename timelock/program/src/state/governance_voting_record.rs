@@ -1,4 +1,4 @@
-use super::UNINITIALIZED_VERSION;
+use crate::state::UNINITIALIZED_VERSION;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     program_error::ProgramError,

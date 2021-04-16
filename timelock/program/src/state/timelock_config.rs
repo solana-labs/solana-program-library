@@ -1,7 +1,10 @@
-use super::enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule};
-use super::UNINITIALIZED_VERSION;
-
-use crate::utils::{pack_option_key, unpack_option_key};
+use crate::{
+    state::{
+        enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule},
+        UNINITIALIZED_VERSION,
+    },
+    utils::{pack_option_key, unpack_option_key},
+};
 
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{

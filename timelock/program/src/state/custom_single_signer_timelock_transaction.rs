@@ -4,7 +4,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use super::UNINITIALIZED_VERSION;
+use crate::state::UNINITIALIZED_VERSION;
 
 /// Max instruction limit for generics
 pub const INSTRUCTION_LIMIT: usize = 450;
