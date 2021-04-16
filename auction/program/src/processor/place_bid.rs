@@ -37,6 +37,8 @@ use {
 pub struct PlaceBidArgs {
     /// Size of the bid being placed. The user must have enough SOL to satisfy this amount.
     pub amount: u64,
+    /// Resource being bid on.
+    pub resource: Pubkey,
 }
 
 pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidArgs) -> ProgramResult {
@@ -44,9 +46,10 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
     let bidder_act = next_account_info(account_iter)?;
     let auction_act = next_account_info(account_iter)?;
     let bidder_pot_act = next_account_info(account_iter)?;
+    let bidder_meta_act = next_account_info(account_iter)?;
+    let clock_sysvar = next_account_info(account_iter)?;
     let rent_act = next_account_info(account_iter)?;
     let system_account = next_account_info(account_iter)?;
-    let clock_sysvar = next_account_info(account_iter)?;
 
     // Use the clock sysvar for timing the auction.
     let clock = Clock::from_account_info(clock_sysvar)?;
@@ -62,8 +65,25 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
     ];
 
     // Derive pot key, confirm it matches the users sent pot address.
-    let (pot_key, bump) = Pubkey::find_program_address(&pot_path, program_id);
+    let (pot_key, pot_bump) = Pubkey::find_program_address(&pot_path, program_id);
     if pot_key != *bidder_pot_act.key {
+        return Err(AuctionError::InvalidBidAccount.into());
+    }
+
+    // This path references an account to store the users bid SOL in, if the user wins the auction
+    // this is claimed by the auction authority, otherwise the user can request to have the SOL
+    // sent back.
+    let meta_path = [
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        auction_act.key.as_ref(),
+        bidder_act.key.as_ref(),
+        "metadata".as_bytes(),
+    ];
+
+    // Derive pot key, confirm it matches the users sent pot address.
+    let (meta_key, meta_bump) = Pubkey::find_program_address(&meta_path, program_id);
+    if meta_key != *bidder_meta_act.key {
         return Err(AuctionError::InvalidBidAccount.into());
     }
 
@@ -78,11 +98,11 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
         program_id.as_ref(),
         auction_act.key.as_ref(),
         bidder_act.key.as_ref(),
-        &[bump],
+        &[pot_bump],
     ];
 
     // Allocate bid account, a token account to hold the resources.
-    if false /* check account doesn't exist already */ {
+    if true /* check account doesn't exist already */ {
         create_or_allocate_account_raw(
             *program_id,
             bidder_pot_act,
@@ -101,8 +121,17 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
         &[&pot_seeds],
     )?;
 
+    // Pot path including the bump for seeds.
+    let meta_seeds = [
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        auction_act.key.as_ref(),
+        bidder_act.key.as_ref(),
+        &[meta_bump],
+    ];
+
     // Allocate a metadata account, to track the users state over time.
-    if false /* check account doesn't exist already */ {
+    if true /* check account doesn't exist already */ {
         create_or_allocate_account_raw(
             *program_id,
             bidder_pot_act,
@@ -117,18 +146,21 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
     // Load the auction and verify this bid is valid.
     let mut auction: AuctionData = try_from_slice_unchecked(&auction_act.data.borrow())?;
 
-    // Make sure the auction hasn't ended. Hardcoded to 10 minutes.
-    // TODO: Come back and make this configurable.
-    let now = clock.unix_timestamp;
-    auction.last_bid = match auction.last_bid {
-        // Allow updating the time if 10 minutes has not passed.
-        Some(time) if time - now < 10 * 60 => Some(now),
-        // Allow the first bid when the auction has started.
-        None if now < auction.start_time => Some(now),
-        // Otherwise fail.
-        _ => return Err(AuctionError::InvalidState.into()),
-    };
+    // Do not allow bids post gap-time.
+    if let Some(gap) = auction.gap_time {
+        if clock.unix_timestamp - gap > 10 * 60 {
+            return Err(AuctionError::BalanceTooLow.into());
+        }
+    }
 
+    // Do not allow bids post end-time
+    if let Some(end) = auction.end_time {
+        if clock.unix_timestamp > end {
+            return Err(AuctionError::BalanceTooLow.into());
+        }
+    }
+
+    auction.last_bid = Some(clock.unix_timestamp);
     auction.bid_state.place_bid(Bid(pot_key, args.amount))?;
     auction.serialize(&mut *auction_act.data.borrow_mut())?;
 

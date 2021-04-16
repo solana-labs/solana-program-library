@@ -25,25 +25,23 @@ use {
         borsh::try_from_slice_unchecked,
         clock::UnixTimestamp,
         entrypoint::ProgramResult,
+        msg,
         pubkey::Pubkey,
     },
     std::mem,
 };
 
-/// Arguments for a CreateAuction instruction.
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
 pub struct CreateAuctionArgs {
     /// How many winners are allowed for this auction. See AuctionData.
-    winners: WinnerLimit,
+    pub winners: WinnerLimit,
     /// The resource being auctioned. See AuctionData.
-    resource: Pubkey,
-    /// The start time requested for this auction. See AuctionData.
-    start_time: UnixTimestamp,
+    pub resource: Pubkey,
     /// End time is the cut-off point that the auction is forced to end by. See AuctionData.
-    end_time: Option<UnixTimestamp>,
+    pub end_time: Option<UnixTimestamp>,
     /// Gap time is how much time after the previous bid where the auction ends. See AuctionData.
-    gap_time: Option<UnixTimestamp>,
+    pub gap_time: Option<UnixTimestamp>,
 }
 
 pub fn create_auction(
@@ -60,7 +58,7 @@ pub fn create_auction(
     let auction_path = [
         PREFIX.as_bytes(),
         program_id.as_ref(),
-        &auction_act.key.to_bytes(),
+        &args.resource.to_bytes(),
     ];
 
     // Derive the address we'll store the auction in, and confirm it matches what we expected the
@@ -82,6 +80,7 @@ pub fn create_auction(
     };
 
     // Create auction account with enough space for a winner tracking.
+    msg!("Allocating Auction");
     create_or_allocate_account_raw(
         *program_id,
         auction_act,
@@ -92,22 +91,22 @@ pub fn create_auction(
         &[
             PREFIX.as_bytes(),
             program_id.as_ref(),
-            &auction_act.key.to_bytes(),
+            &args.resource.to_bytes(),
             &[bump],
         ],
     )?;
 
-    let mut auction: AuctionData = try_from_slice_unchecked(&auction_act.data.borrow_mut())?;
-
     // Configure Auction.
-    auction.authority = *creator_act.key;
-    auction.bid_state = bid_state;
-    auction.last_bid = None;
-    auction.resource = args.resource;
-    auction.start_time = args.start_time;
-    auction.end_time = args.end_time;
-    auction.gap_time = args.gap_time;
-    auction.serialize(&mut *auction_act.data.borrow_mut())?;
+    AuctionData {
+        authority: *creator_act.key,
+        bid_state: bid_state,
+        end_time: args.end_time,
+        gap_time: args.gap_time,
+        last_bid: None,
+        resource: args.resource,
+        started: false,
+    }
+    .serialize(&mut *auction_act.data.borrow_mut())?;
 
     Ok(())
 }

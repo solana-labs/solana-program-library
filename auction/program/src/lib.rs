@@ -1,8 +1,9 @@
-mod entrypoint;
 mod errors;
-mod instruction;
-mod processor;
 mod utils;
 
+pub mod entrypoint;
+pub mod instruction;
+pub mod processor;
+
 /// Prefix used in PDA derivations to avoid collisions with other programs.
-const PREFIX: &str = "auction";
+pub const PREFIX: &str = "auction";
