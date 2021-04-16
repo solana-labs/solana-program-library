@@ -1117,7 +1117,11 @@ impl Processor {
 
         // Numerator should be smaller than or equal to denominator (fee <= 1)
         if fee.numerator > fee.denominator {
-            msg!("Fee greater than 100%, numerator {}, denominator {}", fee.numerator, fee.denominator);
+            msg!(
+                "Fee greater than 100%, numerator {}, denominator {}",
+                fee.numerator,
+                fee.denominator
+            );
             return Err(StakePoolError::FeeTooHigh.into());
         }
 
