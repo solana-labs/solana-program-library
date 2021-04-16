@@ -3798,6 +3798,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-ownable"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "byteorder",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "proptest",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-pausable"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "byteorder",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "proptest",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-ownable",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-record"
 version = "0.1.0"
 dependencies = [

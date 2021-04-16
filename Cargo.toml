@@ -10,6 +10,8 @@ members = [
   "feature-proposal/program",
   "feature-proposal/cli",
   "libraries/math",
+  "libraries/ownable",
+  "libraries/pausable",
   "memo/program",
   "record/program",
   "shared-memory/program",
