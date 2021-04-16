@@ -8,7 +8,7 @@ use crate::{
         },
         timelock_config::TimelockConfig,
         timelock_set::TimelockSet,
-        timelock_state::{TimelockState, TRANSACTION_SLOTS},
+        timelock_state::{TimelockState, MAX_TRANSACTIONS},
     },
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,
@@ -49,7 +49,7 @@ pub fn process_add_custom_single_signer_transaction(
     let mut timelock_txn: CustomSingleSignerTimelockTransaction =
         assert_uninitialized(timelock_txn_account_info)?;
 
-    if position as usize >= TRANSACTION_SLOTS {
+    if position as usize >= MAX_TRANSACTIONS {
         return Err(TimelockError::TooHighPositionInTxnArrayError.into());
     }
 

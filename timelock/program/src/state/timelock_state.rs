@@ -8,7 +8,7 @@ use solana_program::{
 };
 
 /// Transaction slots allowed
-pub const TRANSACTION_SLOTS: usize = 5;
+pub const MAX_TRANSACTIONS: usize = 5;
 /// How many characters are allowed in the description
 pub const DESC_SIZE: usize = 200;
 /// How many characters are allowed in the name
@@ -58,7 +58,7 @@ pub struct TimelockState {
     pub used_txn_slots: u8,
 
     /// Array of pubkeys pointing at TimelockTransactions, up to 5
-    pub timelock_transactions: [Pubkey; TRANSACTION_SLOTS],
+    pub timelock_transactions: [Pubkey; MAX_TRANSACTIONS],
 }
 
 impl Sealed for TimelockState {}
@@ -80,7 +80,7 @@ const TIMELOCK_STATE_LEN: usize = 32
     + 8
     + 1
     + 1
-    + (32 * TRANSACTION_SLOTS)
+    + (32 * MAX_TRANSACTIONS)
     + 300;
 impl Pack for TimelockState {
     const LEN: usize = 32
@@ -96,7 +96,7 @@ impl Pack for TimelockState {
         + 8
         + 1
         + 1
-        + (32 * TRANSACTION_SLOTS)
+        + (32 * MAX_TRANSACTIONS)
         + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
