@@ -257,7 +257,7 @@ pub enum LendingInstruction {
     ///                     Minted by withdraw reserve collateral mint.
     ///   2. `[writable]` Repay reserve account - refreshed.
     ///   3. `[writable]` Repay reserve liquidity supply SPL Token account.
-    ///   4. `[writable]` Withdraw reserve account - refreshed.
+    ///   4. `[]` Withdraw reserve account - refreshed.
     ///   5. `[writable]` Withdraw reserve collateral supply SPL Token account.
     ///   6. `[writable]` Obligation account - refreshed.
     ///   7. `[]` Lending market account.
@@ -872,7 +872,7 @@ pub fn liquidate_obligation(
             AccountMeta::new(destination_collateral_pubkey, false),
             AccountMeta::new(repay_reserve_pubkey, false),
             AccountMeta::new(repay_reserve_liquidity_supply_pubkey, false),
-            AccountMeta::new(withdraw_reserve_pubkey, false),
+            AccountMeta::new_readonly(withdraw_reserve_pubkey, false),
             AccountMeta::new(withdraw_reserve_collateral_supply_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
