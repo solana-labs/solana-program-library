@@ -4,7 +4,6 @@ use crate::{state::timelock_config::TimelockConfig, utils::create_account_raw};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    program_error::ProgramError,
     pubkey::Pubkey,
 };
 
@@ -21,16 +20,9 @@ pub fn process_create_empty_timelock_config(
     let timelock_program_account_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
 
-    let accounts = account_info_iter.as_slice();
-    let council_mint_seed: &[u8];
-
-    if accounts.is_empty() {
-        council_mint_seed = &[];
-    } else if accounts.len() == 1 {
-        council_mint_seed = accounts[0].key.as_ref();
-    } else {
-        return Err(ProgramError::InvalidAccountData);
-    }
+    let council_mint_seed = next_account_info(account_info_iter)
+        .map(|acc| acc.key.as_ref())
+        .unwrap_or(&[]);
 
     let seeds = &[
         timelock_program_account_info.key.as_ref(),

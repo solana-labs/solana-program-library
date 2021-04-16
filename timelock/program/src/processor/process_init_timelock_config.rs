@@ -8,7 +8,6 @@ use crate::{
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
 };
@@ -31,19 +30,9 @@ pub fn process_init_timelock_config(
     let program_to_tie_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
 
-    let council_mint: Option<Pubkey>;
-    let council_mint_seed: &[u8];
-
-    let accounts = account_info_iter.as_slice();
-    if accounts.is_empty() {
-        council_mint = None;
-        council_mint_seed = &[];
-    } else if accounts.len() == 1 {
-        council_mint = Some(*accounts[0].key);
-        council_mint_seed = accounts[0].key.as_ref();
-    } else {
-        return Err(ProgramError::InvalidAccountData);
-    }
+    let (council_mint, council_mint_seed) = next_account_info(account_info_iter)
+        .map(|acc| (Some(*acc.key), acc.key.as_ref()))
+        .unwrap_or((None, &[]));
 
     let seeds = &[
         program_id.as_ref(),
