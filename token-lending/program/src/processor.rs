@@ -414,6 +414,7 @@ fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
             return Err(LendingError::InvalidAccountInput.into());
         }
 
+        // @TODO: sanity check https://git.io/JOCcb
         reserve.liquidity.market_price = read_median(reserve_liquidity_aggregator_info)?.median;
     } else if account_info_iter.peek().is_some() {
         msg!("Reserve liquidity aggregator cannot be provided when reserve liquidity is the quote currency");
@@ -713,6 +714,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             return Err(LendingError::ReserveStale.into());
         }
 
+        // @TODO: add lookup table https://git.io/JOCYq
         let decimals = 10u64
             .checked_pow(deposit_reserve.liquidity.mint_decimals as u32)
             .ok_or(LendingError::MathOverflow)?;
@@ -722,6 +724,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             .decimal_collateral_to_liquidity(collateral.deposited_amount.into())?
             .try_mul(deposit_reserve.liquidity.market_price)?
             .try_div(decimals)?;
+        // @TODO: sanity check https://git.io/JOCcb
         collateral.market_value = market_value;
 
         let loan_to_value_rate = Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
@@ -761,6 +764,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             return Err(LendingError::ReserveStale.into());
         }
 
+        // @TODO: add lookup table https://git.io/JOCYq
         let decimals = 10u64
             .checked_pow(borrow_reserve.liquidity.mint_decimals as u32)
             .ok_or(LendingError::MathOverflow)?;
@@ -770,6 +774,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             .borrowed_amount_wads
             .try_mul(borrow_reserve.liquidity.market_price)?
             .try_div(decimals)?;
+        // @TODO: sanity check https://git.io/JOCcb
         liquidity.market_value = market_value;
         borrowed_value = borrowed_value.try_add(market_value)?;
     }
@@ -782,6 +787,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
     obligation.deposited_value = deposited_value;
     obligation.borrowed_value = borrowed_value;
 
+    // @FIXME: https://git.io/JOlik
     if deposited_value == Decimal::zero() {
         obligation.loan_to_value_ratio = Rate::zero();
         obligation.liquidation_threshold = Rate::zero();
@@ -1005,18 +1011,15 @@ fn process_withdraw_obligation_collateral(
     }
 
     let withdraw_amount = if obligation.borrows.is_empty() {
-        // there are no borrows; they have been repaid, liquidated, or were never taken out
         if collateral_amount == u64::MAX {
             collateral.deposited_amount
         } else {
             collateral.deposited_amount.min(collateral_amount)
         }
     } else if obligation.deposited_value == Decimal::zero() {
-        // there are deposits, but they cannot be valued
         msg!("Obligation deposited value is zero");
         return Err(LendingError::ObligationDepositsZero.into());
     } else {
-        // there are borrows and deposits, and they can both be valued
         let max_withdraw_value = obligation.max_withdraw_value()?;
         if max_withdraw_value == Decimal::zero() {
             msg!("Maximum withdraw value is zero");

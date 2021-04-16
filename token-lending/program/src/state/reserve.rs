@@ -256,7 +256,7 @@ impl Reserve {
                 }
             }
         } else {
-            // calculate settle_amount and withdraw_amount, repay_amount is settle_amount rounded up
+            // calculate settle_amount and withdraw_amount, repay_amount is settle_amount rounded
             let liquidation_amount = obligation
                 .max_liquidation_amount(liquidity)?
                 .min(max_amount);
@@ -689,7 +689,7 @@ impl IsInitialized for Reserve {
 }
 
 const RESERVE_LEN: usize = 567; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + (4 + 32) + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 1 + 256
-// @TODO: break this up by reserve / liquidity / collateral / config
+// @TODO: break this up by reserve / liquidity / collateral / config https://git.io/JOCca
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 

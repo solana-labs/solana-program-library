@@ -60,7 +60,7 @@ pub enum LendingInstruction {
     ///   9. `[]` Lending market account.
     ///   10 `[]` Derived lending market authority.
     ///   11 `[signer]` Lending market owner.
-    ///   12 `[]` User transfer authority ($authority).
+    ///   12 `[signer]` User transfer authority ($authority).
     ///   13 `[]` Clock sysvar.
     ///   13 `[]` Rent sysvar.
     ///   14 `[]` Token program id.
