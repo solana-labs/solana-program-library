@@ -144,9 +144,23 @@ pub enum WinnerLimit {
 
 /// Models a set of metadata for a bidder, meant to be stored in a PDA. This allows looking up
 /// information about a bidder regardless of if they have won, lost or cancelled.
+#[repr(C)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
 struct BidderMetadata {
-    /// Tracks the last time this user bid.
-    last_bid: UnixTimestamp,
-    /// Foreign Key. A reference to the auction this bid was placed on.
-    auction: Pubkey,
+    // Relationship with the bidder who's metadata this covers.
+    bidder_pubkey: Pubkey,
+    // Relationship with the auction this bid was placed on.
+    auction_pubkey: Pubkey,
+    // Amount that the user bid.
+    last_bid: u64,
+    // Tracks the last time this user bid.
+    last_bid_timestamp: UnixTimestamp,
+    // Whether the last bid the user made was cancelled. This should also be enough to know if the
+    // user is a winner, as if cancelled it implies previous bids were also cancelled.
+    cancelled: bool,
 }
+
+
+
+
+

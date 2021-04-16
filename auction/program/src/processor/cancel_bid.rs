@@ -66,4 +66,3 @@ pub fn cancel_bid(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResul
 
     Ok(())
 }
-
