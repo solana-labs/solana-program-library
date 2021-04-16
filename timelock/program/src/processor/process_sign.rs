@@ -6,6 +6,7 @@ use crate::{
         assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
         spl_token_burn, TokenBurnParams,
     },
+    PROGRAM_AUTHORITY_SEED,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -38,12 +39,18 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_draft(&timelock_state)?;
 
-    let (authority_key, bump_seed) =
-        Pubkey::find_program_address(&[timelock_set_account_info.key.as_ref()], program_id);
+    let mut seeds = vec![
+        PROGRAM_AUTHORITY_SEED,
+        timelock_set_account_info.key.as_ref(),
+    ];
+
+    let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if timelock_program_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
-    let authority_signer_seeds = &[timelock_set_account_info.key.as_ref(), &[bump_seed]];
+    let bump = &[bump_seed];
+    seeds.push(bump);
+    let authority_signer_seeds = &seeds[..];
     // the act of burning / signing is itself an assertion of permission...
     // if you lack the ability to do this, you lack permission to do it. no need to assert permission before
     // trying here.

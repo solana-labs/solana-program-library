@@ -17,3 +17,6 @@ pub mod utils;
 pub use solana_program;
 
 solana_program::declare_id!("TimeLock11111111111111111111111111111111111");
+
+/// Seed for governance authority
+const PROGRAM_AUTHORITY_SEED: &[u8] = b"governance";
