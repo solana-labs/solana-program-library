@@ -249,7 +249,7 @@ pub enum TimelockInstruction {
     ///           program account key, governance mint key, council mint key, timelock program account key.
     ///   1. `[]` Program account that this config uses
     ///   2. `[]` Governance mint that this config uses
-    ///   3. `[]` Council mint that this config uses [Optional] [Pass in 0s otherwise]
+    ///   3. `[]` Council mint that this config uses [Optional]
     InitTimelockConfig {
         /// Consensus Algorithm
         consensus_algorithm: u8,
@@ -271,9 +271,9 @@ pub enum TimelockInstruction {
     ///           program account key, governance mint key, council mint key, and timelock program account key.
     ///   1. `[]` Program account to tie this config to.
     ///   2. `[]` Governance mint to tie this config to
-    ///   3. `[]` Council mint [optional] to tie this config to [Pass in 0s otherwise]
-    ///   4. `[]` Payer
-    ///   5. `[]` System account.
+    ///   3. `[]` Payer
+    ///   4. `[]` System account.
+    ///   5. `[]` Council mint to tie this config to [Optional]
     CreateEmptyTimelockConfig,
 
     ///   0. `[]` Governance voting record key. Needs to be set with pubkey set to PDA with seeds of the

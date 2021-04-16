@@ -29,12 +29,15 @@ pub fn process_init_timelock_config(
     let timelock_config_account_info = next_account_info(account_info_iter)?;
     let program_to_tie_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
-    let council_mint_account_info = next_account_info(account_info_iter)?;
+
+    let (council_mint, council_mint_seed) = next_account_info(account_info_iter)
+        .map(|acc| (Some(*acc.key), acc.key.as_ref()))
+        .unwrap_or((None, &[]));
 
     let seeds = &[
         program_id.as_ref(),
         governance_mint_account_info.key.as_ref(),
-        council_mint_account_info.key.as_ref(),
+        council_mint_seed,
         program_to_tie_account_info.key.as_ref(),
     ];
     let (config_key, _) = Pubkey::find_program_address(seeds, program_id);
@@ -49,7 +52,9 @@ pub fn process_init_timelock_config(
     new_timelock_config.time_limit = time_limit;
     new_timelock_config.program = *program_to_tie_account_info.key;
     new_timelock_config.governance_mint = *governance_mint_account_info.key;
-    new_timelock_config.council_mint = *council_mint_account_info.key;
+
+    new_timelock_config.council_mint = council_mint;
+
     new_timelock_config.consensus_algorithm = match consensus_algorithm {
         0 => ConsensusAlgorithm::Majority,
         1 => ConsensusAlgorithm::SuperMajority,

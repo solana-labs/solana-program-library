@@ -174,10 +174,14 @@ pub fn process_init_timelock_set(
         timelock_program_authority_info.key,
     )?;
 
-    if source_holding_mint != timelock_config.governance_mint
-        && source_holding_mint != timelock_config.council_mint
-    {
-        return Err(TimelockError::AccountsShouldMatch.into());
+    if source_holding_mint != timelock_config.governance_mint {
+        if let Some(council_mint) = timelock_config.council_mint {
+            if source_holding_mint != council_mint {
+                return Err(TimelockError::AccountsShouldMatch.into());
+            }
+        } else {
+            return Err(TimelockError::AccountsShouldMatch.into());
+        }
     }
 
     TimelockSet::pack(

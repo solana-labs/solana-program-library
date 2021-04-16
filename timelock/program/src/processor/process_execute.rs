@@ -58,12 +58,20 @@ pub fn process_execute(
 
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
+
+    let council_mint_seed = timelock_config
+        .council_mint
+        .as_ref()
+        .map(|key| key.as_ref())
+        .unwrap_or(&[]);
+
     let seeds = &[
         program_id.as_ref(),
         timelock_config.governance_mint.as_ref(),
-        timelock_config.council_mint.as_ref(),
+        council_mint_seed,
         timelock_config.program.as_ref(),
     ];
+
     let (governance_authority, bump_seed) = Pubkey::find_program_address(seeds, program_id);
     let mut account_infos: Vec<AccountInfo> = vec![];
     if number_of_extra_accounts > (MAX_ACCOUNTS_ALLOWED - 2) as u8 {
@@ -119,7 +127,7 @@ pub fn process_execute(
         authority_signer_seeds: &[
             program_id.as_ref(),
             timelock_config.governance_mint.as_ref(),
-            timelock_config.council_mint.as_ref(),
+            council_mint_seed,
             timelock_config.program.as_ref(),
             &[bump_seed],
         ],
