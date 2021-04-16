@@ -1462,8 +1462,17 @@ fn process_liquidate_obligation(
 
     let (liquidity, liquidity_index) =
         obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
+    if liquidity.market_value == Decimal::zero() {
+        msg!("Obligation borrow value is zero");
+        return Err(LendingError::ObligationLiquidityEmpty.into());
+    }
+
     let (collateral, collateral_index) =
         obligation.find_collateral_in_deposits(*withdraw_reserve_info.key)?;
+    if collateral.market_value == Decimal::zero() {
+        msg!("Obligation deposit value is zero");
+        return Err(LendingError::ObligationCollateralEmpty.into());
+    }
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
