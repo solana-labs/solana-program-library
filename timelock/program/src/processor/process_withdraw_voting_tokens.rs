@@ -8,8 +8,9 @@ use crate::{
         assert_account_equiv, assert_initialized, assert_token_program_is_correct, spl_token_burn,
         spl_token_transfer, TokenBurnParams, TokenTransferParams,
     },
-    PROGRAM_AUTHORITY_SEED
+    PROGRAM_AUTHORITY_SEED,
 };
+
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
