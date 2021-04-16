@@ -115,10 +115,6 @@ pub fn process_instruction(
                 name,
             )
         }
-        TimelockInstruction::Ping => {
-            msg!("Ping!");
-            Ok(())
-        }
         TimelockInstruction::Execute {
             number_of_extra_accounts,
         } => {
