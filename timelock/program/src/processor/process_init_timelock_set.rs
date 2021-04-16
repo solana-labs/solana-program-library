@@ -14,7 +14,7 @@ use crate::{
         assert_rent_exempt, assert_uninitialized, get_mint_decimals, get_mint_from_token_account,
         spl_token_mint_to, TokenMintToParams,
     },
-    AUTHORITY_SEED_PROPOSAL,
+    PROGRAM_AUTHORITY_SEED,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -199,7 +199,7 @@ pub fn process_init_timelock_set(
     )?;
 
     let mut seeds = vec![
-        AUTHORITY_SEED_PROPOSAL,
+        PROGRAM_AUTHORITY_SEED,
         timelock_set_account_info.key.as_ref(),
     ];
 

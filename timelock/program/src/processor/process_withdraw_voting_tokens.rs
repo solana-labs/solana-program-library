@@ -8,7 +8,7 @@ use crate::{
         assert_account_equiv, assert_initialized, assert_token_program_is_correct, spl_token_burn,
         spl_token_transfer, TokenBurnParams, TokenTransferParams,
     },
-    AUTHORITY_SEED_PROPOSAL, AUTHORITY_SEED_PROPOSAL_VOTE,
+    PROGRAM_AUTHORITY_SEED
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -62,7 +62,7 @@ pub fn process_withdraw_voting_tokens(
     let no_voting_account: Account = assert_initialized(no_voting_account_info)?;
 
     let mut seeds = vec![
-        AUTHORITY_SEED_PROPOSAL,
+        PROGRAM_AUTHORITY_SEED,
         timelock_set_account_info.key.as_ref(),
     ];
 
@@ -76,7 +76,7 @@ pub fn process_withdraw_voting_tokens(
 
     let (voting_record_key, _) = Pubkey::find_program_address(
         &[
-            AUTHORITY_SEED_PROPOSAL_VOTE,
+            PROGRAM_AUTHORITY_SEED,
             program_id.as_ref(),
             timelock_set_account_info.key.as_ref(),
             voting_account_info.key.as_ref(),

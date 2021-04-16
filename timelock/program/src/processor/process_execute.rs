@@ -12,7 +12,7 @@ use crate::{
         timelock_state::TimelockState,
     },
     utils::{assert_account_equiv, assert_executing, assert_initialized, execute, ExecuteParams},
-    AUTHORITY_SEED_GOVERNANCE,
+    PROGRAM_AUTHORITY_SEED,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -67,7 +67,7 @@ pub fn process_execute(
         .unwrap_or(&[]);
 
     let mut seeds = vec![
-        AUTHORITY_SEED_GOVERNANCE,
+        PROGRAM_AUTHORITY_SEED,
         program_id.as_ref(),
         timelock_config.governance_mint.as_ref(),
         council_mint_seed,

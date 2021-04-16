@@ -1,7 +1,7 @@
 use crate::{
     error::TimelockError,
     state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
-    AUTHORITY_SEED_PROPOSAL,
+    PROGRAM_AUTHORITY_SEED,
 };
 use arrayref::{array_ref, array_refs, mut_array_refs};
 use solana_program::{
@@ -50,7 +50,7 @@ pub fn assert_is_permissioned<'a>(
     let _perm_account: Account = assert_initialized(perm_account_info)?;
     let _perm_validation: Account = assert_initialized(perm_validation_account_info)?;
 
-    let mut seeds = vec![AUTHORITY_SEED_PROPOSAL, timelock_set_info.key.as_ref()];
+    let mut seeds = vec![PROGRAM_AUTHORITY_SEED, timelock_set_info.key.as_ref()];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if timelock_authority_info.key != &authority_key {

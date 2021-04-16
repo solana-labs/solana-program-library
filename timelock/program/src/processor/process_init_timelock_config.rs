@@ -4,7 +4,7 @@ use crate::{
     state::enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule},
     state::timelock_config::{TimelockConfig, CONFIG_NAME_LENGTH, TIMELOCK_CONFIG_VERSION},
     utils::assert_uninitialized,
-    AUTHORITY_SEED_GOVERNANCE,
+    PROGRAM_AUTHORITY_SEED,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -36,7 +36,7 @@ pub fn process_init_timelock_config(
         .unwrap_or((None, &[]));
 
     let seeds = &[
-        AUTHORITY_SEED_GOVERNANCE,
+        PROGRAM_AUTHORITY_SEED,
         program_id.as_ref(),
         governance_mint_account_info.key.as_ref(),
         council_mint_seed,

@@ -9,7 +9,7 @@ use crate::{
         assert_account_equiv, assert_initialized, assert_voting, get_mint_supply, spl_token_burn,
         spl_token_mint_to, TokenBurnParams, TokenMintToParams,
     },
-    AUTHORITY_SEED_PROPOSAL, AUTHORITY_SEED_PROPOSAL_VOTE,
+    PROGRAM_AUTHORITY_SEED,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -60,7 +60,7 @@ pub fn process_vote(
     assert_voting(&timelock_state)?;
 
     let mut seeds = vec![
-        AUTHORITY_SEED_PROPOSAL,
+        PROGRAM_AUTHORITY_SEED,
         timelock_set_account_info.key.as_ref(),
     ];
 
@@ -154,7 +154,7 @@ pub fn process_vote(
     }
     let (voting_record_key, _) = Pubkey::find_program_address(
         &[
-            AUTHORITY_SEED_PROPOSAL_VOTE,
+            PROGRAM_AUTHORITY_SEED,
             program_id.as_ref(),
             timelock_set_account_info.key.as_ref(),
             voting_account_info.key.as_ref(),

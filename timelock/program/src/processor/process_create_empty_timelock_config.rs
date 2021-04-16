@@ -1,7 +1,7 @@
 //! Program state processor
 
 use crate::{
-    state::timelock_config::TimelockConfig, utils::create_account_raw, AUTHORITY_SEED_GOVERNANCE,
+    state::timelock_config::TimelockConfig, utils::create_account_raw, PROGRAM_AUTHORITY_SEED,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -27,7 +27,7 @@ pub fn process_create_empty_timelock_config(
         .unwrap_or(&[]);
 
     let mut seeds = vec![
-        AUTHORITY_SEED_GOVERNANCE,
+        PROGRAM_AUTHORITY_SEED,
         timelock_program_account_info.key.as_ref(),
         governance_mint_account_info.key.as_ref(),
         council_mint_seed,

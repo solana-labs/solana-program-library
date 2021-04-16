@@ -8,7 +8,7 @@ use crate::{
         assert_account_equiv, assert_initialized, assert_token_program_is_correct,
         spl_token_mint_to, spl_token_transfer, TokenMintToParams, TokenTransferParams,
     },
-    AUTHORITY_SEED_PROPOSAL, AUTHORITY_SEED_PROPOSAL_VOTE,
+    PROGRAM_AUTHORITY_SEED,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -42,7 +42,7 @@ pub fn process_deposit_source_tokens(
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
 
     let mut seeds = vec![
-        AUTHORITY_SEED_PROPOSAL,
+        PROGRAM_AUTHORITY_SEED,
         timelock_set_account_info.key.as_ref(),
     ];
 
@@ -75,7 +75,7 @@ pub fn process_deposit_source_tokens(
 
     let (voting_record_key, _) = Pubkey::find_program_address(
         &[
-            AUTHORITY_SEED_PROPOSAL_VOTE,
+            PROGRAM_AUTHORITY_SEED,
             program_id.as_ref(),
             timelock_set_account_info.key.as_ref(),
             voting_account_info.key.as_ref(),

@@ -6,7 +6,7 @@ use crate::{
         assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
         spl_token_burn, TokenBurnParams,
     },
-    AUTHORITY_SEED_PROPOSAL,
+    PROGRAM_AUTHORITY_SEED,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -40,7 +40,7 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     assert_draft(&timelock_state)?;
 
     let mut seeds = vec![
-        AUTHORITY_SEED_PROPOSAL,
+        PROGRAM_AUTHORITY_SEED,
         timelock_set_account_info.key.as_ref(),
     ];
 

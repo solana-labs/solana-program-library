@@ -2,7 +2,7 @@
 
 use crate::{
     state::governance_voting_record::GovernanceVotingRecord, utils::create_account_raw,
-    AUTHORITY_SEED_PROPOSAL_VOTE,
+    PROGRAM_AUTHORITY_SEED,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -24,7 +24,7 @@ pub fn process_create_empty_governance_voting_record(
     let system_account_info = next_account_info(account_info_iter)?;
 
     let mut seeds = vec![
-        AUTHORITY_SEED_PROPOSAL_VOTE,
+        PROGRAM_AUTHORITY_SEED,
         timelock_program_info.key.as_ref(),
         proposal_account_info.key.as_ref(),
         voting_account_info.key.as_ref(),
