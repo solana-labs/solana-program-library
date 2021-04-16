@@ -141,12 +141,15 @@ pub fn process_execute(
         &mut transaction_account_info.data.borrow_mut(),
     )?;
 
-    timelock_state.executions = match timelock_state.executions.checked_add(1) {
+    timelock_state.number_of_executed_transactions = match timelock_state
+        .number_of_executed_transactions
+        .checked_add(1)
+    {
         Some(val) => val,
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
 
-    if timelock_state.executions == timelock_state.number_of_transactions {
+    if timelock_state.number_of_executed_transactions == timelock_state.number_of_transactions {
         timelock_state.status = TimelockStateStatus::Completed
     }
 

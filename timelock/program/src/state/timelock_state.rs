@@ -51,10 +51,10 @@ pub struct TimelockState {
     /// when the timelock entered deleted state
     pub deleted_at: u64,
 
-    /// Executions
-    pub executions: u8,
+    /// The number of the transactions already executed
+    pub number_of_executed_transactions: u8,
 
-    /// The number of transactions in Proposals
+    /// The number of transactions included in the proposal
     pub number_of_transactions: u8,
 
     /// Array of pubkeys pointing at TimelockTransactions, up to 5
@@ -115,7 +115,7 @@ impl Pack for TimelockState {
             created_at,
             completed_at,
             deleted_at,
-            executions,
+            number_of_executed_transactions,
             number_of_transactions,
             timelock_txn_1,
             timelock_txn_2,
@@ -134,7 +134,7 @@ impl Pack for TimelockState {
         let created_at = u64::from_le_bytes(*created_at);
         let completed_at = u64::from_le_bytes(*completed_at);
         let deleted_at = u64::from_le_bytes(*deleted_at);
-        let executions = u8::from_le_bytes(*executions);
+        let number_of_executed_transactions = u8::from_le_bytes(*number_of_executed_transactions);
         let number_of_transactions = u8::from_le_bytes(*number_of_transactions);
         match version {
             TIMELOCK_STATE_VERSION | UNINITIALIZED_VERSION => Ok(Self {
@@ -163,7 +163,7 @@ impl Pack for TimelockState {
                 created_at,
                 completed_at,
                 deleted_at,
-                executions,
+                number_of_executed_transactions,
                 number_of_transactions,
             }),
             _ => Err(ProgramError::InvalidAccountData),
@@ -185,7 +185,7 @@ impl Pack for TimelockState {
             created_at,
             completed_at,
             deleted_at,
-            executions,
+            number_of_executed_transactions,
             number_of_transactions,
             timelock_txn_1,
             timelock_txn_2,
@@ -216,7 +216,7 @@ impl Pack for TimelockState {
         *created_at = self.created_at.to_le_bytes();
         *completed_at = self.completed_at.to_le_bytes();
         *deleted_at = self.deleted_at.to_le_bytes();
-        *executions = self.executions.to_le_bytes();
+        *number_of_executed_transactions = self.number_of_executed_transactions.to_le_bytes();
         *number_of_transactions = self.number_of_transactions.to_le_bytes();
         timelock_txn_1.copy_from_slice(self.timelock_transactions[0].as_ref());
         timelock_txn_2.copy_from_slice(self.timelock_transactions[1].as_ref());
