@@ -34,7 +34,7 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Lending market account.
     ///   1. `[]` Quote currency SPL Token mint. Must be initialized.
     ///   2. `[]` Rent sysvar
-    ///   3. '[]` Token program id
+    ///   3. `[]` Token program id
     InitLendingMarket {
         /// Owner authority which can add new reserves
         market_owner: Pubkey,
@@ -54,14 +54,16 @@ pub enum LendingInstruction {
     ///   6. `[writable]` Reserve collateral token supply - uninitialized
     ///   7. `[writable]` Reserve collateral fees receiver - uninitialized.
     ///                     Owner will be set to the lending market account.
-    ///   8. `[]` Lending market account.
-    ///   9. `[signer]` Lending market owner.
-    ///   10 `[]` Derived lending market authority.
-    ///   11 `[]` User transfer authority ($authority).
-    ///   12 `[]` Clock sysvar
-    ///   13 `[]` Rent sysvar
-    ///   14 '[]` Token program id
-    ///   15 `[optional]` Serum DEX market account. Not required for quote currency reserves. Must be initialized and match quote and base currency.
+    ///   8. `[writable]` Flash loan fees receiver - uninitialized.
+    ///                   Owner will be set to the lending market account.
+    ///   9. `[]` Lending market account.
+    ///   10. `[signer]` Lending market owner.
+    ///   11 `[]` Derived lending market authority.
+    ///   12 `[]` User transfer authority ($authority).
+    ///   13 `[]` Clock sysvar
+    ///   14 `[]` Rent sysvar
+    ///   15 `[]` Token program id
+    ///   16 `[optional]` Serum DEX market account. Not required for quote currency reserves. Must be initialized and match quote and base currency.
     InitReserve {
         /// Initial amount of liquidity to deposit into the new reserve
         liquidity_amount: u64,
@@ -84,7 +86,7 @@ pub enum LendingInstruction {
     ///   7. `[]` Derived lending market authority.
     ///   8. `[]` Clock sysvar
     ///   9. `[]` Rent sysvar
-    ///   10 '[]` Token program id
+    ///   10 `[]` Token program id
     InitObligation,
 
     // 3
@@ -102,7 +104,7 @@ pub enum LendingInstruction {
     ///   6. `[]` Derived lending market authority.
     ///   7. `[signer]` User transfer authority ($authority).
     ///   8. `[]` Clock sysvar
-    ///   9. '[]` Token program id
+    ///   9. `[]` Token program id
     DepositReserveLiquidity {
         /// Amount to deposit into the reserve
         liquidity_amount: u64,
@@ -122,7 +124,7 @@ pub enum LendingInstruction {
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
     ///   7. `[signer]` User transfer authority ($authority).
-    ///   8. '[]` Token program id
+    ///   8. `[]` Token program id
     WithdrawReserveLiquidity {
         /// Amount of collateral to deposit in exchange for liquidity
         collateral_amount: u64,
@@ -153,7 +155,7 @@ pub enum LendingInstruction {
     ///   14 `[]` Dex market order book side
     ///   15 `[]` Temporary memory
     ///   16 `[]` Clock sysvar
-    ///   17 '[]` Token program id
+    ///   17 `[]` Token program id
     ///   18 `[optional, writable]` Deposit reserve collateral host fee receiver account.
     BorrowReserveLiquidity {
         // TODO: slippage constraint
@@ -323,6 +325,7 @@ impl LendingInstruction {
                 let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
+                let (flash_loan_fee_wad, rest) = Self::unpack_u64(rest)?;
                 let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
                 Self::InitReserve {
                     liquidity_amount,
@@ -336,6 +339,7 @@ impl LendingInstruction {
                         max_borrow_rate,
                         fees: ReserveFees {
                             borrow_fee_wad,
+                            flash_loan_fee_wad,
                             host_fee_percentage,
                         },
                     },
@@ -449,6 +453,7 @@ impl LendingInstruction {
                         fees:
                             ReserveFees {
                                 borrow_fee_wad,
+                                flash_loan_fee_wad,
                                 host_fee_percentage,
                             },
                     },
@@ -463,6 +468,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&optimal_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&max_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&borrow_fee_wad.to_le_bytes());
+                buf.extend_from_slice(&flash_loan_fee_wad.to_le_bytes());
                 buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
             }
             Self::InitObligation => {
@@ -552,6 +558,7 @@ pub fn init_reserve(
     reserve_collateral_mint_pubkey: Pubkey,
     reserve_collateral_supply_pubkey: Pubkey,
     reserve_collateral_fees_receiver_pubkey: Pubkey,
+    flash_loan_fees_receiver_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_owner_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
@@ -568,6 +575,7 @@ pub fn init_reserve(
         AccountMeta::new(reserve_collateral_mint_pubkey, false),
         AccountMeta::new(reserve_collateral_supply_pubkey, false),
         AccountMeta::new(reserve_collateral_fees_receiver_pubkey, false),
+        AccountMeta::new(flash_loan_fees_receiver_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(lending_market_owner_pubkey, true),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),

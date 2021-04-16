@@ -42,6 +42,8 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     fees: ReserveFees {
         borrow_fee_wad: 100_000_000_000,
         /// 0.00001% (Aave borrow fee)
+        flash_loan_fee_wad: 10_000_000_000_000_000, // 1%
+        /// 1%
         host_fee_percentage: 20,
     },
 };
@@ -342,10 +344,37 @@ pub fn add_reserve(
 
     let reserve_keypair = Keypair::new();
     let reserve_pubkey = reserve_keypair.pubkey();
+    let flash_loan_fees_receiver_pubkey = Pubkey::new_unique();
+    test.add_packable_account(
+        flash_loan_fees_receiver_pubkey,
+        u32::MAX as u64,
+        &Token {
+            mint: liquidity_mint_pubkey,
+            owner: lending_market.owner.pubkey(),
+            amount: 0,
+            state: AccountState::Initialized,
+            ..Token::default()
+        },
+        &spl_token::id(),
+    );
+    let liquidity_host_fees_receiver_pubkey = Pubkey::new_unique();
+    test.add_packable_account(
+        liquidity_host_fees_receiver_pubkey,
+        u32::MAX as u64,
+        &Token {
+            mint: liquidity_mint_pubkey,
+            owner: user_accounts_owner.pubkey(),
+            amount: 0,
+            state: AccountState::Initialized,
+            ..Token::default()
+        },
+        &spl_token::id(),
+    );
     let reserve_liquidity = ReserveLiquidity::new(
         liquidity_mint_pubkey,
         liquidity_mint_decimals,
         liquidity_supply_pubkey,
+        flash_loan_fees_receiver_pubkey,
     );
     let reserve_collateral = ReserveCollateral::new(
         collateral_mint_pubkey,
@@ -419,7 +448,9 @@ pub fn add_reserve(
         collateral_mint: collateral_mint_pubkey,
         collateral_supply: collateral_supply_pubkey,
         collateral_fees_receiver: collateral_fees_receiver_pubkey,
+        flash_loan_fees_receiver: flash_loan_fees_receiver_pubkey,
         collateral_host: collateral_host_pubkey,
+        liquidity_host: liquidity_host_fees_receiver_pubkey,
         user_liquidity_account: user_liquidity_pubkey,
         user_collateral_account: user_collateral_pubkey,
         dex_market: dex_market_pubkey,
@@ -761,7 +792,9 @@ pub struct TestReserve {
     pub collateral_mint: Pubkey,
     pub collateral_supply: Pubkey,
     pub collateral_fees_receiver: Pubkey,
+    pub flash_loan_fees_receiver: Pubkey,
     pub collateral_host: Pubkey,
+    pub liquidity_host: Pubkey,
     pub user_liquidity_account: Pubkey,
     pub user_collateral_account: Pubkey,
     pub dex_market: Option<Pubkey>,
@@ -786,7 +819,9 @@ impl TestReserve {
         let collateral_mint_keypair = Keypair::new();
         let collateral_supply_keypair = Keypair::new();
         let collateral_fees_receiver_keypair = Keypair::new();
+        let flash_loan_fees_receiver_keypair = Keypair::new();
         let collateral_host_keypair = Keypair::new();
+        let liquidity_host_keypair = Keypair::new();
         let liquidity_supply_keypair = Keypair::new();
         let user_collateral_token_keypair = Keypair::new();
         let user_transfer_authority_keypair = Keypair::new();
@@ -877,6 +912,7 @@ impl TestReserve {
                     collateral_mint_keypair.pubkey(),
                     collateral_supply_keypair.pubkey(),
                     collateral_fees_receiver_keypair.pubkey(),
+                    flash_loan_fees_receiver_keypair.pubkey(),
                     lending_market.pubkey,
                     lending_market.owner.pubkey(),
                     user_transfer_authority_keypair.pubkey(),
@@ -918,6 +954,8 @@ impl TestReserve {
                 collateral_mint: collateral_mint_keypair.pubkey(),
                 collateral_supply: collateral_supply_keypair.pubkey(),
                 collateral_fees_receiver: collateral_fees_receiver_keypair.pubkey(),
+                flash_loan_fees_receiver: flash_loan_fees_receiver_keypair.pubkey(),
+                liquidity_host: liquidity_host_keypair.pubkey(),
                 collateral_host: collateral_host_keypair.pubkey(),
                 user_liquidity_account,
                 user_collateral_account: user_collateral_token_keypair.pubkey(),

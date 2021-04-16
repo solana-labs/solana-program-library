@@ -183,6 +183,7 @@ fn process_init_reserve(
     let reserve_collateral_mint_info = next_account_info(account_info_iter)?;
     let reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let reserve_collateral_fees_receiver_info = next_account_info(account_info_iter)?;
+    let flash_loan_fees_receiver_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_owner_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
@@ -255,6 +256,7 @@ fn process_init_reserve(
         *reserve_liquidity_mint_info.key,
         reserve_liquidity_mint.decimals,
         *reserve_liquidity_supply_info.key,
+        *flash_loan_fees_receiver_info.key,
     );
     let reserve_collateral_info = ReserveCollateral::new(
         *reserve_collateral_mint_info.key,
@@ -1597,13 +1599,13 @@ fn process_flash_loan(
     data.push(0u8);
     // TODO: think about if I should keep this argument....
     data.extend_from_slice(&amount.to_le_bytes());
-    let mut calling_account = vec![
+    let mut instruction_accounts = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),
         AccountMeta::new_readonly(*flash_loan_receiver_derived_info.key, false),
         AccountMeta::new(*reserve_liquidity_account_info.key, false),
         AccountMeta::new_readonly(*token_program_id.key, false)
     ];
-    let mut calling_accounts = &[
+    let mut calling_accounts = vec![
         destination_liquidity_info.clone(),
         flash_loan_receiver_info.clone(),
         flash_loan_receiver_derived_info.clone(),
@@ -1612,25 +1614,30 @@ fn process_flash_loan(
     ];
     msg!("keys!");
     for acc in account_info_iter {
-        // calling_accounts.push(acc.clone()); // TODO: add to slice
-        calling_account.push(AccountMeta::new(*acc.key, acc.is_signer))
+        calling_accounts.push(acc.clone());
+        instruction_accounts.push(AccountMeta::new(*acc.key, acc.is_signer))
     }
     msg!("keys2!");
 
     let ix = Instruction {
         program_id: *flash_loan_receiver_info.key,
-        accounts: calling_account,
+        accounts: instruction_accounts,
         data
     };
     msg!("invoke");
     let result = invoke(
         &ix,
-        calling_accounts);
+        &calling_accounts[..]);
     msg!("invoke completed");
     if result.is_err() {
         // TODO: change to a more sensible error.
         return Err(LendingError::InvalidTokenProgram.into());
     }
+
+    let (origination_fee, host_fee) = reserve
+        .config
+        .fees
+        .calculate_flash_loan_fees(amount)?;
 
     let after_liquidity_supply_token_account =
         Account::unpack_from_slice(&reserve_liquidity_account_info.try_borrow_data()?)?;
