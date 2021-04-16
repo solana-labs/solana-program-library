@@ -508,8 +508,8 @@ impl TimelockInstruction {
                 buf.push(13);
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
-            Self::CreateEmptyTimelockConfig => buf.push(15),
-            Self::CreateEmptyGovernanceVotingRecord => buf.push(16),
+            Self::CreateEmptyTimelockConfig => buf.push(14),
+            Self::CreateEmptyGovernanceVotingRecord => buf.push(15),
         }
         buf
     }

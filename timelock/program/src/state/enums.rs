@@ -1,3 +1,25 @@
+/// Defines all persistent struct types and their versions
+#[derive(Clone, Debug, PartialEq)]
+pub enum GovernanceStructType {
+    /// 0 - Default state
+    Uninitialized,
+
+    /// 1 - Governance configuration record
+    Governance,
+
+    /// 2 - Proposal within given Governance record
+    Proposal,
+
+    /// 3 - Vote within given Proposal
+    VoteRecord,
+}
+
+impl Default for GovernanceStructType {
+    fn default() -> Self {
+        GovernanceStructType::Uninitialized
+    }
+}
+
 /// What kind of consensus algo a timelock uses
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConsensusAlgorithm {

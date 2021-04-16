@@ -1,7 +1,7 @@
 use crate::{
     state::{
+        enums::GovernanceStructType,
         enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule},
-        UNINITIALIZED_VERSION,
     },
     utils::{pack_option_key, unpack_option_key},
 };
@@ -13,15 +13,13 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-/// STRUCT VERSION
-pub const TIMELOCK_CONFIG_VERSION: u8 = 1;
 /// max name length
 pub const CONFIG_NAME_LENGTH: usize = 32;
 /// Timelock Config
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockConfig {
     ///version
-    pub version: u8,
+    pub struct_type: GovernanceStructType,
     /// Consensus Algorithm
     pub consensus_algorithm: ConsensusAlgorithm,
     /// Execution type
@@ -49,7 +47,7 @@ pub struct TimelockConfig {
 impl Sealed for TimelockConfig {}
 impl IsInitialized for TimelockConfig {
     fn is_initialized(&self) -> bool {
-        self.version != UNINITIALIZED_VERSION
+        self.struct_type != GovernanceStructType::Uninitialized
     }
 }
 
@@ -65,7 +63,7 @@ impl Pack for TimelockConfig {
         // TODO think up better way than txn_* usage here - new to rust
         #[allow(clippy::ptr_offset_with_cast)]
         let (
-            version,
+            struct_type_value,
             consensus_algorithm,
             execution_type,
             timelock_type,
@@ -94,7 +92,7 @@ impl Pack for TimelockConfig {
             4,
             295
         ];
-        let version = u8::from_le_bytes(*version);
+        let struct_type_value = u8::from_le_bytes(*struct_type_value);
         let consensus_algorithm = u8::from_le_bytes(*consensus_algorithm);
         let execution_type = u8::from_le_bytes(*execution_type);
         let timelock_type = u8::from_le_bytes(*timelock_type);
@@ -103,46 +101,49 @@ impl Pack for TimelockConfig {
         let time_limit = u64::from_le_bytes(*time_limit);
         let count = u32::from_le_bytes(*count);
 
-        match version {
-            TIMELOCK_CONFIG_VERSION | UNINITIALIZED_VERSION => Ok(Self {
-                version,
-                consensus_algorithm: match consensus_algorithm {
-                    0 => ConsensusAlgorithm::Majority,
-                    1 => ConsensusAlgorithm::SuperMajority,
-                    2 => ConsensusAlgorithm::FullConsensus,
-                    _ => ConsensusAlgorithm::Majority,
-                },
-                execution_type: match execution_type {
-                    0 => ExecutionType::Independent,
-                    _ => ExecutionType::Independent,
-                },
-                timelock_type: match timelock_type {
-                    0 => TimelockType::Governance,
-                    _ => TimelockType::Governance,
-                },
-                voting_entry_rule: match voting_entry_rule {
-                    0 => VotingEntryRule::Anytime,
-                    _ => VotingEntryRule::Anytime,
-                },
-                minimum_slot_waiting_period,
-                governance_mint: Pubkey::new_from_array(*governance_mint),
+        let struct_type = match struct_type_value {
+            0 => GovernanceStructType::Uninitialized,
+            1 => GovernanceStructType::Governance,
+            _ => return Err(ProgramError::InvalidAccountData),
+        };
 
-                council_mint: unpack_option_key(council_mint_option)?,
+        Ok(Self {
+            struct_type,
+            consensus_algorithm: match consensus_algorithm {
+                0 => ConsensusAlgorithm::Majority,
+                1 => ConsensusAlgorithm::SuperMajority,
+                2 => ConsensusAlgorithm::FullConsensus,
+                _ => ConsensusAlgorithm::Majority,
+            },
+            execution_type: match execution_type {
+                0 => ExecutionType::Independent,
+                _ => ExecutionType::Independent,
+            },
+            timelock_type: match timelock_type {
+                0 => TimelockType::Governance,
+                _ => TimelockType::Governance,
+            },
+            voting_entry_rule: match voting_entry_rule {
+                0 => VotingEntryRule::Anytime,
+                _ => VotingEntryRule::Anytime,
+            },
+            minimum_slot_waiting_period,
+            governance_mint: Pubkey::new_from_array(*governance_mint),
 
-                program: Pubkey::new_from_array(*program),
-                time_limit,
-                name: *name,
-                count,
-            }),
-            _ => Err(ProgramError::InvalidAccountData),
-        }
+            council_mint: unpack_option_key(council_mint_option)?,
+
+            program: Pubkey::new_from_array(*program),
+            time_limit,
+            name: *name,
+            count,
+        })
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, TIMELOCK_CONFIG_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
-            version,
+            struct_type_value,
             consensus_algorithm,
             execution_type,
             timelock_type,
@@ -171,7 +172,13 @@ impl Pack for TimelockConfig {
             4,
             295
         ];
-        *version = self.version.to_le_bytes();
+        *struct_type_value = match self.struct_type {
+            GovernanceStructType::Uninitialized => 0_u8,
+            GovernanceStructType::Governance => 1_u8,
+            _ => panic!("Account type was invalid"),
+        }
+        .to_le_bytes();
+
         *consensus_algorithm = match self.consensus_algorithm {
             ConsensusAlgorithm::Majority => 0_u8,
             ConsensusAlgorithm::SuperMajority => 1_u8,
