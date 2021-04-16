@@ -14,6 +14,7 @@ use crate::{
         assert_rent_exempt, assert_uninitialized, get_mint_decimals, get_mint_from_token_account,
         spl_token_mint_to, TokenMintToParams,
     },
+    AUTHORITY_SEED_PROPOSAL,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -197,12 +198,18 @@ pub fn process_init_timelock_set(
         &mut timelock_config_account_info.data.borrow_mut(),
     )?;
 
-    let (authority_key, bump_seed) =
-        Pubkey::find_program_address(&[timelock_set_account_info.key.as_ref()], program_id);
+    let mut seeds = vec![
+        AUTHORITY_SEED_PROPOSAL,
+        timelock_set_account_info.key.as_ref(),
+    ];
+
+    let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if timelock_program_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
-    let authority_signer_seeds = &[timelock_set_account_info.key.as_ref(), &[bump_seed]];
+    let bump = &[bump_seed];
+    seeds.push(bump);
+    let authority_signer_seeds = &seeds[..];
 
     spl_token_mint_to(TokenMintToParams {
         mint: admin_mint_account_info.clone(),

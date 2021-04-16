@@ -1,6 +1,9 @@
 //! Program state processor
 
-use crate::{state::governance_voting_record::GovernanceVotingRecord, utils::create_account_raw};
+use crate::{
+    state::governance_voting_record::GovernanceVotingRecord, utils::create_account_raw,
+    AUTHORITY_SEED_PROPOSAL_VOTE,
+};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -20,18 +23,17 @@ pub fn process_create_empty_governance_voting_record(
     let timelock_program_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
 
-    let seeds = &[
+    let mut seeds = vec![
+        AUTHORITY_SEED_PROPOSAL_VOTE,
         timelock_program_info.key.as_ref(),
         proposal_account_info.key.as_ref(),
         voting_account_info.key.as_ref(),
     ];
-    let (voting_key, bump_seed) = Pubkey::find_program_address(seeds, program_id);
-    let authority_signer_seeds = &[
-        timelock_program_info.key.as_ref(),
-        proposal_account_info.key.as_ref(),
-        voting_account_info.key.as_ref(),
-        &[bump_seed],
-    ];
+    let (voting_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
+
+    let bump = &[bump_seed];
+    seeds.push(bump);
+    let authority_signer_seeds = &seeds[..];
 
     create_account_raw::<GovernanceVotingRecord>(
         &[

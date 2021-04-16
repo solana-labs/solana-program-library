@@ -17,3 +17,12 @@ pub mod utils;
 pub use solana_program;
 
 solana_program::declare_id!("TimeLock11111111111111111111111111111111111");
+
+/// Seed for proposal authority
+const AUTHORITY_SEED_PROPOSAL: &[u8] = b"proposal";
+
+/// Seed for governance authority
+const AUTHORITY_SEED_GOVERNANCE: &[u8] = b"governance";
+
+/// Seed for governance authority
+const AUTHORITY_SEED_PROPOSAL_VOTE: &[u8] = b"proposal-vote";

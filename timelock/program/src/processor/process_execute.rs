@@ -12,6 +12,7 @@ use crate::{
         timelock_state::TimelockState,
     },
     utils::{assert_account_equiv, assert_executing, assert_initialized, execute, ExecuteParams},
+    AUTHORITY_SEED_GOVERNANCE,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -65,14 +66,15 @@ pub fn process_execute(
         .map(|key| key.as_ref())
         .unwrap_or(&[]);
 
-    let seeds = &[
+    let mut seeds = vec![
+        AUTHORITY_SEED_GOVERNANCE,
         program_id.as_ref(),
         timelock_config.governance_mint.as_ref(),
         council_mint_seed,
         timelock_config.program.as_ref(),
     ];
 
-    let (governance_authority, bump_seed) = Pubkey::find_program_address(seeds, program_id);
+    let (governance_authority, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     let mut account_infos: Vec<AccountInfo> = vec![];
     if number_of_extra_accounts > (MAX_ACCOUNTS_ALLOWED - 2) as u8 {
         return Err(TimelockError::TooManyAccountsInInstruction.into());
@@ -122,15 +124,13 @@ pub fn process_execute(
             Err(_) => return Err(TimelockError::InstructionUnpackError.into()),
         };
 
+    let bump = &[bump_seed];
+    seeds.push(bump);
+    let authority_signer_seeds = &seeds[..];
+
     execute(ExecuteParams {
         instruction,
-        authority_signer_seeds: &[
-            program_id.as_ref(),
-            timelock_config.governance_mint.as_ref(),
-            council_mint_seed,
-            timelock_config.program.as_ref(),
-            &[bump_seed],
-        ],
+        authority_signer_seeds,
         account_infos,
     })?;
 

@@ -1,6 +1,8 @@
 //! Program state processor
 
-use crate::{state::timelock_config::TimelockConfig, utils::create_account_raw};
+use crate::{
+    state::timelock_config::TimelockConfig, utils::create_account_raw, AUTHORITY_SEED_GOVERNANCE,
+};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -24,21 +26,18 @@ pub fn process_create_empty_timelock_config(
         .map(|acc| acc.key.as_ref())
         .unwrap_or(&[]);
 
-    let seeds = &[
+    let mut seeds = vec![
+        AUTHORITY_SEED_GOVERNANCE,
         timelock_program_account_info.key.as_ref(),
         governance_mint_account_info.key.as_ref(),
         council_mint_seed,
         program_to_tie_account_info.key.as_ref(),
     ];
-    let (config_key, bump_seed) = Pubkey::find_program_address(seeds, program_id);
+    let (config_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
 
-    let authority_signer_seeds = &[
-        timelock_program_account_info.key.as_ref(),
-        governance_mint_account_info.key.as_ref(),
-        council_mint_seed,
-        program_to_tie_account_info.key.as_ref(),
-        &[bump_seed],
-    ];
+    let bump = &[bump_seed];
+    seeds.push(bump);
+    let authority_signer_seeds = &seeds[..];
 
     create_account_raw::<TimelockConfig>(
         &[
