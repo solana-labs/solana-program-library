@@ -30,7 +30,7 @@ use solana_program::{
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 use spl_token::state::{Account, Mint};
-use std::{convert::TryFrom, u64};
+use std::convert::TryFrom;
 
 /// Processes an instruction
 pub fn process_instruction(
