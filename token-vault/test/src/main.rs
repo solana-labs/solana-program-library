@@ -651,6 +651,11 @@ fn withdraw_tokens(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) 
     let store: Account = Account::unpack_unchecked(&store_account.data).unwrap();
     let vault_account = client.get_account(&safety_deposit.vault).unwrap();
     let vault: Vault = try_from_slice_unchecked(&vault_account.data).unwrap();
+    let amount: u64 = app_matches
+        .value_of("amount")
+        .unwrap_or(&store.amount.to_string())
+        .parse::<u64>()
+        .unwrap();
 
     let mut signers = vec![&payer, &vault_authority];
     let seeds = &[PREFIX.as_bytes(), &program_key.as_ref()];
@@ -689,6 +694,7 @@ fn withdraw_tokens(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) 
         vault.fraction_mint,
         vault_authority.pubkey(),
         transfer_authority,
+        amount,
     ));
 
     let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
@@ -1130,6 +1136,13 @@ fn main() {
                         .validator(is_valid_pubkey)
                         .takes_value(true)
                         .help("Pubkey of destination shares account, an empty will be made if not provided"),
+                ).arg(
+                    Arg::with_name("amount")
+                        .long("amount")
+                        .value_name("AMOUNT")
+                        .required(false)
+                        .takes_value(true)
+                        .help("Amount of tokens to remove, defaults to all"),
                 ))
         .subcommand(
             SubCommand::with_name("mint_shares")

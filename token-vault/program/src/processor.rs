@@ -53,9 +53,9 @@ pub fn process_instruction(
             msg!("Instruction: Redeem Shares");
             process_redeem_shares(program_id, accounts)
         }
-        VaultInstruction::WithdrawTokenFromSafetyDepositBox => {
+        VaultInstruction::WithdrawTokenFromSafetyDepositBox(args) => {
             msg!("Instruction: Withdraw Token from Safety Deposit Box");
-            process_withdraw_token_from_safety_deposit_box(program_id, accounts)
+            process_withdraw_token_from_safety_deposit_box(program_id, accounts, args.amount)
         }
         VaultInstruction::MintFractionalShares(args) => {
             msg!("Instruction: Mint new fractional shares");
@@ -285,6 +285,7 @@ pub fn process_mint_fractional_shares(
 pub fn process_withdraw_token_from_safety_deposit_box(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
+    amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let destination_info = next_account_info(account_info_iter)?;
@@ -336,6 +337,10 @@ pub fn process_withdraw_token_from_safety_deposit_box(
         return Err(VaultError::StoreEmpty.into());
     }
 
+    if store.amount < amount {
+        return Err(VaultError::StoreLessThanAmount.into());
+    }
+
     if destination.mint != safety_deposit.token_mint {
         return Err(VaultError::DestinationAccountNeedsToMatchTokenMint.into());
     }
@@ -351,21 +356,29 @@ pub fn process_withdraw_token_from_safety_deposit_box(
     spl_token_transfer(TokenTransferParams {
         source: store_info.clone(),
         destination: destination_info.clone(),
-        amount: store.amount,
+        amount: amount,
         authority: transfer_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
 
-    vault.token_type_count = match vault.token_type_count.checked_sub(1) {
-        Some(val) => val,
+    match store.amount.checked_sub(amount) {
+        Some(val) => {
+            if val == 0 {
+                vault.token_type_count = match vault.token_type_count.checked_sub(1) {
+                    Some(val) => val,
+                    None => return Err(VaultError::NumericalOverflowError.into()),
+                };
+
+                if fraction_mint.supply == 0 && vault.token_type_count == 0 {
+                    vault.state = VaultState::Deactivated;
+                    vault.serialize(&mut *vault_info.data.borrow_mut())?;
+                }
+            }
+        }
         None => return Err(VaultError::NumericalOverflowError.into()),
     };
 
-    if fraction_mint.supply == 0 && vault.token_type_count == 0 {
-        vault.state = VaultState::Deactivated;
-        vault.serialize(&mut *vault_info.data.borrow_mut())?;
-    }
     Ok(())
 }
 

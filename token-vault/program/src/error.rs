@@ -90,11 +90,11 @@ pub enum VaultError {
     VaultShouldBeInactive,
 
     /// Vault should be active
-    #[error("Pool should be active")]
+    #[error("Vault should be active")]
     VaultShouldBeActive,
 
     /// Vault should be combined
-    #[error("Pool should be combined")]
+    #[error("Vault should be combined")]
     VaultShouldBeCombined,
 
     /// Vault treasury needs to match fraction mint
@@ -208,6 +208,10 @@ pub enum VaultError {
     ///Very bad, someone changed external account's price mint after vault creation!
     #[error("Very bad, someone changed external account's price mint after vault creation!")]
     RedeemTreasuryMintShouldMatchPricingMint,
+
+    /// Store has less than amount desired
+    #[error("Store has less than amount desired")]
+    StoreLessThanAmount,
 }
 
 impl PrintProgramError for VaultError {

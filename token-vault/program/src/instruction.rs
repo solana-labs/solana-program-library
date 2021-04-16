@@ -16,7 +16,7 @@ pub struct InitVaultArgs {
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
-pub struct AddTokenToInactiveVaultArgs {
+pub struct AmountArgs {
     pub amount: u64,
 }
 
@@ -52,7 +52,7 @@ pub enum VaultInstruction {
     ///   7. `[]` Token program
     ///   8. `[]` Rent sysvar
     ///   9. `[]` System account sysvar
-    AddTokenToInactiveVault(AddTokenToInactiveVaultArgs),
+    AddTokenToInactiveVault(AmountArgs),
 
     /// Activates the vault, distributing initial shares into the fraction treasury.
     /// Tokens can no longer be removed in this state until Combination.
@@ -93,7 +93,7 @@ pub enum VaultInstruction {
     ///   8. `[]` Rent sysvar
     RedeemShares,
 
-    /// If in combine state, authority on vault can hit this to withdrawal all of a token type from a safety deposit box.
+    /// If in combine state, authority on vault can hit this to withdrawal some of a token type from a safety deposit box.
     /// Once fractional supply is zero and all tokens have been removed this action will take vault to Deactivated
     ///   0. `[writable]` Initialized Destination account for the tokens being withdrawn
     ///   1. `[writable]` The safety deposit box account key for the tokens
@@ -104,7 +104,7 @@ pub enum VaultInstruction {
     ///   6. `[]` PDA-based Transfer authority to move the tokens from the store to the destination seed [PREFIX, program_id]
     ///   7. `[]` Token program
     ///   8. `[]` Rent sysvar
-    WithdrawTokenFromSafetyDepositBox,
+    WithdrawTokenFromSafetyDepositBox(AmountArgs),
 
     /// Self explanatory - mint more fractional shares if the vault is configured to allow such.
     ///   0. `[writable]` Fraction treasury
@@ -223,7 +223,7 @@ pub fn create_add_token_to_inactive_vault_instruction(
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
         ],
-        data: VaultInstruction::AddTokenToInactiveVault(AddTokenToInactiveVaultArgs { amount })
+        data: VaultInstruction::AddTokenToInactiveVault(AmountArgs { amount })
             .try_to_vec()
             .unwrap(),
     }
@@ -329,6 +329,7 @@ pub fn create_withdraw_tokens_instruction(
     fraction_mint: Pubkey,
     vault_authority: Pubkey,
     transfer_authority: Pubkey,
+    amount: u64,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -343,7 +344,7 @@ pub fn create_withdraw_tokens_instruction(
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
-        data: VaultInstruction::WithdrawTokenFromSafetyDepositBox
+        data: VaultInstruction::WithdrawTokenFromSafetyDepositBox(AmountArgs { amount })
             .try_to_vec()
             .unwrap(),
     }
