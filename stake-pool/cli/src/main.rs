@@ -94,11 +94,7 @@ fn send_transaction(
     Ok(())
 }
 
-fn command_create_pool(
-    config: &Config,
-    fee: Fee,
-    max_validators: u32,
-) -> CommandResult {
+fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> CommandResult {
     let mint_account = Keypair::new();
     println!("Creating mint {}", mint_account.pubkey());
 
@@ -921,11 +917,7 @@ fn command_set_staker(
     Ok(())
 }
 
-fn command_set_fee(
-    config: &Config,
-    stake_pool_address: &Pubkey,
-    new_fee: Fee,
-) -> CommandResult {
+fn command_set_fee(config: &Config, stake_pool_address: &Pubkey, new_fee: Fee) -> CommandResult {
     let mut transaction = Transaction::new_with_payer(
         &[spl_stake_pool::instruction::set_fee(
             &spl_stake_pool::id(),
