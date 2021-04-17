@@ -73,11 +73,12 @@ pub enum VaultInstruction {
     ///   3. `[writable]` Fraction mint
     ///   4. `[writable]` Fraction treasury account
     ///   5. `[writable]` Redeem treasury account
-    ///   6. `[signer]` Authority on the vault
-    ///   7. `[signer]` Transfer authority for the  token account that you will pay with
-    ///   8. `[]` PDA-based Burn authority for the fraction treasury account containing the uncirculated shares seed [PREFIX, program_id]
-    ///   9. `[]` External pricing lookup address
-    ///   10. `[]` Token program
+    ///   6. `[]` New authority on the vault going forward - can be same authority if you want
+    ///   7. `[signer]` Authority on the vault
+    ///   8. `[signer]` Transfer authority for the  token account that you will pay with
+    ///   9. `[]` PDA-based Burn authority for the fraction treasury account containing the uncirculated shares seed [PREFIX, program_id]
+    ///   10. `[]` External pricing lookup address
+    ///   11. `[]` Token program
     CombineVault,
 
     /// If in the combine state, shareholders can hit this endpoint to burn shares in exchange for monies from the treasury.
@@ -266,6 +267,7 @@ pub fn create_combine_vault_instruction(
     fraction_mint: Pubkey,
     fraction_treasury: Pubkey,
     redeem_treasury: Pubkey,
+    new_authority: Pubkey,
     vault_authority: Pubkey,
     paying_transfer_authority: Pubkey,
     uncirculated_burn_authority: Pubkey,
@@ -280,6 +282,7 @@ pub fn create_combine_vault_instruction(
             AccountMeta::new(fraction_mint, false),
             AccountMeta::new(fraction_treasury, false),
             AccountMeta::new(redeem_treasury, false),
+            AccountMeta::new(new_authority, false),
             AccountMeta::new_readonly(vault_authority, true),
             AccountMeta::new_readonly(paying_transfer_authority, true),
             AccountMeta::new_readonly(uncirculated_burn_authority, false),

@@ -489,6 +489,7 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let fraction_mint_info = next_account_info(account_info_iter)?;
     let fraction_treasury_info = next_account_info(account_info_iter)?;
     let redeem_treasury_info = next_account_info(account_info_iter)?;
+    let new_vault_authority_info = next_account_info(account_info_iter)?;
     let vault_authority_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let fraction_burn_authority_info = next_account_info(account_info_iter)?;
@@ -611,6 +612,7 @@ pub fn process_combine_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     })?;
 
     vault.state = VaultState::Combined;
+    vault.authority = *new_vault_authority_info.key;
     vault.locked_price_per_share = external_pricing.price_per_share;
     vault.serialize(&mut *vault_info.data.borrow_mut())?;
 

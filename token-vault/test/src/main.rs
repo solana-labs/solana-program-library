@@ -405,6 +405,9 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
     )
     .unwrap();
 
+    let new_vault_authority =
+        pubkey_of(app_matches, "new_vault_authority").unwrap_or_else(|| payer.pubkey());
+
     let amount_of_money: u64 = app_matches
         .value_of("amount_of_money")
         .unwrap_or("10000")
@@ -522,6 +525,7 @@ fn combine_vault(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) ->
         vault.fraction_mint,
         vault.fraction_treasury,
         vault.redeem_treasury,
+        new_vault_authority,
         vault_authority.pubkey(),
         transfer_authority.pubkey(),
         uncirculated_burn_authority,
@@ -1053,6 +1057,14 @@ fn main() {
                         .validator(is_valid_pubkey)
                         .takes_value(true)
                         .help("Pubkey of vault"),
+                ).arg(
+                    Arg::with_name("new_vault_authority")
+                        .long("new_vault_authority")
+                        .value_name("NEW_VAULT_AUTHORITY")
+                        .required(false)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("New authority of the vault going forward, defaults to you"),
                 ).arg(
                     Arg::with_name("outstanding_shares_account")
                         .long("outstanding_shares_account")
