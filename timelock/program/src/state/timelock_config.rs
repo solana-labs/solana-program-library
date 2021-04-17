@@ -1,7 +1,7 @@
 use crate::{
     state::{
         enums::GovernanceAccountType,
-        enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule},
+        enums::{ExecutionType, TimelockType, VotingEntryRule},
     },
     utils::{pack_option_key, unpack_option_key},
 };
@@ -20,8 +20,8 @@ pub const CONFIG_NAME_LENGTH: usize = 32;
 pub struct TimelockConfig {
     /// Account type
     pub account_type: GovernanceAccountType,
-    /// Consensus Algorithm
-    pub consensus_algorithm: ConsensusAlgorithm,
+    /// Voting threshold in % required to tip the vote
+    pub vote_threshold: u8,
     /// Execution type
     pub execution_type: ExecutionType,
     /// Timelock Type
@@ -64,7 +64,7 @@ impl Pack for TimelockConfig {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             account_type_value,
-            consensus_algorithm,
+            vote_threshold,
             execution_type,
             timelock_type,
             voting_entry_rule,
@@ -93,7 +93,7 @@ impl Pack for TimelockConfig {
             295
         ];
         let account_type = u8::from_le_bytes(*account_type_value);
-        let consensus_algorithm = u8::from_le_bytes(*consensus_algorithm);
+        let vote_threshold = u8::from_le_bytes(*vote_threshold);
         let execution_type = u8::from_le_bytes(*execution_type);
         let timelock_type = u8::from_le_bytes(*timelock_type);
         let voting_entry_rule = u8::from_le_bytes(*voting_entry_rule);
@@ -109,12 +109,7 @@ impl Pack for TimelockConfig {
 
         Ok(Self {
             account_type,
-            consensus_algorithm: match consensus_algorithm {
-                0 => ConsensusAlgorithm::Majority,
-                1 => ConsensusAlgorithm::SuperMajority,
-                2 => ConsensusAlgorithm::FullConsensus,
-                _ => ConsensusAlgorithm::Majority,
-            },
+            vote_threshold,
             execution_type: match execution_type {
                 0 => ExecutionType::Independent,
                 _ => ExecutionType::Independent,
@@ -144,7 +139,7 @@ impl Pack for TimelockConfig {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             account_type_value,
-            consensus_algorithm,
+            vote_threshold,
             execution_type,
             timelock_type,
             voting_entry_rule,
@@ -179,12 +174,8 @@ impl Pack for TimelockConfig {
         }
         .to_le_bytes();
 
-        *consensus_algorithm = match self.consensus_algorithm {
-            ConsensusAlgorithm::Majority => 0_u8,
-            ConsensusAlgorithm::SuperMajority => 1_u8,
-            ConsensusAlgorithm::FullConsensus => 2_u8,
-        }
-        .to_le_bytes();
+        *vote_threshold = self.vote_threshold.to_le_bytes();
+
         *execution_type = match self.execution_type {
             ExecutionType::Independent => 0_u8,
         }

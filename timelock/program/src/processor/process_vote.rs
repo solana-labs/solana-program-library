@@ -78,16 +78,13 @@ pub fn process_vote(
 
     let total_ever_existed = source_mint_supply;
 
-    let mut now_remaining_in_no_column =
-        match source_mint_supply.checked_sub(yes_voting_token_amount) {
-            Some(val) => val,
-            None => return Err(TimelockError::NumericalOverflow.into()),
-        };
+    let mut now_remaining_in_no_column = source_mint_supply
+        .checked_sub(yes_voting_token_amount)
+        .ok_or(TimelockError::NumericalOverflow)?;
 
-    now_remaining_in_no_column = match now_remaining_in_no_column.checked_sub(yes_mint_supply) {
-        Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
-    };
+    now_remaining_in_no_column = now_remaining_in_no_column
+        .checked_sub(yes_mint_supply)
+        .ok_or(TimelockError::NumericalOverflow)?;
 
     let starting_vote_acct: Account = assert_initialized(voting_account_info)?;
     let yes_vote_acct: Account = assert_initialized(yes_voting_account_info)?;
@@ -121,17 +118,9 @@ pub fn process_vote(
         token_program: token_program_account_info.clone(),
     })?;
 
-    let tipped: bool = match timelock_config.consensus_algorithm {
-        crate::state::enums::ConsensusAlgorithm::Majority => {
-            (now_remaining_in_no_column as f64 / total_ever_existed as f64) < 0.5
-        }
-
-        crate::state::enums::ConsensusAlgorithm::SuperMajority => {
-            (now_remaining_in_no_column as f64 / total_ever_existed as f64) < 0.66
-        }
-
-        crate::state::enums::ConsensusAlgorithm::FullConsensus => now_remaining_in_no_column == 0,
-    };
+    let tipped: bool = now_remaining_in_no_column == 0
+        || ((1.0 - now_remaining_in_no_column as f64 / total_ever_existed as f64) * 100.0
+            > timelock_config.vote_threshold as f64);
 
     let elapsed = match clock.slot.checked_sub(timelock_state.voting_began_at) {
         Some(val) => val,

@@ -94,7 +94,7 @@ pub fn process_instruction(
             )
         }
         TimelockInstruction::InitTimelockConfig {
-            consensus_algorithm,
+            vote_threshold,
             execution_type,
             timelock_type,
             voting_entry_rule,
@@ -106,7 +106,7 @@ pub fn process_instruction(
             process_init_timelock_config(
                 program_id,
                 accounts,
-                consensus_algorithm,
+                vote_threshold,
                 execution_type,
                 timelock_type,
                 voting_entry_rule,

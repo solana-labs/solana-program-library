@@ -248,8 +248,8 @@ pub enum TimelockInstruction {
     ///   2. `[]` Governance mint that this config uses
     ///   3. `[]` Council mint that this config uses [Optional]
     InitTimelockConfig {
-        /// Consensus Algorithm
-        consensus_algorithm: u8,
+        /// Vote threshold in % required to tip the vote
+        vote_threshold: u8,
         /// Execution type
         execution_type: u8,
         /// Timelock Type
@@ -331,7 +331,7 @@ impl TimelockInstruction {
             }
 
             10 => {
-                let (consensus_algorithm, rest) = Self::unpack_u8(rest)?;
+                let (vote_threshold, rest) = Self::unpack_u8(rest)?;
                 let (execution_type, rest) = Self::unpack_u8(rest)?;
                 let (timelock_type, rest) = Self::unpack_u8(rest)?;
                 let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
@@ -342,7 +342,7 @@ impl TimelockInstruction {
                 name[..(CONFIG_NAME_LENGTH - 1)]
                     .clone_from_slice(&rest[..(CONFIG_NAME_LENGTH - 1)]);
                 Self::InitTimelockConfig {
-                    consensus_algorithm,
+                    vote_threshold,
                     execution_type,
                     timelock_type,
                     voting_entry_rule,
@@ -473,7 +473,7 @@ impl TimelockInstruction {
                 buf.extend_from_slice(&no_voting_token_amount.to_le_bytes());
             }
             Self::InitTimelockConfig {
-                consensus_algorithm,
+                vote_threshold,
                 execution_type,
                 timelock_type,
                 voting_entry_rule,
@@ -482,7 +482,7 @@ impl TimelockInstruction {
                 name,
             } => {
                 buf.push(10);
-                buf.extend_from_slice(&consensus_algorithm.to_le_bytes());
+                buf.extend_from_slice(&vote_threshold.to_le_bytes());
                 buf.extend_from_slice(&execution_type.to_le_bytes());
                 buf.extend_from_slice(&timelock_type.to_le_bytes());
                 buf.extend_from_slice(&voting_entry_rule.to_le_bytes());
