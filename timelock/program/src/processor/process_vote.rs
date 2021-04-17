@@ -2,9 +2,9 @@
 use crate::{
     error::TimelockError,
     state::{
-        enums::TimelockStateStatus, governance::Governance,
+        enums::ProposalStateStatus, governance::Governance,
         governance_voting_record::GovernanceVotingRecord, proposal::Proposal,
-        proposal_state::TimelockState,
+        proposal_state::ProposalState,
     },
     utils::{
         assert_account_equiv, assert_initialized, assert_voting, get_mint_supply, spl_token_burn,
@@ -47,7 +47,7 @@ pub fn process_vote(
     let clock_info = next_account_info(account_info_iter)?; //14
 
     let clock = Clock::from_account_info(clock_info)?;
-    let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     let timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
 
@@ -131,13 +131,13 @@ pub fn process_vote(
 
     if tipped || too_long {
         if tipped {
-            timelock_state.status = TimelockStateStatus::Executing;
+            timelock_state.status = ProposalStateStatus::Executing;
         } else {
-            timelock_state.status = TimelockStateStatus::Defeated;
+            timelock_state.status = ProposalStateStatus::Defeated;
         }
         timelock_state.voting_ended_at = clock.slot;
 
-        TimelockState::pack(
+        ProposalState::pack(
             timelock_state,
             &mut timelock_state_account_info.data.borrow_mut(),
         )?;

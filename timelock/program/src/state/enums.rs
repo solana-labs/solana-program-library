@@ -41,7 +41,7 @@ impl Default for ExecutionType {
 
 /// What state a timelock set is in
 #[derive(Clone, Debug, PartialEq)]
-pub enum TimelockStateStatus {
+pub enum ProposalStateStatus {
     /// Draft
     Draft,
     /// Taking votes
@@ -60,9 +60,9 @@ pub enum TimelockStateStatus {
     Defeated,
 }
 
-impl Default for TimelockStateStatus {
+impl Default for ProposalStateStatus {
     fn default() -> Self {
-        TimelockStateStatus::Draft
+        ProposalStateStatus::Draft
     }
 }
 

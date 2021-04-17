@@ -3,7 +3,7 @@
 use crate::{
     error::TimelockError,
     state::governance_voting_record::GovernanceVotingRecord,
-    state::{enums::TimelockStateStatus, proposal::Proposal, proposal_state::TimelockState},
+    state::{enums::ProposalStateStatus, proposal::Proposal, proposal_state::ProposalState},
     utils::{
         assert_account_equiv, assert_initialized, assert_token_program_is_correct, spl_token_burn,
         spl_token_transfer, TokenBurnParams, TokenTransferParams,
@@ -45,7 +45,7 @@ pub fn process_withdraw_voting_tokens(
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
     // Using assert_account_equiv not workable here due to cost of stack size on this method.
@@ -157,7 +157,7 @@ pub fn process_withdraw_voting_tokens(
         }
 
         if amount_to_transfer > 0 {
-            if timelock_state.status == TimelockStateStatus::Voting {
+            if timelock_state.status == ProposalStateStatus::Voting {
                 spl_token_burn(TokenBurnParams {
                     mint: yes_voting_mint_account_info.clone(),
                     amount: amount_to_transfer,
@@ -186,7 +186,7 @@ pub fn process_withdraw_voting_tokens(
 
     if no_voting_account.amount > 0 && voting_fuel_tank > 0 {
         // whatever is left, no account gets by default
-        if timelock_state.status == TimelockStateStatus::Voting {
+        if timelock_state.status == ProposalStateStatus::Voting {
             spl_token_burn(TokenBurnParams {
                 mint: no_voting_mint_account_info.clone(),
                 amount: voting_fuel_tank,

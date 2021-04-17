@@ -1,6 +1,6 @@
 use crate::{
     error::TimelockError,
-    state::{enums::TimelockStateStatus, proposal::Proposal, proposal_state::TimelockState},
+    state::{enums::ProposalStateStatus, proposal::Proposal, proposal_state::ProposalState},
     PROGRAM_AUTHORITY_SEED,
 };
 use arrayref::{array_ref, array_refs, mut_array_refs};
@@ -85,9 +85,9 @@ pub fn assert_is_permissioned<'a>(
 }
 
 /// Asserts a timelock set is in a state that can be edited - if its voting or executing, cant touch it.
-pub fn assert_not_in_voting_or_executing(timelock_state: &TimelockState) -> ProgramResult {
-    if timelock_state.status == TimelockStateStatus::Voting
-        || timelock_state.status == TimelockStateStatus::Executing
+pub fn assert_not_in_voting_or_executing(timelock_state: &ProposalState) -> ProgramResult {
+    if timelock_state.status == ProposalStateStatus::Voting
+        || timelock_state.status == ProposalStateStatus::Executing
     {
         return Err(TimelockError::InvalidProposalStateError.into());
     }
@@ -95,24 +95,24 @@ pub fn assert_not_in_voting_or_executing(timelock_state: &TimelockState) -> Prog
 }
 
 /// Asserts a timelock set is in executing state.
-pub fn assert_executing(timelock_state: &TimelockState) -> ProgramResult {
-    if timelock_state.status != TimelockStateStatus::Executing {
+pub fn assert_executing(timelock_state: &ProposalState) -> ProgramResult {
+    if timelock_state.status != ProposalStateStatus::Executing {
         return Err(TimelockError::InvalidProposalStateError.into());
     }
     Ok(())
 }
 
 /// Asserts a timelock set is in voting state.
-pub fn assert_voting(timelock_state: &TimelockState) -> ProgramResult {
-    if timelock_state.status != TimelockStateStatus::Voting {
+pub fn assert_voting(timelock_state: &ProposalState) -> ProgramResult {
+    if timelock_state.status != ProposalStateStatus::Voting {
         return Err(TimelockError::InvalidProposalStateError.into());
     }
     Ok(())
 }
 
 /// Asserts a timelock set is in draft state.
-pub fn assert_draft(timelock_state: &TimelockState) -> ProgramResult {
-    if timelock_state.status != TimelockStateStatus::Draft {
+pub fn assert_draft(timelock_state: &ProposalState) -> ProgramResult {
+    if timelock_state.status != ProposalStateStatus::Draft {
         return Err(TimelockError::InvalidProposalStateError.into());
     }
     Ok(())
@@ -143,7 +143,7 @@ pub fn assert_token_program_is_correct(
 
 /// asserts timelock txn is in timelock set
 pub fn assert_txn_in_state(
-    timelock_state: &TimelockState,
+    timelock_state: &ProposalState,
     timelock_txn_account_info: &AccountInfo,
 ) -> ProgramResult {
     let mut found: bool = false;

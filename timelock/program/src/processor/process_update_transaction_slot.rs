@@ -1,7 +1,7 @@
 //! Program state processor
 use crate::{
     state::proposal::Proposal,
-    state::proposal_state::TimelockState,
+    state::proposal_state::ProposalState,
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,
         assert_token_program_is_correct, assert_txn_in_state,
@@ -30,7 +30,7 @@ pub fn process_update_transaction_slot(
     let timelock_authority_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;

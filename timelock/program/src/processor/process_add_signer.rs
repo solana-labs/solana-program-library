@@ -2,7 +2,7 @@
 use crate::{
     error::TimelockError,
     state::proposal::Proposal,
-    state::proposal_state::TimelockState,
+    state::proposal_state::ProposalState,
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,
         assert_proper_signatory_mint, assert_token_program_is_correct, spl_token_mint_to,
@@ -30,7 +30,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_account_equiv(
@@ -79,7 +79,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
             None => return Err(TimelockError::NumericalOverflow.into()),
         };
 
-    TimelockState::pack(
+    ProposalState::pack(
         timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;

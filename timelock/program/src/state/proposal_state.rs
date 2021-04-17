@@ -1,4 +1,4 @@
-use crate::state::enums::{GovernanceAccountType, TimelockStateStatus};
+use crate::state::enums::{GovernanceAccountType, ProposalStateStatus};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 
 use solana_program::{
@@ -16,7 +16,7 @@ pub const NAME_SIZE: usize = 32;
 
 /// Timelock state
 #[derive(Clone)]
-pub struct TimelockState {
+pub struct ProposalState {
     /// Account type
     pub account_type: GovernanceAccountType,
 
@@ -24,7 +24,7 @@ pub struct TimelockState {
     pub timelock_set: Pubkey,
 
     /// Current state of the invoked instruction account
-    pub status: TimelockStateStatus,
+    pub status: ProposalStateStatus,
 
     /// Total signatory tokens minted, for use comparing to supply remaining during draft period
     pub total_signing_tokens_minted: u64,
@@ -60,8 +60,8 @@ pub struct TimelockState {
     pub timelock_transactions: [Pubkey; MAX_TRANSACTIONS],
 }
 
-impl Sealed for TimelockState {}
-impl IsInitialized for TimelockState {
+impl Sealed for ProposalState {}
+impl IsInitialized for ProposalState {
     fn is_initialized(&self) -> bool {
         self.account_type != GovernanceAccountType::Uninitialized
     }
@@ -81,7 +81,7 @@ const TIMELOCK_STATE_LEN: usize = 32
     + 1
     + (32 * MAX_TRANSACTIONS)
     + 300;
-impl Pack for TimelockState {
+impl Pack for ProposalState {
     const LEN: usize = 32
         + 1
         + 1
@@ -147,12 +147,12 @@ impl Pack for TimelockState {
             account_type,
             timelock_set: Pubkey::new_from_array(*timelock_set),
             status: match timelock_state_status {
-                0 => TimelockStateStatus::Draft,
-                1 => TimelockStateStatus::Voting,
-                2 => TimelockStateStatus::Executing,
-                3 => TimelockStateStatus::Completed,
-                4 => TimelockStateStatus::Deleted,
-                _ => TimelockStateStatus::Draft,
+                0 => ProposalStateStatus::Draft,
+                1 => ProposalStateStatus::Voting,
+                2 => ProposalStateStatus::Executing,
+                3 => ProposalStateStatus::Completed,
+                4 => ProposalStateStatus::Deleted,
+                _ => ProposalStateStatus::Draft,
             },
             total_signing_tokens_minted,
             timelock_transactions: [
@@ -211,12 +211,12 @@ impl Pack for TimelockState {
         timelock_set.copy_from_slice(self.timelock_set.as_ref());
 
         *timelock_state_status = match self.status {
-            TimelockStateStatus::Draft => 0_u8,
-            TimelockStateStatus::Voting => 1_u8,
-            TimelockStateStatus::Executing => 2_u8,
-            TimelockStateStatus::Completed => 3_u8,
-            TimelockStateStatus::Deleted => 4_u8,
-            TimelockStateStatus::Defeated => 5_u8,
+            ProposalStateStatus::Draft => 0_u8,
+            ProposalStateStatus::Voting => 1_u8,
+            ProposalStateStatus::Executing => 2_u8,
+            ProposalStateStatus::Completed => 3_u8,
+            ProposalStateStatus::Deleted => 4_u8,
+            ProposalStateStatus::Defeated => 5_u8,
         }
         .to_le_bytes();
         *total_signing_tokens_minted = self.total_signing_tokens_minted.to_le_bytes();

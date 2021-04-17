@@ -8,7 +8,7 @@ use crate::{
         enums::GovernanceAccountType,
         governance::Governance,
         proposal::Proposal,
-        proposal_state::{TimelockState, MAX_TRANSACTIONS},
+        proposal_state::{ProposalState, MAX_TRANSACTIONS},
     },
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,
@@ -42,7 +42,7 @@ pub fn process_add_custom_single_signer_transaction(
     let timelock_mint_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     let timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
 
@@ -89,7 +89,7 @@ pub fn process_add_custom_single_signer_transaction(
             None => return Err(TimelockError::NumericalOverflow.into()),
         };
 
-    TimelockState::pack(
+    ProposalState::pack(
         timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;

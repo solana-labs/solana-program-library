@@ -6,10 +6,10 @@ use crate::{
         custom_single_signer_timelock_transaction::{
             CustomSingleSignerTimelockTransaction, MAX_ACCOUNTS_ALLOWED,
         },
-        enums::TimelockStateStatus,
+        enums::ProposalStateStatus,
         governance::TIMELOCK_CONFIG_LEN,
         proposal::Proposal,
-        proposal_state::TimelockState,
+        proposal_state::ProposalState,
     },
     utils::{assert_account_equiv, assert_executing, assert_initialized, execute, ExecuteParams},
     PROGRAM_AUTHORITY_SEED,
@@ -39,7 +39,7 @@ pub fn process_execute(
     let timelock_config_account_info = next_account_info(account_info_iter)?;
     let clock_info = next_account_info(account_info_iter)?;
 
-    let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     let timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
     let clock = &Clock::from_account_info(clock_info)?;
@@ -150,10 +150,10 @@ pub fn process_execute(
     };
 
     if timelock_state.number_of_executed_transactions == timelock_state.number_of_transactions {
-        timelock_state.status = TimelockStateStatus::Completed
+        timelock_state.status = ProposalStateStatus::Completed
     }
 
-    TimelockState::pack(
+    ProposalState::pack(
         timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;

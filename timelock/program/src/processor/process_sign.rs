@@ -1,7 +1,7 @@
 //! Program state processor
 use crate::{
     error::TimelockError,
-    state::{enums::TimelockStateStatus, proposal::Proposal, proposal_state::TimelockState},
+    state::{enums::ProposalStateStatus, proposal::Proposal, proposal_state::ProposalState},
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
         spl_token_burn, TokenBurnParams,
@@ -31,7 +31,7 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let clock_info = next_account_info(account_info_iter)?;
 
     let clock = Clock::from_account_info(clock_info)?;
-    let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     let sig_mint: Mint = assert_initialized(signatory_mint_info)?;
     assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
@@ -70,10 +70,10 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     };
 
     if diminished_supply == 0 {
-        timelock_state.status = TimelockStateStatus::Voting;
+        timelock_state.status = ProposalStateStatus::Voting;
         timelock_state.voting_began_at = clock.slot;
 
-        TimelockState::pack(
+        ProposalState::pack(
             timelock_state,
             &mut timelock_state_account_info.data.borrow_mut(),
         )?;

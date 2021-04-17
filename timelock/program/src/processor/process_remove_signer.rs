@@ -2,7 +2,7 @@
 use crate::{
     error::TimelockError,
     state::proposal::Proposal,
-    state::proposal_state::TimelockState,
+    state::proposal_state::ProposalState,
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,
         assert_token_program_is_correct, spl_token_burn, TokenBurnParams,
@@ -29,7 +29,7 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
+    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
 
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
@@ -74,7 +74,7 @@ pub fn process_remove_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     })?;
     timelock_state.total_signing_tokens_minted -= 1;
 
-    TimelockState::pack(
+    ProposalState::pack(
         timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;

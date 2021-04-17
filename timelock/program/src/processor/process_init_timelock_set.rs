@@ -7,7 +7,7 @@ use crate::{
         enums::GovernanceAccountType,
         governance::Governance,
         proposal::Proposal,
-        proposal_state::TimelockState,
+        proposal_state::ProposalState,
         proposal_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
@@ -56,7 +56,7 @@ pub fn process_init_timelock_set(
     let rent_info = next_account_info(account_info_iter)?; //19
     let rent = &Rent::from_account_info(rent_info)?;
 
-    let mut new_timelock_state: TimelockState = assert_uninitialized(timelock_state_account_info)?;
+    let mut new_timelock_state: ProposalState = assert_uninitialized(timelock_state_account_info)?;
     let mut new_timelock_set: Proposal = assert_uninitialized(timelock_set_account_info)?;
     let mut timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
 
@@ -191,7 +191,7 @@ pub fn process_init_timelock_set(
         new_timelock_set,
         &mut timelock_set_account_info.data.borrow_mut(),
     )?;
-    TimelockState::pack(
+    ProposalState::pack(
         new_timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;
