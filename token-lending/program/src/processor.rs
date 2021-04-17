@@ -1596,7 +1596,6 @@ fn process_flash_loan(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
-    msg!("transfer completed");
 
     let (origination_fee, host_fee) = reserve
         .config
@@ -1630,7 +1629,6 @@ fn process_flash_loan(
         accounts: instruction_accounts,
         data
     };
-    msg!("invoke");
     let result = invoke(
         &ix,
         &calling_accounts[..]);
@@ -1644,7 +1642,6 @@ fn process_flash_loan(
 
 
     let expected_amount = before_liquidity_supply_token_account.amount + origination_fee;
-    msg!("origination fee: {}", origination_fee);
     if after_liquidity_supply_token_account.amount < expected_amount {
         msg!(
             "Insufficient returned liquidity for reserve after flash loan: {}, it requires: {}",

@@ -33,23 +33,3 @@ solana-runtime = "1.6.5"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-[patch.crates-io]
-solana-account-decoder = {path = "/Users/wangge/Projects/rust/solana/account-decoder" }
-solana-banks-client = { path = "/Users/wangge/Projects/rust/solana/banks-client"}
-solana-banks-server = { path = "/Users/wangge/Projects/rust/solana/banks-server"}
-solana-bpf-loader-program = { path = "/Users/wangge/Projects/rust/solana/programs/bpf_loader" }
-solana-clap-utils = {path = "/Users/wangge/Projects/rust/solana/clap-utils" }
-solana-cli-config = {path = "/Users/wangge/Projects/rust/solana/cli-config" }
-solana-cli-output = {path = "/Users/wangge/Projects/rust/solana/cli-output" }
-solana-client = { path = "/Users/wangge/Projects/rust/solana/client"}
-solana-core = { path = "/Users/wangge/Projects/rust/solana/core"}
-solana-logger = {path = "/Users/wangge/Projects/rust/solana/logger" }
-solana-notifier = { path = "/Users/wangge/Projects/rust/solana/notifier" }
-solana-remote-wallet = {path = "/Users/wangge/Projects/rust/solana/remote-wallet" }
-solana-program = { path = "/Users/wangge/Projects/rust/solana/sdk/program" }
-solana-program-test = { path = "/Users/wangge/Projects/rust/solana/program-test" }
-solana-runtime = { path = "/Users/wangge/Projects/rust/solana/runtime" }
-solana-sdk = { path = "/Users/wangge/Projects/rust/solana/sdk" }
-solana-stake-program = { path = "/Users/wangge/Projects/rust/solana/programs/stake" }
-solana-transaction-status = { path = "/Users/wangge/Projects/rust/solana/transaction-status" }
-solana-vote-program = { path = "/Users/wangge/Projects/rust/solana/programs/vote" }
