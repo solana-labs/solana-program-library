@@ -105,7 +105,7 @@ impl Pack for ProposalState {
         let (
             account_type_value,
             proposal,
-            timelock_state_status,
+            proposal_state_status,
             total_signing_tokens_minted,
             desc_link,
             name,
@@ -134,7 +134,7 @@ impl Pack for ProposalState {
         };
 
         let total_signing_tokens_minted = u64::from_le_bytes(*total_signing_tokens_minted);
-        let timelock_state_status = u8::from_le_bytes(*timelock_state_status);
+        let proposal_state_status = u8::from_le_bytes(*proposal_state_status);
         let voting_ended_at = u64::from_le_bytes(*voting_ended_at);
         let voting_began_at = u64::from_le_bytes(*voting_began_at);
         let created_at = u64::from_le_bytes(*created_at);
@@ -146,7 +146,7 @@ impl Pack for ProposalState {
         Ok(Self {
             account_type,
             proposal: Pubkey::new_from_array(*proposal),
-            status: match timelock_state_status {
+            status: match proposal_state_status {
                 0 => ProposalStateStatus::Draft,
                 1 => ProposalStateStatus::Voting,
                 2 => ProposalStateStatus::Executing,
@@ -180,7 +180,7 @@ impl Pack for ProposalState {
         let (
             account_type_value,
             proposal,
-            timelock_state_status,
+            proposal_state_status,
             total_signing_tokens_minted,
             desc_link,
             name,
@@ -210,7 +210,7 @@ impl Pack for ProposalState {
 
         proposal.copy_from_slice(self.proposal.as_ref());
 
-        *timelock_state_status = match self.status {
+        *proposal_state_status = match self.status {
             ProposalStateStatus::Draft => 0_u8,
             ProposalStateStatus::Voting => 1_u8,
             ProposalStateStatus::Executing => 2_u8,

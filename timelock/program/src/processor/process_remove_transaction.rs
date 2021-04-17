@@ -18,7 +18,7 @@ use solana_program::{
 /// Removes a txn from a transaction set
 pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let timelock_state_account_info = next_account_info(account_info_iter)?;
+    let proposal_state_account_info = next_account_info(account_info_iter)?;
     let timelock_txn_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
@@ -27,15 +27,15 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
     let timelock_authority_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
+    let mut proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
     let proposal: Proposal = assert_initialized(proposal_account_info)?;
     assert_token_program_is_correct(&proposal, token_program_account_info)?;
-    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
+    assert_account_equiv(proposal_state_account_info, &proposal.state)?;
     assert_account_equiv(
         signatory_validation_account_info,
         &proposal.signatory_validation,
     )?;
-    assert_draft(&timelock_state)?;
+    assert_draft(&proposal_state)?;
     assert_is_permissioned(
         program_id,
         signatory_account_info,
@@ -47,12 +47,12 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
     )?;
 
     let mut found: bool = false;
-    for n in 0..timelock_state.timelock_transactions.len() {
-        if timelock_state.timelock_transactions[n].to_bytes()
+    for n in 0..proposal_state.timelock_transactions.len() {
+        if proposal_state.timelock_transactions[n].to_bytes()
             == timelock_txn_account_info.key.to_bytes()
         {
             let zeros: [u8; 32] = [0; 32];
-            timelock_state.timelock_transactions[n] = Pubkey::new_from_array(zeros);
+            proposal_state.timelock_transactions[n] = Pubkey::new_from_array(zeros);
             found = true;
             break;
         }
@@ -62,15 +62,15 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
         return Err(TimelockError::TimelockTransactionNotFoundError.into());
     }
 
-    timelock_state.number_of_transactions =
-        match timelock_state.number_of_transactions.checked_sub(1) {
+    proposal_state.number_of_transactions =
+        match proposal_state.number_of_transactions.checked_sub(1) {
             Some(val) => val,
             None => return Err(TimelockError::NumericalOverflow.into()),
         };
 
     ProposalState::pack(
-        timelock_state,
-        &mut timelock_state_account_info.data.borrow_mut(),
+        proposal_state,
+        &mut proposal_state_account_info.data.borrow_mut(),
     )?;
 
     Ok(())

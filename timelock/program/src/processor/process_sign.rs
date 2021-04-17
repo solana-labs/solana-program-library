@@ -21,7 +21,7 @@ use spl_token::state::Mint;
 /// Sign the set and say you're okay with moving it to voting stage.
 pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let timelock_state_account_info = next_account_info(account_info_iter)?;
+    let proposal_state_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_mint_info = next_account_info(account_info_iter)?;
     let proposal_account_info = next_account_info(account_info_iter)?;
@@ -31,13 +31,13 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let clock_info = next_account_info(account_info_iter)?;
 
     let clock = Clock::from_account_info(clock_info)?;
-    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
+    let mut proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
     let proposal: Proposal = assert_initialized(proposal_account_info)?;
     let sig_mint: Mint = assert_initialized(signatory_mint_info)?;
     assert_token_program_is_correct(&proposal, token_program_account_info)?;
     assert_account_equiv(signatory_mint_info, &proposal.signatory_mint)?;
-    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
-    assert_draft(&timelock_state)?;
+    assert_account_equiv(proposal_state_account_info, &proposal.state)?;
+    assert_draft(&proposal_state)?;
 
     let mut seeds = vec![PROGRAM_AUTHORITY_SEED, proposal_account_info.key.as_ref()];
 
@@ -67,12 +67,12 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     };
 
     if diminished_supply == 0 {
-        timelock_state.status = ProposalStateStatus::Voting;
-        timelock_state.voting_began_at = clock.slot;
+        proposal_state.status = ProposalStateStatus::Voting;
+        proposal_state.voting_began_at = clock.slot;
 
         ProposalState::pack(
-            timelock_state,
-            &mut timelock_state_account_info.data.borrow_mut(),
+            proposal_state,
+            &mut proposal_state_account_info.data.borrow_mut(),
         )?;
     }
 

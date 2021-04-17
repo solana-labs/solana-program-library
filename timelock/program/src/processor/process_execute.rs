@@ -31,13 +31,13 @@ pub fn process_execute(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let transaction_account_info = next_account_info(account_info_iter)?;
-    let timelock_state_account_info = next_account_info(account_info_iter)?;
+    let proposal_state_account_info = next_account_info(account_info_iter)?;
     let program_to_invoke_info = next_account_info(account_info_iter)?;
     let proposal_account_info = next_account_info(account_info_iter)?;
     let governance_account_info = next_account_info(account_info_iter)?;
     let clock_info = next_account_info(account_info_iter)?;
 
-    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
+    let mut proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
     let proposal: Proposal = assert_initialized(proposal_account_info)?;
     let governance: Governance = assert_initialized(governance_account_info)?;
     let clock = &Clock::from_account_info(clock_info)?;
@@ -46,7 +46,7 @@ pub fn process_execute(
     let mut transaction: CustomSingleSignerTransaction =
         assert_initialized(transaction_account_info)?;
 
-    let time_elapsed = match clock.slot.checked_sub(timelock_state.voting_ended_at) {
+    let time_elapsed = match clock.slot.checked_sub(proposal_state.voting_ended_at) {
         Some(val) => val,
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
@@ -55,7 +55,7 @@ pub fn process_execute(
         return Err(TimelockError::TooEarlyToExecute.into());
     }
 
-    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
+    assert_account_equiv(proposal_state_account_info, &proposal.state)?;
     assert_account_equiv(governance_account_info, &proposal.config)?;
 
     let council_mint_seed = governance
@@ -103,7 +103,7 @@ pub fn process_execute(
         account_infos.push(governance_account_info.clone());
     }
 
-    assert_executing(&timelock_state)?;
+    assert_executing(&proposal_state)?;
 
     if transaction.executed == 1 {
         return Err(TimelockError::TimelockTransactionAlreadyExecuted.into());
@@ -139,7 +139,7 @@ pub fn process_execute(
         &mut transaction_account_info.data.borrow_mut(),
     )?;
 
-    timelock_state.number_of_executed_transactions = match timelock_state
+    proposal_state.number_of_executed_transactions = match proposal_state
         .number_of_executed_transactions
         .checked_add(1)
     {
@@ -147,13 +147,13 @@ pub fn process_execute(
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
 
-    if timelock_state.number_of_executed_transactions == timelock_state.number_of_transactions {
-        timelock_state.status = ProposalStateStatus::Completed
+    if proposal_state.number_of_executed_transactions == proposal_state.number_of_transactions {
+        proposal_state.status = ProposalStateStatus::Completed
     }
 
     ProposalState::pack(
-        timelock_state,
-        &mut timelock_state_account_info.data.borrow_mut(),
+        proposal_state,
+        &mut proposal_state_account_info.data.borrow_mut(),
     )?;
     Ok(())
 }

@@ -34,7 +34,7 @@ pub fn process_init_proposal(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let timelock_state_account_info = next_account_info(account_info_iter)?; //0
+    let proposal_state_account_info = next_account_info(account_info_iter)?; //0
     let proposal_account_info = next_account_info(account_info_iter)?; //1
     let governance_account_info = next_account_info(account_info_iter)?; //2
     let signatory_mint_account_info = next_account_info(account_info_iter)?; //3
@@ -56,14 +56,14 @@ pub fn process_init_proposal(
     let rent_info = next_account_info(account_info_iter)?; //19
     let rent = &Rent::from_account_info(rent_info)?;
 
-    let mut new_timelock_state: ProposalState = assert_uninitialized(timelock_state_account_info)?;
+    let mut new_proposal_state: ProposalState = assert_uninitialized(proposal_state_account_info)?;
     let mut new_proposal: Proposal = assert_uninitialized(proposal_account_info)?;
     let mut governance: Governance = assert_initialized(governance_account_info)?;
 
     new_proposal.account_type = GovernanceAccountType::Proposal;
     new_proposal.config = *governance_account_info.key;
     new_proposal.token_program_id = *token_program_info.key;
-    new_proposal.state = *timelock_state_account_info.key;
+    new_proposal.state = *proposal_state_account_info.key;
     new_proposal.admin_mint = *admin_mint_account_info.key;
     new_proposal.voting_mint = *voting_mint_account_info.key;
     new_proposal.yes_voting_mint = *yes_voting_mint_account_info.key;
@@ -77,13 +77,13 @@ pub fn process_init_proposal(
     new_proposal.voting_validation = *voting_validation_account_info.key;
     new_proposal.signatory_validation = *signatory_validation_account_info.key;
 
-    new_timelock_state.account_type = GovernanceAccountType::ProposalState;
-    new_timelock_state.proposal = *proposal_account_info.key;
-    new_timelock_state.desc_link = desc_link;
-    new_timelock_state.name = name;
-    new_timelock_state.total_signing_tokens_minted = 1;
-    new_timelock_state.number_of_executed_transactions = 0;
-    new_timelock_state.number_of_transactions = 0;
+    new_proposal_state.account_type = GovernanceAccountType::ProposalState;
+    new_proposal_state.proposal = *proposal_account_info.key;
+    new_proposal_state.desc_link = desc_link;
+    new_proposal_state.name = name;
+    new_proposal_state.total_signing_tokens_minted = 1;
+    new_proposal_state.number_of_executed_transactions = 0;
+    new_proposal_state.number_of_transactions = 0;
     governance.count = match governance.count.checked_add(1) {
         Some(val) => val,
         None => return Err(TimelockError::NumericalOverflow.into()),
@@ -189,8 +189,8 @@ pub fn process_init_proposal(
 
     Proposal::pack(new_proposal, &mut proposal_account_info.data.borrow_mut())?;
     ProposalState::pack(
-        new_timelock_state,
-        &mut timelock_state_account_info.data.borrow_mut(),
+        new_proposal_state,
+        &mut proposal_state_account_info.data.borrow_mut(),
     )?;
     Governance::pack(governance, &mut governance_account_info.data.borrow_mut())?;
 

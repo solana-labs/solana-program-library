@@ -85,9 +85,9 @@ pub fn assert_is_permissioned<'a>(
 }
 
 /// Asserts a Proposal is in a state that can be edited - if its voting or executing, cant touch it.
-pub fn assert_not_in_voting_or_executing(timelock_state: &ProposalState) -> ProgramResult {
-    if timelock_state.status == ProposalStateStatus::Voting
-        || timelock_state.status == ProposalStateStatus::Executing
+pub fn assert_not_in_voting_or_executing(proposal_state: &ProposalState) -> ProgramResult {
+    if proposal_state.status == ProposalStateStatus::Voting
+        || proposal_state.status == ProposalStateStatus::Executing
     {
         return Err(TimelockError::InvalidProposalStateError.into());
     }
@@ -95,24 +95,24 @@ pub fn assert_not_in_voting_or_executing(timelock_state: &ProposalState) -> Prog
 }
 
 /// Asserts a Proposal is in executing state.
-pub fn assert_executing(timelock_state: &ProposalState) -> ProgramResult {
-    if timelock_state.status != ProposalStateStatus::Executing {
+pub fn assert_executing(proposal_state: &ProposalState) -> ProgramResult {
+    if proposal_state.status != ProposalStateStatus::Executing {
         return Err(TimelockError::InvalidProposalStateError.into());
     }
     Ok(())
 }
 
 /// Asserts a Proposal is in voting state.
-pub fn assert_voting(timelock_state: &ProposalState) -> ProgramResult {
-    if timelock_state.status != ProposalStateStatus::Voting {
+pub fn assert_voting(proposal_state: &ProposalState) -> ProgramResult {
+    if proposal_state.status != ProposalStateStatus::Voting {
         return Err(TimelockError::InvalidProposalStateError.into());
     }
     Ok(())
 }
 
 /// Asserts a Proposal is in draft state.
-pub fn assert_draft(timelock_state: &ProposalState) -> ProgramResult {
-    if timelock_state.status != ProposalStateStatus::Draft {
+pub fn assert_draft(proposal_state: &ProposalState) -> ProgramResult {
+    if proposal_state.status != ProposalStateStatus::Draft {
         return Err(TimelockError::InvalidProposalStateError.into());
     }
     Ok(())
@@ -143,12 +143,12 @@ pub fn assert_token_program_is_correct(
 
 /// asserts timelock txn is in Proposal
 pub fn assert_txn_in_state(
-    timelock_state: &ProposalState,
+    proposal_state: &ProposalState,
     timelock_txn_account_info: &AccountInfo,
 ) -> ProgramResult {
     let mut found: bool = false;
-    for n in 0..timelock_state.timelock_transactions.len() {
-        if timelock_state.timelock_transactions[n].to_bytes()
+    for n in 0..proposal_state.timelock_transactions.len() {
+        if proposal_state.timelock_transactions[n].to_bytes()
             == timelock_txn_account_info.key.to_bytes()
         {
             found = true;

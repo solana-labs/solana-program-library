@@ -31,7 +31,7 @@ pub fn process_vote(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let voting_record_account_info = next_account_info(account_info_iter)?; // 0
-    let timelock_state_account_info = next_account_info(account_info_iter)?; // 1
+    let proposal_state_account_info = next_account_info(account_info_iter)?; // 1
     let voting_account_info = next_account_info(account_info_iter)?; //2
     let yes_voting_account_info = next_account_info(account_info_iter)?; //3
     let no_voting_account_info = next_account_info(account_info_iter)?; //4
@@ -47,7 +47,7 @@ pub fn process_vote(
     let clock_info = next_account_info(account_info_iter)?; //14
 
     let clock = Clock::from_account_info(clock_info)?;
-    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
+    let mut proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
     let proposal: Proposal = assert_initialized(proposal_account_info)?;
     let governance: Governance = assert_initialized(governance_account_info)?;
 
@@ -55,15 +55,12 @@ pub fn process_vote(
     assert_account_equiv(yes_voting_mint_account_info, &proposal.yes_voting_mint)?;
     assert_account_equiv(no_voting_mint_account_info, &proposal.no_voting_mint)?;
     assert_account_equiv(governance_account_info, &proposal.config)?;
-    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
+    assert_account_equiv(proposal_state_account_info, &proposal.state)?;
     assert_account_equiv(source_mint_account_info, &proposal.source_mint)?;
 
-    assert_voting(&timelock_state)?;
+    assert_voting(&proposal_state)?;
 
-    let mut seeds = vec![
-        PROGRAM_AUTHORITY_SEED,
-        proposal_account_info.key.as_ref(),
-    ];
+    let mut seeds = vec![PROGRAM_AUTHORITY_SEED, proposal_account_info.key.as_ref()];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if timelock_program_authority_info.key != &authority_key {
@@ -123,7 +120,7 @@ pub fn process_vote(
         || ((1.0 - now_remaining_in_no_column as f64 / total_ever_existed as f64) * 100.0
             >= governance.vote_threshold as f64);
 
-    let elapsed = match clock.slot.checked_sub(timelock_state.voting_began_at) {
+    let elapsed = match clock.slot.checked_sub(proposal_state.voting_began_at) {
         Some(val) => val,
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
@@ -131,15 +128,15 @@ pub fn process_vote(
 
     if tipped || too_long {
         if tipped {
-            timelock_state.status = ProposalStateStatus::Executing;
+            proposal_state.status = ProposalStateStatus::Executing;
         } else {
-            timelock_state.status = ProposalStateStatus::Defeated;
+            proposal_state.status = ProposalStateStatus::Defeated;
         }
-        timelock_state.voting_ended_at = clock.slot;
+        proposal_state.voting_ended_at = clock.slot;
 
         ProposalState::pack(
-            timelock_state,
-            &mut timelock_state_account_info.data.borrow_mut(),
+            proposal_state,
+            &mut proposal_state_account_info.data.borrow_mut(),
         )?;
     }
     let (voting_record_key, _) = Pubkey::find_program_address(

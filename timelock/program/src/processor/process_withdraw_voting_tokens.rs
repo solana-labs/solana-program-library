@@ -38,19 +38,19 @@ pub fn process_withdraw_voting_tokens(
     let yes_voting_mint_account_info = next_account_info(account_info_iter)?;
     let no_voting_mint_account_info = next_account_info(account_info_iter)?;
 
-    let timelock_state_account_info = next_account_info(account_info_iter)?;
+    let proposal_state_account_info = next_account_info(account_info_iter)?;
     let proposal_account_info = next_account_info(account_info_iter)?;
 
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
+    let proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
     let proposal: Proposal = assert_initialized(proposal_account_info)?;
     assert_token_program_is_correct(&proposal, token_program_account_info)?;
     // Using assert_account_equiv not workable here due to cost of stack size on this method.
 
-    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
+    assert_account_equiv(proposal_state_account_info, &proposal.state)?;
     assert_account_equiv(voting_mint_account_info, &proposal.voting_mint)?;
     assert_account_equiv(yes_voting_mint_account_info, &proposal.yes_voting_mint)?;
     assert_account_equiv(no_voting_mint_account_info, &proposal.no_voting_mint)?;
@@ -62,10 +62,7 @@ pub fn process_withdraw_voting_tokens(
     let yes_voting_account: Account = assert_initialized(yes_voting_account_info)?;
     let no_voting_account: Account = assert_initialized(no_voting_account_info)?;
 
-    let mut seeds = vec![
-        PROGRAM_AUTHORITY_SEED,
-        proposal_account_info.key.as_ref(),
-    ];
+    let mut seeds = vec![PROGRAM_AUTHORITY_SEED, proposal_account_info.key.as_ref()];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if timelock_program_authority_info.key != &authority_key {
@@ -157,7 +154,7 @@ pub fn process_withdraw_voting_tokens(
         }
 
         if amount_to_transfer > 0 {
-            if timelock_state.status == ProposalStateStatus::Voting {
+            if proposal_state.status == ProposalStateStatus::Voting {
                 spl_token_burn(TokenBurnParams {
                     mint: yes_voting_mint_account_info.clone(),
                     amount: amount_to_transfer,
@@ -186,7 +183,7 @@ pub fn process_withdraw_voting_tokens(
 
     if no_voting_account.amount > 0 && voting_fuel_tank > 0 {
         // whatever is left, no account gets by default
-        if timelock_state.status == ProposalStateStatus::Voting {
+        if proposal_state.status == ProposalStateStatus::Voting {
             spl_token_burn(TokenBurnParams {
                 mint: no_voting_mint_account_info.clone(),
                 amount: voting_fuel_tank,

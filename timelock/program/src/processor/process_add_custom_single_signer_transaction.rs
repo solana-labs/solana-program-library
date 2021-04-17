@@ -31,7 +31,7 @@ pub fn process_add_custom_single_signer_transaction(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let timelock_txn_account_info = next_account_info(account_info_iter)?;
-    let timelock_state_account_info = next_account_info(account_info_iter)?;
+    let proposal_state_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
     let proposal_account_info = next_account_info(account_info_iter)?;
@@ -40,7 +40,7 @@ pub fn process_add_custom_single_signer_transaction(
     let timelock_mint_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
+    let mut proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
     let proposal: Proposal = assert_initialized(proposal_account_info)?;
     let governance: Governance = assert_initialized(governance_account_info)?;
 
@@ -59,8 +59,8 @@ pub fn process_add_custom_single_signer_transaction(
         signatory_validation_account_info,
         &proposal.signatory_validation,
     )?;
-    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
-    assert_draft(&timelock_state)?;
+    assert_account_equiv(proposal_state_account_info, &proposal.state)?;
+    assert_draft(&proposal_state)?;
     assert_token_program_is_correct(&proposal, token_program_account_info)?;
     assert_is_permissioned(
         program_id,
@@ -80,16 +80,16 @@ pub fn process_add_custom_single_signer_transaction(
     timelock_txn.slot = slot;
     timelock_txn.instruction = instruction;
     timelock_txn.instruction_end_index = instruction_end_index;
-    timelock_state.timelock_transactions[position as usize] = *timelock_txn_account_info.key;
-    timelock_state.number_of_transactions =
-        match timelock_state.number_of_transactions.checked_add(1) {
+    proposal_state.timelock_transactions[position as usize] = *timelock_txn_account_info.key;
+    proposal_state.number_of_transactions =
+        match proposal_state.number_of_transactions.checked_add(1) {
             Some(val) => val,
             None => return Err(TimelockError::NumericalOverflow.into()),
         };
 
     ProposalState::pack(
-        timelock_state,
-        &mut timelock_state_account_info.data.borrow_mut(),
+        proposal_state,
+        &mut proposal_state_account_info.data.borrow_mut(),
     )?;
 
     CustomSingleSignerTransaction::pack(

@@ -17,7 +17,7 @@ use solana_program::{
 /// Delete Proposal
 pub fn process_delete_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let timelock_state_account_info = next_account_info(account_info_iter)?;
+    let proposal_state_account_info = next_account_info(account_info_iter)?;
     let admin_account_info = next_account_info(account_info_iter)?;
     let admin_validation_account_info = next_account_info(account_info_iter)?;
     let proposal_account_info = next_account_info(account_info_iter)?;
@@ -25,13 +25,13 @@ pub fn process_delete_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) ->
     let timelock_authority_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
 
-    let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
+    let mut proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
     let proposal: Proposal = assert_initialized(proposal_account_info)?;
 
     assert_account_equiv(admin_validation_account_info, &proposal.admin_validation)?;
-    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
+    assert_account_equiv(proposal_state_account_info, &proposal.state)?;
     assert_token_program_is_correct(&proposal, token_program_info)?;
-    assert_not_in_voting_or_executing(&timelock_state)?;
+    assert_not_in_voting_or_executing(&proposal_state)?;
     assert_is_permissioned(
         program_id,
         admin_account_info,
@@ -41,10 +41,10 @@ pub fn process_delete_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) ->
         transfer_authority_info,
         timelock_authority_info,
     )?;
-    timelock_state.status = ProposalStateStatus::Deleted;
+    proposal_state.status = ProposalStateStatus::Deleted;
     ProposalState::pack(
-        timelock_state,
-        &mut timelock_state_account_info.data.borrow_mut(),
+        proposal_state,
+        &mut proposal_state_account_info.data.borrow_mut(),
     )?;
     Ok(())
 }
