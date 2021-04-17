@@ -68,12 +68,12 @@ impl IsInitialized for Proposal {
     }
 }
 
-const TIMELOCK_SET_LEN: usize = 1 + 32 * 15 + 300;
+const PROPOSAL_LEN: usize = 1 + 32 * 15 + 300;
 impl Pack for Proposal {
     const LEN: usize = 1 + 32 * 15 + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, TIMELOCK_SET_LEN];
+        let input = array_ref![input, 0, PROPOSAL_LEN];
         // TODO think up better way than txn_* usage here - new to rust
         #[allow(clippy::ptr_offset_with_cast)]
         let (
@@ -123,7 +123,7 @@ impl Pack for Proposal {
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, TIMELOCK_SET_LEN];
+        let output = array_mut_ref![output, 0, PROPOSAL_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             account_type_value,

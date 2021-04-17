@@ -2,7 +2,7 @@
 use crate::{
     error::GovernanceError,
     state::enums::{ExecutionType, GovernanceAccountType, GovernanceType, VotingEntryRule},
-    state::governance::{Governance, CONFIG_NAME_LENGTH},
+    state::governance::{Governance, GOVERNANCE_NAME_LENGTH},
     utils::assert_uninitialized,
     PROGRAM_AUTHORITY_SEED,
 };
@@ -24,7 +24,7 @@ pub fn process_init_governance(
     voting_entry_rule: u8,
     minimum_slot_waiting_period: u64,
     time_limit: u64,
-    name: [u8; CONFIG_NAME_LENGTH],
+    name: [u8; GOVERNANCE_NAME_LENGTH],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let governance_account_info = next_account_info(account_info_iter)?;

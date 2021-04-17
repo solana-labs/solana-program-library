@@ -5,7 +5,7 @@ use crate::{
     state::{
         custom_single_signer_transaction::{CustomSingleSignerTransaction, MAX_ACCOUNTS_ALLOWED},
         enums::ProposalStateStatus,
-        governance::TIMELOCK_CONFIG_LEN,
+        governance::GOVERNANCE_LEN,
         proposal::Proposal,
         proposal_state::ProposalState,
     },
@@ -81,7 +81,7 @@ pub fn process_execute(
 
     for _ in 0..number_of_extra_accounts {
         let next_account = next_account_info(account_info_iter)?.clone();
-        if next_account.data_len() == TIMELOCK_CONFIG_LEN {
+        if next_account.data_len() == GOVERNANCE_LEN {
             // You better be initialized, and if you are, you better at least be mine...
             let _nefarious_config: Governance = assert_initialized(&next_account)?;
             assert_account_equiv(&next_account, &proposal.config)?;

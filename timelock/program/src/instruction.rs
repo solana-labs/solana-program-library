@@ -6,7 +6,7 @@ use crate::{
     error::GovernanceError,
     state::{
         custom_single_signer_transaction::INSTRUCTION_LIMIT,
-        governance::CONFIG_NAME_LENGTH,
+        governance::GOVERNANCE_NAME_LENGTH,
         proposal_state::{DESC_SIZE, NAME_SIZE},
     },
 };
@@ -261,7 +261,7 @@ pub enum GovernanceInstruction {
         /// Time limit in slots for proposal to be open to voting
         time_limit: u64,
         /// Optional name
-        name: [u8; CONFIG_NAME_LENGTH],
+        name: [u8; GOVERNANCE_NAME_LENGTH],
     },
 
     ///   0. `[]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
@@ -338,9 +338,9 @@ impl GovernanceInstruction {
                 let (minimum_slot_waiting_period, rest) = Self::unpack_u64(rest)?;
                 let (time_limit, rest) = Self::unpack_u64(rest)?;
 
-                let mut name = [0u8; CONFIG_NAME_LENGTH];
-                name[..(CONFIG_NAME_LENGTH - 1)]
-                    .clone_from_slice(&rest[..(CONFIG_NAME_LENGTH - 1)]);
+                let mut name = [0u8; GOVERNANCE_NAME_LENGTH];
+                name[..(GOVERNANCE_NAME_LENGTH - 1)]
+                    .clone_from_slice(&rest[..(GOVERNANCE_NAME_LENGTH - 1)]);
                 Self::InitGovernance {
                     vote_threshold,
                     execution_type,

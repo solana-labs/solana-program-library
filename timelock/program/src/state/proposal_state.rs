@@ -66,7 +66,7 @@ impl IsInitialized for ProposalState {
         self.account_type != GovernanceAccountType::Uninitialized
     }
 }
-const TIMELOCK_STATE_LEN: usize = 32
+const PROPOSAL_STATE_LEN: usize = 32
     + 1
     + 1
     + 8
@@ -97,9 +97,9 @@ impl Pack for ProposalState {
         + 1
         + (32 * MAX_TRANSACTIONS)
         + 300;
-    /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
+    /// Unpacks a byte buffer into a impl Pack for ProposalState
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, TIMELOCK_STATE_LEN];
+        let input = array_ref![input, 0, PROPOSAL_STATE_LEN];
         // TODO think up better way than txn_* usage here - new to rust
         #[allow(clippy::ptr_offset_with_cast)]
         let (
@@ -175,7 +175,7 @@ impl Pack for ProposalState {
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, TIMELOCK_STATE_LEN];
+        let output = array_mut_ref![output, 0, PROPOSAL_STATE_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             account_type_value,

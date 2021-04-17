@@ -14,7 +14,7 @@ use solana_program::{
 };
 
 /// max name length
-pub const CONFIG_NAME_LENGTH: usize = 32;
+pub const GOVERNANCE_NAME_LENGTH: usize = 32;
 /// Timelock Config
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Governance {
@@ -39,7 +39,7 @@ pub struct Governance {
     /// Time limit in slots for proposal to be open to voting
     pub time_limit: u64,
     /// Optional name
-    pub name: [u8; CONFIG_NAME_LENGTH],
+    pub name: [u8; GOVERNANCE_NAME_LENGTH],
     /// Running count of proposals
     pub count: u32,
 }
@@ -52,14 +52,14 @@ impl IsInitialized for Governance {
 }
 
 /// Len of timelock config
-pub const TIMELOCK_CONFIG_LEN: usize =
-    1 + 1 + 1 + 1 + 1 + 8 + 32 + 33 + 32 + 8 + CONFIG_NAME_LENGTH + 4 + 295;
+pub const GOVERNANCE_LEN: usize =
+    1 + 1 + 1 + 1 + 1 + 8 + 32 + 33 + 32 + 8 + GOVERNANCE_NAME_LENGTH + 4 + 295;
 
 impl Pack for Governance {
-    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 33 + 32 + 8 + CONFIG_NAME_LENGTH + 4 + 295;
+    const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 33 + 32 + 8 + GOVERNANCE_NAME_LENGTH + 4 + 295;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, TIMELOCK_CONFIG_LEN];
+        let input = array_ref![input, 0, GOVERNANCE_LEN];
         // TODO think up better way than txn_* usage here - new to rust
         #[allow(clippy::ptr_offset_with_cast)]
         let (
@@ -88,7 +88,7 @@ impl Pack for Governance {
             33,
             32,
             8,
-            CONFIG_NAME_LENGTH,
+            GOVERNANCE_NAME_LENGTH,
             4,
             295
         ];
@@ -135,7 +135,7 @@ impl Pack for Governance {
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, TIMELOCK_CONFIG_LEN];
+        let output = array_mut_ref![output, 0, GOVERNANCE_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             account_type_value,
@@ -163,7 +163,7 @@ impl Pack for Governance {
             33,
             32,
             8,
-            CONFIG_NAME_LENGTH,
+            GOVERNANCE_NAME_LENGTH,
             4,
             295
         ];
