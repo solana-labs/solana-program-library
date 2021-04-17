@@ -36,7 +36,10 @@ async fn test_flash_loan_success() {
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.loan_to_value_ratio = 80;
     let flash_loan_amount = 1_000u64;
-    let flash_loan_fee = 10; // TODO: update this
+    let (flash_loan_fee, host_fee) = TEST_RESERVE_CONFIG
+        .fees
+        .calculate_flash_loan_fees(flash_loan_amount)
+        .unwrap();
 
     let usdc_reserve = add_reserve(
         &mut test,
@@ -78,6 +81,8 @@ async fn test_flash_loan_success() {
                 lending_market.authority,
                 receiver_program_id.clone(),
                 receiver_authority_pubkey.clone(),
+                usdc_reserve.flash_loan_fees_receiver,
+                usdc_reserve.liquidity_host,
                 flash_loan_amount,
                 Vec::new(),
             )
@@ -90,5 +95,10 @@ async fn test_flash_loan_success() {
         recent_blockhash,
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
+    let fee_balance =
+        get_token_balance(&mut banks_client, usdc_reserve.flash_loan_fees_receiver).await;
+    assert_eq!(fee_balance, flash_loan_fee - host_fee);
 
+    let host_fee_balance = get_token_balance(&mut banks_client, usdc_reserve.liquidity_host).await;
+    assert_eq!(host_fee_balance, host_fee);
 }

@@ -27,6 +27,7 @@ use solana_program::{
 };
 use spl_token::state::{Account as Token, Account};
 use spl_token::solana_program::instruction::AccountMeta;
+use std::path::Iter;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -1551,6 +1552,8 @@ fn process_flash_loan(
     let flash_loan_receiver_info = next_account_info(account_info_iter)?;
     let flash_loan_receiver_derived_info = next_account_info(account_info_iter)?;
     let token_program_id = next_account_info(account_info_iter)?;
+    let flash_loan_fees_account_info = next_account_info(account_info_iter)?;
+    let host_fee_recipient = next_account_info(account_info_iter)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
@@ -1595,10 +1598,16 @@ fn process_flash_loan(
         token_program: token_program_id.clone(),
     })?;
     msg!("transfer completed");
+
+    let (origination_fee, host_fee) = reserve
+        .config
+        .fees
+        .calculate_flash_loan_fees(amount)?;
+    let returned_amount_required = amount + origination_fee;
     let mut data = Vec::with_capacity(9);
     data.push(0u8);
     // TODO: think about if I should keep this argument....
-    data.extend_from_slice(&amount.to_le_bytes());
+    data.extend_from_slice(&returned_amount_required.to_le_bytes());
     let mut instruction_accounts = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),
         AccountMeta::new_readonly(*flash_loan_receiver_derived_info.key, false),
@@ -1612,12 +1621,10 @@ fn process_flash_loan(
         reserve_liquidity_account_info.clone(),
         token_program_id.clone(),
     ];
-    msg!("keys!");
     for acc in account_info_iter {
         calling_accounts.push(acc.clone());
         instruction_accounts.push(AccountMeta::new(*acc.key, acc.is_signer))
     }
-    msg!("keys2!");
 
     let ix = Instruction {
         program_id: *flash_loan_receiver_info.key,
@@ -1628,27 +1635,50 @@ fn process_flash_loan(
     let result = invoke(
         &ix,
         &calling_accounts[..]);
-    msg!("invoke completed");
     if result.is_err() {
         // TODO: change to a more sensible error.
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
-    let (origination_fee, host_fee) = reserve
-        .config
-        .fees
-        .calculate_flash_loan_fees(amount)?;
-
     let after_liquidity_supply_token_account =
         Account::unpack_from_slice(&reserve_liquidity_account_info.try_borrow_data()?)?;
 
-    if after_liquidity_supply_token_account.amount < before_liquidity_supply_token_account.amount {
+
+    let expected_amount = before_liquidity_supply_token_account.amount + origination_fee;
+    msg!("origination fee: {}", origination_fee);
+    if after_liquidity_supply_token_account.amount < expected_amount {
         msg!(
             "Insufficient returned liquidity for reserve after flash loan: {}, it requires: {}",
             after_liquidity_supply_token_account.amount,
-            before_liquidity_supply_token_account.amount
+            expected_amount
         );
         return Err(LendingError::InsufficientLiquidity.into());
+    }
+
+    let mut owner_fee = origination_fee;
+    if host_fee > 0 {
+        owner_fee = owner_fee
+            .checked_sub(host_fee)
+            .ok_or(LendingError::MathOverflow)?;
+        spl_token_transfer(TokenTransferParams {
+            source: reserve_liquidity_account_info.clone(),
+            destination: host_fee_recipient.clone(),
+            amount: host_fee,
+            authority: derived_lending_market_account_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
+    }
+
+    if owner_fee > 0 {
+        spl_token_transfer(TokenTransferParams {
+            source: reserve_liquidity_account_info.clone(),
+            destination: flash_loan_fees_account_info.clone(),
+            amount: owner_fee,
+            authority: derived_lending_market_account_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
     }
 
     Ok(())

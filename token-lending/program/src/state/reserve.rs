@@ -6,6 +6,7 @@ use crate::{
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
+    msg,
     clock::Slot,
     entrypoint::ProgramResult,
     program_error::ProgramError,
@@ -580,6 +581,7 @@ impl ReserveFees {
         &self,
         collateral_amount: u64,
     ) -> Result<(u64, u64), ProgramError> {
+        msg!("wad: {}", self.flash_loan_fee_wad);
         self.calculate_fees(collateral_amount, self.flash_loan_fee_wad)
     }
 
@@ -725,10 +727,12 @@ impl Pack for Reserve {
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
+            flash_loan_fee_wad,
+            flash_loan_fee_receiver,
             _padding,
         ) = mut_array_refs![
-            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8,
-            300
+            output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 8, 32,
+            260
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();
@@ -742,6 +746,7 @@ impl Pack for Reserve {
         liquidity_supply.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
         *available_liquidity = self.liquidity.available_amount.to_le_bytes();
         pack_decimal(self.liquidity.borrowed_amount_wads, total_borrows);
+        flash_loan_fee_receiver.copy_from_slice(self.liquidity.flash_loan_fee_receiver.as_ref());
 
         // collateral info
         collateral_mint.copy_from_slice(self.collateral.mint_pubkey.as_ref());
@@ -758,6 +763,7 @@ impl Pack for Reserve {
         *optimal_borrow_rate = self.config.optimal_borrow_rate.to_le_bytes();
         *max_borrow_rate = self.config.max_borrow_rate.to_le_bytes();
         *borrow_fee_wad = self.config.fees.borrow_fee_wad.to_le_bytes();
+        *flash_loan_fee_wad = self.config.fees.flash_loan_fee_wad.to_le_bytes();
         *host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
     }
 }
@@ -1188,12 +1194,14 @@ mod test {
         #[test]
         fn borrow_fee_calculation(
             borrow_fee_wad in 0..WAD, // at WAD, fee == borrow amount, which fails
+            flash_loan_fee_wad in 0..WAD, // at WAD, fee == borrow amount, which fails
             host_fee_percentage in 0..=100u8,
             borrow_amount in 3..=u64::MAX, // start at 3 to ensure calculation success
                                            // 0, 1, and 2 are covered in the minimum tests
         ) {
             let fees = ReserveFees {
                 borrow_fee_wad,
+                flash_loan_fee_wad,
                 host_fee_percentage,
             };
             let (total_fee, host_fee) = fees.calculate_borrow_fees(borrow_amount)?;
@@ -1304,6 +1312,7 @@ mod test {
         let fees = ReserveFees {
             borrow_fee_wad: 10_000_000_000_000_000, // 1%
             host_fee_percentage: 20,
+            flash_loan_fee_wad: 0,
         };
 
         // only 2 tokens borrowed, get error
@@ -1325,6 +1334,7 @@ mod test {
         let fees = ReserveFees {
             borrow_fee_wad: 10_000_000_000_000_000, // 1%
             host_fee_percentage: 0,
+            flash_loan_fee_wad: 0,
         };
 
         // only 2 tokens borrowed, ok
@@ -1347,6 +1357,7 @@ mod test {
         let fees = ReserveFees {
             borrow_fee_wad: 10_000_000_000_000_000, // 1%
             host_fee_percentage: 20,
+            flash_loan_fee_wad: 0,
         };
 
         let (total_fee, host_fee) = fees.calculate_borrow_fees(1000).unwrap();
@@ -1360,6 +1371,7 @@ mod test {
         let fees = ReserveFees {
             borrow_fee_wad: 10_000_000_000_000_000, // 1%
             host_fee_percentage: 0,
+            flash_loan_fee_wad: 0,
         };
 
         let (total_fee, host_fee) = fees.calculate_borrow_fees(1000).unwrap();

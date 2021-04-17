@@ -297,6 +297,8 @@ pub enum LendingInstruction {
     ///   call it `ExecuteOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
     ///   6. `[]` Flash Loan Receiver Program Derived Account
     ///   7. `[]` Token program id
+    ///   8. `[writable]` Host fee receiver.
+    ///   9. `[writeable]` Flash loan fees receiver, must match init reserve.
     /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`, starting from the 8th account.
     FlashLoan {
         /// The amount that is to be borrowed
@@ -959,6 +961,8 @@ pub fn flash_loan(
     derived_lending_market_authority: Pubkey,
     flash_loan_recevier_pubkey: Pubkey,
     flash_loan_receiver_program_derived_account: Pubkey,
+    flash_loan_fees_account_info: Pubkey,
+    host_fee_recipient: Pubkey,
     amount: u64,
     additional_params: Vec<Pubkey>
 ) -> Instruction {
@@ -971,6 +975,8 @@ pub fn flash_loan(
         AccountMeta::new_readonly(flash_loan_recevier_pubkey, false),
         AccountMeta::new_readonly(flash_loan_receiver_program_derived_account, false),
         AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new(flash_loan_fees_account_info, false),
+        AccountMeta::new(host_fee_recipient, false),
     ];
     accounts.extend(
         additional_params
