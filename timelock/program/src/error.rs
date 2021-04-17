@@ -8,7 +8,7 @@ use solana_program::{
 };
 use thiserror::Error;
 
-/// Errors that may be returned by the Timelock program.
+/// Errors that may be returned by the Governance program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum GovernanceError {
     /// Invalid instruction data passed in.
@@ -25,11 +25,11 @@ pub enum GovernanceError {
 
     /// Invalid program derived address from a Governance account
     #[error("Invalid PDA given for a Governance program account")]
-    InvalidTimelockAuthority,
+    InvalidGovernanceAuthority,
 
-    /// Timelock Transaction not found on the Timelock Set
-    #[error("Timelock Transaction not found on the Timelock Set")]
-    TimelockTransactionNotFoundError,
+    /// Proposal Transaction not found on the Proposal
+    #[error("Proposal Transaction not found on the Proposal")]
+    ProposalTransactionNotFoundError,
 
     /// Mint authority can't be deserialized
     #[error("Mint authority can't be deserialized")]
@@ -87,12 +87,12 @@ pub enum GovernanceError {
     #[error("Token burn failed")]
     TokenBurnFailed,
 
-    ///Timelock Transaction already executed
-    #[error("Timelock Transaction already executed")]
-    TimelockTransactionAlreadyExecuted,
+    /// Proposal Transaction already executed
+    #[error("Proposal Transaction already executed")]
+    ProposalTransactionAlreadyExecuted,
 
-    ///Timelock Transaction execution failed
-    #[error("Timelock Transaction execution failed")]
+    ///Proposal Transaction execution failed
+    #[error("Proposal Transaction execution failed")]
     ExecutionFailed,
 
     ///Invalid instruction end index, above instruction limit
@@ -156,6 +156,6 @@ impl From<GovernanceError> for ProgramError {
 
 impl<T> DecodeError<T> for GovernanceError {
     fn type_of() -> &'static str {
-        "Timelock Error"
+        "Governance Error"
     }
 }

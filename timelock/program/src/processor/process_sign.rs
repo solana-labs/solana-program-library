@@ -43,7 +43,7 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if governance_program_authority_info.key != &authority_key {
-        return Err(GovernanceError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidGovernanceAuthority.into());
     }
     let bump = &[bump_seed];
     seeds.push(bump);

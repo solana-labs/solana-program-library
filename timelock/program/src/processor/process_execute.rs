@@ -106,7 +106,7 @@ pub fn process_execute(
     assert_executing(&proposal_state)?;
 
     if transaction.executed == 1 {
-        return Err(GovernanceError::TimelockTransactionAlreadyExecuted.into());
+        return Err(GovernanceError::ProposalTransactionAlreadyExecuted.into());
     }
 
     let message: Message = match bincode::deserialize::<Message>(

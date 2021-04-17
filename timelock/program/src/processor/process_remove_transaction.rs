@@ -57,7 +57,7 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
     }
 
     if !found {
-        return Err(GovernanceError::TimelockTransactionNotFoundError.into());
+        return Err(GovernanceError::ProposalTransactionNotFoundError.into());
     }
 
     proposal_state.number_of_transactions =

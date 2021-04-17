@@ -29,7 +29,7 @@ pub fn get_authority_signer_seeds<'a>(
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[governance_program_account_info.key.as_ref()], program_id);
     if governance_program_authority_info.key != &authority_key {
-        return Err(GovernanceError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidGovernanceAuthority.into());
     }
     let authority_signer_seeds = &[governance_program_account_info.key.as_ref(), &[bump_seed]];
     Ok(&*authority_signer_seeds)
@@ -54,7 +54,7 @@ pub fn assert_is_permissioned<'a>(
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if proposal_authority_info.key != &authority_key {
-        return Err(GovernanceError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidGovernanceAuthority.into());
     }
 
     let bump = &[bump_seed];
@@ -155,7 +155,7 @@ pub fn assert_txn_in_state(
     }
 
     if !found {
-        return Err(GovernanceError::TimelockTransactionNotFoundError.into());
+        return Err(GovernanceError::ProposalTransactionNotFoundError.into());
     }
 
     Ok(())
