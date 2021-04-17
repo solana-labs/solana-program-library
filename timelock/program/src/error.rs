@@ -19,21 +19,13 @@ pub enum TimelockError {
     #[error("Account is already initialized")]
     AlreadyInitialized,
 
-    /// Using the wrong version of the Proposal for this code version
-    #[error("Using a Proposal from a different version than this program version")]
-    InvalidProposalVersionError,
-
     /// Too high position in txn array
     #[error("Too high a position given in txn array")]
     TooHighPositionInTxnArrayError,
 
-    /// Invalid program derived address from a timelock account
-    #[error("Invalid PDA given for a timelock program account")]
+    /// Invalid program derived address from a Governance account
+    #[error("Invalid PDA given for a Governance program account")]
     InvalidTimelockAuthority,
-
-    /// Using the wrong version of the timelock program for this code version
-    #[error("Using a timelock program account from a different version than this program version")]
-    InvalidTimelockVersionError,
 
     /// Timelock Transaction not found on the Timelock Set
     #[error("Timelock Transaction not found on the Timelock Set")]
@@ -111,17 +103,9 @@ pub enum TimelockError {
     #[error("Too early to execute this transaction")]
     TooEarlyToExecute,
 
-    /// Invalid cursor given for temp file call
-    #[error("Invalid cursor given for temp file call")]
-    InvalidCursor,
-
     /// Too many accounts in your arbitrary instruction
     #[error("Too many accounts in your arbitrary instruction")]
     TooManyAccountsInInstruction,
-
-    /// Invalid timelock type for this action
-    #[error("Invalid timelock type for this action")]
-    InvalidTimelockType,
 
     /// You have provided an account that doesnt match the pubkey on a Proposal or config object
     #[error(
