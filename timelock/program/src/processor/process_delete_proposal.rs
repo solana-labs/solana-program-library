@@ -22,7 +22,7 @@ pub fn process_delete_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) ->
     let admin_validation_account_info = next_account_info(account_info_iter)?;
     let proposal_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
-    let timelock_authority_info = next_account_info(account_info_iter)?;
+    let proposal_authority_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
 
     let mut proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
@@ -39,7 +39,7 @@ pub fn process_delete_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) ->
         proposal_account_info,
         token_program_info,
         transfer_authority_info,
-        timelock_authority_info,
+        proposal_authority_info,
     )?;
     proposal_state.status = ProposalStateStatus::Deleted;
     ProposalState::pack(

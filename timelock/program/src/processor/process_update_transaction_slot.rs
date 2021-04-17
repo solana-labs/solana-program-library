@@ -27,7 +27,7 @@ pub fn process_update_transaction_slot(
     let proposal_state_account_info = next_account_info(account_info_iter)?;
     let proposal_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
-    let timelock_authority_account_info = next_account_info(account_info_iter)?;
+    let proposal_authority_account_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
@@ -47,7 +47,7 @@ pub fn process_update_transaction_slot(
         proposal_account_info,
         token_program_account_info,
         transfer_authority_info,
-        timelock_authority_account_info,
+        proposal_authority_account_info,
     )?;
     assert_txn_in_state(&proposal_state, proposal_txn_account_info)?;
 
