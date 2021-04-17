@@ -26,7 +26,6 @@ impl Default for GovernanceAccountType {
     }
 }
 
-
 /// What type of execution a timelock is
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExecutionType {
