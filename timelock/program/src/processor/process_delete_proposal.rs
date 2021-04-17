@@ -15,7 +15,7 @@ use solana_program::{
 };
 
 /// Delete timelock set
-pub fn process_delete_timelock_set(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+pub fn process_delete_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let timelock_state_account_info = next_account_info(account_info_iter)?;
     let admin_account_info = next_account_info(account_info_iter)?;
