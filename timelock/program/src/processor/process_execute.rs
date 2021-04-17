@@ -3,8 +3,8 @@ use crate::{
     error::TimelockError,
     state::governance::Governance,
     state::{
-        custom_single_signer_timelock_transaction::{
-            CustomSingleSignerTimelockTransaction, MAX_ACCOUNTS_ALLOWED,
+        custom_single_signer_transaction::{
+            CustomSingleSignerTransaction, MAX_ACCOUNTS_ALLOWED,
         },
         enums::ProposalStateStatus,
         governance::TIMELOCK_CONFIG_LEN,
@@ -45,7 +45,7 @@ pub fn process_execute(
     let clock = &Clock::from_account_info(clock_info)?;
     // For now we assume all transactions are CustomSingleSignerTransactions even though
     // this will not always be the case...we need to solve that inheritance issue later.
-    let mut transaction: CustomSingleSignerTimelockTransaction =
+    let mut transaction: CustomSingleSignerTransaction =
         assert_initialized(transaction_account_info)?;
 
     let time_elapsed = match clock.slot.checked_sub(timelock_state.voting_ended_at) {
@@ -136,7 +136,7 @@ pub fn process_execute(
 
     transaction.executed = 1;
 
-    CustomSingleSignerTimelockTransaction::pack(
+    CustomSingleSignerTransaction::pack(
         transaction,
         &mut transaction_account_info.data.borrow_mut(),
     )?;

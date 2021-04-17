@@ -2,9 +2,7 @@
 use crate::{
     error::TimelockError,
     state::{
-        custom_single_signer_timelock_transaction::{
-            CustomSingleSignerTimelockTransaction, INSTRUCTION_LIMIT,
-        },
+        custom_single_signer_transaction::{CustomSingleSignerTransaction, INSTRUCTION_LIMIT},
         enums::GovernanceAccountType,
         governance::Governance,
         proposal::Proposal,
@@ -46,7 +44,7 @@ pub fn process_add_custom_single_signer_transaction(
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     let timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
 
-    let mut timelock_txn: CustomSingleSignerTimelockTransaction =
+    let mut timelock_txn: CustomSingleSignerTransaction =
         assert_uninitialized(timelock_txn_account_info)?;
 
     if position as usize >= MAX_TRANSACTIONS {
@@ -94,7 +92,7 @@ pub fn process_add_custom_single_signer_transaction(
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;
 
-    CustomSingleSignerTimelockTransaction::pack(
+    CustomSingleSignerTransaction::pack(
         timelock_txn,
         &mut timelock_txn_account_info.data.borrow_mut(),
     )?;

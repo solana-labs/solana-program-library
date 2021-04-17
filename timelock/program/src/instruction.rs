@@ -5,7 +5,7 @@ use solana_program::program_error::ProgramError;
 use crate::{
     error::TimelockError,
     state::{
-        custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT,
+        custom_single_signer_transaction::INSTRUCTION_LIMIT,
         governance::CONFIG_NAME_LENGTH,
         proposal_state::{DESC_SIZE, NAME_SIZE},
     },

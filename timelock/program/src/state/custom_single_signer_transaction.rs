@@ -14,7 +14,7 @@ pub const MAX_ACCOUNTS_ALLOWED: usize = 12;
 
 /// First iteration of generic instruction
 #[derive(Clone)]
-pub struct CustomSingleSignerTimelockTransaction {
+pub struct CustomSingleSignerTransaction {
     /// NOTE all Transaction structs MUST have slot as first u64 entry after account_type in byte buffer.
     /// Account type
     pub account_type: GovernanceAccountType,
@@ -32,8 +32,8 @@ pub struct CustomSingleSignerTimelockTransaction {
     pub instruction_end_index: u16,
 }
 
-impl PartialEq for CustomSingleSignerTimelockTransaction {
-    fn eq(&self, other: &CustomSingleSignerTimelockTransaction) -> bool {
+impl PartialEq for CustomSingleSignerTransaction {
+    fn eq(&self, other: &CustomSingleSignerTransaction) -> bool {
         if self.instruction.len() != other.instruction.len() {
             return false;
         }
@@ -46,14 +46,14 @@ impl PartialEq for CustomSingleSignerTimelockTransaction {
     }
 }
 
-impl Sealed for CustomSingleSignerTimelockTransaction {}
-impl IsInitialized for CustomSingleSignerTimelockTransaction {
+impl Sealed for CustomSingleSignerTransaction {}
+impl IsInitialized for CustomSingleSignerTransaction {
     fn is_initialized(&self) -> bool {
         self.account_type != GovernanceAccountType::Uninitialized
     }
 }
 const CUSTOM_SINGLE_SIGNER_LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2 + 300;
-impl Pack for CustomSingleSignerTimelockTransaction {
+impl Pack for CustomSingleSignerTransaction {
     const LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2 + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
@@ -74,7 +74,7 @@ impl Pack for CustomSingleSignerTimelockTransaction {
         let executed = u8::from_le_bytes(*executed);
         let instruction_end_index = u16::from_le_bytes(*instruction_end_index);
 
-        Ok(CustomSingleSignerTimelockTransaction {
+        Ok(CustomSingleSignerTransaction {
             account_type,
             slot,
             instruction: *instruction,
