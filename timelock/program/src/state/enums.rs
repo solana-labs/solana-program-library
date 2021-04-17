@@ -26,7 +26,7 @@ impl Default for GovernanceAccountType {
     }
 }
 
-/// What type of execution a timelock is
+/// What type of execution a Proposal is
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExecutionType {
     /// Each transaction is independent of the other
@@ -66,7 +66,7 @@ impl Default for ProposalStateStatus {
     }
 }
 
-/// What type a timelock is
+/// What type a Governance is
 #[derive(Clone, Debug, PartialEq)]
 pub enum GovernanceType {
     /// Meaning voters deposit their tokens from outside mint and "govern" the proposal
@@ -79,7 +79,7 @@ impl Default for GovernanceType {
     }
 }
 
-/// Rules for voters entering the timelock
+/// Rules for voters entering the Proposal
 #[derive(Clone, Debug, PartialEq)]
 pub enum VotingEntryRule {
     /// Meaning voters can enter at any point in time

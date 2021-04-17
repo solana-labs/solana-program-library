@@ -7,7 +7,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-/// Create empty timelock config
+/// Create empty Governance
 pub fn process_create_empty_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -31,7 +31,7 @@ pub fn process_create_empty_governance(
         council_mint_seed,
         program_to_tie_account_info.key.as_ref(),
     ];
-    let (config_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
+    let (governance_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
 
     let bump = &[bump_seed];
     seeds.push(bump);
@@ -44,7 +44,7 @@ pub fn process_create_empty_governance(
             governance_account_info.clone(),
             system_account_info.clone(),
         ],
-        &config_key,
+        &governance_key,
         payer_account_info.key,
         program_id,
         authority_signer_seeds,

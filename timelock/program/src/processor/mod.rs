@@ -41,7 +41,7 @@ pub fn process_instruction(
     let instruction = GovernanceInstruction::unpack(input)?;
     match instruction {
         GovernanceInstruction::InitProposal { name, desc_link } => {
-            msg!("Instruction: Init Timelock Set");
+            msg!("Instruction: Init Proposal");
             process_init_proposal(program_id, accounts, name, desc_link)
         }
         GovernanceInstruction::AddSigner => {
@@ -74,7 +74,7 @@ pub fn process_instruction(
             process_update_transaction_slot(program_id, accounts, slot)
         }
         GovernanceInstruction::DeleteProposal => {
-            msg!("Instruction: Delete Timelock Set");
+            msg!("Instruction: Delete Proposal");
             process_delete_proposal(program_id, accounts)
         }
         GovernanceInstruction::Sign => {
@@ -102,7 +102,7 @@ pub fn process_instruction(
             time_limit,
             name,
         } => {
-            msg!("Instruction: Initialize Timelock Config");
+            msg!("Instruction: Initialize Governance");
             process_init_governance(
                 program_id,
                 accounts,
@@ -134,7 +134,7 @@ pub fn process_instruction(
             process_withdraw_voting_tokens(program_id, accounts, voting_token_amount)
         }
         GovernanceInstruction::CreateEmptyGovernance => {
-            msg!("Instruction: Create Empty Timelock Config");
+            msg!("Instruction: Create Empty Governance");
             process_create_empty_governance(program_id, accounts)
         }
 

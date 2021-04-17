@@ -141,7 +141,7 @@ pub fn assert_token_program_is_correct(
     Ok(())
 }
 
-/// asserts timelock txn is in Proposal
+/// asserts  txn is in Proposal
 pub fn assert_txn_in_state(
     proposal_state: &ProposalState,
     proposal_txn_account_info: &AccountInfo,

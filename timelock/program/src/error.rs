@@ -107,9 +107,9 @@ pub enum GovernanceError {
     #[error("Too many accounts in your arbitrary instruction")]
     TooManyAccountsInInstruction,
 
-    /// You have provided an account that doesnt match the pubkey on a Proposal or config object
+    /// You have provided an account that doesn't match the pubkey on a Proposal or Governance object
     #[error(
-        "You have provided an account that doesnt match the pubkey on a Proposal or config object"
+        "You have provided an account that doesn't match the pubkey on a Proposal or Governance object"
     )]
     AccountsShouldMatch,
 
@@ -126,7 +126,7 @@ pub enum GovernanceError {
     MustBeAboveMinimumWaitingPeriod,
 
     /// Invalid Governance key given for a program-mint tuple
-    #[error("Invalid Governance config key given for a program-mint tuple")]
+    #[error("Invalid Governance key given for a program-mint tuple")]
     InvalidGovernanceKey,
 
     /// Cannot reimburse more tokens than you put in

@@ -13,7 +13,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-/// Init timelock config
+/// Init Governance
 #[allow(clippy::too_many_arguments)]
 pub fn process_init_governance(
     program_id: &Pubkey,

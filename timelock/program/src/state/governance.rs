@@ -15,7 +15,7 @@ use solana_program::{
 
 /// max name length
 pub const GOVERNANCE_NAME_LENGTH: usize = 32;
-/// Timelock Config
+/// Governance Account
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Governance {
     /// Account type
@@ -24,7 +24,7 @@ pub struct Governance {
     pub vote_threshold: u8,
     /// Execution type
     pub execution_type: ExecutionType,
-    /// Timelock Type
+    /// Governance Type
     pub governance_type: GovernanceType,
     /// Voting entry rule
     pub voting_entry_rule: VotingEntryRule,
@@ -51,13 +51,13 @@ impl IsInitialized for Governance {
     }
 }
 
-/// Len of timelock config
+/// Len of Governance
 pub const GOVERNANCE_LEN: usize =
     1 + 1 + 1 + 1 + 1 + 8 + 32 + 33 + 32 + 8 + GOVERNANCE_NAME_LENGTH + 4 + 295;
 
 impl Pack for Governance {
     const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 33 + 32 + 8 + GOVERNANCE_NAME_LENGTH + 4 + 295;
-    /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
+    /// Unpacks a byte buffer into Governance account data
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, GOVERNANCE_LEN];
         // TODO think up better way than txn_* usage here - new to rust

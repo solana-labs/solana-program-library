@@ -232,21 +232,21 @@ pub enum GovernanceInstruction {
     ///   8. `[writable]` Voting mint account.
     ///   9. `[writable]` Yes Voting mint account.
     ///   10. `[writable]` No Voting mint account.
-    ///   11. `[]` Timelock state account.
+    ///   11. `[]` Proposal state account.
     ///   12. `[]` Proposal account.
     ///   13. `[]` Transfer authority
-    ///   14. `[]` Timelock program mint authority (pda of seed Proposal key)
+    ///   14. `[]` Governance program mint authority (pda of seed Proposal key)
     ///   15. `[]` Token program account.
     WithdrawVotingTokens {
         /// How many voting tokens to withdrawal
         voting_token_amount: u64,
     },
 
-    ///   0. `[writable]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
+    ///   0. `[writable]` Governance key. Needs to be set with pubkey set to PDA with seeds of the
     ///           program account key, governance mint key, council mint key, Governance program account key.
-    ///   1. `[]` Program account that this config uses
-    ///   2. `[]` Governance mint that this config uses
-    ///   3. `[]` Council mint that this config uses [Optional]
+    ///   1. `[]` Program account that this Governance uses
+    ///   2. `[]` Governance mint that this Governance uses
+    ///   3. `[]` Council mint that this Governance uses [Optional]
     InitGovernance {
         /// Vote threshold in % required to tip the vote
         vote_threshold: u8,
@@ -264,13 +264,13 @@ pub enum GovernanceInstruction {
         name: [u8; GOVERNANCE_NAME_LENGTH],
     },
 
-    ///   0. `[]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
+    ///   0. `[]` Governance key. Needs to be set with pubkey set to PDA with seeds of the
     ///           program account key, governance mint key, council mint key, and Governance program account key.
-    ///   1. `[]` Program account to tie this config to.
-    ///   2. `[]` Governance mint to tie this config to
+    ///   1. `[]` Program account to tie this Governance to.
+    ///   2. `[]` Governance mint to tie this Governance to
     ///   3. `[]` Payer
     ///   4. `[]` System account.
-    ///   5. `[]` Council mint to tie this config to [Optional]
+    ///   5. `[]` Council mint to tie this Governance to [Optional]
     CreateEmptyGovernance,
 
     ///   0. `[]` Governance voting record key. Needs to be set with pubkey set to PDA with seeds of the
@@ -278,7 +278,7 @@ pub enum GovernanceInstruction {
     ///   1. `[]` Proposal key
     ///   2. `[]` Your voting account
     ///   3. `[]` Payer
-    ///   4. `[]` Timelock program pub key
+    ///   4. `[]` Governance program pub key
     ///   5. `[]` System account.
     CreateEmptyGovernanceVotingRecord,
 }

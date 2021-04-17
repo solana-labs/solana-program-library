@@ -1,7 +1,7 @@
 /// Enums
 pub mod enums;
 
-/// custom single signer timelock transaction
+/// custom single signer transaction
 pub mod custom_single_signer_transaction;
 
 /// Governance

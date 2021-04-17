@@ -38,7 +38,7 @@ impl IsInitialized for GovernanceVotingRecord {
 pub const GOVERNANCE_VOTING_RECORD_LEN: usize = 32 + 32 + 1 + 8 + 8 + 8 + 100;
 impl Pack for GovernanceVotingRecord {
     const LEN: usize = 32 + 32 + 1 + 8 + 8 + 8 + 100;
-    /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
+    /// Unpacks a byte buffer into a GovernanceVotingRecord
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, GOVERNANCE_VOTING_RECORD_LEN];
         #[allow(clippy::ptr_offset_with_cast)]

@@ -55,7 +55,7 @@ impl IsInitialized for CustomSingleSignerTransaction {
 const CUSTOM_SINGLE_SIGNER_LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2 + 300;
 impl Pack for CustomSingleSignerTransaction {
     const LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2 + 300;
-    /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
+    /// Unpacks a byte buffer into a transaction account
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, CUSTOM_SINGLE_SIGNER_LEN];
         #[allow(clippy::ptr_offset_with_cast)]

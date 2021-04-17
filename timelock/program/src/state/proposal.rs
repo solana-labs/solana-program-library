@@ -7,7 +7,7 @@ use solana_program::{
 
 use crate::state::enums::GovernanceAccountType;
 
-/// Single instance of a timelock
+/// Single instance of a Governance proposal
 #[derive(Clone)]
 pub struct Proposal {
     /// Account type
@@ -71,7 +71,7 @@ impl IsInitialized for Proposal {
 const PROPOSAL_LEN: usize = 1 + 32 * 15 + 300;
 impl Pack for Proposal {
     const LEN: usize = 1 + 32 * 15 + 300;
-    /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
+    /// Unpacks a byte buffer into a Proposal account data
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, PROPOSAL_LEN];
         // TODO think up better way than txn_* usage here - new to rust

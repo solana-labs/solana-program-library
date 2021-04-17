@@ -14,7 +14,7 @@ pub const DESC_SIZE: usize = 200;
 /// How many characters are allowed in the name
 pub const NAME_SIZE: usize = 32;
 
-/// Timelock state
+/// Proposal state
 #[derive(Clone)]
 pub struct ProposalState {
     /// Account type
@@ -35,19 +35,19 @@ pub struct ProposalState {
     /// Proposal name
     pub name: [u8; NAME_SIZE],
 
-    /// When the timelock ended voting - this will also be when the set was defeated or began executing naturally.
+    /// When the Proposal ended voting - this will also be when the set was defeated or began executing naturally.
     pub voting_ended_at: u64,
 
-    /// When the timelock began voting
+    /// When the Proposal began voting
     pub voting_began_at: u64,
 
-    /// when the timelock entered draft state
+    /// when the Proposal entered draft state
     pub created_at: u64,
 
-    /// when the timelock entered completed state, also when execution ended naturally.
+    /// when the Proposal entered completed state, also when execution ended naturally.
     pub completed_at: u64,
 
-    /// when the timelock entered deleted state
+    /// when the Proposal entered deleted state
     pub deleted_at: u64,
 
     /// The number of the transactions already executed
@@ -56,7 +56,7 @@ pub struct ProposalState {
     /// The number of transactions included in the proposal
     pub number_of_transactions: u8,
 
-    /// Array of pubkeys pointing at TimelockTransactions, up to 5
+    /// Array of pubkeys pointing at Proposal Transactions, up to 5
     pub transactions: [Pubkey; MAX_TRANSACTIONS],
 }
 

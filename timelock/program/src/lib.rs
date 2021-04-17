@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-//! A timelock program for the Solana blockchain.
+//! A Proposal program for the Solana blockchain.
 
 pub mod entrypoint;
 pub mod error;

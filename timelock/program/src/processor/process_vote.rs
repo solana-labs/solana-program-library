@@ -22,7 +22,7 @@ use solana_program::{
 };
 use spl_token::state::Account;
 
-/// Vote on the timelock
+/// Vote on the Proposal
 pub fn process_vote(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
