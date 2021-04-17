@@ -8,7 +8,7 @@ style = "both"
 
 [export]
 prefix = "Timelock_"
-include = ["TimelockInstruction", "State"]
+include = ["GovernanceInstruction", "State"]
 
 [parse]
 parse_deps = true

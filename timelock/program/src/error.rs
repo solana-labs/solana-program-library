@@ -21,7 +21,7 @@ pub enum TimelockError {
 
     /// Using the wrong version of the timelock set for this code version
     #[error("Using a timelock set from a different version than this program version")]
-    InvalidTimelockSetVersionError,
+    InvalidProposalVersionError,
 
     /// Too high position in txn array
     #[error("Too high a position given in txn array")]
@@ -61,7 +61,7 @@ pub enum TimelockError {
 
     /// The timelock set is in the wrong state for this operation
     #[error("The timelock set is in the wrong state for this operation")]
-    InvalidTimelockSetStateError,
+    InvalidProposalStateError,
 
     /// The account is uninitialized
     #[error("The account is uninitialized when it should have already been initialized")]
@@ -139,9 +139,9 @@ pub enum TimelockError {
     #[error("Waiting period must be greater than or equal to minimum waiting period")]
     MustBeAboveMinimumWaitingPeriod,
 
-    /// Invalid Timelock config key given for a program-mint tuple
-    #[error("Invalid timelock config key given for a program-mint tuple")]
-    InvalidTimelockConfigKey,
+    /// Invalid Governance key given for a program-mint tuple
+    #[error("Invalid Governance config key given for a program-mint tuple")]
+    InvalidGovernanceKey,
 
     /// Cannot reimburse more tokens than you put in
     #[error("Cannot reimburse more tokens than you put in")]

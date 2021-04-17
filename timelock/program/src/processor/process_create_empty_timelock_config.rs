@@ -1,7 +1,7 @@
 //! Program state processor
 
 use crate::{
-    state::timelock_config::TimelockConfig, utils::create_account_raw, PROGRAM_AUTHORITY_SEED,
+    state::timelock_config::Governance, utils::create_account_raw, PROGRAM_AUTHORITY_SEED,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -39,7 +39,7 @@ pub fn process_create_empty_timelock_config(
     seeds.push(bump);
     let authority_signer_seeds = &seeds[..];
 
-    create_account_raw::<TimelockConfig>(
+    create_account_raw::<Governance>(
         &[
             payer_account_info.clone(),
             timelock_program_account_info.clone(),

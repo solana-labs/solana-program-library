@@ -3,7 +3,7 @@ use crate::{
     error::TimelockError,
     state::{
         enums::TimelockStateStatus, governance_voting_record::GovernanceVotingRecord,
-        timelock_config::TimelockConfig, timelock_set::TimelockSet, timelock_state::TimelockState,
+        proposal::Proposal, timelock_config::Governance, timelock_state::TimelockState,
     },
     utils::{
         assert_account_equiv, assert_initialized, assert_voting, get_mint_supply, spl_token_burn,
@@ -47,8 +47,8 @@ pub fn process_vote(
 
     let clock = Clock::from_account_info(clock_info)?;
     let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
-    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
-    let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
+    let timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
 
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
     assert_account_equiv(yes_voting_mint_account_info, &timelock_set.yes_voting_mint)?;

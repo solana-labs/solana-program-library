@@ -1,7 +1,7 @@
 //! Program state processor
 
 use crate::{
-    state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
+    state::{enums::TimelockStateStatus, proposal::Proposal, timelock_state::TimelockState},
     utils::{
         assert_account_equiv, assert_initialized, assert_is_permissioned,
         assert_not_in_voting_or_executing, assert_token_program_is_correct,
@@ -26,7 +26,7 @@ pub fn process_delete_timelock_set(program_id: &Pubkey, accounts: &[AccountInfo]
     let token_program_info = next_account_info(account_info_iter)?;
 
     let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
-    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
 
     assert_account_equiv(
         admin_validation_account_info,

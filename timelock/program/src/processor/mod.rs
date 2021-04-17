@@ -14,7 +14,7 @@ pub mod process_update_transaction_slot;
 pub mod process_vote;
 pub mod process_withdraw_voting_tokens;
 
-use crate::instruction::TimelockInstruction;
+use crate::instruction::GovernanceInstruction;
 use process_add_custom_single_signer_transaction::process_add_custom_single_signer_transaction;
 use process_add_signer::process_add_signer;
 use process_create_empty_governance_voting_record::process_create_empty_governance_voting_record;
@@ -38,21 +38,21 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    let instruction = TimelockInstruction::unpack(input)?;
+    let instruction = GovernanceInstruction::unpack(input)?;
     match instruction {
-        TimelockInstruction::InitTimelockSet { name, desc_link } => {
+        GovernanceInstruction::InitProposal { name, desc_link } => {
             msg!("Instruction: Init Timelock Set");
             process_init_timelock_set(program_id, accounts, name, desc_link)
         }
-        TimelockInstruction::AddSigner => {
+        GovernanceInstruction::AddSigner => {
             msg!("Instruction: Add Signer");
             process_add_signer(program_id, accounts)
         }
-        TimelockInstruction::RemoveSigner => {
+        GovernanceInstruction::RemoveSigner => {
             msg!("Instruction: Remove Signer");
             process_remove_signer(program_id, accounts)
         }
-        TimelockInstruction::AddCustomSingleSignerTransaction {
+        GovernanceInstruction::AddCustomSingleSignerTransaction {
             slot,
             instruction,
             position,
@@ -65,23 +65,23 @@ pub fn process_instruction(
             position,
             instruction_end_index,
         ),
-        TimelockInstruction::RemoveTransaction => {
+        GovernanceInstruction::RemoveTransaction => {
             msg!("Instruction: Remove Transaction");
             process_remove_transaction(program_id, accounts)
         }
-        TimelockInstruction::UpdateTransactionSlot { slot } => {
+        GovernanceInstruction::UpdateTransactionSlot { slot } => {
             msg!("Instruction: Update Transaction Slot");
             process_update_transaction_slot(program_id, accounts, slot)
         }
-        TimelockInstruction::DeleteTimelockSet => {
+        GovernanceInstruction::DeleteProposal => {
             msg!("Instruction: Delete Timelock Set");
             process_delete_timelock_set(program_id, accounts)
         }
-        TimelockInstruction::Sign => {
+        GovernanceInstruction::Sign => {
             msg!("Instruction: Sign");
             process_sign(program_id, accounts)
         }
-        TimelockInstruction::Vote {
+        GovernanceInstruction::Vote {
             yes_voting_token_amount,
             no_voting_token_amount,
         } => {
@@ -93,7 +93,7 @@ pub fn process_instruction(
                 no_voting_token_amount,
             )
         }
-        TimelockInstruction::InitTimelockConfig {
+        GovernanceInstruction::InitGovernance {
             vote_threshold,
             execution_type,
             timelock_type,
@@ -115,30 +115,30 @@ pub fn process_instruction(
                 name,
             )
         }
-        TimelockInstruction::Execute {
+        GovernanceInstruction::Execute {
             number_of_extra_accounts,
         } => {
             msg!("Instruction: Execute");
             process_execute(program_id, accounts, number_of_extra_accounts)
         }
-        TimelockInstruction::DepositSourceTokens {
+        GovernanceInstruction::DepositSourceTokens {
             voting_token_amount,
         } => {
             msg!("Instruction: Deposit Source Tokens");
             process_deposit_source_tokens(program_id, accounts, voting_token_amount)
         }
-        TimelockInstruction::WithdrawVotingTokens {
+        GovernanceInstruction::WithdrawVotingTokens {
             voting_token_amount,
         } => {
             msg!("Instruction: Withdraw Voting Tokens");
             process_withdraw_voting_tokens(program_id, accounts, voting_token_amount)
         }
-        TimelockInstruction::CreateEmptyTimelockConfig => {
+        GovernanceInstruction::CreateEmptyGovernance => {
             msg!("Instruction: Create Empty Timelock Config");
             process_create_empty_timelock_config(program_id, accounts)
         }
 
-        TimelockInstruction::CreateEmptyGovernanceVotingRecord => {
+        GovernanceInstruction::CreateEmptyGovernanceVotingRecord => {
             msg!("Instruction: Create Empty Governance Voting Record");
             process_create_empty_governance_voting_record(program_id, accounts)
         }

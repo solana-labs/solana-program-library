@@ -1,6 +1,6 @@
 use crate::{
     error::TimelockError,
-    state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
+    state::{enums::TimelockStateStatus, proposal::Proposal, timelock_state::TimelockState},
     PROGRAM_AUTHORITY_SEED,
 };
 use arrayref::{array_ref, array_refs, mut_array_refs};
@@ -89,7 +89,7 @@ pub fn assert_not_in_voting_or_executing(timelock_state: &TimelockState) -> Prog
     if timelock_state.status == TimelockStateStatus::Voting
         || timelock_state.status == TimelockStateStatus::Executing
     {
-        return Err(TimelockError::InvalidTimelockSetStateError.into());
+        return Err(TimelockError::InvalidProposalStateError.into());
     }
     Ok(())
 }
@@ -97,7 +97,7 @@ pub fn assert_not_in_voting_or_executing(timelock_state: &TimelockState) -> Prog
 /// Asserts a timelock set is in executing state.
 pub fn assert_executing(timelock_state: &TimelockState) -> ProgramResult {
     if timelock_state.status != TimelockStateStatus::Executing {
-        return Err(TimelockError::InvalidTimelockSetStateError.into());
+        return Err(TimelockError::InvalidProposalStateError.into());
     }
     Ok(())
 }
@@ -105,7 +105,7 @@ pub fn assert_executing(timelock_state: &TimelockState) -> ProgramResult {
 /// Asserts a timelock set is in voting state.
 pub fn assert_voting(timelock_state: &TimelockState) -> ProgramResult {
     if timelock_state.status != TimelockStateStatus::Voting {
-        return Err(TimelockError::InvalidTimelockSetStateError.into());
+        return Err(TimelockError::InvalidProposalStateError.into());
     }
     Ok(())
 }
@@ -113,14 +113,14 @@ pub fn assert_voting(timelock_state: &TimelockState) -> ProgramResult {
 /// Asserts a timelock set is in draft state.
 pub fn assert_draft(timelock_state: &TimelockState) -> ProgramResult {
     if timelock_state.status != TimelockStateStatus::Draft {
-        return Err(TimelockError::InvalidTimelockSetStateError.into());
+        return Err(TimelockError::InvalidProposalStateError.into());
     }
     Ok(())
 }
 
 /// Asserts the proper mint key is being used.
 pub fn assert_proper_signatory_mint(
-    timelock_set: &TimelockSet,
+    timelock_set: &Proposal,
     signatory_mint_account_info: &AccountInfo,
 ) -> ProgramResult {
     if timelock_set.signatory_mint != *signatory_mint_account_info.key {
@@ -131,7 +131,7 @@ pub fn assert_proper_signatory_mint(
 
 /// Asserts token_program is correct program
 pub fn assert_token_program_is_correct(
-    timelock_program: &TimelockSet,
+    timelock_program: &Proposal,
     token_program_info: &AccountInfo,
 ) -> ProgramResult {
     if &timelock_program.token_program_id != token_program_info.key {

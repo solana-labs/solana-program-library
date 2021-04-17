@@ -6,8 +6,8 @@ use crate::{
             CustomSingleSignerTimelockTransaction, INSTRUCTION_LIMIT,
         },
         enums::GovernanceAccountType,
-        timelock_config::TimelockConfig,
-        timelock_set::TimelockSet,
+        proposal::Proposal,
+        timelock_config::Governance,
         timelock_state::{TimelockState, MAX_TRANSACTIONS},
     },
     utils::{
@@ -43,8 +43,8 @@ pub fn process_add_custom_single_signer_transaction(
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
-    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
-    let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
+    let timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
 
     let mut timelock_txn: CustomSingleSignerTimelockTransaction =
         assert_uninitialized(timelock_txn_account_info)?;

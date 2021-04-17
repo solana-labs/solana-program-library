@@ -3,7 +3,7 @@
 use crate::{
     error::TimelockError,
     state::governance_voting_record::GovernanceVotingRecord,
-    state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
+    state::{enums::TimelockStateStatus, proposal::Proposal, timelock_state::TimelockState},
     utils::{
         assert_account_equiv, assert_initialized, assert_token_program_is_correct, spl_token_burn,
         spl_token_transfer, TokenBurnParams, TokenTransferParams,
@@ -46,7 +46,7 @@ pub fn process_withdraw_voting_tokens(
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
-    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
     // Using assert_account_equiv not workable here due to cost of stack size on this method.
 

@@ -5,8 +5,8 @@ use crate::{
     error::TimelockError,
     state::{
         enums::GovernanceAccountType,
-        timelock_config::TimelockConfig,
-        timelock_set::TimelockSet,
+        proposal::Proposal,
+        timelock_config::Governance,
         timelock_state::TimelockState,
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
@@ -57,8 +57,8 @@ pub fn process_init_timelock_set(
     let rent = &Rent::from_account_info(rent_info)?;
 
     let mut new_timelock_state: TimelockState = assert_uninitialized(timelock_state_account_info)?;
-    let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
-    let mut timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    let mut new_timelock_set: Proposal = assert_uninitialized(timelock_set_account_info)?;
+    let mut timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
 
     new_timelock_set.account_type = GovernanceAccountType::Proposal;
     new_timelock_set.config = *timelock_config_account_info.key;
@@ -187,7 +187,7 @@ pub fn process_init_timelock_set(
         }
     }
 
-    TimelockSet::pack(
+    Proposal::pack(
         new_timelock_set,
         &mut timelock_set_account_info.data.borrow_mut(),
     )?;
@@ -195,7 +195,7 @@ pub fn process_init_timelock_set(
         new_timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;
-    TimelockConfig::pack(
+    Governance::pack(
         timelock_config,
         &mut timelock_config_account_info.data.borrow_mut(),
     )?;

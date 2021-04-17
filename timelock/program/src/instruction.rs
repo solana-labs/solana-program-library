@@ -11,16 +11,16 @@ use crate::{
     },
 };
 
-/// Instructions supported by the Timelock program.
+/// Instructions supported by the Governance program.
 #[derive(Clone)]
 #[allow(clippy::large_enum_variant)]
-pub enum TimelockInstruction {
-    /// Initializes a new empty Timelocked set of Instructions that will be executed at various slots in the future in draft mode.
+pub enum GovernanceInstruction {
+    /// Initializes a new empty Proposal for Instructions that will be executed at various slots in the future in draft mode.
     /// Grants Admin token to caller.
     ///
-    ///   0. `[writable]` Uninitialized Timelock state account .
-    ///   1. `[writable]` Uninitialized Timelock set account .
-    ///   2. `[writable]` Initialized Timelock config account.
+    ///   0. `[writable]` Uninitialized Proposal state account .
+    ///   1. `[writable]` Uninitialized Proposal account .
+    ///   2. `[writable]` Initialized Governance account.
     ///   3. `[writable]` Initialized Signatory Mint account
     ///   4. `[writable]` Initialized Admin Mint account
     ///   5. `[writable]` Initialized Voting Mint account
@@ -35,10 +35,10 @@ pub enum TimelockInstruction {
     ///   14. `[writable]` Initialized No voting dump account
     ///   15. `[writable]` Initialized source holding account
     ///   16. `[]` Source mint
-    ///   17. `[]` Timelock minting authority (pda with seed of timelock set key)
+    ///   17. `[]` Governance minting authority (pda with seed of Proposal  key)
     ///   18. '[]` Token program id
     ///   19. `[]` Rent sysvar
-    InitTimelockSet {
+    InitProposal {
         /// Link to gist explaining proposal
         desc_link: [u8; DESC_SIZE],
         /// name of proposal
@@ -46,7 +46,7 @@ pub enum TimelockInstruction {
     },
 
     /// [Requires Admin token]
-    /// Adds a signatory to the Timelock which means that this timelock can't leave Draft state until yet another signatory burns
+    /// Adds a signatory to the Proposal which means that this Proposal can't leave Draft state until yet another signatory burns
     /// their signatory token indicating they are satisfied with the instruction queue. They'll receive an signatory token
     /// as a result of this call that they can burn later.
     ///
@@ -54,10 +54,10 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Initialized Signatory mint account.
     ///   2. `[writable]` Admin account.
     ///   3. `[writable]` Admin validation account.
-    ///   5. `[writable]` Timelock state account.
-    ///   6. `[]` Timelock set account.
+    ///   5. `[writable]` Proposal state account.
+    ///   6. `[]` Proposal account.
     ///   7. `[]` Transfer authority
-    ///   8. `[]` Timelock program mint authority (pda of seed with timelock set)
+    ///   8. `[]` Governance program mint authority (pda of seed with Proposal key)
     ///   9. '[]` Token program id.
     AddSigner,
 
@@ -68,27 +68,27 @@ pub enum TimelockInstruction {
     ///   1. `[writable]` Signatory mint account.
     ///   2. `[writable]` Admin account.
     ///   3. `[writable]` Admin validation account.
-    ///   4. `[writable]` Timelock state account.
-    ///   5. `[]` Timelock set account.
+    ///   4. `[writable]` Proposal state account.
+    ///   5. `[]` Proposal account.
     ///   6. `[]` Transfer authority
-    ///   7. `[]` Timelock program mint authority (pda of seed with timelock set key)
+    ///   7. `[]` Governance program mint authority (pda of seed with Proposal key)
     ///   8. '[]` Token program id.
     RemoveSigner,
 
     /// [Requires Signatory token]
-    /// Adds a Transaction to the Timelock Set. Max of 5 of any Transaction type. More than 5 will throw error.
+    /// Adds a Transaction to the Proposal Max of 5 of any Transaction type. More than 5 will throw error.
     /// Creates a PDA using your authority to be used to later execute the instruction.
     /// This transaction needs to contain authority to execute the program.
     ///
-    ///   0. `[writable]` Uninitialized Timelock Transaction account.
-    ///   1. `[writable]` Timelock state account.
+    ///   0. `[writable]` Uninitialized Proposal Transaction account.
+    ///   1. `[writable]` Proposal state account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Timelock Set account.
-    ///   5. `[]` Timelock Config account.
+    ///   4. `[]` Proposal account.
+    ///   5. `[]` Governance account.
     ///   6. `[]` Transfer authority
-    ///   7. `[]` Timelock mint authority
-    ///   8. `[]` Timelock program account.
+    ///   7. `[]` Governance mint authority
+    ///   8. `[]` Governance program account.
     ///   9. `[]` Token program account.
     AddCustomSingleSignerTransaction {
         /// Slot during which this will run
@@ -102,28 +102,28 @@ pub enum TimelockInstruction {
     },
 
     /// [Requires Signatory token]
-    /// Remove Transaction from the Timelock Set.
+    /// Remove Transaction from the Proposal.
     ///
-    ///   0. `[writable]` Timelock state account.
-    ///   1. `[writable]` Timelock Transaction account.
+    ///   0. `[writable]` Proposal state account.
+    ///   1. `[writable]` Proposal Transaction account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   5. `[]` Timelock set.
+    ///   5. `[]` Proposal.
     ///   6. `[]` Transfer Authority.
-    ///   7. `[]` Timelock mint authority (pda of seed timelock set key)
+    ///   7. `[]` Governance mint authority (pda of seed Proposal  key)
     ///   9. `[]` Token program account.
     RemoveTransaction,
 
     /// [Requires Signatory token]
-    /// Update Transaction slot in the Timelock Set. Useful during reset periods.
+    /// Update Transaction slot in the Proposal. Useful during reset periods.
     ///
-    ///   1. `[writable]` Timelock Transaction account.
+    ///   1. `[writable]` Proposal Transaction account.
     ///   2. `[writable]` Signatory account
     ///   3. `[writable]` Signatory validation account.
-    ///   4. `[]` Timelock state account.
-    ///   5. `[]` Timelock set account.
+    ///   4. `[]` Proposal state account.
+    ///   5. `[]` Proposal account.
     ///   6. `[]` Transfer authority.
-    ///   7. `[]` Timelock mint authority (pda with seed of timelock set key)
+    ///   7. `[]` Governance mint authority (pda with seed of Proposal key)
     ///   8. `[]` Token program account.
     UpdateTransactionSlot {
         /// On what slot this transaction slot will now run
@@ -131,27 +131,27 @@ pub enum TimelockInstruction {
     },
 
     /// [Requires Admin token]
-    /// Delete Timelock set entirely.
+    /// Delete Proposal entirely.
     ///
-    ///   0. `[writable]` Timelock state account pub key.
+    ///   0. `[writable]` Proposal state account pub key.
     ///   1. `[writable]` Admin account
     ///   2. `[writable]` Admin validation account.
-    ///   3. `[]` Timelock set account pub key.
+    ///   3. `[]` Proposal account pub key.
     ///   4. `[]` Transfer authority.
-    ///   5. `[]` Timelock mint authority (pda with seed of timelock set key)
+    ///   5. `[]` Governance mint authority (pda with seed of Proposal key)
     ///   6. `[]` Token program account.
-    DeleteTimelockSet,
+    DeleteProposal,
 
     /// [Requires Signatory token]
-    /// Burns signatory token, indicating you approve of moving this Timelock set from Draft state to Voting state.
+    /// Burns signatory token, indicating you approve of moving this Proposal from Draft state to Voting state.
     /// The last Signatory token to be burned moves the state to Voting.
     ///
-    ///   0. `[writable]` Timelock state account pub key.
+    ///   0. `[writable]` Proposal state account pub key.
     ///   1. `[writable]` Signatory account
     ///   2. `[writable]` Signatory mint account.
-    ///   3. `[]` Timelock set account pub key.
+    ///   3. `[]` Proposal account pub key.
     ///   4. `[]` Transfer authority
-    ///   5. `[]` Timelock mint authority (pda of seed timelock set key)
+    ///   5. `[]` Governance mint authority (pda of seed Proposal key)
     ///   7. `[]` Token program account.
     ///   8. `[]` Clock sysvar.
     Sign,
@@ -162,8 +162,8 @@ pub enum TimelockInstruction {
     ///
     ///   0. `[writable]` Governance voting record account.
     ///                   Can be uninitialized or initialized(if already used once in this proposal)
-    ///                   Must have address with PDA having seed tuple [timelock acct key, proposal key, your voting account key]
-    ///   1. `[writable]` Timelock state account.
+    ///                   Must have address with PDA having seed tuple [Governance acct key, proposal key, your voting account key]
+    ///   1. `[writable]` Proposal state account.
     ///   2. `[writable]` Your Voting account.
     ///   3. `[writable]` Your Yes-Voting account.
     ///   4. `[writable]` Your No-Voting account.
@@ -171,10 +171,10 @@ pub enum TimelockInstruction {
     ///   6. `[writable]` Yes Voting mint account.
     ///   7. `[writable]` No Voting mint account.
     ///   8. `[]` Source mint account
-    ///   9. `[]` Timelock set account.
-    ///   10. `[]` Timelock config account.
+    ///   9. `[]` Proposal account.
+    ///   10. `[]` Governance account.
     ///   12. `[]` Transfer authority
-    ///   13. `[]` Timelock program mint authority (pda of seed timelock set key)
+    ///   13. `[]` Governance program mint authority (pda of seed Proposal key)
     ///   14. `[]` Token program account.
     ///   15. `[]` Clock sysvar.
     Vote {
@@ -184,14 +184,14 @@ pub enum TimelockInstruction {
         no_voting_token_amount: u64,
     },
 
-    /// Executes a command in the timelock set.
+    /// Executes a command in the Proposal
     ///
     ///   0. `[writable]` Transaction account you wish to execute.
-    ///   1. `[writable]` Timelock state account.
+    ///   1. `[writable]` Proposal state account.
     ///   2. `[]` Program being invoked account
-    ///   3. `[]` Timelock set account.
-    ///   4. `[]` Timelock config
-    ///   5. `[]` Timelock program account pub key.
+    ///   3. `[]` Proposal account.
+    ///   4. `[]` Governance account
+    ///   5. `[]` Governance program account pub key.
     ///   6. `[]` Clock sysvar.
     ///   7+ Any extra accounts that are part of the instruction, in order
     Execute {
@@ -199,7 +199,7 @@ pub enum TimelockInstruction {
         number_of_extra_accounts: u8,
     },
 
-    /// [Requires tokens of the Governance mint or Council mint depending on type of TimelockSet]
+    /// [Requires tokens of the Governance mint or Council mint depending on type of Proposal]
     /// Deposits voting tokens to be used during the voting process in a timelock.
     /// These tokens are removed from your account and can be returned by withdrawing
     /// them from the timelock (but then you will miss the vote.)
@@ -209,7 +209,7 @@ pub enum TimelockInstruction {
     ///   2. `[writable]` User token account to deposit tokens from.
     ///   3. `[writable]` Source holding account for timelock that will accept the tokens in escrow.
     ///   4. `[writable]` Voting mint account.
-    ///   5. `[]` Timelock set account.
+    ///   5. `[]` Proposal account.
     ///   6. `[]` Transfer authority
     ///   7. `[]` Timelock program mint authority (pda with seed of timelock set key)
     ///   8. `[]` Token program account.
@@ -233,7 +233,7 @@ pub enum TimelockInstruction {
     ///   9. `[writable]` Yes Voting mint account.
     ///   10. `[writable]` No Voting mint account.
     ///   11. `[]` Timelock state account.
-    ///   12. `[]` Timelock set account.
+    ///   12. `[]` Proposal account.
     ///   13. `[]` Transfer authority
     ///   14. `[]` Timelock program mint authority (pda of seed timelock set key)
     ///   15. `[]` Token program account.
@@ -247,7 +247,7 @@ pub enum TimelockInstruction {
     ///   1. `[]` Program account that this config uses
     ///   2. `[]` Governance mint that this config uses
     ///   3. `[]` Council mint that this config uses [Optional]
-    InitTimelockConfig {
+    InitGovernance {
         /// Vote threshold in % required to tip the vote
         vote_threshold: u8,
         /// Execution type
@@ -271,7 +271,7 @@ pub enum TimelockInstruction {
     ///   3. `[]` Payer
     ///   4. `[]` System account.
     ///   5. `[]` Council mint to tie this config to [Optional]
-    CreateEmptyTimelockConfig,
+    CreateEmptyGovernance,
 
     ///   0. `[]` Governance voting record key. Needs to be set with pubkey set to PDA with seeds of the
     ///           program account key, proposal key, your voting account key.
@@ -283,8 +283,8 @@ pub enum TimelockInstruction {
     CreateEmptyGovernanceVotingRecord,
 }
 
-impl TimelockInstruction {
-    /// Unpacks a byte buffer into a [TimelockInstruction](enum.TimelockInstruction.html).
+impl GovernanceInstruction {
+    /// Unpacks a byte buffer into a [GovernanceInstruction](enum.GovernanceInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (&tag, rest) = input
             .split_first()
@@ -297,7 +297,7 @@ impl TimelockInstruction {
 
                 desc_link[..(DESC_SIZE - 1)].clone_from_slice(&input_desc_link[..(DESC_SIZE - 1)]);
                 name[..(NAME_SIZE - 1)].clone_from_slice(&input_name[..(NAME_SIZE - 1)]);
-                Self::InitTimelockSet { desc_link, name }
+                Self::InitProposal { desc_link, name }
             }
             2 => Self::AddSigner,
             3 => Self::RemoveSigner,
@@ -318,7 +318,7 @@ impl TimelockInstruction {
                 let (slot, _) = Self::unpack_u64(rest)?;
                 Self::UpdateTransactionSlot { slot }
             }
-            7 => Self::DeleteTimelockSet,
+            7 => Self::DeleteProposal,
             8 => Self::Sign,
             9 => {
                 let (yes_voting_token_amount, rest) = Self::unpack_u64(rest)?;
@@ -341,7 +341,7 @@ impl TimelockInstruction {
                 let mut name = [0u8; CONFIG_NAME_LENGTH];
                 name[..(CONFIG_NAME_LENGTH - 1)]
                     .clone_from_slice(&rest[..(CONFIG_NAME_LENGTH - 1)]);
-                Self::InitTimelockConfig {
+                Self::InitGovernance {
                     vote_threshold,
                     execution_type,
                     timelock_type,
@@ -369,7 +369,7 @@ impl TimelockInstruction {
                     voting_token_amount,
                 }
             }
-            14 => Self::CreateEmptyTimelockConfig,
+            14 => Self::CreateEmptyGovernance,
             15 => Self::CreateEmptyGovernanceVotingRecord,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
@@ -433,12 +433,12 @@ impl TimelockInstruction {
         }
     }
 
-    /// Packs a [TimelockInstruction](enum.TimelockInstruction.html) into a byte buffer.
+    /// Packs a [GovernanceInstruction](enum.GovernanceInstruction.html) into a byte buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
 
         match self {
-            Self::InitTimelockSet { desc_link, name } => {
+            Self::InitProposal { desc_link, name } => {
                 buf.push(1);
                 buf.extend_from_slice(desc_link);
                 buf.extend_from_slice(name);
@@ -462,7 +462,7 @@ impl TimelockInstruction {
                 buf.push(6);
                 buf.extend_from_slice(&slot.to_le_bytes());
             }
-            Self::DeleteTimelockSet => buf.push(7),
+            Self::DeleteProposal => buf.push(7),
             Self::Sign => buf.push(8),
             Self::Vote {
                 yes_voting_token_amount,
@@ -472,7 +472,7 @@ impl TimelockInstruction {
                 buf.extend_from_slice(&yes_voting_token_amount.to_le_bytes());
                 buf.extend_from_slice(&no_voting_token_amount.to_le_bytes());
             }
-            Self::InitTimelockConfig {
+            Self::InitGovernance {
                 vote_threshold,
                 execution_type,
                 timelock_type,
@@ -508,7 +508,7 @@ impl TimelockInstruction {
                 buf.push(13);
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
-            Self::CreateEmptyTimelockConfig => buf.push(14),
+            Self::CreateEmptyGovernance => buf.push(14),
             Self::CreateEmptyGovernanceVotingRecord => buf.push(15),
         }
         buf

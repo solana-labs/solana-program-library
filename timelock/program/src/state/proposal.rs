@@ -9,7 +9,7 @@ use crate::state::enums::GovernanceAccountType;
 
 /// Single instance of a timelock
 #[derive(Clone)]
-pub struct TimelockSet {
+pub struct Proposal {
     /// Account type
     pub account_type: GovernanceAccountType,
 
@@ -61,15 +61,15 @@ pub struct TimelockSet {
     pub no_voting_dump: Pubkey,
 }
 
-impl Sealed for TimelockSet {}
-impl IsInitialized for TimelockSet {
+impl Sealed for Proposal {}
+impl IsInitialized for Proposal {
     fn is_initialized(&self) -> bool {
         self.account_type != GovernanceAccountType::Uninitialized
     }
 }
 
 const TIMELOCK_SET_LEN: usize = 1 + 32 * 15 + 300;
-impl Pack for TimelockSet {
+impl Pack for Proposal {
     const LEN: usize = 1 + 32 * 15 + 300;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {

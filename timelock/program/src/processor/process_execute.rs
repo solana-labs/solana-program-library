@@ -1,14 +1,14 @@
 //! Program state processor
 use crate::{
     error::TimelockError,
-    state::timelock_config::TimelockConfig,
+    state::timelock_config::Governance,
     state::{
         custom_single_signer_timelock_transaction::{
             CustomSingleSignerTimelockTransaction, MAX_ACCOUNTS_ALLOWED,
         },
         enums::TimelockStateStatus,
+        proposal::Proposal,
         timelock_config::TIMELOCK_CONFIG_LEN,
-        timelock_set::TimelockSet,
         timelock_state::TimelockState,
     },
     utils::{assert_account_equiv, assert_executing, assert_initialized, execute, ExecuteParams},
@@ -40,8 +40,8 @@ pub fn process_execute(
     let clock_info = next_account_info(account_info_iter)?;
 
     let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
-    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
-    let timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
+    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
+    let timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
     let clock = &Clock::from_account_info(clock_info)?;
     // For now we assume all transactions are CustomSingleSignerTransactions even though
     // this will not always be the case...we need to solve that inheritance issue later.
@@ -85,12 +85,12 @@ pub fn process_execute(
         let next_account = next_account_info(account_info_iter)?.clone();
         if next_account.data_len() == TIMELOCK_CONFIG_LEN {
             // You better be initialized, and if you are, you better at least be mine...
-            let _nefarious_config: TimelockConfig = assert_initialized(&next_account)?;
+            let _nefarious_config: Governance = assert_initialized(&next_account)?;
             assert_account_equiv(&next_account, &timelock_set.config)?;
             added_authority = true;
 
             if next_account.key != &governance_authority {
-                return Err(TimelockError::InvalidTimelockConfigKey.into());
+                return Err(TimelockError::InvalidGovernanceKey.into());
             }
         }
         account_infos.push(next_account);
@@ -100,7 +100,7 @@ pub fn process_execute(
 
     if !added_authority {
         if timelock_config_account_info.key != &governance_authority {
-            return Err(TimelockError::InvalidTimelockConfigKey.into());
+            return Err(TimelockError::InvalidGovernanceKey.into());
         }
         account_infos.push(timelock_config_account_info.clone());
     }

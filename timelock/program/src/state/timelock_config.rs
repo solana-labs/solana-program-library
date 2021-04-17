@@ -17,7 +17,7 @@ use solana_program::{
 pub const CONFIG_NAME_LENGTH: usize = 32;
 /// Timelock Config
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct TimelockConfig {
+pub struct Governance {
     /// Account type
     pub account_type: GovernanceAccountType,
     /// Voting threshold in % required to tip the vote
@@ -44,8 +44,8 @@ pub struct TimelockConfig {
     pub count: u32,
 }
 
-impl Sealed for TimelockConfig {}
-impl IsInitialized for TimelockConfig {
+impl Sealed for Governance {}
+impl IsInitialized for Governance {
     fn is_initialized(&self) -> bool {
         self.account_type != GovernanceAccountType::Uninitialized
     }
@@ -55,7 +55,7 @@ impl IsInitialized for TimelockConfig {
 pub const TIMELOCK_CONFIG_LEN: usize =
     1 + 1 + 1 + 1 + 1 + 8 + 32 + 33 + 32 + 8 + CONFIG_NAME_LENGTH + 4 + 295;
 
-impl Pack for TimelockConfig {
+impl Pack for Governance {
     const LEN: usize = 1 + 1 + 1 + 1 + 1 + 8 + 32 + 33 + 32 + 8 + CONFIG_NAME_LENGTH + 4 + 295;
     /// Unpacks a byte buffer into a [TimelockProgram](struct.TimelockProgram.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {

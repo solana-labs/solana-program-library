@@ -2,7 +2,7 @@
 use crate::{
     error::TimelockError,
     state::enums::{ExecutionType, GovernanceAccountType, TimelockType, VotingEntryRule},
-    state::timelock_config::{TimelockConfig, CONFIG_NAME_LENGTH},
+    state::timelock_config::{Governance, CONFIG_NAME_LENGTH},
     utils::assert_uninitialized,
     PROGRAM_AUTHORITY_SEED,
 };
@@ -44,10 +44,9 @@ pub fn process_init_timelock_config(
     ];
     let (config_key, _) = Pubkey::find_program_address(seeds, program_id);
     if timelock_config_account_info.key != &config_key {
-        return Err(TimelockError::InvalidTimelockConfigKey.into());
+        return Err(TimelockError::InvalidGovernanceKey.into());
     }
-    let mut new_timelock_config: TimelockConfig =
-        assert_uninitialized(timelock_config_account_info)?;
+    let mut new_timelock_config: Governance = assert_uninitialized(timelock_config_account_info)?;
     new_timelock_config.account_type = GovernanceAccountType::Governance;
     new_timelock_config.name = name;
     new_timelock_config.minimum_slot_waiting_period = minimum_slot_waiting_period;
@@ -73,7 +72,7 @@ pub fn process_init_timelock_config(
         _ => VotingEntryRule::Anytime,
     };
 
-    TimelockConfig::pack(
+    Governance::pack(
         new_timelock_config,
         &mut timelock_config_account_info.data.borrow_mut(),
     )?;

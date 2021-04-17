@@ -1,7 +1,7 @@
 //! Program state processor
 use crate::{
     error::TimelockError,
-    state::{enums::TimelockStateStatus, timelock_set::TimelockSet, timelock_state::TimelockState},
+    state::{enums::TimelockStateStatus, proposal::Proposal, timelock_state::TimelockState},
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
         spl_token_burn, TokenBurnParams,
@@ -32,7 +32,7 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
 
     let clock = Clock::from_account_info(clock_info)?;
     let mut timelock_state: TimelockState = assert_initialized(timelock_state_account_info)?;
-    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     let sig_mint: Mint = assert_initialized(signatory_mint_info)?;
     assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
     assert_account_equiv(signatory_mint_info, &timelock_set.signatory_mint)?;

@@ -3,7 +3,7 @@
 use crate::{
     error::TimelockError,
     state::governance_voting_record::GovernanceVotingRecord,
-    state::{enums::GovernanceAccountType, timelock_set::TimelockSet},
+    state::{enums::GovernanceAccountType, proposal::Proposal},
     utils::{
         assert_account_equiv, assert_initialized, assert_token_program_is_correct,
         spl_token_mint_to, spl_token_transfer, TokenMintToParams, TokenTransferParams,
@@ -35,7 +35,7 @@ pub fn process_deposit_source_tokens(
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let timelock_set: TimelockSet = assert_initialized(timelock_set_account_info)?;
+    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
     assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
 
     assert_account_equiv(source_holding_account_info, &timelock_set.source_holding)?;
