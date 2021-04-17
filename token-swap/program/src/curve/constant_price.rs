@@ -1,19 +1,20 @@
 //! Simple constant price swap curve, set at init
 
-use crate::{
-    curve::calculator::{
-        map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
-        TradeDirection, TradingTokenResult,
+use {
+    crate::{
+        curve::calculator::{
+            map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
+            TradeDirection, TradingTokenResult,
+        },
+        error::SwapError,
     },
-    curve::math::CheckedCeilDiv,
-    error::SwapError,
+    arrayref::{array_mut_ref, array_ref},
+    solana_program::{
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack, Sealed},
+    },
+    spl_math::{checked_ceil_div::CheckedCeilDiv, precise_number::PreciseNumber, uint::U256},
 };
-use arrayref::{array_mut_ref, array_ref};
-use solana_program::{
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
-};
-use spl_math::{precise_number::PreciseNumber, uint::U256};
 
 /// ConstantPriceCurve struct implementing CurveCalculator
 #[derive(Clone, Debug, Default, PartialEq)]

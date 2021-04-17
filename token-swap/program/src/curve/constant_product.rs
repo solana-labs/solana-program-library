@@ -6,14 +6,13 @@ use {
             map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
             TradeDirection, TradingTokenResult,
         },
-        curve::math::CheckedCeilDiv,
         error::SwapError,
     },
     solana_program::{
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack, Sealed},
     },
-    spl_math::precise_number::PreciseNumber,
+    spl_math::{checked_ceil_div::CheckedCeilDiv, precise_number::PreciseNumber},
 };
 
 /// ConstantProductCurve struct implementing CurveCalculator

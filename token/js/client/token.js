@@ -1431,7 +1431,7 @@ export class Token {
           decimals,
           mintAuthority: pubkeyToBuffer(mintAuthority),
           option: freezeAuthority === null ? 0 : 1,
-          freezeAuthority: pubkeyToBuffer(freezeAuthority || new PublicKey()),
+          freezeAuthority: pubkeyToBuffer(freezeAuthority || new PublicKey(0)),
         },
         data,
       );
@@ -1673,7 +1673,7 @@ export class Token {
           instruction: 6, // SetAuthority instruction
           authorityType: AuthorityTypeCodes[authorityType],
           option: newAuthority === null ? 0 : 1,
-          newAuthority: pubkeyToBuffer(newAuthority || new PublicKey()),
+          newAuthority: pubkeyToBuffer(newAuthority || new PublicKey(0)),
         },
         data,
       );
