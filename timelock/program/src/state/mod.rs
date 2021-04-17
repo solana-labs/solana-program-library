@@ -1,5 +1,3 @@
-const UNINITIALIZED_VERSION: u8 = 0;
-
 /// Enums
 pub mod enums;
 

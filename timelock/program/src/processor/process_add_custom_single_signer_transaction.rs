@@ -3,9 +3,9 @@ use crate::{
     error::TimelockError,
     state::{
         custom_single_signer_timelock_transaction::{
-            CustomSingleSignerTimelockTransaction,
-            CUSTOM_SINGLE_SIGNER_TIMELOCK_TRANSACTION_VERSION, INSTRUCTION_LIMIT,
+            CustomSingleSignerTimelockTransaction, INSTRUCTION_LIMIT,
         },
+        enums::GovernanceAccountType,
         timelock_config::TimelockConfig,
         timelock_set::TimelockSet,
         timelock_state::{TimelockState, MAX_TRANSACTIONS},
@@ -78,7 +78,7 @@ pub fn process_add_custom_single_signer_transaction(
         return Err(TimelockError::MustBeAboveMinimumWaitingPeriod.into());
     };
 
-    timelock_txn.version = CUSTOM_SINGLE_SIGNER_TIMELOCK_TRANSACTION_VERSION;
+    timelock_txn.account_type = GovernanceAccountType::CustomSingleSignerTransaction;
     timelock_txn.slot = slot;
     timelock_txn.instruction = instruction;
     timelock_txn.instruction_end_index = instruction_end_index;

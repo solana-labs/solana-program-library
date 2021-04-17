@@ -1,20 +1,23 @@
 /// Defines all persistent struct types and their versions
 #[derive(Clone, Debug, PartialEq)]
 pub enum GovernanceAccountType {
-    /// 0 - Default state
+    /// 0 - Default uninitialized account state
     Uninitialized,
 
-    /// 1 - Governance configuration record
+    /// 1 - Governance configuration account
     Governance,
 
-    /// 2 - Proposal within given Governance record
+    /// 2 - Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     Proposal,
 
-    /// 3 - Proposal voting state
+    /// 3 - Proposal voting state account. Every Proposal account has exactly one ProposalState account
     ProposalState,
 
-    /// 4 - Vote within given Proposal
+    /// 4 - Vote record account for a given Proposal.  Proposal can have 0..n voting records
     VoteRecord,
+
+    /// 5 Custom Single Signer Transaction account which holds instructions to execute for Proposal
+    CustomSingleSignerTransaction,
 }
 
 impl Default for GovernanceAccountType {
