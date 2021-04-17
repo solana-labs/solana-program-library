@@ -13,8 +13,8 @@ pub struct Proposal {
     /// Account type
     pub account_type: GovernanceAccountType,
 
-    /// configuration values
-    pub config: Pubkey,
+    /// Governance the Proposal belongs to
+    pub governance: Pubkey,
 
     /// Token program used
     pub token_program_id: Pubkey,
@@ -78,7 +78,7 @@ impl Pack for Proposal {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             account_type_value,
-            config,
+            governance,
             token_program_id,
             state,
             signatory_mint,
@@ -104,7 +104,7 @@ impl Pack for Proposal {
         };
         Ok(Self {
             account_type,
-            config: Pubkey::new_from_array(*config),
+            governance: Pubkey::new_from_array(*governance),
             token_program_id: Pubkey::new_from_array(*token_program_id),
             state: Pubkey::new_from_array(*state),
             signatory_mint: Pubkey::new_from_array(*signatory_mint),
@@ -127,7 +127,7 @@ impl Pack for Proposal {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             account_type_value,
-            config,
+            governance,
             token_program_id,
             state,
             signatory_mint,
@@ -154,7 +154,7 @@ impl Pack for Proposal {
         }
         .to_le_bytes();
 
-        config.copy_from_slice(self.config.as_ref());
+        governance.copy_from_slice(self.governance.as_ref());
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
         state.copy_from_slice(self.state.as_ref());
         signatory_mint.copy_from_slice(self.signatory_mint.as_ref());

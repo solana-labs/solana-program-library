@@ -56,7 +56,7 @@ pub fn process_execute(
     }
 
     assert_account_equiv(proposal_state_account_info, &proposal.state)?;
-    assert_account_equiv(governance_account_info, &proposal.config)?;
+    assert_account_equiv(governance_account_info, &proposal.governance)?;
 
     let council_mint_seed = governance
         .council_mint
@@ -84,7 +84,7 @@ pub fn process_execute(
         if next_account.data_len() == GOVERNANCE_LEN {
             // You better be initialized, and if you are, you better at least be mine...
             let _nefarious_config: Governance = assert_initialized(&next_account)?;
-            assert_account_equiv(&next_account, &proposal.config)?;
+            assert_account_equiv(&next_account, &proposal.governance)?;
             added_authority = true;
 
             if next_account.key != &governance_authority {

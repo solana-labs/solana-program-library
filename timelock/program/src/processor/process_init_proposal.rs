@@ -61,7 +61,7 @@ pub fn process_init_proposal(
     let mut governance: Governance = assert_initialized(governance_account_info)?;
 
     new_proposal.account_type = GovernanceAccountType::Proposal;
-    new_proposal.config = *governance_account_info.key;
+    new_proposal.governance = *governance_account_info.key;
     new_proposal.token_program_id = *token_program_info.key;
     new_proposal.state = *proposal_state_account_info.key;
     new_proposal.admin_mint = *admin_mint_account_info.key;

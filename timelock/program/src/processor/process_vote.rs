@@ -54,7 +54,7 @@ pub fn process_vote(
     assert_account_equiv(voting_mint_account_info, &proposal.voting_mint)?;
     assert_account_equiv(yes_voting_mint_account_info, &proposal.yes_voting_mint)?;
     assert_account_equiv(no_voting_mint_account_info, &proposal.no_voting_mint)?;
-    assert_account_equiv(governance_account_info, &proposal.config)?;
+    assert_account_equiv(governance_account_info, &proposal.governance)?;
     assert_account_equiv(proposal_state_account_info, &proposal.state)?;
     assert_account_equiv(source_mint_account_info, &proposal.source_mint)?;
 
