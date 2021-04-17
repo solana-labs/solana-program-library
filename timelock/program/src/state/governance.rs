@@ -1,7 +1,7 @@
 use crate::{
     state::{
         enums::GovernanceAccountType,
-        enums::{ExecutionType, TimelockType, VotingEntryRule},
+        enums::{ExecutionType, GovernanceType, VotingEntryRule},
     },
     utils::{pack_option_key, unpack_option_key},
 };
@@ -25,7 +25,7 @@ pub struct Governance {
     /// Execution type
     pub execution_type: ExecutionType,
     /// Timelock Type
-    pub governance_type: TimelockType,
+    pub governance_type: GovernanceType,
     /// Voting entry rule
     pub voting_entry_rule: VotingEntryRule,
     /// Minimum slot time-distance from creation of proposal for an instruction to be placed
@@ -115,8 +115,8 @@ impl Pack for Governance {
                 _ => ExecutionType::Independent,
             },
             governance_type: match governance_type {
-                0 => TimelockType::Governance,
-                _ => TimelockType::Governance,
+                0 => GovernanceType::Governance,
+                _ => GovernanceType::Governance,
             },
             voting_entry_rule: match voting_entry_rule {
                 0 => VotingEntryRule::Anytime,
@@ -181,7 +181,7 @@ impl Pack for Governance {
         }
         .to_le_bytes();
         *governance_type = match self.governance_type {
-            TimelockType::Governance => 0_u8,
+            GovernanceType::Governance => 0_u8,
         }
         .to_le_bytes();
         *voting_entry_rule = match self.voting_entry_rule {

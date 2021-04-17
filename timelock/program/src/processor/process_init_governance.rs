@@ -1,7 +1,7 @@
 //! Program state processor
 use crate::{
     error::GovernanceError,
-    state::enums::{ExecutionType, GovernanceAccountType, TimelockType, VotingEntryRule},
+    state::enums::{ExecutionType, GovernanceAccountType, GovernanceType, VotingEntryRule},
     state::governance::{Governance, CONFIG_NAME_LENGTH},
     utils::assert_uninitialized,
     PROGRAM_AUTHORITY_SEED,
@@ -63,8 +63,8 @@ pub fn process_init_governance(
     };
 
     new_governance.governance_type = match governance_type {
-        0 => TimelockType::Governance,
-        _ => TimelockType::Governance,
+        0 => GovernanceType::Governance,
+        _ => GovernanceType::Governance,
     };
 
     new_governance.voting_entry_rule = match voting_entry_rule {
