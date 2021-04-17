@@ -1,9 +1,7 @@
 //! Program state processor
 use crate::{
     error::TimelockError,
-    state::enums::{
-        ConsensusAlgorithm, ExecutionType, GovernanceAccountType, TimelockType, VotingEntryRule,
-    },
+    state::enums::{ExecutionType, GovernanceAccountType, TimelockType, VotingEntryRule},
     state::timelock_config::{TimelockConfig, CONFIG_NAME_LENGTH},
     utils::assert_uninitialized,
     PROGRAM_AUTHORITY_SEED,
@@ -20,7 +18,7 @@ use solana_program::{
 pub fn process_init_timelock_config(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    consensus_algorithm: u8,
+    vote_threshold: u8,
     execution_type: u8,
     timelock_type: u8,
     voting_entry_rule: u8,
@@ -59,12 +57,7 @@ pub fn process_init_timelock_config(
 
     new_timelock_config.council_mint = council_mint;
 
-    new_timelock_config.consensus_algorithm = match consensus_algorithm {
-        0 => ConsensusAlgorithm::Majority,
-        1 => ConsensusAlgorithm::SuperMajority,
-        2 => ConsensusAlgorithm::FullConsensus,
-        _ => ConsensusAlgorithm::Majority,
-    };
+    new_timelock_config.vote_threshold = vote_threshold;
     new_timelock_config.execution_type = match execution_type {
         0 => ExecutionType::Independent,
         _ => ExecutionType::Independent,

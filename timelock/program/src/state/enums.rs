@@ -26,22 +26,6 @@ impl Default for GovernanceAccountType {
     }
 }
 
-/// What kind of consensus algo a timelock uses
-#[derive(Clone, Debug, PartialEq)]
-pub enum ConsensusAlgorithm {
-    /// Run if 51% of tokens are burned in favor of the timelock set
-    Majority,
-    /// Run if 66% of tokens are burned in favor
-    SuperMajority,
-    /// Run only if 100% of tokens are burned in favor
-    FullConsensus,
-}
-
-impl Default for ConsensusAlgorithm {
-    fn default() -> Self {
-        ConsensusAlgorithm::Majority
-    }
-}
 
 /// What type of execution a timelock is
 #[derive(Clone, Debug, PartialEq)]
