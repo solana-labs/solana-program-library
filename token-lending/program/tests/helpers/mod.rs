@@ -477,7 +477,7 @@ pub fn add_token_account_for_flash_loan_receiver(
         },
         &spl_token::id(),
     );
-    program_owned_token_account.pubkey();
+    program_owned_token_account.pubkey()
 }
 
 pub struct TestLendingMarket {
