@@ -5,13 +5,14 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::state::UNINITIALIZED_VERSION;
+use crate::state::enums::GovernanceAccountType;
 
-/// STRUCT VERSION
-pub const TIMELOCK_SET_VERSION: u8 = 1;
 /// Single instance of a timelock
 #[derive(Clone)]
 pub struct TimelockSet {
+    /// Account type
+    pub account_type: GovernanceAccountType,
+
     /// configuration values
     pub config: Pubkey,
 
@@ -20,9 +21,6 @@ pub struct TimelockSet {
 
     /// state values
     pub state: Pubkey,
-
-    /// Version of the struct
-    pub version: u8,
 
     /// Mint that creates signatory tokens of this instruction
     /// If there are outstanding signatory tokens, then cannot leave draft state. Signatories must burn tokens (ie agree
@@ -66,7 +64,7 @@ pub struct TimelockSet {
 impl Sealed for TimelockSet {}
 impl IsInitialized for TimelockSet {
     fn is_initialized(&self) -> bool {
-        self.version != UNINITIALIZED_VERSION
+        self.account_type != GovernanceAccountType::Uninitialized
     }
 }
 
@@ -79,10 +77,10 @@ impl Pack for TimelockSet {
         // TODO think up better way than txn_* usage here - new to rust
         #[allow(clippy::ptr_offset_with_cast)]
         let (
+            account_type_value,
             config,
             token_program_id,
             state,
-            version,
             signatory_mint,
             admin_mint,
             voting_mint,
@@ -96,39 +94,42 @@ impl Pack for TimelockSet {
             yes_voting_dump,
             no_voting_dump,
             _padding,
-        ) = array_refs![input, 32, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
-        let version = u8::from_le_bytes(*version);
-        match version {
-            TIMELOCK_SET_VERSION | UNINITIALIZED_VERSION => Ok(Self {
-                config: Pubkey::new_from_array(*config),
-                token_program_id: Pubkey::new_from_array(*token_program_id),
-                state: Pubkey::new_from_array(*state),
-                version,
-                signatory_mint: Pubkey::new_from_array(*signatory_mint),
-                admin_mint: Pubkey::new_from_array(*admin_mint),
-                voting_mint: Pubkey::new_from_array(*voting_mint),
-                yes_voting_mint: Pubkey::new_from_array(*yes_voting_mint),
-                no_voting_mint: Pubkey::new_from_array(*no_voting_mint),
-                source_mint: Pubkey::new_from_array(*source_mint),
-                signatory_validation: Pubkey::new_from_array(*signatory_validation),
-                admin_validation: Pubkey::new_from_array(*admin_validation),
-                voting_validation: Pubkey::new_from_array(*voting_validation),
-                source_holding: Pubkey::new_from_array(*source_holding),
-                yes_voting_dump: Pubkey::new_from_array(*yes_voting_dump),
-                no_voting_dump: Pubkey::new_from_array(*no_voting_dump),
-            }),
-            _ => Err(ProgramError::InvalidAccountData),
-        }
+        ) = array_refs![input, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300];
+        let account_type = u8::from_le_bytes(*account_type_value);
+
+        let account_type = match account_type {
+            0 => GovernanceAccountType::Uninitialized,
+            2 => GovernanceAccountType::Proposal,
+            _ => return Err(ProgramError::InvalidAccountData),
+        };
+        Ok(Self {
+            account_type,
+            config: Pubkey::new_from_array(*config),
+            token_program_id: Pubkey::new_from_array(*token_program_id),
+            state: Pubkey::new_from_array(*state),
+            signatory_mint: Pubkey::new_from_array(*signatory_mint),
+            admin_mint: Pubkey::new_from_array(*admin_mint),
+            voting_mint: Pubkey::new_from_array(*voting_mint),
+            yes_voting_mint: Pubkey::new_from_array(*yes_voting_mint),
+            no_voting_mint: Pubkey::new_from_array(*no_voting_mint),
+            source_mint: Pubkey::new_from_array(*source_mint),
+            signatory_validation: Pubkey::new_from_array(*signatory_validation),
+            admin_validation: Pubkey::new_from_array(*admin_validation),
+            voting_validation: Pubkey::new_from_array(*voting_validation),
+            source_holding: Pubkey::new_from_array(*source_holding),
+            yes_voting_dump: Pubkey::new_from_array(*yes_voting_dump),
+            no_voting_dump: Pubkey::new_from_array(*no_voting_dump),
+        })
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, TIMELOCK_SET_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
+            account_type_value,
             config,
             token_program_id,
             state,
-            version,
             signatory_mint,
             admin_mint,
             voting_mint,
@@ -143,12 +144,19 @@ impl Pack for TimelockSet {
             no_voting_dump,
             _padding,
         ) = mut_array_refs![
-            output, 32, 32, 32, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300
+            output, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 300
         ];
+
+        *account_type_value = match self.account_type {
+            GovernanceAccountType::Uninitialized => 0_u8,
+            GovernanceAccountType::Proposal => 2_u8,
+            _ => panic!("Account type was invalid"),
+        }
+        .to_le_bytes();
+
         config.copy_from_slice(self.config.as_ref());
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
         state.copy_from_slice(self.state.as_ref());
-        *version = self.version.to_le_bytes();
         signatory_mint.copy_from_slice(self.signatory_mint.as_ref());
         admin_mint.copy_from_slice(self.admin_mint.as_ref());
         voting_mint.copy_from_slice(self.voting_mint.as_ref());

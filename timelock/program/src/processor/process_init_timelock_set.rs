@@ -4,8 +4,9 @@ use crate::utils::{assert_account_owner, assert_mint_authority, assert_mint_owne
 use crate::{
     error::TimelockError,
     state::{
+        enums::GovernanceAccountType,
         timelock_config::TimelockConfig,
-        timelock_set::{TimelockSet, TIMELOCK_SET_VERSION},
+        timelock_set::TimelockSet,
         timelock_state::{TimelockState, TIMELOCK_STATE_VERSION},
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
@@ -59,7 +60,7 @@ pub fn process_init_timelock_set(
     let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
     let mut timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
 
-    new_timelock_set.version = TIMELOCK_SET_VERSION;
+    new_timelock_set.account_type = GovernanceAccountType::Proposal;
     new_timelock_set.config = *timelock_config_account_info.key;
     new_timelock_set.token_program_id = *token_program_info.key;
     new_timelock_set.state = *timelock_state_account_info.key;
