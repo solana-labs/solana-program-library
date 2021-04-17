@@ -10,7 +10,10 @@ pub enum GovernanceAccountType {
     /// 2 - Proposal within given Governance record
     Proposal,
 
-    /// 3 - Vote within given Proposal
+    /// 3 - Proposal voting state
+    ProposalState,
+
+    /// 4 - Vote within given Proposal
     VoteRecord,
 }
 

@@ -1,6 +1,6 @@
-use crate::state::{enums, UNINITIALIZED_VERSION};
+use crate::state::enums::{GovernanceAccountType, TimelockStateStatus};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use enums::TimelockStateStatus;
+
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
@@ -13,16 +13,15 @@ pub const MAX_TRANSACTIONS: usize = 5;
 pub const DESC_SIZE: usize = 200;
 /// How many characters are allowed in the name
 pub const NAME_SIZE: usize = 32;
-///Timelock state version
-pub const TIMELOCK_STATE_VERSION: u8 = 1;
+
 /// Timelock state
 #[derive(Clone)]
 pub struct TimelockState {
+    /// Account type
+    pub account_type: GovernanceAccountType,
+
     /// timelock set key
     pub timelock_set: Pubkey,
-
-    ///version
-    pub version: u8,
 
     /// Current state of the invoked instruction account
     pub status: TimelockStateStatus,
@@ -64,7 +63,7 @@ pub struct TimelockState {
 impl Sealed for TimelockState {}
 impl IsInitialized for TimelockState {
     fn is_initialized(&self) -> bool {
-        self.version != UNINITIALIZED_VERSION
+        self.account_type != GovernanceAccountType::Uninitialized
     }
 }
 const TIMELOCK_STATE_LEN: usize = 32
@@ -104,8 +103,8 @@ impl Pack for TimelockState {
         // TODO think up better way than txn_* usage here - new to rust
         #[allow(clippy::ptr_offset_with_cast)]
         let (
+            account_type_value,
             timelock_set,
-            version,
             timelock_state_status,
             total_signing_tokens_minted,
             desc_link,
@@ -124,9 +123,16 @@ impl Pack for TimelockState {
             timelock_txn_5,
             _padding,
         ) = array_refs![
-            input, 32, 1, 1, 8, DESC_SIZE, NAME_SIZE, 8, 8, 8, 8, 8, 1, 1, 32, 32, 32, 32, 32, 300
+            input, 1, 32, 1, 8, DESC_SIZE, NAME_SIZE, 8, 8, 8, 8, 8, 1, 1, 32, 32, 32, 32, 32, 300
         ];
-        let version = u8::from_le_bytes(*version);
+        let account_type = u8::from_le_bytes(*account_type_value);
+
+        let account_type = match account_type {
+            0 => GovernanceAccountType::Uninitialized,
+            3 => GovernanceAccountType::ProposalState,
+            _ => return Err(ProgramError::InvalidAccountData),
+        };
+
         let total_signing_tokens_minted = u64::from_le_bytes(*total_signing_tokens_minted);
         let timelock_state_status = u8::from_le_bytes(*timelock_state_status);
         let voting_ended_at = u64::from_le_bytes(*voting_ended_at);
@@ -136,46 +142,44 @@ impl Pack for TimelockState {
         let deleted_at = u64::from_le_bytes(*deleted_at);
         let number_of_executed_transactions = u8::from_le_bytes(*number_of_executed_transactions);
         let number_of_transactions = u8::from_le_bytes(*number_of_transactions);
-        match version {
-            TIMELOCK_STATE_VERSION | UNINITIALIZED_VERSION => Ok(Self {
-                version,
-                timelock_set: Pubkey::new_from_array(*timelock_set),
-                status: match timelock_state_status {
-                    0 => TimelockStateStatus::Draft,
-                    1 => TimelockStateStatus::Voting,
-                    2 => TimelockStateStatus::Executing,
-                    3 => TimelockStateStatus::Completed,
-                    4 => TimelockStateStatus::Deleted,
-                    _ => TimelockStateStatus::Draft,
-                },
-                total_signing_tokens_minted,
-                timelock_transactions: [
-                    Pubkey::new_from_array(*timelock_txn_1),
-                    Pubkey::new_from_array(*timelock_txn_2),
-                    Pubkey::new_from_array(*timelock_txn_3),
-                    Pubkey::new_from_array(*timelock_txn_4),
-                    Pubkey::new_from_array(*timelock_txn_5),
-                ],
-                desc_link: *desc_link,
-                name: *name,
-                voting_ended_at,
-                voting_began_at,
-                created_at,
-                completed_at,
-                deleted_at,
-                number_of_executed_transactions,
-                number_of_transactions,
-            }),
-            _ => Err(ProgramError::InvalidAccountData),
-        }
+
+        Ok(Self {
+            account_type,
+            timelock_set: Pubkey::new_from_array(*timelock_set),
+            status: match timelock_state_status {
+                0 => TimelockStateStatus::Draft,
+                1 => TimelockStateStatus::Voting,
+                2 => TimelockStateStatus::Executing,
+                3 => TimelockStateStatus::Completed,
+                4 => TimelockStateStatus::Deleted,
+                _ => TimelockStateStatus::Draft,
+            },
+            total_signing_tokens_minted,
+            timelock_transactions: [
+                Pubkey::new_from_array(*timelock_txn_1),
+                Pubkey::new_from_array(*timelock_txn_2),
+                Pubkey::new_from_array(*timelock_txn_3),
+                Pubkey::new_from_array(*timelock_txn_4),
+                Pubkey::new_from_array(*timelock_txn_5),
+            ],
+            desc_link: *desc_link,
+            name: *name,
+            voting_ended_at,
+            voting_began_at,
+            created_at,
+            completed_at,
+            deleted_at,
+            number_of_executed_transactions,
+            number_of_transactions,
+        })
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, TIMELOCK_STATE_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
+            account_type_value,
             timelock_set,
-            version,
             timelock_state_status,
             total_signing_tokens_minted,
             desc_link,
@@ -194,9 +198,16 @@ impl Pack for TimelockState {
             timelock_txn_5,
             _padding,
         ) = mut_array_refs![
-            output, 32, 1, 1, 8, DESC_SIZE, NAME_SIZE, 8, 8, 8, 8, 8, 1, 1, 32, 32, 32, 32, 32, 300
+            output, 1, 32, 1, 8, DESC_SIZE, NAME_SIZE, 8, 8, 8, 8, 8, 1, 1, 32, 32, 32, 32, 32, 300
         ];
-        *version = self.version.to_le_bytes();
+
+        *account_type_value = match self.account_type {
+            GovernanceAccountType::Uninitialized => 0_u8,
+            GovernanceAccountType::ProposalState => 3_u8,
+            _ => panic!("Account type was invalid"),
+        }
+        .to_le_bytes();
+
         timelock_set.copy_from_slice(self.timelock_set.as_ref());
 
         *timelock_state_status = match self.status {

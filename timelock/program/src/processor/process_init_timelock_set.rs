@@ -7,7 +7,7 @@ use crate::{
         enums::GovernanceAccountType,
         timelock_config::TimelockConfig,
         timelock_set::TimelockSet,
-        timelock_state::{TimelockState, TIMELOCK_STATE_VERSION},
+        timelock_state::TimelockState,
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
@@ -76,7 +76,8 @@ pub fn process_init_timelock_set(
     new_timelock_set.admin_validation = *admin_validation_account_info.key;
     new_timelock_set.voting_validation = *voting_validation_account_info.key;
     new_timelock_set.signatory_validation = *signatory_validation_account_info.key;
-    new_timelock_state.version = TIMELOCK_STATE_VERSION;
+
+    new_timelock_state.account_type = GovernanceAccountType::ProposalState;
     new_timelock_state.timelock_set = *timelock_set_account_info.key;
     new_timelock_state.desc_link = desc_link;
     new_timelock_state.name = name;
