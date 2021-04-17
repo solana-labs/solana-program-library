@@ -2,7 +2,7 @@
 use crate::{
     error::TimelockError,
     state::proposal::Proposal,
-    state::timelock_state::TimelockState,
+    state::proposal_state::TimelockState,
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,
         assert_token_program_is_correct, spl_token_burn, TokenBurnParams,

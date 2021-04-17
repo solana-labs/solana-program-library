@@ -1,6 +1,6 @@
 use crate::{
     error::TimelockError,
-    state::{enums::TimelockStateStatus, proposal::Proposal, timelock_state::TimelockState},
+    state::{enums::TimelockStateStatus, proposal::Proposal, proposal_state::TimelockState},
     PROGRAM_AUTHORITY_SEED,
 };
 use arrayref::{array_ref, array_refs, mut_array_refs};

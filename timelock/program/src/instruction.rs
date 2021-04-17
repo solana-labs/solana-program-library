@@ -7,7 +7,7 @@ use crate::{
     state::{
         custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT,
         governance::CONFIG_NAME_LENGTH,
-        timelock_state::{DESC_SIZE, NAME_SIZE},
+        proposal_state::{DESC_SIZE, NAME_SIZE},
     },
 };
 

@@ -1,7 +1,7 @@
 //! Program state processor
 use crate::{
     state::proposal::Proposal,
-    state::timelock_state::TimelockState,
+    state::proposal_state::TimelockState,
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,
         assert_token_program_is_correct, assert_txn_in_state,

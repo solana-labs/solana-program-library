@@ -9,7 +9,7 @@ use crate::{
         enums::TimelockStateStatus,
         governance::TIMELOCK_CONFIG_LEN,
         proposal::Proposal,
-        timelock_state::TimelockState,
+        proposal_state::TimelockState,
     },
     utils::{assert_account_equiv, assert_executing, assert_initialized, execute, ExecuteParams},
     PROGRAM_AUTHORITY_SEED,

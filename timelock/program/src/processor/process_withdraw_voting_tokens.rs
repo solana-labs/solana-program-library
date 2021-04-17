@@ -3,7 +3,7 @@
 use crate::{
     error::TimelockError,
     state::governance_voting_record::GovernanceVotingRecord,
-    state::{enums::TimelockStateStatus, proposal::Proposal, timelock_state::TimelockState},
+    state::{enums::TimelockStateStatus, proposal::Proposal, proposal_state::TimelockState},
     utils::{
         assert_account_equiv, assert_initialized, assert_token_program_is_correct, spl_token_burn,
         spl_token_transfer, TokenBurnParams, TokenTransferParams,

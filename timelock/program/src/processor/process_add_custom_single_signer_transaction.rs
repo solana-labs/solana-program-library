@@ -8,7 +8,7 @@ use crate::{
         enums::GovernanceAccountType,
         governance::Governance,
         proposal::Proposal,
-        timelock_state::{TimelockState, MAX_TRANSACTIONS},
+        proposal_state::{TimelockState, MAX_TRANSACTIONS},
     },
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,

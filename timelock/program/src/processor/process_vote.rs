@@ -4,7 +4,7 @@ use crate::{
     state::{
         enums::TimelockStateStatus, governance::Governance,
         governance_voting_record::GovernanceVotingRecord, proposal::Proposal,
-        timelock_state::TimelockState,
+        proposal_state::TimelockState,
     },
     utils::{
         assert_account_equiv, assert_initialized, assert_voting, get_mint_supply, spl_token_burn,

@@ -5,10 +5,10 @@ use crate::{
     error::TimelockError,
     state::{
         enums::GovernanceAccountType,
-        proposal::Proposal,
         governance::Governance,
-        timelock_state::TimelockState,
-        timelock_state::{DESC_SIZE, NAME_SIZE},
+        proposal::Proposal,
+        proposal_state::TimelockState,
+        proposal_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
         assert_account_mint, assert_initialized, assert_mint_decimals, assert_mint_initialized,

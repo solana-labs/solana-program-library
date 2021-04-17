@@ -1,7 +1,7 @@
 //! Program state processor
 use crate::{
     error::TimelockError,
-    state::{enums::TimelockStateStatus, proposal::Proposal, timelock_state::TimelockState},
+    state::{enums::TimelockStateStatus, proposal::Proposal, proposal_state::TimelockState},
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
         spl_token_burn, TokenBurnParams,

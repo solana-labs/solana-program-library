@@ -10,8 +10,8 @@ pub mod governance;
 /// Proposal
 pub mod proposal;
 
-/// Timelock state
-pub mod timelock_state;
+/// Proposal state
+pub mod proposal_state;
 
 /// Governance Voting Record
 pub mod governance_voting_record;
