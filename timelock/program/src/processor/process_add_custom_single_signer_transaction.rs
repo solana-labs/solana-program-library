@@ -3,12 +3,12 @@ use crate::{
     error::TimelockError,
     state::{
         custom_single_signer_timelock_transaction::{
-            CustomSingleSignerTimelockTransaction,
-            CUSTOM_SINGLE_SIGNER_TIMELOCK_TRANSACTION_VERSION, INSTRUCTION_LIMIT,
+            CustomSingleSignerTimelockTransaction, INSTRUCTION_LIMIT,
         },
+        enums::GovernanceAccountType,
         timelock_config::TimelockConfig,
         timelock_set::TimelockSet,
-        timelock_state::{TimelockState, TRANSACTION_SLOTS},
+        timelock_state::{TimelockState, MAX_TRANSACTIONS},
     },
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_is_permissioned,
@@ -49,7 +49,7 @@ pub fn process_add_custom_single_signer_transaction(
     let mut timelock_txn: CustomSingleSignerTimelockTransaction =
         assert_uninitialized(timelock_txn_account_info)?;
 
-    if position as usize >= TRANSACTION_SLOTS {
+    if position as usize >= MAX_TRANSACTIONS {
         return Err(TimelockError::TooHighPositionInTxnArrayError.into());
     }
 
@@ -78,15 +78,16 @@ pub fn process_add_custom_single_signer_transaction(
         return Err(TimelockError::MustBeAboveMinimumWaitingPeriod.into());
     };
 
-    timelock_txn.version = CUSTOM_SINGLE_SIGNER_TIMELOCK_TRANSACTION_VERSION;
+    timelock_txn.account_type = GovernanceAccountType::CustomSingleSignerTransaction;
     timelock_txn.slot = slot;
     timelock_txn.instruction = instruction;
     timelock_txn.instruction_end_index = instruction_end_index;
     timelock_state.timelock_transactions[position as usize] = *timelock_txn_account_info.key;
-    timelock_state.used_txn_slots = match timelock_state.used_txn_slots.checked_add(1) {
-        Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
-    };
+    timelock_state.number_of_transactions =
+        match timelock_state.number_of_transactions.checked_add(1) {
+            Some(val) => val,
+            None => return Err(TimelockError::NumericalOverflow.into()),
+        };
 
     TimelockState::pack(
         timelock_state,

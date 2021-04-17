@@ -76,7 +76,7 @@ pub enum TimelockInstruction {
     RemoveSigner,
 
     /// [Requires Signatory token]
-    /// Adds a Transaction to the Timelock Set. Max of 10 of any Transaction type. More than 10 will throw error.
+    /// Adds a Transaction to the Timelock Set. Max of 5 of any Transaction type. More than 5 will throw error.
     /// Creates a PDA using your authority to be used to later execute the instruction.
     /// This transaction needs to contain authority to execute the program.
     ///
@@ -183,9 +183,6 @@ pub enum TimelockInstruction {
         /// How many voting tokens to burn no
         no_voting_token_amount: u64,
     },
-
-    /// Only used for testing. Requires no accounts of any kind.
-    Ping,
 
     /// Executes a command in the timelock set.
     ///
@@ -354,27 +351,26 @@ impl TimelockInstruction {
                     time_limit,
                 }
             }
-            11 => Self::Ping,
-            12 => {
+            11 => {
                 let (number_of_extra_accounts, _) = Self::unpack_u8(rest)?;
                 Self::Execute {
                     number_of_extra_accounts,
                 }
             }
-            13 => {
+            12 => {
                 let (voting_token_amount, _) = Self::unpack_u64(rest)?;
                 Self::DepositSourceTokens {
                     voting_token_amount,
                 }
             }
-            14 => {
+            13 => {
                 let (voting_token_amount, _) = Self::unpack_u64(rest)?;
                 Self::WithdrawVotingTokens {
                     voting_token_amount,
                 }
             }
-            15 => Self::CreateEmptyTimelockConfig,
-            16 => Self::CreateEmptyGovernanceVotingRecord,
+            14 => Self::CreateEmptyTimelockConfig,
+            15 => Self::CreateEmptyGovernanceVotingRecord,
             _ => return Err(TimelockError::InstructionUnpackError.into()),
         })
     }
@@ -494,27 +490,26 @@ impl TimelockInstruction {
                 buf.extend_from_slice(&time_limit.to_le_bytes());
                 buf.extend_from_slice(name);
             }
-            Self::Ping => buf.push(11),
             Self::Execute {
                 number_of_extra_accounts,
             } => {
-                buf.push(12);
+                buf.push(11);
                 buf.extend_from_slice(&number_of_extra_accounts.to_le_bytes());
             }
             Self::DepositSourceTokens {
                 voting_token_amount,
             } => {
-                buf.push(13);
+                buf.push(12);
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
             Self::WithdrawVotingTokens {
                 voting_token_amount,
             } => {
-                buf.push(14);
+                buf.push(13);
                 buf.extend_from_slice(&voting_token_amount.to_le_bytes());
             }
-            Self::CreateEmptyTimelockConfig => buf.push(15),
-            Self::CreateEmptyGovernanceVotingRecord => buf.push(16),
+            Self::CreateEmptyTimelockConfig => buf.push(14),
+            Self::CreateEmptyGovernanceVotingRecord => buf.push(15),
         }
         buf
     }

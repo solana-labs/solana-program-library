@@ -4,7 +4,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
-use super::UNINITIALIZED_VERSION;
+use crate::state::enums::GovernanceAccountType;
 
 /// Max instruction limit for generics
 pub const INSTRUCTION_LIMIT: usize = 450;
@@ -12,16 +12,12 @@ pub const INSTRUCTION_LIMIT: usize = 450;
 /// Max accounts allowed in instruction
 pub const MAX_ACCOUNTS_ALLOWED: usize = 12;
 
-/// STRUCT VERSION
-pub const CUSTOM_SINGLE_SIGNER_TIMELOCK_TRANSACTION_VERSION: u8 = 1;
-
 /// First iteration of generic instruction
 #[derive(Clone)]
 pub struct CustomSingleSignerTimelockTransaction {
-    /// NOTE all Transaction structs MUST have slot as first u64 entry in byte buffer.
-
-    /// version
-    pub version: u8,
+    /// NOTE all Transaction structs MUST have slot as first u64 entry after account_type in byte buffer.
+    /// Account type
+    pub account_type: GovernanceAccountType,
 
     /// Slot waiting time between vote period ending and this being eligible for execution
     pub slot: u64,
@@ -53,7 +49,7 @@ impl PartialEq for CustomSingleSignerTimelockTransaction {
 impl Sealed for CustomSingleSignerTimelockTransaction {}
 impl IsInitialized for CustomSingleSignerTimelockTransaction {
     fn is_initialized(&self) -> bool {
-        self.version != UNINITIALIZED_VERSION
+        self.account_type != GovernanceAccountType::Uninitialized
     }
 }
 const CUSTOM_SINGLE_SIGNER_LEN: usize = 1 + 8 + INSTRUCTION_LIMIT + 1 + 2 + 300;
@@ -63,15 +59,23 @@ impl Pack for CustomSingleSignerTimelockTransaction {
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, CUSTOM_SINGLE_SIGNER_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, slot, instruction, executed, instruction_end_index, _padding) =
+        let (account_type_value, slot, instruction, executed, instruction_end_index, _padding) =
             array_refs![input, 1, 8, INSTRUCTION_LIMIT, 1, 2, 300];
-        let version = u8::from_le_bytes(*version);
+
+        let account_type = u8::from_le_bytes(*account_type_value);
+
+        let account_type = match account_type {
+            0 => GovernanceAccountType::Uninitialized,
+            5 => GovernanceAccountType::CustomSingleSignerTransaction,
+            _ => return Err(ProgramError::InvalidAccountData),
+        };
+
         let slot = u64::from_le_bytes(*slot);
         let executed = u8::from_le_bytes(*executed);
         let instruction_end_index = u16::from_le_bytes(*instruction_end_index);
 
         Ok(CustomSingleSignerTimelockTransaction {
-            version,
+            account_type,
             slot,
             instruction: *instruction,
             executed,
@@ -82,9 +86,16 @@ impl Pack for CustomSingleSignerTimelockTransaction {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, CUSTOM_SINGLE_SIGNER_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (version, slot, instruction, executed, instruction_end_index, _padding) =
+        let (account_type_value, slot, instruction, executed, instruction_end_index, _padding) =
             mut_array_refs![output, 1, 8, INSTRUCTION_LIMIT, 1, 2, 300];
-        *version = self.version.to_le_bytes();
+
+        *account_type_value = match self.account_type {
+            GovernanceAccountType::Uninitialized => 0_u8,
+            GovernanceAccountType::CustomSingleSignerTransaction => 5_u8,
+            _ => panic!("Account type was invalid"),
+        }
+        .to_le_bytes();
+
         *slot = self.slot.to_le_bytes();
         instruction.copy_from_slice(self.instruction.as_ref());
         *executed = self.executed.to_le_bytes();

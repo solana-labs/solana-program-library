@@ -62,10 +62,11 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
         return Err(TimelockError::TimelockTransactionNotFoundError.into());
     }
 
-    timelock_state.used_txn_slots = match timelock_state.used_txn_slots.checked_sub(1) {
-        Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
-    };
+    timelock_state.number_of_transactions =
+        match timelock_state.number_of_transactions.checked_sub(1) {
+            Some(val) => val,
+            None => return Err(TimelockError::NumericalOverflow.into()),
+        };
 
     TimelockState::pack(
         timelock_state,

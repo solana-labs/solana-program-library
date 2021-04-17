@@ -4,9 +4,10 @@ use crate::utils::{assert_account_owner, assert_mint_authority, assert_mint_owne
 use crate::{
     error::TimelockError,
     state::{
+        enums::GovernanceAccountType,
         timelock_config::TimelockConfig,
-        timelock_set::{TimelockSet, TIMELOCK_SET_VERSION},
-        timelock_state::{TimelockState, TIMELOCK_STATE_VERSION},
+        timelock_set::TimelockSet,
+        timelock_state::TimelockState,
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
     utils::{
@@ -59,7 +60,7 @@ pub fn process_init_timelock_set(
     let mut new_timelock_set: TimelockSet = assert_uninitialized(timelock_set_account_info)?;
     let mut timelock_config: TimelockConfig = assert_initialized(timelock_config_account_info)?;
 
-    new_timelock_set.version = TIMELOCK_SET_VERSION;
+    new_timelock_set.account_type = GovernanceAccountType::Proposal;
     new_timelock_set.config = *timelock_config_account_info.key;
     new_timelock_set.token_program_id = *token_program_info.key;
     new_timelock_set.state = *timelock_state_account_info.key;
@@ -75,13 +76,14 @@ pub fn process_init_timelock_set(
     new_timelock_set.admin_validation = *admin_validation_account_info.key;
     new_timelock_set.voting_validation = *voting_validation_account_info.key;
     new_timelock_set.signatory_validation = *signatory_validation_account_info.key;
-    new_timelock_state.version = TIMELOCK_STATE_VERSION;
+
+    new_timelock_state.account_type = GovernanceAccountType::ProposalState;
     new_timelock_state.timelock_set = *timelock_set_account_info.key;
     new_timelock_state.desc_link = desc_link;
     new_timelock_state.name = name;
     new_timelock_state.total_signing_tokens_minted = 1;
-    new_timelock_state.executions = 0;
-    new_timelock_state.used_txn_slots = 0;
+    new_timelock_state.number_of_executed_transactions = 0;
+    new_timelock_state.number_of_transactions = 0;
     timelock_config.count = match timelock_config.count.checked_add(1) {
         Some(val) => val,
         None => return Err(TimelockError::NumericalOverflow.into()),

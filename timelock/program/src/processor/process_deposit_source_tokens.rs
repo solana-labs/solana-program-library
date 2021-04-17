@@ -2,8 +2,8 @@
 
 use crate::{
     error::TimelockError,
-    state::governance_voting_record::{GovernanceVotingRecord, GOVERNANCE_VOTING_RECORD_VERSION},
-    state::timelock_set::TimelockSet,
+    state::governance_voting_record::GovernanceVotingRecord,
+    state::{enums::GovernanceAccountType, timelock_set::TimelockSet},
     utils::{
         assert_account_equiv, assert_initialized, assert_token_program_is_correct,
         spl_token_mint_to, spl_token_transfer, TokenMintToParams, TokenTransferParams,
@@ -90,9 +90,11 @@ pub fn process_deposit_source_tokens(
         GovernanceVotingRecord::unpack_unchecked(&voting_record_account_info.data.borrow())?;
     if !voting_record.is_initialized() {
         let voting_account: Account = assert_initialized(voting_account_info)?;
+
+        voting_record.account_type = GovernanceAccountType::VoteRecord;
         voting_record.proposal = *timelock_set_account_info.key;
         voting_record.owner = voting_account.owner;
-        voting_record.version = GOVERNANCE_VOTING_RECORD_VERSION;
+
         voting_record.undecided_count = voting_token_amount;
         voting_record.yes_count = 0;
         voting_record.no_count = 0;
