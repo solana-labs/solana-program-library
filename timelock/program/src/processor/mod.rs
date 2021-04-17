@@ -5,8 +5,8 @@ pub mod process_create_empty_governance_voting_record;
 pub mod process_delete_proposal;
 pub mod process_deposit_source_tokens;
 pub mod process_execute;
-pub mod process_init_timelock_config;
-pub mod process_init_timelock_set;
+pub mod process_init_governance;
+pub mod process_init_proposal;
 pub mod process_remove_signer;
 pub mod process_remove_transaction;
 pub mod process_sign;
@@ -22,8 +22,8 @@ use process_create_empty_governance_voting_record::process_create_empty_governan
 use process_delete_proposal::process_delete_proposal;
 use process_deposit_source_tokens::process_deposit_source_tokens;
 use process_execute::process_execute;
-use process_init_timelock_config::process_init_timelock_config;
-use process_init_timelock_set::process_init_timelock_set;
+use process_init_governance::process_init_governance;
+use process_init_proposal::process_init_proposal;
 use process_remove_signer::process_remove_signer;
 use process_remove_transaction::process_remove_transaction;
 use process_sign::process_sign;
@@ -42,7 +42,7 @@ pub fn process_instruction(
     match instruction {
         GovernanceInstruction::InitProposal { name, desc_link } => {
             msg!("Instruction: Init Timelock Set");
-            process_init_timelock_set(program_id, accounts, name, desc_link)
+            process_init_proposal(program_id, accounts, name, desc_link)
         }
         GovernanceInstruction::AddSigner => {
             msg!("Instruction: Add Signer");
@@ -103,7 +103,7 @@ pub fn process_instruction(
             name,
         } => {
             msg!("Instruction: Initialize Timelock Config");
-            process_init_timelock_config(
+            process_init_governance(
                 program_id,
                 accounts,
                 vote_threshold,

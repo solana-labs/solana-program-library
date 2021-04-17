@@ -26,7 +26,7 @@ use solana_program::{
 };
 
 /// Create a new timelock set
-pub fn process_init_timelock_set(
+pub fn process_init_proposal(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     name: [u8; NAME_SIZE],

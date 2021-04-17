@@ -15,7 +15,7 @@ use solana_program::{
 
 /// Init timelock config
 #[allow(clippy::too_many_arguments)]
-pub fn process_init_timelock_config(
+pub fn process_init_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     vote_threshold: u8,
