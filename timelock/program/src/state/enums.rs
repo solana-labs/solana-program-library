@@ -1,6 +1,6 @@
 /// Defines all persistent struct types and their versions
 #[derive(Clone, Debug, PartialEq)]
-pub enum GovernanceStructType {
+pub enum GovernanceAccountType {
     /// 0 - Default state
     Uninitialized,
 
@@ -14,9 +14,9 @@ pub enum GovernanceStructType {
     VoteRecord,
 }
 
-impl Default for GovernanceStructType {
+impl Default for GovernanceAccountType {
     fn default() -> Self {
-        GovernanceStructType::Uninitialized
+        GovernanceAccountType::Uninitialized
     }
 }
 

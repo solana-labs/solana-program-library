@@ -1,6 +1,6 @@
 use crate::{
     state::{
-        enums::GovernanceStructType,
+        enums::GovernanceAccountType,
         enums::{ConsensusAlgorithm, ExecutionType, TimelockType, VotingEntryRule},
     },
     utils::{pack_option_key, unpack_option_key},
@@ -18,8 +18,8 @@ pub const CONFIG_NAME_LENGTH: usize = 32;
 /// Timelock Config
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TimelockConfig {
-    ///version
-    pub struct_type: GovernanceStructType,
+    /// Account type
+    pub account_type: GovernanceAccountType,
     /// Consensus Algorithm
     pub consensus_algorithm: ConsensusAlgorithm,
     /// Execution type
@@ -47,7 +47,7 @@ pub struct TimelockConfig {
 impl Sealed for TimelockConfig {}
 impl IsInitialized for TimelockConfig {
     fn is_initialized(&self) -> bool {
-        self.struct_type != GovernanceStructType::Uninitialized
+        self.account_type != GovernanceAccountType::Uninitialized
     }
 }
 
@@ -63,7 +63,7 @@ impl Pack for TimelockConfig {
         // TODO think up better way than txn_* usage here - new to rust
         #[allow(clippy::ptr_offset_with_cast)]
         let (
-            struct_type_value,
+            account_type_value,
             consensus_algorithm,
             execution_type,
             timelock_type,
@@ -92,7 +92,7 @@ impl Pack for TimelockConfig {
             4,
             295
         ];
-        let struct_type_value = u8::from_le_bytes(*struct_type_value);
+        let account_type = u8::from_le_bytes(*account_type_value);
         let consensus_algorithm = u8::from_le_bytes(*consensus_algorithm);
         let execution_type = u8::from_le_bytes(*execution_type);
         let timelock_type = u8::from_le_bytes(*timelock_type);
@@ -101,14 +101,14 @@ impl Pack for TimelockConfig {
         let time_limit = u64::from_le_bytes(*time_limit);
         let count = u32::from_le_bytes(*count);
 
-        let struct_type = match struct_type_value {
-            0 => GovernanceStructType::Uninitialized,
-            1 => GovernanceStructType::Governance,
+        let account_type = match account_type {
+            0 => GovernanceAccountType::Uninitialized,
+            1 => GovernanceAccountType::Governance,
             _ => return Err(ProgramError::InvalidAccountData),
         };
 
         Ok(Self {
-            struct_type,
+            account_type,
             consensus_algorithm: match consensus_algorithm {
                 0 => ConsensusAlgorithm::Majority,
                 1 => ConsensusAlgorithm::SuperMajority,
@@ -143,7 +143,7 @@ impl Pack for TimelockConfig {
         let output = array_mut_ref![output, 0, TIMELOCK_CONFIG_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
-            struct_type_value,
+            account_type_value,
             consensus_algorithm,
             execution_type,
             timelock_type,
@@ -172,9 +172,9 @@ impl Pack for TimelockConfig {
             4,
             295
         ];
-        *struct_type_value = match self.struct_type {
-            GovernanceStructType::Uninitialized => 0_u8,
-            GovernanceStructType::Governance => 1_u8,
+        *account_type_value = match self.account_type {
+            GovernanceAccountType::Uninitialized => 0_u8,
+            GovernanceAccountType::Governance => 1_u8,
             _ => panic!("Account type was invalid"),
         }
         .to_le_bytes();

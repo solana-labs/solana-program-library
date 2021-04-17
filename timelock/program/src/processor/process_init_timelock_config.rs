@@ -2,7 +2,7 @@
 use crate::{
     error::TimelockError,
     state::enums::{
-        ConsensusAlgorithm, ExecutionType, GovernanceStructType, TimelockType, VotingEntryRule,
+        ConsensusAlgorithm, ExecutionType, GovernanceAccountType, TimelockType, VotingEntryRule,
     },
     state::timelock_config::{TimelockConfig, CONFIG_NAME_LENGTH},
     utils::assert_uninitialized,
@@ -50,7 +50,7 @@ pub fn process_init_timelock_config(
     }
     let mut new_timelock_config: TimelockConfig =
         assert_uninitialized(timelock_config_account_info)?;
-    new_timelock_config.struct_type = GovernanceStructType::Governance;
+    new_timelock_config.account_type = GovernanceAccountType::Governance;
     new_timelock_config.name = name;
     new_timelock_config.minimum_slot_waiting_period = minimum_slot_waiting_period;
     new_timelock_config.time_limit = time_limit;
