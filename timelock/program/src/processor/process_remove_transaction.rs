@@ -19,7 +19,7 @@ use solana_program::{
 pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let proposal_state_account_info = next_account_info(account_info_iter)?;
-    let timelock_txn_account_info = next_account_info(account_info_iter)?;
+    let proposal_txn_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
     let proposal_account_info = next_account_info(account_info_iter)?;
@@ -49,7 +49,7 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
     let mut found: bool = false;
     for n in 0..proposal_state.timelock_transactions.len() {
         if proposal_state.timelock_transactions[n].to_bytes()
-            == timelock_txn_account_info.key.to_bytes()
+            == proposal_txn_account_info.key.to_bytes()
         {
             let zeros: [u8; 32] = [0; 32];
             proposal_state.timelock_transactions[n] = Pubkey::new_from_array(zeros);

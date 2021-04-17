@@ -116,11 +116,11 @@ impl Pack for ProposalState {
             deleted_at,
             number_of_executed_transactions,
             number_of_transactions,
-            timelock_txn_1,
-            timelock_txn_2,
-            timelock_txn_3,
-            timelock_txn_4,
-            timelock_txn_5,
+            proposal_txn_1,
+            proposal_txn_2,
+            proposal_txn_3,
+            proposal_txn_4,
+            proposal_txn_5,
             _padding,
         ) = array_refs![
             input, 1, 32, 1, 8, DESC_SIZE, NAME_SIZE, 8, 8, 8, 8, 8, 1, 1, 32, 32, 32, 32, 32, 300
@@ -156,11 +156,11 @@ impl Pack for ProposalState {
             },
             total_signing_tokens_minted,
             timelock_transactions: [
-                Pubkey::new_from_array(*timelock_txn_1),
-                Pubkey::new_from_array(*timelock_txn_2),
-                Pubkey::new_from_array(*timelock_txn_3),
-                Pubkey::new_from_array(*timelock_txn_4),
-                Pubkey::new_from_array(*timelock_txn_5),
+                Pubkey::new_from_array(*proposal_txn_1),
+                Pubkey::new_from_array(*proposal_txn_2),
+                Pubkey::new_from_array(*proposal_txn_3),
+                Pubkey::new_from_array(*proposal_txn_4),
+                Pubkey::new_from_array(*proposal_txn_5),
             ],
             desc_link: *desc_link,
             name: *name,
@@ -191,11 +191,11 @@ impl Pack for ProposalState {
             deleted_at,
             number_of_executed_transactions,
             number_of_transactions,
-            timelock_txn_1,
-            timelock_txn_2,
-            timelock_txn_3,
-            timelock_txn_4,
-            timelock_txn_5,
+            proposal_txn_1,
+            proposal_txn_2,
+            proposal_txn_3,
+            proposal_txn_4,
+            proposal_txn_5,
             _padding,
         ) = mut_array_refs![
             output, 1, 32, 1, 8, DESC_SIZE, NAME_SIZE, 8, 8, 8, 8, 8, 1, 1, 32, 32, 32, 32, 32, 300
@@ -229,11 +229,11 @@ impl Pack for ProposalState {
         *deleted_at = self.deleted_at.to_le_bytes();
         *number_of_executed_transactions = self.number_of_executed_transactions.to_le_bytes();
         *number_of_transactions = self.number_of_transactions.to_le_bytes();
-        timelock_txn_1.copy_from_slice(self.timelock_transactions[0].as_ref());
-        timelock_txn_2.copy_from_slice(self.timelock_transactions[1].as_ref());
-        timelock_txn_3.copy_from_slice(self.timelock_transactions[2].as_ref());
-        timelock_txn_4.copy_from_slice(self.timelock_transactions[3].as_ref());
-        timelock_txn_5.copy_from_slice(self.timelock_transactions[4].as_ref());
+        proposal_txn_1.copy_from_slice(self.timelock_transactions[0].as_ref());
+        proposal_txn_2.copy_from_slice(self.timelock_transactions[1].as_ref());
+        proposal_txn_3.copy_from_slice(self.timelock_transactions[2].as_ref());
+        proposal_txn_4.copy_from_slice(self.timelock_transactions[3].as_ref());
+        proposal_txn_5.copy_from_slice(self.timelock_transactions[4].as_ref());
     }
 
     fn get_packed_len() -> usize {

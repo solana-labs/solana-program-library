@@ -21,7 +21,7 @@ pub fn process_update_transaction_slot(
     new_slot: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let timelock_txn_account_info = next_account_info(account_info_iter)?;
+    let proposal_txn_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
     let proposal_state_account_info = next_account_info(account_info_iter)?;
@@ -49,10 +49,10 @@ pub fn process_update_transaction_slot(
         transfer_authority_info,
         timelock_authority_account_info,
     )?;
-    assert_txn_in_state(&proposal_state, timelock_txn_account_info)?;
+    assert_txn_in_state(&proposal_state, proposal_txn_account_info)?;
 
     // All transactions have slot as first byte, adjust it.
-    let mut mutable_data = timelock_txn_account_info.data.borrow_mut();
+    let mut mutable_data = proposal_txn_account_info.data.borrow_mut();
     let original_slot_slice = array_mut_ref![mutable_data, 0, 8];
     original_slot_slice.copy_from_slice(&new_slot.to_le_bytes());
 

@@ -144,12 +144,12 @@ pub fn assert_token_program_is_correct(
 /// asserts timelock txn is in Proposal
 pub fn assert_txn_in_state(
     proposal_state: &ProposalState,
-    timelock_txn_account_info: &AccountInfo,
+    proposal_txn_account_info: &AccountInfo,
 ) -> ProgramResult {
     let mut found: bool = false;
     for n in 0..proposal_state.timelock_transactions.len() {
         if proposal_state.timelock_transactions[n].to_bytes()
-            == timelock_txn_account_info.key.to_bytes()
+            == proposal_txn_account_info.key.to_bytes()
         {
             found = true;
             break;

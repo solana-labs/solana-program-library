@@ -30,7 +30,7 @@ pub fn process_add_custom_single_signer_transaction(
     instruction_end_index: u16,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let timelock_txn_account_info = next_account_info(account_info_iter)?;
+    let proposal_txn_account_info = next_account_info(account_info_iter)?;
     let proposal_state_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
@@ -44,8 +44,8 @@ pub fn process_add_custom_single_signer_transaction(
     let proposal: Proposal = assert_initialized(proposal_account_info)?;
     let governance: Governance = assert_initialized(governance_account_info)?;
 
-    let mut timelock_txn: CustomSingleSignerTransaction =
-        assert_uninitialized(timelock_txn_account_info)?;
+    let mut proposal_txn: CustomSingleSignerTransaction =
+        assert_uninitialized(proposal_txn_account_info)?;
 
     if position as usize >= MAX_TRANSACTIONS {
         return Err(TimelockError::TooHighPositionInTxnArrayError.into());
@@ -76,11 +76,11 @@ pub fn process_add_custom_single_signer_transaction(
         return Err(TimelockError::MustBeAboveMinimumWaitingPeriod.into());
     };
 
-    timelock_txn.account_type = GovernanceAccountType::CustomSingleSignerTransaction;
-    timelock_txn.slot = slot;
-    timelock_txn.instruction = instruction;
-    timelock_txn.instruction_end_index = instruction_end_index;
-    proposal_state.timelock_transactions[position as usize] = *timelock_txn_account_info.key;
+    proposal_txn.account_type = GovernanceAccountType::CustomSingleSignerTransaction;
+    proposal_txn.slot = slot;
+    proposal_txn.instruction = instruction;
+    proposal_txn.instruction_end_index = instruction_end_index;
+    proposal_state.timelock_transactions[position as usize] = *proposal_txn_account_info.key;
     proposal_state.number_of_transactions =
         match proposal_state.number_of_transactions.checked_add(1) {
             Some(val) => val,
@@ -93,8 +93,8 @@ pub fn process_add_custom_single_signer_transaction(
     )?;
 
     CustomSingleSignerTransaction::pack(
-        timelock_txn,
-        &mut timelock_txn_account_info.data.borrow_mut(),
+        proposal_txn,
+        &mut proposal_txn_account_info.data.borrow_mut(),
     )?;
 
     Ok(())
