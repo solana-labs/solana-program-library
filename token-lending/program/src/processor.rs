@@ -27,7 +27,6 @@ use solana_program::{
 };
 use spl_token::state::{Account as Token, Account};
 use spl_token::solana_program::instruction::AccountMeta;
-use std::path::Iter;
 
 /// Processes an instruction
 pub fn process_instruction(
