@@ -13,8 +13,8 @@ use {
     },
     solana_vote_program::{self, vote_state::VoteState},
     spl_stake_pool::{
-        borsh::get_instance_packed_len, find_stake_program_address, id, instruction, processor,
-        stake_program, state,
+        borsh::{get_instance_packed_len, try_from_slice_unchecked},
+        find_stake_program_address, id, instruction, processor, stake_program, state,
     },
 };
 
@@ -154,14 +154,17 @@ pub async fn mint_tokens(
 }
 
 pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -> u64 {
-    let token_account = banks_client
-        .get_account(token.clone())
-        .await
-        .unwrap()
-        .unwrap();
+    let token_account = banks_client.get_account(*token).await.unwrap().unwrap();
     let account_info: spl_token::state::Account =
         spl_token::state::Account::unpack_from_slice(token_account.data.as_slice()).unwrap();
     account_info.amount
+}
+
+pub async fn get_token_supply(banks_client: &mut BanksClient, mint: &Pubkey) -> u64 {
+    let mint_account = banks_client.get_account(*mint).await.unwrap().unwrap();
+    let account_info =
+        spl_token::state::Mint::unpack_from_slice(mint_account.data.as_slice()).unwrap();
+    account_info.supply
 }
 
 pub async fn delegate_tokens(
@@ -559,7 +562,7 @@ impl StakePoolAccounts {
         pool_account: &Pubkey,
         validator_stake_account: &Pubkey,
     ) -> Result<(), TransportError> {
-        let mut transaction = Transaction::new_with_payer(
+        let transaction = Transaction::new_signed_with_payer(
             &[instruction::deposit(
                 &id(),
                 &self.stake_pool.pubkey(),
@@ -569,14 +572,14 @@ impl StakePoolAccounts {
                 stake,
                 validator_stake_account,
                 pool_account,
-                &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
             )
             .unwrap()],
             Some(&payer.pubkey()),
+            &[payer],
+            *recent_blockhash,
         );
-        transaction.sign(&[payer], *recent_blockhash);
         banks_client.process_transaction(transaction).await?;
         Ok(())
     }
@@ -612,6 +615,50 @@ impl StakePoolAccounts {
         transaction.sign(&[payer], *recent_blockhash);
         banks_client.process_transaction(transaction).await?;
         Ok(())
+    }
+
+    pub async fn update_validator_list_balance(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        validator_list: &[Pubkey],
+    ) -> Option<TransportError> {
+        let transaction = Transaction::new_signed_with_payer(
+            &[instruction::update_validator_list_balance(
+                &id(),
+                &self.validator_list.pubkey(),
+                validator_list,
+            )
+            .unwrap()],
+            Some(&payer.pubkey()),
+            &[payer],
+            *recent_blockhash,
+        );
+        banks_client.process_transaction(transaction).await.err()
+    }
+
+    pub async fn update_stake_pool_balance(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+    ) -> Option<TransportError> {
+        let transaction = Transaction::new_signed_with_payer(
+            &[instruction::update_stake_pool_balance(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.validator_list.pubkey(),
+                &self.withdraw_authority,
+                &self.pool_fee_account.pubkey(),
+                &self.pool_mint.pubkey(),
+            )
+            .unwrap()],
+            Some(&payer.pubkey()),
+            &[payer],
+            *recent_blockhash,
+        );
+        banks_client.process_transaction(transaction).await.err()
     }
 
     pub async fn add_validator_to_pool(
@@ -782,4 +829,23 @@ pub async fn simple_deposit(
         stake_lamports,
         pool_tokens,
     }
+}
+
+pub async fn get_validator_list_sum(
+    banks_client: &mut BanksClient,
+    validator_list_key: &Pubkey,
+) -> u64 {
+    let validator_list = banks_client
+        .get_account(*validator_list_key)
+        .await
+        .unwrap()
+        .unwrap();
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
+
+    validator_list
+        .validators
+        .iter()
+        .map(|info| info.stake_lamports)
+        .sum()
 }

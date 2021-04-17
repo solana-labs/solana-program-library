@@ -44,7 +44,15 @@ impl<'a> SwapConstraints<'a> {
 
     /// Checks that the provided curve is valid for the given constraints
     pub fn validate_fees(&self, fees: &Fees) -> Result<(), ProgramError> {
-        if self.fees == fees {
+        if fees.trade_fee_numerator >= self.fees.trade_fee_numerator
+            && fees.trade_fee_denominator == self.fees.trade_fee_denominator
+            && fees.owner_trade_fee_numerator >= self.fees.owner_trade_fee_numerator
+            && fees.owner_trade_fee_denominator == self.fees.owner_trade_fee_denominator
+            && fees.owner_withdraw_fee_numerator >= self.fees.owner_withdraw_fee_numerator
+            && fees.owner_withdraw_fee_denominator == self.fees.owner_withdraw_fee_denominator
+            && fees.host_fee_numerator == self.fees.host_fee_numerator
+            && fees.host_fee_denominator == self.fees.host_fee_denominator
+        {
             Ok(())
         } else {
             Err(SwapError::InvalidFee.into())
@@ -56,7 +64,7 @@ impl<'a> SwapConstraints<'a> {
 const OWNER_KEY: &'static str = env!("SWAP_PROGRAM_OWNER_FEE_ADDRESS");
 #[cfg(feature = "production")]
 const FEES: &Fees = &Fees {
-    trade_fee_numerator: 25,
+    trade_fee_numerator: 0,
     trade_fee_denominator: 10000,
     owner_trade_fee_numerator: 5,
     owner_trade_fee_denominator: 10000,
@@ -71,6 +79,9 @@ const VALID_CURVE_TYPES: &[CurveType] = &[CurveType::ConstantPrice, CurveType::C
 /// Fee structure defined by program creator in order to enforce certain
 /// fees when others use the program.  Adds checks on pool creation and
 /// swapping to ensure the correct fees and account owners are passed.
+/// Fees provided during production build currently are considered min
+/// fees that creator of the pool can specify. Host fee is a fixed
+/// percentage that host receives as a portion of owner fees
 pub const SWAP_CONSTRAINTS: Option<SwapConstraints> = {
     #[cfg(feature = "production")]
     {
@@ -136,7 +147,19 @@ mod tests {
         );
         fees.trade_fee_numerator = trade_fee_numerator;
 
+        // passing higher fee is ok
+        fees.trade_fee_numerator = trade_fee_numerator - 1;
+        assert_eq!(constraints.validate_fees(&valid_fees), Ok(()));
+        fees.trade_fee_numerator = trade_fee_numerator;
+
         fees.trade_fee_denominator = trade_fee_denominator - 1;
+        assert_eq!(
+            Err(SwapError::InvalidFee.into()),
+            constraints.validate_fees(&fees),
+        );
+        fees.trade_fee_denominator = trade_fee_denominator;
+
+        fees.trade_fee_denominator = trade_fee_denominator + 1;
         assert_eq!(
             Err(SwapError::InvalidFee.into()),
             constraints.validate_fees(&fees),
@@ -148,6 +171,11 @@ mod tests {
             Err(SwapError::InvalidFee.into()),
             constraints.validate_fees(&fees),
         );
+        fees.owner_trade_fee_numerator = owner_trade_fee_numerator;
+
+        // passing higher fee is ok
+        fees.owner_trade_fee_numerator = owner_trade_fee_numerator - 1;
+        assert_eq!(constraints.validate_fees(&valid_fees), Ok(()));
         fees.owner_trade_fee_numerator = owner_trade_fee_numerator;
 
         fees.owner_trade_fee_denominator = owner_trade_fee_denominator - 1;
