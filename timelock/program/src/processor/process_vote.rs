@@ -120,7 +120,7 @@ pub fn process_vote(
 
     let tipped: bool = now_remaining_in_no_column == 0
         || ((1.0 - now_remaining_in_no_column as f64 / total_ever_existed as f64) * 100.0
-            > timelock_config.vote_threshold as f64);
+            >= timelock_config.vote_threshold as f64);
 
     let elapsed = match clock.slot.checked_sub(timelock_state.voting_began_at) {
         Some(val) => val,
