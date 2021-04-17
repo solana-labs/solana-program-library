@@ -1,7 +1,7 @@
 //! Program state processor
 
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::governance_voting_record::GovernanceVotingRecord,
     state::{enums::ProposalStateStatus, proposal::Proposal, proposal_state::ProposalState},
     utils::{
@@ -66,7 +66,7 @@ pub fn process_withdraw_voting_tokens(
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if governance_program_authority_info.key != &authority_key {
-        return Err(TimelockError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidTimelockAuthority.into());
     }
     let bump = &[bump_seed];
     seeds.push(bump);
@@ -82,7 +82,7 @@ pub fn process_withdraw_voting_tokens(
         program_id,
     );
     if voting_record_account_info.key != &voting_record_key {
-        return Err(TimelockError::InvalidGovernanceVotingRecord.into());
+        return Err(GovernanceError::InvalidGovernanceVotingRecord.into());
     }
 
     let mut voting_record: GovernanceVotingRecord =
@@ -99,16 +99,16 @@ pub fn process_withdraw_voting_tokens(
 
     total_possible = match voting_account.amount.checked_add(yes_voting_account.amount) {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
     total_possible = match total_possible.checked_add(no_voting_account.amount) {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
 
     let mut voting_fuel_tank = voting_token_amount;
     if voting_token_amount > total_possible {
-        return Err(TimelockError::TokenAmountAboveGivenAmount.into());
+        return Err(GovernanceError::TokenAmountAboveGivenAmount.into());
     }
 
     if voting_account.amount > 0 {
@@ -117,7 +117,7 @@ pub fn process_withdraw_voting_tokens(
             amount_to_burn = voting_account.amount;
             voting_fuel_tank = match voting_fuel_tank.checked_sub(amount_to_burn) {
                 Some(val) => val,
-                None => return Err(TimelockError::NumericalOverflow.into()),
+                None => return Err(GovernanceError::NumericalOverflow.into()),
             };
         } else {
             amount_to_burn = voting_fuel_tank;
@@ -135,7 +135,7 @@ pub fn process_withdraw_voting_tokens(
             voting_record.undecided_count =
                 match voting_record.undecided_count.checked_sub(amount_to_burn) {
                     Some(val) => val,
-                    None => return Err(TimelockError::NumericalOverflow.into()),
+                    None => return Err(GovernanceError::NumericalOverflow.into()),
                 };
         }
     }
@@ -146,7 +146,7 @@ pub fn process_withdraw_voting_tokens(
             amount_to_transfer = yes_voting_account.amount;
             voting_fuel_tank = match voting_fuel_tank.checked_sub(amount_to_transfer) {
                 Some(val) => val,
-                None => return Err(TimelockError::NumericalOverflow.into()),
+                None => return Err(GovernanceError::NumericalOverflow.into()),
             };
         } else {
             amount_to_transfer = voting_fuel_tank;
@@ -176,7 +176,7 @@ pub fn process_withdraw_voting_tokens(
             voting_record.yes_count = match voting_record.yes_count.checked_sub(amount_to_transfer)
             {
                 Some(val) => val,
-                None => return Err(TimelockError::NumericalOverflow.into()),
+                None => return Err(GovernanceError::NumericalOverflow.into()),
             };
         }
     }
@@ -204,7 +204,7 @@ pub fn process_withdraw_voting_tokens(
         }
         voting_record.no_count = match voting_record.no_count.checked_sub(voting_fuel_tank) {
             Some(val) => val,
-            None => return Err(TimelockError::NumericalOverflow.into()),
+            None => return Err(GovernanceError::NumericalOverflow.into()),
         };
     }
 

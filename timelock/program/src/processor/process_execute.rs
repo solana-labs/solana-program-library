@@ -1,6 +1,6 @@
 //! Program state processor
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::governance::Governance,
     state::{
         custom_single_signer_transaction::{CustomSingleSignerTransaction, MAX_ACCOUNTS_ALLOWED},
@@ -48,11 +48,11 @@ pub fn process_execute(
 
     let time_elapsed = match clock.slot.checked_sub(proposal_state.voting_ended_at) {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
 
     if time_elapsed < transaction.slot {
-        return Err(TimelockError::TooEarlyToExecute.into());
+        return Err(GovernanceError::TooEarlyToExecute.into());
     }
 
     assert_account_equiv(proposal_state_account_info, &proposal.state)?;
@@ -75,7 +75,7 @@ pub fn process_execute(
     let (governance_authority, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     let mut account_infos: Vec<AccountInfo> = vec![];
     if number_of_extra_accounts > (MAX_ACCOUNTS_ALLOWED - 2) as u8 {
-        return Err(TimelockError::TooManyAccountsInInstruction.into());
+        return Err(GovernanceError::TooManyAccountsInInstruction.into());
     }
     let mut added_authority = false;
 
@@ -88,7 +88,7 @@ pub fn process_execute(
             added_authority = true;
 
             if next_account.key != &governance_authority {
-                return Err(TimelockError::InvalidGovernanceKey.into());
+                return Err(GovernanceError::InvalidGovernanceKey.into());
             }
         }
         account_infos.push(next_account);
@@ -98,7 +98,7 @@ pub fn process_execute(
 
     if !added_authority {
         if governance_account_info.key != &governance_authority {
-            return Err(TimelockError::InvalidGovernanceKey.into());
+            return Err(GovernanceError::InvalidGovernanceKey.into());
         }
         account_infos.push(governance_account_info.clone());
     }
@@ -106,20 +106,20 @@ pub fn process_execute(
     assert_executing(&proposal_state)?;
 
     if transaction.executed == 1 {
-        return Err(TimelockError::TimelockTransactionAlreadyExecuted.into());
+        return Err(GovernanceError::TimelockTransactionAlreadyExecuted.into());
     }
 
     let message: Message = match bincode::deserialize::<Message>(
         &transaction.instruction[0..transaction.instruction_end_index as usize + 1],
     ) {
         Ok(val) => val,
-        Err(_) => return Err(TimelockError::InstructionUnpackError.into()),
+        Err(_) => return Err(GovernanceError::InstructionUnpackError.into()),
     };
     let serialized_instructions = message.serialize_instructions();
     let instruction: Instruction =
         match Message::deserialize_instruction(0, &serialized_instructions) {
             Ok(val) => val,
-            Err(_) => return Err(TimelockError::InstructionUnpackError.into()),
+            Err(_) => return Err(GovernanceError::InstructionUnpackError.into()),
         };
 
     let bump = &[bump_seed];
@@ -144,7 +144,7 @@ pub fn process_execute(
         .checked_add(1)
     {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
 
     if proposal_state.number_of_executed_transactions == proposal_state.number_of_transactions {

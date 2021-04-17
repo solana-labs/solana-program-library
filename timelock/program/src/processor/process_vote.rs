@@ -1,6 +1,6 @@
 //! Program state processor
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::{
         enums::ProposalStateStatus, governance::Governance,
         governance_voting_record::GovernanceVotingRecord, proposal::Proposal,
@@ -64,7 +64,7 @@ pub fn process_vote(
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if governance_program_authority_info.key != &authority_key {
-        return Err(TimelockError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidTimelockAuthority.into());
     }
     let bump = &[bump_seed];
     seeds.push(bump);
@@ -78,11 +78,11 @@ pub fn process_vote(
 
     let mut now_remaining_in_no_column = source_mint_supply
         .checked_sub(yes_voting_token_amount)
-        .ok_or(TimelockError::NumericalOverflow)?;
+        .ok_or(GovernanceError::NumericalOverflow)?;
 
     now_remaining_in_no_column = now_remaining_in_no_column
         .checked_sub(yes_mint_supply)
-        .ok_or(TimelockError::NumericalOverflow)?;
+        .ok_or(GovernanceError::NumericalOverflow)?;
 
     let starting_vote_acct: Account = assert_initialized(voting_account_info)?;
     let yes_vote_acct: Account = assert_initialized(yes_voting_account_info)?;
@@ -122,7 +122,7 @@ pub fn process_vote(
 
     let elapsed = match clock.slot.checked_sub(proposal_state.voting_began_at) {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
     let too_long = elapsed > governance.time_limit;
 
@@ -149,7 +149,7 @@ pub fn process_vote(
         program_id,
     );
     if voting_record_account_info.key != &voting_record_key {
-        return Err(TimelockError::InvalidGovernanceVotingRecord.into());
+        return Err(GovernanceError::InvalidGovernanceVotingRecord.into());
     }
 
     let mut voting_record: GovernanceVotingRecord =
@@ -157,19 +157,19 @@ pub fn process_vote(
 
     voting_record.yes_count = match yes_vote_acct.amount.checked_add(yes_voting_token_amount) {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
     voting_record.no_count = match no_vote_acct.amount.checked_add(no_voting_token_amount) {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
     let total_change = match yes_voting_token_amount.checked_add(no_voting_token_amount) {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
     voting_record.undecided_count = match starting_vote_acct.amount.checked_sub(total_change) {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
     GovernanceVotingRecord::pack(
         voting_record,

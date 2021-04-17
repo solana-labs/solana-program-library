@@ -1,6 +1,6 @@
 //! Program state processor
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::{
         custom_single_signer_transaction::{CustomSingleSignerTransaction, INSTRUCTION_LIMIT},
         enums::GovernanceAccountType,
@@ -48,11 +48,11 @@ pub fn process_add_custom_single_signer_transaction(
         assert_uninitialized(proposal_txn_account_info)?;
 
     if position as usize >= MAX_TRANSACTIONS {
-        return Err(TimelockError::TooHighPositionInTxnArrayError.into());
+        return Err(GovernanceError::TooHighPositionInTxnArrayError.into());
     }
 
     if instruction_end_index as usize >= INSTRUCTION_LIMIT as usize {
-        return Err(TimelockError::InvalidInstructionEndIndex.into());
+        return Err(GovernanceError::InvalidInstructionEndIndex.into());
     }
 
     assert_account_equiv(
@@ -73,7 +73,7 @@ pub fn process_add_custom_single_signer_transaction(
     )?;
 
     if slot < governance.minimum_slot_waiting_period {
-        return Err(TimelockError::MustBeAboveMinimumWaitingPeriod.into());
+        return Err(GovernanceError::MustBeAboveMinimumWaitingPeriod.into());
     };
 
     proposal_txn.account_type = GovernanceAccountType::CustomSingleSignerTransaction;
@@ -84,7 +84,7 @@ pub fn process_add_custom_single_signer_transaction(
     proposal_state.number_of_transactions =
         match proposal_state.number_of_transactions.checked_add(1) {
             Some(val) => val,
-            None => return Err(TimelockError::NumericalOverflow.into()),
+            None => return Err(GovernanceError::NumericalOverflow.into()),
         };
 
     ProposalState::pack(

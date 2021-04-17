@@ -1,5 +1,5 @@
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::{enums::ProposalStateStatus, proposal::Proposal, proposal_state::ProposalState},
     PROGRAM_AUTHORITY_SEED,
 };
@@ -29,7 +29,7 @@ pub fn get_authority_signer_seeds<'a>(
     let (authority_key, bump_seed) =
         Pubkey::find_program_address(&[governance_program_account_info.key.as_ref()], program_id);
     if governance_program_authority_info.key != &authority_key {
-        return Err(TimelockError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidTimelockAuthority.into());
     }
     let authority_signer_seeds = &[governance_program_account_info.key.as_ref(), &[bump_seed]];
     Ok(&*authority_signer_seeds)
@@ -54,7 +54,7 @@ pub fn assert_is_permissioned<'a>(
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if proposal_authority_info.key != &authority_key {
-        return Err(TimelockError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidTimelockAuthority.into());
     }
 
     let bump = &[bump_seed];
@@ -89,7 +89,7 @@ pub fn assert_not_in_voting_or_executing(proposal_state: &ProposalState) -> Prog
     if proposal_state.status == ProposalStateStatus::Voting
         || proposal_state.status == ProposalStateStatus::Executing
     {
-        return Err(TimelockError::InvalidProposalStateError.into());
+        return Err(GovernanceError::InvalidProposalStateError.into());
     }
     Ok(())
 }
@@ -97,7 +97,7 @@ pub fn assert_not_in_voting_or_executing(proposal_state: &ProposalState) -> Prog
 /// Asserts a Proposal is in executing state.
 pub fn assert_executing(proposal_state: &ProposalState) -> ProgramResult {
     if proposal_state.status != ProposalStateStatus::Executing {
-        return Err(TimelockError::InvalidProposalStateError.into());
+        return Err(GovernanceError::InvalidProposalStateError.into());
     }
     Ok(())
 }
@@ -105,7 +105,7 @@ pub fn assert_executing(proposal_state: &ProposalState) -> ProgramResult {
 /// Asserts a Proposal is in voting state.
 pub fn assert_voting(proposal_state: &ProposalState) -> ProgramResult {
     if proposal_state.status != ProposalStateStatus::Voting {
-        return Err(TimelockError::InvalidProposalStateError.into());
+        return Err(GovernanceError::InvalidProposalStateError.into());
     }
     Ok(())
 }
@@ -113,7 +113,7 @@ pub fn assert_voting(proposal_state: &ProposalState) -> ProgramResult {
 /// Asserts a Proposal is in draft state.
 pub fn assert_draft(proposal_state: &ProposalState) -> ProgramResult {
     if proposal_state.status != ProposalStateStatus::Draft {
-        return Err(TimelockError::InvalidProposalStateError.into());
+        return Err(GovernanceError::InvalidProposalStateError.into());
     }
     Ok(())
 }
@@ -124,7 +124,7 @@ pub fn assert_proper_signatory_mint(
     signatory_mint_account_info: &AccountInfo,
 ) -> ProgramResult {
     if proposal.signatory_mint != *signatory_mint_account_info.key {
-        return Err(TimelockError::InvalidSignatoryMintError.into());
+        return Err(GovernanceError::InvalidSignatoryMintError.into());
     }
     Ok(())
 }
@@ -135,7 +135,7 @@ pub fn assert_token_program_is_correct(
     token_program_info: &AccountInfo,
 ) -> ProgramResult {
     if &governance_program.token_program_id != token_program_info.key {
-        return Err(TimelockError::InvalidTokenProgram.into());
+        return Err(GovernanceError::InvalidTokenProgram.into());
     };
 
     Ok(())
@@ -155,7 +155,7 @@ pub fn assert_txn_in_state(
     }
 
     if !found {
-        return Err(TimelockError::TimelockTransactionNotFoundError.into());
+        return Err(GovernanceError::TimelockTransactionNotFoundError.into());
     }
 
     Ok(())
@@ -164,7 +164,7 @@ pub fn assert_txn_in_state(
 /// asserts that two accounts are equivalent
 pub fn assert_account_equiv(acct: &AccountInfo, key: &Pubkey) -> ProgramResult {
     if acct.key != key {
-        return Err(TimelockError::AccountsShouldMatch.into());
+        return Err(GovernanceError::AccountsShouldMatch.into());
     }
 
     Ok(())
@@ -174,7 +174,7 @@ pub fn assert_account_equiv(acct: &AccountInfo, key: &Pubkey) -> ProgramResult {
 pub fn assert_account_mint(token_account_info: &AccountInfo, mint: &AccountInfo) -> ProgramResult {
     let mint_key = get_mint_from_token_account(token_account_info)?;
     if &mint_key != mint.key {
-        return Err(TimelockError::MintsShouldMatch.into());
+        return Err(GovernanceError::MintsShouldMatch.into());
     }
 
     Ok(())
@@ -184,7 +184,7 @@ pub fn assert_account_mint(token_account_info: &AccountInfo, mint: &AccountInfo)
 pub fn assert_account_owner(token_account_info: &AccountInfo, owner: &Pubkey) -> ProgramResult {
     let account_owner = get_owner_from_token_account(token_account_info)?;
     if account_owner != *owner {
-        return Err(TimelockError::InvalidAccountOwnerError.into());
+        return Err(GovernanceError::InvalidAccountOwnerError.into());
     }
 
     Ok(())
@@ -193,7 +193,7 @@ pub fn assert_account_owner(token_account_info: &AccountInfo, owner: &Pubkey) ->
 /// Cheaper Assertion the account has a matching mint decimals - if you don't plan to use Mint for anything else
 pub fn assert_mint_decimals(mint: &AccountInfo, mint_decimals: u8) -> ProgramResult {
     if get_mint_decimals(mint).unwrap() != mint_decimals {
-        return Err(TimelockError::MintsDecimalsShouldMatch.into());
+        return Err(GovernanceError::MintsDecimalsShouldMatch.into());
     }
 
     Ok(())
@@ -202,7 +202,7 @@ pub fn assert_mint_decimals(mint: &AccountInfo, mint_decimals: u8) -> ProgramRes
 /// Cheaper Assertion the account has a matching mint_authority- if you don't plan to use Mint for anything else
 pub fn assert_mint_authority(mint: &AccountInfo, mint_authority: &Pubkey) -> ProgramResult {
     if get_mint_authority(mint).unwrap() != *mint_authority {
-        return Err(TimelockError::InvalidMintAuthorityError.into());
+        return Err(GovernanceError::InvalidMintAuthorityError.into());
     }
     Ok(())
 }
@@ -213,7 +213,7 @@ pub fn assert_mint_owner_program(
     owner_token_program: &Pubkey,
 ) -> ProgramResult {
     if mint.owner != owner_token_program {
-        return Err(TimelockError::InvalidMintOwnerProgramError.into());
+        return Err(GovernanceError::InvalidMintOwnerProgramError.into());
     }
     Ok(())
 }
@@ -221,7 +221,7 @@ pub fn assert_mint_owner_program(
 /// assert rent exempt
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
-        Err(TimelockError::NotRentExempt.into())
+        Err(GovernanceError::NotRentExempt.into())
     } else {
         Ok(())
     }
@@ -232,7 +232,7 @@ pub fn assert_uninitialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if account.is_initialized() {
-        Err(TimelockError::AlreadyInitialized.into())
+        Err(GovernanceError::AlreadyInitialized.into())
     } else {
         Ok(account)
     }
@@ -245,7 +245,7 @@ pub fn assert_mint_initialized(account_info: &AccountInfo) -> Result<(), Program
     // to get at initialization check
     let index: usize = 36 + 8 + 1 + 1 - 1;
     if account_info.try_borrow_data().unwrap()[index] == 0 {
-        return Err(TimelockError::Uninitialized.into());
+        return Err(GovernanceError::Uninitialized.into());
     }
     Ok(())
 }
@@ -271,7 +271,7 @@ pub fn get_mint_authority(account_info: &AccountInfo) -> Result<Pubkey, ProgramE
 
     match authority {
         COption::Some(pk) => Ok(pk),
-        COption::None => Err(TimelockError::MintAuthorityUnpackError.into()),
+        COption::None => Err(GovernanceError::MintAuthorityUnpackError.into()),
     }
 }
 
@@ -311,7 +311,7 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(TimelockError::Uninitialized.into())
+        Err(GovernanceError::Uninitialized.into())
     } else {
         Ok(account)
     }
@@ -340,7 +340,7 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult 
         &[source, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_err(|_| TimelockError::TokenTransferFailed.into())
+    result.map_err(|_| GovernanceError::TokenTransferFailed.into())
 }
 
 /// Issue a spl_token `MintTo` instruction.
@@ -365,7 +365,7 @@ pub fn spl_token_mint_to(params: TokenMintToParams<'_, '_>) -> ProgramResult {
         &[mint, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_err(|_| TimelockError::TokenMintToFailed.into())
+    result.map_err(|_| GovernanceError::TokenMintToFailed.into())
 }
 
 /// Issue a spl_token `Burn` instruction.
@@ -391,7 +391,7 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
         &[source, mint, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_err(|_| TimelockError::TokenBurnFailed.into())
+    result.map_err(|_| GovernanceError::TokenBurnFailed.into())
 }
 
 /// Issue a spl_token `Burn` instruction.
@@ -408,7 +408,7 @@ pub fn execute(params: ExecuteParams<'_, '_>) -> ProgramResult {
         &account_infos.as_slice(),
         &[authority_signer_seeds],
     );
-    result.map_err(|_| TimelockError::ExecutionFailed.into())
+    result.map_err(|_| GovernanceError::ExecutionFailed.into())
 }
 
 /// Unpacks COption from a slice, taken from token program

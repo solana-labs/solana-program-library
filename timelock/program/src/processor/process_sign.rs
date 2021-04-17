@@ -1,6 +1,6 @@
 //! Program state processor
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::{enums::ProposalStateStatus, proposal::Proposal, proposal_state::ProposalState},
     utils::{
         assert_account_equiv, assert_draft, assert_initialized, assert_token_program_is_correct,
@@ -43,7 +43,7 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if governance_program_authority_info.key != &authority_key {
-        return Err(TimelockError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidTimelockAuthority.into());
     }
     let bump = &[bump_seed];
     seeds.push(bump);
@@ -63,7 +63,7 @@ pub fn process_sign(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     // assuming sig_mint object is now out of date, sub 1
     let diminished_supply = match sig_mint.supply.checked_sub(1) {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
 
     if diminished_supply == 0 {

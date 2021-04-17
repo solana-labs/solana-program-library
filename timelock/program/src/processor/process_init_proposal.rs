@@ -2,7 +2,7 @@
 
 use crate::utils::{assert_account_owner, assert_mint_authority, assert_mint_owner_program};
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::{
         enums::GovernanceAccountType,
         governance::Governance,
@@ -86,7 +86,7 @@ pub fn process_init_proposal(
     new_proposal_state.number_of_transactions = 0;
     governance.count = match governance.count.checked_add(1) {
         Some(val) => val,
-        None => return Err(TimelockError::NumericalOverflow.into()),
+        None => return Err(GovernanceError::NumericalOverflow.into()),
     };
 
     assert_rent_exempt(rent, proposal_account_info)?;
@@ -183,10 +183,10 @@ pub fn process_init_proposal(
     if source_holding_mint != governance.governance_mint {
         if let Some(council_mint) = governance.council_mint {
             if source_holding_mint != council_mint {
-                return Err(TimelockError::AccountsShouldMatch.into());
+                return Err(GovernanceError::AccountsShouldMatch.into());
             }
         } else {
-            return Err(TimelockError::AccountsShouldMatch.into());
+            return Err(GovernanceError::AccountsShouldMatch.into());
         }
     }
 
@@ -201,7 +201,7 @@ pub fn process_init_proposal(
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if governance_program_authority_info.key != &authority_key {
-        return Err(TimelockError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidTimelockAuthority.into());
     }
     let bump = &[bump_seed];
     seeds.push(bump);

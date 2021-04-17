@@ -3,7 +3,7 @@ use std::{convert::TryInto, mem::size_of};
 use solana_program::program_error::ProgramError;
 
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::{
         custom_single_signer_transaction::INSTRUCTION_LIMIT,
         governance::CONFIG_NAME_LENGTH,
@@ -200,18 +200,18 @@ pub enum GovernanceInstruction {
     },
 
     /// [Requires tokens of the Governance mint or Council mint depending on type of Proposal]
-    /// Deposits voting tokens to be used during the voting process in a timelock.
+    /// Deposits voting tokens to be used during the voting process in a Proposal.
     /// These tokens are removed from your account and can be returned by withdrawing
-    /// them from the timelock (but then you will miss the vote.)
+    /// them from the Proposal (but then you will miss the vote.)
     ///
     ///   0. `[writable]` Governance voting record account. See Vote docs for more detail.
     ///   1. `[writable]` Initialized Voting account to hold your received voting tokens.
     ///   2. `[writable]` User token account to deposit tokens from.
-    ///   3. `[writable]` Source holding account for timelock that will accept the tokens in escrow.
+    ///   3. `[writable]` Source holding account for Proposal that will accept the tokens in escrow.
     ///   4. `[writable]` Voting mint account.
     ///   5. `[]` Proposal account.
     ///   6. `[]` Transfer authority
-    ///   7. `[]` Timelock program mint authority (pda with seed of Proposal key)
+    ///   7. `[]` Governance program mint authority (pda with seed of Proposal key)
     ///   8. `[]` Token program account.
     DepositSourceTokens {
         /// How many voting tokens to deposit
@@ -226,7 +226,7 @@ pub enum GovernanceInstruction {
     ///   2. `[writable]` Initialized Yes Voting account from which to remove your voting tokens.
     ///   3. `[writable]` Initialized No Voting account from which to remove your voting tokens.
     ///   4. `[writable]` User token account that you wish your actual tokens to be returned to.
-    ///   5. `[writable]` Source holding account owned by the timelock that will has the actual tokens in escrow.
+    ///   5. `[writable]` Source holding account owned by the Governance that will has the actual tokens in escrow.
     ///   6. `[writable]` Initialized Yes Voting dump account owned by Proposal to which to send your voting tokens.
     ///   7. `[writable]` Initialized No Voting dump account owned by Proposal to which to send your voting tokens.
     ///   8. `[writable]` Voting mint account.
@@ -243,7 +243,7 @@ pub enum GovernanceInstruction {
     },
 
     ///   0. `[writable]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
-    ///           program account key, governance mint key, council mint key, timelock program account key.
+    ///           program account key, governance mint key, council mint key, Governance program account key.
     ///   1. `[]` Program account that this config uses
     ///   2. `[]` Governance mint that this config uses
     ///   3. `[]` Council mint that this config uses [Optional]
@@ -265,7 +265,7 @@ pub enum GovernanceInstruction {
     },
 
     ///   0. `[]` Timelock config key. Needs to be set with pubkey set to PDA with seeds of the
-    ///           program account key, governance mint key, council mint key, and timelock program account key.
+    ///           program account key, governance mint key, council mint key, and Governance program account key.
     ///   1. `[]` Program account to tie this config to.
     ///   2. `[]` Governance mint to tie this config to
     ///   3. `[]` Payer
@@ -288,7 +288,7 @@ impl GovernanceInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (&tag, rest) = input
             .split_first()
-            .ok_or(TimelockError::InstructionUnpackError)?;
+            .ok_or(GovernanceError::InstructionUnpackError)?;
         Ok(match tag {
             1 => {
                 let (input_desc_link, input_name) = rest.split_at(DESC_SIZE);
@@ -371,7 +371,7 @@ impl GovernanceInstruction {
             }
             14 => Self::CreateEmptyGovernance,
             15 => Self::CreateEmptyGovernanceVotingRecord,
-            _ => return Err(TimelockError::InstructionUnpackError.into()),
+            _ => return Err(GovernanceError::InstructionUnpackError.into()),
         })
     }
 
@@ -382,10 +382,10 @@ impl GovernanceInstruction {
                 .get(..8)
                 .and_then(|slice| slice.try_into().ok())
                 .map(u64::from_le_bytes)
-                .ok_or(TimelockError::InstructionUnpackError)?;
+                .ok_or(GovernanceError::InstructionUnpackError)?;
             Ok((amount, rest))
         } else {
-            Err(TimelockError::InstructionUnpackError.into())
+            Err(GovernanceError::InstructionUnpackError.into())
         }
     }
 
@@ -396,17 +396,17 @@ impl GovernanceInstruction {
                 .get(..2)
                 .and_then(|slice| slice.try_into().ok())
                 .map(u16::from_le_bytes)
-                .ok_or(TimelockError::InstructionUnpackError)?;
+                .ok_or(GovernanceError::InstructionUnpackError)?;
             Ok((amount, rest))
         } else {
-            Err(TimelockError::InstructionUnpackError.into())
+            Err(GovernanceError::InstructionUnpackError.into())
         }
     }
 
     fn unpack_instructions(input: &[u8]) -> Result<([u8; INSTRUCTION_LIMIT], &[u8]), ProgramError> {
         if !input.is_empty() {
             if input.len() < INSTRUCTION_LIMIT {
-                return Err(TimelockError::InstructionUnpackError.into());
+                return Err(GovernanceError::InstructionUnpackError.into());
             }
 
             let (input_instruction, rest) = input.split_at(INSTRUCTION_LIMIT);
@@ -415,7 +415,7 @@ impl GovernanceInstruction {
                 .clone_from_slice(&input_instruction[..(INSTRUCTION_LIMIT - 1)]);
             Ok((instruction, rest))
         } else {
-            Err(TimelockError::InstructionUnpackError.into())
+            Err(GovernanceError::InstructionUnpackError.into())
         }
     }
 
@@ -426,10 +426,10 @@ impl GovernanceInstruction {
                 .get(..1)
                 .and_then(|slice| slice.try_into().ok())
                 .map(u8::from_le_bytes)
-                .ok_or(TimelockError::InstructionUnpackError)?;
+                .ok_or(GovernanceError::InstructionUnpackError)?;
             Ok((amount, rest))
         } else {
-            Err(TimelockError::InstructionUnpackError.into())
+            Err(GovernanceError::InstructionUnpackError.into())
         }
     }
 

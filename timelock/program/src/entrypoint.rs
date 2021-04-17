@@ -2,7 +2,7 @@
 
 #![cfg(all(target_arch = "bpf", not(feature = "no-entrypoint")))]
 
-use crate::{error::TimelockError, processor};
+use crate::{error::GovernanceError, processor};
 use solana_program::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult,
     program_error::PrintProgramError, pubkey::Pubkey,
@@ -16,7 +16,7 @@ fn process_instruction(
 ) -> ProgramResult {
     if let Err(error) = processor::process_instruction(program_id, accounts, instruction_data) {
         // catch the error so we can print it
-        error.print::<TimelockError>();
+        error.print::<GovernanceError>();
         return Err(error);
     }
     Ok(())

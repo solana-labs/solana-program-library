@@ -1,6 +1,6 @@
 //! Program state processor
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::proposal::Proposal,
     state::proposal_state::ProposalState,
     utils::{
@@ -57,13 +57,13 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
     }
 
     if !found {
-        return Err(TimelockError::TimelockTransactionNotFoundError.into());
+        return Err(GovernanceError::TimelockTransactionNotFoundError.into());
     }
 
     proposal_state.number_of_transactions =
         match proposal_state.number_of_transactions.checked_sub(1) {
             Some(val) => val,
-            None => return Err(TimelockError::NumericalOverflow.into()),
+            None => return Err(GovernanceError::NumericalOverflow.into()),
         };
 
     ProposalState::pack(

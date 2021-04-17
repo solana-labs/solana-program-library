@@ -1,7 +1,7 @@
 //! Program state processor
 
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::governance_voting_record::GovernanceVotingRecord,
     state::{enums::GovernanceAccountType, proposal::Proposal},
     utils::{
@@ -45,7 +45,7 @@ pub fn process_deposit_source_tokens(
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if governance_program_authority_info.key != &authority_key {
-        return Err(TimelockError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidTimelockAuthority.into());
     }
 
     let bump = &[bump_seed];
@@ -80,7 +80,7 @@ pub fn process_deposit_source_tokens(
         program_id,
     );
     if voting_record_account_info.key != &voting_record_key {
-        return Err(TimelockError::InvalidGovernanceVotingRecord.into());
+        return Err(GovernanceError::InvalidGovernanceVotingRecord.into());
     }
 
     let mut voting_record: GovernanceVotingRecord =
@@ -101,7 +101,7 @@ pub fn process_deposit_source_tokens(
             .checked_add(voting_token_amount)
         {
             Some(val) => val,
-            None => return Err(TimelockError::NumericalOverflow.into()),
+            None => return Err(GovernanceError::NumericalOverflow.into()),
         };
     }
     GovernanceVotingRecord::pack(

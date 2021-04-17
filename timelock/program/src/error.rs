@@ -10,7 +10,7 @@ use thiserror::Error;
 
 /// Errors that may be returned by the Timelock program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
-pub enum TimelockError {
+pub enum GovernanceError {
     /// Invalid instruction data passed in.
     #[error("Failed to unpack instruction data")]
     InstructionUnpackError,
@@ -142,19 +142,19 @@ pub enum TimelockError {
     InvalidGovernanceVotingRecord,
 }
 
-impl PrintProgramError for TimelockError {
+impl PrintProgramError for GovernanceError {
     fn print<E>(&self) {
         msg!(&self.to_string());
     }
 }
 
-impl From<TimelockError> for ProgramError {
-    fn from(e: TimelockError) -> Self {
+impl From<GovernanceError> for ProgramError {
+    fn from(e: GovernanceError) -> Self {
         ProgramError::Custom(e as u32)
     }
 }
 
-impl<T> DecodeError<T> for TimelockError {
+impl<T> DecodeError<T> for GovernanceError {
     fn type_of() -> &'static str {
         "Timelock Error"
     }

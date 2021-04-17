@@ -1,6 +1,6 @@
 //! Program state processor
 use crate::{
-    error::TimelockError,
+    error::GovernanceError,
     state::proposal::Proposal,
     state::proposal_state::ProposalState,
     utils::{
@@ -51,7 +51,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if governance_program_authority_info.key != &authority_key {
-        return Err(TimelockError::InvalidTimelockAuthority.into());
+        return Err(GovernanceError::InvalidTimelockAuthority.into());
     }
 
     let bump = &[bump_seed];
@@ -70,7 +70,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
     proposal_state.total_signing_tokens_minted =
         match proposal_state.total_signing_tokens_minted.checked_add(1) {
             Some(val) => val,
-            None => return Err(TimelockError::NumericalOverflow.into()),
+            None => return Err(GovernanceError::NumericalOverflow.into()),
         };
 
     ProposalState::pack(
