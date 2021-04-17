@@ -686,6 +686,13 @@ impl Processor {
                 }
                 validator_stake_record.last_update_epoch = clock.epoch;
                 validator_stake_record.stake_lamports = **validator_stake_account.lamports.borrow();
+                /*
+                Hi jon! question:
+                validator_stake_account.lamports = total lamports in the account,
+                but some of that is staked and some is rewards. Is that correct?
+                What are you doing with the accumulated rewards?
+                Are those automatically re-staked somehow?
+                */
                 changes = true;
             }
         }
