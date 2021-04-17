@@ -21,7 +21,7 @@ members = [
   "token-swap/program/fuzz",
   "token/cli",
   "token/program",
-  "timelock/program",
+  "governance/program",
   "utils/cgen",
   "utils/test-client"
 ]
