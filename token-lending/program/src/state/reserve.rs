@@ -8,6 +8,7 @@ use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::{
     clock::Slot,
     entrypoint::ProgramResult,
+    msg,
     program_error::ProgramError,
     program_option::COption,
     program_pack::{IsInitialized, Pack, Sealed},
@@ -415,8 +416,6 @@ pub struct ReserveLiquidity {
     pub available_amount: u64,
     /// Reserve liquidity borrowed
     pub borrowed_amount_wads: Decimal,
-    /// Reserve flash loan amount, this should always be 0 before and after the execution
-    pub flash_loaned_amount: u64,
     /// Fee receiver for flash loan
     pub flash_loan_fee_receiver: Pubkey,
 }
@@ -435,7 +434,6 @@ impl ReserveLiquidity {
             supply_pubkey,
             available_amount: 0,
             borrowed_amount_wads: Decimal::zero(),
-            flash_loaned_amount: 0,
             flash_loan_fee_receiver,
         }
     }
@@ -608,11 +606,13 @@ impl ReserveFees {
     ) -> Result<(u64, u64), ProgramError> {
         self.calculate_fees(collateral_amount, self.borrow_fee_wad)
     }
+
     /// Calculate the owner and host fees on flash loan
     pub fn calculate_flash_loan_fees(
         &self,
         collateral_amount: u64,
     ) -> Result<(u64, u64), ProgramError> {
+        msg!("wad: {}", self.flash_loan_fee_wad);
         self.calculate_fees(collateral_amount, self.flash_loan_fee_wad)
     }
 
@@ -688,13 +688,12 @@ impl Pack for Reserve {
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
-            flash_loaned_amount,
             flash_loan_fee_wad,
             flash_loan_fee_receiver,
             __padding,
         ) = array_refs![
             input, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8, 8,
-            8, 32, 252
+            32, 260
         ];
         Ok(Self {
             version: u8::from_le_bytes(*version),
@@ -708,7 +707,6 @@ impl Pack for Reserve {
                 supply_pubkey: Pubkey::new_from_array(*liquidity_supply),
                 available_amount: u64::from_le_bytes(*available_liquidity),
                 borrowed_amount_wads: unpack_decimal(total_borrows),
-                flash_loaned_amount: u64::from_le_bytes(*flash_loaned_amount),
                 flash_loan_fee_receiver: Pubkey::new_from_array(*flash_loan_fee_receiver),
             },
             collateral: ReserveCollateral {
@@ -760,13 +758,12 @@ impl Pack for Reserve {
             total_borrows,
             available_liquidity,
             collateral_mint_supply,
-            flash_loaned_amount,
             flash_loan_fee_wad,
             flash_loan_fee_receiver,
             _padding,
         ) = mut_array_refs![
             output, 1, 8, 32, 32, 1, 32, 32, 32, 32, 36, 1, 1, 1, 1, 1, 1, 1, 8, 1, 16, 16, 8, 8,
-            8, 8, 32, 252
+            8, 32, 260
         ];
         *version = self.version.to_le_bytes();
         *last_update_slot = self.last_update_slot.to_le_bytes();
@@ -780,7 +777,6 @@ impl Pack for Reserve {
         liquidity_supply.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
         *available_liquidity = self.liquidity.available_amount.to_le_bytes();
         pack_decimal(self.liquidity.borrowed_amount_wads, total_borrows);
-        *flash_loaned_amount = self.liquidity.flash_loaned_amount.to_le_bytes();
         flash_loan_fee_receiver.copy_from_slice(self.liquidity.flash_loan_fee_receiver.as_ref());
 
         // collateral info

@@ -17,6 +17,7 @@ use solana_program::{
     clock::Slot,
     decode_error::DecodeError,
     entrypoint::ProgramResult,
+    instruction::Instruction,
     msg,
     program::{invoke, invoke_signed},
     program_error::{PrintProgramError, ProgramError},
@@ -25,7 +26,7 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, instructions, rent::Rent, Sysvar},
 };
-use spl_token::solana_program::sysvar::instructions::{load_current_index, load_instruction_at};
+use spl_token::solana_program::instruction::AccountMeta;
 use spl_token::state::{Account as Token, Account};
 
 /// Processes an instruction
@@ -90,16 +91,9 @@ pub fn process_instruction(
             msg!("Instruction: Set Lending Market Owner");
             process_set_lending_market_owner(program_id, new_owner, accounts)
         }
-        LendingInstruction::FlashLoanStart {
-            liquidity_amount,
-            flash_loan_end_idx,
-        } => {
-            msg!("Instruction: Flash Loan Start");
-            process_flash_loan_start(program_id, liquidity_amount, flash_loan_end_idx, accounts)
-        }
-        LendingInstruction::FlashLoanEnd => {
-            msg!("Instruction: Flash Loan End");
-            process_flash_loan_end(program_id, accounts)
+        LendingInstruction::FlashLoan { amount } => {
+            msg!("Instruction: Flash loan");
+            process_flash_loan(program_id, amount, accounts)
         }
     }
 }
@@ -1544,27 +1538,38 @@ fn process_set_lending_market_owner(
     Ok(())
 }
 
-fn process_flash_loan_start(
-    program_id: &Pubkey,
-    liquidity_amount: u64,
-    flash_loan_end_idx: u8,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
+#[inline(never)] // avoid stack frame limit
+fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let destination_token_account_info = next_account_info(account_info_iter)?;
+    let destination_liquidity_info = next_account_info(account_info_iter)?;
     let reserve_account_info = next_account_info(account_info_iter)?;
     let reserve_liquidity_account_info = next_account_info(account_info_iter)?;
-    let lending_market_account_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
     let derived_lending_market_account_info = next_account_info(account_info_iter)?;
+    let flash_loan_receiver_info = next_account_info(account_info_iter)?;
+    let flash_loan_receiver_derived_info = next_account_info(account_info_iter)?;
     let token_program_id = next_account_info(account_info_iter)?;
-    let instruction_account = next_account_info(account_info_iter)?;
+    let flash_loan_fees_account_info = next_account_info(account_info_iter)?;
+    let host_fee_recipient = next_account_info(account_info_iter)?;
 
-    if reserve_account_info.owner != program_id {
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
 
-    let mut reserve = Reserve::unpack(&reserve_account_info.data.borrow())?;
-    if &reserve.lending_market != lending_market_account_info.key {
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+
+    if derived_lending_market_account_info.key != &lending_market_authority_pubkey {
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    let reserve = Reserve::unpack(&reserve_account_info.data.borrow())?;
+    if &reserve.lending_market != lending_market_info.key {
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
@@ -1574,178 +1579,88 @@ fn process_flash_loan_start(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let lending_market = LendingMarket::unpack(&lending_market_account_info.data.borrow())?;
-    if token_program_id.key != &lending_market.token_program_id {
-        return Err(LendingError::InvalidTokenProgram.into());
-    }
-    if instruction_account.key != &instructions::id() {
-        msg!("Invalid instruction sys var");
-        return Err(LendingError::InvalidAccountInput.into());
+    if reserve.liquidity.available_amount < amount {
+        msg!("Not enough liquidity for flash loan");
+        return Err(LendingError::InsufficientLiquidity.into());
     }
 
-    let current_idx = load_current_index(&instruction_account.try_borrow_data()?);
-
-    if current_idx >= flash_loan_end_idx as u16 {
-        msg!("Flash Loan End must be after Flash Loan Start");
-        return Err(LendingError::InvalidFlashLoanEndIndex.into());
-    }
-
-    let flash_loan_end_instruction = load_instruction_at(
-        flash_loan_end_idx as usize,
-        &instruction_account.try_borrow_data()?,
-    )
-    .map_err(|_| LendingError::ErrorParsingInstruction)?;
-
-    if &flash_loan_end_instruction.program_id != program_id {
-        msg!(
-            "program id not matching: {}, {}",
-            &flash_loan_end_instruction.program_id,
-            program_id
-        );
-        return Err(LendingError::InvalidFlashLoanEnd.into());
-    }
-
-    let lending_instruction = LendingInstruction::unpack(&flash_loan_end_instruction.data)?;
-    if lending_instruction != FlashLoanEnd {
-        msg!("Not a flash loan end instruction.");
-        return Err(LendingError::InvalidFlashLoanEnd.into());
-    }
-
-    if flash_loan_end_instruction.accounts[0].pubkey != *reserve_account_info.key {
-        msg!("Different reserve between flash loan start and flash loan end");
-        return Err(LendingError::InvalidFlashLoanEnd.into());
-    }
-
-    let authority_signer_seeds = &[
-        lending_market_account_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-
-    if derived_lending_market_account_info.key != &lending_market_authority_pubkey {
-        return Err(LendingError::InvalidMarketAuthority.into());
-    }
-
-    reserve.start_flash_loan(liquidity_amount)?;
-    Reserve::pack(reserve, &mut reserve_account_info.data.borrow_mut())?;
-
+    let before_liquidity_supply_token_account =
+        Account::unpack_from_slice(&reserve_liquidity_account_info.try_borrow_data()?)?;
     spl_token_transfer(TokenTransferParams {
         source: reserve_liquidity_account_info.clone(),
-        destination: destination_token_account_info.clone(),
-        amount: liquidity_amount,
+        destination: destination_liquidity_info.clone(),
+        amount,
         authority: derived_lending_market_account_info.clone(),
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
 
-    Ok(())
-}
-
-fn process_flash_loan_end(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-    let reserve_account_info = next_account_info(account_info_iter)?;
-    let reserve_liquidity_supply_account_info = next_account_info(account_info_iter)?;
-    let lending_market_account_info = next_account_info(account_info_iter)?;
-    let derived_lending_market_account_info = next_account_info(account_info_iter)?;
-    let flash_loan_fees_account_info = next_account_info(account_info_iter)?;
-    let user_liqudiity_account_info = next_account_info(account_info_iter)?;
-    let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let token_program_id = next_account_info(account_info_iter)?;
-
-    let lending_market = LendingMarket::unpack(&lending_market_account_info.data.borrow())?;
-
-    if reserve_account_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-
-    let mut reserve = Reserve::unpack(&reserve_account_info.data.borrow())?;
-    if &reserve.lending_market != lending_market_account_info.key {
-        msg!("Invalid reserve lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-
-    if &reserve.liquidity.supply_pubkey != reserve_liquidity_supply_account_info.key {
-        msg!("Invalid reserve liquidity supply account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-
-    if &reserve.liquidity.flash_loan_fee_receiver != flash_loan_fees_account_info.key {
-        msg!("Invalid flash loan fees receiver account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-
-    let (origination_fee, host_fee) = reserve
-        .config
-        .fees
-        .calculate_flash_loan_fees(reserve.liquidity.flash_loaned_amount)?;
-
-    let authority_signer_seeds = &[
-        lending_market_account_info.key.as_ref(),
-        &[lending_market.bump_seed],
+    let (origination_fee, host_fee) = reserve.config.fees.calculate_flash_loan_fees(amount)?;
+    let returned_amount_required = amount + origination_fee;
+    let mut data = Vec::with_capacity(9);
+    data.push(0u8);
+    // TODO: think about if I should keep this argument....
+    data.extend_from_slice(&returned_amount_required.to_le_bytes());
+    let mut instruction_accounts = vec![
+        AccountMeta::new(*destination_liquidity_info.key, false),
+        AccountMeta::new_readonly(*flash_loan_receiver_derived_info.key, false),
+        AccountMeta::new(*reserve_liquidity_account_info.key, false),
+        AccountMeta::new_readonly(*token_program_id.key, false),
     ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-
-    if derived_lending_market_account_info.key != &lending_market_authority_pubkey {
-        return Err(LendingError::InvalidMarketAuthority.into());
+    let mut calling_accounts = vec![
+        destination_liquidity_info.clone(),
+        flash_loan_receiver_info.clone(),
+        flash_loan_receiver_derived_info.clone(),
+        reserve_liquidity_account_info.clone(),
+        token_program_id.clone(),
+    ];
+    for acc in account_info_iter {
+        calling_accounts.push(acc.clone());
+        instruction_accounts.push(AccountMeta::new(*acc.key, acc.is_signer))
     }
 
-    spl_token_transfer(TokenTransferParams {
-        source: user_liqudiity_account_info.clone(),
-        destination: reserve_liquidity_supply_account_info.clone(),
-        amount: reserve.liquidity.flash_loaned_amount + origination_fee,
-        authority: user_transfer_authority_info.clone(),
-        authority_signer_seeds: &[],
-        token_program: token_program_id.clone(),
-    })?;
+    let ix = Instruction {
+        program_id: *flash_loan_receiver_info.key,
+        accounts: instruction_accounts,
+        data,
+    };
+    let result = invoke(&ix, &calling_accounts[..]);
+    if result.is_err() {
+        // TODO: change to a more sensible error.
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
 
-    let liquidity_supply_token_account =
-        Account::unpack_from_slice(&reserve_liquidity_supply_account_info.try_borrow_data()?)?;
-    let total_liquidity_expected: u64 = reserve.liquidity.available_amount
-        + reserve.liquidity.flash_loaned_amount
-        + origination_fee;
-    if total_liquidity_expected > liquidity_supply_token_account.amount {
+    let after_liquidity_supply_token_account =
+        Account::unpack_from_slice(&reserve_liquidity_account_info.try_borrow_data()?)?;
+
+    let expected_amount = before_liquidity_supply_token_account.amount + origination_fee;
+    if after_liquidity_supply_token_account.amount < expected_amount {
         msg!(
             "Insufficient returned liquidity for reserve after flash loan: {}, it requires: {}",
-            liquidity_supply_token_account.amount,
-            total_liquidity_expected
+            after_liquidity_supply_token_account.amount,
+            expected_amount
         );
         return Err(LendingError::InsufficientLiquidity.into());
     }
 
-    let authority_signer_seeds = &[
-        lending_market_account_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-
-    if derived_lending_market_account_info.key != &lending_market_authority_pubkey {
-        return Err(LendingError::InvalidMarketAuthority.into());
-    }
-
     let mut owner_fee = origination_fee;
-    if let Ok(host_fee_recipient) = next_account_info(account_info_iter) {
-        if host_fee > 0 {
-            owner_fee = owner_fee
-                .checked_sub(host_fee)
-                .ok_or(LendingError::MathOverflow)?;
-            spl_token_transfer(TokenTransferParams {
-                source: reserve_liquidity_supply_account_info.clone(),
-                destination: host_fee_recipient.clone(),
-                amount: host_fee,
-                authority: derived_lending_market_account_info.clone(),
-                authority_signer_seeds,
-                token_program: token_program_id.clone(),
-            })?;
-        }
+    if host_fee > 0 {
+        owner_fee = owner_fee
+            .checked_sub(host_fee)
+            .ok_or(LendingError::MathOverflow)?;
+        spl_token_transfer(TokenTransferParams {
+            source: reserve_liquidity_account_info.clone(),
+            destination: host_fee_recipient.clone(),
+            amount: host_fee,
+            authority: derived_lending_market_account_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
     }
 
-    // transfer remaining fees to owner
     if owner_fee > 0 {
         spl_token_transfer(TokenTransferParams {
-            source: reserve_liquidity_supply_account_info.clone(),
+            source: reserve_liquidity_account_info.clone(),
             destination: flash_loan_fees_account_info.clone(),
             amount: owner_fee,
             authority: derived_lending_market_account_info.clone(),
@@ -1753,9 +1668,6 @@ fn process_flash_loan_end(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
             token_program: token_program_id.clone(),
         })?;
     }
-
-    reserve.end_flash_loan()?;
-    Reserve::pack(reserve, &mut reserve_account_info.data.borrow_mut())?;
 
     Ok(())
 }

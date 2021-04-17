@@ -207,7 +207,7 @@ async fn test_invalid_fees() {
         let mut config = TEST_RESERVE_CONFIG;
         config.fees = ReserveFees {
             borrow_fee_wad: 10_000_000_000_000_000,
-            flash_loan_fee_wad: 10_000_000_000_000_000,
+            flash_loan_fee_wad: 1_000_000_000_000_000_000,
             host_fee_percentage: 101,
         };
 

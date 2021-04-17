@@ -26,7 +26,9 @@ use spl_token_lending::{
     },
 };
 use std::str::FromStr;
+pub mod flash_loan_receiver;
 pub mod genesis;
+
 use genesis::GenesisAccounts;
 
 pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
@@ -453,6 +455,29 @@ pub fn add_reserve(
         user_collateral_account: user_collateral_pubkey,
         dex_market: dex_market_pubkey,
     }
+}
+
+pub fn add_token_account_for_flash_loan_receiver(
+    test: &mut ProgramTest,
+    program_derived_account: &Pubkey,
+    amount: u64,
+    mint_pubkey: &Pubkey,
+) -> Pubkey {
+    let program_owned_token_account = Keypair::new();
+    test.add_packable_account(
+        program_owned_token_account.pubkey(),
+        u32::MAX as u64,
+        &Token {
+            mint: *mint_pubkey,
+            owner: *program_derived_account,
+            amount,
+            state: AccountState::Initialized,
+            is_native: COption::None,
+            ..Token::default()
+        },
+        &spl_token::id(),
+    );
+    return program_owned_token_account.pubkey();
 }
 
 pub struct TestLendingMarket {

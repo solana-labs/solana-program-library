@@ -285,38 +285,25 @@ pub enum LendingInstruction {
         /// The new owner
         new_owner: Pubkey,
     },
-
     // 12
-    /// Start a flash loan. In the same transaction there must be a FlashLoanEnd.
+    /// Make a flash loan.
     ///
     ///   0. `[writable]` Destination liquidity token account, minted by reserve liquidity mint.
     ///   1. `[writable]` Reserve account.
-    ///   2. `[writable]` Reserve liquidity account.
-    ///   3. `[]` Lending market account.
-    ///   4. `[]` Derived lending market authority.
-    ///   5. `[]` Token program id.
-    ///   6. `[]` Instruction Sys var.
-    FlashLoanStart {
-        /// The amount that is borrowed.
-        liquidity_amount: u64,
-        /// The index of the `FlashLoanEnd` instruction in the transaction.
-        flash_loan_end_idx: u8,
-    },
-
-    // 13
-    /// End a flash loan.
-    ///
-    ///   0. `[]` Reserve account.
-    ///   1. `[]` Reserve liquidity supply account.
     ///   2. `[]` Lending market account.
     ///   3. `[]` Derived lending market authority.
-    ///   4. `[writable]` Flash loan fees receiver, must match init reserve.
-    ///   5. `[writable]` Source liquidity token account,
-    ///                   the $authority can transfer the amount that is need to repay the flash loan.
-    ///   6  `[signer]` User transfer authority ($authority).
-    ///   7. `[]` Token program id.
-    ///   8. `[writable, optional]` Host fee receiver.
-    FlashLoanEnd,
+    ///   4. `[]` Temporary memory
+    ///   5. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
+    ///   call it `ExecuteOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
+    ///   6. `[]` Flash Loan Receiver Program Derived Account
+    ///   7. `[]` Token program id
+    ///   8. `[writable]` Host fee receiver.
+    ///   9. `[writeable]` Flash loan fees receiver, must match init reserve.
+    /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`, starting from the 8th account.
+    FlashLoan {
+        /// The amount that is to be borrowed
+        amount: u64,
+    },
 }
 
 impl LendingInstruction {
@@ -401,14 +388,9 @@ impl LendingInstruction {
                 Self::SetLendingMarketOwner { new_owner }
             }
             12 => {
-                let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
-                let (flash_loan_end_idx, _rest) = Self::unpack_u8(rest)?;
-                Self::FlashLoanStart {
-                    liquidity_amount,
-                    flash_loan_end_idx,
-                }
+                let (amount, _rest) = Self::unpack_u64(rest)?;
+                Self::FlashLoan { amount }
             }
-            13 => Self::FlashLoanEnd,
             _ => return Err(LendingError::InstructionUnpackError.into()),
         })
     }
@@ -533,16 +515,9 @@ impl LendingInstruction {
                 buf.push(11);
                 buf.extend_from_slice(new_owner.as_ref());
             }
-            Self::FlashLoanStart {
-                liquidity_amount,
-                flash_loan_end_idx,
-            } => {
+            Self::FlashLoan { amount } => {
                 buf.push(12);
-                buf.extend_from_slice(&liquidity_amount.to_le_bytes());
-                buf.extend_from_slice(&flash_loan_end_idx.to_le_bytes());
-            }
-            Self::FlashLoanEnd => {
-                buf.push(13);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
         }
         buf
@@ -975,75 +950,42 @@ pub fn set_lending_market_owner(
     }
 }
 
-/// Creates a `FlashLoanStart` instruction
+/// Creates a `FlashLoan` instruction.
 #[allow(clippy::too_many_arguments)]
-pub fn flash_loan_start(
+pub fn flash_loan(
     program_id: Pubkey,
-    liquidity_amount: u64,
-    flash_loan_end_idx: u8,
-    destination_account_pubkey: Pubkey,
+    destination_liquidity_pubkey: Pubkey,
     reserve_pubkey: Pubkey,
     reserve_liquidity_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
-    token_pubkey: Pubkey,
+    derived_lending_market_authority: Pubkey,
+    flash_loan_recevier_pubkey: Pubkey,
+    flash_loan_receiver_program_derived_account: Pubkey,
+    flash_loan_fees_account_info: Pubkey,
+    host_fee_recipient: Pubkey,
+    amount: u64,
+    additional_params: Vec<Pubkey>,
 ) -> Instruction {
-    let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
-
-    let accounts = vec![
-        AccountMeta::new(destination_account_pubkey, false),
-        AccountMeta::new(reserve_pubkey, false),
+    let mut accounts = vec![
+        AccountMeta::new(destination_liquidity_pubkey, false),
+        AccountMeta::new_readonly(reserve_pubkey, false),
         AccountMeta::new(reserve_liquidity_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
-        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
-        AccountMeta::new_readonly(token_pubkey, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
-    ];
-    Instruction {
-        program_id,
-        accounts,
-        data: LendingInstruction::FlashLoanStart {
-            liquidity_amount,
-            flash_loan_end_idx,
-        }
-        .pack(),
-    }
-}
-
-/// Creates a `FlashLoanEnd` instruction
-#[allow(clippy::too_many_arguments)]
-pub fn flash_loan_end(
-    program_id: Pubkey,
-    reserve_pubkey: Pubkey,
-    reserve_liquidity_pubkey: Pubkey,
-    lending_market_pubkey: Pubkey,
-    flash_loan_fees_receiver: Pubkey,
-    user_liquidity_pubkey: Pubkey,
-    user_transfer_authority_pubkey: Pubkey,
-    deposit_reserve_collateral_host_pubkey: Option<Pubkey>,
-) -> Instruction {
-    let (lending_market_authority_pubkey, _bump_seed) =
-        Pubkey::find_program_address(&[&lending_market_pubkey.to_bytes()[..32]], &program_id);
-
-    let mut accounts = vec![
-        AccountMeta::new_readonly(reserve_pubkey, false),
-        AccountMeta::new_readonly(reserve_liquidity_pubkey, false),
-        AccountMeta::new_readonly(lending_market_pubkey, false),
-        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
-        AccountMeta::new(flash_loan_fees_receiver, false),
-        AccountMeta::new(user_liquidity_pubkey, false),
-        AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
+        AccountMeta::new_readonly(derived_lending_market_authority, false),
+        AccountMeta::new_readonly(flash_loan_recevier_pubkey, false),
+        AccountMeta::new_readonly(flash_loan_receiver_program_derived_account, false),
         AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new(flash_loan_fees_account_info, false),
+        AccountMeta::new(host_fee_recipient, false),
     ];
-    if let Some(deposit_reserve_collateral_host_pubkey) = deposit_reserve_collateral_host_pubkey {
-        accounts.push(AccountMeta::new(
-            deposit_reserve_collateral_host_pubkey,
-            false,
-        ));
-    }
+    accounts.extend(
+        additional_params
+            .into_iter()
+            .map(|additional_param| AccountMeta::new(additional_param, false)),
+    );
     Instruction {
         program_id,
         accounts,
-        data: LendingInstruction::FlashLoanEnd.pack(),
+        data: LendingInstruction::FlashLoan { amount }.pack(),
     }
 }
