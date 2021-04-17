@@ -20,7 +20,7 @@ pub fn process_init_governance(
     accounts: &[AccountInfo],
     vote_threshold: u8,
     execution_type: u8,
-    timelock_type: u8,
+    governance_type: u8,
     voting_entry_rule: u8,
     minimum_slot_waiting_period: u64,
     time_limit: u64,
@@ -62,7 +62,7 @@ pub fn process_init_governance(
         _ => ExecutionType::Independent,
     };
 
-    new_governance.timelock_type = match timelock_type {
+    new_governance.governance_type = match governance_type {
         0 => TimelockType::Governance,
         _ => TimelockType::Governance,
     };

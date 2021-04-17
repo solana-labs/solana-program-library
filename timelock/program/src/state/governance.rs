@@ -25,7 +25,7 @@ pub struct Governance {
     /// Execution type
     pub execution_type: ExecutionType,
     /// Timelock Type
-    pub timelock_type: TimelockType,
+    pub governance_type: TimelockType,
     /// Voting entry rule
     pub voting_entry_rule: VotingEntryRule,
     /// Minimum slot time-distance from creation of proposal for an instruction to be placed
@@ -66,7 +66,7 @@ impl Pack for Governance {
             account_type_value,
             vote_threshold,
             execution_type,
-            timelock_type,
+            governance_type,
             voting_entry_rule,
             minimum_slot_waiting_period,
             governance_mint,
@@ -95,7 +95,7 @@ impl Pack for Governance {
         let account_type = u8::from_le_bytes(*account_type_value);
         let vote_threshold = u8::from_le_bytes(*vote_threshold);
         let execution_type = u8::from_le_bytes(*execution_type);
-        let timelock_type = u8::from_le_bytes(*timelock_type);
+        let governance_type = u8::from_le_bytes(*governance_type);
         let voting_entry_rule = u8::from_le_bytes(*voting_entry_rule);
         let minimum_slot_waiting_period = u64::from_le_bytes(*minimum_slot_waiting_period);
         let time_limit = u64::from_le_bytes(*time_limit);
@@ -114,7 +114,7 @@ impl Pack for Governance {
                 0 => ExecutionType::Independent,
                 _ => ExecutionType::Independent,
             },
-            timelock_type: match timelock_type {
+            governance_type: match governance_type {
                 0 => TimelockType::Governance,
                 _ => TimelockType::Governance,
             },
@@ -141,7 +141,7 @@ impl Pack for Governance {
             account_type_value,
             vote_threshold,
             execution_type,
-            timelock_type,
+            governance_type,
             voting_entry_rule,
             minimum_slot_waiting_period,
             governance_mint,
@@ -180,7 +180,7 @@ impl Pack for Governance {
             ExecutionType::Independent => 0_u8,
         }
         .to_le_bytes();
-        *timelock_type = match self.timelock_type {
+        *governance_type = match self.governance_type {
             TimelockType::Governance => 0_u8,
         }
         .to_le_bytes();

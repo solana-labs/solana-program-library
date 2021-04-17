@@ -252,8 +252,8 @@ pub enum GovernanceInstruction {
         vote_threshold: u8,
         /// Execution type
         execution_type: u8,
-        /// Timelock Type
-        timelock_type: u8,
+        /// Governance Type
+        governance_type: u8,
         /// Voting entry rule
         voting_entry_rule: u8,
         /// Minimum slot time-distance from creation of proposal for an instruction to be placed
@@ -333,7 +333,7 @@ impl GovernanceInstruction {
             10 => {
                 let (vote_threshold, rest) = Self::unpack_u8(rest)?;
                 let (execution_type, rest) = Self::unpack_u8(rest)?;
-                let (timelock_type, rest) = Self::unpack_u8(rest)?;
+                let (governance_type, rest) = Self::unpack_u8(rest)?;
                 let (voting_entry_rule, rest) = Self::unpack_u8(rest)?;
                 let (minimum_slot_waiting_period, rest) = Self::unpack_u64(rest)?;
                 let (time_limit, rest) = Self::unpack_u64(rest)?;
@@ -344,7 +344,7 @@ impl GovernanceInstruction {
                 Self::InitGovernance {
                     vote_threshold,
                     execution_type,
-                    timelock_type,
+                    governance_type,
                     voting_entry_rule,
                     minimum_slot_waiting_period,
                     name,
@@ -475,7 +475,7 @@ impl GovernanceInstruction {
             Self::InitGovernance {
                 vote_threshold,
                 execution_type,
-                timelock_type,
+                governance_type,
                 voting_entry_rule,
                 minimum_slot_waiting_period,
                 time_limit,
@@ -484,7 +484,7 @@ impl GovernanceInstruction {
                 buf.push(10);
                 buf.extend_from_slice(&vote_threshold.to_le_bytes());
                 buf.extend_from_slice(&execution_type.to_le_bytes());
-                buf.extend_from_slice(&timelock_type.to_le_bytes());
+                buf.extend_from_slice(&governance_type.to_le_bytes());
                 buf.extend_from_slice(&voting_entry_rule.to_le_bytes());
                 buf.extend_from_slice(&minimum_slot_waiting_period.to_le_bytes());
                 buf.extend_from_slice(&time_limit.to_le_bytes());
