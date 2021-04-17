@@ -35,7 +35,7 @@ pub fn get_authority_signer_seeds<'a>(
     Ok(&*authority_signer_seeds)
 }*/
 
-/// Attempts to transfer the token to the timelock set's validation account and back to the person again.
+/// Attempts to transfer the token to the Proposal's validation account and back to the person again.
 /// Can only be done if done in a transaction that has authority to do so. Serves as a check
 /// That the person is who they say they are!
 pub fn assert_is_permissioned<'a>(
@@ -84,7 +84,7 @@ pub fn assert_is_permissioned<'a>(
     Ok(())
 }
 
-/// Asserts a timelock set is in a state that can be edited - if its voting or executing, cant touch it.
+/// Asserts a Proposal is in a state that can be edited - if its voting or executing, cant touch it.
 pub fn assert_not_in_voting_or_executing(timelock_state: &ProposalState) -> ProgramResult {
     if timelock_state.status == ProposalStateStatus::Voting
         || timelock_state.status == ProposalStateStatus::Executing
@@ -94,7 +94,7 @@ pub fn assert_not_in_voting_or_executing(timelock_state: &ProposalState) -> Prog
     Ok(())
 }
 
-/// Asserts a timelock set is in executing state.
+/// Asserts a Proposal is in executing state.
 pub fn assert_executing(timelock_state: &ProposalState) -> ProgramResult {
     if timelock_state.status != ProposalStateStatus::Executing {
         return Err(TimelockError::InvalidProposalStateError.into());
@@ -102,7 +102,7 @@ pub fn assert_executing(timelock_state: &ProposalState) -> ProgramResult {
     Ok(())
 }
 
-/// Asserts a timelock set is in voting state.
+/// Asserts a Proposal is in voting state.
 pub fn assert_voting(timelock_state: &ProposalState) -> ProgramResult {
     if timelock_state.status != ProposalStateStatus::Voting {
         return Err(TimelockError::InvalidProposalStateError.into());
@@ -110,7 +110,7 @@ pub fn assert_voting(timelock_state: &ProposalState) -> ProgramResult {
     Ok(())
 }
 
-/// Asserts a timelock set is in draft state.
+/// Asserts a Proposal is in draft state.
 pub fn assert_draft(timelock_state: &ProposalState) -> ProgramResult {
     if timelock_state.status != ProposalStateStatus::Draft {
         return Err(TimelockError::InvalidProposalStateError.into());
@@ -141,7 +141,7 @@ pub fn assert_token_program_is_correct(
     Ok(())
 }
 
-/// asserts timelock txn is in timelock set
+/// asserts timelock txn is in Proposal
 pub fn assert_txn_in_state(
     timelock_state: &ProposalState,
     timelock_txn_account_info: &AccountInfo,

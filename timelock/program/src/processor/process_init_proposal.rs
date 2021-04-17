@@ -25,7 +25,7 @@ use solana_program::{
     sysvar::{rent::Rent, Sysvar},
 };
 
-/// Create a new timelock set
+/// Create a new Proposal
 pub fn process_init_proposal(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

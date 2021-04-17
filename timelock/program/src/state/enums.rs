@@ -39,7 +39,7 @@ impl Default for ExecutionType {
     }
 }
 
-/// What state a timelock set is in
+/// What state a Proposal is in
 #[derive(Clone, Debug, PartialEq)]
 pub enum ProposalStateStatus {
     /// Draft

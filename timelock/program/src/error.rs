@@ -19,8 +19,8 @@ pub enum TimelockError {
     #[error("Account is already initialized")]
     AlreadyInitialized,
 
-    /// Using the wrong version of the timelock set for this code version
-    #[error("Using a timelock set from a different version than this program version")]
+    /// Using the wrong version of the Proposal for this code version
+    #[error("Using a Proposal from a different version than this program version")]
     InvalidProposalVersionError,
 
     /// Too high position in txn array
@@ -55,12 +55,12 @@ pub enum TimelockError {
     #[error("Invalid account owner")]
     InvalidAccountOwnerError,
 
-    /// The wrong signatory mint was given for this timelock set
-    #[error("The wrong signatory mint was given for this timelock set")]
+    /// The wrong signatory mint was given for this Proposal
+    #[error("The wrong signatory mint was given for this Proposal")]
     InvalidSignatoryMintError,
 
-    /// The timelock set is in the wrong state for this operation
-    #[error("The timelock set is in the wrong state for this operation")]
+    /// The Proposal is in the wrong state for this operation
+    #[error("The Proposal is in the wrong state for this operation")]
     InvalidProposalStateError,
 
     /// The account is uninitialized
@@ -123,12 +123,14 @@ pub enum TimelockError {
     #[error("Invalid timelock type for this action")]
     InvalidTimelockType,
 
-    /// You have provided an account that doesnt match the pubkey on a timelock set or config object
-    #[error("You have provided an account that doesnt match the pubkey on a timelock set or config object")]
+    /// You have provided an account that doesnt match the pubkey on a Proposal or config object
+    #[error(
+        "You have provided an account that doesnt match the pubkey on a Proposal or config object"
+    )]
     AccountsShouldMatch,
 
-    /// Provided wrong mint type for a token holding account on timelock set
-    #[error("Provided wrong mint type for a token holding account on timelock set")]
+    /// Provided wrong mint type for a token holding account on Proposal
+    #[error("Provided wrong mint type for a token holding account on Proposal")]
     MintsShouldMatch,
 
     /// Provided source mint decimals don't match voting mint decimals

@@ -14,7 +14,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-/// Delete timelock set
+/// Delete Proposal
 pub fn process_delete_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let timelock_state_account_info = next_account_info(account_info_iter)?;

@@ -20,7 +20,7 @@ pub struct ProposalState {
     /// Account type
     pub account_type: GovernanceAccountType,
 
-    /// timelock set key
+    /// Proposal key
     pub timelock_set: Pubkey,
 
     /// Current state of the invoked instruction account

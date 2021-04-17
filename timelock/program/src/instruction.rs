@@ -211,7 +211,7 @@ pub enum GovernanceInstruction {
     ///   4. `[writable]` Voting mint account.
     ///   5. `[]` Proposal account.
     ///   6. `[]` Transfer authority
-    ///   7. `[]` Timelock program mint authority (pda with seed of timelock set key)
+    ///   7. `[]` Timelock program mint authority (pda with seed of Proposal key)
     ///   8. `[]` Token program account.
     DepositSourceTokens {
         /// How many voting tokens to deposit
@@ -227,15 +227,15 @@ pub enum GovernanceInstruction {
     ///   3. `[writable]` Initialized No Voting account from which to remove your voting tokens.
     ///   4. `[writable]` User token account that you wish your actual tokens to be returned to.
     ///   5. `[writable]` Source holding account owned by the timelock that will has the actual tokens in escrow.
-    ///   6. `[writable]` Initialized Yes Voting dump account owned by timelock set to which to send your voting tokens.
-    ///   7. `[writable]` Initialized No Voting dump account owned by timelock set to which to send your voting tokens.
+    ///   6. `[writable]` Initialized Yes Voting dump account owned by Proposal to which to send your voting tokens.
+    ///   7. `[writable]` Initialized No Voting dump account owned by Proposal to which to send your voting tokens.
     ///   8. `[writable]` Voting mint account.
     ///   9. `[writable]` Yes Voting mint account.
     ///   10. `[writable]` No Voting mint account.
     ///   11. `[]` Timelock state account.
     ///   12. `[]` Proposal account.
     ///   13. `[]` Transfer authority
-    ///   14. `[]` Timelock program mint authority (pda of seed timelock set key)
+    ///   14. `[]` Timelock program mint authority (pda of seed Proposal key)
     ///   15. `[]` Token program account.
     WithdrawVotingTokens {
         /// How many voting tokens to withdrawal
