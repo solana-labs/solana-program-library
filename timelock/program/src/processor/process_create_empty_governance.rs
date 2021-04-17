@@ -8,7 +8,7 @@ use solana_program::{
 };
 
 /// Create empty timelock config
-pub fn process_create_empty_timelock_config(
+pub fn process_create_empty_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
