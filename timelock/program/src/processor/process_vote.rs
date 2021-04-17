@@ -40,7 +40,7 @@ pub fn process_vote(
     let no_voting_mint_account_info = next_account_info(account_info_iter)?; //7
     let source_mint_account_info = next_account_info(account_info_iter)?; //8
     let timelock_set_account_info = next_account_info(account_info_iter)?; //9
-    let timelock_config_account_info = next_account_info(account_info_iter)?; //10
+    let governance_account_info = next_account_info(account_info_iter)?; //10
     let transfer_authority_info = next_account_info(account_info_iter)?; //11
     let timelock_program_authority_info = next_account_info(account_info_iter)?; //12
     let token_program_account_info = next_account_info(account_info_iter)?; //13
@@ -49,12 +49,12 @@ pub fn process_vote(
     let clock = Clock::from_account_info(clock_info)?;
     let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
-    let timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
+    let governance: Governance = assert_initialized(governance_account_info)?;
 
     assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
     assert_account_equiv(yes_voting_mint_account_info, &timelock_set.yes_voting_mint)?;
     assert_account_equiv(no_voting_mint_account_info, &timelock_set.no_voting_mint)?;
-    assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
+    assert_account_equiv(governance_account_info, &timelock_set.config)?;
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
     assert_account_equiv(source_mint_account_info, &timelock_set.source_mint)?;
 
@@ -121,13 +121,13 @@ pub fn process_vote(
 
     let tipped: bool = now_remaining_in_no_column == 0
         || ((1.0 - now_remaining_in_no_column as f64 / total_ever_existed as f64) * 100.0
-            >= timelock_config.vote_threshold as f64);
+            >= governance.vote_threshold as f64);
 
     let elapsed = match clock.slot.checked_sub(timelock_state.voting_began_at) {
         Some(val) => val,
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
-    let too_long = elapsed > timelock_config.time_limit;
+    let too_long = elapsed > governance.time_limit;
 
     if tipped || too_long {
         if tipped {

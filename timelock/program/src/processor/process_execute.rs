@@ -3,9 +3,7 @@ use crate::{
     error::TimelockError,
     state::governance::Governance,
     state::{
-        custom_single_signer_transaction::{
-            CustomSingleSignerTransaction, MAX_ACCOUNTS_ALLOWED,
-        },
+        custom_single_signer_transaction::{CustomSingleSignerTransaction, MAX_ACCOUNTS_ALLOWED},
         enums::ProposalStateStatus,
         governance::TIMELOCK_CONFIG_LEN,
         proposal::Proposal,
@@ -36,12 +34,12 @@ pub fn process_execute(
     let timelock_state_account_info = next_account_info(account_info_iter)?;
     let program_to_invoke_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
-    let timelock_config_account_info = next_account_info(account_info_iter)?;
+    let governance_account_info = next_account_info(account_info_iter)?;
     let clock_info = next_account_info(account_info_iter)?;
 
     let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
-    let timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
+    let governance: Governance = assert_initialized(governance_account_info)?;
     let clock = &Clock::from_account_info(clock_info)?;
     // For now we assume all transactions are CustomSingleSignerTransactions even though
     // this will not always be the case...we need to solve that inheritance issue later.
@@ -58,9 +56,9 @@ pub fn process_execute(
     }
 
     assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
-    assert_account_equiv(timelock_config_account_info, &timelock_set.config)?;
+    assert_account_equiv(governance_account_info, &timelock_set.config)?;
 
-    let council_mint_seed = timelock_config
+    let council_mint_seed = governance
         .council_mint
         .as_ref()
         .map(|key| key.as_ref())
@@ -69,9 +67,9 @@ pub fn process_execute(
     let mut seeds = vec![
         PROGRAM_AUTHORITY_SEED,
         program_id.as_ref(),
-        timelock_config.governance_mint.as_ref(),
+        governance.governance_mint.as_ref(),
         council_mint_seed,
-        timelock_config.program.as_ref(),
+        governance.program.as_ref(),
     ];
 
     let (governance_authority, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
@@ -99,10 +97,10 @@ pub fn process_execute(
     account_infos.push(program_to_invoke_info.clone());
 
     if !added_authority {
-        if timelock_config_account_info.key != &governance_authority {
+        if governance_account_info.key != &governance_authority {
             return Err(TimelockError::InvalidGovernanceKey.into());
         }
-        account_infos.push(timelock_config_account_info.clone());
+        account_infos.push(governance_account_info.clone());
     }
 
     assert_executing(&timelock_state)?;

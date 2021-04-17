@@ -27,7 +27,7 @@ pub fn process_init_governance(
     name: [u8; CONFIG_NAME_LENGTH],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let timelock_config_account_info = next_account_info(account_info_iter)?;
+    let governance_account_info = next_account_info(account_info_iter)?;
     let program_to_tie_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
 
@@ -43,38 +43,38 @@ pub fn process_init_governance(
         program_to_tie_account_info.key.as_ref(),
     ];
     let (config_key, _) = Pubkey::find_program_address(seeds, program_id);
-    if timelock_config_account_info.key != &config_key {
+    if governance_account_info.key != &config_key {
         return Err(TimelockError::InvalidGovernanceKey.into());
     }
-    let mut new_timelock_config: Governance = assert_uninitialized(timelock_config_account_info)?;
-    new_timelock_config.account_type = GovernanceAccountType::Governance;
-    new_timelock_config.name = name;
-    new_timelock_config.minimum_slot_waiting_period = minimum_slot_waiting_period;
-    new_timelock_config.time_limit = time_limit;
-    new_timelock_config.program = *program_to_tie_account_info.key;
-    new_timelock_config.governance_mint = *governance_mint_account_info.key;
+    let mut new_governance: Governance = assert_uninitialized(governance_account_info)?;
+    new_governance.account_type = GovernanceAccountType::Governance;
+    new_governance.name = name;
+    new_governance.minimum_slot_waiting_period = minimum_slot_waiting_period;
+    new_governance.time_limit = time_limit;
+    new_governance.program = *program_to_tie_account_info.key;
+    new_governance.governance_mint = *governance_mint_account_info.key;
 
-    new_timelock_config.council_mint = council_mint;
+    new_governance.council_mint = council_mint;
 
-    new_timelock_config.vote_threshold = vote_threshold;
-    new_timelock_config.execution_type = match execution_type {
+    new_governance.vote_threshold = vote_threshold;
+    new_governance.execution_type = match execution_type {
         0 => ExecutionType::Independent,
         _ => ExecutionType::Independent,
     };
 
-    new_timelock_config.timelock_type = match timelock_type {
+    new_governance.timelock_type = match timelock_type {
         0 => TimelockType::Governance,
         _ => TimelockType::Governance,
     };
 
-    new_timelock_config.voting_entry_rule = match voting_entry_rule {
+    new_governance.voting_entry_rule = match voting_entry_rule {
         0 => VotingEntryRule::Anytime,
         _ => VotingEntryRule::Anytime,
     };
 
     Governance::pack(
-        new_timelock_config,
-        &mut timelock_config_account_info.data.borrow_mut(),
+        new_governance,
+        &mut governance_account_info.data.borrow_mut(),
     )?;
 
     Ok(())

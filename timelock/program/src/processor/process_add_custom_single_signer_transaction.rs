@@ -35,14 +35,14 @@ pub fn process_add_custom_single_signer_transaction(
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
     let timelock_set_account_info = next_account_info(account_info_iter)?;
-    let timelock_config_account_info = next_account_info(account_info_iter)?;
+    let governance_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_mint_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
     let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
-    let timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
+    let governance: Governance = assert_initialized(governance_account_info)?;
 
     let mut timelock_txn: CustomSingleSignerTransaction =
         assert_uninitialized(timelock_txn_account_info)?;
@@ -72,7 +72,7 @@ pub fn process_add_custom_single_signer_transaction(
         timelock_mint_authority_info,
     )?;
 
-    if slot < timelock_config.minimum_slot_waiting_period {
+    if slot < governance.minimum_slot_waiting_period {
         return Err(TimelockError::MustBeAboveMinimumWaitingPeriod.into());
     };
 

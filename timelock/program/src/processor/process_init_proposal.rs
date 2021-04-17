@@ -36,7 +36,7 @@ pub fn process_init_proposal(
 
     let timelock_state_account_info = next_account_info(account_info_iter)?; //0
     let timelock_set_account_info = next_account_info(account_info_iter)?; //1
-    let timelock_config_account_info = next_account_info(account_info_iter)?; //2
+    let governance_account_info = next_account_info(account_info_iter)?; //2
     let signatory_mint_account_info = next_account_info(account_info_iter)?; //3
     let admin_mint_account_info = next_account_info(account_info_iter)?; //4
     let voting_mint_account_info = next_account_info(account_info_iter)?; //5
@@ -58,10 +58,10 @@ pub fn process_init_proposal(
 
     let mut new_timelock_state: ProposalState = assert_uninitialized(timelock_state_account_info)?;
     let mut new_timelock_set: Proposal = assert_uninitialized(timelock_set_account_info)?;
-    let mut timelock_config: Governance = assert_initialized(timelock_config_account_info)?;
+    let mut governance: Governance = assert_initialized(governance_account_info)?;
 
     new_timelock_set.account_type = GovernanceAccountType::Proposal;
-    new_timelock_set.config = *timelock_config_account_info.key;
+    new_timelock_set.config = *governance_account_info.key;
     new_timelock_set.token_program_id = *token_program_info.key;
     new_timelock_set.state = *timelock_state_account_info.key;
     new_timelock_set.admin_mint = *admin_mint_account_info.key;
@@ -84,7 +84,7 @@ pub fn process_init_proposal(
     new_timelock_state.total_signing_tokens_minted = 1;
     new_timelock_state.number_of_executed_transactions = 0;
     new_timelock_state.number_of_transactions = 0;
-    timelock_config.count = match timelock_config.count.checked_add(1) {
+    governance.count = match governance.count.checked_add(1) {
         Some(val) => val,
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
@@ -177,8 +177,8 @@ pub fn process_init_proposal(
         timelock_program_authority_info.key,
     )?;
 
-    if source_holding_mint != timelock_config.governance_mint {
-        if let Some(council_mint) = timelock_config.council_mint {
+    if source_holding_mint != governance.governance_mint {
+        if let Some(council_mint) = governance.council_mint {
             if source_holding_mint != council_mint {
                 return Err(TimelockError::AccountsShouldMatch.into());
             }
@@ -195,10 +195,7 @@ pub fn process_init_proposal(
         new_timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;
-    Governance::pack(
-        timelock_config,
-        &mut timelock_config_account_info.data.borrow_mut(),
-    )?;
+    Governance::pack(governance, &mut governance_account_info.data.borrow_mut())?;
 
     let mut seeds = vec![
         PROGRAM_AUTHORITY_SEED,

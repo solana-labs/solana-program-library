@@ -13,7 +13,7 @@ pub fn process_create_empty_governance(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let timelock_config_account_info = next_account_info(account_info_iter)?;
+    let governance_account_info = next_account_info(account_info_iter)?;
     let program_to_tie_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
     let payer_account_info = next_account_info(account_info_iter)?;
@@ -41,7 +41,7 @@ pub fn process_create_empty_governance(
         &[
             payer_account_info.clone(),
             timelock_program_account_info.clone(),
-            timelock_config_account_info.clone(),
+            governance_account_info.clone(),
             system_account_info.clone(),
         ],
         &config_key,
