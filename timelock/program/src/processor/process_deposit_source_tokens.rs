@@ -30,21 +30,18 @@ pub fn process_deposit_source_tokens(
     let user_holding_account_info = next_account_info(account_info_iter)?;
     let source_holding_account_info = next_account_info(account_info_iter)?;
     let voting_mint_account_info = next_account_info(account_info_iter)?;
-    let timelock_set_account_info = next_account_info(account_info_iter)?;
+    let proposal_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
-    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
-    assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
+    let proposal: Proposal = assert_initialized(proposal_account_info)?;
+    assert_token_program_is_correct(&proposal, token_program_account_info)?;
 
-    assert_account_equiv(source_holding_account_info, &timelock_set.source_holding)?;
-    assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
+    assert_account_equiv(source_holding_account_info, &proposal.source_holding)?;
+    assert_account_equiv(voting_mint_account_info, &proposal.voting_mint)?;
 
-    let mut seeds = vec![
-        PROGRAM_AUTHORITY_SEED,
-        timelock_set_account_info.key.as_ref(),
-    ];
+    let mut seeds = vec![PROGRAM_AUTHORITY_SEED, proposal_account_info.key.as_ref()];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if timelock_program_authority_info.key != &authority_key {
@@ -77,7 +74,7 @@ pub fn process_deposit_source_tokens(
         &[
             PROGRAM_AUTHORITY_SEED,
             program_id.as_ref(),
-            timelock_set_account_info.key.as_ref(),
+            proposal_account_info.key.as_ref(),
             voting_account_info.key.as_ref(),
         ],
         program_id,
@@ -92,7 +89,7 @@ pub fn process_deposit_source_tokens(
         let voting_account: Account = assert_initialized(voting_account_info)?;
 
         voting_record.account_type = GovernanceAccountType::VoteRecord;
-        voting_record.proposal = *timelock_set_account_info.key;
+        voting_record.proposal = *proposal_account_info.key;
         voting_record.owner = voting_account.owner;
 
         voting_record.undecided_count = voting_token_amount;

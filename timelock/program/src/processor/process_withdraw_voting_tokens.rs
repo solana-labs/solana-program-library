@@ -39,24 +39,24 @@ pub fn process_withdraw_voting_tokens(
     let no_voting_mint_account_info = next_account_info(account_info_iter)?;
 
     let timelock_state_account_info = next_account_info(account_info_iter)?;
-    let timelock_set_account_info = next_account_info(account_info_iter)?;
+    let proposal_account_info = next_account_info(account_info_iter)?;
 
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_program_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
-    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
-    assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
+    let proposal: Proposal = assert_initialized(proposal_account_info)?;
+    assert_token_program_is_correct(&proposal, token_program_account_info)?;
     // Using assert_account_equiv not workable here due to cost of stack size on this method.
 
-    assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
-    assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
-    assert_account_equiv(yes_voting_mint_account_info, &timelock_set.yes_voting_mint)?;
-    assert_account_equiv(no_voting_mint_account_info, &timelock_set.no_voting_mint)?;
-    assert_account_equiv(yes_voting_dump_account_info, &timelock_set.yes_voting_dump)?;
-    assert_account_equiv(no_voting_dump_account_info, &timelock_set.no_voting_dump)?;
-    assert_account_equiv(source_holding_account_info, &timelock_set.source_holding)?;
+    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
+    assert_account_equiv(voting_mint_account_info, &proposal.voting_mint)?;
+    assert_account_equiv(yes_voting_mint_account_info, &proposal.yes_voting_mint)?;
+    assert_account_equiv(no_voting_mint_account_info, &proposal.no_voting_mint)?;
+    assert_account_equiv(yes_voting_dump_account_info, &proposal.yes_voting_dump)?;
+    assert_account_equiv(no_voting_dump_account_info, &proposal.no_voting_dump)?;
+    assert_account_equiv(source_holding_account_info, &proposal.source_holding)?;
 
     let voting_account: Account = assert_initialized(voting_account_info)?;
     let yes_voting_account: Account = assert_initialized(yes_voting_account_info)?;
@@ -64,7 +64,7 @@ pub fn process_withdraw_voting_tokens(
 
     let mut seeds = vec![
         PROGRAM_AUTHORITY_SEED,
-        timelock_set_account_info.key.as_ref(),
+        proposal_account_info.key.as_ref(),
     ];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
@@ -79,7 +79,7 @@ pub fn process_withdraw_voting_tokens(
         &[
             PROGRAM_AUTHORITY_SEED,
             program_id.as_ref(),
-            timelock_set_account_info.key.as_ref(),
+            proposal_account_info.key.as_ref(),
             voting_account_info.key.as_ref(),
         ],
         program_id,

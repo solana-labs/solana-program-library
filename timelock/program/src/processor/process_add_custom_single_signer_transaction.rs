@@ -34,14 +34,14 @@ pub fn process_add_custom_single_signer_transaction(
     let timelock_state_account_info = next_account_info(account_info_iter)?;
     let signatory_account_info = next_account_info(account_info_iter)?;
     let signatory_validation_account_info = next_account_info(account_info_iter)?;
-    let timelock_set_account_info = next_account_info(account_info_iter)?;
+    let proposal_account_info = next_account_info(account_info_iter)?;
     let governance_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
     let timelock_mint_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
-    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
+    let proposal: Proposal = assert_initialized(proposal_account_info)?;
     let governance: Governance = assert_initialized(governance_account_info)?;
 
     let mut timelock_txn: CustomSingleSignerTransaction =
@@ -57,16 +57,16 @@ pub fn process_add_custom_single_signer_transaction(
 
     assert_account_equiv(
         signatory_validation_account_info,
-        &timelock_set.signatory_validation,
+        &proposal.signatory_validation,
     )?;
-    assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
+    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
     assert_draft(&timelock_state)?;
-    assert_token_program_is_correct(&timelock_set, token_program_account_info)?;
+    assert_token_program_is_correct(&proposal, token_program_account_info)?;
     assert_is_permissioned(
         program_id,
         signatory_account_info,
         signatory_validation_account_info,
-        timelock_set_account_info,
+        proposal_account_info,
         token_program_account_info,
         transfer_authority_info,
         timelock_mint_authority_info,

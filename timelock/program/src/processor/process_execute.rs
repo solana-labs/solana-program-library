@@ -33,12 +33,12 @@ pub fn process_execute(
     let transaction_account_info = next_account_info(account_info_iter)?;
     let timelock_state_account_info = next_account_info(account_info_iter)?;
     let program_to_invoke_info = next_account_info(account_info_iter)?;
-    let timelock_set_account_info = next_account_info(account_info_iter)?;
+    let proposal_account_info = next_account_info(account_info_iter)?;
     let governance_account_info = next_account_info(account_info_iter)?;
     let clock_info = next_account_info(account_info_iter)?;
 
     let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
-    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
+    let proposal: Proposal = assert_initialized(proposal_account_info)?;
     let governance: Governance = assert_initialized(governance_account_info)?;
     let clock = &Clock::from_account_info(clock_info)?;
     // For now we assume all transactions are CustomSingleSignerTransactions even though
@@ -55,8 +55,8 @@ pub fn process_execute(
         return Err(TimelockError::TooEarlyToExecute.into());
     }
 
-    assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
-    assert_account_equiv(governance_account_info, &timelock_set.config)?;
+    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
+    assert_account_equiv(governance_account_info, &proposal.config)?;
 
     let council_mint_seed = governance
         .council_mint
@@ -84,7 +84,7 @@ pub fn process_execute(
         if next_account.data_len() == TIMELOCK_CONFIG_LEN {
             // You better be initialized, and if you are, you better at least be mine...
             let _nefarious_config: Governance = assert_initialized(&next_account)?;
-            assert_account_equiv(&next_account, &timelock_set.config)?;
+            assert_account_equiv(&next_account, &proposal.config)?;
             added_authority = true;
 
             if next_account.key != &governance_authority {

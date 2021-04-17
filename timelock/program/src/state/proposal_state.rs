@@ -21,7 +21,7 @@ pub struct ProposalState {
     pub account_type: GovernanceAccountType,
 
     /// Proposal key
-    pub timelock_set: Pubkey,
+    pub proposal: Pubkey,
 
     /// Current state of the invoked instruction account
     pub status: ProposalStateStatus,
@@ -104,7 +104,7 @@ impl Pack for ProposalState {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             account_type_value,
-            timelock_set,
+            proposal,
             timelock_state_status,
             total_signing_tokens_minted,
             desc_link,
@@ -145,7 +145,7 @@ impl Pack for ProposalState {
 
         Ok(Self {
             account_type,
-            timelock_set: Pubkey::new_from_array(*timelock_set),
+            proposal: Pubkey::new_from_array(*proposal),
             status: match timelock_state_status {
                 0 => ProposalStateStatus::Draft,
                 1 => ProposalStateStatus::Voting,
@@ -179,7 +179,7 @@ impl Pack for ProposalState {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             account_type_value,
-            timelock_set,
+            proposal,
             timelock_state_status,
             total_signing_tokens_minted,
             desc_link,
@@ -208,7 +208,7 @@ impl Pack for ProposalState {
         }
         .to_le_bytes();
 
-        timelock_set.copy_from_slice(self.timelock_set.as_ref());
+        proposal.copy_from_slice(self.proposal.as_ref());
 
         *timelock_state_status = match self.status {
             ProposalStateStatus::Draft => 0_u8,

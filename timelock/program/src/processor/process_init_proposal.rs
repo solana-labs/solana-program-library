@@ -35,7 +35,7 @@ pub fn process_init_proposal(
     let account_info_iter = &mut accounts.iter();
 
     let timelock_state_account_info = next_account_info(account_info_iter)?; //0
-    let timelock_set_account_info = next_account_info(account_info_iter)?; //1
+    let proposal_account_info = next_account_info(account_info_iter)?; //1
     let governance_account_info = next_account_info(account_info_iter)?; //2
     let signatory_mint_account_info = next_account_info(account_info_iter)?; //3
     let admin_mint_account_info = next_account_info(account_info_iter)?; //4
@@ -57,28 +57,28 @@ pub fn process_init_proposal(
     let rent = &Rent::from_account_info(rent_info)?;
 
     let mut new_timelock_state: ProposalState = assert_uninitialized(timelock_state_account_info)?;
-    let mut new_timelock_set: Proposal = assert_uninitialized(timelock_set_account_info)?;
+    let mut new_proposal: Proposal = assert_uninitialized(proposal_account_info)?;
     let mut governance: Governance = assert_initialized(governance_account_info)?;
 
-    new_timelock_set.account_type = GovernanceAccountType::Proposal;
-    new_timelock_set.config = *governance_account_info.key;
-    new_timelock_set.token_program_id = *token_program_info.key;
-    new_timelock_set.state = *timelock_state_account_info.key;
-    new_timelock_set.admin_mint = *admin_mint_account_info.key;
-    new_timelock_set.voting_mint = *voting_mint_account_info.key;
-    new_timelock_set.yes_voting_mint = *yes_voting_mint_account_info.key;
-    new_timelock_set.no_voting_mint = *no_voting_mint_account_info.key;
-    new_timelock_set.source_mint = *source_mint_account_info.key;
-    new_timelock_set.signatory_mint = *signatory_mint_account_info.key;
-    new_timelock_set.source_holding = *source_holding_account_info.key;
-    new_timelock_set.yes_voting_dump = *yes_voting_dump_account_info.key;
-    new_timelock_set.no_voting_dump = *no_voting_dump_account_info.key;
-    new_timelock_set.admin_validation = *admin_validation_account_info.key;
-    new_timelock_set.voting_validation = *voting_validation_account_info.key;
-    new_timelock_set.signatory_validation = *signatory_validation_account_info.key;
+    new_proposal.account_type = GovernanceAccountType::Proposal;
+    new_proposal.config = *governance_account_info.key;
+    new_proposal.token_program_id = *token_program_info.key;
+    new_proposal.state = *timelock_state_account_info.key;
+    new_proposal.admin_mint = *admin_mint_account_info.key;
+    new_proposal.voting_mint = *voting_mint_account_info.key;
+    new_proposal.yes_voting_mint = *yes_voting_mint_account_info.key;
+    new_proposal.no_voting_mint = *no_voting_mint_account_info.key;
+    new_proposal.source_mint = *source_mint_account_info.key;
+    new_proposal.signatory_mint = *signatory_mint_account_info.key;
+    new_proposal.source_holding = *source_holding_account_info.key;
+    new_proposal.yes_voting_dump = *yes_voting_dump_account_info.key;
+    new_proposal.no_voting_dump = *no_voting_dump_account_info.key;
+    new_proposal.admin_validation = *admin_validation_account_info.key;
+    new_proposal.voting_validation = *voting_validation_account_info.key;
+    new_proposal.signatory_validation = *signatory_validation_account_info.key;
 
     new_timelock_state.account_type = GovernanceAccountType::ProposalState;
-    new_timelock_state.timelock_set = *timelock_set_account_info.key;
+    new_timelock_state.proposal = *proposal_account_info.key;
     new_timelock_state.desc_link = desc_link;
     new_timelock_state.name = name;
     new_timelock_state.total_signing_tokens_minted = 1;
@@ -89,7 +89,7 @@ pub fn process_init_proposal(
         None => return Err(TimelockError::NumericalOverflow.into()),
     };
 
-    assert_rent_exempt(rent, timelock_set_account_info)?;
+    assert_rent_exempt(rent, proposal_account_info)?;
     assert_rent_exempt(rent, source_holding_account_info)?;
     assert_rent_exempt(rent, admin_mint_account_info)?;
     assert_rent_exempt(rent, voting_mint_account_info)?;
@@ -187,20 +187,14 @@ pub fn process_init_proposal(
         }
     }
 
-    Proposal::pack(
-        new_timelock_set,
-        &mut timelock_set_account_info.data.borrow_mut(),
-    )?;
+    Proposal::pack(new_proposal, &mut proposal_account_info.data.borrow_mut())?;
     ProposalState::pack(
         new_timelock_state,
         &mut timelock_state_account_info.data.borrow_mut(),
     )?;
     Governance::pack(governance, &mut governance_account_info.data.borrow_mut())?;
 
-    let mut seeds = vec![
-        PROGRAM_AUTHORITY_SEED,
-        timelock_set_account_info.key.as_ref(),
-    ];
+    let mut seeds = vec![PROGRAM_AUTHORITY_SEED, proposal_account_info.key.as_ref()];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if timelock_program_authority_info.key != &authority_key {

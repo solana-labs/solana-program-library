@@ -42,7 +42,7 @@ pub fn assert_is_permissioned<'a>(
     program_id: &Pubkey,
     perm_account_info: &AccountInfo<'a>,
     perm_validation_account_info: &AccountInfo<'a>,
-    timelock_set_info: &AccountInfo<'a>,
+    proposal_info: &AccountInfo<'a>,
     token_program_info: &AccountInfo<'a>,
     transfer_authority_info: &AccountInfo<'a>,
     timelock_authority_info: &AccountInfo<'a>,
@@ -50,7 +50,7 @@ pub fn assert_is_permissioned<'a>(
     let _perm_account: Account = assert_initialized(perm_account_info)?;
     let _perm_validation: Account = assert_initialized(perm_validation_account_info)?;
 
-    let mut seeds = vec![PROGRAM_AUTHORITY_SEED, timelock_set_info.key.as_ref()];
+    let mut seeds = vec![PROGRAM_AUTHORITY_SEED, proposal_info.key.as_ref()];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     if timelock_authority_info.key != &authority_key {
@@ -120,10 +120,10 @@ pub fn assert_draft(timelock_state: &ProposalState) -> ProgramResult {
 
 /// Asserts the proper mint key is being used.
 pub fn assert_proper_signatory_mint(
-    timelock_set: &Proposal,
+    proposal: &Proposal,
     signatory_mint_account_info: &AccountInfo,
 ) -> ProgramResult {
-    if timelock_set.signatory_mint != *signatory_mint_account_info.key {
+    if proposal.signatory_mint != *signatory_mint_account_info.key {
         return Err(TimelockError::InvalidSignatoryMintError.into());
     }
     Ok(())

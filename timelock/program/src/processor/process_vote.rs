@@ -39,7 +39,7 @@ pub fn process_vote(
     let yes_voting_mint_account_info = next_account_info(account_info_iter)?; //6
     let no_voting_mint_account_info = next_account_info(account_info_iter)?; //7
     let source_mint_account_info = next_account_info(account_info_iter)?; //8
-    let timelock_set_account_info = next_account_info(account_info_iter)?; //9
+    let proposal_account_info = next_account_info(account_info_iter)?; //9
     let governance_account_info = next_account_info(account_info_iter)?; //10
     let transfer_authority_info = next_account_info(account_info_iter)?; //11
     let timelock_program_authority_info = next_account_info(account_info_iter)?; //12
@@ -48,21 +48,21 @@ pub fn process_vote(
 
     let clock = Clock::from_account_info(clock_info)?;
     let mut timelock_state: ProposalState = assert_initialized(timelock_state_account_info)?;
-    let timelock_set: Proposal = assert_initialized(timelock_set_account_info)?;
+    let proposal: Proposal = assert_initialized(proposal_account_info)?;
     let governance: Governance = assert_initialized(governance_account_info)?;
 
-    assert_account_equiv(voting_mint_account_info, &timelock_set.voting_mint)?;
-    assert_account_equiv(yes_voting_mint_account_info, &timelock_set.yes_voting_mint)?;
-    assert_account_equiv(no_voting_mint_account_info, &timelock_set.no_voting_mint)?;
-    assert_account_equiv(governance_account_info, &timelock_set.config)?;
-    assert_account_equiv(timelock_state_account_info, &timelock_set.state)?;
-    assert_account_equiv(source_mint_account_info, &timelock_set.source_mint)?;
+    assert_account_equiv(voting_mint_account_info, &proposal.voting_mint)?;
+    assert_account_equiv(yes_voting_mint_account_info, &proposal.yes_voting_mint)?;
+    assert_account_equiv(no_voting_mint_account_info, &proposal.no_voting_mint)?;
+    assert_account_equiv(governance_account_info, &proposal.config)?;
+    assert_account_equiv(timelock_state_account_info, &proposal.state)?;
+    assert_account_equiv(source_mint_account_info, &proposal.source_mint)?;
 
     assert_voting(&timelock_state)?;
 
     let mut seeds = vec![
         PROGRAM_AUTHORITY_SEED,
-        timelock_set_account_info.key.as_ref(),
+        proposal_account_info.key.as_ref(),
     ];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
@@ -146,7 +146,7 @@ pub fn process_vote(
         &[
             PROGRAM_AUTHORITY_SEED,
             program_id.as_ref(),
-            timelock_set_account_info.key.as_ref(),
+            proposal_account_info.key.as_ref(),
             voting_account_info.key.as_ref(),
         ],
         program_id,
