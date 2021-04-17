@@ -25,8 +25,8 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
-use spl_token::state::{Account as Token, Account};
 use spl_token::solana_program::instruction::AccountMeta;
+use spl_token::state::{Account as Token, Account};
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -1537,11 +1537,7 @@ fn process_set_lending_market_owner(
 }
 
 #[inline(never)] // avoid stack frame limit
-fn process_flash_loan(
-    program_id: &Pubkey,
-    amount: u64,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
+fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let destination_liquidity_info = next_account_info(account_info_iter)?;
     let reserve_account_info = next_account_info(account_info_iter)?;
@@ -1597,10 +1593,7 @@ fn process_flash_loan(
         token_program: token_program_id.clone(),
     })?;
 
-    let (origination_fee, host_fee) = reserve
-        .config
-        .fees
-        .calculate_flash_loan_fees(amount)?;
+    let (origination_fee, host_fee) = reserve.config.fees.calculate_flash_loan_fees(amount)?;
     let returned_amount_required = amount + origination_fee;
     let mut data = Vec::with_capacity(9);
     data.push(0u8);
@@ -1610,7 +1603,7 @@ fn process_flash_loan(
         AccountMeta::new(*destination_liquidity_info.key, false),
         AccountMeta::new_readonly(*flash_loan_receiver_derived_info.key, false),
         AccountMeta::new(*reserve_liquidity_account_info.key, false),
-        AccountMeta::new_readonly(*token_program_id.key, false)
+        AccountMeta::new_readonly(*token_program_id.key, false),
     ];
     let mut calling_accounts = vec![
         destination_liquidity_info.clone(),
@@ -1627,11 +1620,9 @@ fn process_flash_loan(
     let ix = Instruction {
         program_id: *flash_loan_receiver_info.key,
         accounts: instruction_accounts,
-        data
+        data,
     };
-    let result = invoke(
-        &ix,
-        &calling_accounts[..]);
+    let result = invoke(&ix, &calling_accounts[..]);
     if result.is_err() {
         // TODO: change to a more sensible error.
         return Err(LendingError::InvalidTokenProgram.into());
@@ -1639,7 +1630,6 @@ fn process_flash_loan(
 
     let after_liquidity_supply_token_account =
         Account::unpack_from_slice(&reserve_liquidity_account_info.try_borrow_data()?)?;
-
 
     let expected_amount = before_liquidity_supply_token_account.amount + origination_fee;
     if after_liquidity_supply_token_account.amount < expected_amount {

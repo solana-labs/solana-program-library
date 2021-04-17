@@ -26,8 +26,8 @@ use spl_token_lending::{
     },
 };
 use std::str::FromStr;
-pub mod genesis;
 pub mod flash_loan_receiver;
+pub mod genesis;
 
 use genesis::GenesisAccounts;
 

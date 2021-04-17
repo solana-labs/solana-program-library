@@ -303,7 +303,7 @@ pub enum LendingInstruction {
     FlashLoan {
         /// The amount that is to be borrowed
         amount: u64,
-    }
+    },
 }
 
 impl LendingInstruction {
@@ -389,7 +389,7 @@ impl LendingInstruction {
             }
             12 => {
                 let (amount, _rest) = Self::unpack_u64(rest)?;
-                Self::FlashLoan {amount}
+                Self::FlashLoan { amount }
             }
             _ => return Err(LendingError::InstructionUnpackError.into()),
         })
@@ -964,7 +964,7 @@ pub fn flash_loan(
     flash_loan_fees_account_info: Pubkey,
     host_fee_recipient: Pubkey,
     amount: u64,
-    additional_params: Vec<Pubkey>
+    additional_params: Vec<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(destination_liquidity_pubkey, false),

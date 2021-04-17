@@ -23,7 +23,7 @@ async fn test_flash_loan_success() {
     test.add_program(
         "flash_loan_receiver",
         receiver_program_id.clone(),
-        processor!(helpers::flash_loan_receiver::process_instruction)
+        processor!(helpers::flash_loan_receiver::process_instruction),
     );
 
     // limit to track compute unit increase
@@ -54,8 +54,8 @@ async fn test_flash_loan_success() {
             ..AddReserveArgs::default()
         },
     );
-    let (receiver_authority_pubkey, _) = Pubkey::find_program_address(
-        &[b"flashloan"], &receiver_program_id);
+    let (receiver_authority_pubkey, _) =
+        Pubkey::find_program_address(&[b"flashloan"], &receiver_program_id);
     let program_owned_token_account = add_token_account_for_flash_loan_receiver(
         &mut test,
         &receiver_authority_pubkey,
@@ -71,29 +71,24 @@ async fn test_flash_loan_success() {
     assert_eq!(current_token_amount, flash_loan_fee);
 
     let mut transaction = Transaction::new_with_payer(
-        &[
-            flash_loan(
-                spl_token_lending::id(),
-                program_owned_token_account,
-                usdc_reserve.pubkey,
-                usdc_reserve.liquidity_supply,
-                lending_market.pubkey,
-                lending_market.authority,
-                receiver_program_id.clone(),
-                receiver_authority_pubkey.clone(),
-                usdc_reserve.flash_loan_fees_receiver,
-                usdc_reserve.liquidity_host,
-                flash_loan_amount,
-                Vec::new(),
-            )
-        ],
+        &[flash_loan(
+            spl_token_lending::id(),
+            program_owned_token_account,
+            usdc_reserve.pubkey,
+            usdc_reserve.liquidity_supply,
+            lending_market.pubkey,
+            lending_market.authority,
+            receiver_program_id.clone(),
+            receiver_authority_pubkey.clone(),
+            usdc_reserve.flash_loan_fees_receiver,
+            usdc_reserve.liquidity_host,
+            flash_loan_amount,
+            Vec::new(),
+        )],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(
-        &[&payer],
-        recent_blockhash,
-    );
+    transaction.sign(&[&payer], recent_blockhash);
     assert!(banks_client.process_transaction(transaction).await.is_ok());
     let fee_balance =
         get_token_balance(&mut banks_client, usdc_reserve.flash_loan_fees_receiver).await;

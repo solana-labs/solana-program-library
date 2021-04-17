@@ -1,19 +1,15 @@
 use solana_program::{
-    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey, msg
+    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, msg, pubkey::Pubkey,
 };
 
-use spl_token::solana_program::account_info::next_account_info;
-use spl_token::solana_program::program_error::ProgramError;
-use spl_token::solana_program::program::invoke_signed;
 use crate::helpers::flash_loan_receiver::FlashLoanReceiverError::InvalidInstruction;
-use std::convert::TryInto;
-use spl_token::state::Account as TokenAccount;
-use thiserror::Error;
+use spl_token::solana_program::account_info::next_account_info;
+use spl_token::solana_program::program::invoke_signed;
+use spl_token::solana_program::program_error::ProgramError;
 use spl_token::solana_program::program_pack::Pack;
-
-//
-// solana_program::declare_id!("FlashLoan1111111111111111111111111111111111");
-
+use spl_token::state::Account as TokenAccount;
+use std::convert::TryInto;
+use thiserror::Error;
 
 entrypoint!(process_instruction);
 pub fn process_instruction(
@@ -41,8 +37,6 @@ impl Processor {
         }
     }
 
-
-
     fn process_execute_operation(
         accounts: &[AccountInfo],
         amount: u64,
@@ -56,9 +50,10 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         // I don't understand why we need the & here...
-        let token_account = TokenAccount::unpack_from_slice(&destination_liquidity_account_info.try_borrow_mut_data()?)?;
+        let token_account = TokenAccount::unpack_from_slice(
+            &destination_liquidity_account_info.try_borrow_mut_data()?,
+        )?;
         let (pda, nonce) = Pubkey::find_program_address(&[b"flashloan"], program_id);
-
 
         if token_account.owner != pda {
             msg!(&pda.to_string());
@@ -72,9 +67,8 @@ impl Processor {
             repay_token_account_info.key,
             &pda,
             &[],
-            amount
+            amount,
         )?;
-
 
         msg!("Calling the token program to transfer the token back...");
         invoke_signed(
@@ -88,7 +82,6 @@ impl Processor {
             &[&[&b"flashloan"[..], &[nonce]]],
         )?;
         msg!("transfer it back!!!");
-
 
         Ok(())
     }
@@ -108,7 +101,6 @@ pub enum FlashLoanReceiverInstruction {
         /// The amount that is loaned
         amount: u64,
     },
-
 }
 
 impl FlashLoanReceiverInstruction {
@@ -134,7 +126,6 @@ impl FlashLoanReceiverInstruction {
     }
 }
 
-
 #[derive(Error, Debug, Copy, Clone)]
 pub enum FlashLoanReceiverError {
     /// Invalid instruction
@@ -149,4 +140,3 @@ impl From<FlashLoanReceiverError> for ProgramError {
         ProgramError::Custom(e as u32)
     }
 }
-
