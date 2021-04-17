@@ -57,7 +57,7 @@ pub struct ProposalState {
     pub number_of_transactions: u8,
 
     /// Array of pubkeys pointing at TimelockTransactions, up to 5
-    pub timelock_transactions: [Pubkey; MAX_TRANSACTIONS],
+    pub transactions: [Pubkey; MAX_TRANSACTIONS],
 }
 
 impl Sealed for ProposalState {}
@@ -155,7 +155,7 @@ impl Pack for ProposalState {
                 _ => ProposalStateStatus::Draft,
             },
             total_signing_tokens_minted,
-            timelock_transactions: [
+            transactions: [
                 Pubkey::new_from_array(*proposal_txn_1),
                 Pubkey::new_from_array(*proposal_txn_2),
                 Pubkey::new_from_array(*proposal_txn_3),
@@ -229,11 +229,11 @@ impl Pack for ProposalState {
         *deleted_at = self.deleted_at.to_le_bytes();
         *number_of_executed_transactions = self.number_of_executed_transactions.to_le_bytes();
         *number_of_transactions = self.number_of_transactions.to_le_bytes();
-        proposal_txn_1.copy_from_slice(self.timelock_transactions[0].as_ref());
-        proposal_txn_2.copy_from_slice(self.timelock_transactions[1].as_ref());
-        proposal_txn_3.copy_from_slice(self.timelock_transactions[2].as_ref());
-        proposal_txn_4.copy_from_slice(self.timelock_transactions[3].as_ref());
-        proposal_txn_5.copy_from_slice(self.timelock_transactions[4].as_ref());
+        proposal_txn_1.copy_from_slice(self.transactions[0].as_ref());
+        proposal_txn_2.copy_from_slice(self.transactions[1].as_ref());
+        proposal_txn_3.copy_from_slice(self.transactions[2].as_ref());
+        proposal_txn_4.copy_from_slice(self.transactions[3].as_ref());
+        proposal_txn_5.copy_from_slice(self.transactions[4].as_ref());
     }
 
     fn get_packed_len() -> usize {

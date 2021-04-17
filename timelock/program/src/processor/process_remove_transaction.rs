@@ -47,12 +47,10 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
     )?;
 
     let mut found: bool = false;
-    for n in 0..proposal_state.timelock_transactions.len() {
-        if proposal_state.timelock_transactions[n].to_bytes()
-            == proposal_txn_account_info.key.to_bytes()
-        {
+    for n in 0..proposal_state.transactions.len() {
+        if proposal_state.transactions[n].to_bytes() == proposal_txn_account_info.key.to_bytes() {
             let zeros: [u8; 32] = [0; 32];
-            proposal_state.timelock_transactions[n] = Pubkey::new_from_array(zeros);
+            proposal_state.transactions[n] = Pubkey::new_from_array(zeros);
             found = true;
             break;
         }

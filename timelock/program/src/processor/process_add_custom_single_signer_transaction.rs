@@ -80,7 +80,7 @@ pub fn process_add_custom_single_signer_transaction(
     proposal_txn.slot = slot;
     proposal_txn.instruction = instruction;
     proposal_txn.instruction_end_index = instruction_end_index;
-    proposal_state.timelock_transactions[position as usize] = *proposal_txn_account_info.key;
+    proposal_state.transactions[position as usize] = *proposal_txn_account_info.key;
     proposal_state.number_of_transactions =
         match proposal_state.number_of_transactions.checked_add(1) {
             Some(val) => val,

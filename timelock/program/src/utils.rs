@@ -147,10 +147,8 @@ pub fn assert_txn_in_state(
     proposal_txn_account_info: &AccountInfo,
 ) -> ProgramResult {
     let mut found: bool = false;
-    for n in 0..proposal_state.timelock_transactions.len() {
-        if proposal_state.timelock_transactions[n].to_bytes()
-            == proposal_txn_account_info.key.to_bytes()
-        {
+    for n in 0..proposal_state.transactions.len() {
+        if proposal_state.transactions[n].to_bytes() == proposal_txn_account_info.key.to_bytes() {
             found = true;
             break;
         }
