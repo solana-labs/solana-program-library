@@ -71,12 +71,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arbitrary"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "698b65a961a9d730fb45b6b0327e20207810c9f61ee421b082b27ba003f49e2b"
-
-[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1391,11 +1385,11 @@ dependencies = [
 
 [[package]]
 name = "honggfuzz"
-version = "0.5.54"
+version = "0.5.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bea09577d948a98a5f59b7c891e274c4fb35ad52f67782b3d0cb53b9c05301f1"
+checksum = "ead88897bcad1c396806d6ccba260a0363e11da997472e9e19ab9889969083a2"
 dependencies = [
- "arbitrary 1.0.0",
+ "arbitrary",
  "lazy_static",
  "memmap",
 ]
@@ -3712,7 +3706,7 @@ dependencies = [
 name = "spl-binary-oracle-pair"
 version = "0.1.0"
 dependencies = [
- "arbitrary 0.4.7",
+ "arbitrary",
  "borsh 0.8.2",
  "num-derive",
  "num-traits",
@@ -3982,7 +3976,7 @@ dependencies = [
 name = "spl-token-swap"
 version = "2.1.0"
 dependencies = [
- "arbitrary 0.4.7",
+ "arbitrary",
  "arrayref",
  "enum_dispatch",
  "num-derive",
@@ -4000,7 +3994,7 @@ dependencies = [
 name = "spl-token-swap-fuzz"
 version = "0.0.1"
 dependencies = [
- "arbitrary 0.4.7",
+ "arbitrary",
  "honggfuzz",
  "solana-program",
  "spl-math",
