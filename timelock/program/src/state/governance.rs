@@ -34,7 +34,7 @@ pub struct Governance {
     pub governance_mint: Pubkey,
     /// Council mint
     pub council_mint: Option<Pubkey>,
-    /// Program ID that is tied to this config (optional)
+    /// Program ID that is tied to this Governance (optional)
     pub program: Pubkey,
     /// Time limit in slots for proposal to be open to voting
     pub time_limit: u64,

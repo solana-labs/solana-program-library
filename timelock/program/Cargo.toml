@@ -1,5 +1,5 @@
 [package]
-name = "spl-timelock"
+name = "spl-governance"
 version = "0.0.1"
 description = "Solana Program Library Governance"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]

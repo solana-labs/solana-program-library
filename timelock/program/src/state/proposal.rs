@@ -51,7 +51,7 @@ pub struct Proposal {
     /// Source token holding account
     pub source_holding: Pubkey,
 
-    /// Source mint - either governance or council mint from config
+    /// Source mint - either governance or council mint from Governance
     pub source_mint: Pubkey,
 
     /// Yes Voting dump account for exchanged vote tokens
