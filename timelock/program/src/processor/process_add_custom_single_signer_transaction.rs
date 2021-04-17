@@ -37,7 +37,7 @@ pub fn process_add_custom_single_signer_transaction(
     let proposal_account_info = next_account_info(account_info_iter)?;
     let governance_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
-    let timelock_mint_authority_info = next_account_info(account_info_iter)?;
+    let governance_mint_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let mut proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
@@ -69,7 +69,7 @@ pub fn process_add_custom_single_signer_transaction(
         proposal_account_info,
         token_program_account_info,
         transfer_authority_info,
-        timelock_mint_authority_info,
+        governance_mint_authority_info,
     )?;
 
     if slot < governance.minimum_slot_waiting_period {

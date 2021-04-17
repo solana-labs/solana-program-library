@@ -45,7 +45,7 @@ pub fn assert_is_permissioned<'a>(
     proposal_info: &AccountInfo<'a>,
     token_program_info: &AccountInfo<'a>,
     transfer_authority_info: &AccountInfo<'a>,
-    timelock_authority_info: &AccountInfo<'a>,
+    proposal_authority_info: &AccountInfo<'a>,
 ) -> ProgramResult {
     let _perm_account: Account = assert_initialized(perm_account_info)?;
     let _perm_validation: Account = assert_initialized(perm_validation_account_info)?;
@@ -53,7 +53,7 @@ pub fn assert_is_permissioned<'a>(
     let mut seeds = vec![PROGRAM_AUTHORITY_SEED, proposal_info.key.as_ref()];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
-    if timelock_authority_info.key != &authority_key {
+    if proposal_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
 
@@ -77,7 +77,7 @@ pub fn assert_is_permissioned<'a>(
         source: perm_validation_account_info.clone(),
         destination: perm_account_info.clone(),
         amount: 1,
-        authority: timelock_authority_info.clone(),
+        authority: proposal_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
