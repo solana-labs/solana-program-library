@@ -83,7 +83,7 @@ pub fn process_execute(
         let next_account = next_account_info(account_info_iter)?.clone();
         if next_account.data_len() == GOVERNANCE_LEN {
             // You better be initialized, and if you are, you better at least be mine...
-            let _nefarious_config: Governance = assert_initialized(&next_account)?;
+            let _nefarious_governance: Governance = assert_initialized(&next_account)?;
             assert_account_equiv(&next_account, &proposal.governance)?;
             added_authority = true;
 

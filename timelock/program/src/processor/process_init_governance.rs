@@ -42,8 +42,8 @@ pub fn process_init_governance(
         council_mint_seed,
         program_to_tie_account_info.key.as_ref(),
     ];
-    let (config_key, _) = Pubkey::find_program_address(seeds, program_id);
-    if governance_account_info.key != &config_key {
+    let (governance_key, _) = Pubkey::find_program_address(seeds, program_id);
+    if governance_account_info.key != &governance_key {
         return Err(GovernanceError::InvalidGovernanceKey.into());
     }
     let mut new_governance: Governance = assert_uninitialized(governance_account_info)?;
