@@ -20,12 +20,12 @@ pub fn process_create_empty_governance_voting_record(
     let proposal_account_info = next_account_info(account_info_iter)?;
     let voting_account_info = next_account_info(account_info_iter)?;
     let payer_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_info = next_account_info(account_info_iter)?;
+    let governance_program_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
 
     let mut seeds = vec![
         PROGRAM_AUTHORITY_SEED,
-        timelock_program_info.key.as_ref(),
+        governance_program_info.key.as_ref(),
         proposal_account_info.key.as_ref(),
         voting_account_info.key.as_ref(),
     ];
@@ -38,7 +38,7 @@ pub fn process_create_empty_governance_voting_record(
     create_account_raw::<GovernanceVotingRecord>(
         &[
             payer_account_info.clone(),
-            timelock_program_info.clone(),
+            governance_program_info.clone(),
             voting_record_account_info.clone(),
             system_account_info.clone(),
         ],

@@ -22,16 +22,16 @@ use spl_token::state::Account;
 /* TODO come back to this conundrum later..
 
 pub fn get_authority_signer_seeds<'a>(
-    timelock_program_account_info: &'a AccountInfo<'a>,
-    timelock_program_authority_info: &'a AccountInfo<'a>,
+    governance_program_account_info: &'a AccountInfo<'a>,
+    governance_program_authority_info: &'a AccountInfo<'a>,
     program_id: &'a Pubkey,
 ) -> Result<&'a [&'a [u8]; 2], ProgramError> {
     let (authority_key, bump_seed) =
-        Pubkey::find_program_address(&[timelock_program_account_info.key.as_ref()], program_id);
-    if timelock_program_authority_info.key != &authority_key {
+        Pubkey::find_program_address(&[governance_program_account_info.key.as_ref()], program_id);
+    if governance_program_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
-    let authority_signer_seeds = &[timelock_program_account_info.key.as_ref(), &[bump_seed]];
+    let authority_signer_seeds = &[governance_program_account_info.key.as_ref(), &[bump_seed]];
     Ok(&*authority_signer_seeds)
 }*/
 
@@ -131,10 +131,10 @@ pub fn assert_proper_signatory_mint(
 
 /// Asserts token_program is correct program
 pub fn assert_token_program_is_correct(
-    timelock_program: &Proposal,
+    governance_program: &Proposal,
     token_program_info: &AccountInfo,
 ) -> ProgramResult {
-    if &timelock_program.token_program_id != token_program_info.key {
+    if &governance_program.token_program_id != token_program_info.key {
         return Err(TimelockError::InvalidTokenProgram.into());
     };
 

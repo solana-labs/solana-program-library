@@ -42,7 +42,7 @@ pub fn process_vote(
     let proposal_account_info = next_account_info(account_info_iter)?; //9
     let governance_account_info = next_account_info(account_info_iter)?; //10
     let transfer_authority_info = next_account_info(account_info_iter)?; //11
-    let timelock_program_authority_info = next_account_info(account_info_iter)?; //12
+    let governance_program_authority_info = next_account_info(account_info_iter)?; //12
     let token_program_account_info = next_account_info(account_info_iter)?; //13
     let clock_info = next_account_info(account_info_iter)?; //14
 
@@ -63,7 +63,7 @@ pub fn process_vote(
     let mut seeds = vec![PROGRAM_AUTHORITY_SEED, proposal_account_info.key.as_ref()];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
-    if timelock_program_authority_info.key != &authority_key {
+    if governance_program_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
     let bump = &[bump_seed];
@@ -102,7 +102,7 @@ pub fn process_vote(
         mint: yes_voting_mint_account_info.clone(),
         destination: yes_voting_account_info.clone(),
         amount: yes_voting_token_amount,
-        authority: timelock_program_authority_info.clone(),
+        authority: governance_program_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;
@@ -111,7 +111,7 @@ pub fn process_vote(
         mint: no_voting_mint_account_info.clone(),
         destination: no_voting_account_info.clone(),
         amount: no_voting_token_amount,
-        authority: timelock_program_authority_info.clone(),
+        authority: governance_program_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;

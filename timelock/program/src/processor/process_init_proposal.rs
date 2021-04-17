@@ -51,7 +51,7 @@ pub fn process_init_proposal(
     let no_voting_dump_account_info = next_account_info(account_info_iter)?; //14
     let source_holding_account_info = next_account_info(account_info_iter)?; //15
     let source_mint_account_info = next_account_info(account_info_iter)?; //16
-    let timelock_program_authority_info = next_account_info(account_info_iter)?; //17
+    let governance_program_authority_info = next_account_info(account_info_iter)?; //17
     let token_program_info = next_account_info(account_info_iter)?; //18
     let rent_info = next_account_info(account_info_iter)?; //19
     let rent = &Rent::from_account_info(rent_info)?;
@@ -131,27 +131,27 @@ pub fn process_init_proposal(
 
     assert_account_owner(
         signatory_validation_account_info,
-        timelock_program_authority_info.key,
+        governance_program_authority_info.key,
     )?;
     assert_account_owner(
         admin_validation_account_info,
-        timelock_program_authority_info.key,
+        governance_program_authority_info.key,
     )?;
     assert_account_owner(
         voting_validation_account_info,
-        timelock_program_authority_info.key,
+        governance_program_authority_info.key,
     )?;
     assert_account_owner(
         yes_voting_dump_account_info,
-        timelock_program_authority_info.key,
+        governance_program_authority_info.key,
     )?;
     assert_account_owner(
         no_voting_dump_account_info,
-        timelock_program_authority_info.key,
+        governance_program_authority_info.key,
     )?;
     assert_account_owner(
         source_holding_account_info,
-        timelock_program_authority_info.key,
+        governance_program_authority_info.key,
     )?;
 
     let source_mint_decimals = get_mint_decimals(source_mint_account_info)?;
@@ -161,20 +161,23 @@ pub fn process_init_proposal(
 
     assert_mint_authority(
         signatory_mint_account_info,
-        timelock_program_authority_info.key,
+        governance_program_authority_info.key,
     )?;
-    assert_mint_authority(admin_mint_account_info, timelock_program_authority_info.key)?;
+    assert_mint_authority(
+        admin_mint_account_info,
+        governance_program_authority_info.key,
+    )?;
     assert_mint_authority(
         voting_mint_account_info,
-        timelock_program_authority_info.key,
+        governance_program_authority_info.key,
     )?;
     assert_mint_authority(
         yes_voting_mint_account_info,
-        timelock_program_authority_info.key,
+        governance_program_authority_info.key,
     )?;
     assert_mint_authority(
         no_voting_mint_account_info,
-        timelock_program_authority_info.key,
+        governance_program_authority_info.key,
     )?;
 
     if source_holding_mint != governance.governance_mint {
@@ -197,7 +200,7 @@ pub fn process_init_proposal(
     let mut seeds = vec![PROGRAM_AUTHORITY_SEED, proposal_account_info.key.as_ref()];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
-    if timelock_program_authority_info.key != &authority_key {
+    if governance_program_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
     let bump = &[bump_seed];
@@ -208,7 +211,7 @@ pub fn process_init_proposal(
         mint: admin_mint_account_info.clone(),
         destination: destination_admin_account_info.clone(),
         amount: 1,
-        authority: timelock_program_authority_info.clone(),
+        authority: governance_program_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;
@@ -217,7 +220,7 @@ pub fn process_init_proposal(
         mint: signatory_mint_account_info.clone(),
         destination: destination_sig_account_info.clone(),
         amount: 1,
-        authority: timelock_program_authority_info.clone(),
+        authority: governance_program_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_info.clone(),
     })?;

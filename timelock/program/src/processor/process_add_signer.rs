@@ -27,7 +27,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
     let proposal_state_account_info = next_account_info(account_info_iter)?;
     let proposal_account_info = next_account_info(account_info_iter)?;
     let transfer_authority_info = next_account_info(account_info_iter)?;
-    let timelock_program_authority_info = next_account_info(account_info_iter)?;
+    let governance_program_authority_info = next_account_info(account_info_iter)?;
     let token_program_account_info = next_account_info(account_info_iter)?;
 
     let mut proposal_state: ProposalState = assert_initialized(proposal_state_account_info)?;
@@ -44,13 +44,13 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
         proposal_account_info,
         token_program_account_info,
         transfer_authority_info,
-        timelock_program_authority_info,
+        governance_program_authority_info,
     )?;
 
     let mut seeds = vec![PROGRAM_AUTHORITY_SEED, proposal_account_info.key.as_ref()];
 
     let (authority_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
-    if timelock_program_authority_info.key != &authority_key {
+    if governance_program_authority_info.key != &authority_key {
         return Err(TimelockError::InvalidTimelockAuthority.into());
     }
 
@@ -62,7 +62,7 @@ pub fn process_add_signer(program_id: &Pubkey, accounts: &[AccountInfo]) -> Prog
         mint: signatory_mint_info.clone(),
         destination: new_signatory_account_info.clone(),
         amount: 1,
-        authority: timelock_program_authority_info.clone(),
+        authority: governance_program_authority_info.clone(),
         authority_signer_seeds,
         token_program: token_program_account_info.clone(),
     })?;

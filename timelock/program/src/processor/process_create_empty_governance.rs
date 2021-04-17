@@ -17,7 +17,7 @@ pub fn process_create_empty_governance(
     let program_to_tie_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
     let payer_account_info = next_account_info(account_info_iter)?;
-    let timelock_program_account_info = next_account_info(account_info_iter)?;
+    let governance_program_account_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
 
     let council_mint_seed = next_account_info(account_info_iter)
@@ -26,7 +26,7 @@ pub fn process_create_empty_governance(
 
     let mut seeds = vec![
         PROGRAM_AUTHORITY_SEED,
-        timelock_program_account_info.key.as_ref(),
+        governance_program_account_info.key.as_ref(),
         governance_mint_account_info.key.as_ref(),
         council_mint_seed,
         program_to_tie_account_info.key.as_ref(),
@@ -40,7 +40,7 @@ pub fn process_create_empty_governance(
     create_account_raw::<Governance>(
         &[
             payer_account_info.clone(),
-            timelock_program_account_info.clone(),
+            governance_program_account_info.clone(),
             governance_account_info.clone(),
             system_account_info.clone(),
         ],
