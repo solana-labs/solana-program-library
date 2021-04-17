@@ -6,7 +6,7 @@ use crate::{
     state::{
         enums::GovernanceAccountType,
         proposal::Proposal,
-        timelock_config::Governance,
+        governance::Governance,
         timelock_state::TimelockState,
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },

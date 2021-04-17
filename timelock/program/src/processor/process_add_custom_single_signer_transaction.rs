@@ -6,8 +6,8 @@ use crate::{
             CustomSingleSignerTimelockTransaction, INSTRUCTION_LIMIT,
         },
         enums::GovernanceAccountType,
+        governance::Governance,
         proposal::Proposal,
-        timelock_config::Governance,
         timelock_state::{TimelockState, MAX_TRANSACTIONS},
     },
     utils::{

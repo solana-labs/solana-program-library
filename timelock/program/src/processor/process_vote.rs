@@ -2,8 +2,9 @@
 use crate::{
     error::TimelockError,
     state::{
-        enums::TimelockStateStatus, governance_voting_record::GovernanceVotingRecord,
-        proposal::Proposal, timelock_config::Governance, timelock_state::TimelockState,
+        enums::TimelockStateStatus, governance::Governance,
+        governance_voting_record::GovernanceVotingRecord, proposal::Proposal,
+        timelock_state::TimelockState,
     },
     utils::{
         assert_account_equiv, assert_initialized, assert_voting, get_mint_supply, spl_token_burn,

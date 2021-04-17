@@ -1,8 +1,6 @@
 //! Program state processor
 
-use crate::{
-    state::timelock_config::Governance, utils::create_account_raw, PROGRAM_AUTHORITY_SEED,
-};
+use crate::{state::governance::Governance, utils::create_account_raw, PROGRAM_AUTHORITY_SEED};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,

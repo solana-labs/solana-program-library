@@ -1,14 +1,14 @@
 //! Program state processor
 use crate::{
     error::TimelockError,
-    state::timelock_config::Governance,
+    state::governance::Governance,
     state::{
         custom_single_signer_timelock_transaction::{
             CustomSingleSignerTimelockTransaction, MAX_ACCOUNTS_ALLOWED,
         },
         enums::TimelockStateStatus,
+        governance::TIMELOCK_CONFIG_LEN,
         proposal::Proposal,
-        timelock_config::TIMELOCK_CONFIG_LEN,
         timelock_state::TimelockState,
     },
     utils::{assert_account_equiv, assert_executing, assert_initialized, execute, ExecuteParams},

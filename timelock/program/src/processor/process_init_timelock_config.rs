@@ -2,7 +2,7 @@
 use crate::{
     error::TimelockError,
     state::enums::{ExecutionType, GovernanceAccountType, TimelockType, VotingEntryRule},
-    state::timelock_config::{Governance, CONFIG_NAME_LENGTH},
+    state::governance::{Governance, CONFIG_NAME_LENGTH},
     utils::assert_uninitialized,
     PROGRAM_AUTHORITY_SEED,
 };

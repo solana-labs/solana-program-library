@@ -6,7 +6,7 @@ use crate::{
     error::TimelockError,
     state::{
         custom_single_signer_timelock_transaction::INSTRUCTION_LIMIT,
-        timelock_config::CONFIG_NAME_LENGTH,
+        governance::CONFIG_NAME_LENGTH,
         timelock_state::{DESC_SIZE, NAME_SIZE},
     },
 };
