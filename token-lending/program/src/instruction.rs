@@ -57,7 +57,7 @@ pub enum LendingInstruction {
     ///   8. `[writable]` Flash loan fees receiver - uninitialized.
     ///                   Owner will be set to the lending market account.
     ///   9. `[]` Lending market account.
-    ///   10. `[signer]` Lending market owner.
+    ///   10 `[signer]` Lending market owner.
     ///   11 `[]` Derived lending market authority.
     ///   12 `[]` User transfer authority ($authority).
     ///   13 `[]` Clock sysvar
