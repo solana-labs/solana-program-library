@@ -346,19 +346,17 @@ impl Reserve {
 
         self.liquidity.available_amount -= borrowed_liquidity_amount;
         self.collateral.mint_total_supply -= borrowed_collateral_amount;
-        self.liquidity.flash_loaned_amount += borrowed_liquidity_amount;
         Ok(())
     }
 
     /// Return the amount that is in the flash loan.
-    pub fn end_flash_loan(&mut self) -> ProgramResult {
+    pub fn end_flash_loan(&mut self, borrowed_liquidity_amount: u64) -> ProgramResult {
         let collateral_exchange_rate = self.collateral_exchange_rate()?;
         let collateral_amount =
-            collateral_exchange_rate.liquidity_to_collateral(self.liquidity.flash_loaned_amount)?;
+            collateral_exchange_rate.liquidity_to_collateral(borrowed_liquidity_amount)?;
 
-        self.liquidity.available_amount += self.liquidity.flash_loaned_amount;
+        self.liquidity.available_amount += borrowed_liquidity_amount;
         self.collateral.mint_total_supply += collateral_amount;
-        self.liquidity.flash_loaned_amount = 0;
         Ok(())
     }
 }

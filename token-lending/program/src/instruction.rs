@@ -299,7 +299,7 @@ pub enum LendingInstruction {
     ///   7. `[]` Token program id
     ///   8. `[writable]` Host fee receiver.
     ///   9. `[writeable]` Flash loan fees receiver, must match init reserve.
-    /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`, starting from the 8th account.
+    /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`.
     FlashLoan {
         /// The amount that is to be borrowed
         amount: u64,

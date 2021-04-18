@@ -136,17 +136,9 @@ pub enum LendingError {
     /// Obligation collateral cannot be withdrawn below required amount
     #[error("Obligation collateral cannot be withdrawn below required amount")]
     ObligationCollateralWithdrawBelowRequired,
-    /// Invalid flash loan return instruction
-    #[error("Invalid flash loan return instruction.")]
-    InvalidFlashLoanEnd,
-    /// Error parsing instruction
-    #[error("Error parsing instruction.")]
-    ErrorParsingInstruction,
-
-    // 40
-    /// Flash loan end index is invalid.
-    #[error("Flash loan end index is invalid.")]
-    InvalidFlashLoanEndIndex,
+    /// Error invoking flash loan receiver
+    #[error("Error invoking flash loan receiver.")]
+    InvokingFlashLoanReceiverFailed,
 }
 
 impl From<LendingError> for ProgramError {
