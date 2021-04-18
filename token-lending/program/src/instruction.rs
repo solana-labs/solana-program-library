@@ -300,6 +300,10 @@ pub enum LendingInstruction {
     ///   8. `[writable]` Host fee receiver.
     ///   9. `[writeable]` Flash loan fees receiver, must match init reserve.
     /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`.
+    ///
+    ///   The flash loan receiver program that is to be invoked should contain an instruction with
+    ///   tag `0` and accept the total amount that needs to be returned back after its execution
+    ///   has completed.
     FlashLoan {
         /// The amount that is to be borrowed
         amount: u64,
