@@ -3,11 +3,11 @@ name: Pull Request
 on:
   pull_request:
     paths-ignore:
-    - 'docs/**'
+      - 'docs/**'
   push:
     branches: [master]
     paths-ignore:
-    - 'docs/**'
+      - 'docs/**'
 
 jobs:
   all_github_action_checks:
@@ -32,7 +32,6 @@ jobs:
         run: |
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_STABLE }}
@@ -55,7 +54,6 @@ jobs:
         run: |
           source ci/rust-version.sh
           echo "RUST_NIGHTLY=$rust_nightly" >> $GITHUB_ENV
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_NIGHTLY }}
@@ -72,7 +70,6 @@ jobs:
           key: cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-clippy-
-
       - name: Install dependencies
         run: ./ci/install-build-deps.sh
 
@@ -93,19 +90,37 @@ jobs:
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_STABLE }}
           override: true
           profile: minimal
 
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            # target # Removed due to build dependency caching conflicts
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/rustfilt
+          key: cargo-bpf-bins-${{ runner.os }}
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache
+          key: solana-${{ env.SOLANA_VERSION }}
+
       - name: Install dependencies
         run: |
           ./ci/install-build-deps.sh
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-
       - name: Build and test
         run: ./ci/cargo-build-test.sh
 
@@ -202,7 +217,6 @@ jobs:
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_STABLE }}
@@ -231,12 +245,10 @@ jobs:
           key: solana-${{ env.SOLANA_VERSION }}
           restore-keys: |
             solana-
-
       - name: Install dependencies
         run: |
           ./ci/install-build-deps.sh
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-
       - name: Run fuzz target
         run: ./ci/fuzz.sh ${{ matrix.fuzz_target }} 30 # 30 seconds, just to check everything is ok
