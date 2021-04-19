@@ -1,6 +1,6 @@
 use crate::{
     errors::AuctionError,
-    processor::{AuctionData, Bid, BidState, WinnerLimit},
+    processor::{AuctionData, AuctionState, Bid, BidState, WinnerLimit},
     utils::{assert_owned_by, create_or_allocate_account_raw},
     PREFIX,
 };
@@ -22,7 +22,7 @@ use {
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
 pub struct StartAuctionArgs {
     /// The resource being auctioned. See AuctionData.
-    pub resource: Pubkey
+    pub resource: Pubkey,
 }
 
 pub fn start_auction(
@@ -47,11 +47,11 @@ pub fn start_auction(
     }
 
     // Start Auction
-    AuctionData {
-        started: true,
+    let auction = AuctionData {
+        state: AuctionState::create(),
         ..try_from_slice_unchecked(&auction_act.data.borrow())?
-    }
-    .serialize(&mut *auction_act.data.borrow_mut())?;
+    };
+    auction.serialize(&mut *auction_act.data.borrow_mut())?;
 
     Ok(())
 }

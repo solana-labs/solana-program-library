@@ -2,7 +2,8 @@ use crate::errors::AuctionError;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo,
-    clock::UnixTimestamp,
+    clock::{UnixTimestamp, Slot},
+    msg,
     entrypoint::ProgramResult,
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -12,6 +13,11 @@ pub mod cancel_bid;
 pub mod create_auction;
 pub mod place_bid;
 pub mod start_auction;
+
+pub use cancel_bid::*;
+pub use create_auction::*;
+pub use place_bid::*;
+pub use start_auction::*;
 
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -25,11 +31,29 @@ pub fn process_instruction(
     use cancel_bid::cancel_bid;
 
     match AuctionInstruction::try_from_slice(input)? {
-        AuctionInstruction::CreateAuction(args) => create_auction(program_id, accounts, args),
-        AuctionInstruction::StartAuction(args) => start_auction(program_id, accounts, args),
-        AuctionInstruction::PlaceBid(args) => place_bid(program_id, accounts, args),
-        AuctionInstruction::CancelBid(args) => cancel_bid(program_id, accounts),
+        AuctionInstruction::CreateAuction(args) => {
+            msg!("+ Processing CreateAuction");
+            create_auction(program_id, accounts, args)
+        },
+        AuctionInstruction::StartAuction(args) => {
+            msg!("+ Processing StartAuction");
+            start_auction(program_id, accounts, args)
+        },
+        AuctionInstruction::PlaceBid(args) => {
+            msg!("+ Processing PlaceBid");
+            place_bid(program_id, accounts, args)
+        },
+        AuctionInstruction::CancelBid(args) => {
+            msg!("+ Processing Cancelbid");
+            cancel_bid(program_id, accounts)
+        },
     }
+}
+
+/// Structure containing timing configuration, I.E when the auction ends.
+#[repr(C)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+pub struct AuctionTiming {
 }
 
 #[repr(C)]
@@ -37,20 +61,55 @@ pub fn process_instruction(
 pub struct AuctionData {
     /// Pubkey of the authority with permission to modify this auction.
     pub authority: Pubkey,
-    /// Auction Bids, each user may have one bid open at a time.
-    pub bid_state: BidState,
-    /// The time the last bid was placed, used to time auction ending.
-    pub last_bid: Option<UnixTimestamp>,
     /// Pubkey of the resource being bid on.
     pub resource: Pubkey,
-    /// Whether or not the auction has started
-    pub started: bool,
+    /// Token mint for the SPL token being used to bid
+    pub token_mint: Pubkey,
+    /// The state the auction is in, whether it has started or ended.
+    pub state: AuctionState,
+    /// Auction Bids, each user may have one bid open at a time.
+    pub bid_state: BidState,
+    /// The time the last bid was placed, used to keep track of auction timing.
+    pub last_bid: Option<Slot>,
+    /// Slot time the auction was officially ended by.
+    pub ended_at: Option<Slot>,
     /// End time is the cut-off point that the auction is forced to end by.
-    pub end_time: Option<UnixTimestamp>,
-    /// Gap time is the amount of time after the previous bid at which the auction ends. Going
-    /// once, going twice, sold!
-    pub gap_time: Option<UnixTimestamp>,
+    pub end_auction_at: Option<Slot>,
+    /// Gap time is the amount of time in slots after the previous bid at which the auction ends.
+    pub end_auction_gap: Option<Slot>,
 }
+
+/// Define valid auction state transitions.
+#[repr(C)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+pub enum AuctionState {
+    Created,
+    Started,
+    Ended,
+}
+
+impl AuctionState {
+    pub fn create() -> Self {
+        AuctionState::Created
+    }
+
+    #[inline(always)]
+    pub fn start(self) -> Result<Self, ProgramError> {
+        match self {
+            AuctionState::Created => Ok(AuctionState::Started),
+            _ => Err(AuctionError::AuctionTransitionInvalid.into()),
+        }
+    }
+
+    #[inline(always)]
+    pub fn end(self) -> Result<Self, ProgramError> {
+        match self {
+            AuctionState::Started => Ok(AuctionState::Ended),
+            _ => Err(AuctionError::AuctionTransitionInvalid.into()),
+        }
+    }
+}
+
 
 
 /// Bids associate a bidding key with an amount bid.
@@ -92,15 +151,22 @@ impl BidState {
         match self {
             // In a capped auction, track the limited number of winners.
             BidState::EnglishAuction { ref mut bids, max } => match bids.last() {
-                Some(top) if top.1 < bid.1 => {
+                Some(top) => {
+                        msg!("{} < {}", top.1, bid.1);
+                    if top.1 < bid.1 {
                     bids.retain(|b| b.0 != bid.0);
                     bids.push(bid);
                     if bids.len() > *max {
                         bids.remove(0);
                     }
-                    Ok(())
+                    return Ok(());
                 }
-                _ => Err(AuctionError::BidTooSmall.into()),
+                    return Ok(());
+                },
+                _ => {
+                    bids.push(bid);
+                    return Ok(());
+                },
             },
 
             // In an open auction, bidding simply succeeds.
@@ -124,13 +190,13 @@ impl BidState {
     }
 
     /// Check if a pubkey is currently a winner.
-    fn is_winner(&self, key: Pubkey) -> bool {
+    fn is_winner(&self, key: Pubkey) -> Option<usize> {
         match self {
             // Presense in the winner list is enough to check win state.
-            BidState::EnglishAuction { ref bids, max } => bids.iter().any(|bid| bid.0 == key),
+            BidState::EnglishAuction { ref bids, max } => bids.iter().position(|bid| bid.0 == key),
             // There are no winners in an open edition, it is up to the auction manager to decide
             // what to do with open edition bids.
-            BidState::OpenEdition => false,
+            BidState::OpenEdition => None,
         }
     }
 }

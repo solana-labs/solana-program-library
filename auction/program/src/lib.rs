@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 mod errors;
 mod utils;
 

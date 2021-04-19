@@ -5,6 +5,7 @@ use {
         entrypoint::ProgramResult,
         msg,
         program::{invoke, invoke_signed},
+        program_pack::Pack,
         program_error::ProgramError,
         pubkey::Pubkey,
         system_instruction,
@@ -27,6 +28,18 @@ pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramRes
     } else {
         Ok(())
     }
+}
+
+pub fn assert_derivation(
+    program_id: &Pubkey,
+    account: &AccountInfo,
+    path: &[&[u8]],
+) -> Result<u8, ProgramError> {
+    let (key, bump) = Pubkey::find_program_address(&path, program_id);
+    if key != *account.key {
+        return Err(AuctionError::DerivedKeyInvalid.into());
+    }
+    Ok(bump)
 }
 
 #[inline(always)]
@@ -75,6 +88,22 @@ pub fn create_or_allocate_account_raw<'a>(
     Ok(())
 }
 
+///TokenTransferParams
+pub struct TokenTransferParams<'a: 'b, 'b> {
+    /// source
+    pub source: AccountInfo<'a>,
+    /// destination
+    pub destination: AccountInfo<'a>,
+    /// amount
+    pub amount: u64,
+    /// authority
+    pub authority: AccountInfo<'a>,
+    /// authority_signer_seeds
+    pub authority_signer_seeds: &'b [&'b [u8]],
+    /// token_program
+    pub token_program: AccountInfo<'a>,
+}
+
 #[inline(always)]
 pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
     let TokenTransferParams {
@@ -102,101 +131,64 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult 
     result.map_err(|_| AuctionError::TokenTransferFailed.into())
 }
 
-/// Issue a spl_token `MintTo` instruction.
-pub fn spl_token_mint_to(params: TokenMintToParams<'_, '_>) -> ProgramResult {
-    let TokenMintToParams {
-        mint,
-        destination,
-        authority,
-        token_program,
-        amount,
-        authority_signer_seeds,
-    } = params;
-    let result = invoke_signed(
-        &spl_token::instruction::mint_to(
-            token_program.key,
-            mint.key,
-            destination.key,
-            authority.key,
-            &[],
-            amount,
-        )?,
-        &[mint, destination, authority, token_program],
-        &[authority_signer_seeds],
-    );
-    result.map_err(|_| AuctionError::TokenMintToFailed.into())
-}
-
-/// Issue a spl_token `Burn` instruction.
-#[inline(always)]
-pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
-    let TokenBurnParams {
-        mint,
-        source,
-        authority,
-        token_program,
-        amount,
-        authority_signer_seeds,
-    } = params;
-    let result = invoke_signed(
-        &spl_token::instruction::burn(
-            token_program.key,
-            source.key,
-            mint.key,
-            authority.key,
-            &[],
-            amount,
-        )?,
-        &[source, mint, authority, token_program],
-        &[authority_signer_seeds],
-    );
-    result.map_err(|_| AuctionError::TokenBurnFailed.into())
-}
-
-///TokenTransferParams
-pub struct TokenTransferParams<'a: 'b, 'b> {
-    /// source
-    pub source: AccountInfo<'a>,
-    /// destination
-    pub destination: AccountInfo<'a>,
-    /// amount
-    pub amount: u64,
-    /// authority
-    pub authority: AccountInfo<'a>,
-    /// authority_signer_seeds
-    pub authority_signer_seeds: &'b [&'b [u8]],
-    /// token_program
-    pub token_program: AccountInfo<'a>,
-}
-
 /// TokenMintToParams
-pub struct TokenMintToParams<'a: 'b, 'b> {
+pub struct TokenCreateAccount<'a> {
+    /// payer
+    pub payer: AccountInfo<'a>,
     /// mint
     pub mint: AccountInfo<'a>,
-    /// destination
-    pub destination: AccountInfo<'a>,
-    /// amount
-    pub amount: u64,
+    /// account
+    pub account: AccountInfo<'a>,
     /// authority
     pub authority: AccountInfo<'a>,
-    /// authority_signer_seeds
-    pub authority_signer_seeds: &'b [&'b [u8]],
+    /// authority seeds
+    pub authority_seeds: &'a [&'a [u8]],
     /// token_program
     pub token_program: AccountInfo<'a>,
+    /// rent information
+    pub rent: AccountInfo<'a>,
 }
 
-/// TokenBurnParams
-pub struct TokenBurnParams<'a: 'b, 'b> {
-    /// mint
-    pub mint: AccountInfo<'a>,
-    /// source
-    pub source: AccountInfo<'a>,
-    /// amount
-    pub amount: u64,
-    /// authority
-    pub authority: AccountInfo<'a>,
-    /// authority_signer_seeds
-    pub authority_signer_seeds: &'b [&'b [u8]],
-    /// token_program
-    pub token_program: AccountInfo<'a>,
+/// Create a new SPL token account.
+#[inline(always)]
+pub fn spl_token_create_account(params: TokenCreateAccount<'_>) -> ProgramResult {
+    let TokenCreateAccount {
+        payer,
+        mint,
+        account,
+        authority,
+        authority_seeds,
+        token_program,
+        rent,
+    } = params;
+    let size = spl_token::state::Account::LEN;
+    let rent = &Rent::from_account_info(&rent)?;
+    let required_lamports = rent
+        .minimum_balance(size)
+        .max(1)
+        .saturating_sub(payer.lamports());
+
+    invoke(
+        &system_instruction::create_account(
+            payer.key,
+            account.key,
+            required_lamports,
+            size as u64,
+            &spl_token::id(),
+        ),
+        &[payer, account.clone(), token_program],
+    )?;
+
+    invoke_signed(
+        &spl_token::instruction::initialize_account(
+            &spl_token::id(),
+            account.key,
+            mint.key,
+            authority.key,
+        )?,
+        &[],
+        &[authority_seeds],
+    )?;
+
+    Ok(())
 }

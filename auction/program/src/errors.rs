@@ -39,6 +39,14 @@ pub enum AuctionError {
     #[error("Bid is too small.")]
     BidTooSmall,
 
+    /// Invalid transition, auction state may only transition: Created -> Started -> Stopped
+    #[error("Invalid auction state transition.")]
+    AuctionTransitionInvalid,
+
+    /// Failed to derive an account from seeds.
+    #[error("Failed to derive an account from seeds.")]
+    DerivedKeyInvalid,
+
     /// Token transfer failed
     #[error("Token transfer failed")]
     TokenTransferFailed,

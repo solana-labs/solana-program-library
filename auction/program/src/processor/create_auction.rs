@@ -13,7 +13,7 @@
 
 use crate::{
     errors::AuctionError,
-    processor::{AuctionData, Bid, BidState, WinnerLimit},
+    processor::{AuctionData, AuctionState, Bid, BidState, WinnerLimit},
     utils::{assert_owned_by, create_or_allocate_account_raw},
     PREFIX,
 };
@@ -23,7 +23,7 @@ use {
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         borsh::try_from_slice_unchecked,
-        clock::UnixTimestamp,
+        clock::Slot,
         entrypoint::ProgramResult,
         msg,
         pubkey::Pubkey,
@@ -39,9 +39,12 @@ pub struct CreateAuctionArgs {
     /// The resource being auctioned. See AuctionData.
     pub resource: Pubkey,
     /// End time is the cut-off point that the auction is forced to end by. See AuctionData.
-    pub end_time: Option<UnixTimestamp>,
+    pub end_auction_at: Option<Slot>,
     /// Gap time is how much time after the previous bid where the auction ends. See AuctionData.
-    pub gap_time: Option<UnixTimestamp>,
+    pub end_auction_gap: Option<Slot>,
+    /// Token mint for the SPL token used for bidding.
+    pub token_mint: Pubkey,
+
 }
 
 pub fn create_auction(
@@ -99,12 +102,14 @@ pub fn create_auction(
     // Configure Auction.
     AuctionData {
         authority: *creator_act.key,
-        bid_state: bid_state,
-        end_time: args.end_time,
-        gap_time: args.gap_time,
-        last_bid: None,
         resource: args.resource,
-        started: false,
+        token_mint: args.token_mint,
+        state: AuctionState::create(),
+        bid_state: bid_state,
+        last_bid: None,
+        ended_at: None,
+        end_auction_at: args.end_auction_at,
+        end_auction_gap: args.end_auction_gap,
     }
     .serialize(&mut *auction_act.data.borrow_mut())?;
 

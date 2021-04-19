@@ -13,7 +13,7 @@
 use crate::{
     errors::AuctionError,
     processor::{AuctionData, Bid, BidderMetadata},
-    utils::{assert_owned_by, create_or_allocate_account_raw},
+    utils::{assert_owned_by, create_or_allocate_account_raw, assert_derivation, spl_token_transfer},
     PREFIX,
 };
 
@@ -23,7 +23,9 @@ use {
         account_info::{next_account_info, AccountInfo},
         borsh::try_from_slice_unchecked,
         entrypoint::ProgramResult,
-        program::invoke_signed,
+        msg,
+        program::{invoke, invoke_signed},
+        program_pack::Pack,
         pubkey::Pubkey,
         system_instruction,
         sysvar::{clock::Clock, Sysvar},
@@ -42,127 +44,182 @@ pub struct PlaceBidArgs {
 }
 
 pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidArgs) -> ProgramResult {
+    msg!("Iterating Accounts");
     let account_iter = &mut accounts.iter();
     let bidder_act = next_account_info(account_iter)?;
-    let auction_act = next_account_info(account_iter)?;
+    let bidder_spl_act = next_account_info(account_iter)?;
     let bidder_pot_act = next_account_info(account_iter)?;
     let bidder_meta_act = next_account_info(account_iter)?;
+    let auction_act = next_account_info(account_iter)?;
+    let mint_account = next_account_info(account_iter)?;
+    let mint_authority_account = next_account_info(account_iter)?;
     let clock_sysvar = next_account_info(account_iter)?;
     let rent_act = next_account_info(account_iter)?;
     let system_account = next_account_info(account_iter)?;
+    let token_program_account = next_account_info(account_iter)?;
 
-    // Use the clock sysvar for timing the auction.
-    let clock = Clock::from_account_info(clock_sysvar)?;
+    msg!("Assert Owner");
+    assert_owned_by(auction_act, program_id)?;
 
-    // This path references an account to store the users bid SOL in, if the user wins the auction
-    // this is claimed by the auction authority, otherwise the user can request to have the SOL
-    // sent back.
-    let pot_path = [
+    // Load the auction, we'll need the state to do anything useful.
+    msg!("Assert Auction");
+    let auction_bump = assert_derivation(program_id, auction_act, &[
         PREFIX.as_bytes(),
         program_id.as_ref(),
-        auction_act.key.as_ref(),
-        bidder_act.key.as_ref(),
-    ];
+        args.resource.as_ref(),
+    ])?;
 
-    // Derive pot key, confirm it matches the users sent pot address.
-    let (pot_key, pot_bump) = Pubkey::find_program_address(&pot_path, program_id);
-    if pot_key != *bidder_pot_act.key {
-        return Err(AuctionError::InvalidBidAccount.into());
+    // Load the auction and verify this bid is valid.
+    let mut auction: AuctionData = try_from_slice_unchecked(&auction_act.data.borrow())?;
+
+    // If the auction mint does not match the passed mint, bail.
+    if auction.token_mint != *mint_account.key {
+        return Ok(());
     }
 
-    // This path references an account to store the users bid SOL in, if the user wins the auction
-    // this is claimed by the auction authority, otherwise the user can request to have the SOL
-    // sent back.
-    let meta_path = [
+    // Use the clock sysvar for timing the auction.
+    msg!("Get Clock");
+    let clock = Clock::from_account_info(clock_sysvar)?;
+
+    // Do not allow bids post gap-time.
+    if let Some(gap) = auction.end_auction_gap {
+        msg!("Auction finished, gp time passed.");
+        if clock.slot - gap > 10 * 60 {
+            return Err(AuctionError::InvalidState.into());
+        }
+    }
+
+    // Do not allow bids post end-time
+    if let Some(end) = auction.end_auction_at {
+        msg!("Auction finished, passed end time.");
+        if clock.slot > end {
+            return Err(AuctionError::InvalidState.into());
+        }
+    }
+
+    msg!("Assert Metadata");
+    let metadata_bump = assert_derivation(program_id, bidder_meta_act, &[
         PREFIX.as_bytes(),
         program_id.as_ref(),
         auction_act.key.as_ref(),
         bidder_act.key.as_ref(),
         "metadata".as_bytes(),
-    ];
+    ])?;
 
-    // Derive pot key, confirm it matches the users sent pot address.
-    let (meta_key, meta_bump) = Pubkey::find_program_address(&meta_path, program_id);
-    if meta_key != *bidder_meta_act.key {
-        return Err(AuctionError::InvalidBidAccount.into());
-    }
-
-    // TODO: deal with rent and balance correctly, do this properly.
-    if bidder_act.lamports() - args.amount <= 0 {
-        return Err(AuctionError::BalanceTooLow.into());
-    }
-
-    // Pot path including the bump for seeds.
-    let pot_seeds = [
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        auction_act.key.as_ref(),
-        bidder_act.key.as_ref(),
-        &[pot_bump],
-    ];
-
-    // Allocate bid account, a token account to hold the resources.
-    if true /* check account doesn't exist already */ {
+    // Load the users account metadata.
+    msg!("Check Meta Allocation");
+    if bidder_meta_act.owner != program_id {
+        msg!("Failed, Creating");
         create_or_allocate_account_raw(
             *program_id,
-            bidder_pot_act,
-            rent_act,
-            system_account,
-            bidder_act,
-            0,
-            &pot_seeds,
-        )?;
-    }
-
-    // Transfer SOL from the bidder's SOL account into their pot.
-    invoke_signed(
-        &system_instruction::transfer(bidder_act.key, &pot_key, args.amount),
-        &[bidder_act.clone(), bidder_pot_act.clone()],
-        &[&pot_seeds],
-    )?;
-
-    // Pot path including the bump for seeds.
-    let meta_seeds = [
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        auction_act.key.as_ref(),
-        bidder_act.key.as_ref(),
-        &[meta_bump],
-    ];
-
-    // Allocate a metadata account, to track the users state over time.
-    if true /* check account doesn't exist already */ {
-        create_or_allocate_account_raw(
-            *program_id,
-            bidder_pot_act,
+            bidder_meta_act,
             rent_act,
             system_account,
             bidder_act,
             mem::size_of::<BidderMetadata>(),
-            &pot_seeds,
+            &[
+                PREFIX.as_bytes(),
+                program_id.as_ref(),
+                auction_act.key.as_ref(),
+                bidder_act.key.as_ref(),
+                "metadata".as_bytes(),
+                &[metadata_bump],
+            ],
         )?;
     }
 
-    // Load the auction and verify this bid is valid.
-    let mut auction: AuctionData = try_from_slice_unchecked(&auction_act.data.borrow())?;
+    msg!("Checking Pot Allocation");
+    let pot_bump = assert_derivation(program_id, bidder_pot_act, &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        auction_act.key.as_ref(),
+        bidder_act.key.as_ref(),
+    ])?;
 
-    // Do not allow bids post gap-time.
-    if let Some(gap) = auction.gap_time {
-        if clock.unix_timestamp - gap > 10 * 60 {
-            return Err(AuctionError::BalanceTooLow.into());
-        }
+    if *bidder_pot_act.owner != spl_token::id() {
+        msg!("Allocating SPL Account");
+        create_or_allocate_account_raw(
+            *program_id,
+            bidder_pot_act,
+            rent_act,
+            system_account,
+            bidder_act,
+            spl_token::state::Account::LEN,
+            &[
+                PREFIX.as_bytes(),
+                program_id.as_ref(),
+                auction_act.key.as_ref(),
+                bidder_act.key.as_ref(),
+                &[pot_bump],
+            ],
+        )?;
+
+        msg!("Initializing SPL");
+        invoke_signed(
+            &spl_token::instruction::initialize_account(
+                &spl_token::id(), // Needed for whatever
+                bidder_pot_act.key, // Account to initialize
+                mint_account.key, // Mint in question
+                auction_act.key, // Authority over account (us)
+            )?,
+            &[
+                auction_act.clone(),
+                bidder_pot_act.clone(),
+                mint_account.clone()
+            ],
+            &[
+                // Auction Signs
+                &[
+                    PREFIX.as_bytes(),
+                    program_id.as_ref(),
+                    args.resource.as_ref(),
+                    &[auction_bump],
+                ],
+            ],
+        );
+
+        msg!("Cool");
+        return Ok(());
     }
 
-    // Do not allow bids post end-time
-    if let Some(end) = auction.end_time {
-        if clock.unix_timestamp > end {
-            return Err(AuctionError::BalanceTooLow.into());
-        }
+    // Confirm payers SPL token balance is enough to pay the bid.
+    msg!("Loading SPL Token");
+    let account_info: spl_token::state::Account =
+        spl_token::state::Account::unpack_from_slice(
+            &bidder_spl_act.data.borrow()
+        )?;
+
+    msg!("Amount: {} < Cost: {}", args.amount, account_info.amount);
+    if account_info.amount.saturating_sub(args.amount) <= 0 {
+        return Err(AuctionError::BalanceTooLow.into());
     }
 
-    auction.last_bid = Some(clock.unix_timestamp);
-    auction.bid_state.place_bid(Bid(pot_key, args.amount))?;
-    auction.serialize(&mut *auction_act.data.borrow_mut())?;
+    // Transfer amount of SPL token to bid account.
+    msg!("Transferring SPL Token");
+    let result = invoke(
+        &spl_token::instruction::transfer(
+            token_program_account.key,
+            bidder_spl_act.key,
+            bidder_pot_act.key,
+            bidder_act.key,
+            &[],
+            args.amount,
+        )?,
+        &[
+            bidder_spl_act.clone(),
+            bidder_pot_act.clone(),
+            bidder_act.clone(),
+            token_program_account.clone(),
+        ],
+    );
+
+    // result.map_err(|_| VaultError::TokenTransferFailed.into());
+
+//
+//    msg!("Storing new auction state");
+//    auction.last_bid = Some(clock.slot);
+//    auction.bid_state.place_bid(Bid(pot_key, args.amount))?;
+//    auction.serialize(&mut *auction_act.data.borrow_mut())?;
 
     Ok(())
 }
