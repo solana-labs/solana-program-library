@@ -15,6 +15,7 @@ use crate::{
     processor::{AuctionData, Bid, BidderMetadata},
     utils::{
         assert_derivation, assert_owned_by, create_or_allocate_account_raw, spl_token_transfer,
+        TokenTransferParams,
     },
     PREFIX,
 };
@@ -53,12 +54,11 @@ pub fn place_bid(
     msg!("Iterating Accounts");
     let account_iter = &mut accounts.iter();
     let bidder_act = next_account_info(account_iter)?;
-    let bidder_spl_act = next_account_info(account_iter)?;
     let bidder_pot_act = next_account_info(account_iter)?;
     let bidder_meta_act = next_account_info(account_iter)?;
     let auction_act = next_account_info(account_iter)?;
     let mint_account = next_account_info(account_iter)?;
-    let mint_authority_account = next_account_info(account_iter)?;
+    let transfer_authority = next_account_info(account_iter)?;
     let clock_sysvar = next_account_info(account_iter)?;
     let rent_act = next_account_info(account_iter)?;
     let system_account = next_account_info(account_iter)?;
@@ -154,6 +154,14 @@ pub fn place_bid(
         ],
     )?;
 
+    let bump_authority_seeds = &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        auction_act.key.as_ref(),
+        bidder_act.key.as_ref(),
+        &[pot_bump],
+    ];
+
     if *bidder_pot_act.owner != spl_token::id() {
         msg!("Allocating SPL Account");
         create_or_allocate_account_raw(
@@ -202,32 +210,24 @@ pub fn place_bid(
 
     // Confirm payers SPL token balance is enough to pay the bid.
     msg!("Loading SPL Token");
-    let account_info: spl_token::state::Account =
-        spl_token::state::Account::unpack_from_slice(&bidder_spl_act.data.borrow())?;
+    let account: spl_token::state::Account =
+        spl_token::state::Account::unpack_from_slice(&bidder_act.data.borrow())?;
 
-    msg!("Amount: {} < Cost: {}", args.amount, account_info.amount);
-    if account_info.amount.saturating_sub(args.amount) <= 0 {
+    msg!("Amount: {} < Cost: {}", args.amount, account.amount);
+    if account.amount.saturating_sub(args.amount) <= 0 {
         return Err(AuctionError::BalanceTooLow.into());
     }
 
     // Transfer amount of SPL token to bid account.
     msg!("Transferring SPL Token");
-    let result = invoke(
-        &spl_token::instruction::transfer(
-            token_program_account.key,
-            bidder_spl_act.key,
-            bidder_pot_act.key,
-            bidder_act.key,
-            &[],
-            args.amount,
-        )?,
-        &[
-            bidder_spl_act.clone(),
-            bidder_pot_act.clone(),
-            bidder_act.clone(),
-            token_program_account.clone(),
-        ],
-    );
+    spl_token_transfer(TokenTransferParams {
+        source: bidder_act.clone(),
+        destination: bidder_pot_act.clone(),
+        amount: args.amount,
+        authority: transfer_authority.clone(),
+        authority_signer_seeds: bump_authority_seeds,
+        token_program: token_program_account.clone(),
+    });
 
     // result.map_err(|_| VaultError::TokenTransferFailed.into());
 

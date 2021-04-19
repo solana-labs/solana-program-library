@@ -97,9 +97,8 @@ pub fn start_auction_instruction(
 pub fn place_bid_instruction(
     program_id: Pubkey,
     bidder_pubkey: Pubkey,
-    bidder_spl_pubkey: Pubkey,
     token_mint_pubkey: Pubkey,
-    token_mint_authority_pubkey: Pubkey,
+    transfer_authority: Pubkey,
     args: PlaceBidArgs,
 ) -> Instruction {
     // Derive Auction Key
@@ -132,13 +131,12 @@ pub fn place_bid_instruction(
     Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(bidder_pubkey, false),
-            AccountMeta::new(bidder_spl_pubkey, false),
+            AccountMeta::new(bidder_pubkey, true),
             AccountMeta::new(bidder_pot_pubkey, false),
             AccountMeta::new(bidder_meta_pubkey, false),
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new(token_mint_pubkey, false),
-            AccountMeta::new(token_mint_authority_pubkey, false),
+            AccountMeta::new_readonly(transfer_authority, true),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
