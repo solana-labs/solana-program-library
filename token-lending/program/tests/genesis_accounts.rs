@@ -36,7 +36,7 @@ async fn test_genesis_accounts() {
     // price of 2210.5
     const fn lamports_to_usdc_fractional(lamports: u64) -> u64 {
         lamports / LAMPORTS_TO_SOL * (2210 + 2211) / 2 * FRACTIONAL_TO_USDC / 1000
-    };
+    }
 
     const USER_SOL_DEPOSIT_LAMPORTS: u64 = 10_000 * LAMPORTS_TO_SOL;
     const USER_SOL_COLLATERAL_LAMPORTS: u64 = 8_500 * LAMPORTS_TO_SOL;

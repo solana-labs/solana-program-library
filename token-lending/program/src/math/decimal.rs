@@ -55,6 +55,7 @@ impl Decimal {
     }
 
     /// Return raw scaled value if it fits within u128
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_scaled_val(&self) -> Result<u128, ProgramError> {
         Ok(u128::try_from(self.0).map_err(|_| LendingError::MathOverflow)?)
     }
