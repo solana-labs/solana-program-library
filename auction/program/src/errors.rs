@@ -58,6 +58,14 @@ pub enum AuctionError {
     /// Token burn failed
     #[error("Token burn failed")]
     TokenBurnFailed,
+
+    /// Invalid authority
+    #[error("Invalid authority")]
+    InvalidAuthority,
+
+    /// Authority not signer
+    #[error("Authority not signer")]
+    AuthorityNotSigner,
 }
 
 impl PrintProgramError for AuctionError {

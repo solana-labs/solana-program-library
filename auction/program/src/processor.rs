@@ -12,6 +12,7 @@ use solana_program::{
 pub mod cancel_bid;
 pub mod create_auction;
 pub mod place_bid;
+pub mod set_authority;
 pub mod start_auction;
 
 pub use cancel_bid::*;
@@ -45,6 +46,10 @@ pub fn process_instruction(
         }
         AuctionInstruction::CancelBid(args) => {
             msg!("+ Processing Cancelbid");
+            cancel_bid(program_id, accounts)
+        }
+        AuctionInstruction::SetAuthority => {
+            msg!("+ Processing SetAuthority");
             cancel_bid(program_id, accounts)
         }
     }

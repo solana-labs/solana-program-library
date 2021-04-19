@@ -17,6 +17,7 @@ pub enum AuctionInstruction {
     StartAuction(StartAuctionArgs),
     PlaceBid(PlaceBidArgs),
     CancelBid(CancelBidArgs),
+    SetAuthority,
 }
 
 /// Creates an CreateAuction instruction.
@@ -42,6 +43,26 @@ pub fn create_auction_instruction(
         data: AuctionInstruction::CreateAuction(args)
             .try_to_vec()
             .unwrap(),
+    }
+}
+
+/// Creates an SetAuthority instruction.
+pub fn set_authority_instruction(
+    program_id: Pubkey,
+    resource: Pubkey,
+    authority: Pubkey,
+    new_authority: Pubkey,
+) -> Instruction {
+    let seeds = &[PREFIX.as_bytes(), &program_id.as_ref(), resource.as_ref()];
+    let (auction_pubkey, _) = Pubkey::find_program_address(seeds, &program_id);
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(auction_pubkey, false),
+            AccountMeta::new_readonly(authority, true),
+            AccountMeta::new_readonly(new_authority, false),
+        ],
+        data: AuctionInstruction::SetAuthority.try_to_vec().unwrap(),
     }
 }
 
