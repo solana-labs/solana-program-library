@@ -157,10 +157,10 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
         msg!("Initializing SPL");
         invoke_signed(
             &spl_token::instruction::initialize_account(
-                &spl_token::id(), // Needed for whatever
-                bidder_pot_act.key, // Account to initialize
-                mint_account.key, // Mint in question
-                auction_act.key, // Authority over account (us)
+                &spl_token::id(),
+                bidder_pot_act.key,
+                mint_account.key,
+                auction_act.key,
             )?,
             &[
                 auction_act.clone(),
