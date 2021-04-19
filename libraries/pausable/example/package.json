@@ -1,0 +1,59 @@
+{
+  "name": "helloworld",
+  "version": "0.0.1",
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/solana-labs/example-helloworld"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "ts-node src/client/main.ts",
+    "start-with-test-validator": "start-server-and-test 'solana-test-validator --reset --quiet' http://localhost:8899/health start",
+    "lint": "eslint --ext .ts src/client/* && prettier --check \"src/client/**/*.ts\"",
+    "lint:fix": "eslint --ext .ts src/client/* --fix && prettier --write \"src/client/**/*.ts\"",
+    "clean": "npm run clean:program-c && npm run clean:program-rust",
+    "clean:store": "rm -rf src/client/util/store/config.json",
+    "build:program-c": "rm -f ./dist/program/helloworld.so && V=1 make -C ./src/program-c && npm run clean:store",
+    "clean:program-c": "V=1 make -C ./src/program-c clean && npm run clean:store",
+    "build:program-rust": "cargo build-bpf --manifest-path=./src/program-rust/Cargo.toml --bpf-out-dir=dist/program && mv dist/program/solana_bpf_helloworld.so dist/program/helloworld.so && npm run clean:store",
+    "clean:program-rust": "cargo clean --manifest-path=./src/program-rust/Cargo.toml && rm -rf ./dist && npm run clean:store",
+    "test:program-rust": "cargo test-bpf --manifest-path=./src/program-rust/Cargo.toml",
+    "cluster:localnet": "npm run clean:store && rm -f .env",
+    "cluster:devnet": "npm run clean:store && cp cluster-devnet.env .env",
+    "cluster:testnet": "npm run clean:store && cp cluster-testnet.env .env",
+    "cluster:mainnet-beta": "npm run clean:store && cp cluster-mainnet-beta.env .env",
+    "pretty": "prettier --write '{,src/**/}*.js'",
+    "postinstall": "cargo update --manifest-path=src/program-rust/Cargo.toml"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.1",
+    "@types/eslint": "^7.2.4",
+    "@types/eslint-plugin-prettier": "^3.1.0",
+    "@types/mkdirp": "^1.0.1",
+    "@types/mz": "^2.7.2",
+    "@types/prettier": "^2.1.5",
+    "@typescript-eslint/eslint-plugin": "^4.6.0",
+    "@typescript-eslint/parser": "^4.6.0",
+    "eslint": "^7.12.1",
+    "eslint-config-prettier": "^6.15.0",
+    "eslint-plugin-prettier": "^3.1.4",
+    "prettier": "^2.1.2",
+    "start-server-and-test": "^1.11.6",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.5"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^0.93.0",
+    "buffer-layout": "^1.2.0",
+    "dotenv": "8.2.0",
+    "json-to-pretty-yaml": "^1.2.2",
+    "mkdirp": "^1.0.4",
+    "mz": "^2.7.0"
+  },
+  "engines": {
+    "node": "12.x"
+  }
+}
