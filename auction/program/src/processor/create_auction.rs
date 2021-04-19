@@ -44,6 +44,8 @@ pub struct CreateAuctionArgs {
     pub end_auction_gap: Option<Slot>,
     /// Token mint for the SPL token used for bidding.
     pub token_mint: Pubkey,
+    /// Authority
+    pub authority: Pubkey,
 }
 
 pub fn create_auction(
@@ -100,7 +102,7 @@ pub fn create_auction(
 
     // Configure Auction.
     AuctionData {
-        authority: *creator_act.key,
+        authority: args.authority,
         resource: args.resource,
         token_mint: args.token_mint,
         state: AuctionState::create(),
