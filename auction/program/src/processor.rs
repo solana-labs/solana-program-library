@@ -2,9 +2,9 @@ use crate::errors::AuctionError;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo,
-    clock::{UnixTimestamp, Slot},
-    msg,
+    clock::{Slot, UnixTimestamp},
     entrypoint::ProgramResult,
+    msg,
     program_error::ProgramError,
     pubkey::Pubkey,
 };
@@ -25,37 +25,37 @@ pub fn process_instruction(
     input: &[u8],
 ) -> ProgramResult {
     use crate::instruction::AuctionInstruction;
-    use create_auction::create_auction;
-    use start_auction::start_auction;
-    use place_bid::place_bid;
     use cancel_bid::cancel_bid;
+    use create_auction::create_auction;
+    use place_bid::place_bid;
+    use start_auction::start_auction;
 
     match AuctionInstruction::try_from_slice(input)? {
         AuctionInstruction::CreateAuction(args) => {
             msg!("+ Processing CreateAuction");
             create_auction(program_id, accounts, args)
-        },
+        }
         AuctionInstruction::StartAuction(args) => {
             msg!("+ Processing StartAuction");
             start_auction(program_id, accounts, args)
-        },
+        }
         AuctionInstruction::PlaceBid(args) => {
             msg!("+ Processing PlaceBid");
             place_bid(program_id, accounts, args)
-        },
+        }
         AuctionInstruction::CancelBid(args) => {
             msg!("+ Processing Cancelbid");
             cancel_bid(program_id, accounts)
-        },
+        }
     }
 }
 
 /// Structure containing timing configuration, I.E when the auction ends.
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
-pub struct AuctionTiming {
-}
+pub struct AuctionTiming {}
 
+pub const BASE_AUCTION_DATA_SIZE: usize = 32 + 32 + 32 + 1 + 9 + 9 + 9 + 9;
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
 pub struct AuctionData {
@@ -110,8 +110,6 @@ impl AuctionState {
     }
 }
 
-
-
 /// Bids associate a bidding key with an amount bid.
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
@@ -152,21 +150,21 @@ impl BidState {
             // In a capped auction, track the limited number of winners.
             BidState::EnglishAuction { ref mut bids, max } => match bids.last() {
                 Some(top) => {
-                        msg!("{} < {}", top.1, bid.1);
+                    msg!("{} < {}", top.1, bid.1);
                     if top.1 < bid.1 {
-                    bids.retain(|b| b.0 != bid.0);
-                    bids.push(bid);
-                    if bids.len() > *max {
-                        bids.remove(0);
+                        bids.retain(|b| b.0 != bid.0);
+                        bids.push(bid);
+                        if bids.len() > *max {
+                            bids.remove(0);
+                        }
+                        return Ok(());
                     }
                     return Ok(());
                 }
-                    return Ok(());
-                },
                 _ => {
                     bids.push(bid);
                     return Ok(());
-                },
+                }
             },
 
             // In an open auction, bidding simply succeeds.

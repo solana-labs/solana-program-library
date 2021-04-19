@@ -13,7 +13,7 @@
 
 use crate::{
     errors::AuctionError,
-    processor::{AuctionData, AuctionState, Bid, BidState, WinnerLimit},
+    processor::{AuctionData, AuctionState, Bid, BidState, WinnerLimit, BASE_AUCTION_DATA_SIZE},
     utils::{assert_owned_by, create_or_allocate_account_raw},
     PREFIX,
 };
@@ -44,7 +44,6 @@ pub struct CreateAuctionArgs {
     pub end_auction_gap: Option<Slot>,
     /// Token mint for the SPL token used for bidding.
     pub token_mint: Pubkey,
-
 }
 
 pub fn create_auction(
@@ -73,8 +72,8 @@ pub fn create_auction(
 
     // The data must be large enough to hold at least the number of winners.
     let auction_size = match args.winners {
-        WinnerLimit::Capped(n) => mem::size_of::<Bid>() * n + 128,
-        WinnerLimit::Unlimited => 0,
+        WinnerLimit::Capped(n) => mem::size_of::<Bid>() * n + BASE_AUCTION_DATA_SIZE,
+        WinnerLimit::Unlimited => BASE_AUCTION_DATA_SIZE,
     };
 
     let bid_state = match args.winners {
