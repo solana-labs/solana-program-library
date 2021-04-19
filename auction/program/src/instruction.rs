@@ -7,9 +7,7 @@ use solana_program::{
 };
 
 pub use crate::processor::{
-    cancel_bid::CancelBidArgs,
-    create_auction::CreateAuctionArgs,
-    place_bid::PlaceBidArgs,
+    cancel_bid::CancelBidArgs, create_auction::CreateAuctionArgs, place_bid::PlaceBidArgs,
     start_auction::StartAuctionArgs,
 };
 
@@ -36,7 +34,7 @@ pub fn create_auction_instruction(
     Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(creator_pubkey, false),
+            AccountMeta::new(creator_pubkey, true),
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),

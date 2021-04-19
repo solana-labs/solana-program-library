@@ -2637,6 +2637,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ringbuf"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25396a5da385580bae6dcca1969e036162df02abf8efbe99bbb7c9830429a9ad"
+
+[[package]]
 name = "rpassword"
 version = "4.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3664,6 +3670,22 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 3.1.0",
+]
+
+[[package]]
+name = "spl-auction"
+version = "0.0.1"
+dependencies = [
+ "borsh 0.8.2",
+ "byteorder",
+ "num-derive",
+ "num-traits",
+ "ringbuf",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token 3.1.0",
+ "thiserror",
 ]
 
 [[package]]
