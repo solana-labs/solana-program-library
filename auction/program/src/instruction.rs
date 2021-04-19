@@ -87,6 +87,7 @@ pub fn start_auction_instruction(
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
         ],
         data: AuctionInstruction::StartAuction(args).try_to_vec().unwrap(),
     }

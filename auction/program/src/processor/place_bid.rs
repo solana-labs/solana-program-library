@@ -13,7 +13,9 @@
 use crate::{
     errors::AuctionError,
     processor::{AuctionData, Bid, BidderMetadata},
-    utils::{assert_owned_by, create_or_allocate_account_raw, assert_derivation, spl_token_transfer},
+    utils::{
+        assert_derivation, assert_owned_by, create_or_allocate_account_raw, spl_token_transfer,
+    },
     PREFIX,
 };
 
@@ -43,7 +45,11 @@ pub struct PlaceBidArgs {
     pub resource: Pubkey,
 }
 
-pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidArgs) -> ProgramResult {
+pub fn place_bid(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    args: PlaceBidArgs,
+) -> ProgramResult {
     msg!("Iterating Accounts");
     let account_iter = &mut accounts.iter();
     let bidder_act = next_account_info(account_iter)?;
@@ -63,11 +69,15 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
 
     // Load the auction, we'll need the state to do anything useful.
     msg!("Assert Auction");
-    let auction_bump = assert_derivation(program_id, auction_act, &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        args.resource.as_ref(),
-    ])?;
+    let auction_bump = assert_derivation(
+        program_id,
+        auction_act,
+        &[
+            PREFIX.as_bytes(),
+            program_id.as_ref(),
+            args.resource.as_ref(),
+        ],
+    )?;
 
     // Load the auction and verify this bid is valid.
     let mut auction: AuctionData = try_from_slice_unchecked(&auction_act.data.borrow())?;
@@ -90,7 +100,7 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
     }
 
     // Do not allow bids post end-time
-    if let Some(end) = auction.end_auction_at {
+    if let Some(end) = auction.ended_at {
         msg!("Auction finished, passed end time.");
         if clock.slot > end {
             return Err(AuctionError::InvalidState.into());
@@ -98,13 +108,17 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
     }
 
     msg!("Assert Metadata");
-    let metadata_bump = assert_derivation(program_id, bidder_meta_act, &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        auction_act.key.as_ref(),
-        bidder_act.key.as_ref(),
-        "metadata".as_bytes(),
-    ])?;
+    let metadata_bump = assert_derivation(
+        program_id,
+        bidder_meta_act,
+        &[
+            PREFIX.as_bytes(),
+            program_id.as_ref(),
+            auction_act.key.as_ref(),
+            bidder_act.key.as_ref(),
+            "metadata".as_bytes(),
+        ],
+    )?;
 
     // Load the users account metadata.
     msg!("Check Meta Allocation");
@@ -129,12 +143,16 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
     }
 
     msg!("Checking Pot Allocation");
-    let pot_bump = assert_derivation(program_id, bidder_pot_act, &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        auction_act.key.as_ref(),
-        bidder_act.key.as_ref(),
-    ])?;
+    let pot_bump = assert_derivation(
+        program_id,
+        bidder_pot_act,
+        &[
+            PREFIX.as_bytes(),
+            program_id.as_ref(),
+            auction_act.key.as_ref(),
+            bidder_act.key.as_ref(),
+        ],
+    )?;
 
     if *bidder_pot_act.owner != spl_token::id() {
         msg!("Allocating SPL Account");
@@ -165,7 +183,7 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
             &[
                 auction_act.clone(),
                 bidder_pot_act.clone(),
-                mint_account.clone()
+                mint_account.clone(),
             ],
             &[
                 // Auction Signs
@@ -185,9 +203,7 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
     // Confirm payers SPL token balance is enough to pay the bid.
     msg!("Loading SPL Token");
     let account_info: spl_token::state::Account =
-        spl_token::state::Account::unpack_from_slice(
-            &bidder_spl_act.data.borrow()
-        )?;
+        spl_token::state::Account::unpack_from_slice(&bidder_spl_act.data.borrow())?;
 
     msg!("Amount: {} < Cost: {}", args.amount, account_info.amount);
     if account_info.amount.saturating_sub(args.amount) <= 0 {
@@ -215,12 +231,11 @@ pub fn place_bid(program_id: &Pubkey, accounts: &[AccountInfo], args: PlaceBidAr
 
     // result.map_err(|_| VaultError::TokenTransferFailed.into());
 
-//
-//    msg!("Storing new auction state");
-//    auction.last_bid = Some(clock.slot);
-//    auction.bid_state.place_bid(Bid(pot_key, args.amount))?;
-//    auction.serialize(&mut *auction_act.data.borrow_mut())?;
+    //
+    //    msg!("Storing new auction state");
+    //    auction.last_bid = Some(clock.slot);
+    //    auction.bid_state.place_bid(Bid(pot_key, args.amount))?;
+    //    auction.serialize(&mut *auction_act.data.borrow_mut())?;
 
     Ok(())
 }
-

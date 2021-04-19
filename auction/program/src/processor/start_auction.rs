@@ -10,10 +10,11 @@ use {
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         borsh::try_from_slice_unchecked,
-        clock::UnixTimestamp,
+        clock::Clock,
         entrypoint::ProgramResult,
         msg,
         pubkey::Pubkey,
+        sysvar::Sysvar,
     },
     std::mem,
 };
@@ -33,6 +34,8 @@ pub fn start_auction(
     let account_iter = &mut accounts.iter();
     let creator_act = next_account_info(account_iter)?;
     let auction_act = next_account_info(account_iter)?;
+    let clock_sysvar = next_account_info(account_iter)?;
+    let clock = Clock::from_account_info(clock_sysvar)?;
 
     let auction_path = [
         PREFIX.as_bytes(),
@@ -46,13 +49,15 @@ pub fn start_auction(
         return Err(AuctionError::InvalidAuctionAccount.into());
     }
 
-    // Start Auction
-    let auction = AuctionData {
-        state: AuctionState::create(),
-        ..try_from_slice_unchecked(&auction_act.data.borrow())?
-    };
+    let mut auction: AuctionData = try_from_slice_unchecked(&auction_act.data.borrow())?;
+    auction.state = AuctionState::create();
+    if let Some(end_auction_at) = auction.end_auction_at {
+        auction.ended_at = match clock.slot.checked_add(end_auction_at) {
+            Some(val) => Some(val),
+            None => return Err(AuctionError::NumericalOverflowError.into()),
+        };
+    }
     auction.serialize(&mut *auction_act.data.borrow_mut())?;
 
     Ok(())
 }
-

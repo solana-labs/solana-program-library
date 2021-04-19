@@ -66,6 +66,10 @@ pub enum AuctionError {
     /// Authority not signer
     #[error("Authority not signer")]
     AuthorityNotSigner,
+
+    /// Numerical overflow
+    #[error("Numerical overflow")]
+    NumericalOverflowError,
 }
 
 impl PrintProgramError for AuctionError {
