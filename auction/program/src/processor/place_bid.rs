@@ -12,10 +12,10 @@
 
 use crate::{
     errors::AuctionError,
-    processor::{AuctionData, Bid, BidderMetadata},
+    processor::{AuctionData, Bid, BidderMetadata, BidderPot},
     utils::{
-        assert_derivation, assert_owned_by, create_or_allocate_account_raw, spl_token_transfer,
-        TokenTransferParams,
+        assert_derivation, assert_initialized, assert_owned_by, create_or_allocate_account_raw,
+        spl_token_transfer, TokenTransferParams,
     },
     PREFIX,
 };
@@ -30,9 +30,12 @@ use {
         program::{invoke, invoke_signed},
         program_pack::Pack,
         pubkey::Pubkey,
+        rent::Rent,
         system_instruction,
+        system_instruction::create_account,
         sysvar::{clock::Clock, Sysvar},
     },
+    spl_token::state::Account,
     std::mem,
 };
 
@@ -55,6 +58,7 @@ pub fn place_bid(
     let account_iter = &mut accounts.iter();
     let bidder_act = next_account_info(account_iter)?;
     let bidder_pot_act = next_account_info(account_iter)?;
+    let bidder_pot_token_act = next_account_info(account_iter)?;
     let bidder_meta_act = next_account_info(account_iter)?;
     let auction_act = next_account_info(account_iter)?;
     let mint_account = next_account_info(account_iter)?;
@@ -67,6 +71,11 @@ pub fn place_bid(
 
     msg!("Assert Owner");
     assert_owned_by(auction_act, program_id)?;
+    assert_owned_by(bidder_pot_token_act, &spl_token::id())?;
+    let actual_account: Account = assert_initialized(bidder_pot_token_act)?;
+    if actual_account.owner != *program_id {
+        return Err(AuctionError::BidderPotTokenAccountOwnerMismatch.into());
+    }
 
     // Load the auction, we'll need the state to do anything useful.
     msg!("Assert Auction");
@@ -166,57 +175,42 @@ pub fn place_bid(
         &[pot_bump],
     ];
 
-    if *bidder_pot_act.owner != spl_token::id() {
-        msg!("Allocating SPL Account");
+    if bidder_pot_act.data_is_empty() {
+        let rent = &Rent::from_account_info(rent_act)?;
+
         create_or_allocate_account_raw(
             *program_id,
             bidder_pot_act,
             rent_act,
             system_account,
             payer,
-            spl_token::state::Account::LEN,
+            mem::size_of::<BidderPot>(),
             &[
                 PREFIX.as_bytes(),
                 program_id.as_ref(),
-                auction_act.key.as_ref(),
-                bidder_act.key.as_ref(),
-                &[pot_bump],
+                args.resource.as_ref(),
+                &[auction_bump],
             ],
         )?;
 
-        msg!("Initializing SPL");
-        invoke_signed(
-            &spl_token::instruction::initialize_account(
-                &spl_token::id(),
-                bidder_pot_act.key,
-                mint_account.key,
-                auction_act.key,
-            )?,
-            &[
-                auction_act.clone(),
-                bidder_pot_act.clone(),
-                mint_account.clone(),
-                rent_act.clone(),
-            ],
-            &[
-                // Auction Signs
-                &[
-                    PREFIX.as_bytes(),
-                    program_id.as_ref(),
-                    args.resource.as_ref(),
-                    &[auction_bump],
-                ],
-            ],
-        );
+        let mut bidder_pot: BidderPot =
+            try_from_slice_unchecked(&bidder_pot_act.data.borrow_mut())?;
+
+        bidder_pot.bidder_pot = *bidder_pot_token_act.key;
+        bidder_pot.serialize(&mut *bidder_pot_act.data.borrow_mut())?;
 
         msg!("Cool");
         return Ok(());
+    } else {
+        let bidder_pot: BidderPot = try_from_slice_unchecked(&bidder_pot_act.data.borrow_mut())?;
+        if bidder_pot.bidder_pot != *bidder_pot_token_act.key {
+            return Err(AuctionError::BidderPotTokenAccountMismatch.into());
+        }
     }
 
     // Confirm payers SPL token balance is enough to pay the bid.
     msg!("Loading SPL Token");
-    let account: spl_token::state::Account =
-        spl_token::state::Account::unpack_from_slice(&bidder_act.data.borrow())?;
+    let account: Account = Account::unpack_from_slice(&bidder_act.data.borrow())?;
 
     msg!("Amount: {} < Cost: {}", args.amount, account.amount);
     if account.amount.saturating_sub(args.amount) <= 0 {
@@ -227,7 +221,7 @@ pub fn place_bid(
     msg!("Transferring SPL Token");
     spl_token_transfer(TokenTransferParams {
         source: bidder_act.clone(),
-        destination: bidder_pot_act.clone(),
+        destination: bidder_pot_token_act.clone(),
         amount: args.amount,
         authority: transfer_authority.clone(),
         authority_signer_seeds: bump_authority_seeds,
@@ -238,9 +232,11 @@ pub fn place_bid(
 
     //
     //    msg!("Storing new auction state");
-    //    auction.last_bid = Some(clock.slot);
-    //    auction.bid_state.place_bid(Bid(pot_key, args.amount))?;
-    //    auction.serialize(&mut *auction_act.data.borrow_mut())?;
+    auction.last_bid = Some(clock.slot);
+    auction
+        .bid_state
+        .place_bid(Bid(*bidder_pot_act.key, args.amount))?;
+    auction.serialize(&mut *auction_act.data.borrow_mut())?;
 
     Ok(())
 }
