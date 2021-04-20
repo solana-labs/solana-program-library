@@ -96,8 +96,10 @@ pub fn start_auction_instruction(
 pub fn place_bid_instruction(
     program_id: Pubkey,
     bidder_pubkey: Pubkey,
+    bidder_pot_token_pubkey: Pubkey,
     token_mint_pubkey: Pubkey,
     transfer_authority: Pubkey,
+    payer: Pubkey,
     args: PlaceBidArgs,
 ) -> Instruction {
     // Derive Auction Key
@@ -132,6 +134,7 @@ pub fn place_bid_instruction(
         accounts: vec![
             AccountMeta::new(bidder_pubkey, true),
             AccountMeta::new(bidder_pot_pubkey, false),
+            AccountMeta::new(bidder_pot_token_pubkey, false),
             AccountMeta::new(bidder_meta_pubkey, false),
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new(token_mint_pubkey, false),

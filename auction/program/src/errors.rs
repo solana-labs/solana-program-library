@@ -70,6 +70,18 @@ pub enum AuctionError {
     /// Numerical overflow
     #[error("Numerical overflow")]
     NumericalOverflowError,
+
+    /// Bidder pot token account does not match
+    #[error("Bidder pot token account does not match")]
+    BidderPotTokenAccountOwnerMismatch,
+
+    /// Uninitialized
+    #[error("Uninitialized")]
+    Uninitialized,
+
+    /// The token account provided does not match the token account on the bidder pot
+    #[error("The token account provided does not match the token account on the bidder pot")]
+    BidderPotTokenAccountMismatch,
 }
 
 impl PrintProgramError for AuctionError {

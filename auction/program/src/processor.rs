@@ -230,3 +230,10 @@ pub struct BidderMetadata {
     // user is a winner, as if cancelled it implies previous bids were also cancelled.
     pub cancelled: bool,
 }
+
+#[repr(C)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+pub struct BidderPot {
+    /// Points at actual pot that is a token account
+    pub bidder_pot: Pubkey,
+}
