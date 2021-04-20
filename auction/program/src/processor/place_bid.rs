@@ -59,6 +59,7 @@ pub fn place_bid(
     let auction_act = next_account_info(account_iter)?;
     let mint_account = next_account_info(account_iter)?;
     let transfer_authority = next_account_info(account_iter)?;
+    let payer = next_account_info(account_iter)?;
     let clock_sysvar = next_account_info(account_iter)?;
     let rent_act = next_account_info(account_iter)?;
     let system_account = next_account_info(account_iter)?;
@@ -132,7 +133,7 @@ pub fn place_bid(
             bidder_meta_act,
             rent_act,
             system_account,
-            bidder_act,
+            payer,
             mem::size_of::<BidderMetadata>(),
             &[
                 PREFIX.as_bytes(),
@@ -172,7 +173,7 @@ pub fn place_bid(
             bidder_pot_act,
             rent_act,
             system_account,
-            bidder_act,
+            payer,
             spl_token::state::Account::LEN,
             &[
                 PREFIX.as_bytes(),
