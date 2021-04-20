@@ -93,9 +93,12 @@ pub fn place_bid(
 
     // Do not allow bids post gap-time.
     if let Some(gap) = auction.end_auction_gap {
-        msg!("Auction finished, gp time passed.");
-        if clock.slot - gap > 10 * 60 {
-            return Err(AuctionError::InvalidState.into());
+        if let Some(last_bid) = auction.last_bid {
+            if clock.slot - last_bid > gap {
+                msg!("Auction finished, gp time passed.");
+
+                return Err(AuctionError::InvalidState.into());
+            }
         }
     }
 
