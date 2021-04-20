@@ -196,6 +196,7 @@ pub fn place_bid(
                 auction_act.clone(),
                 bidder_pot_act.clone(),
                 mint_account.clone(),
+                rent_act.clone(),
             ],
             &[
                 // Auction Signs
